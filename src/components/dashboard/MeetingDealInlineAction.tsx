@@ -210,13 +210,13 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
   const deal = linkedDeal || ranked!.deal;
   const scorePct = ranked ? Math.round(ranked.score * 100) : 100;
   const pill = band === 'linked' ? (
-    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-sky-500/40 text-sky-300 bg-sky-500/10">Linked</Badge>
+    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-sky-500/40 text-sky-300 bg-sky-500/10 shrink-0 whitespace-nowrap">Linked</Badge>
   ) : band === 'auto' ? (
-    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10 shrink-0 whitespace-nowrap">
       <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Auto-matched {scorePct}%
     </Badge>
   ) : (
-    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-amber-500/40 text-amber-300 bg-amber-500/10">
+    <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-amber-500/40 text-amber-300 bg-amber-500/10 shrink-0 whitespace-nowrap">
       <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Suggested {scorePct}%
     </Badge>
   );
@@ -226,7 +226,7 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
   return (
     <div
       className={cn(
-        'rounded-md border px-2.5 py-1.5 flex items-center gap-2',
+        'rounded-md border px-2.5 py-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5',
         band === 'auto' && 'border-emerald-500/30 bg-emerald-500/[0.05]',
         band === 'review' && 'border-amber-500/30 bg-amber-500/[0.05]',
         band === 'linked' && 'border-sky-500/30 bg-sky-500/[0.05]',
@@ -236,19 +236,19 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
         href={`/deals?deal=${deal.id}`}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center gap-1.5 min-w-0 flex-1 text-xs text-white hover:underline"
+        className="flex items-center gap-1.5 min-w-0 basis-full sm:basis-0 sm:flex-1 text-xs text-white hover:underline"
         title={deal.name}
       >
         <Briefcase className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="truncate">▶ {labelPrefix}{deal.name}</span>
         <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
       </a>
-      {pill}
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center flex-wrap gap-1.5 shrink-0 ml-auto">
+        {pill}
         {band === 'auto' && (
           <Button
             size="sm" variant="ghost"
-            className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10"
+            className="h-7 px-2 text-[10px] gap-1 shrink-0 whitespace-nowrap text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10"
             disabled={approving}
             onClick={() => persistLink(ranked!.deal, 'auto')}
           >
@@ -259,7 +259,7 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
           <>
             <Button
               size="sm" variant="ghost"
-              className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10"
+              className="h-7 px-2 text-[10px] gap-1 shrink-0 whitespace-nowrap text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10"
               disabled={approving}
               onClick={() => persistLink(ranked!.deal, 'manual')}
             >
@@ -267,7 +267,7 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
             </Button>
             <Button
               size="sm" variant="ghost"
-              className="h-6 px-2 text-[10px] gap-1 text-rose-300 hover:text-rose-200 hover:bg-rose-500/10"
+              className="h-7 px-2 text-[10px] gap-1 shrink-0 whitespace-nowrap text-rose-300 hover:text-rose-200 hover:bg-rose-500/10"
               onClick={() => setUserRejected(true)}
             >
               <X className="h-3 w-3" /> Reject
@@ -278,7 +278,7 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
           <PopoverTrigger asChild>
             <Button
               size="sm" variant="ghost"
-              className="h-6 px-2 text-[10px] gap-1 text-white/80 hover:text-white hover:bg-white/[0.08]"
+              className="h-7 px-2 text-[10px] gap-1 shrink-0 whitespace-nowrap text-white/80 hover:text-white hover:bg-white/[0.08]"
             >
               <Pencil className="h-3 w-3" /> Change
             </Button>
