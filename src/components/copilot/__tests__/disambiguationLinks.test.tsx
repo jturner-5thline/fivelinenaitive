@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { CopilotDisambiguationOptionsCard, parseCopilotDisambiguationMessage } from '@/components/copilot/CopilotDisambiguationOptionsCard';
 
 // Minimal renderer mirroring the relevant slice of AICopilotPanel so we can
 // regression-test the disambiguation-link click behavior in isolation.
@@ -74,5 +75,46 @@ describe('Copilot disambiguation hyperlinks', () => {
     const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
     expect(detail.prompt).toContain('xyz-999');
     expect(detail.prompt.toLowerCase()).toContain('deal');
+  });
+
+  it('parses choose-an-option markdown into row options for the live fallback path', () => {
+    const parsed = parseCopilotDisambiguationMessage(
+      [
+        'I found 3 deals for Gabb Wireless. Which one would you like to see?',
+        '- [Gabb Wireless — Pre-Credit Needs](deal://a1)',
+        '- [Gabb Wireless — On-hold](deal://b2)',
+        '- [Gabb Wireless — On-hold 2](deal://c3)',
+      ].join('\n'),
+    );
+
+    expect(parsed).not.toBeNull();
+    expect(parsed?.options).toHaveLength(3);
+    expect(parsed?.options[0]).toMatchObject({ id: 'a1', kind: 'deal' });
+  });
+
+  it('renders a visible check selector for each option row and dispatches the chosen id', () => {
+    const parsed = parseCopilotDisambiguationMessage(
+      [
+        'I found 3 deals for Gabb Wireless. Which one would you like to see?',
+        '- [Gabb Wireless — Pre-Credit Needs](deal://a1)',
+        '- [Gabb Wireless — On-hold](deal://b2)',
+        '- [Gabb Wireless — On-hold 2](deal://c3)',
+      ].join('\n'),
+    );
+
+    expect(parsed).not.toBeNull();
+    render(<CopilotDisambiguationOptionsCard message={parsed!} />);
+
+    expect(screen.getByTestId('copilot-disambiguation-check-a1')).toBeInTheDocument();
+    expect(screen.getByTestId('copilot-disambiguation-check-b2')).toBeInTheDocument();
+    expect(screen.getByTestId('copilot-disambiguation-check-c3')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('copilot-disambiguation-option-b2'));
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    const detail = (handler.mock.calls[0][0] as CustomEvent).detail;
+    expect(detail.prompt).toContain('b2');
+    expect(detail.prompt).toContain('Gabb Wireless — On-hold');
+    expect(screen.getByTestId('copilot-disambiguation-option-a1')).toHaveClass('opacity-50');
   });
 });
