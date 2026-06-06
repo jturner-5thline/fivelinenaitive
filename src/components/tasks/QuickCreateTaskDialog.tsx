@@ -373,6 +373,12 @@ export function QuickCreateTaskDialog({
   // hasn't already chosen a deal. Never override an explicit selection.
   useEffect(() => {
     if (dealId) return;
+    // Meeting → Create task flow: the caller owns the deal field via the
+    // explicit meeting→deal link. Suggestions stay visible as one-click
+    // chips, but never silently auto-apply — that's the bug where a
+    // title like "Follow Up: SoLo Sync" would pick up an unrelated deal
+    // (e.g. Censys) just because its name happened to overlap.
+    if (lockInitialDeal) return;
     if (suggestions.length === 1 && suggestions[0].score >= 100) {
       setDealId(suggestions[0].deal.id);
     }
