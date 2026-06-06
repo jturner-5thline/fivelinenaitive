@@ -25,6 +25,7 @@ import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEdit
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
+import type { InsightsMetricOption } from './qir/insightsMetricRegistry';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
@@ -744,6 +745,27 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
   const updateKPI = (id: string, patch: Partial<KPI>) => set(prev => ({ ...prev, kpis: prev.kpis.map(k => k.id === id ? { ...k, ...patch } : k) }));
   const removeKPI = (id: string) => set(prev => ({ ...prev, kpis: prev.kpis.filter(k => k.id !== id) }));
   const addCustomKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
+  /** Insert a KPI seeded from a generic Insights metric (non-template).
+   *  Persists the metric source id alongside the KPI so future renderers
+   *  can swap in live values without losing the user's selection. */
+  const addMetricKPI = (opt: InsightsMetricOption) => {
+    const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+    set(prev => ({
+      ...prev,
+      kpis: [...prev.kpis, {
+        id: uid(),
+        label: opt.label,
+        actual: '0',
+        target: '0',
+        format: fmt,
+        templateConfig: {
+          metricSourceId: opt.metricSourceId ?? null,
+          customMetricId: opt.customMetricId ?? null,
+          sourceArea: opt.source,
+        } as unknown as Record<string, unknown>,
+      }],
+    }));
+  };
   const addTemplateKPI = (templateId: KpiTemplateId) => {
     const tpl = getKpiTemplate(templateId);
     if (!tpl) return;
@@ -1012,6 +1034,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
         onClose={() => setAddOpen(false)}
         onPickTemplate={(id) => addTemplateKPI(id)}
         onPickCustom={() => addCustomKPI()}
+        onPickMetric={(opt) => addMetricKPI(opt)}
       />
     </Card>
   );
