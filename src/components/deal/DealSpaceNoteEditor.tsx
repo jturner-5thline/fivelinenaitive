@@ -294,6 +294,29 @@ export function DealSpaceNoteEditor({
         company_id: companyId,
       } as any).select().single();
 
+      // Unified deal follow-up backlink (idempotent) — links the task
+      // to the originating @mention so it surfaces with provenance on
+      // the deal calendar.
+      if (createdTask && (createdTask as any).id && dealId) {
+        try {
+          const { writeDealFollowUpSource } = await import('@/lib/deals/dealFollowUp');
+          await writeDealFollowUpSource({
+            dealId,
+            taskId: (createdTask as any).id,
+            source: {
+              module: 'meeting_notes',
+              recordId: `mention:${dealId}:${pendingMention.userId}`,
+              sourceTimestamp: new Date().toISOString(),
+              sourceText: task.title,
+            },
+            title: task.title,
+            userId: user.id,
+          });
+        } catch (e) {
+          console.warn('[DealSpaceNoteEditor] backlink failed:', e);
+        }
+      }
+
       // Also send notification
       await supabase.from('flex_notifications').insert({
         user_id: pendingMention.userId,
