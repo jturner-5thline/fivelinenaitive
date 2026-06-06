@@ -1493,12 +1493,14 @@ function EventDetailPane({
               }))}
               onLinkedDeal={(d) => onLinkDeal(d)}
             />
-            <MeetingScheduleInlineAction
-              eventId={event.id}
-              primaryAttendeeName={externals[0]?.display_name || null}
-              primaryAttendeeEmail={externals[0]?.email || null}
-              onOpenScheduler={() => setScheduleNextOpen(true)}
-            />
+            {linkedDealId ? (
+              <AddToDealCalendarInlineAction
+                dealId={linkedDealId}
+                eventId={event.id}
+                eventTitle={eventTitle}
+                eventStartISO={event.start}
+              />
+            ) : null}
           </div>
           <div className="mt-2 space-y-2">
             <FindATimeDialog
