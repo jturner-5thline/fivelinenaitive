@@ -203,6 +203,18 @@ export function QuickCreateTaskDialog({
     }
   }, [open, currentUserId, teamMembers, initialTitle, initialDealId, initialDueDate]);
 
+  // In locked mode (meeting → Create task), keep `dealId` mirrored to the
+  // explicit `initialDealId` for as long as the dialog stays open. The
+  // open-transition effect above only fires on false→true, so without
+  // this we'd miss the case where the caller re-resolves the linked deal
+  // (e.g. the user switches the link from Deal A to Deal B and clicks
+  // Create task again) between reopens. Unlocked callers keep the
+  // existing "set once on open" behavior so manual picks aren't clobbered.
+  useEffect(() => {
+    if (!open || !lockInitialDeal) return;
+    setDealId(initialDealId ?? null);
+  }, [open, lockInitialDeal, initialDealId]);
+
   // Collapse the inline deal results list when the user clicks anywhere
   // outside [data-deal-picker]. Clears query but preserves selection.
   useEffect(() => {
