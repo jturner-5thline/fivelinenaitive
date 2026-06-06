@@ -43,7 +43,7 @@ export interface MeetingTaskSuggestion {
   external_mention: string | null;
   /** How the assignee was resolved: by mention, by deal-manager fallback,
    *  by manual user pick, or unassigned. Drives the UI chip styling. */
-  assignment_source: 'mention' | 'deal-manager' | 'manual' | null;
+  assignment_source: 'mention' | 'deal-manager' | 'manual' | 'viewer' | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
@@ -360,6 +360,9 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
   const suggestions: MeetingTaskSuggestion[] = useMemo(() => {
     const persisted = persistedQuery.data ?? [];
     const byId = new Map(persisted.map((r) => [r.suggestion_id, r]));
+    const viewer: InternalMember | null = user?.id
+      ? internalMembers.find((m) => m.user_id === user.id) ?? null
+      : null;
     return rawItems.map((it, idx) => {
       const sid = suggestionIdFor(scopeKey, idx, it.text);
       const row = byId.get(sid);
@@ -376,22 +379,31 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       // matches an internal member, treat that as the canonical assignee
       // (covers picks made via the Unassigned chip / bulk-assign picker).
       const persistedEmail = ((row as any)?.assignee_email as string | null) || null;
+      // Only treat the persisted email as an assignment if it resolves to
+      // a known internal tenant member. External emails (e.g. an outside
+      // attendee like neilb@dnbadvisory.com) must never appear as the
+      // assignee — they fall through to the deal-manager / viewer fallback.
       const manualMember = persistedEmail
         ? internalMembers.find(
             (m) => (m.email || '').toLowerCase() === persistedEmail.toLowerCase(),
           ) ?? null
         : null;
       // Fallback chain: manual pick > mention resolution > linked deal
-      // manager. External mention text is preserved as muted context
-      // unless the mention itself resolved to an internal member.
-      const effective = manualMember ?? resolved ?? dealManager;
-      const assignmentSource: 'mention' | 'deal-manager' | 'manual' | null = manualMember
+      // manager > current viewer. External mention text is preserved as
+      // muted context unless the mention itself resolved to an internal
+      // member. Falling back to the viewer guarantees the row is never
+      // un-actionable: the signed-in user can always Approve and the task
+      // is auto-assigned to them, just like the "Assign to me" picker.
+      const effective = manualMember ?? resolved ?? dealManager ?? viewer;
+      const assignmentSource: MeetingTaskSuggestion['assignment_source'] = manualMember
         ? (resolved && resolved.user_id === manualMember.user_id ? 'mention' : 'manual')
         : resolved
           ? 'mention'
           : dealManager
             ? 'deal-manager'
-            : null;
+            : viewer
+              ? 'viewer'
+              : null;
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
@@ -399,30 +411,28 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
         assignee_name: effective ? effective.display_name : null,
         assignee_email: effective ? effective.email : null,
         assignee_user_id: effective ? effective.user_id : null,
-        external_mention: resolved ? null : mention,
-        assignment_source: assignmentSource,
+        external_mention: resolved ? null : (mention || null),
+        assignment_source: assignmentSource as MeetingTaskSuggestion['assignment_source'],
         due_date: row?.due_date ?? it.due_date,
         status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
         created_task_id: row?.created_task_id ?? null,
         source: ((row?.source as SuggestionSource | undefined) ?? (source === 'synthesized' ? 'synthesized' : 'claap')),
       };
     });
-  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers, dealManager]);
+  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers, dealManager, user?.id]);
 
   const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
     if (!user?.id) {
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Gate: require an internal assignee. Defense-in-depth so the
-    //    tasks insert path never produces an unassigned task. We throw a
-    //    typed error so any direct caller (not just the UI button) is
-    //    forced to handle it; the UI catches and shows an inline toast.
-    if (!s.assignee_user_id) {
-      throw new MissingAssigneeError(s.suggestion_id);
-    }
-    const assignedTo = s.assignee_user_id;
-    const assigneeEmail = s.assignee_email;
+    // The render-time fallback chain always resolves to an internal user
+    // (manual pick > mention > deal manager > current viewer), so a
+    // missing assignee here means a stale/external row. Default to the
+    // signed-in viewer rather than blocking the user — they are always
+    // a valid internal assignee on the Daily Rundown surface.
+    const assignedTo = s.assignee_user_id || user.id;
+    const assigneeEmail = s.assignee_user_id ? s.assignee_email : (user.email ?? null);
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
@@ -492,12 +502,6 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
 
   const approveAll = async (subset?: MeetingTaskSuggestion[]): Promise<number> => {
     const pool = (subset ?? suggestions).filter((s) => s.status === 'pending');
-    // Gate: refuse the whole batch if any row has no assignee. The UI
-    // already disables the button in this case; this is defense in depth.
-    if (pool.some((s) => !s.assignee_user_id)) {
-      toast.error('One or more selected tasks have no assignee. Choose assignees first.');
-      return 0;
-    }
     let count = 0;
     for (const s of pool) {
       try {
@@ -561,6 +565,39 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     }
     if (n > 0) toast.success(`Assigned ${n} task${n === 1 ? '' : 's'} to ${member.display_name}`);
     return n;
+  };
+
+  /**
+   * Clear any persisted assignee on a suggestion. The render-time
+   * fallback chain then resolves to deal manager / current viewer, so
+   * the row is never un-actionable.
+   */
+  const clearAssignment = async (s: MeetingTaskSuggestion): Promise<boolean> => {
+    if (!user?.id || !company?.id) return false;
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: null,
+      external_mention: s.external_mention,
+      due_date: s.due_date,
+      source: s.source,
+      status: s.status,
+      created_task_id: s.created_task_id,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Failed to clear assignment');
+      return false;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    return true;
   };
 
   const dismiss = async (s: MeetingTaskSuggestion) => {
@@ -633,10 +670,12 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     isLoading: rawQuery.isLoading || persistedQuery.isLoading,
     pendingCount: suggestions.filter((s) => s.status === 'pending').length,
     internalMembers,
+    currentViewer: user?.id ? internalMembers.find((m) => m.user_id === user.id) ?? null : null,
     approve,
     approveAll,
     assignManually,
     bulkAssignUnassigned,
+    clearAssignment,
     dismiss,
     dismissAll,
     undo,

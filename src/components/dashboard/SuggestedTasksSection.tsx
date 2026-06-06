@@ -14,7 +14,6 @@ import {
   type MeetingTaskSuggestion,
   type SuggestionSource,
   type InternalMember,
-  MissingAssigneeError,
 } from '@/hooks/useMeetingTaskSuggestions';
 
 interface Props {
@@ -33,7 +32,8 @@ interface Props {
 export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, source, fallbackActionItems }: Props) {
   const {
     suggestions, isLoading, pendingCount, internalMembers,
-    approve, approveAll, assignManually, bulkAssignUnassigned,
+    currentViewer,
+    approve, approveAll, assignManually, bulkAssignUnassigned, clearAssignment,
     dismiss, dismissAll, undo,
   } = useMeetingTaskSuggestions({ eventId, meetingRowId, recordingRowId, source, fallbackActionItems });
 
@@ -58,11 +58,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
       const res = await approve(s);
       if (res) toast.success('Task created — assigned to you');
     } catch (err) {
-      if (err instanceof MissingAssigneeError) {
-        toast.error('Please choose an assignee before creating this task.');
-      } else {
-        toast.error('Failed to create task');
-      }
+      toast.error('Failed to create task');
     } finally {
       setBusyId(null);
     }
@@ -92,11 +88,8 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
     ? pending.filter((s) => selected.has(s.suggestion_id))
     : pending;
   const hasUnassignedInConsidered = considered.some((s) => !s.assignee_user_id);
-  const approveAllDisabled =
-    considered.length === 0 || hasUnassignedInConsidered || bulkBusy !== null;
-  const approveAllTooltip = hasUnassignedInConsidered
-    ? 'One or more selected tasks have no assignee. Choose assignees first.'
-    : null;
+  const approveAllDisabled = considered.length === 0 || bulkBusy !== null;
+  const approveAllTooltip: string | null = null;
   const unassignedInConsideredCount = considered.filter((s) => !s.assignee_user_id).length;
 
   return (
@@ -118,6 +111,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
           {unassignedInConsideredCount > 0 && (
             <AssigneePicker
               members={internalMembers}
+              viewer={currentViewer}
               onSelect={async (m) => {
                 setBulkBusy('approve');
                 try { await bulkAssignUnassigned(considered, m); } finally { setBulkBusy(null); }
@@ -208,27 +202,39 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                               ? 'deal-manager'
                               : s.assignment_source === 'manual'
                                 ? 'manual'
-                                : 'internal'
+                                : s.assignment_source === 'viewer'
+                                  ? 'viewer'
+                                  : 'internal'
                           }
                           variant="outline"
                           className={cn(
                             'h-4 px-1 text-[9px] gap-0.5',
                             s.assignment_source === 'deal-manager'
                               ? 'border-sky-500/30 text-sky-200/90 bg-sky-500/[0.06]'
-                              : 'border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]',
+                              : s.assignment_source === 'viewer'
+                                ? 'border-amber-500/30 text-amber-200/90 bg-amber-500/[0.06]'
+                                : 'border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]',
                           )}
                         >
-                          <UserIcon className="h-2.5 w-2.5" /> {s.assignee_name}
+                          <UserIcon className="h-2.5 w-2.5" />{' '}
+                          {s.assignment_source === 'viewer' ? 'You' : s.assignee_name}
                           {s.assignment_source === 'deal-manager' && (
                             <span className="ml-0.5 inline-flex items-center rounded-sm border border-sky-400/30 bg-sky-400/[0.08] px-0.5 text-[8px] uppercase tracking-wider text-sky-200/80">
                               deal mgr
+                            </span>
+                          )}
+                          {s.assignment_source === 'viewer' && (
+                            <span className="ml-0.5 inline-flex items-center rounded-sm border border-amber-400/30 bg-amber-400/[0.08] px-0.5 text-[8px] uppercase tracking-wider text-amber-200/80">
+                              default
                             </span>
                           )}
                         </Badge>
                       ) : isPending ? (
                         <AssigneePicker
                           members={internalMembers}
+                          viewer={currentViewer}
                           onSelect={(m) => void assignManually(s, m)}
+                          onClear={() => void clearAssignment(s)}
                           trigger={
                             <button
                               type="button"
@@ -245,15 +251,19 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                           <UserIcon className="h-2.5 w-2.5" /> Unassigned
                         </Badge>
                       )}
-                      {s.assignee_user_id && s.assignee_email && (
+                      {s.assignee_user_id && s.assignee_email && s.assignment_source !== 'viewer' && (
                         <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <AtSign className="h-2.5 w-2.5" /> {s.assignee_email}
                         </Badge>
                       )}
                       {s.external_mention && (
-                        <span className="text-[9px] text-muted-foreground/70 italic">
-                          mentioned: {s.external_mention}
-                        </span>
+                        <Badge
+                          variant="outline"
+                          className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground/80 bg-transparent italic"
+                          title="External contact — cannot be assigned"
+                        >
+                          External contact: {s.external_mention}
+                        </Badge>
                       )}
                       {s.due_date && (
                         <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
@@ -394,11 +404,13 @@ function ApproveAllButton({
 }
 
 function AssigneePicker({
-  members, onSelect, trigger,
+  members, onSelect, trigger, viewer, onClear,
 }: {
   members: InternalMember[];
   onSelect: (m: InternalMember) => void;
   trigger: React.ReactNode;
+  viewer?: InternalMember | null;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -428,6 +440,30 @@ function AssigneePicker({
             className="h-7 pl-7 text-xs"
           />
         </div>
+        {(viewer || onClear) && (
+          <div className="flex items-center gap-1 px-1 pb-1 mb-1 border-b border-white/[0.06]">
+            {viewer && (
+              <button
+                type="button"
+                data-testid="assign-to-me"
+                className="flex-1 inline-flex items-center justify-center gap-1 h-6 px-2 rounded text-[10px] border border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.14] transition-colors"
+                onClick={() => { onSelect(viewer); setOpen(false); setQ(''); }}
+              >
+                <UserIcon className="h-3 w-3" /> Assign to me
+              </button>
+            )}
+            {onClear && (
+              <button
+                type="button"
+                data-testid="clear-assignee"
+                className="inline-flex items-center justify-center gap-1 h-6 px-2 rounded text-[10px] border border-white/15 text-muted-foreground hover:bg-white/[0.06] transition-colors"
+                onClick={() => { onClear(); setOpen(false); setQ(''); }}
+              >
+                <X className="h-3 w-3" /> Clear
+              </button>
+            )}
+          </div>
+        )}
         <div className="max-h-56 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="text-[11px] text-muted-foreground italic px-2 py-3 text-center">
