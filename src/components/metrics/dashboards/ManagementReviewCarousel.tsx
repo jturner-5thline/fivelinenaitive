@@ -250,12 +250,12 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     ) },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => (
       <InsightsContextualSurface reportKey="insights:forecasts" reportLabel="Benchmark Forecasts" sectionIdPrefix="forecasts-section-" fallbackSourceLabel="Forecasts">
-        <BenchmarkForecastsPage />
+        <BenchmarkForecastsPage isEditMode={isEditMode} />
       </InsightsContextualSurface>
     ) },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => (
       <InsightsContextualSurface reportKey="insights:key-metrics" reportLabel="Key Metrics" sectionIdPrefix="keymetrics-section-" fallbackSourceLabel="Key Metrics">
-        <KeyMetricsPage />
+        <KeyMetricsPage isEditMode={isEditMode} />
       </InsightsContextualSurface>
     ) },
     { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
