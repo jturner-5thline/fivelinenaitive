@@ -77,7 +77,7 @@ function AddToDealCalendarMeetingButton({
   eventTitle,
   eventStartISO,
 }: {
-  dealId: string;
+  dealId: string | null;
   eventId: string;
   eventTitle: string;
   eventStartISO?: string | null;
@@ -96,13 +96,13 @@ function AddToDealCalendarMeetingButton({
             module: 'rundown_item',
             recordId: eventId,
             sourceTimestamp: eventStartISO || new Date().toISOString(),
-            dealId,
+            dealId: dealId ?? null,
             label: eventTitle,
           },
         })
       }
     >
-      <CalendarPlus className="h-3 w-3 mr-1 text-white" /> Add to deal calendar
+      <CalendarPlus className="h-3 w-3 mr-1 text-white" /> Create follow-up
     </Button>
   );
 }
