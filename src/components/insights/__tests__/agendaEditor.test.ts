@@ -4,12 +4,14 @@ import {
   isSeedContent,
   previousPeriodKey,
   SEED_SUBTITLE,
+  KEY_ITEMS_SUBTITLE,
+  KEY_ITEMS_BULLETS,
 } from '../AgendaEditor';
 
 const headingNode = (text: string) => ({
   type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text }],
 });
-const subtitleNode = () => ({
+const subtitleNode = (text = SEED_SUBTITLE) => ({
   type: 'paragraph',
   content: [{
     type: 'text',
@@ -17,22 +19,34 @@ const subtitleNode = () => ({
       { type: 'italic' },
       { type: 'textStyle', attrs: { fontSize: '13px', color: 'rgba(200,225,255,0.55)' } },
     ],
-    text: SEED_SUBTITLE,
+    text,
   }],
 });
-const SECTIONS = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
-// Only Presentation carries the subtitle in the seeded doc.
+const SECTIONS = ['Presentation', 'Key Items', 'New Items', 'Prep'];
+const keyItemsBulletList = () => ({
+  type: 'bulletList',
+  content: KEY_ITEMS_BULLETS.map((label) => ({
+    type: 'listItem',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: label }] },
+      { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] },
+    ],
+  })),
+});
+// Presentation and Key Items carry seeded subtitles; Key Items also carries
+// the default two-bullet scaffold.
 const SEED = {
   type: 'doc',
-  content: SECTIONS.flatMap((s) =>
-    s === 'Presentation'
-      ? [headingNode(s), subtitleNode(), { type: 'paragraph' }]
-      : [headingNode(s), { type: 'paragraph' }],
-  ),
+  content: SECTIONS.flatMap((s) => {
+    if (s === 'Presentation') return [headingNode(s), subtitleNode(), { type: 'paragraph' }];
+    if (s === 'Key Items') return [headingNode(s), subtitleNode(KEY_ITEMS_SUBTITLE), keyItemsBulletList(), { type: 'paragraph' }];
+    return [headingNode(s), { type: 'paragraph' }];
+  }),
 };
 const LEGACY_SEED = {
   type: 'doc',
-  content: SECTIONS.flatMap((s) => [headingNode(s), { type: 'paragraph' }]),
+  content: ['Presentation', 'Looking Forward', 'New Items', 'Prep']
+    .flatMap((s) => [headingNode(s), { type: 'paragraph' }]),
 };
 
 describe('agendaPersistSchema', () => {
@@ -63,21 +77,33 @@ describe('agendaPersistSchema', () => {
 });
 
 describe('isSeedContent', () => {
-  it('returns true for the seeded 4-heading doc', () => {
+  it('returns true for the seeded 4-heading doc with Key Items scaffold', () => {
     expect(isSeedContent(SEED)).toBe(true);
   });
-  it('only the Presentation section carries the subtitle', () => {
+  it('Presentation carries the time-budget subtitle once', () => {
     expect(SEED_SUBTITLE).toBe('(5-Minute Overview + Discussion & Q&A) - 12 Minutes Total Max');
     const subs = SEED.content.filter((n: any) =>
       n.type === 'paragraph' && n.content?.[0]?.text === SEED_SUBTITLE);
     expect(subs.length).toBe(1);
-    // It must sit immediately after the Presentation heading.
     const presIdx = SEED.content.findIndex(
       (n: any) => n.type === 'heading' && n.content?.[0]?.text === 'Presentation',
     );
     expect((SEED.content[presIdx + 1] as any)?.content?.[0]?.text).toBe(SEED_SUBTITLE);
   });
-  it('still treats the legacy headings-only seed as seed', () => {
+  it('Key Items carries the new muted subtitle and bullet scaffold', () => {
+    const idx = SEED.content.findIndex(
+      (n: any) => n.type === 'heading' && n.content?.[0]?.text === 'Key Items',
+    );
+    expect((SEED.content[idx + 1] as any)?.content?.[0]?.text).toBe(KEY_ITEMS_SUBTITLE);
+    const list = SEED.content[idx + 2] as any;
+    expect(list?.type).toBe('bulletList');
+    expect(list.content.map((li: any) => li.content[0].content[0].text)).toEqual([...KEY_ITEMS_BULLETS]);
+    // each top-level bullet has an empty sub-bullet scaffold
+    list.content.forEach((li: any) => {
+      expect(li.content[1]?.type).toBe('bulletList');
+    });
+  });
+  it('still treats the legacy "Looking Forward" headings-only seed as seed', () => {
     expect(isSeedContent(LEGACY_SEED)).toBe(true);
   });
   it('returns false when a paragraph has user text', () => {
