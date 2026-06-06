@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Save as SaveIcon, Check, Send, Loader2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -131,6 +132,23 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
   // Default to the Dashboard tab (index 1); Agenda (index 0) is opt-in.
   const [activeIndex, setActiveIndex] = useState(1);
+  const [searchParams] = useSearchParams();
+  // Deep-link: /insights?tab=jt|jm|sw|agenda|dashboard|forecasts|key-metrics
+  // opens the matching carousel tab (used by the Submit-for-review email CTA).
+  useEffect(() => {
+    const slug = (searchParams.get('tab') || '').toLowerCase();
+    const map: Record<string, number> = {
+      agenda: 0,
+      dashboard: 1,
+      forecasts: 2,
+      'key-metrics': 3,
+      keymetrics: 3,
+      jt: 4,
+      jm: 5,
+      sw: 6,
+    };
+    if (slug in map) setActiveIndex(map[slug]);
+  }, [searchParams]);
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
