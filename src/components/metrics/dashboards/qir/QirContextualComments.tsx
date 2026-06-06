@@ -283,25 +283,34 @@ export function QirContextualComments({
     if (!composer || !body.trim() || submitting) return;
     setSubmitting(true);
     try {
-      // Contextual highlight composer routes DIRECTLY to the Queue tab.
-      // It no longer creates an Agenda comment or an Agenda footnote — the
-      // captured selection + user text/type is staged as a queue item with
-      // full source context (tab + section + snippet) for traceability.
-      const { source, snippet } = composer;
-      const queued = await promote({
-        reportTab: reportLabel,
-        sourceType: mapTargetTypeToQueue(source.type),
-        sourceId: source.id,
-        sourceAnchor: `${source.type}:${source.id}`,
-        sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label, sectionIdPrefix),
-        sourceLabel: source.label,
-        commentSource: 'qir',
-        commentId: null,
-        commentTextSnapshot: body,
-        commentType,
-      } as any);
-      if (queued) {
-        toast.success('Added to Queue', { description: source.label });
+      // Contextual highlight composer routes to the shared Insights Queue
+      // (the header "Queue" dropdown). The Queue list reads from
+      // qir_comments, so we insert there as the source of truth — this is
+      // NOT an Agenda comment (agenda_comments) and we no longer route
+      // through insertFootnote into the Agenda footnotes section.
+      const mentionNames = parseMentions(body);
+      const inserted = await addComment(
+        composer.source.type, composer.source.id, body, mentionNames,
+        reportLabel, composer.source.label, commentType,
+      );
+      if (inserted) {
+        const { source, snippet } = composer;
+        try {
+          await promote({
+            reportTab: reportLabel,
+            sourceType: mapTargetTypeToQueue(source.type),
+            sourceId: source.id,
+            sourceAnchor: `${source.type}:${source.id}`,
+            sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label, sectionIdPrefix),
+            sourceLabel: source.label,
+            commentSource: 'qir',
+            commentId: inserted.id,
+            commentTextSnapshot: body,
+          });
+        } catch (qErr) {
+          console.error('[promote-to-queue]', qErr);
+        }
+        toast.success('Added to Queue', { description: composer.source.label });
       } else {
         toast.error("Couldn't add to queue");
       }
@@ -313,7 +322,7 @@ export function QirContextualComments({
     } finally {
       setSubmitting(false);
     }
-  }, [composer, body, commentType, submitting, promote, reportLabel, sectionIdPrefix]);
+  }, [composer, body, commentType, submitting, addComment, promote, reportLabel, sectionIdPrefix]);
 
   // Mention autocomplete: detect trailing `@` or `@token` in body.
   // Allow zero-length token so the picker opens immediately on `@`.
