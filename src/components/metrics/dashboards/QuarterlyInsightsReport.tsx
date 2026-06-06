@@ -29,6 +29,10 @@ import type { InsightsMetricOption } from './qir/insightsMetricRegistry';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
+  deriveReportPeriod,
+  useInsightsLiveMetricValue,
+} from './qir/useInsightsLiveMetricValue';
+import {
   getKpiTemplate,
   type KpiTemplateId,
   type SalesClientsConfig,
