@@ -283,57 +283,37 @@ export function QirContextualComments({
     if (!composer || !body.trim() || submitting) return;
     setSubmitting(true);
     try {
-      const mentionNames = parseMentions(body);
-      const inserted = await addComment(
-        composer.source.type, composer.source.id, body, mentionNames,
-        reportLabel, composer.source.label, commentType,
-      );
-      // Comments ARE queue items — automatically stage every new comment on
-      // the shared Queue with the captured source snippet for traceability.
-      if (inserted) {
-        const { source, snippet } = composer;
-        try {
-          await promote({
-            reportTab: reportLabel,
-            sourceType: mapTargetTypeToQueue(source.type),
-            sourceId: source.id,
-            sourceAnchor: `${source.type}:${source.id}`,
-            sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label, sectionIdPrefix),
-            sourceLabel: source.label,
-            commentSource: 'qir',
-            commentId: inserted.id,
-            commentTextSnapshot: body,
-          });
-          toast.success('Added to Queue', { description: source.label });
-        } catch (qErr) {
-          console.error('[auto-promote-to-queue]', qErr);
-        }
-        // Route every typed comment into the Agenda footnotes section so it
-        // appears under the matching Note / Decision / Action Item bucket.
-        try {
-          await insertFootnote(
-            {
-              footnoteType: commentType,
-              sourceType: 'comment',
-              sourceId: inserted.id,
-              sourceAnchor: source.label,
-              snapshotText: body,
-            },
-            'footnote_only',
-          );
-        } catch (fErr) {
-          console.error('[comment->footnote]', fErr);
-        }
+      // Contextual highlight composer routes DIRECTLY to the Queue tab.
+      // It no longer creates an Agenda comment or an Agenda footnote — the
+      // captured selection + user text/type is staged as a queue item with
+      // full source context (tab + section + snippet) for traceability.
+      const { source, snippet } = composer;
+      const queued = await promote({
+        reportTab: reportLabel,
+        sourceType: mapTargetTypeToQueue(source.type),
+        sourceId: source.id,
+        sourceAnchor: `${source.type}:${source.id}`,
+        sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label, sectionIdPrefix),
+        sourceLabel: source.label,
+        commentSource: 'qir',
+        commentId: null,
+        commentTextSnapshot: body,
+        commentType,
+      } as any);
+      if (queued) {
+        toast.success('Added to Queue', { description: source.label });
+      } else {
+        toast.error("Couldn't add to queue");
       }
       setComposer(null);
       setBody('');
       setCommentType('note');
     } catch (err) {
-      console.error('Add comment failed', err);
+      console.error('Add to queue failed', err);
     } finally {
       setSubmitting(false);
     }
-  }, [composer, body, commentType, submitting, addComment, promote, insertFootnote, reportLabel]);
+  }, [composer, body, commentType, submitting, promote, reportLabel, sectionIdPrefix]);
 
   // Mention autocomplete: detect trailing `@` or `@token` in body.
   // Allow zero-length token so the picker opens immediately on `@`.
@@ -416,7 +396,7 @@ export function QirContextualComments({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', color: 'rgba(160,200,255,0.6)' }}>
-                Add Comment
+                Add to Queue
               </div>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#dde8f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {composer.source.label}
@@ -468,7 +448,7 @@ export function QirContextualComments({
             )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 10, color: 'rgba(180,200,230,0.55)' }}>⌘/Ctrl + Enter to post</span>
+            <span style={{ fontSize: 10, color: 'rgba(180,200,230,0.55)' }}>⌘/Ctrl + Enter to add</span>
             <button
               type="button"
               onClick={submit}
@@ -480,7 +460,7 @@ export function QirContextualComments({
                 cursor: body.trim() ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600,
               }}
             >
-              <Send size={12} /> Post
+              <Send size={12} /> Add to Queue
             </button>
           </div>
         </div>
