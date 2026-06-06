@@ -1546,13 +1546,23 @@ function EventDetailPane({
                 </div>
               )
             )}
-            <ClaapNoteEditor
-              value={noteDraft}
-              onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
-              placeholder={`Note for ${userFirstName}'s records…`}
-              defaultRendered={notePrefilledFromClaap}
-              recordingUrl={claapCtx.recording?.url ?? null}
-            />
+            <HighlightCalendarMenu
+              sourceCtx={{
+                module: claapCtx.source === 'claap' ? 'claap_summary' : 'meeting_notes',
+                recordId: event.id,
+                sourceTimestamp: event.start || new Date().toISOString(),
+                dealId: linkedDealId ?? null,
+                label: eventTitle,
+              }}
+            >
+              <ClaapNoteEditor
+                value={noteDraft}
+                onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
+                placeholder={`Note for ${userFirstName}'s records…`}
+                defaultRendered={notePrefilledFromClaap}
+                recordingUrl={claapCtx.recording?.url ?? null}
+              />
+            </HighlightCalendarMenu>
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
             </p>
