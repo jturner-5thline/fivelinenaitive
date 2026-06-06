@@ -77,7 +77,7 @@ function AddToDealCalendarMeetingButton({
   eventTitle,
   eventStartISO,
 }: {
-  dealId: string;
+  dealId: string | null;
   eventId: string;
   eventTitle: string;
   eventStartISO?: string | null;
@@ -96,13 +96,13 @@ function AddToDealCalendarMeetingButton({
             module: 'rundown_item',
             recordId: eventId,
             sourceTimestamp: eventStartISO || new Date().toISOString(),
-            dealId,
+            dealId: dealId ?? null,
             label: eventTitle,
           },
         })
       }
     >
-      <CalendarPlus className="h-3 w-3 mr-1 text-white" /> Add to deal calendar
+      <CalendarPlus className="h-3 w-3 mr-1 text-white" /> Create follow-up
     </Button>
   );
 }
@@ -608,14 +608,6 @@ function MeetingCard({
             size="sm"
             variant="ghost"
             className="h-7 px-2 text-xs text-white hover:text-white"
-            onClick={handleCreateTask}
-          >
-            <CheckSquare className="h-3 w-3 mr-1 text-white" /> Create task
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs text-white hover:text-white"
             onClick={handleEmail}
             disabled={(event.attendees || []).filter(a => !a.self).length === 0}
           >
@@ -635,14 +627,12 @@ function MeetingCard({
               ? `Claap${linkedClaapCount > 1 ? ` (${linkedClaapCount})` : ''} linked`
               : 'Link Claap'}
           </Button>
-          {dealMatch?.id && (
-            <AddToDealCalendarMeetingButton
-              dealId={dealMatch.id}
-              eventId={event.id}
-              eventTitle={event.summary || '(no title)'}
-              eventStartISO={event.start}
-            />
-          )}
+          <AddToDealCalendarMeetingButton
+            dealId={dealMatch?.id ?? null}
+            eventId={event.id}
+            eventTitle={event.summary || '(no title)'}
+            eventStartISO={event.start}
+          />
         </div>
       )}
 

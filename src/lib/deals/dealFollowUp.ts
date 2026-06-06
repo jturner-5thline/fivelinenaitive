@@ -98,7 +98,8 @@ export async function writeDealFollowUpSource(args: {
 
 export interface CreateDealFollowUpInput {
   kind: 'task' | 'event';
-  dealId: string;
+  /** May be null for plain (unlinked) task creation. Required for events. */
+  dealId: string | null;
   title: string;
   /** YYYY-MM-DD. Required for events; optional for tasks. */
   date: string | null;
@@ -134,7 +135,7 @@ export async function createDealFollowUp(
         assigned_by: input.userId,
         due_date: input.date,
         status: 'not_started',
-        deal_id: input.dealId,
+        deal_id: input.dealId ?? null,
         company_id: input.companyId ?? null,
       } as never)
       .select('id')
@@ -143,6 +144,7 @@ export async function createDealFollowUp(
     createdId = (data as { id: string }).id;
   } else {
     if (!input.date) throw new Error('Event follow-up requires a date.');
+    if (!input.dealId) throw new Error('Event follow-up requires a linked deal.');
     const time = input.time
       ? input.time.length === 5
         ? `${input.time}:00`
@@ -166,7 +168,7 @@ export async function createDealFollowUp(
   }
 
   let backlinkId: string | undefined;
-  if (input.source) {
+  if (input.source && input.dealId) {
     const r = await writeDealFollowUpSource({
       dealId: input.dealId,
       taskId: input.kind === 'task' ? createdId : null,

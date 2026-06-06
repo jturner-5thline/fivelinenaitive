@@ -47,9 +47,8 @@ import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
 import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlineAction';
 import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollowupInlineAction';
-import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInlineAction';
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
-import { AddToDealCalendarInlineAction } from '@/components/dashboard/AddToDealCalendarInlineAction';
+import { MeetingCreateFollowUpAction } from '@/components/dashboard/MeetingCreateFollowUpAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
@@ -1488,9 +1487,11 @@ function EventDetailPane({
                 setComposerForAll(true);
               }}
             />
-            <MeetingTasksInlineAction
+            <MeetingCreateFollowUpAction
               eventId={event.id}
-              onOpenTask={(initialTitle) => onCreateTask(initialTitle)}
+              eventTitle={eventTitle}
+              eventStartISO={event.start}
+              linkedDealId={linkedDealId ?? null}
             />
             <MeetingDealInlineAction
               eventId={event.id}
@@ -1502,14 +1503,6 @@ function EventDetailPane({
               }))}
               onLinkedDeal={(d) => onLinkDeal(d)}
             />
-            {linkedDealId ? (
-              <AddToDealCalendarInlineAction
-                dealId={linkedDealId}
-                eventId={event.id}
-                eventTitle={eventTitle}
-                eventStartISO={event.start}
-              />
-            ) : null}
           </div>
           <div className="mt-2 space-y-2">
             <FindATimeDialog
@@ -1644,15 +1637,7 @@ function EventDetailPane({
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
             </p>
-            <div className="flex justify-end items-center gap-2 mt-1.5">
-              {linkedDealId && (
-                <AddToDealCalendarInlineAction
-                  dealId={linkedDealId}
-                  eventId={event.id}
-                  eventTitle={eventTitle}
-                  eventStartISO={event.start}
-                />
-              )}
+            <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
                 onClick={() => {
                   const text = noteDraft.trim();
