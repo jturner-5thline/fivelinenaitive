@@ -82,6 +82,7 @@ const PEOPLE = [
 const ACTIVE_INITIATIVE_OWNERS = ['James Turner', 'Niki Heikali', 'Florencia Fustinoni', 'Paz Pina', 'McKenzie Clark'];
 const PRIMARY_AUTHORS = ['James Turner', 'Scott Williams', 'John Moffitt'];
 const QUARTERS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Q3 2027', 'Q4 2027'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const QUARTER_MONTHS: Record<string, string[]> = {
   Q1: ['January', 'February', 'March'],
   Q2: ['April', 'May', 'June'],
@@ -392,6 +393,74 @@ export function createQuarterlyReportSeed(overrides?: Partial<ReportState>): Rep
   };
 }
 
+function slugifyReportPeriodLabel(label: string): string {
+  return (label || 'unknown').replace(/\s+/g, '-').toLowerCase();
+}
+
+function deriveQuarterSlugForSelection(selection: Pick<ReportState, 'period' | 'quarter' | 'month'>): string | null {
+  if (selection.quarter) {
+    return slugifyReportPeriodLabel(selection.quarter);
+  }
+
+  const match = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})$/i.exec(selection.month || '');
+  if (!match) return null;
+
+  const monthIndex = MONTH_NAMES.findIndex((name) => name.toLowerCase() === match[1].toLowerCase());
+  if (monthIndex < 0) return null;
+  const quarterNumber = Math.floor(monthIndex / 3) + 1;
+  return `q${quarterNumber}-${match[2]}`;
+}
+
+function getReportBaseConfigKey(configKey: string, sharedKpiKey?: string): string | null {
+  if (sharedKpiKey) return sharedKpiKey.replace(/:kpis$/, '');
+  const match = /^(qir:[^:]+)(?::(?:monthly|quarterly):.+)?$/.exec(configKey);
+  return match?.[1] ?? null;
+}
+
+function resolveSharedKpisFromConfig(
+  fpaConfig: Record<string, any>,
+  configKey: string,
+  seed: Pick<ReportState, 'period' | 'quarter' | 'month'>,
+  sharedKpiKey?: string,
+): KPI[] | null {
+  const sharedRow = sharedKpiKey ? (fpaConfig[sharedKpiKey] as { kpis?: KPI[] } | undefined) : undefined;
+  if (sharedRow && Array.isArray(sharedRow.kpis) && sharedRow.kpis.length > 0) {
+    return sharedRow.kpis;
+  }
+
+  const exactRow = fpaConfig[configKey] as { kpis?: KPI[] } | undefined;
+  if (exactRow && Array.isArray(exactRow.kpis) && exactRow.kpis.length > 0) {
+    return exactRow.kpis;
+  }
+
+  const reportBaseKey = getReportBaseConfigKey(configKey, sharedKpiKey);
+  if (!reportBaseKey) return null;
+
+  const quarterSlug = deriveQuarterSlugForSelection(seed);
+  const candidateKeys = new Set<string>();
+  if (quarterSlug) {
+    candidateKeys.add(`${reportBaseKey}:quarterly:${quarterSlug}`);
+    const quarterLabel = seed.quarter || quarterSlug.toUpperCase().replace('-', ' ');
+    for (const monthLabel of monthsForQuarter(quarterLabel)) {
+      candidateKeys.add(`${reportBaseKey}:monthly:${slugifyReportPeriodLabel(monthLabel)}`);
+    }
+  }
+
+  for (const key of candidateKeys) {
+    const row = fpaConfig[key] as { kpis?: KPI[] } | undefined;
+    if (row && Array.isArray(row.kpis) && row.kpis.length > 0) {
+      return row.kpis;
+    }
+  }
+
+  const anySavedSibling = Object.entries(fpaConfig)
+    .filter(([key, value]) => key.startsWith(`${reportBaseKey}:`) && /:(monthly|quarterly):/.test(key) && Array.isArray((value as { kpis?: KPI[] }).kpis) && ((value as { kpis?: KPI[] }).kpis?.length ?? 0) > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .at(-1);
+
+  return anySavedSibling ? ((anySavedSibling[1] as { kpis?: KPI[] }).kpis ?? null) : null;
+}
+
 export function useQuarterlyReportState(
   initialState?: ReportState,
   storageKey?: string,
@@ -475,14 +544,9 @@ export function useQuarterlyReportState(
           ? { ...seed, ...exactRow }
           : seed;
 
-        // Cross-period KPI persistence: when a shared KPI key is provided,
-        // its blob overrides whatever kpis are in the per-period blob, so
-        // KPIs stay visible when toggling Month ↔ Quarter.
-        if (sharedKpiKey) {
-          const sharedRow = fpaConfig[sharedKpiKey] as { kpis?: KPI[] } | undefined;
-          if (sharedRow && Array.isArray(sharedRow.kpis)) {
-            next = { ...next, kpis: sharedRow.kpis };
-          }
+        const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
+        if (resolvedSharedKpis) {
+          next = { ...next, kpis: resolvedSharedKpis };
         }
 
         console.log('[QIR] Fetch result:', {
@@ -583,14 +647,12 @@ export function useQuarterlyReportState(
 
       const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
       const exactRow = fpaConfig[configKey] as Partial<ReportState> | undefined;
-      let next = exactRow !== undefined
+        let next = exactRow !== undefined
         ? { ...seed, ...exactRow }
         : payload;
-      if (sharedKpiKey) {
-        const sharedRow = fpaConfig[sharedKpiKey] as { kpis?: KPI[] } | undefined;
-        if (sharedRow && Array.isArray(sharedRow.kpis)) {
-          next = { ...next, kpis: sharedRow.kpis };
-        }
+        const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
+        if (resolvedSharedKpis) {
+          next = { ...next, kpis: resolvedSharedKpis };
       }
 
       setStateLocal(next);
