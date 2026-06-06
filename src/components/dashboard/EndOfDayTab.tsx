@@ -981,6 +981,7 @@ export function EndOfDayTab({
         <EventDetailPane
           key={selectedEvent.id}
           event={selectedEvent}
+          linkedDealId={selectedLinkedDealId ?? null}
           contactsByEmail={contactsByEmail}
           activityEntries={activity.get(selectedEvent.id)}
           userFirstName={userFirstName}
