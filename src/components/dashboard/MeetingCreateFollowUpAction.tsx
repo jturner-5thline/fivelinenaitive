@@ -4,6 +4,9 @@ import { CalendarPlus, ListPlus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
 import { useAddToDealCalendar } from '@/components/calendar/AddToDealCalendarProvider';
+import { useCompany } from '@/hooks/useCompany';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   eventId: string;
@@ -28,7 +31,29 @@ export function MeetingCreateFollowUpAction({
 }: Props) {
   const { openManual } = useAddToDealCalendar();
   const ctx = useMeetingClaapContext(eventId);
+  const { company } = useCompany();
   const suggestions = ctx.actionItems.filter(Boolean);
+  const { data: resolvedLinkedDealId } = useQuery<string | null>({
+    queryKey: ['meeting-create-follow-up-deal-link', eventId, company?.id, linkedDealId],
+    enabled: !!eventId && !!company?.id && !linkedDealId,
+    staleTime: 0,
+    queryFn: async () => {
+      try {
+        const { data } = await (supabase.from('meeting_deal_links') as any)
+          .select('deal_id')
+          .eq('org_company_id', company!.id)
+          .eq('meeting_external_id', eventId)
+          .is('deleted_at', null)
+          .order('linked_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return (data?.deal_id as string | undefined) ?? null;
+      } catch {
+        return null;
+      }
+    },
+  });
+  const effectiveLinkedDealId = linkedDealId ?? resolvedLinkedDealId ?? null;
 
   const open = (initialTitle?: string) => {
     const title = (initialTitle?.trim() || `Follow-up: ${eventTitle}`).trim();
@@ -39,7 +64,7 @@ export function MeetingCreateFollowUpAction({
         module: 'rundown_item',
         recordId: eventId,
         sourceTimestamp: eventStartISO || new Date().toISOString(),
-        dealId: linkedDealId,
+        dealId: effectiveLinkedDealId,
         label: eventTitle,
       },
     });
@@ -54,7 +79,7 @@ export function MeetingCreateFollowUpAction({
         onClick={() => open()}
         disabled={ctx.isLoading && ctx.source === 'none'}
       >
-        {linkedDealId ? (
+        {effectiveLinkedDealId ? (
           <CalendarPlus className="h-3.5 w-3.5" />
         ) : (
           <ListPlus className="h-3.5 w-3.5" />
