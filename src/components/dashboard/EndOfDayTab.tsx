@@ -1478,6 +1478,8 @@ function EventDetailPane({
               onOpenPicker={() => setClaapLinkerOpen(true)}
             />
           </div>
+          {/* Portal slot for Claap suggestion/linked bar — full width, below the row */}
+          <div id={`claap-suggest-slot-${event.id}`} className="mt-2 empty:hidden" />
           <div className="mt-2 space-y-2">
             <FindATimeDialog
               open={scheduleNextOpen}
