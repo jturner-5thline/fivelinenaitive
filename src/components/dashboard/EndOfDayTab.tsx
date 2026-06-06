@@ -49,6 +49,7 @@ import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlin
 import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollowupInlineAction';
 import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInlineAction';
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
+import { AddToDealCalendarInlineAction } from '@/components/dashboard/AddToDealCalendarInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
