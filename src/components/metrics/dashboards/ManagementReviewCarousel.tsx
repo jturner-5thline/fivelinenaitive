@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
-import { Save as SaveIcon, Check } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Save as SaveIcon, Check, Send, Loader2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -130,9 +132,27 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
   // Default to the Dashboard tab (index 1); Agenda (index 0) is opt-in.
   const [activeIndex, setActiveIndex] = useState(1);
+  const [searchParams] = useSearchParams();
+  // Deep-link: /insights?tab=jt|jm|sw|agenda|dashboard|forecasts|key-metrics
+  // opens the matching carousel tab (used by the Submit-for-review email CTA).
+  useEffect(() => {
+    const slug = (searchParams.get('tab') || '').toLowerCase();
+    const map: Record<string, number> = {
+      agenda: 0,
+      dashboard: 1,
+      forecasts: 2,
+      'key-metrics': 3,
+      keymetrics: 3,
+      jt: 4,
+      jm: 5,
+      sw: 6,
+    };
+    if (slug in map) setActiveIndex(map[slug]);
+  }, [searchParams]);
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   // Always-current save fn lives in a ref so updates don't re-render
   // (the child's `save` callback gets a new identity every render).
   const saveFnRef = useRef<(() => Promise<boolean>) | null>(null);
@@ -164,6 +184,54 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
+
+  // Per-report-tab metadata used by the Submit-for-review email.
+  // Index aligns with PAGES order (4=JT, 5=JM, 6=SW).
+  const REPORT_TAB_META: Record<number, { tabSlug: 'jt' | 'jm' | 'sw'; ownerName: string; ownerEmail: string }> = {
+    4: { tabSlug: 'jt', ownerName: 'James Turner',   ownerEmail: 'jturner@5thline.co' },
+    5: { tabSlug: 'jm', ownerName: 'John Moffitt',   ownerEmail: 'jmoffitt@5thline.co' },
+    6: { tabSlug: 'sw', ownerName: 'Scott Williams', ownerEmail: 'swilliams@5thline.co' },
+  };
+  const REVIEW_RECIPIENTS = [
+    'mclark@5thline.co',
+    'jturner@5thline.co',
+    'jmoffitt@5thline.co',
+    'swilliams@5thline.co',
+  ];
+
+  const handleSubmitForReview = async () => {
+    const meta = REPORT_TAB_META[activeIndex];
+    if (!meta || submitting) return;
+    setSubmitting(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fivelinenaitive.lovable.app';
+      const url = `${origin}/insights?tab=${meta.tabSlug}`;
+      const stamp = Date.now();
+      // Fan-out: one send per recipient (the send-transactional-email function
+      // takes a single recipient). Fire in parallel and require all to succeed.
+      const results = await Promise.all(
+        REVIEW_RECIPIENTS.map((recipient) =>
+          supabase.functions.invoke('send-transactional-email', {
+            body: {
+              templateName: 'insights-report-ready',
+              recipientEmail: recipient,
+              idempotencyKey: `insights-report-ready-${meta.tabSlug}-${stamp}-${recipient}`,
+              templateData: { ownerName: meta.ownerName, url },
+            },
+          }),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+      sonnerToast.success('Report submitted — review email sent');
+    } catch (err) {
+      console.error('Failed to submit insights report for review', err);
+      sonnerToast.error('Could not send review email. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const attemptSetActiveIndex = useCallback((nextIndex: number | ((prev: number) => number)) => {
     if (reportSave.hasUnsavedChanges) {
       sonnerToast.error('You have unsaved changes. Save the report before leaving this tab.');
@@ -328,6 +396,35 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
           >
             {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
               {justSaved ? 'Saved' : reportSave.hasUnsavedChanges ? 'Save changes' : 'Save'}
+          </button>
+          {/* Submit-for-review — only on JT/JM/SW report tabs. Filled
+              primary style to read as distinct from the ghost Save button. */}
+          <button
+            type="button"
+            onClick={() => { void handleSubmitForReview(); }}
+            disabled={submitting || !REPORT_TAB_META[activeIndex]}
+            title={`Notify reviewers that ${REPORT_TAB_META[activeIndex]?.ownerName ?? "this owner"}'s Insights Report is ready`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              padding: '6px 14px',
+              borderRadius: 999,
+              border: '0.5px solid rgba(80,140,255,0.55)',
+              cursor: submitting ? 'wait' : 'pointer',
+              color: '#0a2540',
+              background: 'linear-gradient(180deg, #7ed0ff, #4db8ff)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              opacity: submitting ? 0.7 : 1,
+              transition: 'opacity .15s',
+            }}
+          >
+            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            {submitting ? 'Submitting…' : 'Submit'}
           </button>
         </div>
       )}
