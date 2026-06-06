@@ -1431,7 +1431,7 @@ function EventDetailPane({
                 <div>
                   <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">Action items</div>
                   <ul className="list-disc pl-4 space-y-0.5">
-                    {claapCtx.actionItems.map((k, i) => <li key={i}>{typeof k === 'string' ? k : (k as { text?: string }).text || ''}</li>)}
+                    {claapCtx.actionItems.map((k, i) => <li key={i}>{k}</li>)}
                   </ul>
                 </div>
               )}
