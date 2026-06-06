@@ -70,7 +70,7 @@ export function parseCopilotDisambiguationMessage(
     const trimmed = line.trim();
     if (!trimmed) return;
 
-    const linkLineMatch = /^(?:[-*+]\s+|\d+\.\s+)?\[([^\]]+)\]\(([^)]+)\)(?:\s*[-–—:]\s*.*)?$/i.exec(trimmed);
+    const linkLineMatch = /\[([^\]]+)\]\(([^)]+)\)/i.exec(trimmed);
     if (!linkLineMatch) return;
 
     const label = linkLineMatch[1].trim();
@@ -78,8 +78,15 @@ export function parseCopilotDisambiguationMessage(
     const resolved = parseEntityReference(href) || resolveCandidateLink(label, candidates);
     if (!resolved || seenIds.has(`${resolved.kind}:${resolved.id}`)) return;
 
+    const displayLabel = trimmed
+      .replace(/^(?:[-*+]\s+|\d+\.\s+)+/, '')
+      .replace(/\*\*/g, '')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     seenIds.add(`${resolved.kind}:${resolved.id}`);
-    options.push({ ...resolved, label, lineIndex });
+    options.push({ ...resolved, label: displayLabel || label, lineIndex });
   });
 
   if (options.length < 2) return null;
