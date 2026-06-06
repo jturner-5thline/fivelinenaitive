@@ -216,10 +216,19 @@ export function InsightsUserCommentsDropdown({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(200,225,255,0.6)' }}>
                     <Icon size={11} />
                     <span style={{ fontWeight: 700, color: 'rgba(200,225,255,0.85)' }}>{item.tab_label}</span>
-                    {item.source === 'qir' && item.target_type && (
+                    {item.source === 'qir' && (item.section_label || item.target_type) && (
                       <>
                         <span>·</span>
-                        <span style={{ textTransform: 'none', letterSpacing: 0 }}>{item.target_type}</span>
+                        <span
+                          style={{
+                            textTransform: 'none', letterSpacing: 0,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            maxWidth: 200,
+                          }}
+                          title={item.section_label || item.target_type}
+                        >
+                          {item.section_label || item.target_type}
+                        </span>
                       </>
                     )}
                     <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -227,6 +236,21 @@ export function InsightsUserCommentsDropdown({
                       <span style={{ fontSize: 10, color: 'rgba(200,225,255,0.5)' }}>{relTime(item.created_at)}</span>
                     </span>
                   </div>
+                  {item.source === 'qir' && item.snippet_text && (
+                    <div
+                      style={{
+                        fontSize: 10, fontStyle: 'italic',
+                        color: 'rgba(200,225,255,0.55)',
+                        borderLeft: '2px solid rgba(124,200,240,0.35)',
+                        paddingLeft: 6, lineHeight: 1.35,
+                        display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                      title={item.snippet_text}
+                    >
+                      “{item.snippet_text}”
+                    </div>
+                  )}
                   {isEditing ? (
                     <CommentEditInput
                       initialValue={item.body}

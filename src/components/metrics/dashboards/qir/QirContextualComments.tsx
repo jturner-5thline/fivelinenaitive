@@ -39,6 +39,38 @@ function resolveSource(
   return { type: 'section', id: 'page', label: fallbackLabel };
 }
 
+/**
+ * Walks up from an element to find the nearest human-readable widget/section
+ * title. Looks for explicit `data-comment-source-label`/`data-widget-title`
+ * attributes first, then climbs to the nearest card/section/article and reads
+ * its first heading (h1-h4) or `[data-card-title]` text. Returns null when
+ * nothing meaningful is found so callers can fall back to source.label.
+ */
+function resolveWidgetTitle(el: HTMLElement | null): string | null {
+  let node: HTMLElement | null = el;
+  while (node && node !== document.body) {
+    const ds = node.dataset || {} as any;
+    if (ds.commentSourceLabel) return String(ds.commentSourceLabel).trim() || null;
+    if (ds.widgetTitle) return String(ds.widgetTitle).trim() || null;
+    if (ds.cardTitle) return String(ds.cardTitle).trim() || null;
+    // If this node looks like a card/section container, try to find a heading inside.
+    const isContainer =
+      node.tagName === 'SECTION' || node.tagName === 'ARTICLE' ||
+      (ds.commentSource && ds.commentSource !== 'section') ||
+      (node.id && node.id.startsWith('qir-section-')) ||
+      /(\bcard\b|\bwidget\b|\btile\b|\bpanel\b)/i.test(node.className || '');
+    if (isContainer) {
+      const titleEl = node.querySelector<HTMLElement>(
+        '[data-card-title], [data-widget-title], h1, h2, h3, h4',
+      );
+      const txt = (titleEl?.innerText || titleEl?.textContent || '').replace(/\s+/g, ' ').trim();
+      if (txt) return txt.slice(0, 160);
+    }
+    node = node.parentElement;
+  }
+  return null;
+}
+
 const DEFAULT_SECTION_LABELS: Record<string, string> = {
   summary: 'Executive Summary',
   financials: 'Revenue & Financial Performance',
@@ -225,6 +257,11 @@ export function QirContextualComments({
       if (target.closest('[data-qir-comments-ui]')) return;
       e.preventDefault();
       const source = resolveSource(target, sectionIdPrefix, sectionLabels, fallbackSourceLabel);
+      // Prefer a real widget/section title from the DOM when available so
+      // the Queue dropdown can show "Forecasts · 5thLine Benchmark Forecasts"
+      // instead of the generic section label.
+      const widgetTitle = resolveWidgetTitle(target);
+      if (widgetTitle) source.label = widgetTitle;
       // Capture snippet: prefer a live text selection (if it sits inside the
       // right-clicked content); otherwise fall back to the nearest block text.
       let snippet = '';
@@ -292,6 +329,10 @@ export function QirContextualComments({
       const inserted = await addComment(
         composer.source.type, composer.source.id, body, mentionNames,
         reportLabel, composer.source.label, commentType,
+        {
+          sectionLabel: composer.source.label,
+          snippetText: composer.snippet || null,
+        },
       );
       if (inserted) {
         const { source, snippet } = composer;

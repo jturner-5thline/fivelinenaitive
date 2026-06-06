@@ -17,6 +17,8 @@ export interface QirComment {
   created_at: string;
   updated_at?: string;
   comment_type?: 'note' | 'decision' | 'action_item';
+  section_label?: string | null;
+  snippet_text?: string | null;
 }
 
 export interface QirThreadState {
@@ -173,6 +175,7 @@ export function useQirComments(reportKey: string) {
     reportLabel: string,
     targetLabel: string,
     commentType: 'note' | 'decision' | 'action_item' = 'note',
+    extras?: { sectionLabel?: string | null; snippetText?: string | null },
   ) => {
     if (!company?.id || !user?.id) return;
     const trimmed = body.trim();
@@ -214,6 +217,8 @@ export function useQirComments(reportKey: string) {
         period_type: period.view,
         period_key: period.period,
         comment_type: commentType,
+        section_label: extras?.sectionLabel ?? targetLabel ?? null,
+        snippet_text: extras?.snippetText ? extras.snippetText.slice(0, 400) : null,
       })
       .select('*')
       .maybeSingle();

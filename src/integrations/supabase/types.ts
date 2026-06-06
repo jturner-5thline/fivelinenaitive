@@ -20082,6 +20082,8 @@ export type Database = {
           period_key: string | null
           period_type: string | null
           report_key: string
+          section_label: string | null
+          snippet_text: string | null
           target_id: string
           target_type: string
           updated_at: string
@@ -20098,6 +20100,8 @@ export type Database = {
           period_key?: string | null
           period_type?: string | null
           report_key: string
+          section_label?: string | null
+          snippet_text?: string | null
           target_id: string
           target_type: string
           updated_at?: string
@@ -20114,6 +20118,8 @@ export type Database = {
           period_key?: string | null
           period_type?: string | null
           report_key?: string
+          section_label?: string | null
+          snippet_text?: string | null
           target_id?: string
           target_type?: string
           updated_at?: string
