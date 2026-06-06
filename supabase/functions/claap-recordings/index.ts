@@ -256,25 +256,24 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Claap API error:", errorText);
-        if (response.status === 429 || response.status >= 500) {
-          const stale = getCache.get(recordingId);
-          if (stale) {
-            const recording = stale.recording as ClaapRecording;
-            const enriched = recording ? { ...recording, insights: extractClaapInsights(recording) } : recording;
-            return new Response(
-              JSON.stringify({
-                recording: enriched,
-                cached: true,
-                rateLimited: response.status === 429,
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
-          }
-        }
-        return new Response(JSON.stringify({ error: "Failed to fetch recording details" }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const stale = getCache.get(recordingId);
+        const recording = stale ? (stale.recording as ClaapRecording) : null;
+        const enriched = recording
+          ? { ...recording, insights: extractClaapInsights(recording) }
+          : null;
+        return new Response(
+          JSON.stringify({
+            recording: enriched,
+            cached: !!stale,
+            rateLimited: response.status === 429,
+            upstreamStatus: response.status,
+            warning:
+              response.status === 429
+                ? "Claap rate limit reached"
+                : `Claap upstream error (${response.status})`,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
       const data = await response.json();
