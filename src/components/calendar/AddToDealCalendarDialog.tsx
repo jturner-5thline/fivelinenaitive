@@ -198,9 +198,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
             Create follow-up
           </DialogTitle>
           <DialogDescription>
-            {noLinkedDeal
-              ? 'Create a task to follow up on this item.'
-              : 'Create a task and/or add an event to the deal calendar.'}
+            Create a task and/or add an event to the deal calendar.
           </DialogDescription>
         </DialogHeader>
 
@@ -217,8 +215,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
             <p className="text-foreground/90 italic line-clamp-3">"{prefill.sourceText}"</p>
           </div>
 
-          {/* Kind toggle — hidden when there's no linked deal (task-only) */}
-          {hasResolvedDeal && (
+          {/* Kind toggle — always shown; Event mode requires a deal */}
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Item type</Label>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -240,7 +237,6 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
               </Button>
             </div>
           </div>
-          )}
 
           {/* Title */}
           <div>
@@ -254,8 +250,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
             />
           </div>
 
-          {/* Deal — hidden when there's no linked deal (plain-task mode) */}
-          {hasResolvedDeal && (
+          {/* Deal — locked when source provides one, selectable otherwise */}
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               Deal
@@ -298,7 +293,6 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
               </div>
             )}
           </div>
-          )}
 
           {/* Date */}
           <div className="grid grid-cols-2 gap-3">
