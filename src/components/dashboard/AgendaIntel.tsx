@@ -68,6 +68,44 @@ import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
+import { useAddToDealCalendar } from '@/components/calendar/AddToDealCalendarProvider';
+import { CalendarPlus } from 'lucide-react';
+
+function AddToDealCalendarMeetingButton({
+  dealId,
+  eventId,
+  eventTitle,
+  eventStartISO,
+}: {
+  dealId: string;
+  eventId: string;
+  eventTitle: string;
+  eventStartISO?: string | null;
+}) {
+  const { openManual } = useAddToDealCalendar();
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7 px-2 text-xs text-white hover:text-white"
+      onClick={() =>
+        openManual({
+          title: `Follow-up: ${eventTitle}`,
+          sourceText: `Follow-up to meeting "${eventTitle}"`,
+          ctx: {
+            module: 'rundown_item',
+            recordId: eventId,
+            sourceTimestamp: eventStartISO || new Date().toISOString(),
+            dealId,
+            label: eventTitle,
+          },
+        })
+      }
+    >
+      <CalendarPlus className="h-3 w-3 mr-1 text-white" /> Add to deal calendar
+    </Button>
+  );
+}
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -597,6 +635,14 @@ function MeetingCard({
               ? `Claap${linkedClaapCount > 1 ? ` (${linkedClaapCount})` : ''} linked`
               : 'Link Claap'}
           </Button>
+          {dealMatch?.id && (
+            <AddToDealCalendarMeetingButton
+              dealId={dealMatch.id}
+              eventId={event.id}
+              eventTitle={event.summary || '(no title)'}
+              eventStartISO={event.start}
+            />
+          )}
         </div>
       )}
 
