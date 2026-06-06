@@ -144,9 +144,12 @@ export function NotificationsDropdown() {
   const unreadActivities = filteredActivities.filter(a => !isRead('activity', a.id));
   const unreadFlexCount = filteredFlexNotifications.filter(n => !n.read_at).length;
   const clearableUnreadCount = unreadAlerts.length + unreadActivities.length + unreadFlexCount;
-  const unreadCount = clearableUnreadCount + infoRequestPendingCount;
+  // Badge reflects ONLY items that "Mark all as read" can clear. Pending
+  // info requests are external action items (they clear when the request
+  // is acted on), so they no longer keep the bell badge stuck on.
+  const unreadCount = clearableUnreadCount;
   const totalNotifications = staleAlerts.length + filteredActivities.length + filteredFlexNotifications.length + infoRequestNotifications.length;
-  const hasAlerts = unreadAlerts.length > 0 || unreadFlexCount > 0 || infoRequestPendingCount > 0;
+  const hasAlerts = unreadAlerts.length > 0 || unreadFlexCount > 0;
   
   const handleMarkAllAsRead = async () => {
     setIsMarkingRead(true);
