@@ -329,6 +329,10 @@ export function QirContextualComments({
       const inserted = await addComment(
         composer.source.type, composer.source.id, body, mentionNames,
         reportLabel, composer.source.label, commentType,
+        {
+          sectionLabel: composer.source.label,
+          snippetText: composer.snippet || null,
+        },
       );
       if (inserted) {
         const { source, snippet } = composer;
