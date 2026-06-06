@@ -405,11 +405,13 @@ function ApproveAllButton({
 }
 
 function AssigneePicker({
-  members, onSelect, trigger,
+  members, onSelect, trigger, viewer, onClear,
 }: {
   members: InternalMember[];
   onSelect: (m: InternalMember) => void;
   trigger: React.ReactNode;
+  viewer?: InternalMember | null;
+  onClear?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -439,6 +441,30 @@ function AssigneePicker({
             className="h-7 pl-7 text-xs"
           />
         </div>
+        {(viewer || onClear) && (
+          <div className="flex items-center gap-1 px-1 pb-1 mb-1 border-b border-white/[0.06]">
+            {viewer && (
+              <button
+                type="button"
+                data-testid="assign-to-me"
+                className="flex-1 inline-flex items-center justify-center gap-1 h-6 px-2 rounded text-[10px] border border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.14] transition-colors"
+                onClick={() => { onSelect(viewer); setOpen(false); setQ(''); }}
+              >
+                <UserIcon className="h-3 w-3" /> Assign to me
+              </button>
+            )}
+            {onClear && (
+              <button
+                type="button"
+                data-testid="clear-assignee"
+                className="inline-flex items-center justify-center gap-1 h-6 px-2 rounded text-[10px] border border-white/15 text-muted-foreground hover:bg-white/[0.06] transition-colors"
+                onClick={() => { onClear(); setOpen(false); setQ(''); }}
+              >
+                <X className="h-3 w-3" /> Clear
+              </button>
+            )}
+          </div>
+        )}
         <div className="max-h-56 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="text-[11px] text-muted-foreground italic px-2 py-3 text-center">
