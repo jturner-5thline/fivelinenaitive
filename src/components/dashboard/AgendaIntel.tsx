@@ -599,6 +599,15 @@ function MeetingCard({
           </Button>
         </div>
       )}
+
+      {/* Saved notes — selectable narrative for Add-to-Deal-Calendar */}
+      {!isPersonal && (
+        <MeetingNotesBlock
+          eventId={event.id}
+          eventTitle={event.summary || '(no title)'}
+          dealId={dealMatch?.id ?? null}
+        />
+      )}
     </div>
   );
 }
