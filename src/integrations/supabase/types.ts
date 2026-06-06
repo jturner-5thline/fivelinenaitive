@@ -15447,6 +15447,68 @@ export type Database = {
           },
         ]
       }
+      insights_report_submissions: {
+        Row: {
+          audit: Json
+          company_id: string
+          created_at: string
+          id: string
+          period_key: string
+          report_key: string
+          status: string
+          submit_count: number
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_name: string | null
+          unsubmitted_at: string | null
+          unsubmitted_by: string | null
+          unsubmitted_by_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          audit?: Json
+          company_id: string
+          created_at?: string
+          id?: string
+          period_key: string
+          report_key: string
+          status?: string
+          submit_count?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          unsubmitted_at?: string | null
+          unsubmitted_by?: string | null
+          unsubmitted_by_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audit?: Json
+          company_id?: string
+          created_at?: string
+          id?: string
+          period_key?: string
+          report_key?: string
+          status?: string
+          submit_count?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          unsubmitted_at?: string | null
+          unsubmitted_by?: string | null
+          unsubmitted_by_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_report_submissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_interest: {
         Row: {
           created_at: string

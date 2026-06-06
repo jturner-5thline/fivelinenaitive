@@ -11,12 +11,30 @@ const PLATFORM_URL = 'https://fivelinenaitive.lovable.app'
 interface InsightsReportReadyProps {
   ownerName?: string
   url?: string
+  /** 'submitted' (initial), 'resubmitted', or 'unsubmitted' (reopened). */
+  state?: 'submitted' | 'resubmitted' | 'unsubmitted'
+  /** Optional name of the person who triggered the action. */
+  actorName?: string
 }
 
 const InsightsReportReadyEmail = (props: InsightsReportReadyProps) => {
-  const { ownerName, url } = props
+  const { ownerName, url, state, actorName } = props
   const owner = ownerName || 'A teammate'
-  const sentence = `${owner}'s Insights Report is Ready for Review.`
+  const variant = state || 'submitted'
+  const sentence =
+    variant === 'unsubmitted'
+      ? `${owner}'s Insights Report was Reopened for Editing.`
+      : variant === 'resubmitted'
+        ? `${owner}'s Insights Report was Resubmitted for Review.`
+        : `${owner}'s Insights Report is Ready for Review.`
+  const subText =
+    variant === 'unsubmitted'
+      ? `${actorName || 'A teammate'} reopened this report. It is no longer locked and may be edited before resubmission.`
+      : variant === 'resubmitted'
+        ? `${actorName || owner} resubmitted this report. It is locked again pending review.`
+        : `${actorName || owner} submitted this report. It is locked pending review.`
+  const cta =
+    variant === 'unsubmitted' ? 'Open Report' : 'Open Report'
   const h = React.createElement
   return h(Html, { lang: 'en', dir: 'ltr' },
     h(Head, null),
@@ -28,8 +46,9 @@ const InsightsReportReadyEmail = (props: InsightsReportReadyProps) => {
         ),
         h(Hr, { style: divider }),
         h(Heading, { style: h1Style }, sentence),
+        h(Text, { style: subStyle }, subText),
         h(Section, { style: { textAlign: 'center', margin: '24px 0 16px' } as any },
-          h(Button, { style: button, href: url || PLATFORM_URL + '/insights' }, 'Open Report'),
+          h(Button, { style: button, href: url || PLATFORM_URL + '/insights' }, cta),
         ),
         h(Hr, { style: divider }),
         h(Text, { style: footer }, `— The ${SITE_NAME} team`),
@@ -40,12 +59,19 @@ const InsightsReportReadyEmail = (props: InsightsReportReadyProps) => {
 
 export const template = {
   component: InsightsReportReadyEmail,
-  subject: (data: Record<string, any>) =>
-    `${data?.ownerName || 'Insights'}'s Insights Report is Ready for Review`,
+  subject: (data: Record<string, any>) => {
+    const owner = data?.ownerName || 'Insights'
+    const variant = data?.state || 'submitted'
+    if (variant === 'unsubmitted') return `${owner}'s Insights Report was Reopened for Editing`
+    if (variant === 'resubmitted') return `${owner}'s Insights Report was Resubmitted for Review`
+    return `${owner}'s Insights Report is Ready for Review`
+  },
   displayName: 'Insights Report Ready for Review',
   previewData: {
     ownerName: 'James Turner',
     url: 'https://fivelinenaitive.lovable.app/insights?tab=jt',
+    state: 'submitted',
+    actorName: 'James Turner',
   },
 } satisfies TemplateEntry
 
@@ -54,5 +80,6 @@ const container = { padding: '40px 32px', maxWidth: '560px', margin: '0 auto' }
 const logoText = { fontSize: '20px', fontWeight: '700' as const, color: '#0f172a', letterSpacing: '-0.5px', margin: '0' }
 const divider = { borderColor: '#e2e8f0', margin: '24px 0' }
 const h1Style = { fontSize: '22px', fontWeight: '600' as const, color: '#0f172a', margin: '0 0 8px', lineHeight: '1.3', textAlign: 'center' as const }
+const subStyle = { fontSize: '14px', color: '#475569', margin: '8px 0 0', lineHeight: '1.5', textAlign: 'center' as const }
 const button = { backgroundColor: '#0f172a', color: '#ffffff', fontSize: '14px', fontWeight: '600' as const, padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', display: 'inline-block' }
 const footer = { fontSize: '13px', color: '#94a3b8', margin: '0', textAlign: 'center' as const }
