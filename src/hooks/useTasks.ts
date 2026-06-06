@@ -6,6 +6,7 @@ import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks
 import { toast } from 'sonner';
 import { deriveTaskAssociations, logTaskCompletionAcrossTimelines } from '@/lib/taskAssociations';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
+import { writeDealFollowUpSource, type DealFollowUpSource } from '@/lib/deals/dealFollowUp';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -362,7 +363,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
   }));
 
   const createTask = useMutation({
-    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string; recurrence_rule?: string | null; recurrence_end_date?: string | null }) => {
+    mutationFn: async (task: { title: string; description?: string; assigned_to?: string; priority?: string; due_date?: string; status?: string; project_id?: string; section_id?: string; deal_id?: string; contact_id?: string; crm_company_id?: string; recurrence_rule?: string | null; recurrence_end_date?: string | null; source?: DealFollowUpSource | null }) => {
       if (!user) throw new Error('Not authenticated');
       // Get company_id
       const { data: membership } = await supabase
@@ -402,6 +403,19 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         .select()
         .single();
       if (error) throw error;
+      // Unified deal follow-up backlink (idempotent). Tasks created with both
+      // a deal_id and an upstream source (meeting, email, mention, AI queue)
+      // get a row in calendar_item_sources so the deal-calendar surface can
+      // trace origin and de-duplicate re-syncs.
+      if (data && (data as any).id && (data as any).deal_id && task.source) {
+        await writeDealFollowUpSource({
+          dealId: (data as any).deal_id,
+          taskId: (data as any).id,
+          source: task.source,
+          title: (data as any).title,
+          userId: user.id,
+        });
+      }
       return data;
     },
     onSuccess: async (data) => {
