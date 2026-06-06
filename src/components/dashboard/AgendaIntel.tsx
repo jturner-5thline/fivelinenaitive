@@ -1335,6 +1335,14 @@ export function AgendaIntel() {
             recurrence_rule: input.recurrence_rule,
             recurrence_end_date: input.recurrence_end_date,
             deal_id: input.deal_id || undefined,
+            source: input.deal_id && taskDialogEvent
+              ? {
+                  module: 'rundown_item',
+                  recordId: taskDialogEvent.id,
+                  sourceTimestamp: taskDialogEvent.start || new Date().toISOString(),
+                  sourceText: input.title,
+                }
+              : null,
           });
           toast.success(`Task created: "${input.title}"`);
           setTaskDialogEvent(null);
