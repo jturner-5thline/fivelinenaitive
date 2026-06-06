@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import type { CalendarSourceCtx } from './AddToDealCalendarProvider';
 import type { ParsedRelativeDate } from '@/lib/parseRelativeDate';
 import { createDealFollowUp } from '@/lib/deals/dealFollowUp';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export interface AddToDealCalendarPrefill {
   sourceText: string;
@@ -59,6 +60,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
   const [dealQuery, setDealQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [alsoOnDealCalendar, setAlsoOnDealCalendar] = useState(false);
+  const debouncedDealQuery = useDebouncedValue(dealQuery, 180);
 
   const lockedDeal = !!prefill.ctx.dealId;
   const effectiveDealId = dealId ?? prefill.ctx.dealId ?? null;
@@ -80,16 +82,17 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
   }, [resetKey]);
 
   const filteredDeals = useMemo(() => {
-    const q = dealQuery.trim().toLowerCase();
-    const base = deals.slice(0, 200);
-    if (!q) return base.slice(0, 12);
-    return base
+    const q = debouncedDealQuery.trim().toLowerCase();
+    if (!q) return [];
+    return deals
       .filter((d) => {
         const hay = `${d.name || ''} ${d.company || ''} ${d.lender || ''}`.toLowerCase();
         return hay.includes(q);
       })
       .slice(0, 12);
-  }, [deals, dealQuery]);
+  }, [deals, debouncedDealQuery]);
+  const dealQueryActive = dealQuery.trim().length >= 1;
+  const isSearching = dealQueryActive && dealQuery.trim() !== debouncedDealQuery.trim();
 
   const canSave =
     !!user &&
