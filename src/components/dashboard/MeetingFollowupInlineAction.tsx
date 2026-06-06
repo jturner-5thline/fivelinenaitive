@@ -49,11 +49,12 @@ export function MeetingFollowupInlineAction({
     return (
       <Button
         size="sm" variant="outline"
-        className="h-8 justify-start gap-2 text-xs"
+        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs"
         onClick={() => onOpenComposer()}
         disabled={ctx.isLoading && ctx.source === 'none'}
       >
-        <Mail className="h-3.5 w-3.5" /> Send follow-up
+        <Mail className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">Send follow-up</span>
       </Button>
     );
   }
