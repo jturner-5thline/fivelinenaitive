@@ -41,6 +41,15 @@ interface Props {
   initialTitle?: string;
   initialDealId?: string | null;
   initialDueDate?: Date | null;
+  /**
+   * When true, the dialog treats `initialDealId` as the authoritative
+   * deal for this task. The title-based fuzzy auto-apply is suppressed
+   * (suggestions stay visible as one-click chips, but never silently
+   * overwrite the prefilled deal — and never invent a random deal when
+   * none is prefilled). Used by meeting → Create task flows where the
+   * caller has already resolved the explicit meeting→deal link.
+   */
+  lockInitialDeal?: boolean;
 }
 
 const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
@@ -92,6 +101,7 @@ export function QuickCreateTaskDialog({
   initialTitle,
   initialDealId,
   initialDueDate,
+  lockInitialDeal = false,
 }: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>(null);
