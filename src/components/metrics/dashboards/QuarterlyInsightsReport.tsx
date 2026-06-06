@@ -1044,6 +1044,24 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                 />
               );
             }
+            // Live metric KPI — bound to a canonical source surface via
+            // templateConfig.metricSourceId (see useInsightsLiveMetricValue).
+            const metricSourceId = (kpi.templateConfig as any)?.metricSourceId as string | undefined;
+            if (!kpi.template && metricSourceId) {
+              const isEditingLive = editingId === kpi.id;
+              return (
+                <LiveMetricKpiCard
+                  key={kpi.id}
+                  kpi={kpi}
+                  reportState={s}
+                  isEditing={isEditingLive}
+                  onToggleEdit={() => setEditingId(isEditingLive ? null : kpi.id)}
+                  onPatch={(patch) => updateKPI(kpi.id, patch)}
+                  onRemove={() => { removeKPI(kpi.id); setEditingId(null); }}
+                  onOpenDrill={() => setDrillKpi(kpi as unknown as KpiLike)}
+                />
+              );
+            }
             const status = deriveStatus(kpi.actual, kpi.target);
             const tone = status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
             const isEditing = editingId === kpi.id;
