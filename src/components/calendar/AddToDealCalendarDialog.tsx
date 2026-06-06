@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, CheckCheck, Loader2, Quote, Sparkles, Lock } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,6 +17,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import type { CalendarSourceCtx } from './AddToDealCalendarProvider';
 import type { ParsedRelativeDate } from '@/lib/parseRelativeDate';
+import { createDealFollowUp } from '@/lib/deals/dealFollowUp';
 
 export interface AddToDealCalendarPrefill {
   sourceText: string;
@@ -98,61 +98,22 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
     setSubmitting(true);
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
-      let createdId: string;
-      let backlinkField: 'task_id' | 'deal_calendar_item_id';
-
-      if (kind === 'task') {
-        const { data, error } = await supabase
-          .from('tasks')
-          .insert({
-            title: title.trim(),
-            description: `From ${MODULE_LABEL[prefill.ctx.module]}:\n\n“${prefill.sourceText}”`,
-            assigned_to: user.id,
-            assigned_by: user.id,
-            due_date: dateStr,
-            status: 'not_started',
-            deal_id: dealId,
-          } as never)
-          .select('id')
-          .single();
-        if (error) throw error;
-        createdId = (data as { id: string }).id;
-        backlinkField = 'task_id';
-      } else {
-        const { data, error } = await supabase
-          .from('deal_calendar_items')
-          .insert({
-            deal_id: dealId,
-            title: title.trim(),
-            date: dateStr,
-            time: time ? `${time}:00` : null,
-            notes: `From ${MODULE_LABEL[prefill.ctx.module]}:\n\n“${prefill.sourceText}”`,
-            type: time ? 'meeting' : 'deadline',
-            created_by: user.id,
-          } as never)
-          .select('id')
-          .single();
-        if (error) throw error;
-        createdId = (data as { id: string }).id;
-        backlinkField = 'deal_calendar_item_id';
-      }
-
-      // Persist the backlink (best-effort — main item already saved).
-      const { error: srcErr } = await supabase.from('calendar_item_sources').insert({
-        [backlinkField]: createdId,
-        deal_id: dealId,
-        source_module: prefill.ctx.module,
-        source_record_id: prefill.ctx.recordId,
-        source_timestamp: prefill.ctx.sourceTimestamp,
-        source_text: prefill.sourceText,
-        source_deep_link: prefill.ctx.deepLinkUrl ?? null,
-        created_by: user.id,
-      } as never);
-      if (srcErr) {
-        // Non-fatal — log but don't block the user; the item itself was saved.
-        // eslint-disable-next-line no-console
-        console.warn('[AddToDealCalendar] backlink insert failed:', srcErr);
-      }
+      await createDealFollowUp({
+        kind,
+        dealId,
+        title: title.trim(),
+        date: dateStr,
+        time: kind === 'event' && time ? time : null,
+        notes: `From ${MODULE_LABEL[prefill.ctx.module]}:\n\n“${prefill.sourceText}”`,
+        userId: user.id,
+        source: {
+          module: prefill.ctx.module,
+          recordId: prefill.ctx.recordId,
+          sourceTimestamp: prefill.ctx.sourceTimestamp,
+          sourceText: prefill.sourceText,
+          deepLinkUrl: prefill.ctx.deepLinkUrl ?? null,
+        },
+      });
 
       queryClient.invalidateQueries({ queryKey: ['deal-calendar-items', dealId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
