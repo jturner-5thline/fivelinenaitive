@@ -72,7 +72,7 @@ function MetricGridShort({ title, headers, rows }: { title: string; headers: str
   );
 }
 
-export function KeyMetricsPage() {
+export function KeyMetricsPage({ isEditMode = false }: { isEditMode?: boolean } = {}) {
   const { visible, toggle } = usePlanVisibility();
   const planVisible = (plan: string) => {
     if (plan === 'Actuals') return true;
@@ -166,6 +166,7 @@ export function KeyMetricsPage() {
       <PlanToggleLegend visible={visible} onToggle={toggle} />
       <SortableWidgetGrid
         storageKey="insights.keyMetrics.widgetOrder.v1"
+        isEditMode={isEditMode}
         items={items}
         style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10 }}
       />
