@@ -1,107 +1,151 @@
-## Goal
+# Add to Deal Calendar — shared highlight/right-click workflow
 
-Make every comment created anywhere in an Insights Report (narrative text, KPIs, charts/figures, goals, initiatives, risks, generic sections) reviewable in one lightweight **Agenda Queue**, and let users push queued items into the Agenda using the existing footnote/recap pipeline. Keep the UI light and document-like — no Kanban, no ticketing chrome.
+A reusable pattern that lets users highlight any narrative text on a supported surface, right-click, and convert that snippet into a dated **task/to-do** or **event** on the relevant deal calendar — with full backlink traceability.
 
-## Strategy
+## Reuse what already exists
 
-Reuse what already exists; do not introduce a parallel system:
+- **Tasks**: `public.tasks` (has `deal_id`, `due_date`, `assignee`, etc.) — used for "Task / To-do".
+- **Events**: `public.deal_calendar_items` (has `deal_id`, `date`, `time`, `type` ∈ meeting/deadline/reminder/note) — used for "Event".
+- **Date parsing**: `chrono-node` (already in deps, used elsewhere).
+- **Confirmation modal**: small new dialog; reuses existing deal-picker + assignee patterns from `QuickCreateTaskDialog`.
 
-- **Comment capture** stays on the two existing systems — `agenda_comments`/`agenda_comment_threads` (Agenda editor) and `qir_comments`/`qir_comment_threads` (right-click on QIR elements). Extend the QIR comment surface to also cover narrative text and chart/figure containers.
-- **Agenda Queue** = a new lightweight table `report_agenda_queue` that references the originating comment plus structured source/anchor info. Nothing about comments themselves changes.
-- **Agenda insertion** routes through the **already-built** `useInsertAgendaFootnote` event bus + `insights_agenda_footnotes` table. Queue items become footnotes (with optional body refs) when promoted.
+No replacement of those systems — we only add a new entry point + a backlink store.
 
-## Backend
+## Architecture
 
-### New table `report_agenda_queue`
-Fields (per the prompt's data-model guidance):
-- `id`, `company_id`, `period_type`, `period_key`
-- `report_tab` (JT/JM/SW; nullable for non-report surfaces)
-- `source_type` enum: `selected_text | narrative | kpi | chart | goal | initiative | risk | section`
-- `source_id`, `source_anchor`, `source_snapshot_text`
-- `comment_id` (FK → `qir_comments.id` or `agenda_comments.id`; polymorphic via `comment_source` column: `qir | agenda`)
-- `comment_text_snapshot` (denormalized for the queue list)
-- `created_by`, `created_at`, `updated_at`
-- `queue_status` enum: `queued | added_to_agenda | dismissed | archived`
-- `linked_footnote_id` (FK → `insights_agenda_footnotes.id`)
-- `agenda_insertion_mode` enum: `body_reference | free_text | footnote_only` (set when promoted)
+```text
+TextSurface (memo, claap summary, rundown item, agenda, report, comment)
+        │
+        │ wrapped by <AddToDealCalendarProvider sourceCtx={...}>
+        │   ├─ captures selection (mouseup) + custom context-menu (onContextMenu)
+        │   └─ shows floating "Add to Deal Calendar" pill
+        ▼
+useAddToDealCalendar()  ← shared hook + context
+        │
+        ├─ parseRelativeDate(text, anchorTs)   (chrono-node, anchored to source ts)
+        ├─ openConfirmDialog(prefill)
+        ▼
+<AddToDealCalendarDialog />
+        │ user picks: Task/To-do vs Event, deal, date, assignee/owner
+        ▼
+On save:
+  - if Task → insert into tasks
+  - if Event → insert into deal_calendar_items
+  - always insert one row into calendar_item_sources (backlink)
+  - toast: "Added to {Deal} calendar for {date}" + "Open calendar" link
+```
 
-RLS: scoped by `is_company_member(auth.uid(), company_id)`. Realtime-enabled. GRANTs to `authenticated` + `service_role`. Created timestamp trigger.
+`SourceCtx` is the contract every surface implements:
 
-### Extend existing
-- Add a small `period_type`/`period_key` denormalization on `qir_comments` (nullable backfill) so queue items derived from QIR comments inherit a clean period scope, matching the agenda system. Migration backfills from the active report's period when known.
-- `insights_agenda_footnotes.source_type` already supports arbitrary strings — reuse with values: `report_comment`, `report_comment_kpi`, `report_comment_chart`, etc. Add `source_anchor` formatted as `qir-section-{key}#{target_type}:{target_id}` so the existing footnote dedup index handles uniqueness.
+```ts
+type SourceCtx = {
+  module: 'meeting_notes' | 'claap_summary' | 'rundown_item' | 'agenda'
+        | 'report' | 'comment' | 'deal_memo' | 'other';
+  recordId: string;          // id of the note/meeting/etc.
+  sourceTimestamp: string;   // ISO — anchor for relative-date parsing
+  dealId?: string | null;    // preselect when known
+  deepLinkUrl?: string;      // for "Jump to source"
+  label?: string;            // e.g. "Worthy ↔ 5th Line Sync — Notes"
+};
+```
 
-## Frontend
+## Database
 
-### 1. Generalize the QIR right-click comment surface
-- `QirContextualComments` already walks for `data-comment-source` / `data-comment-source-id`. Decorate the remaining elements that are not yet annotated:
-  - Narrative container in `InsightsNarrativeEditor` body (`source_type="narrative"`).
-  - Each chart/figure wrapper in QIR (`source_type="chart"`, id = chart key).
-  - Initiative rows (`source_type="initiative"`) — currently only goals/risks/KPIs are tagged.
-- Keep right-click as the entry on charts/figures/KPI tiles/section blocks. Selection-based "Comment" button stays the entry for prose.
+One new table for traceability. Re-using `tasks` and `deal_calendar_items` for the actual items.
 
-### 2. Add selection-based comment to narrative
-- Reuse `SelectionCommentAction` + `CommentMark` + `NewThreadPopover` (already built for AgendaEditor) on `InsightsNarrativeEditor` by extracting them into a shared module under `src/components/insights/comments/`.
-- Because narrative content lives in JSONB (`company_settings.fpa_dashboard_config`), narrative comments use the **QIR comment tables** with `target_type='narrative-range'` and `target_id` = stable hash of the anchor text + offset. Threads still resolve back to the visible prose via highlight marks rendered around `<mark data-comment-thread-id="…">` on the dangerously-set HTML pass.
+```sql
+CREATE TABLE public.calendar_item_sources (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  -- exactly one of these is set, enforced by trigger
+  task_id UUID REFERENCES public.tasks(id) ON DELETE CASCADE,
+  deal_calendar_item_id UUID REFERENCES public.deal_calendar_items(id) ON DELETE CASCADE,
+  deal_id UUID NOT NULL REFERENCES public.deals(id) ON DELETE CASCADE,
+  source_module TEXT NOT NULL,
+  source_record_id TEXT NOT NULL,
+  source_timestamp TIMESTAMPTZ NOT NULL,
+  source_text TEXT NOT NULL,           -- highlighted snippet snapshot
+  source_deep_link TEXT,
+  created_by UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- + GRANTs, RLS scoped via deal_id ownership, indexes on (task_id),
+--   (deal_calendar_item_id), (deal_id), (source_module, source_record_id).
+```
 
-### 3. "Add to Agenda Queue" action on every comment surface
-- New `PromoteToQueueButton` in:
-  - The QIR comment thread popover (`QirContextualComments` thread footer).
-  - The Agenda thread card popover (`AgendaComments` `ThreadCard`).
-- Action inserts a row into `report_agenda_queue` with `queue_status='queued'`, capturing source/anchor/snapshot from the comment's host element (already known at the surface).
-- Optimistic UI + realtime invalidation.
+The created item itself is just a normal task or calendar item — nothing about the backlink is needed to render it. The backlink table powers the "View source" affordance and audit.
 
-### 4. Agenda Queue review panel
-- Single compact drawer/popover, opened from a small badge in the Agenda editor toolbar ("Queue · 4") and from a quiet link in the QIR controls bar.
-- Renders a flat list grouped by source type with: snippet, author, when, source-type chip, "Jump to source" link (uses the existing `jumpToSource` scroll-and-flash from `QirContextualComments`).
-- Per-item actions (matching the prompt):
-  1. **Add to Agenda** — calls `useInsertAgendaFootnote` with the queue item's source/anchor/snapshot, then dispatches `agenda:insert-footnote-ref` so the Agenda editor inserts a body reference at the current cursor. Sets `queue_status='added_to_agenda'`, `agenda_insertion_mode='body_reference'`, persists `linked_footnote_id`.
-  2. **Add to Agenda as Free Text** — opens a tiny inline composer; on save inserts a paragraph in the Agenda doc with a footnote ref appended. Same status update with `agenda_insertion_mode='free_text'`.
-  3. **Add as Footnote Only** — calls `useInsertAgendaFootnote` without firing the body-ref event. `agenda_insertion_mode='footnote_only'`.
-  4. **Dismiss / Archive** — sets `queue_status='dismissed'` (or `archived`).
-- Filter chips: All / Queued / Added / Dismissed. Default view: Queued only.
-- No sidebar permanence; the panel is a `Popover`/`Sheet` matching the agenda comments side-rail visual style.
+## Date parsing
 
-### 5. Traceability
-- Each queue item stores `source_id` + `source_anchor` + denormalized `source_snapshot_text`, so the "Jump to source" action works even if the underlying content was edited later. If the live element still exists, we scroll + flash via the existing util. If not, we show the snapshot text in a tooltip.
-- The promoted footnote inherits the same anchor, so the existing "current vs. snapshot" drift detection on `insights_agenda_footnotes` (`source_current_text` vs `source_snapshot_text`) keeps working.
+`src/lib/parseRelativeDate.ts`
 
-### 6. Persistence + multi-user
-- New table + comment tables already realtime-enabled. The Queue panel subscribes to the realtime channel `report_agenda_queue:{company_id}:{period_type}:{period_key}` and re-renders on insert/update.
-- All scoping uses `company_id + period_type + period_key + report_tab` so JT/JM/SW are cleanly separated.
+- Wrap `chrono-node` with `{ instant: new Date(sourceTimestamp), timezone: userTz }`.
+- Return `{ date: Date | null, confidence: 'high' | 'low' | 'none', matchedText, ambiguous }`.
+- Phrases like "by Tuesday", "next Thursday", "end of week", "tomorrow", "in two days" → high.
+- "soon", "later this month with no anchor" → low/none → require user confirm; field stays editable.
 
-## Files touched
+## Shared UI pieces (new)
 
-### New
-- `supabase/migrations/<ts>_report_agenda_queue.sql` — new table + RLS + grants + dedup index + denormalized `qir_comments.period_type/period_key`.
-- `src/hooks/useReportAgendaQueue.ts` — list/insert/update/realtime.
-- `src/components/insights/comments/PromoteToQueueButton.tsx`
-- `src/components/insights/comments/AgendaQueuePanel.tsx`
-- `src/components/insights/comments/AgendaQueueBadge.tsx`
-- `src/components/insights/comments/sharedSelectionComment.tsx` — extracted `SelectionCommentAction` + `CommentMark` for reuse on narrative.
+- `src/components/calendar/AddToDealCalendarProvider.tsx`
+  Context that exposes `openFromSelection(selectionText, sourceCtx)`. Renders the dialog once at the provider root.
+- `src/components/calendar/HighlightCalendarMenu.tsx`
+  Wraps any text region. Adds:
+  - `onContextMenu` → shadcn `ContextMenu` with single "Add to Deal Calendar" item (only when selection ⊆ this region and non-empty).
+  - Floating action pill (anchored to selection rect) for non-right-click users.
+  Both call `provider.openFromSelection(...)`.
+- `src/components/calendar/AddToDealCalendarDialog.tsx`
+  - Toggle: **Task / To-do** ↔ **Event** (segmented control, required choice).
+  - Fields: title (prefilled = first sentence/snippet, trimmed), date (with parsed badge "Parsed from: 'by Tuesday'"), time (event only), deal picker (locked when sourceCtx.dealId set, else searchable), assignee/owner (Task only; defaults to current user), source preview (read-only quote block with module + timestamp).
+  - Save → insert + backlink + toast `Added to {DealName} calendar for {date}` with action `Open calendar` → `/deals?deal={id}#calendar`.
 
-### Edited
-- `src/components/insights/AgendaComments.tsx` — add Promote button on `ThreadCard`; expose queue badge in the side-rail header.
-- `src/components/insights/AgendaEditor.tsx` — mount `AgendaQueuePanel` trigger in toolbar.
-- `src/components/insights/InsightsNarrativeEditor.tsx` — wire up selection comment action + render existing thread highlights.
-- `src/components/metrics/dashboards/qir/QirContextualComments.tsx` — add Promote action in thread popover; widen `data-comment-source` resolution for initiatives + chart wrappers; reuse `jumpToSource` for queue panel.
-- `src/components/metrics/dashboards/QuarterlyInsightsReport.tsx` — decorate chart/figure containers and initiative rows with `data-comment-source` attributes; place `AgendaQueueBadge` in the report controls bar.
-- `src/components/insights/footnotes/useInsertAgendaFootnote.ts` — accept a new optional `{ queueItemId, insertionMode }` so promotion writes back to the queue row when the editor acks.
+## Shared hook
 
-## Non-goals
+`src/hooks/useAddToDealCalendar.ts`
 
-- No changes to the agenda autosave, period derivation, RLS scoping shape, or the existing footnote dedup behavior.
-- No new mention syntax; we keep both existing formats and only normalize at the queue-display layer.
-- No project-management features (assignees, due dates, statuses beyond queued/added/dismissed/archived).
+- `openFromSelection(text, ctx)` → parses date anchored to `ctx.sourceTimestamp`, opens dialog with prefill.
+- `save({kind, dealId, title, date, time, assigneeId, ctx, originalText})` →
+  - `kind==='task'`: insert into `tasks` (deal_id, title, due_date, assignee, status='open', created_by).
+  - `kind==='event'`: insert into `deal_calendar_items` (deal_id, title, date, time, type: 'deadline' for due-style, 'meeting' for true events with a time — chosen by user via small subtype select).
+  - Always insert into `calendar_item_sources` with the snapshot.
+  - Invalidates relevant React Query keys.
 
-## Acceptance check
+## Surface integration (v1)
 
-- Right-click any chart/KPI/section/initiative/goal/risk in JT/JM/SW → comment → "Add to Queue" → item appears in `AgendaQueuePanel` for any other user on the same company/period.
-- Select narrative text → "Comment" → submit → "Add to Queue" → same queue item visible.
-- Promote queue item with each of the four actions; verify body insertion / free-text insertion / footnote-only / dismissal all behave per spec and update `queue_status`.
-- "Jump to source" scrolls and flashes the original element when present; shows snapshot otherwise.
-- All state survives refresh and is identical across users of the same company/period.
+Mount `<AddToDealCalendarProvider>` once near the dashboard root so all child surfaces can call it. Wire `HighlightCalendarMenu` into the highest-leverage surfaces first:
 
-## Open question (worth confirming before build)
+1. Meeting detail notes/summary (Daily Rundown → meeting drawer body)
+2. Claap summary text blocks
+3. Daily Rundown action-item text
+4. Agenda item descriptions
+5. Report narrative blocks
+6. Comments
 
-Should the **narrative comment threads** live in `agenda_comment_threads` (so they share the same editor-style threading with mentions in `@[Name](uuid)` format) or in `qir_comments` (matching the rest of the report surfaces)? My recommendation: **`qir_comments`** — keeps all report-surface comments consistent and avoids tying narrative comments to an `agenda_id` row that may not exist for the period. If you'd rather unify around `agenda_comment_threads`, the queue model still works unchanged — only the comment-source FK switches.
+Each integration is ~5 LOC: import the wrapper and pass a `SourceCtx`. Surfaces with no linked deal pass `dealId: null` — the dialog requires the user to pick one (never silently fuzzy-matches).
+
+## "View source" on calendar items
+
+- Existing calendar/task list rows get a small "From: {module}" chip when a backlink exists (joined from `calendar_item_sources`). Click → opens `source_deep_link` in new tab, or scrolls to the source if same route.
+
+## Acceptance / verification
+
+- Highlight in a meeting note → right-click → menu shows "Add to Deal Calendar".
+- Dialog prefills deal (when ctx has one), parses "by Tuesday" relative to the note's created_at (not now), lets user choose Task vs Event.
+- Saving creates the row in the correct table, creates a `calendar_item_sources` row, and shows the success toast with the calendar link.
+- Refresh → item persists on the deal calendar. Open the item → "View source" jumps back.
+- No silent deal attachment when context lacks a deal.
+
+## Out of scope for v1
+
+- Bulk highlight → multiple items.
+- AI rewrite of the snippet into a cleaner title.
+- Editing the backlink after creation (display only).
+- Adding the menu to non-narrative surfaces (tables, charts).
+
+## Implementation order
+
+1. Migration: `calendar_item_sources` table + GRANTs + RLS + indexes.
+2. `parseRelativeDate` util + small unit smoke usage.
+3. `useAddToDealCalendar` hook + provider + dialog.
+4. `HighlightCalendarMenu` wrapper (context menu + selection pill).
+5. Mount provider at app root; integrate into surfaces 1–3 (meeting notes, Claap summary, Rundown items).
+6. Add backlink chip + "View source" on existing calendar/task rows.
+7. Verify in preview on a real meeting note.
