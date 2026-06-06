@@ -112,10 +112,11 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, l
     return () => onSaveReady?.(null, false, false);
   }, [save, canEdit, isDirty, onSaveReady, locked]);
 
+  const noopSave = useCallback(async () => true, []);
+
   if (!selectionLoaded) return null;
 
   const effectiveCanEdit = locked ? false : canEdit;
-  const noopSave = useCallback(async () => true, []);
 
   return (
     <>
