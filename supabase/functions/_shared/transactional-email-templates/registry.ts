@@ -16,6 +16,7 @@ import { template as qirMention } from './qir-mention.tsx'
 import { template as demoInvite } from './demo-invite.tsx'
 import { template as demoTrialWarning } from './demo-trial-warning.tsx'
 import { template as demoRequest } from './demo-request.tsx'
+import { template as insightsReportReady } from './insights-report-ready.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome-to-naitive': welcomeToNaitive,
@@ -25,4 +26,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'demo-invite': demoInvite,
   'demo-trial-warning': demoTrialWarning,
   'demo-request': demoRequest,
+  'insights-report-ready': insightsReportReady,
 }
