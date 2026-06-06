@@ -358,7 +358,7 @@ export function MeetingClaapInlineAction(props: Props) {
   );
 }
 
-function ClaapBarPortal({ eventId, children }: { eventId: string; children: React.ReactNode }) {
+function ClaapBarPortal({ eventId, children }: { eventId: string; children: ReactNode }) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
     let raf = 0;
