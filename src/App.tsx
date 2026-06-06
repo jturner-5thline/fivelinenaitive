@@ -451,6 +451,7 @@ const App = () => (
                         </Routes>
                         </Suspense>
                       </BrowserRouter>
+                      </AddToDealCalendarProvider>
                       </UndoSendProvider>
                       </CopyProtection>
                     </TooltipProvider>
