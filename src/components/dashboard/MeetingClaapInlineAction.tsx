@@ -220,24 +220,6 @@ export function MeetingClaapInlineAction(props: Props) {
   }, [band, autoApproved, approving, existing, userRejected]);
 
   // Render variants ---------------------------------------------------------
-  if (band === 'none') {
-    // Default CTA (no candidate or low confidence)
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
-        onClick={onOpenPicker}
-      >
-        <Video className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="truncate">
-          {ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording'}
-        </span>
-        {(ranking || loadingRecordings) && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
-      </Button>
-    );
-  }
-
   const title = existing
     ? (existing.recording_title || 'Linked recording')
     : (ranked?.recording.title || 'Suggested recording');
@@ -268,10 +250,46 @@ export function MeetingClaapInlineAction(props: Props) {
 
   const labelPrefix = band === 'review' ? 'Suggested: ' : '';
 
-  return (
+  // Primary button cell — always rendered to keep the 4-action row balanced.
+  const buttonLabel = (() => {
+    if (band === 'linked') return 'Claap Linked';
+    if (band === 'auto') return `Auto-matched ${scorePct ?? ''}%`.trim();
+    if (band === 'review') return `Suggested ${scorePct ?? ''}%`.trim();
+    return ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording';
+  })();
+  const buttonCell = (
+    <Button
+      size="sm"
+      variant="outline"
+      className={cn(
+        'h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs text-white',
+        band === 'none' && 'border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12]',
+        band === 'linked' && 'border-sky-500/40 bg-sky-500/[0.08] hover:bg-sky-500/[0.14]',
+        band === 'auto' && 'border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.14]',
+        band === 'review' && 'border-amber-500/40 bg-amber-500/[0.08] hover:bg-amber-500/[0.14]',
+      )}
+      onClick={() => {
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        else onOpenPicker();
+      }}
+      title={band === 'none' ? undefined : title}
+    >
+      <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+      <span className="truncate">{buttonLabel}</span>
+      {(ranking || loadingRecordings) && band === 'none' && (
+        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+      )}
+    </Button>
+  );
+
+  if (band === 'none') return buttonCell;
+
+  // Suggestion / linked detail bar — rendered via portal below the 4-button
+  // action row so it can use full width and never clips the equal-width cell.
+  const bar = (
     <div
       className={cn(
-        'col-span-2 rounded-md border px-2.5 py-1.5 flex items-center gap-2',
+        'w-full min-w-0 rounded-md border px-2.5 py-1.5 flex flex-wrap items-center gap-2',
         band === 'auto' && 'border-emerald-500/30 bg-emerald-500/[0.05]',
         band === 'review' && 'border-amber-500/30 bg-amber-500/[0.05]',
         band === 'linked' && 'border-sky-500/30 bg-sky-500/[0.05]',
@@ -283,7 +301,7 @@ export function MeetingClaapInlineAction(props: Props) {
         rel="noreferrer"
         onClick={(e) => { if (!url) e.preventDefault(); }}
         className={cn(
-          'flex items-center gap-1.5 min-w-0 flex-1 text-xs text-white hover:underline',
+          'flex items-center gap-1.5 min-w-0 flex-1 basis-[200px] text-xs text-white hover:underline',
           !url && 'pointer-events-none opacity-90',
         )}
         title={title}
@@ -338,5 +356,15 @@ export function MeetingClaapInlineAction(props: Props) {
         </Button>
       </div>
     </div>
+  );
+
+  const slot = typeof document !== 'undefined'
+    ? document.getElementById(`claap-suggest-slot-${eventId}`)
+    : null;
+  return (
+    <>
+      {buttonCell}
+      {slot ? createPortal(bar, slot) : null}
+    </>
   );
 }
