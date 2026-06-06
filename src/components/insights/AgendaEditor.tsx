@@ -57,8 +57,16 @@ const FONT_FAMILIES = [
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '40px'];
 
-export const SEED_SECTIONS = ['Presentation', 'Looking Forward', 'New Items', 'Prep'] as const;
+export const SEED_SECTIONS = ['Presentation', 'Key Items', 'New Items', 'Prep'] as const;
+// Legacy heading text we still recognize as "seed" so previously-seeded but
+// un-edited agendas continue to be detected as empty/seed (and so the new
+// Key Items default content is shown on revert/reset).
+const LEGACY_SECTION_ALIASES: Record<string, string> = {
+  'Looking Forward': 'Key Items',
+};
 export const SEED_SUBTITLE = '(5-Minute Overview + Discussion & Q&A) - 12 Minutes Total Max';
+export const KEY_ITEMS_SUBTITLE = 'Looking Forward on Key Initiatives, Goals & Forecasts';
+export const KEY_ITEMS_BULLETS = ['Outlook - Goals & Initiatives', 'Forecast & Budget Changes'] as const;
 
 const headingNode = (text: string) => ({
   type: 'heading',
@@ -76,16 +84,45 @@ const subtitleNode = () => ({
     text: SEED_SUBTITLE,
   }],
 });
+const keyItemsSubtitleNode = () => ({
+  type: 'paragraph',
+  content: [{
+    type: 'text',
+    marks: [
+      { type: 'italic' },
+      { type: 'textStyle', attrs: { fontSize: '13px', color: 'rgba(200,225,255,0.55)' } },
+    ],
+    text: KEY_ITEMS_SUBTITLE,
+  }],
+});
+// Scaffolded bullet list under Key Items: two top-level bullets, each with
+// a single empty sub-bullet so users can immediately fill in nested detail.
+const keyItemsBulletList = () => ({
+  type: 'bulletList',
+  content: KEY_ITEMS_BULLETS.map((label) => ({
+    type: 'listItem',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: label }] },
+      {
+        type: 'bulletList',
+        content: [
+          { type: 'listItem', content: [{ type: 'paragraph' }] },
+        ],
+      },
+    ],
+  })),
+});
 
-// Only the Presentation section carries the subtitle; the other sections
-// render as a heading followed by an empty body.
+// Presentation carries its time-budget subtitle. Key Items carries its own
+// muted subtitle plus a default two-bullet scaffold. Other sections render as
+// a heading followed by an empty body.
 const SEED_CONTENT = {
   type: 'doc',
-  content: SEED_SECTIONS.flatMap((s) =>
-    s === 'Presentation'
-      ? [headingNode(s), subtitleNode(), { type: 'paragraph' }]
-      : [headingNode(s), { type: 'paragraph' }],
-  ),
+  content: SEED_SECTIONS.flatMap((s) => {
+    if (s === 'Presentation') return [headingNode(s), subtitleNode(), { type: 'paragraph' }];
+    if (s === 'Key Items') return [headingNode(s), keyItemsSubtitleNode(), keyItemsBulletList(), { type: 'paragraph' }];
+    return [headingNode(s), { type: 'paragraph' }];
+  }),
 };
 
 // Zod schema mirroring the DB CHECK constraint on insights_agenda.
@@ -112,20 +149,43 @@ export function isSeedContent(doc: any): boolean {
   if (!doc || doc.type !== 'doc' || !Array.isArray(doc.content)) return true;
   const headings = doc.content
     .filter((n: any) => n?.type === 'heading')
-    .map((n: any) => n?.content?.[0]?.text ?? '');
+    .map((n: any) => {
+      const t = n?.content?.[0]?.text ?? '';
+      return LEGACY_SECTION_ALIASES[t] ?? t;
+    });
   const required = [...SEED_SECTIONS];
   const headingsMatch =
     headings.length === required.length &&
     required.every((h, i) => headings[i] === h);
   if (!headingsMatch) return false;
-  // Non-heading nodes must be either empty paragraphs or exactly the
-  // auto-seeded subtitle paragraph. Anything else means the user added content.
+  // Non-heading nodes must be either empty paragraphs, one of the auto-seeded
+  // subtitle paragraphs, or the default Key Items bullet scaffold with no
+  // user-entered text. Anything else means the user added content.
+  const isSeedBulletScaffold = (n: any): boolean => {
+    if (n?.type !== 'bulletList' || !Array.isArray(n.content)) return false;
+    if (n.content.length !== KEY_ITEMS_BULLETS.length) return false;
+    return n.content.every((li: any, i: number) => {
+      if (li?.type !== 'listItem' || !Array.isArray(li.content)) return false;
+      const [p, sub] = li.content;
+      const pText = p?.content?.[0]?.text ?? '';
+      if (p?.type !== 'paragraph' || pText !== KEY_ITEMS_BULLETS[i]) return false;
+      if (!sub || sub.type !== 'bulletList' || !Array.isArray(sub.content)) return false;
+      return sub.content.every((subLi: any) => {
+        if (subLi?.type !== 'listItem' || !Array.isArray(subLi.content)) return false;
+        return subLi.content.every((c: any) =>
+          c?.type === 'paragraph' && (!Array.isArray(c.content) || c.content.length === 0),
+        );
+      });
+    });
+  };
   const hasUserContent = doc.content.some((n: any) => {
     if (n?.type === 'heading') return false;
+    if (isSeedBulletScaffold(n)) return false;
     if (n?.type !== 'paragraph') return true; // lists, tasks, etc.
     if (!Array.isArray(n.content) || n.content.length === 0) return false;
-    // Allow a single text node equal to the seed subtitle.
-    if (n.content.length === 1 && n.content[0]?.type === 'text' && n.content[0]?.text === SEED_SUBTITLE) {
+    // Allow a single text node equal to one of the seeded subtitles.
+    const onlyText = n.content.length === 1 && n.content[0]?.type === 'text' ? n.content[0]?.text : null;
+    if (onlyText === SEED_SUBTITLE || onlyText === KEY_ITEMS_SUBTITLE) {
       return false;
     }
     return true;
