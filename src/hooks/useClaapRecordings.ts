@@ -76,7 +76,15 @@ export function useClaapRecordings() {
       });
 
       if (!fetchResponse.ok) {
-        const errorData = await fetchResponse.json();
+        // Treat upstream rate-limits / transient failures as empty results
+        // instead of crashing the UI. Edge function returns 200 with cached
+        // data when possible; this is a belt-and-suspenders fallback.
+        if (fetchResponse.status === 429 || fetchResponse.status >= 500) {
+          console.warn('[Claap] upstream', fetchResponse.status, '— returning empty list');
+          setRecordings([]);
+          return;
+        }
+        const errorData = await fetchResponse.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch recordings');
       }
 
@@ -85,11 +93,14 @@ export function useClaapRecordings() {
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
       setError(err.message);
-      toast({
-        title: 'Error',
-        description: err.message || 'Failed to fetch Claap recordings',
-        variant: 'destructive',
-      });
+      // Avoid noisy toast for rate-limit / transient failures.
+      if (!/rate limit|429|fetch/i.test(err?.message || '')) {
+        toast({
+          title: 'Error',
+          description: err.message || 'Failed to fetch Claap recordings',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
