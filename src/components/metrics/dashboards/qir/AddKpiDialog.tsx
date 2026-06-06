@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Sparkles, Plus, ArrowRight, ChevronLeft } from 'lucide-react';
+import { Sparkles, Plus, ArrowRight, ChevronLeft, Search, Gauge } from 'lucide-react';
 import { KPI_TEMPLATES, type KpiTemplateId } from './kpiTemplates';
+import {
+  buildInsightsMetricOptions,
+  flattenInsightsMetricOptions,
+  type InsightsMetricOption,
+} from './insightsMetricRegistry';
+import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 
 type Step = 'chooser' | 'template-picker';
 
@@ -14,24 +20,63 @@ interface Props {
   onPickTemplate: (templateId: KpiTemplateId) => void;
   /** Insert a blank custom KPI (legacy actual/target/format). */
   onPickCustom: () => void;
+  /** Insert a KPI seeded from a generic Insights metric source. */
+  onPickMetric?: (option: InsightsMetricOption) => void;
 }
 
 /**
  * Two-step Add KPI flow:
  *   1. Chooser  → Template KPI (recommended) vs New KPI.
- *   2. Template picker → list of registered templates from KPI_TEMPLATES.
+ *   2. Metric picker → ALL eligible Insights metrics, grouped by source
+ *      area. Includes curated templates plus every stat-type metric from
+ *      the Insights metric registry (Pipeline & Deals, QuickBooks,
+ *      HubSpot, cross-source, custom). Charts are intentionally excluded.
  * Picking "New KPI" inserts a blank manual KPI and closes the modal; the
  * caller's existing manual editor takes over from there.
  */
-export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom }: Props) {
+export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPickMetric }: Props) {
   const [step, setStep] = useState<Step>('chooser');
+  const [query, setQuery] = useState('');
+  const { data: customMetrics } = useCustomMetrics();
+  const groups = useMemo(
+    () => buildInsightsMetricOptions(customMetrics ?? []),
+    [customMetrics],
+  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return groups;
+    return groups
+      .map(g => ({
+        source: g.source,
+        options: g.options.filter(o =>
+          o.label.toLowerCase().includes(q)
+          || (o.description ?? '').toLowerCase().includes(q)
+          || o.source.toLowerCase().includes(q),
+        ),
+      }))
+      .filter(g => g.options.length > 0);
+  }, [groups, query]);
+  const totalCount = useMemo(() => flattenInsightsMetricOptions(filtered).length, [filtered]);
+
+  const handlePick = (opt: InsightsMetricOption) => {
+    if (opt.kind === 'template' && opt.template) {
+      onPickTemplate(opt.template.id);
+    } else if (onPickMetric) {
+      onPickMetric(opt);
+    } else {
+      // Fallback: caller didn't wire onPickMetric — at least insert a custom KPI.
+      onPickCustom();
+    }
+    onClose();
+  };
+
   // Reset to the chooser every time the dialog opens so users always start
   // on the recommended-first screen (per spec).
-  useEffect(() => { if (open) setStep('chooser'); }, [open]);
+  useEffect(() => { if (open) { setStep('chooser'); setQuery(''); } }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={step === 'template-picker' ? 'max-w-lg' : 'max-w-md'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step === 'template-picker' && (
@@ -44,12 +89,12 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom }: Pr
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
-            <span>{step === 'chooser' ? 'Add KPI' : 'Pick a KPI template'}</span>
+            <span>{step === 'chooser' ? 'Add KPI' : 'Pick a metric'}</span>
           </DialogTitle>
           <DialogDescription>
             {step === 'chooser'
               ? 'Choose a pre-configured KPI template or create a new KPI from scratch.'
-              : 'Templates come with built-in logic, filtering, and drilldown.'}
+              : 'Any metric used across Insights dashboards can be added as a KPI. Charts are excluded.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -75,33 +120,75 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom }: Pr
         )}
 
         {step === 'template-picker' && (
-          <div className="space-y-2">
-            {KPI_TEMPLATES.map(tpl => (
-              <button
-                key={tpl.id}
-                type="button"
-                onClick={() => { onPickTemplate(tpl.id); onClose(); }}
-                className="w-full text-left rounded-md border border-border/60 bg-muted/20 px-3.5 py-3 hover:border-primary/50 hover:bg-muted/40 transition group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-sm font-semibold">{tpl.label}</span>
-                    </div>
-                    <ul className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
-                      {tpl.bullets.map((b, i) => (
-                        <li key={i} className="flex gap-1.5">
-                          <span className="text-muted-foreground/60">·</span>
-                          <span>{b}</span>
-                        </li>
-                      ))}
-                    </ul>
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                autoFocus
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search metrics…"
+                className="w-full rounded-md border border-border/60 bg-muted/20 pl-8 pr-3 py-2 text-sm outline-none focus:border-primary/50"
+              />
+            </div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground/70">
+              {totalCount} metric{totalCount === 1 ? '' : 's'} available
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto pr-1 space-y-3">
+              {filtered.map(group => (
+                <div key={group.source} className="space-y-1.5">
+                  <div className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                    {group.source}
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-1.5">
+                    {group.options.map(opt => {
+                      const isTemplate = opt.kind === 'template';
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => handlePick(opt)}
+                          className="w-full text-left rounded-md border border-border/60 bg-muted/20 px-3 py-2.5 hover:border-primary/50 hover:bg-muted/40 transition group"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                {isTemplate
+                                  ? <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  : <Gauge className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                <span className="text-sm font-semibold truncate">{opt.label}</span>
+                                {isTemplate && (
+                                  <span className="rounded-sm bg-primary/15 text-primary text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
+                                    Template
+                                  </span>
+                                )}
+                                {opt.supportsDrilldown && !isTemplate && (
+                                  <span className="rounded-sm bg-muted text-muted-foreground text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
+                                    Drilldown
+                                  </span>
+                                )}
+                              </div>
+                              {opt.description && (
+                                <div className="mt-1 text-xs text-muted-foreground line-clamp-2">{opt.description}</div>
+                              )}
+                              <div className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">
+                                {opt.source} · {opt.format}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </button>
-            ))}
+              ))}
+              {filtered.length === 0 && (
+                <div className="text-center text-xs text-muted-foreground py-6">
+                  No metrics match “{query}”.
+                </div>
+              )}
+            </div>
           </div>
         )}
       </DialogContent>
