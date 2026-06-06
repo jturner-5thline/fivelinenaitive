@@ -33,30 +33,33 @@ export function MeetingCreateFollowUpAction({
   const ctx = useMeetingClaapContext(eventId);
   const { company } = useCompany();
   const suggestions = ctx.actionItems.filter(Boolean);
+  const resolveLinkedDealId = async () => {
+    if (linkedDealId || !eventId || !company?.id) return linkedDealId ?? null;
+    try {
+      const { data } = await (supabase.from('meeting_deal_links') as any)
+        .select('deal_id')
+        .eq('org_company_id', company.id)
+        .eq('meeting_external_id', eventId)
+        .is('deleted_at', null)
+        .order('linked_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data?.deal_id as string | undefined) ?? null;
+    } catch {
+      return null;
+    }
+  };
   const { data: resolvedLinkedDealId } = useQuery<string | null>({
     queryKey: ['meeting-create-follow-up-deal-link', eventId, company?.id, linkedDealId],
     enabled: !!eventId && !!company?.id && !linkedDealId,
     staleTime: 0,
-    queryFn: async () => {
-      try {
-        const { data } = await (supabase.from('meeting_deal_links') as any)
-          .select('deal_id')
-          .eq('org_company_id', company!.id)
-          .eq('meeting_external_id', eventId)
-          .is('deleted_at', null)
-          .order('linked_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        return (data?.deal_id as string | undefined) ?? null;
-      } catch {
-        return null;
-      }
-    },
+    queryFn: resolveLinkedDealId,
   });
   const effectiveLinkedDealId = linkedDealId ?? resolvedLinkedDealId ?? null;
 
-  const open = (initialTitle?: string) => {
+  const open = async (initialTitle?: string) => {
     const title = (initialTitle?.trim() || `Follow-up: ${eventTitle}`).trim();
+    const latestLinkedDealId = await resolveLinkedDealId();
     openManual({
       title,
       sourceText: initialTitle?.trim() || `Follow-up to meeting "${eventTitle}"`,
@@ -64,7 +67,7 @@ export function MeetingCreateFollowUpAction({
         module: 'rundown_item',
         recordId: eventId,
         sourceTimestamp: eventStartISO || new Date().toISOString(),
-        dealId: effectiveLinkedDealId,
+        dealId: latestLinkedDealId,
         label: eventTitle,
       },
     });
@@ -76,7 +79,7 @@ export function MeetingCreateFollowUpAction({
         size="sm"
         variant="outline"
         className="h-8 justify-start gap-2 text-xs"
-        onClick={() => open()}
+        onClick={() => { void open(); }}
         disabled={ctx.isLoading && ctx.source === 'none'}
       >
         {effectiveLinkedDealId ? (
@@ -115,7 +118,7 @@ export function MeetingCreateFollowUpAction({
         size="sm"
         variant="ghost"
         className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10 shrink-0"
-        onClick={() => open(suggestions[0])}
+        onClick={() => { void open(suggestions[0]); }}
       >
         Review
       </Button>
