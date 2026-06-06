@@ -175,8 +175,9 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
     return (
       <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
         <PopoverTrigger asChild>
-          <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs">
-            <Link2 className="h-3.5 w-3.5" /> Link to deal
+          <Button size="sm" variant="outline" className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs">
+            <Link2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Link to deal</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-2">
