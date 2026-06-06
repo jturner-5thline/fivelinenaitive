@@ -99,6 +99,12 @@ function extractClaapInsights(rec: Pick<ClaapRecording, "aiFields" | "insightTem
   return [];
 }
 
+// Simple in-memory cache to survive Claap 429 rate limits across invocations
+// while the same edge function instance is warm.
+const listCache = new Map<string, { at: number; recordings: unknown[] }>();
+const getCache = new Map<string, { at: number; recording: unknown }>();
+const CACHE_TTL_MS = 60_000;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -156,6 +162,24 @@ Deno.serve(async (req) => {
       // still returned alongside during the rollout window).
       claapUrl.searchParams.set("returnAiFields", "true");
 
+      const cacheKey = `limit=${limit}`;
+      const cached = listCache.get(cacheKey);
+      const fresh = cached && Date.now() - cached.at < CACHE_TTL_MS;
+      if (fresh) {
+        let recordings = cached!.recordings as ClaapRecording[];
+        if (search) {
+          const s = search.toLowerCase();
+          recordings = recordings.filter((r) =>
+            r.title?.toLowerCase().includes(s) ||
+            r.recorder?.name?.toLowerCase().includes(s) ||
+            r.labels?.some((l: string) => l.toLowerCase().includes(s))
+          );
+        }
+        return new Response(JSON.stringify({ recordings, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       const response = await fetch(claapUrl.toString(), {
         method: "GET",
         headers: claapHeaders,
@@ -164,6 +188,22 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Claap API error:", errorText);
+        // On rate limit (or any upstream error) fall back to last cached
+        // payload if any, otherwise return an empty list so the client UI
+        // doesn't crash with a blank screen.
+        if (response.status === 429 || response.status >= 500) {
+          const stale = listCache.get(cacheKey);
+          const recordings = (stale?.recordings as ClaapRecording[] | undefined) ?? [];
+          return new Response(
+            JSON.stringify({
+              recordings,
+              cached: !!stale,
+              rateLimited: response.status === 429,
+              warning: response.status === 429 ? "Claap rate limit reached, showing cached recordings" : "Claap upstream error, showing cached recordings",
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         return new Response(JSON.stringify({ error: "Failed to fetch recordings from Claap" }), {
           status: response.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,6 +212,9 @@ Deno.serve(async (req) => {
 
       const data = await response.json();
       let recordings = data.result?.recordings || [];
+
+      // Cache the full unfiltered list before applying search.
+      listCache.set(cacheKey, { at: Date.now(), recordings: [...recordings] });
 
       // Filter by search if provided
       if (search) {
@@ -198,6 +241,14 @@ Deno.serve(async (req) => {
       // Get single recording details
       const getUrl = new URL(`https://api.claap.io/v1/recordings/${recordingId}`);
       getUrl.searchParams.set("returnAiFields", "true");
+      const cachedOne = getCache.get(recordingId);
+      if (cachedOne && Date.now() - cachedOne.at < CACHE_TTL_MS) {
+        const recording = cachedOne.recording as ClaapRecording;
+        const enriched = recording ? { ...recording, insights: extractClaapInsights(recording) } : recording;
+        return new Response(JSON.stringify({ recording: enriched, cached: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const response = await fetch(getUrl.toString(), {
         method: "GET",
         headers: claapHeaders,
@@ -206,6 +257,21 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Claap API error:", errorText);
+        if (response.status === 429 || response.status >= 500) {
+          const stale = getCache.get(recordingId);
+          if (stale) {
+            const recording = stale.recording as ClaapRecording;
+            const enriched = recording ? { ...recording, insights: extractClaapInsights(recording) } : recording;
+            return new Response(
+              JSON.stringify({
+                recording: enriched,
+                cached: true,
+                rateLimited: response.status === 429,
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
         return new Response(JSON.stringify({ error: "Failed to fetch recording details" }), {
           status: response.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -214,6 +280,9 @@ Deno.serve(async (req) => {
 
       const data = await response.json();
       const recording = data.result?.recording;
+      if (recording) {
+        getCache.set(recordingId, { at: Date.now(), recording });
+      }
       const enriched = recording
         ? { ...recording, insights: extractClaapInsights(recording) }
         : recording;
