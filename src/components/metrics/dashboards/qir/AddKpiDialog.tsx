@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Sparkles, Plus, ArrowRight, ChevronLeft, Search, Gauge } from 'lucide-react';
+import { Sparkles, Plus, ArrowRight, ChevronLeft, Search, Gauge, BarChart3 } from 'lucide-react';
 import { KPI_TEMPLATES, type KpiTemplateId } from './kpiTemplates';
 import {
   buildInsightsMetricOptions,
@@ -94,7 +94,7 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
           <DialogDescription>
             {step === 'chooser'
               ? 'Choose a pre-configured KPI template or create a new KPI from scratch.'
-              : 'Any metric used across Insights dashboards can be added as a KPI. Charts are excluded.'}
+              : 'Any metric or chart from any Insights dashboard can be added as a KPI. Chart sources render as a single resolved value (never the chart itself).'}
           </DialogDescription>
         </DialogHeader>
 
@@ -143,6 +143,7 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
                   <div className="space-y-1.5">
                     {group.options.map(opt => {
                       const isTemplate = opt.kind === 'template';
+                        const isChart = !!opt.derivedFromChart;
                       return (
                         <button
                           key={opt.id}
@@ -155,13 +156,20 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
                               <div className="flex items-center gap-2">
                                 {isTemplate
                                   ? <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                                  : <Gauge className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                                    : isChart
+                                      ? <BarChart3 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      : <Gauge className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                                 <span className="text-sm font-semibold truncate">{opt.label}</span>
                                 {isTemplate && (
                                   <span className="rounded-sm bg-primary/15 text-primary text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
                                     Template
                                   </span>
                                 )}
+                                  {isChart && (
+                                    <span className="rounded-sm bg-muted text-muted-foreground text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
+                                      Chart → value
+                                    </span>
+                                  )}
                                 {opt.supportsDrilldown && !isTemplate && (
                                   <span className="rounded-sm bg-muted text-muted-foreground text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
                                     Drilldown
@@ -172,7 +180,7 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
                                 <div className="mt-1 text-xs text-muted-foreground line-clamp-2">{opt.description}</div>
                               )}
                               <div className="mt-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">
-                                {opt.source} · {opt.format}
+                                  {opt.source} · {opt.format}{opt.resolution ? ` · ${opt.resolution}` : ''}
                               </div>
                             </div>
                             <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary mt-0.5 shrink-0" />
