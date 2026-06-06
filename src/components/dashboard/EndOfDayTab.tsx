@@ -1645,6 +1645,14 @@ function EventDetailPane({
               Action items moved to Suggested tasks above.
             </p>
             <div className="flex justify-end mt-1.5">
+              {linkedDealId && (
+                <AddToDealCalendarInlineAction
+                  dealId={linkedDealId}
+                  eventId={event.id}
+                  eventTitle={eventTitle}
+                  eventStartISO={event.start}
+                />
+              )}
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
                 onClick={() => {
                   const text = noteDraft.trim();
