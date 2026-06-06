@@ -67,6 +67,12 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
   // a deal is linked.)
   const noLinkedDeal = !prefill?.ctx.dealId;
 
+  // Fall back to the linked deal from the source context if state hasn't
+  // hydrated yet (or if the deal isn't in the in-memory `deals` list, in
+  // which case the locked-deal UI may not surface it but we still want
+  // submit/toggle gates to recognise the link).
+  const effectiveDealId = dealId ?? prefill?.ctx.dealId ?? null;
+
   useEffect(() => {
     if (!open || !prefill) return;
     setKind(noLinkedDeal ? 'task' : null);
@@ -95,14 +101,13 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
 
   const selectedDeal = dealId ? deals.find((d) => d.id === dealId) : null;
 
+  // Tasks: title only (date + deal optional). Events: title + date + deal.
   const canSave =
     !!kind &&
     !!user &&
     !!title.trim() &&
-    // Plain task w/o linked deal → date optional
-    (kind === 'task' ? (noLinkedDeal ? true : !!dealId) : !!dealId && !!date) &&
-    (kind === 'event' ? !!date : true) &&
-    !submitting;
+    !submitting &&
+    (kind === 'event' ? !!effectiveDealId && !!date : true);
 
   const handleSave = async () => {
     if (!canSave || !prefill || !user || !kind) return;
@@ -121,7 +126,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
       // 1) Primary write — task or event.
       await createDealFollowUp({
         kind,
-        dealId,
+        dealId: effectiveDealId,
         title: title.trim(),
         date: dateStr,
         time: kind === 'event' && time ? time : null,
@@ -132,11 +137,11 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
 
       // 2) Optional companion calendar entry when the user ticks "also
       // add to deal calendar" on a Task that has a deal + date.
-      if (kind === 'task' && alsoOnDealCalendar && dealId && dateStr) {
+      if (kind === 'task' && alsoOnDealCalendar && effectiveDealId && dateStr) {
         try {
           await createDealFollowUp({
             kind: 'event',
-            dealId,
+            dealId: effectiveDealId,
             title: title.trim(),
             date: dateStr,
             time: null,
@@ -151,7 +156,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ['deal-calendar-items', dealId] });
+      queryClient.invalidateQueries({ queryKey: ['deal-calendar-items', effectiveDealId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
       const dealName = selectedDeal?.name || 'deal';
@@ -159,15 +164,15 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
       const successMsg =
         kind === 'event'
           ? `Added event to ${dealName} calendar${friendlyDate ? ` for ${friendlyDate}` : ''}`
-          : alsoOnDealCalendar && dealId
+          : alsoOnDealCalendar && effectiveDealId
             ? `Task created and added to ${dealName} calendar${friendlyDate ? ` for ${friendlyDate}` : ''}`
             : noLinkedDeal
               ? `Task created${friendlyDate ? ` for ${friendlyDate}` : ''}`
               : `Task created for ${dealName}${friendlyDate ? ` · ${friendlyDate}` : ''}`;
-      toast.success(successMsg, dealId ? {
+      toast.success(successMsg, effectiveDealId ? {
         action: {
           label: 'Open calendar',
-          onClick: () => { window.location.href = `/deals?deal=${dealId}#calendar`; },
+          onClick: () => { window.location.href = `/deals?deal=${effectiveDealId}#calendar`; },
         },
       } : undefined);
       onOpenChange(false);
@@ -349,7 +354,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
           </div>
 
           {/* Also-on-calendar toggle (Task + linked deal only) */}
-          {kind === 'task' && !noLinkedDeal && dealId && (
+          {kind === 'task' && !!effectiveDealId && (
             <label className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
               <Checkbox
                 checked={alsoOnDealCalendar}
