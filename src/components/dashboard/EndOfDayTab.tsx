@@ -1003,7 +1003,9 @@ export function EndOfDayTab({
           onCreateTask={(initialTitle) => {
             setPrefill({
               title: initialTitle || `Follow Up: ${selectedEvent.summary || '(No title)'}`,
-              dealId: null,
+              // Explicit meeting→deal link is the SINGLE source of truth.
+              // If nothing is linked, leave empty — never guess.
+              dealId: selectedLinkedDealId ?? null,
               eventId: selectedEvent.id,
             });
             setFollowUpOpen(true);
