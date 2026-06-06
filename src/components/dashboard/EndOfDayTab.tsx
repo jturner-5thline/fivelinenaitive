@@ -1121,6 +1121,7 @@ function EventDetailPane({
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteDirty, setNoteDirty] = useState(false);
+  const [savedNotes, setSavedNotes] = useState<{ id: string; text: string; at: string }[]>([]);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'local'>('local');
