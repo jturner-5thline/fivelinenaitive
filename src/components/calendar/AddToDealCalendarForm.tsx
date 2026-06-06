@@ -171,9 +171,187 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
     }
   };
 
-  const gap = compact ? 'space-y-2.5' : 'space-y-4';
   const labelCls = 'text-[10px] uppercase tracking-wide text-muted-foreground';
 
+  if (compact) {
+    return (
+      <div className="flex h-full max-h-full min-h-0 w-full flex-col">
+        {/* Pinned header: source line */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground truncate shrink-0 pb-2 border-b border-border/60">
+          <span className="uppercase tracking-wide">{MODULE_LABEL[prefill.ctx.module]}</span>
+          {prefill.ctx.label && <><span>·</span><span className="truncate">{prefill.ctx.label}</span></>}
+        </div>
+
+        {/* Scrollable middle */}
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 py-2.5 pr-1">
+          {/* Item type */}
+          <div>
+            <Label className={labelCls}>Item type</Label>
+            <div className="mt-1 grid grid-cols-2 gap-1.5">
+              <Button
+                type="button"
+                size="sm"
+                variant={kind === 'task' ? 'default' : 'outline'}
+                onClick={() => setKind('task')}
+                className="justify-center h-8"
+              >
+                <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Task / To-do
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={kind === 'event' ? 'default' : 'outline'}
+                onClick={() => setKind('event')}
+                className="justify-center h-8"
+              >
+                <CalendarIcon className="h-3.5 w-3.5 mr-1.5" /> Event
+              </Button>
+            </div>
+          </div>
+
+          {/* Title */}
+          <div>
+            <Label htmlFor="add-cal-title" className={labelCls}>Title</Label>
+            <Input
+              id="add-cal-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Item title"
+              className="mt-1 h-8 text-sm"
+            />
+          </div>
+
+          {/* Deal */}
+          <div>
+            <Label className={cn(labelCls, 'flex items-center gap-1')}>
+              Deal
+              {lockedDeal && <Lock className="h-3 w-3" />}
+            </Label>
+            {lockedDeal && selectedDeal ? (
+              <div className="mt-1 px-2.5 py-1.5 rounded-md border border-border bg-muted/30 text-xs truncate">
+                {selectedDeal.name}
+                <span className="text-[10px] text-muted-foreground ml-1.5">(from source)</span>
+              </div>
+            ) : (
+              <div className="mt-1 space-y-1.5">
+                <Input
+                  value={dealQuery}
+                  onChange={(e) => setDealQuery(e.target.value)}
+                  placeholder="Search deals…"
+                  className="h-8 text-sm"
+                />
+                <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                  {filteredDeals.length === 0 && (
+                    <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
+                  )}
+                  {filteredDeals.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => setDealId(d.id)}
+                      className={cn(
+                        'w-full text-left px-2.5 py-1 text-xs hover:bg-accent',
+                        dealId === d.id && 'bg-accent text-accent-foreground',
+                      )}
+                    >
+                      {d.name}
+                      {d.company && <span className="text-muted-foreground ml-1.5 text-[10px]">{d.company}</span>}
+                    </button>
+                  ))}
+                </div>
+                {!dealId && kind === 'event' && (
+                  <p className="text-[10px] text-amber-500">Pick a deal — required for events.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Date + Time */}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className={labelCls}>
+                Date {kind === 'task' && <span className="normal-case text-muted-foreground/70">(optional)</span>}
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn('mt-1 w-full justify-start text-left font-normal h-8 text-xs', !date && 'text-muted-foreground')}
+                  >
+                    <CalendarIcon className="h-3.5 w-3.5 mr-1.5" />
+                    {date ? format(date, 'MMM d, yyyy') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0 z-[100]">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                    className={cn('p-3 pointer-events-auto')}
+                  />
+                </PopoverContent>
+              </Popover>
+              {kind === 'event' && !date && (
+                <p className="mt-1 text-[10px] text-amber-500">Pick a date.</p>
+              )}
+            </div>
+            {kind === 'event' && (
+              <div>
+                <Label className={labelCls}>Time (optional)</Label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="mt-1 h-8 text-xs"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Also-on-calendar toggle */}
+          {kind === 'task' && !!effectiveDealId && (
+            <label className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 cursor-pointer">
+              <Checkbox
+                checked={alsoOnDealCalendar}
+                onCheckedChange={(v) => setAlsoOnDealCalendar(v === true)}
+              />
+              <div className="text-xs leading-tight">
+                <div className="font-medium">Also add to deal calendar</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Matching calendar entry on the deal{date ? ` · ${format(date, 'EEE, MMM d')}` : ''}.
+                </div>
+              </div>
+            </label>
+          )}
+        </div>
+
+        {/* Pinned footer: actions */}
+        <div className="flex items-center justify-end gap-2 pt-2 shrink-0 border-t border-border/60">
+          <Button size="sm" variant="ghost" onClick={onClose} disabled={submitting} className="h-8 text-xs">
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="liquid-glass"
+            onClick={handleSave}
+            disabled={!canSave}
+            className="h-8 rounded-lg px-3 text-xs font-semibold"
+          >
+            {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+            {kind === 'event'
+              ? 'Add event'
+              : alsoOnDealCalendar
+                ? 'Create task + calendar'
+                : 'Create task'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const gap = 'space-y-4';
   return (
     <div className={cn('w-full', gap)}>
       {/* Tiny source line */}
