@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Clock, UserPlus, Trash2, ArrowRight, CheckCircle, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,15 +14,47 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const LAST_READ_KEY = 'latest-updates-last-read-at';
+const READ_TYPE = 'latest_updates_cutoff';
+const READ_ID = 'global';
 
 export function LatestUpdatesDropdown() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  // Seed from localStorage for instant UI, then reconcile from DB (per-user,
+  // cross-device). DB value wins so a refresh after Mark-all-read persists.
   const [lastReadAt, setLastReadAt] = useState<string | null>(() =>
     localStorage.getItem(LAST_READ_KEY)
   );
   const { activities, isLoading } = useAllActivities({ limit: 50 });
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('notification_reads')
+        .select('read_at')
+        .eq('user_id', user.id)
+        .eq('notification_type', READ_TYPE)
+        .eq('notification_id', READ_ID)
+        .maybeSingle();
+      if (cancelled || error) return;
+      const dbAt = data?.read_at ?? null;
+      if (!dbAt) return;
+      // Freshness-aware merge: take the later of local/db so a synced row
+      // can't resurrect already-read state.
+      setLastReadAt(prev => {
+        if (!prev) return dbAt;
+        return new Date(dbAt) > new Date(prev) ? dbAt : prev;
+      });
+      localStorage.setItem(LAST_READ_KEY, dbAt);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
 
   // Filter to only show lender updates and milestone changes
   const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
@@ -36,11 +68,30 @@ export function LatestUpdatesDropdown() {
   );
   const unreadCount = unreadActivities.length;
 
-  const handleMarkAllAsRead = useCallback(() => {
+  const handleMarkAllAsRead = useCallback(async () => {
     const now = new Date().toISOString();
+    // Optimistic — drops the badge immediately even if the DB write is slow.
     localStorage.setItem(LAST_READ_KEY, now);
     setLastReadAt(now);
-  }, []);
+    if (!user) return;
+    // Idempotent upsert on (user_id, type, id). Re-running is a no-op aside
+    // from bumping read_at. Missing rows are inserted; no error when nothing
+    // is unread.
+    const { error } = await supabase
+      .from('notification_reads')
+      .upsert(
+        {
+          user_id: user.id,
+          notification_type: READ_TYPE,
+          notification_id: READ_ID,
+          read_at: now,
+        },
+        { onConflict: 'user_id,notification_type,notification_id' }
+      );
+    if (error) {
+      console.error('Failed to persist latest-updates read cutoff:', error);
+    }
+  }, [user]);
 
   const getIcon = (activityType: string, description: string) => {
     const isMilestoneChange = activityType === 'lender_substage_change' || description.toLowerCase().includes('milestone changed');
