@@ -502,12 +502,6 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
 
   const approveAll = async (subset?: MeetingTaskSuggestion[]): Promise<number> => {
     const pool = (subset ?? suggestions).filter((s) => s.status === 'pending');
-    // Gate: refuse the whole batch if any row has no assignee. The UI
-    // already disables the button in this case; this is defense in depth.
-    if (pool.some((s) => !s.assignee_user_id)) {
-      toast.error('One or more selected tasks have no assignee. Choose assignees first.');
-      return 0;
-    }
     let count = 0;
     for (const s of pool) {
       try {
