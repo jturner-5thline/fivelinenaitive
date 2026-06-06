@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
-import { Save as SaveIcon, Check } from 'lucide-react';
+import { Save as SaveIcon, Check, Send, Loader2 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
@@ -133,6 +134,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   // Always-current save fn lives in a ref so updates don't re-render
   // (the child's `save` callback gets a new identity every render).
   const saveFnRef = useRef<(() => Promise<boolean>) | null>(null);
