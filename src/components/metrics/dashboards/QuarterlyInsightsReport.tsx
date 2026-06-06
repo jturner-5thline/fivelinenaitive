@@ -749,6 +749,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
    *  Persists the metric source id alongside the KPI so future renderers
    *  can swap in live values without losing the user's selection. */
   const addMetricKPI = (opt: InsightsMetricOption) => {
+    const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
     set(prev => ({
       ...prev,
       kpis: [...prev.kpis, {
@@ -756,7 +757,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
         label: opt.label,
         actual: '0',
         target: '0',
-        format: opt.format,
+        format: fmt,
         templateConfig: {
           metricSourceId: opt.metricSourceId ?? null,
           customMetricId: opt.customMetricId ?? null,
