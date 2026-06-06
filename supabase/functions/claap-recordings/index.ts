@@ -188,26 +188,25 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Claap API error:", errorText);
-        // On rate limit (or any upstream error) fall back to last cached
-        // payload if any, otherwise return an empty list so the client UI
-        // doesn't crash with a blank screen.
-        if (response.status === 429 || response.status >= 500) {
-          const stale = listCache.get(cacheKey);
-          const recordings = (stale?.recordings as ClaapRecording[] | undefined) ?? [];
-          return new Response(
-            JSON.stringify({
-              recordings,
-              cached: !!stale,
-              rateLimited: response.status === 429,
-              warning: response.status === 429 ? "Claap rate limit reached, showing cached recordings" : "Claap upstream error, showing cached recordings",
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-          );
-        }
-        return new Response(JSON.stringify({ error: "Failed to fetch recordings from Claap" }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Never return non-2xx from the list path — the UI treats a
+        // non-2xx as a hard failure and shows a blank screen. Fall back
+        // to the last cached payload (or an empty list) and surface the
+        // upstream status as a soft warning instead.
+        const stale = listCache.get(cacheKey);
+        const recordings = (stale?.recordings as ClaapRecording[] | undefined) ?? [];
+        return new Response(
+          JSON.stringify({
+            recordings,
+            cached: !!stale,
+            rateLimited: response.status === 429,
+            upstreamStatus: response.status,
+            warning:
+              response.status === 429
+                ? "Claap rate limit reached, showing cached recordings"
+                : `Claap upstream error (${response.status}), showing cached recordings`,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
       const data = await response.json();
@@ -257,25 +256,24 @@ Deno.serve(async (req) => {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Claap API error:", errorText);
-        if (response.status === 429 || response.status >= 500) {
-          const stale = getCache.get(recordingId);
-          if (stale) {
-            const recording = stale.recording as ClaapRecording;
-            const enriched = recording ? { ...recording, insights: extractClaapInsights(recording) } : recording;
-            return new Response(
-              JSON.stringify({
-                recording: enriched,
-                cached: true,
-                rateLimited: response.status === 429,
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-            );
-          }
-        }
-        return new Response(JSON.stringify({ error: "Failed to fetch recording details" }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const stale = getCache.get(recordingId);
+        const recording = stale ? (stale.recording as ClaapRecording) : null;
+        const enriched = recording
+          ? { ...recording, insights: extractClaapInsights(recording) }
+          : null;
+        return new Response(
+          JSON.stringify({
+            recording: enriched,
+            cached: !!stale,
+            rateLimited: response.status === 429,
+            upstreamStatus: response.status,
+            warning:
+              response.status === 429
+                ? "Claap rate limit reached"
+                : `Claap upstream error (${response.status})`,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
       const data = await response.json();
