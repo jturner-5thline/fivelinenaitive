@@ -202,27 +202,39 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                               ? 'deal-manager'
                               : s.assignment_source === 'manual'
                                 ? 'manual'
-                                : 'internal'
+                                : s.assignment_source === 'viewer'
+                                  ? 'viewer'
+                                  : 'internal'
                           }
                           variant="outline"
                           className={cn(
                             'h-4 px-1 text-[9px] gap-0.5',
                             s.assignment_source === 'deal-manager'
                               ? 'border-sky-500/30 text-sky-200/90 bg-sky-500/[0.06]'
-                              : 'border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]',
+                              : s.assignment_source === 'viewer'
+                                ? 'border-amber-500/30 text-amber-200/90 bg-amber-500/[0.06]'
+                                : 'border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]',
                           )}
                         >
-                          <UserIcon className="h-2.5 w-2.5" /> {s.assignee_name}
+                          <UserIcon className="h-2.5 w-2.5" />{' '}
+                          {s.assignment_source === 'viewer' ? 'You' : s.assignee_name}
                           {s.assignment_source === 'deal-manager' && (
                             <span className="ml-0.5 inline-flex items-center rounded-sm border border-sky-400/30 bg-sky-400/[0.08] px-0.5 text-[8px] uppercase tracking-wider text-sky-200/80">
                               deal mgr
+                            </span>
+                          )}
+                          {s.assignment_source === 'viewer' && (
+                            <span className="ml-0.5 inline-flex items-center rounded-sm border border-amber-400/30 bg-amber-400/[0.08] px-0.5 text-[8px] uppercase tracking-wider text-amber-200/80">
+                              default
                             </span>
                           )}
                         </Badge>
                       ) : isPending ? (
                         <AssigneePicker
                           members={internalMembers}
+                          viewer={currentViewer}
                           onSelect={(m) => void assignManually(s, m)}
+                          onClear={() => void clearAssignment(s)}
                           trigger={
                             <button
                               type="button"
@@ -239,15 +251,19 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                           <UserIcon className="h-2.5 w-2.5" /> Unassigned
                         </Badge>
                       )}
-                      {s.assignee_user_id && s.assignee_email && (
+                      {s.assignee_user_id && s.assignee_email && s.assignment_source !== 'viewer' && (
                         <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <AtSign className="h-2.5 w-2.5" /> {s.assignee_email}
                         </Badge>
                       )}
                       {s.external_mention && (
-                        <span className="text-[9px] text-muted-foreground/70 italic">
-                          mentioned: {s.external_mention}
-                        </span>
+                        <Badge
+                          variant="outline"
+                          className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground/80 bg-transparent italic"
+                          title="External contact — cannot be assigned"
+                        >
+                          External contact: {s.external_mention}
+                        </Badge>
                       )}
                       {s.due_date && (
                         <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
