@@ -61,11 +61,6 @@ export function useClaapRecordings() {
       const params = new URLSearchParams({ action: 'list', limit: '50' });
       if (search) params.set('search', search);
 
-      const response = await supabase.functions.invoke('claap-recordings', {
-        body: null,
-        headers: {},
-      });
-
       // Use fetch directly for query params
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
       const fetchResponse = await fetch(url, {
@@ -89,6 +84,9 @@ export function useClaapRecordings() {
       }
 
       const data = await fetchResponse.json();
+      if (data?.rateLimited) {
+        console.warn('[Claap] edge fallback', data.upstreamStatus, data.warning || 'showing cached recordings');
+      }
       setRecordings(data.recordings || []);
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
@@ -124,11 +122,18 @@ export function useClaapRecordings() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        if (response.status === 429 || response.status >= 500) {
+          console.warn('[Claap] recording details unavailable', response.status, '— returning null');
+          return null;
+        }
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch recording');
       }
 
       const data = await response.json();
+      if (data?.rateLimited) {
+        console.warn('[Claap] edge fallback', data.upstreamStatus, data.warning || 'showing cached recording');
+      }
       return data.recording || null;
     } catch (err: any) {
       console.error('Error fetching Claap recording:', err);
@@ -159,7 +164,11 @@ export function useClaapRecordings() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        if (response.status === 429 || response.status >= 500) {
+          console.warn('[Claap] transcript unavailable', response.status, '— returning null');
+          return null;
+        }
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to fetch transcript');
       }
 
