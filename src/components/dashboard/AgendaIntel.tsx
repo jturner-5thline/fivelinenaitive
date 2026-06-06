@@ -64,7 +64,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isActiveDeal } from '@/lib/deals';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 
 // ── Types ─────────────────────────────────────────────────────
