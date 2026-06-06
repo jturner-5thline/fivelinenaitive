@@ -30,6 +30,7 @@ export interface CalendarSourceCtx {
 
 interface ProviderApi {
   openFromSelection: (selectedText: string, ctx: CalendarSourceCtx) => void;
+  openManual: (init: { title: string; ctx: CalendarSourceCtx; sourceText?: string }) => void;
 }
 
 const Ctx = createContext<ProviderApi | null>(null);
@@ -44,6 +45,12 @@ export function useAddToDealCalendar(): ProviderApi {
         if (typeof window !== 'undefined') {
           // eslint-disable-next-line no-console
           console.warn('[AddToDealCalendar] Provider not mounted; ignoring selection.');
+        }
+      },
+      openManual: () => {
+        if (typeof window !== 'undefined') {
+          // eslint-disable-next-line no-console
+          console.warn('[AddToDealCalendar] Provider not mounted; ignoring openManual.');
         }
       },
     };
@@ -76,7 +83,25 @@ export function AddToDealCalendarProvider({ children }: { children: ReactNode })
     setOpen(true);
   }, []);
 
-  const api = useMemo<ProviderApi>(() => ({ openFromSelection }), [openFromSelection]);
+  const openManual = useCallback(
+    (init: { title: string; ctx: CalendarSourceCtx; sourceText?: string }) => {
+      const text = (init.sourceText ?? init.title).trim();
+      const parsed = parseRelativeDate(text || init.title, init.ctx.sourceTimestamp);
+      setPrefill({
+        sourceText: text || init.title,
+        title: init.title,
+        parsed,
+        ctx: init.ctx,
+      });
+      setOpen(true);
+    },
+    [],
+  );
+
+  const api = useMemo<ProviderApi>(
+    () => ({ openFromSelection, openManual }),
+    [openFromSelection, openManual],
+  );
 
   return (
     <Ctx.Provider value={api}>
