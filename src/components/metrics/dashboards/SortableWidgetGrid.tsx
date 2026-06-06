@@ -26,8 +26,21 @@ export type SortableItem = {
   render: () => React.ReactNode;
 };
 
-function SortableCard({ id, gridColumn, children }: { id: string; gridColumn?: string; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+function SortableCard({
+  id,
+  gridColumn,
+  children,
+  isEditMode,
+}: {
+  id: string;
+  gridColumn?: string;
+  children: React.ReactNode;
+  isEditMode: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+    disabled: !isEditMode,
+  });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -38,33 +51,36 @@ function SortableCard({ id, gridColumn, children }: { id: string; gridColumn?: s
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      {/* Drag handle pinned to top-right of card */}
-      <button
-        type="button"
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
-        {...listeners}
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          zIndex: 5,
-          width: 22,
-          height: 22,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 6,
-          background: 'rgba(20,35,55,0.6)',
-          border: '1px solid rgba(120,170,255,0.18)',
-          color: 'rgba(170,205,225,0.6)',
-          cursor: 'grab',
-          touchAction: 'none',
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <GripVertical size={12} />
-      </button>
+      {/* Drag handle pinned to top-right of card — only shown when the user
+          has explicitly entered layout edit mode from the header pencil. */}
+      {isEditMode && (
+        <button
+          type="button"
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          {...listeners}
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 5,
+            width: 22,
+            height: 22,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 6,
+            background: 'rgba(20,35,55,0.6)',
+            border: '1px solid rgba(120,170,255,0.35)',
+            color: 'rgba(170,205,225,0.85)',
+            cursor: 'grab',
+            touchAction: 'none',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <GripVertical size={12} />
+        </button>
+      )}
       {children}
     </div>
   );
@@ -75,12 +91,20 @@ export function SortableWidgetGrid({
   items,
   style,
   className,
+  isEditMode = false,
 }: {
   /** Stable key used to persist the user's order in user_ui_preferences. */
   storageKey: string;
   items: SortableItem[];
   style?: React.CSSProperties;
   className?: string;
+  /**
+   * When true, widgets show drag handles and can be reordered. Defaults to
+   * false so the grid is locked during normal viewing — rearranging is only
+   * enabled when the user explicitly enters layout edit mode from the
+   * Insights header pencil control.
+   */
+  isEditMode?: boolean;
 }) {
   const defaultOrder = useMemo(() => items.map(i => i.id), [items]);
   const [savedOrder, persistOrder] = useUiPreference<string[]>(storageKey, defaultOrder);
@@ -106,6 +130,7 @@ export function SortableWidgetGrid({
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (!isEditMode) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = order.indexOf(String(active.id));
@@ -130,7 +155,7 @@ export function SortableWidgetGrid({
             const item = byId.get(id);
             if (!item) return null;
             return (
-              <SortableCard key={id} id={id} gridColumn={item.gridColumn}>
+              <SortableCard key={id} id={id} gridColumn={item.gridColumn} isEditMode={isEditMode}>
                 {item.render()}
               </SortableCard>
             );
