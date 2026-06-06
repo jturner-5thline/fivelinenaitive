@@ -426,15 +426,13 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Gate: require an internal assignee. Defense-in-depth so the
-    //    tasks insert path never produces an unassigned task. We throw a
-    //    typed error so any direct caller (not just the UI button) is
-    //    forced to handle it; the UI catches and shows an inline toast.
-    if (!s.assignee_user_id) {
-      throw new MissingAssigneeError(s.suggestion_id);
-    }
-    const assignedTo = s.assignee_user_id;
-    const assigneeEmail = s.assignee_email;
+    // The render-time fallback chain always resolves to an internal user
+    // (manual pick > mention > deal manager > current viewer), so a
+    // missing assignee here means a stale/external row. Default to the
+    // signed-in viewer rather than blocking the user — they are always
+    // a valid internal assignee on the Daily Rundown surface.
+    const assignedTo = s.assignee_user_id || user.id;
+    const assigneeEmail = s.assignee_user_id ? s.assignee_email : (user.email ?? null);
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
