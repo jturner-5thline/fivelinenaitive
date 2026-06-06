@@ -7,6 +7,7 @@ import {
   parseISO,
   differenceInMinutes,
   isSameDay,
+  formatDistanceToNow,
 } from 'date-fns';
 import {
   Calendar as CalendarIcon,
@@ -64,8 +65,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isActiveDeal } from '@/lib/deals';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
+import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -596,6 +598,15 @@ function MeetingCard({
               : 'Link Claap'}
           </Button>
         </div>
+      )}
+
+      {/* Saved notes — selectable narrative for Add-to-Deal-Calendar */}
+      {!isPersonal && (
+        <MeetingNotesBlock
+          eventId={event.id}
+          eventTitle={event.summary || '(no title)'}
+          dealId={dealMatch?.id ?? null}
+        />
       )}
     </div>
   );
@@ -1317,6 +1328,65 @@ export function AgendaIntel() {
 
 export default AgendaIntel;
 
+// ── Meeting notes (saved) ──────────────────────────────────
+// Renders persisted notes for a calendar event (wf_meeting_notes) and
+// wraps each note in <HighlightCalendarMenu> so users can convert
+// highlighted text into a deal calendar item.
+function MeetingNotesBlock({
+  eventId,
+  eventTitle,
+  dealId,
+}: {
+  eventId: string;
+  eventTitle: string;
+  dealId: string | null;
+}) {
+  const { data: notes = [], isLoading } = useQuery({
+    queryKey: ['wf_meeting_notes', eventId],
+    enabled: !!eventId,
+    staleTime: 15_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('wf_meeting_notes')
+        .select('id, notes, created_at')
+        .eq('calendar_event_id', eventId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data || []).filter((n) => (n.notes ?? '').trim().length > 0);
+    },
+  });
+
+  if (isLoading || notes.length === 0) return null;
+
+  return (
+    <section className="pt-1">
+      <h4 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">
+        Notes
+      </h4>
+      <div className="space-y-2">
+        {notes.map((n) => (
+          <HighlightCalendarMenu
+            key={n.id}
+            sourceCtx={{
+              module: 'meeting_notes',
+              recordId: `${eventId}:${n.id}`,
+              sourceTimestamp: n.created_at,
+              dealId: dealId ?? null,
+              label: eventTitle,
+            }}
+            className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
+          >
+            <div>{n.notes}</div>
+            <div className="mt-1 text-[10px] text-muted-foreground/70">
+              {formatDistanceToNow(parseISO(n.created_at), { addSuffix: true })}
+            </div>
+          </HighlightCalendarMenu>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ── Meeting note dialog ────────────────────────────────────
 // Lightweight composer that writes to wf_meeting_notes, scoped to the
 // selected calendar event (and to the linked deal when one exists).
@@ -1337,6 +1407,7 @@ function MeetingNoteDialog({
 }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) setNote('');
@@ -1357,6 +1428,9 @@ function MeetingNoteDialog({
       });
       if (error) throw error;
       toast.success(dealName ? `Note saved to ${dealName}` : 'Note saved');
+      if (event?.id) {
+        queryClient.invalidateQueries({ queryKey: ['wf_meeting_notes', event.id] });
+      }
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save note';
