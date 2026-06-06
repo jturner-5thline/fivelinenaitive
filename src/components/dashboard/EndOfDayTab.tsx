@@ -1570,7 +1570,12 @@ function EventDetailPane({
             <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
                 onClick={() => {
-                  onNoteAdded(noteDraft.trim());
+                  const text = noteDraft.trim();
+                  onNoteAdded(text);
+                  setSavedNotes((prev) => [
+                    ...prev,
+                    { id: `${Date.now()}`, text, at: new Date().toISOString() },
+                  ]);
                   setNoteDraft('');
                   setNoteDirty(false);
                   setNotePrefilledFromClaap(false);
