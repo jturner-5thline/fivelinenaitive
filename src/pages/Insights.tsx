@@ -1430,6 +1430,12 @@ function MetricsInner() {
     if (view === 'weekly-rundown') {
       setSelectedDashboard('management-snapshot');
     }
+    // Deep-link from Submit-for-review email: ?tab=jt|jm|sw (or agenda/
+    // dashboard/forecasts/key-metrics) opens the Management Review carousel
+    // and the carousel itself reads the same param to pick the inner tab.
+    if (searchParams.get('tab')) {
+      setSelectedDashboard('management-review');
+    }
   }, [searchParams]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
