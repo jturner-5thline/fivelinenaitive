@@ -14,9 +14,15 @@ import { toast } from 'sonner';
 /**
  * Resolves a contextual "source" from the right-click target by walking up
  * the DOM looking for a `data-comment-source` ancestor. Falls back to the
- * closest section anchor (`[id^="qir-section-"]`).
+ * closest section anchor matching the configured prefix (default
+ * `qir-section-`).
  */
-function resolveSource(el: HTMLElement | null): { type: string; id: string; label: string } {
+function resolveSource(
+  el: HTMLElement | null,
+  sectionIdPrefix: string,
+  sectionLabels: Record<string, string>,
+  fallbackLabel: string,
+): { type: string; id: string; label: string } {
   let node: HTMLElement | null = el;
   while (node && node !== document.body) {
     if (node.dataset && node.dataset.commentSource) {
@@ -24,16 +30,16 @@ function resolveSource(el: HTMLElement | null): { type: string; id: string; labe
       const label = node.dataset.commentSourceLabel || node.dataset.commentSource;
       return { type: node.dataset.commentSource, id, label };
     }
-    if (node.id && node.id.startsWith('qir-section-')) {
-      const sectionKey = node.id.replace(/^qir-section-/, '');
-      return { type: 'section', id: sectionKey, label: SECTION_LABELS[sectionKey] || sectionKey };
+    if (node.id && node.id.startsWith(sectionIdPrefix)) {
+      const sectionKey = node.id.replace(new RegExp(`^${sectionIdPrefix}`), '');
+      return { type: 'section', id: sectionKey, label: sectionLabels[sectionKey] || sectionKey };
     }
     node = node.parentElement;
   }
-  return { type: 'section', id: 'page', label: 'Dashboard' };
+  return { type: 'section', id: 'page', label: fallbackLabel };
 }
 
-const SECTION_LABELS: Record<string, string> = {
+const DEFAULT_SECTION_LABELS: Record<string, string> = {
   summary: 'Executive Summary',
   financials: 'Revenue & Financial Performance',
   pipeline: 'Goals',
@@ -59,9 +65,9 @@ function mapTargetTypeToQueue(t: string):
 }
 
 /** Best-effort snapshot of the underlying element's text for traceability. */
-function snapshotForSource(type: string, id: string, label?: string): string {
+function snapshotForSource(type: string, id: string, label: string | undefined, sectionIdPrefix: string): string {
   let el: HTMLElement | null = null;
-  if (type === 'section') el = document.getElementById(`qir-section-${id}`);
+  if (type === 'section') el = document.getElementById(`${sectionIdPrefix}${id}`);
   else el = document.querySelector<HTMLElement>(
     `[data-comment-source="${type}"][data-comment-source-id="${CSS.escape(id)}"]`,
   );
@@ -139,10 +145,19 @@ export function QirContextualComments({
   reportKey,
   reportLabel,
   rootRef,
+  sectionIdPrefix = 'qir-section-',
+  sectionLabels = DEFAULT_SECTION_LABELS,
+  fallbackSourceLabel = 'Dashboard',
 }: {
   reportKey: string;
   reportLabel: string;
   rootRef: React.RefObject<HTMLElement>;
+  /** DOM id prefix used to discover section anchors (e.g. `agenda-section-`). */
+  sectionIdPrefix?: string;
+  /** Maps section-key → human label for the right-click composer header. */
+  sectionLabels?: Record<string, string>;
+  /** Label used when no source can be resolved (defaults to "Dashboard"). */
+  fallbackSourceLabel?: string;
 }) {
   // Safe defaults: hooks may briefly return undefined on first render before
   // auth/company context resolves. Default every collection to an empty array
@@ -209,7 +224,7 @@ export function QirContextualComments({
       // Avoid intercepting clicks inside the comments drawer/composer themselves.
       if (target.closest('[data-qir-comments-ui]')) return;
       e.preventDefault();
-      const source = resolveSource(target);
+      const source = resolveSource(target, sectionIdPrefix, sectionLabels, fallbackSourceLabel);
       // Capture snippet: prefer a live text selection (if it sits inside the
       // right-clicked content); otherwise fall back to the nearest block text.
       let snippet = '';
@@ -242,7 +257,7 @@ export function QirContextualComments({
     };
     root.addEventListener('contextmenu', onCtx);
     return () => root.removeEventListener('contextmenu', onCtx);
-  }, [rootRef]);
+  }, [rootRef, sectionIdPrefix, sectionLabels, fallbackSourceLabel]);
 
   // ESC to close composer.
   useEffect(() => {
@@ -283,7 +298,7 @@ export function QirContextualComments({
             sourceType: mapTargetTypeToQueue(source.type),
             sourceId: source.id,
             sourceAnchor: `${source.type}:${source.id}`,
-            sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label),
+            sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label, sectionIdPrefix),
             sourceLabel: source.label,
             commentSource: 'qir',
             commentId: inserted.id,
@@ -341,7 +356,7 @@ export function QirContextualComments({
       const key = `${c.target_type}::${c.target_id}`;
       let g = map.get(key);
       if (!g) {
-        const label = SECTION_LABELS[c.target_id] || c.target_id;
+        const label = sectionLabels[c.target_id] || c.target_id;
         g = { type: c.target_type, id: c.target_id, label, items: [] as any };
         map.set(key, g);
       }
@@ -364,7 +379,7 @@ export function QirContextualComments({
     setDrawerOpen(false);
     let el: HTMLElement | null = null;
     if (type === 'section') {
-      el = document.getElementById(`qir-section-${id}`);
+      el = document.getElementById(`${sectionIdPrefix}${id}`);
     } else {
       el = document.querySelector<HTMLElement>(`[data-comment-source="${type}"][data-comment-source-id="${CSS.escape(id)}"]`);
     }
@@ -561,7 +576,7 @@ export function QirContextualComments({
                                 sourceType: mapTargetTypeToQueue(g.type),
                                 sourceId: g.id,
                                 sourceAnchor: `${g.type}:${g.id}`,
-                                sourceSnapshotText: snapshotForSource(g.type, g.id, g.label),
+                                sourceSnapshotText: snapshotForSource(g.type, g.id, g.label, sectionIdPrefix),
                                 sourceLabel: g.label,
                                 commentSource: 'qir',
                                 commentId: c.id,
