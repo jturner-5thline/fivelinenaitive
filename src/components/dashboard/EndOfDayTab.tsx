@@ -1059,6 +1059,11 @@ export function EndOfDayTab({
           currentUserId={user?.id || ''}
           initialTitle={prefill.title}
           initialDealId={prefill.dealId}
+          // Meeting flow: the deal field is governed by the explicit
+          // meeting→deal link only. Suppress the dialog's title-based
+          // fuzzy auto-apply so it can never overwrite the explicit
+          // link (or fall back to a random deal when nothing is linked).
+          lockInitialDeal
           initialDueDate={new Date()}
           onCreate={async (input) => {
             await createTask.mutateAsync({
