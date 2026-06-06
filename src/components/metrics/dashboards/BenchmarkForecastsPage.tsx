@@ -200,7 +200,7 @@ function AttainmentTable() {
   );
 }
 
-export function BenchmarkForecastsPage() {
+export function BenchmarkForecastsPage({ isEditMode = false }: { isEditMode?: boolean } = {}) {
   const { visible, toggle } = usePlanVisibility();
   const vR = visible.Reach, vO = visible.Operating, vC = visible.Conservative;
 
@@ -395,6 +395,7 @@ export function BenchmarkForecastsPage() {
         {/* Right charts — drag-and-drop reorderable */}
         <SortableWidgetGrid
           storageKey="insights.benchmarkForecasts.chartOrder.v1"
+          isEditMode={isEditMode}
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignContent: 'start' }}
           items={[
             { id: 'qrev', render: () => <ChartCard title="Quarterly Revenue" chartRef={qrevRef} /> },

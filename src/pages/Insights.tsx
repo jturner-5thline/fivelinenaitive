@@ -2694,7 +2694,12 @@ function MetricsInner() {
             )}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
-            {selectedDashboard === 'management-review' && <ManagementReviewCarousel />}
+            {selectedDashboard === 'management-review' && (
+              <ManagementReviewCarousel
+                isEditMode={isEditMode}
+                onExitEditMode={() => setIsEditMode(false)}
+              />
+            )}
 
             {/* Custom user-created dashboards */}
             {isCustomDashboard && activeCustomDashboard && (
