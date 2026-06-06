@@ -1,12 +1,18 @@
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarPlus, ListPlus, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
-import { useAddToDealCalendar } from '@/components/calendar/AddToDealCalendarProvider';
 import { useCompany } from '@/hooks/useCompany';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { parseRelativeDate } from '@/lib/parseRelativeDate';
+import {
+  AddToDealCalendarForm,
+  type AddToDealCalendarPrefill,
+} from '@/components/calendar/AddToDealCalendarForm';
 
 interface Props {
   eventId: string;
@@ -18,10 +24,9 @@ interface Props {
 
 /**
  * Combined "Create follow-up" inline action that replaces the separate
- * Create-task + Add-to-deal-calendar buttons. Opens the unified
- * AddToDealCalendarDialog where the user can create a task, an event,
- * or both at once. When no deal is linked, the dialog falls back to
- * plain-task creation (no calendar option).
+ * Create-task + Add-to-deal-calendar buttons. Opens a condensed Popover
+ * anchored under the button containing the unified follow-up form (task,
+ * event, or task + calendar entry).
  */
 export function MeetingCreateFollowUpAction({
   eventId,
@@ -29,10 +34,12 @@ export function MeetingCreateFollowUpAction({
   eventStartISO,
   linkedDealId,
 }: Props) {
-  const { openManual } = useAddToDealCalendar();
+  const [open, setOpen] = useState(false);
+  const [initialTitleSeed, setInitialTitleSeed] = useState<string | null>(null);
   const ctx = useMeetingClaapContext(eventId);
   const { company } = useCompany();
   const suggestions = ctx.actionItems.filter(Boolean);
+
   const resolveLinkedDealId = async () => {
     if (linkedDealId || !eventId || !company?.id) return linkedDealId ?? null;
     try {
@@ -57,71 +64,121 @@ export function MeetingCreateFollowUpAction({
   });
   const effectiveLinkedDealId = linkedDealId ?? resolvedLinkedDealId ?? null;
 
-  const open = async (initialTitle?: string) => {
-    const title = (initialTitle?.trim() || `Follow-up: ${eventTitle}`).trim();
-    const latestLinkedDealId = await resolveLinkedDealId();
-    openManual({
-      title,
-      sourceText: initialTitle?.trim() || `Follow-up to meeting "${eventTitle}"`,
+  const prefill = useMemo<AddToDealCalendarPrefill | null>(() => {
+    if (!open) return null;
+    const seedTitle = (initialTitleSeed?.trim() || `Follow-up: ${eventTitle}`).trim();
+    const sourceText = initialTitleSeed?.trim() || `Follow-up to meeting "${eventTitle}"`;
+    const timestamp = eventStartISO || new Date().toISOString();
+    return {
+      title: seedTitle,
+      sourceText,
+      parsed: parseRelativeDate(sourceText, timestamp),
       ctx: {
         module: 'rundown_item',
         recordId: eventId,
-        sourceTimestamp: eventStartISO || new Date().toISOString(),
-        dealId: latestLinkedDealId,
+        sourceTimestamp: timestamp,
+        dealId: effectiveLinkedDealId,
         label: eventTitle,
       },
-    });
+    };
+  }, [open, initialTitleSeed, eventTitle, eventStartISO, eventId, effectiveLinkedDealId]);
+
+  const openWith = async (initialTitle?: string) => {
+    setInitialTitleSeed(initialTitle ?? null);
+    // Pre-resolve the linked deal so the form opens with the right ctx.
+    await resolveLinkedDealId();
+    setOpen(true);
   };
 
+  // Default button — anchors the popover.
   if (suggestions.length === 0) {
     return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs"
-        onClick={() => { void open(); }}
-        disabled={ctx.isLoading && ctx.source === 'none'}
-      >
-        {effectiveLinkedDealId ? (
-          <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
-        ) : (
-          <ListPlus className="h-3.5 w-3.5 shrink-0" />
-        )}
-        <span className="truncate">Create follow-up</span>
-      </Button>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs"
+            onClick={() => { void openWith(); }}
+            disabled={ctx.isLoading && ctx.source === 'none'}
+          >
+            {effectiveLinkedDealId ? (
+              <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ListPlus className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <span className="truncate">Create follow-up</span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          side="bottom"
+          sideOffset={6}
+          className="w-[380px] max-w-[92vw] p-3 z-[80] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
+        >
+          {prefill && (
+            <AddToDealCalendarForm
+              prefill={prefill}
+              onClose={() => setOpen(false)}
+              compact
+              resetKey={`${eventId}:${initialTitleSeed ?? ''}:${open ? 'open' : 'closed'}`}
+            />
+          )}
+        </PopoverContent>
+      </Popover>
     );
   }
 
+  // AI-suggested variant — Review chip pops the same form with the first suggestion.
   return (
-    <div
-      className={cn(
-        'rounded-md border px-2.5 py-1.5 flex items-center gap-2',
-        'border-emerald-500/30 bg-emerald-500/[0.05]',
-      )}
-    >
+    <Popover open={open} onOpenChange={setOpen}>
       <div
-        className="flex items-center gap-1.5 min-w-0 flex-1 text-xs text-white"
-        title={suggestions.join(' • ')}
+        className={cn(
+          'rounded-md border px-2.5 py-1.5 flex items-center gap-2',
+          'border-emerald-500/30 bg-emerald-500/[0.05]',
+        )}
       >
-        <ListPlus className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="truncate">
-          ▶ {suggestions.length} task{suggestions.length === 1 ? '' : 's'} suggested
-        </span>
+        <div
+          className="flex items-center gap-1.5 min-w-0 flex-1 text-xs text-white"
+          title={suggestions.join(' • ')}
+        >
+          <ListPlus className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="truncate">
+            ▶ {suggestions.length} task{suggestions.length === 1 ? '' : 's'} suggested
+          </span>
+        </div>
+        <Badge
+          variant="outline"
+          className="h-5 px-1.5 text-[10px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+        >
+          <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI suggested
+        </Badge>
+        <PopoverTrigger asChild>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10 shrink-0"
+            onClick={() => { void openWith(suggestions[0]); }}
+          >
+            Review
+          </Button>
+        </PopoverTrigger>
       </div>
-      <Badge
-        variant="outline"
-        className="h-5 px-1.5 text-[10px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10"
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={6}
+        className="w-[380px] max-w-[92vw] p-3 z-[80] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl"
       >
-        <Sparkles className="h-2.5 w-2.5 mr-0.5" /> AI suggested
-      </Badge>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 px-2 text-[10px] gap-1 text-emerald-200 hover:text-emerald-100 hover:bg-emerald-500/10 shrink-0"
-        onClick={() => { void open(suggestions[0]); }}
-      >
-        Review
-      </Button>
-    </div>
+        {prefill && (
+          <AddToDealCalendarForm
+            prefill={prefill}
+            onClose={() => setOpen(false)}
+            compact
+            resetKey={`${eventId}:${initialTitleSeed ?? ''}:${open ? 'open' : 'closed'}`}
+          />
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
