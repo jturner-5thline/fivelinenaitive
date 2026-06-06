@@ -401,6 +401,11 @@ export function useQuarterlyReportState(
      *  current storage key — instead the parent is expected to swap the
      *  storage key (so a fresh per-period blob is loaded). */
     onSelectionChange?: (sel: { period: 'monthly' | 'quarterly'; quarter: string; month: string }) => void;
+    /** Optional secondary storage key used ONLY for KPIs. When set, the
+     *  saved blob at this key acts as the source of truth for `state.kpis`,
+     *  so KPIs persist across Month/Quarter period toggles for the same
+     *  report tab. Live values still re-resolve per active period. */
+    sharedKpiKey?: string;
   },
 ) {
   const { company } = useCompany();
@@ -410,6 +415,7 @@ export function useQuarterlyReportState(
     [initialState?.period, initialState?.quarter, initialState?.month],
   );
   const configKey = storageKey || 'naitive.quarterlyReport.adhoc';
+  const sharedKpiKey = options?.sharedKpiKey;
   const canEdit = !!company?.id;
   const [state, setStateLocal] = useState<ReportState>(seed);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -465,9 +471,19 @@ export function useQuarterlyReportState(
 
         const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
         const exactRow = fpaConfig[configKey] as Partial<ReportState> | undefined;
-        const next = exactRow !== undefined
+        let next = exactRow !== undefined
           ? { ...seed, ...exactRow }
           : seed;
+
+        // Cross-period KPI persistence: when a shared KPI key is provided,
+        // its blob overrides whatever kpis are in the per-period blob, so
+        // KPIs stay visible when toggling Month ↔ Quarter.
+        if (sharedKpiKey) {
+          const sharedRow = fpaConfig[sharedKpiKey] as { kpis?: KPI[] } | undefined;
+          if (sharedRow && Array.isArray(sharedRow.kpis)) {
+            next = { ...next, kpis: sharedRow.kpis };
+          }
+        }
 
         console.log('[QIR] Fetch result:', {
           activeKey: configKey,
@@ -546,6 +562,17 @@ export function useQuarterlyReportState(
 
       if (saveError) throw saveError;
 
+      // Mirror KPIs to the shared (cross-period) key so they persist when
+      // the user toggles Month ↔ Quarter on the same report tab.
+      if (sharedKpiKey) {
+        const { error: kpiSaveError } = await supabase.rpc('save_fpa_dashboard_config' as any, {
+          _company_id: company.id,
+          _config_key: sharedKpiKey,
+          _config_value: { kpis: payload.kpis ?? [] },
+        });
+        if (kpiSaveError) throw kpiSaveError;
+      }
+
       const { data, error: reloadError } = await supabase
         .from('company_settings')
         .select('fpa_dashboard_config')
@@ -556,9 +583,15 @@ export function useQuarterlyReportState(
 
       const fpaConfig = (data?.fpa_dashboard_config as Record<string, any>) || {};
       const exactRow = fpaConfig[configKey] as Partial<ReportState> | undefined;
-      const next = exactRow !== undefined
+      let next = exactRow !== undefined
         ? { ...seed, ...exactRow }
         : payload;
+      if (sharedKpiKey) {
+        const sharedRow = fpaConfig[sharedKpiKey] as { kpis?: KPI[] } | undefined;
+        if (sharedRow && Array.isArray(sharedRow.kpis)) {
+          next = { ...next, kpis: sharedRow.kpis };
+        }
+      }
 
       setStateLocal(next);
       latestStateRef.current = next;
