@@ -350,13 +350,26 @@ export function MeetingClaapInlineAction(props: Props) {
     </div>
   );
 
-  const slot = typeof document !== 'undefined'
-    ? document.getElementById(`claap-suggest-slot-${eventId}`)
-    : null;
   return (
     <>
       {buttonCell}
-      {slot ? createPortal(bar, slot) : null}
+      <ClaapBarPortal eventId={eventId}>{bar}</ClaapBarPortal>
     </>
   );
+}
+
+function ClaapBarPortal({ eventId, children }: { eventId: string; children: React.ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const find = () => {
+      const el = document.getElementById(`claap-suggest-slot-${eventId}`);
+      if (el) setSlot(el);
+      else raf = requestAnimationFrame(find);
+    };
+    find();
+    return () => { if (raf) cancelAnimationFrame(raf); };
+  }, [eventId]);
+  if (!slot) return null;
+  return createPortal(children, slot);
 }
