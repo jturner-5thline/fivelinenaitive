@@ -31,6 +31,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
