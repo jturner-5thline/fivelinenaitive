@@ -1407,6 +1407,7 @@ function MeetingNoteDialog({
 }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) setNote('');
@@ -1427,6 +1428,9 @@ function MeetingNoteDialog({
       });
       if (error) throw error;
       toast.success(dealName ? `Note saved to ${dealName}` : 'Note saved');
+      if (event?.id) {
+        queryClient.invalidateQueries({ queryKey: ['wf_meeting_notes', event.id] });
+      }
       onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save note';
