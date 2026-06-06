@@ -1683,6 +1683,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
       'swilliams@5thline.co',
       'jturner@5thline.co',
       'nheikali@5thline.co',
+      'ppina@5thline.co',
+      'ffustinoni@5thline.co',
     ]),
     [],
   );
