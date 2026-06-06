@@ -20,7 +20,7 @@ interface Props {
  * or both at once. When no deal is linked, the dialog falls back to
  * plain-task creation (no calendar option).
  */
-export function MeetingFollowUpInlineAction({
+export function MeetingCreateFollowUpAction({
   eventId,
   eventTitle,
   eventStartISO,
