@@ -14,7 +14,6 @@ import {
   type MeetingTaskSuggestion,
   type SuggestionSource,
   type InternalMember,
-  MissingAssigneeError,
 } from '@/hooks/useMeetingTaskSuggestions';
 
 interface Props {
