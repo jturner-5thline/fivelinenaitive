@@ -38,6 +38,7 @@ import { AsanaSyncDebug } from "@/components/AsanaSyncDebug";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
 import { NewTaskViaNaitiveModal } from "@/components/dashboard/chat/NewTaskViaNaitiveModal";
 import { CookieConsent } from "@/components/CookieConsent";
+import { AddToDealCalendarProvider } from "@/components/calendar/AddToDealCalendarProvider";
 import { CopyProtection } from "@/components/CopyProtection";
 import { WelcomeScreenWrapper } from "@/components/WelcomeScreenWrapper";
 import { AppLayout } from "@/components/AppLayout";
@@ -312,6 +313,7 @@ const App = () => (
                     <TooltipProvider>
                       <CopyProtection>
                       <UndoSendProvider>
+                      <AddToDealCalendarProvider>
                       <WelcomeScreenWrapper />
                       <DemoAiChatResetMount />
                       <Toaster />
