@@ -52,6 +52,7 @@ import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingSched
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
+import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -981,6 +982,7 @@ export function EndOfDayTab({
         <EventDetailPane
           key={selectedEvent.id}
           event={selectedEvent}
+          linkedDealId={selectedLinkedDealId ?? null}
           contactsByEmail={contactsByEmail}
           activityEntries={activity.get(selectedEvent.id)}
           userFirstName={userFirstName}
@@ -1089,10 +1091,11 @@ export function EndOfDayTab({
 // ─── detail pane ────────────────────────────────────────────
 function EventDetailPane({
   event, contactsByEmail, activityEntries, userFirstName, snoozedUntil,
-  deals, onBack, onResolve, onDismiss, onSnooze,
+  deals, linkedDealId, onBack, onResolve, onDismiss, onSnooze,
   onLinkDeal, onNoteAdded, onEmailSent, onCreateTask,
 }: {
   event: CalendarEvent;
+  linkedDealId?: string | null;
   contactsByEmail: Record<string, ContactInfo>;
   activityEntries: ActivityEntry[];
   userFirstName: string;
@@ -1543,13 +1546,23 @@ function EventDetailPane({
                 </div>
               )
             )}
-            <ClaapNoteEditor
-              value={noteDraft}
-              onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
-              placeholder={`Note for ${userFirstName}'s records…`}
-              defaultRendered={notePrefilledFromClaap}
-              recordingUrl={claapCtx.recording?.url ?? null}
-            />
+            <HighlightCalendarMenu
+              sourceCtx={{
+                module: claapCtx.source === 'claap' ? 'claap_summary' : 'meeting_notes',
+                recordId: event.id,
+                sourceTimestamp: event.start || new Date().toISOString(),
+                dealId: linkedDealId ?? null,
+                label: eventTitle,
+              }}
+            >
+              <ClaapNoteEditor
+                value={noteDraft}
+                onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
+                placeholder={`Note for ${userFirstName}'s records…`}
+                defaultRendered={notePrefilledFromClaap}
+                recordingUrl={claapCtx.recording?.url ?? null}
+              />
+            </HighlightCalendarMenu>
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
             </p>

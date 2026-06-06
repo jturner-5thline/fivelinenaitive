@@ -2287,6 +2287,77 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_item_sources: {
+        Row: {
+          created_at: string
+          created_by: string
+          deal_calendar_item_id: string | null
+          deal_id: string
+          id: string
+          source_deep_link: string | null
+          source_module: string
+          source_record_id: string
+          source_text: string
+          source_timestamp: string
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deal_calendar_item_id?: string | null
+          deal_id: string
+          id?: string
+          source_deep_link?: string | null
+          source_module: string
+          source_record_id: string
+          source_text: string
+          source_timestamp: string
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deal_calendar_item_id?: string | null
+          deal_id?: string
+          id?: string
+          source_deep_link?: string | null
+          source_module?: string
+          source_record_id?: string
+          source_text?: string
+          source_timestamp?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_item_sources_deal_calendar_item_id_fkey"
+            columns: ["deal_calendar_item_id"]
+            isOneToOne: false
+            referencedRelation: "deal_calendar_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_item_sources_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_item_sources_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "calendar_item_sources_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_tokens: {
         Row: {
           access_token: string
