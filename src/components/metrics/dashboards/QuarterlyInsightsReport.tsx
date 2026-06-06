@@ -29,6 +29,10 @@ import type { InsightsMetricOption } from './qir/insightsMetricRegistry';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
+  deriveReportPeriod,
+  useInsightsLiveMetricValue,
+} from './qir/useInsightsLiveMetricValue';
+import {
   getKpiTemplate,
   type KpiTemplateId,
   type SalesClientsConfig,
@@ -635,6 +639,175 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 
 type ReportSetState = React.Dispatch<React.SetStateAction<ReportState>>;
 
+/**
+ * Live KPI card — renders a metric whose value is resolved from the
+ * canonical source surface (Weekly Rundown / Controller Dashboard /
+ * HubSpot Dashboard) via `useInsightsLiveMetricValue`. The user can
+ * still edit the label / target / format / remove the KPI, but the
+ * actual value is always live (never user-typed).
+ */
+function LiveMetricKpiCard({
+  kpi,
+  reportState,
+  isEditing,
+  onToggleEdit,
+  onPatch,
+  onRemove,
+  onOpenDrill,
+}: {
+  kpi: KPI;
+  reportState: ReportState;
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  onPatch: (patch: Partial<KPI>) => void;
+  onRemove: () => void;
+  onOpenDrill: () => void;
+}) {
+  const cfg = (kpi.templateConfig ?? {}) as { metricSourceId?: string | null; sourceArea?: string };
+  const period = useMemo(
+    () => deriveReportPeriod(reportState),
+    [reportState.period, reportState.quarter, reportState.month],
+  );
+  const resolution = useInsightsLiveMetricValue(cfg.metricSourceId ?? null, period);
+
+  const liveActual =
+    resolution.status === 'ready' && resolution.value !== undefined
+      ? String(resolution.value)
+      : '';
+  const displayValue =
+    resolution.status === 'ready' && liveActual !== ''
+      ? formatKPI(liveActual, kpi.format)
+      : resolution.status === 'loading'
+        ? '…'
+        : '—';
+  const status = resolution.status === 'ready' ? deriveStatus(liveActual, kpi.target) : 'On Plan';
+  const tone = !resolution.supported
+    ? 'neu'
+    : status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
+  const statusLabel = !resolution.supported ? 'Unmapped' : status;
+
+  return (
+    <div
+      data-comment-source="kpi"
+      data-comment-source-id={kpi.id}
+      data-comment-source-label={`KPI · ${kpi.label}`}
+      style={{
+        position: 'relative',
+        aspectRatio: '1 / 1',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        textAlign: 'center',
+        gap: 8,
+        padding: 14,
+        borderRadius: RADIUS,
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        cursor: 'pointer',
+        overflow: 'hidden',
+      }}
+      role="button"
+      tabIndex={0}
+      title={
+        resolution.supported
+          ? `Live from ${resolution.sourceSurface ?? 'source surface'}`
+          : 'No canonical source wired for this metric'
+      }
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest('input, select, textarea, button, [data-kpi-edit]')) return;
+        onOpenDrill();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const target = e.target as HTMLElement;
+          if (target.closest('input, select, textarea, button, [data-kpi-edit]')) return;
+          e.preventDefault();
+          onOpenDrill();
+        }
+      }}
+    >
+      <div style={{ position: 'absolute', top: 6, right: 6, display: 'flex', gap: 2 }}>
+        <button
+          type="button"
+          aria-label="Edit KPI"
+          onClick={(e) => { e.stopPropagation(); onToggleEdit(); }}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: TEXT_LABEL,
+            cursor: 'pointer',
+            padding: 4,
+            borderRadius: 6,
+            display: 'inline-flex',
+          }}
+        >
+          <Pencil size={12} />
+        </button>
+      </div>
+
+      <div style={{
+        fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
+        color: TEXT_LABEL, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}>{kpi.label}</div>
+
+      <div style={{
+        fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+      }}>{displayValue}</div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+        <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+          Target {formatKPI(kpi.target, kpi.format)}
+        </span>
+        <Pill tone={tone}>{statusLabel}</Pill>
+        {resolution.supported && resolution.sourceSurface && (
+          <span style={{ fontSize: 8, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, opacity: 0.7 }}>
+            Live · {resolution.sourceSurface}
+          </span>
+        )}
+      </div>
+
+      {isEditing && (
+        <div
+          data-kpi-edit
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', inset: 0, background: 'rgba(12,18,28,0.96)',
+            border: '1px solid rgba(120,170,255,0.25)', borderRadius: RADIUS, padding: 10,
+            display: 'flex', flexDirection: 'column', gap: 6, zIndex: 2,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: TEXT_LABEL }}>Edit KPI</span>
+            <button type="button" aria-label="Close editor" onClick={onToggleEdit} style={{ background: 'transparent', border: 'none', color: TEXT_LABEL, cursor: 'pointer', padding: 2, display: 'inline-flex' }}>
+              <XIcon size={12} />
+            </button>
+          </div>
+          <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Label</label>
+          <input value={kpi.label} onChange={e => onPatch({ label: e.target.value })} placeholder="Metric label" style={inputStyle} />
+          <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Target</label>
+          <input value={kpi.target} onChange={e => onPatch({ target: e.target.value })} style={inputStyle} />
+          <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Format</label>
+          <select value={kpi.format} onChange={e => onPatch({ format: e.target.value as KPIFormat })} style={selectStyle}>
+            <option value="currency">$ Currency</option>
+            <option value="percent">% Percent</option>
+            <option value="number"># Whole number</option>
+          </select>
+          <span style={{ fontSize: 9, color: TEXT_MUTED, fontStyle: 'italic' }}>
+            Actual is read live from {resolution.sourceSurface ?? 'the source surface'} — not editable.
+          </span>
+          <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Btn icon={Trash2} variant="danger" ariaLabel="Remove KPI" onClick={onRemove}>Remove</Btn>
+            <Btn variant="ghost" onClick={onToggleEdit}>Done</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix }: { s: ReportState; set: ReportSetState; reset: () => void; save?: () => Promise<boolean>; print: () => void; canEdit?: boolean; titlePrefix?: string }) {
   // Validation: ensure Month always has a valid selection while in Monthly mode.
   // Covers stale persisted state, programmatic state changes, and quarter switches.
@@ -868,6 +1041,24 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                   onPatchTitle={(next) => updateKPI(kpi.id, { label: next })}
                   onPatchConfig={(next) => updateKPI(kpi.id, { templateConfig: next as unknown as Record<string, unknown> })}
                   onRemove={() => removeKPI(kpi.id)}
+                />
+              );
+            }
+            // Live metric KPI — bound to a canonical source surface via
+            // templateConfig.metricSourceId (see useInsightsLiveMetricValue).
+            const metricSourceId = (kpi.templateConfig as any)?.metricSourceId as string | undefined;
+            if (!kpi.template && metricSourceId) {
+              const isEditingLive = editingId === kpi.id;
+              return (
+                <LiveMetricKpiCard
+                  key={kpi.id}
+                  kpi={kpi}
+                  reportState={s}
+                  isEditing={isEditingLive}
+                  onToggleEdit={() => setEditingId(isEditingLive ? null : kpi.id)}
+                  onPatch={(patch) => updateKPI(kpi.id, patch)}
+                  onRemove={() => { removeKPI(kpi.id); setEditingId(null); }}
+                  onOpenDrill={() => setDrillKpi(kpi as unknown as KpiLike)}
                 />
               );
             }
