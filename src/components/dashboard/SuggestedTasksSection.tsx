@@ -93,21 +93,21 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
   const unassignedInConsideredCount = considered.filter((s) => !s.assignee_user_id).length;
 
   return (
-    <div className="mt-3 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-1.5 min-w-0">
+    <div className="mt-3 w-full max-w-full min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1 basis-[160px]">
           <Sparkles className="h-3 w-3 text-primary shrink-0" />
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 truncate">
             Suggested tasks
           </span>
-          <span className="text-[10px] text-muted-foreground/60">
+          <span className="text-[10px] text-muted-foreground/60 truncate">
             • {visible.length} from Claap
           </span>
-          <span className={cn('inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border', pillCls)}>
+          <span className={cn('inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border shrink-0', pillCls)}>
             {pillLabel}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {unassignedInConsideredCount > 0 && (
             <AssigneePicker
               members={internalMembers}
