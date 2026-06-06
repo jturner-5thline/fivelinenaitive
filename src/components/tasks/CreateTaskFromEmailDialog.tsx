@@ -137,6 +137,29 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
       } as any).select('id').single();
       if (error) throw error;
       toast.success('Task created from email');
+      // Unified deal follow-up backlink (idempotent) — links the task
+      // to the originating email so it surfaces on the deal calendar
+      // with provenance.
+      if (created?.id && email.dealId) {
+        try {
+          const { writeDealFollowUpSource } = await import('@/lib/deals/dealFollowUp');
+          await writeDealFollowUpSource({
+            dealId: email.dealId,
+            taskId: created.id,
+            source: {
+              module: 'other',
+              recordId: email.messageId,
+              sourceTimestamp: email.receivedAt || new Date().toISOString(),
+              sourceText: email.subject || trimmed,
+              deepLinkUrl: sourceEmailUrl ?? null,
+            },
+            title: trimmed,
+            userId: user.id,
+          });
+        } catch (e) {
+          console.warn('[CreateTaskFromEmail] backlink failed:', e);
+        }
+      }
       // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
       if (created?.id) {
         const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');

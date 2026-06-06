@@ -1076,6 +1076,14 @@ export function EndOfDayTab({
               recurrence_rule: input.recurrence_rule,
               recurrence_end_date: input.recurrence_end_date,
               deal_id: input.deal_id || undefined,
+              source: input.deal_id && prefill.eventId
+                ? {
+                    module: 'rundown_item',
+                    recordId: prefill.eventId,
+                    sourceTimestamp: new Date().toISOString(),
+                    sourceText: input.title,
+                  }
+                : null,
             });
             if (prefill.eventId) {
               activity.append(prefill.eventId, { kind: 'task_created', by: userId, detail: input.title });

@@ -131,6 +131,28 @@ export function CreateTaskForMentionDialog({
 
     toast.success(`Task assigned to ${currentUser.label}`);
 
+    // Unified deal follow-up backlink (idempotent) — links the mention-created
+    // task to the originating deal-space comment.
+    if (data && (data as any).id && dealId) {
+      try {
+        const { writeDealFollowUpSource } = await import('@/lib/deals/dealFollowUp');
+        await writeDealFollowUpSource({
+          dealId,
+          taskId: (data as any).id,
+          source: {
+            module: 'comment',
+            recordId: `mention:${dealId}:${currentUser.id}`,
+            sourceTimestamp: new Date().toISOString(),
+            sourceText: title.trim(),
+          },
+          title: title.trim(),
+          userId: user.id,
+        });
+      } catch (e) {
+        console.warn('[CreateTaskForMention] backlink failed:', e);
+      }
+    }
+
     // Asana sync (fire-and-forget)
     if (data) {
       (async () => {

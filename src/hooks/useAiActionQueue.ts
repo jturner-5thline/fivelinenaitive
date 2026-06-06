@@ -304,6 +304,26 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
         } as any).select('id').single();
         if (error) return { ok: false, error: error.message };
         if (created?.id) {
+          // Unified deal follow-up backlink (idempotent).
+          if (item.deal_id) {
+            try {
+              const { writeDealFollowUpSource } = await import('@/lib/deals/dealFollowUp');
+              await writeDealFollowUpSource({
+                dealId: item.deal_id,
+                taskId: created.id,
+                source: {
+                  module: 'other',
+                  recordId: `ai-queue:${item.id}`,
+                  sourceTimestamp: new Date().toISOString(),
+                  sourceText: p.title || item.title,
+                },
+                title: p.title || item.title,
+                userId,
+              });
+            } catch (e) {
+              console.warn('[useAiActionQueue] backlink failed:', e);
+            }
+          }
           const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
           syncTaskAfterCreate({
             taskId: created.id,
