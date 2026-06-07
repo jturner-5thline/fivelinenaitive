@@ -256,7 +256,7 @@ export function InsightsDrilldownDrawer<T = any>({
         )}
 
         {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: body ? 0 : (rows.length === 0 ? 0 : '8px 0') }}>
+        <div style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {loading ? (
             <div style={{
               height: '100%', display: 'flex', flexDirection: 'column',
@@ -266,9 +266,12 @@ export function InsightsDrilldownDrawer<T = any>({
               <div className="h-6 w-6 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ opacity: 0.6 }} />
               <div style={{ fontSize: 12 }}>Loading details…</div>
             </div>
-          ) : body ? (
-            body
-          ) : rows.length === 0 ? (
+          ) : (
+            <>
+              {trend && trend.data.length > 0 && <TrendChart trend={trend} />}
+              {body ? (
+                <div style={{ padding: 0 }}>{body}</div>
+              ) : rows.length === 0 && !trend ? (
             <div style={{
               height: '100%', display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -280,8 +283,8 @@ export function InsightsDrilldownDrawer<T = any>({
                 {emptyHint || 'There are no underlying records to show for this datapoint.'}
               </div>
             </div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          ) : rows.length === 0 ? null : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, padding: '8px 0' }}>
               <thead>
                 <tr>
                   {columns.map((c) => (
@@ -338,6 +341,8 @@ export function InsightsDrilldownDrawer<T = any>({
                 })}
               </tbody>
             </table>
+          )}
+            </>
           )}
         </div>
       </div>
