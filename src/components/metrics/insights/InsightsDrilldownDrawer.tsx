@@ -1,6 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ExternalLink, Inbox, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from 'recharts';
 
 export interface DrilldownColumn<T = any> {
   key: string;
@@ -27,6 +36,22 @@ export interface DrilldownContext {
   filters?: Array<{ label: string; value: string }>;
 }
 
+export type DrilldownTrendUnit = 'currency' | 'percent' | 'number';
+
+export interface DrilldownTrendPoint {
+  label: string;
+  value: number | null;
+}
+
+export interface DrilldownTrend {
+  /** Ordered points (oldest → newest). */
+  data: DrilldownTrendPoint[];
+  /** Formatting for Y axis + tooltip. */
+  unit: DrilldownTrendUnit;
+  /** Optional series label shown in tooltip. */
+  seriesLabel?: string;
+}
+
 interface Props<T = any> {
   open: boolean;
   onClose: () => void;
@@ -45,17 +70,88 @@ interface Props<T = any> {
   loading?: boolean;
   /** Optional default sort applied on open. */
   defaultSort?: { key: string; dir: 'asc' | 'desc' };
+  /** Optional monthly/period trend rendered as the primary visual above the table. */
+  trend?: DrilldownTrend;
 }
 
 const PANEL_BG = 'rgba(10,18,36,0.97)';
 const BORDER = 'rgba(120,170,255,0.2)';
+const TREND_COLOR = 'hsl(213,90%,70%)';
+const TREND_FILL = 'rgba(120,170,255,0.18)';
+
+function formatTrendValue(v: number | null | undefined, unit: DrilldownTrendUnit): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return '—';
+  if (unit === 'currency') {
+    const abs = Math.abs(v);
+    const sign = v < 0 ? '-' : '';
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+    if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+    return `${sign}$${abs.toFixed(0)}`;
+  }
+  if (unit === 'percent') return `${v.toFixed(1)}%`;
+  return new Intl.NumberFormat('en-US').format(v);
+}
+
+function TrendChart({ trend }: { trend: DrilldownTrend }) {
+  const data = trend.data.map(p => ({ label: p.label, value: p.value ?? 0 }));
+  const seriesLabel = trend.seriesLabel || 'Value';
+  if (data.length === 0) return null;
+  return (
+    <div style={{ padding: '12px 18px 4px', borderBottom: `1px solid ${BORDER}` }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: 'rgba(160,200,255,0.6)', marginBottom: 6 }}>
+        Trend
+      </div>
+      <div style={{ width: '100%', height: 240 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
+            <CartesianGrid stroke="rgba(120,170,255,0.10)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: 'rgba(200,225,245,0.7)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(120,170,255,0.18)' }}
+            />
+            <YAxis
+              tick={{ fill: 'rgba(200,225,245,0.7)', fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: 'rgba(120,170,255,0.18)' }}
+              tickFormatter={(v: number) => formatTrendValue(v, trend.unit)}
+              width={70}
+            />
+            <Tooltip
+              contentStyle={{
+                background: 'rgba(10,18,36,0.96)',
+                border: `1px solid ${BORDER}`,
+                borderRadius: 8,
+                fontSize: 12,
+                color: '#dde8f8',
+              }}
+              labelStyle={{ color: 'rgba(200,225,245,0.85)', fontWeight: 600 }}
+              formatter={(value: any) => [formatTrendValue(Number(value), trend.unit), seriesLabel]}
+            />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke={TREND_COLOR}
+              strokeWidth={2}
+              dot={{ r: 3, fill: TREND_COLOR, stroke: TREND_COLOR }}
+              activeDot={{ r: 5, fill: TREND_COLOR, stroke: '#fff', strokeWidth: 1 }}
+              isAnimationActive={false}
+              fill={TREND_FILL}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Universal right-side drilldown drawer for Insights dashboards.
  * Renders a contextual table of records that explain a clicked KPI / chart point.
  */
 export function InsightsDrilldownDrawer<T = any>({
-  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading, defaultSort,
+  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading, defaultSort, trend,
 }: Props<T>) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultSort?.dir ?? 'desc');
