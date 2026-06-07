@@ -26,7 +26,7 @@ import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 
 const setChartDefaults = () => {
@@ -406,6 +406,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     columns: DrilldownColumn<Record<string, any>>[];
     rows: Record<string, any>[];
     emptyHint?: string;
+    trend?: DrilldownTrend;
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
@@ -1136,6 +1137,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       ];
                       let rows: Record<string, any>[] = [{ metric: k.l, value: k.v }];
                       let emptyHint: string | undefined = k.emptyHint;
+                      let trend: DrilldownTrend | undefined = undefined;
                       if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
                         columns = [
                           { key: 'month', label: 'Month' },
@@ -1145,6 +1147,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                           { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
                         ];
                         rows = revenueSeries.map(row => ({ ...row, net: row.revenue - row.expenses }));
+                        const isOp = reg === 'operating-profit-curr';
+                        trend = {
+                          unit: 'currency',
+                          seriesLabel: isOp ? 'Operating Profit' : 'Revenue',
+                          data: revenueSeries.map(row => ({
+                            label: row.month,
+                            value: isOp ? (row.revenue || 0) - (row.expenses || 0) : (row.revenue || 0),
+                          })),
+                        };
                       } else if (reg === 'outstanding-ar') {
                         columns = [
                           { key: 'bucket', label: 'Bucket' },
@@ -1164,12 +1175,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                           { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
                         ];
                         rows = ttmSeries;
+                        trend = {
+                          unit: 'currency',
+                          seriesLabel: 'TTM Revenue',
+                          data: ttmSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
+                        };
                       } else if (reg === 'ytd-revenue') {
                         columns = [
                           { key: 'month', label: 'Month' },
                           { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
                         ];
                         rows = ytdSeries;
+                        trend = {
+                          unit: 'currency',
+                          seriesLabel: 'YTD Revenue',
+                          data: ytdSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
+                        };
                       }
                       setDrilldown({
                         context: {
@@ -1181,6 +1202,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                         columns,
                         rows,
                         emptyHint,
+                        trend,
                       });
                     }}
                     style={{
@@ -1344,6 +1366,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         columns={drilldown?.columns ?? []}
         rows={drilldown?.rows ?? []}
         emptyHint={drilldown?.emptyHint}
+        trend={drilldown?.trend}
       />
     </div>
   );
