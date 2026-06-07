@@ -26,7 +26,7 @@ import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 
 const setChartDefaults = () => {
@@ -406,6 +406,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     columns: DrilldownColumn<Record<string, any>>[];
     rows: Record<string, any>[];
     emptyHint?: string;
+    trend?: DrilldownTrend;
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
@@ -1344,6 +1345,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         columns={drilldown?.columns ?? []}
         rows={drilldown?.rows ?? []}
         emptyHint={drilldown?.emptyHint}
+        trend={drilldown?.trend}
       />
     </div>
   );
