@@ -16,7 +16,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
 import { MessageSquarePlus } from 'lucide-react';
 import {
   computeSelectionBubblePosition,
@@ -100,7 +99,6 @@ export function InsightsNarrativeEditor({
   isSaving, savedAt, readOnly, chromeless,
 }: Props) {
   const { company } = useCompany();
-  const { promote } = useReportAgendaQueue();
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
   const lastEmittedRef = useRef<string>(initialHTMLRef.current);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
