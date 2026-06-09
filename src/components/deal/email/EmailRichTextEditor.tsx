@@ -192,7 +192,8 @@ function Toolbar({
   enableImages,
   uploadBucket,
   trailing,
-}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode }) {
+  openLinkPopoverRef,
+}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode; openLinkPopoverRef?: React.MutableRefObject<(() => void) | null> }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -200,6 +201,23 @@ function Toolbar({
   const [imageOpen, setImageOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Expose a stable opener to the parent editor so Cmd/Ctrl+K can pop the
+  // link dialog from inside the ProseMirror keymap. Captures the active
+  // selection first so the popover applies the link to the right range.
+  useEffect(() => {
+    if (!openLinkPopoverRef) return;
+    openLinkPopoverRef.current = () => {
+      const { from, to } = editor.state.selection;
+      savedRangeRef.current = { from, to };
+      const existing = editor.getAttributes('link')?.href as string | undefined;
+      setLinkUrl(existing || '');
+      setLinkOpen(true);
+    };
+    return () => {
+      if (openLinkPopoverRef.current) openLinkPopoverRef.current = null;
+    };
+  }, [editor, openLinkPopoverRef]);
 
   const insertImage = (src: string) => {
     if (!src) return;
