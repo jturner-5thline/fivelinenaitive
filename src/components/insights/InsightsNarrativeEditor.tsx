@@ -88,6 +88,20 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
 }
 
+function getScrollContainer(start: HTMLElement | null, fallback: HTMLElement | null) {
+  let node = start?.parentElement ?? null;
+  while (node && node !== document.body) {
+    const style = window.getComputedStyle(node);
+    const overflowY = style.overflowY;
+    const overflowX = style.overflowX;
+    const isScrollable = /(auto|scroll|overlay)/.test(`${overflowY} ${overflowX}`)
+      && (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth);
+    if (isScrollable) return node;
+    node = node.parentElement;
+  }
+  return fallback;
+}
+
 /**
  * Rich-text narrative editor for Insights reports. Persists HTML via
  * `onChange` (parent debounces into the existing report save) and pushes
@@ -108,7 +122,7 @@ export function InsightsNarrativeEditor({
   const [focused, setFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selAction, setSelAction] = useState<
-    { text: string; left: number; top: number } | null
+    { text: string; left: number; top: number; host: HTMLElement } | null
   >(null);
   // Signed-URL cache for attachments (refresh on mount + when list changes).
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
@@ -244,32 +258,59 @@ export function InsightsNarrativeEditor({
       }
       try {
         const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (!rect || (rect.width === 0 && rect.height === 0)) {
+        const rangeRect = range.getBoundingClientRect();
+        if (!rangeRect || (rangeRect.width === 0 && rangeRect.height === 0)) {
           setSelAction(null);
           return;
         }
+        const host = getScrollContainer(anchorEl.closest('.ProseMirror') as HTMLElement | null, root);
+        if (!host) {
+          setSelAction(null);
+          return;
+        }
+        if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
+        const containerRect = host.getBoundingClientRect();
         const BTN_H = 26;
         const BTN_W = 96;
         const OFFSET = 6;
-        let top = rect.top - BTN_H - OFFSET;
-        if (top < 8) top = rect.bottom + OFFSET;
-        top = clamp(top, 8, window.innerHeight - BTN_H - 8);
-        const left = clamp(rect.left, 8, window.innerWidth - BTN_W - 8);
+        let top = (rangeRect.top - containerRect.top) + host.scrollTop - BTN_H - OFFSET;
+        if (top < host.scrollTop + 8) {
+          top = (rangeRect.bottom - containerRect.top) + host.scrollTop + OFFSET;
+        }
+        const minTop = host.scrollTop + 8;
+        const maxTop = Math.max(minTop, host.scrollTop + host.clientHeight - BTN_H - 8);
+        top = clamp(top, minTop, maxTop);
+        const minLeft = host.scrollLeft + 8;
+        const maxLeft = Math.max(minLeft, host.scrollLeft + host.clientWidth - BTN_W - 8);
+        const left = clamp(
+          (rangeRect.left - containerRect.left) + host.scrollLeft,
+          minLeft,
+          maxLeft,
+        );
         console.log('[InsightsNarrativeEditor] selection bubble position', {
           rangeRect: {
-            top: rect.top,
-            left: rect.left,
-            right: rect.right,
-            bottom: rect.bottom,
-            width: rect.width,
-            height: rect.height,
+            top: rangeRect.top,
+            left: rangeRect.left,
+            right: rangeRect.right,
+            bottom: rangeRect.bottom,
+            width: rangeRect.width,
+            height: rangeRect.height,
           },
+          containerRect: {
+            top: containerRect.top,
+            left: containerRect.left,
+            right: containerRect.right,
+            bottom: containerRect.bottom,
+            width: containerRect.width,
+            height: containerRect.height,
+          },
+          scrollTop: host.scrollTop,
+          scrollLeft: host.scrollLeft,
           top,
           left,
-          strategy: 'portal-fixed',
+          strategy: 'scroll-container-absolute',
         });
-        setSelAction({ text: text.slice(0, 400), left, top });
+        setSelAction({ text: text.slice(0, 400), left, top, host });
       } catch {
         setSelAction(null);
       }
