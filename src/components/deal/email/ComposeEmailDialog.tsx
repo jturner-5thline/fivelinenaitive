@@ -1375,6 +1375,21 @@ export function ComposeEmailDialog({ open, onOpenChange, onSend, replyTo }: Comp
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onKeyDown={(e) => {
+            const mod = e.metaKey || e.ctrlKey;
+            if (!mod || !e.shiftKey || e.altKey) return;
+            const key = e.key.toLowerCase();
+            if (key === 'c' || key === 'b') {
+              e.preventDefault();
+              setShowCcBcc(true);
+              requestAnimationFrame(() => {
+                const sel = key === 'c'
+                  ? 'input[placeholder="cc@example.com"]'
+                  : 'input[placeholder="bcc@example.com"]';
+                (e.currentTarget.querySelector(sel) as HTMLInputElement | null)?.focus();
+              });
+            }
+          }}
         >
           {isDragging && (
             <div
