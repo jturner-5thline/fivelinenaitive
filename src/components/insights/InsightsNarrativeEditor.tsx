@@ -361,20 +361,26 @@ export function InsightsNarrativeEditor({
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={async () => {
-              const snippet = selAction.text;
+            onClick={() => {
+              // Open the shared QirContextualComments composer (same UX as
+              // Dashboard/Forecasts/Key Metrics) so the user can type a
+              // comment before adding it to the Queue. We synthesise a
+              // right-click on the ProseMirror surface at the current
+              // selection — QirContextualComments' contextmenu handler
+              // captures the live selection as the snippet.
               setSelAction(null);
-              const row = await promote({
-                reportTab: scopeKey,
-                sourceType: 'narrative',
-                sourceId: scopeKey,
-                sourceAnchor: `narrative:${scopeKey}`,
-                sourceSnapshotText: snippet,
-                sourceLabel: 'Narrative selection',
-                commentSource: 'qir',
-                commentTextSnapshot: snippet,
-              });
-              toast.success(row ? 'Added to Queue' : 'Failed to queue selection');
+              const sel = window.getSelection();
+              let cx = 0, cy = 0;
+              if (sel && sel.rangeCount > 0) {
+                const r = sel.getRangeAt(0).getBoundingClientRect();
+                cx = r.right; cy = r.bottom;
+              }
+              const pm = containerRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
+              const target = pm || containerRef.current;
+              if (!target) return;
+              target.dispatchEvent(new MouseEvent('contextmenu', {
+                bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 2,
+              }));
             }}
             style={{
               position: 'absolute', left: Math.max(0, selAction.left), top: Math.max(0, selAction.top),
@@ -385,10 +391,10 @@ export function InsightsNarrativeEditor({
               boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
               cursor: 'pointer', zIndex: 30, whiteSpace: 'nowrap',
             }}
-            title="Send selected text to the Queue"
+            title="Add a comment on the selected text"
           >
             <MessageSquarePlus size={12} />
-            Queue
+            Comment
           </button>
         )}
         {chromeless && !focused && isEmpty && !readOnly && (
