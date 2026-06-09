@@ -255,7 +255,16 @@ export function InsightsNarrativeEditor({
       const root = containerRef.current;
       if (root && !root.contains(document.activeElement)) setSelAction(null);
     }, 150));
-    return () => { editor.off('selectionUpdate', onSelChange); };
+    // Reposition on scroll/resize so the fixed bubble stays glued to
+    // the selection rect instead of floating away.
+    const reflow = () => onSelChange();
+    window.addEventListener('scroll', reflow, true);
+    window.addEventListener('resize', reflow);
+    return () => {
+      editor.off('selectionUpdate', onSelChange);
+      window.removeEventListener('scroll', reflow, true);
+      window.removeEventListener('resize', reflow);
+    };
   }, [editor, readOnly]);
 
   if (!editor) {
