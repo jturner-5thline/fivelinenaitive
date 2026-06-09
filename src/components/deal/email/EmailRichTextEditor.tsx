@@ -81,6 +81,10 @@ export function EmailRichTextEditor({
   uploadBucket = 'email-signatures',
   toolbarTrailing,
 }: Props) {
+  // Ref populated by the Toolbar component once mounted. Lets the editor
+  // request the link popover open (e.g. from a Cmd/Ctrl+K shortcut)
+  // without lifting the popover state out of the toolbar.
+  const openLinkPopoverRef = useRef<(() => void) | null>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -109,6 +113,17 @@ export function EmailRichTextEditor({
       attributes: {
         class: 'prose prose-sm prose-invert max-w-none focus:outline-none px-3 py-3 text-sm leading-relaxed text-foreground/90',
         style: `min-height: ${minHeight}px;`,
+      },
+      // Cmd/Ctrl+K opens the insert-link popover on the current selection.
+      // Bold/Italic/Underline (Cmd/Ctrl+B/I/U) are already bound by Tiptap's
+      // StarterKit + Underline extensions, so they work without extra wiring.
+      handleKeyDown: (_view, event) => {
+        if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          openLinkPopoverRef.current?.();
+          return true;
+        }
+        return false;
       },
       transformPastedHTML: (html) => {
         return html
@@ -140,6 +155,7 @@ export function EmailRichTextEditor({
         enableImages={enableImages}
         uploadBucket={uploadBucket}
         trailing={toolbarTrailing}
+        openLinkPopoverRef={openLinkPopoverRef}
       />
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
         <EditorContent editor={editor} />
@@ -176,7 +192,8 @@ function Toolbar({
   enableImages,
   uploadBucket,
   trailing,
-}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode }) {
+  openLinkPopoverRef,
+}: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode; openLinkPopoverRef?: React.MutableRefObject<(() => void) | null> }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -184,6 +201,23 @@ function Toolbar({
   const [imageOpen, setImageOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Expose a stable opener to the parent editor so Cmd/Ctrl+K can pop the
+  // link dialog from inside the ProseMirror keymap. Captures the active
+  // selection first so the popover applies the link to the right range.
+  useEffect(() => {
+    if (!openLinkPopoverRef) return;
+    openLinkPopoverRef.current = () => {
+      const { from, to } = editor.state.selection;
+      savedRangeRef.current = { from, to };
+      const existing = editor.getAttributes('link')?.href as string | undefined;
+      setLinkUrl(existing || '');
+      setLinkOpen(true);
+    };
+    return () => {
+      if (openLinkPopoverRef.current) openLinkPopoverRef.current = null;
+    };
+  }, [editor, openLinkPopoverRef]);
 
   const insertImage = (src: string) => {
     if (!src) return;

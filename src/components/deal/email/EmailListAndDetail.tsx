@@ -1980,7 +1980,7 @@ interface EmailDetailProps {
   deepLinkSignal?: string | null;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, onMarkRead, onMarkUnread, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { onMarkRead?: (email: MockEmail) => void; onMarkUnread?: (email: MockEmail) => void; pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
   const isMobile = useIsMobile();
   // Scroll-and-highlight the deep-linked message when present. Re-runs if
   // the user navigates between threads with consecutive priority signals.
@@ -2965,6 +2965,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
+      if (e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        onMarkRead?.(thread.latestEmail);
+      }
+      if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        onMarkUnread?.(thread.latestEmail);
+      }
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         // Honor Assist gating — when disabled for this account/company,
@@ -2974,7 +2982,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink, handleReply, assistEnabled]);
+  }, [thread, onToggleLink, handleReply, handleForward, onMarkRead, onMarkUnread, assistEnabled]);
 
   const latest = thread.latestEmail;
   if (!thread?.latestEmail || !Array.isArray(thread.emails) || thread.emails.length === 0) {
