@@ -72,6 +72,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
   const [isEditDrawerMounted, setIsEditDrawerMounted] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
   const [statusText, setStatusText] = useState('');
+  const statusTextRef = useRef('');
   const [mentionTaskUsers, setMentionTaskUsers] = useState<MentionedUser[]>([]);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const statusInputRef = useRef<HTMLTextAreaElement>(null);
@@ -90,14 +91,17 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
   const handleStatusEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setStatusText(deal.notes || '');
+    const initial = deal.notes || '';
+    setStatusText(initial);
+    statusTextRef.current = initial;
     setIsEditingStatus(true);
   };
 
   const handleStatusSave = async () => {
     setIsEditingStatus(false);
-    const isEmpty = !statusText.trim() || statusText === '<p></p>';
-    const newNotes = isEmpty ? '' : statusText;
+    const latest = statusTextRef.current;
+    const isEmpty = !latest.trim() || latest === '<p></p>';
+    const newNotes = isEmpty ? '' : latest;
     if (newNotes !== (deal.notes || '')) {
       await updateDeal(deal.id, { notes: newNotes || null });
       const oldMentions = extractMentionsFromHtml(deal.notes || '');
@@ -496,7 +500,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 <div className="min-h-[2.5rem]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} onMouseDown={(e) => e.stopPropagation()}>
                   <MentionTextarea
                     value={statusText}
-                    onChange={(html) => setStatusText(html)}
+                    onChange={(html) => { statusTextRef.current = html; setStatusText(html); }}
                     onBlur={() => {}}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
