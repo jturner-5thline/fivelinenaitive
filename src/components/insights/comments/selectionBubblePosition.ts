@@ -75,17 +75,20 @@ export function computeSelectionBubblePosition({
   offset?: number;
 }) {
   const containerRect = host.getBoundingClientRect();
-  let top = (rangeRect.top - containerRect.top) + host.scrollTop - bubbleHeight - offset;
-  if (top < host.scrollTop + 8) {
-    top = (rangeRect.bottom - containerRect.top) + host.scrollTop + offset;
-  }
+
+  let top = (rangeRect.top - containerRect.top) + host.scrollTop + ((rangeRect.height - bubbleHeight) / 2);
   const minTop = host.scrollTop + 8;
   const maxTop = Math.max(minTop, host.scrollTop + host.clientHeight - bubbleHeight - 8);
   top = clamp(top, minTop, maxTop);
 
   const minLeft = host.scrollLeft + 8;
   const maxLeft = Math.max(minLeft, host.scrollLeft + host.clientWidth - bubbleWidth - 8);
-  const left = clamp((rangeRect.left - containerRect.left) + host.scrollLeft, minLeft, maxLeft);
+
+  let left = (rangeRect.right - containerRect.left) + host.scrollLeft + offset;
+  if (left > maxLeft) {
+    left = (rangeRect.left - containerRect.left) + host.scrollLeft - bubbleWidth - offset;
+  }
+  left = clamp(left, minLeft, maxLeft);
 
   return { top, left, containerRect };
 }
