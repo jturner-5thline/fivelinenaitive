@@ -4,7 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 const ADMIN_EMAIL = 'jturner@5thline.co';
-const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
+// James Turner's auth.users.id (NOT his profiles.id). Tasks.assigned_to is
+// filtered by auth user_id everywhere in the app (see useTasks.ts), so using
+// the profile id here meant the task was created but never appeared in
+// James's task list.
+const JAMES_TURNER_USER_ID = 'a6b48ccd-0f2a-4018-886e-241287208ea0';
 const NAITIVE_BASE_URL = 'https://fivelinenaitive.lovable.app';
 const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
 
@@ -349,6 +353,36 @@ export function useDealMemoApproval(
               message: `A Deal Memo for ${companyName} has been submitted and is ready for your review.`,
               action_url: dealUrl,
             } as any);
+
+            // Email notification to James — reuse the existing enriched
+            // task_assigned template in send-notification-email. Fire-and-forget;
+            // never block the submission UX on email errors.
+            try {
+              const { data: submitterProfile } = await supabase
+                .from('profiles')
+                .select('display_name, email')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              const submittedBy = submitterProfile?.display_name || submitterProfile?.email || user.email || 'A teammate';
+              await supabase.functions.invoke('send-notification-email', {
+                body: {
+                  type: 'task_assigned',
+                  user_id: JAMES_TURNER_USER_ID,
+                  deal_id: dealId,
+                  deal_name: companyName,
+                  changed_by: submittedBy,
+                  metadata: {
+                    task_title: reviewTitle,
+                    priority: 'high',
+                    action_url: dealUrl,
+                    deal_name: companyName,
+                    description: `${submittedBy} submitted the Deal Memo for ${companyName} and it's ready for your review.`,
+                  },
+                },
+              });
+            } catch (emailErr) {
+              console.error('[MemoApproval] Failed to email James Turner:', emailErr);
+            }
 
             // Asana mirror — same sync path used by every other naitive task.
             // Best-effort: never block the in-app submission on Asana errors.
