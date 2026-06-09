@@ -419,12 +419,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const hasAnyFilter =
     isAdmin &&
-    (managerFilter.length + typeFilter.length + statusFilter.length > 0 || taskFilter !== null);
+    (managerFilter.length + typeFilter.length + statusFilter.length > 0 ||
+      taskFilter !== null ||
+      (is5thLine && activeStagesOnly));
   const clearAllFilters = () => {
     setManagerFilter([]);
     setTypeFilter([]);
     setStatusFilter([]);
     setTaskFilter(null);
+    setActiveStagesOnly(false);
   };
 
   const filteredSorted = useMemo(() => {
@@ -433,12 +436,13 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
       if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
       if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      if (is5thLine && activeStagesOnly && !hasReachedFinalCreditStage(d.stage)) return false;
       if (taskFilter === 'late' && !lateByDeal.get(d.id)) return false;
       // "No tasks" = no OPEN tasks (completed-only deals + zero-task deals).
       if (taskFilter === 'none' && (openCountByDeal.get(d.id) ?? 0) > 0) return false;
       return true;
     });
-  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, openCountByDeal]);
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, openCountByDeal, is5thLine, activeStagesOnly]);
 
   // Counts for chip option labels — computed against the post-other-filter
   // set so users see how many extra deals each Tasks option would surface
