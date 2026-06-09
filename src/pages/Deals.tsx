@@ -37,6 +37,7 @@ import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
+import { REACHED_FINAL_CREDIT_SLUGS } from '@/lib/salesBdActivePipelineConversion';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
 import { useDealsContext } from '@/contexts/DealsContext';
