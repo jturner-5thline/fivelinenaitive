@@ -171,6 +171,25 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const { tasks: allTasks } = useMyTasks();
   const createMentions = useCreateMentions();
 
+  // Creator profile for the "Created by" activity entry. Falls back to a
+  // fetch when the task came from a surface (e.g. SharedTaskDrawer) that
+  // didn't preload creator_profile.
+  const { data: fetchedCreator } = useQuery({
+    queryKey: ['task-creator-profile', task.assigned_by],
+    enabled: !!task.assigned_by && !task.creator_profile,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, avatar_url, email')
+        .eq('user_id', task.assigned_by)
+        .maybeSingle();
+      return data
+        ? { display_name: data.display_name || '', avatar_url: data.avatar_url, email: data.email || '' }
+        : null;
+    },
+  });
+  const creatorProfile = task.creator_profile || fetchedCreator || null;
+
   const handleSaveTitle = () => {
     if (titleValue.trim() && titleValue !== task.title) onUpdate({ title: titleValue.trim() } as any);
     setEditingTitle(false);
