@@ -1980,7 +1980,7 @@ interface EmailDetailProps {
   deepLinkSignal?: string | null;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, onMarkRead, onMarkUnread, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { onMarkRead?: (email: MockEmail) => void; onMarkUnread?: (email: MockEmail) => void; pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
   const isMobile = useIsMobile();
   // Scroll-and-highlight the deep-linked message when present. Re-runs if
   // the user navigates between threads with consecutive priority signals.
