@@ -232,11 +232,19 @@ export function InsightsNarrativeEditor({
       const root = containerRef.current;
       if (!root) return;
       try {
+        // Anchor the bubble to the live selection's bounding rect in
+        // viewport coords and render `position: fixed` so it stays glued
+        // to the highlight regardless of ancestor positioning/overflow.
         const start = editor.view.coordsAtPos(from);
         const end = editor.view.coordsAtPos(to);
-        const rect = root.getBoundingClientRect();
-        const left = Math.min(start.left, end.left) - rect.left;
-        const top = Math.min(start.top, end.top) - rect.top - 32;
+        const selTop = Math.min(start.top, end.top);
+        const selLeft = Math.min(start.left, end.left);
+        const BTN_H = 26;
+        const OFFSET = 6;
+        let top = selTop - BTN_H - OFFSET;
+        // If there's no room above (near top of viewport), drop below.
+        if (top < 8) top = Math.max(start.bottom, end.bottom) + OFFSET;
+        const left = Math.max(8, Math.min(selLeft, window.innerWidth - 120));
         setSelAction({ text: text.slice(0, 400), left, top });
       } catch {
         setSelAction(null);
