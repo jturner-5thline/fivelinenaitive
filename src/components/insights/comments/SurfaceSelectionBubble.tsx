@@ -45,11 +45,15 @@ export function SurfaceSelectionBubble({
       if (anchor.closest('[data-qir-comments-ui], [data-surface-selection-bubble]')) {
         return;
       }
-      const rects = range.getClientRects();
-      const rect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect();
+      const rect = range.getBoundingClientRect();
       if (!rect || (rect.width === 0 && rect.height === 0)) { setPos(null); return; }
-      const x = Math.min(rect.right + 6, window.innerWidth - 110);
-      const y = Math.max(rect.top - 4, 8);
+      // Anchor just above the selection, left-aligned to it, clamped to
+      // the viewport. Drop below when there's no room above.
+      const BTN_H = 26;
+      const OFFSET = 6;
+      let y = rect.top - BTN_H - OFFSET;
+      if (y < 8) y = rect.bottom + OFFSET;
+      const x = Math.max(8, Math.min(rect.left, window.innerWidth - 120));
       setPos({ x, y, target: anchor });
     };
 

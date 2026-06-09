@@ -435,20 +435,26 @@ export function SelectionCommentAction({
       if (empty || from === to) { setState(null); return; }
       const text = editor.state.doc.textBetween(from, to, ' ').trim();
       if (!text) { setState(null); return; }
+      // Use viewport coords + `position: fixed` so the button anchors to
+      // the live selection rect regardless of ancestor positioning/scroll
+      // contexts.
+      const BTN_H = 26;
+      const OFFSET = 6;
       if (override) {
-        setState({
-          left: override.x + window.scrollX + 8,
-          top: override.y + window.scrollY + 8,
-          from, to, text, placement: 'cursor',
-        });
+        const left = Math.max(8, Math.min(override.x + 8, window.innerWidth - 120));
+        const top = Math.max(8, Math.min(override.y + 8, window.innerHeight - BTN_H - 8));
+        setState({ left, top, from, to, text, placement: 'cursor' });
         return;
       }
+      const start = editor.view.coordsAtPos(from);
       const end = editor.view.coordsAtPos(to);
-      setState({
-        left: end.right + window.scrollX + 6,
-        top: end.top + window.scrollY - 2,
-        from, to, text, placement: 'above',
-      });
+      const selTop = Math.min(start.top, end.top);
+      const selLeft = Math.min(start.left, end.left);
+      const selBottom = Math.max(start.bottom, end.bottom);
+      let top = selTop - BTN_H - OFFSET;
+      if (top < 8) top = selBottom + OFFSET;
+      const left = Math.max(8, Math.min(selLeft, window.innerWidth - 120));
+      setState({ left, top, from, to, text, placement: 'above' });
     };
 
     const onSelection = () => computeFromSelection();
@@ -461,15 +467,19 @@ export function SelectionCommentAction({
       e.preventDefault();
       computeFromSelection({ x: e.clientX, y: e.clientY });
     };
-    const onScroll = () => setState(null);
+    // Reposition on scroll/resize so the bubble tracks the selection
+    // instead of disappearing the moment the page moves.
+    const onScroll = () => computeFromSelection();
 
     editor.on('selectionUpdate', onSelection);
     dom.addEventListener('contextmenu', onContext);
     window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
     return () => {
       editor.off('selectionUpdate', onSelection);
       dom.removeEventListener('contextmenu', onContext);
       window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
     };
   }, [editor]);
 
@@ -484,7 +494,7 @@ export function SelectionCommentAction({
         setState(null);
       }}
       style={{
-        position: 'absolute', left: state.left, top: state.top, zIndex: 1600,
+        position: 'fixed', left: state.left, top: state.top, zIndex: 1600,
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500,
         background: 'rgba(16,28,52,0.92)', color: 'rgba(220,235,255,0.92)',
