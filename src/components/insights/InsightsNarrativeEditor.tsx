@@ -225,32 +225,39 @@ export function InsightsNarrativeEditor({
   useEffect(() => {
     if (!editor || readOnly) return;
     const onSelChange = () => {
-      const { from, to, empty } = editor.state.selection;
-      if (empty || to - from < 2) { setSelAction(null); return; }
-      const text = editor.state.doc.textBetween(from, to, ' ').trim();
-      if (!text) { setSelAction(null); return; }
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { setSelAction(null); return; }
+      const text = sel.toString().trim();
+      if (text.length < 2) { setSelAction(null); return; }
       const root = containerRef.current;
       if (!root) return;
+      const anchorNode = sel.anchorNode;
+      const anchorEl = (anchorNode && (anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement)) as HTMLElement | null;
+      if (!anchorEl || !root.contains(anchorEl) || !anchorEl.closest('.ProseMirror')) {
+        setSelAction(null);
+        return;
+      }
       try {
-        // Anchor the bubble to the live selection's bounding rect in
-        // viewport coords and render `position: fixed` so it stays glued
-        // to the highlight regardless of ancestor positioning/overflow.
-        const start = editor.view.coordsAtPos(from);
-        const end = editor.view.coordsAtPos(to);
-        const selTop = Math.min(start.top, end.top);
-        const selLeft = Math.min(start.left, end.left);
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (!rect || (rect.width === 0 && rect.height === 0)) {
+          setSelAction(null);
+          return;
+        }
         const BTN_H = 26;
+        const BTN_W = 96;
         const OFFSET = 6;
-        let top = selTop - BTN_H - OFFSET;
-        // If there's no room above (near top of viewport), drop below.
-        if (top < 8) top = Math.max(start.bottom, end.bottom) + OFFSET;
-        const left = Math.max(8, Math.min(selLeft, window.innerWidth - 120));
+        let top = rect.top - BTN_H - OFFSET;
+        if (top < 8) top = rect.bottom + OFFSET;
+        top = Math.max(8, Math.min(top, window.innerHeight - BTN_H - 8));
+        const left = Math.max(8, Math.min(rect.left, window.innerWidth - BTN_W - 8));
         setSelAction({ text: text.slice(0, 400), left, top });
       } catch {
         setSelAction(null);
       }
     };
     editor.on('selectionUpdate', onSelChange);
+    document.addEventListener('selectionchange', onSelChange);
     editor.on('blur', () => setTimeout(() => {
       const root = containerRef.current;
       if (root && !root.contains(document.activeElement)) setSelAction(null);
@@ -262,6 +269,7 @@ export function InsightsNarrativeEditor({
     window.addEventListener('resize', reflow);
     return () => {
       editor.off('selectionUpdate', onSelChange);
+      document.removeEventListener('selectionchange', onSelChange);
       window.removeEventListener('scroll', reflow, true);
       window.removeEventListener('resize', reflow);
     };
