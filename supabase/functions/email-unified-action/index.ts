@@ -55,7 +55,25 @@ serve(async (req) => {
       });
     }
 
-    const threadStr = JSON.stringify(threadData || {}).slice(0, 8000);
+    // Build a compact transcript instead of stringifying the whole thread.
+    // The classifier only needs the subject + last few message bodies.
+    const td: any = threadData || {};
+    const _emails: any[] = Array.isArray(td.emails) ? td.emails.slice(-3) : [];
+    const _latest = td.latestEmail || _emails[_emails.length - 1] || {};
+    const _transcript = _emails
+      .map((e: any, i: number) => {
+        const from = e?.from_name || e?.from_email || "Unknown";
+        const when = e?.received_at || "";
+        const txt = (e?.body_preview || e?.snippet || "")
+          .toString()
+          .slice(0, 700);
+        return `[#${i + 1}] From: ${from} (${when})\n${txt}`;
+      })
+      .join("\n\n---\n\n");
+    const threadStr =
+      `Subject: ${td.subject || ""}\n` +
+      `Latest from: ${_latest?.from_name || ""} <${_latest?.from_email || ""}>\n\n` +
+      _transcript;
 
     const systemPrompt = `You are an assistant inside an email-aware deal CRM.
 Given a user's natural-language request and the email thread context, classify
@@ -133,7 +151,9 @@ ${threadStr}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        // Faster lite model — intent routing + short task title is well
+        // within its capability and cuts latency by ~2x vs. flash preview.
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
