@@ -660,6 +660,7 @@ export default function Dashboard() {
                     <DealFilters
                       filters={filters}
                       onFilterChange={updateFilters}
+                      hideStatusFilter={is5thLine}
                     />
                     <div className="mt-2">
                       <AIFilterChips />
