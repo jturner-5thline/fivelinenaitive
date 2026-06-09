@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { QirContextualComments } from '@/components/metrics/dashboards/qir/QirContextualComments';
+import { SurfaceSelectionBubble } from '@/components/insights/comments/SurfaceSelectionBubble';
 
 /**
  * Shared Insights selection-to-queue surface.
@@ -55,6 +56,7 @@ export function InsightsContextualSurface({
         sectionLabels={sectionLabels}
         fallbackSourceLabel={fallbackSourceLabel}
       />
+      <SurfaceSelectionBubble rootRef={ref} />
     </div>
   );
 }

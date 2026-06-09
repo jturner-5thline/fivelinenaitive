@@ -19,6 +19,7 @@ import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContex
 import { supabase } from '@/integrations/supabase/client';
 import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
+import { SurfaceSelectionBubble } from '@/components/insights/comments/SurfaceSelectionBubble';
 import WhatWorkingSections from './WhatWorkingSections';
 import { InsightsNarrativeEditor, type NarrativeAttachment } from '@/components/insights/InsightsNarrativeEditor';
 import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEditable } from './qir/DocPrimitives';
@@ -3320,6 +3321,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         </span>
       </div>
       <QirContextualComments reportKey={rk} reportLabel={reportLabel} rootRef={rootRef} />
+      <SurfaceSelectionBubble rootRef={rootRef} />
     </div>
   );
 }
