@@ -5,6 +5,7 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bold, Italic, Underline as UnderlineIcon,
   Heading1, Heading2, List, ListOrdered, Quote,
@@ -81,6 +82,10 @@ function bytesLabel(n: number) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(n, max));
 }
 
 /**
@@ -249,8 +254,21 @@ export function InsightsNarrativeEditor({
         const OFFSET = 6;
         let top = rect.top - BTN_H - OFFSET;
         if (top < 8) top = rect.bottom + OFFSET;
-        top = Math.max(8, Math.min(top, window.innerHeight - BTN_H - 8));
-        const left = Math.max(8, Math.min(rect.left, window.innerWidth - BTN_W - 8));
+        top = clamp(top, 8, window.innerHeight - BTN_H - 8);
+        const left = clamp(rect.left, 8, window.innerWidth - BTN_W - 8);
+        console.log('[InsightsNarrativeEditor] selection bubble position', {
+          rangeRect: {
+            top: rect.top,
+            left: rect.left,
+            right: rect.right,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height,
+          },
+          top,
+          left,
+          strategy: 'portal-fixed',
+        });
         setSelAction({ text: text.slice(0, 400), left, top });
       } catch {
         setSelAction(null);
@@ -304,6 +322,49 @@ export function InsightsNarrativeEditor({
 
   const showToolbar = !readOnly && (!chromeless || focused);
   const isEmpty = editor.isEmpty;
+  const selectionBubble = selAction && !readOnly && typeof document !== 'undefined'
+    ? createPortal(
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          // Open the shared QirContextualComments composer (same UX as
+          // Dashboard/Forecasts/Key Metrics) so the user can type a
+          // comment before adding it to the Queue. We synthesise a
+          // right-click on the ProseMirror surface at the current
+          // selection — QirContextualComments' contextmenu handler
+          // captures the live selection as the snippet.
+          setSelAction(null);
+          const sel = window.getSelection();
+          let cx = 0, cy = 0;
+          if (sel && sel.rangeCount > 0) {
+            const r = sel.getRangeAt(0).getBoundingClientRect();
+            cx = r.right; cy = r.bottom;
+          }
+          const pm = containerRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
+          const target = pm || containerRef.current;
+          if (!target) return;
+          target.dispatchEvent(new MouseEvent('contextmenu', {
+            bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 2,
+          }));
+        }}
+        style={{
+          position: 'fixed', left: selAction.left, top: selAction.top,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+          background: 'rgba(16,28,52,0.95)', color: '#cfe6ff',
+          border: '1px solid rgba(80,150,220,0.45)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+          cursor: 'pointer', zIndex: 1600, whiteSpace: 'nowrap',
+        }}
+        title="Add a comment on the selected text"
+      >
+        <MessageSquarePlus size={12} />
+        Comment
+      </button>,
+      document.body,
+    )
+    : null;
 
   return (
     <div
@@ -382,46 +443,7 @@ export function InsightsNarrativeEditor({
         }}
       >
         <EditorContent editor={editor} />
-        {selAction && !readOnly && (
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              // Open the shared QirContextualComments composer (same UX as
-              // Dashboard/Forecasts/Key Metrics) so the user can type a
-              // comment before adding it to the Queue. We synthesise a
-              // right-click on the ProseMirror surface at the current
-              // selection — QirContextualComments' contextmenu handler
-              // captures the live selection as the snippet.
-              setSelAction(null);
-              const sel = window.getSelection();
-              let cx = 0, cy = 0;
-              if (sel && sel.rangeCount > 0) {
-                const r = sel.getRangeAt(0).getBoundingClientRect();
-                cx = r.right; cy = r.bottom;
-              }
-              const pm = containerRef.current?.querySelector('.ProseMirror') as HTMLElement | null;
-              const target = pm || containerRef.current;
-              if (!target) return;
-              target.dispatchEvent(new MouseEvent('contextmenu', {
-                bubbles: true, cancelable: true, clientX: cx, clientY: cy, button: 2,
-              }));
-            }}
-            style={{
-              position: 'fixed', left: selAction.left, top: selAction.top,
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-              background: 'rgba(16,28,52,0.95)', color: '#cfe6ff',
-              border: '1px solid rgba(80,150,220,0.45)',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-              cursor: 'pointer', zIndex: 1600, whiteSpace: 'nowrap',
-            }}
-            title="Add a comment on the selected text"
-          >
-            <MessageSquarePlus size={12} />
-            Comment
-          </button>
-        )}
+        {selectionBubble}
         {chromeless && !focused && isEmpty && !readOnly && (
           <div
             onClick={() => editor.chain().focus().run()}
