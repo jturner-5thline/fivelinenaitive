@@ -796,7 +796,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               )}
             </TabsContent>
             <TabsContent value="activity" className="mt-3 space-y-2">
-              {activity.length === 0 && <p className="text-xs text-center py-4" style={{ color: '#8b92a5' }}>No activity yet</p>}
               {activity.map(a => (
                 <div key={a.id} className="flex items-start gap-2 py-1">
                   <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
@@ -808,6 +807,28 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                   </div>
                 </div>
               ))}
+              {/* Always-present creation entry, oldest at the bottom. */}
+              <div className="flex items-start gap-2 py-1">
+                <Avatar className="h-5 w-5 shrink-0 mt-0.5">
+                  {creatorProfile?.avatar_url && <AvatarImage src={creatorProfile.avatar_url} />}
+                  <AvatarFallback className="text-[9px]" style={{ backgroundColor: 'rgba(255,255,255,0.06)', color: '#cbd5e1' }}>
+                    {(creatorProfile?.display_name || creatorProfile?.email || '?').trim().charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs" style={{ color: 'white' }}>
+                    <span className="font-medium">Created</span>
+                    {creatorProfile && (
+                      <> by <span className="font-medium">{creatorProfile.display_name || creatorProfile.email}</span></>
+                    )}
+                  </p>
+                  <span className="text-[10px]" style={{ color: '#8b92a5' }}>
+                    {format(new Date(task.created_at), "MMM d, yyyy 'at' h:mm a")}
+                    {' · '}
+                    {formatDistanceToNow(new Date(task.created_at), { addSuffix: true })}
+                  </span>
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
