@@ -102,6 +102,22 @@ function getTrueScrollContainer(start: HTMLElement | null, fallback: HTMLElement
   return fallback;
 }
 
+function getSelectionAnchorRect(range: Range) {
+  const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 || rect.height > 0);
+  if (rects.length > 0) {
+    return {
+      rect: rects[rects.length - 1],
+      source: 'clientRects:last-nonzero',
+      rectCount: rects.length,
+    } as const;
+  }
+  return {
+    rect: range.getBoundingClientRect(),
+    source: 'boundingClientRect:fallback',
+    rectCount: 0,
+  } as const;
+}
+
 /**
  * Rich-text narrative editor for Insights reports. Persists HTML via
  * `onChange` (parent debounces into the existing report save) and pushes
@@ -258,12 +274,14 @@ export function InsightsNarrativeEditor({
       }
       try {
         const range = sel.getRangeAt(0);
-        const rangeRect = range.getBoundingClientRect();
+        const { rect: rangeRect, source: rectSource, rectCount } = getSelectionAnchorRect(range);
         if (!rangeRect || (rangeRect.width === 0 && rangeRect.height === 0)) {
           setSelAction(null);
           return;
         }
-        const host = getTrueScrollContainer(anchorEl, root);
+        const focusNode = range.endContainer;
+        const focusEl = (focusNode && (focusNode.nodeType === 1 ? focusNode : focusNode.parentElement)) as HTMLElement | null;
+        const host = getTrueScrollContainer(focusEl || anchorEl, root);
         if (!host) {
           setSelAction(null);
           return;
@@ -304,6 +322,8 @@ export function InsightsNarrativeEditor({
           scrollLeft: host.scrollLeft,
           top,
           left,
+          rectSource,
+          rectCount,
           strategy: 'true-scroll-container-absolute',
         });
         setSelAction({ text: text.slice(0, 400), left, top, host });
