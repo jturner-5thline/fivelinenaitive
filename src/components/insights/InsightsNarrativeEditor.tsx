@@ -16,8 +16,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
 import { MessageSquarePlus } from 'lucide-react';
+import {
+  computeSelectionBubblePosition,
+  getSelectionAnchorRect,
+  getTrueScrollContainer,
+} from '@/components/insights/comments/selectionBubblePosition';
 
 export interface NarrativeAttachment {
   id: string;
@@ -84,40 +88,6 @@ function bytesLabel(n: number) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(n, max));
-}
-
-function getTrueScrollContainer(start: HTMLElement | null, fallback: HTMLElement | null) {
-  let node = start;
-  while (node && node !== document.body && node !== document.documentElement) {
-    const style = window.getComputedStyle(node);
-    const overflowY = style.overflowY;
-    const overflowX = style.overflowX;
-    const allowsScroll = /(auto|scroll|overlay)/.test(`${overflowY} ${overflowX}`);
-    const hasScrollableContent = node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth;
-    if (allowsScroll && hasScrollableContent) return node;
-    node = node.parentElement;
-  }
-  return fallback;
-}
-
-function getSelectionAnchorRect(range: Range) {
-  const rects = Array.from(range.getClientRects()).filter(rect => rect.width > 0 || rect.height > 0);
-  if (rects.length > 0) {
-    return {
-      rect: rects[rects.length - 1],
-      source: 'clientRects:last-nonzero',
-      rectCount: rects.length,
-    } as const;
-  }
-  return {
-    rect: range.getBoundingClientRect(),
-    source: 'boundingClientRect:fallback',
-    rectCount: 0,
-  } as const;
-}
-
 /**
  * Rich-text narrative editor for Insights reports. Persists HTML via
  * `onChange` (parent debounces into the existing report save) and pushes
@@ -129,7 +99,6 @@ export function InsightsNarrativeEditor({
   isSaving, savedAt, readOnly, chromeless,
 }: Props) {
   const { company } = useCompany();
-  const { promote } = useReportAgendaQueue();
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
   const lastEmittedRef = useRef<string>(initialHTMLRef.current);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -274,8 +243,8 @@ export function InsightsNarrativeEditor({
       }
       try {
         const range = sel.getRangeAt(0);
-        const { rect: rangeRect, source: rectSource, rectCount } = getSelectionAnchorRect(range);
-        if (!rangeRect || (rangeRect.width === 0 && rangeRect.height === 0)) {
+        const { rect: rangeRect, source: rectSource, rectCount } = getSelectionAnchorRect(range, anchorEl);
+        if (!rangeRect) {
           setSelAction(null);
           return;
         }
@@ -287,24 +256,13 @@ export function InsightsNarrativeEditor({
           return;
         }
         if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
-        const containerRect = host.getBoundingClientRect();
-        const BTN_H = 26;
-        const BTN_W = 96;
-        const OFFSET = 8;
-        let top = (rangeRect.top - containerRect.top) + host.scrollTop - BTN_H - OFFSET;
-        if (top < host.scrollTop + 8) {
-          top = (rangeRect.bottom - containerRect.top) + host.scrollTop + OFFSET;
-        }
-        const minTop = host.scrollTop + 8;
-        const maxTop = Math.max(minTop, host.scrollTop + host.clientHeight - BTN_H - 8);
-        top = clamp(top, minTop, maxTop);
-        const minLeft = host.scrollLeft + 8;
-        const maxLeft = Math.max(minLeft, host.scrollLeft + host.clientWidth - BTN_W - 8);
-        const left = clamp(
-          (rangeRect.left - containerRect.left) + host.scrollLeft,
-          minLeft,
-          maxLeft,
-        );
+        const { top, left, containerRect } = computeSelectionBubblePosition({
+          host,
+          rangeRect,
+          bubbleHeight: 26,
+          bubbleWidth: 96,
+          offset: 8,
+        });
         console.log('[InsightsNarrativeEditor] selection bubble position', {
           host: {
             tagName: host.tagName,

@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MessageSquare } from 'lucide-react';
+import {
+  computeSelectionBubblePosition,
+  getSelectionAnchorRect,
+  getTrueScrollContainer,
+} from '@/components/insights/comments/selectionBubblePosition';
 
 /**
  * DOM-level "Comment" bubble that appears whenever the user highlights
@@ -18,7 +24,7 @@ export function SurfaceSelectionBubble({
 }: {
   rootRef: React.RefObject<HTMLElement>;
 }) {
-  const [pos, setPos] = useState<{ x: number; y: number; target: HTMLElement } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number; target: HTMLElement; host: HTMLElement } | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
@@ -45,16 +51,42 @@ export function SurfaceSelectionBubble({
       if (anchor.closest('[data-qir-comments-ui], [data-surface-selection-bubble]')) {
         return;
       }
-      const rect = range.getBoundingClientRect();
-      if (!rect || (rect.width === 0 && rect.height === 0)) { setPos(null); return; }
-      // Anchor just above the selection, left-aligned to it, clamped to
-      // the viewport. Drop below when there's no room above.
-      const BTN_H = 26;
-      const OFFSET = 6;
-      let y = rect.top - BTN_H - OFFSET;
-      if (y < 8) y = rect.bottom + OFFSET;
-      const x = Math.max(8, Math.min(rect.left, window.innerWidth - 120));
-      setPos({ x, y, target: anchor });
+      const focusNode = range.endContainer;
+      const focusEl = (focusNode && (focusNode.nodeType === 1 ? focusNode : focusNode.parentElement)) as HTMLElement | null;
+      const { rect: rangeRect, source: rectSource, rectCount } = getSelectionAnchorRect(range, anchor);
+      if (!rangeRect) { setPos(null); return; }
+      const host = getTrueScrollContainer(focusEl || anchor, root);
+      if (!host) { setPos(null); return; }
+      if (window.getComputedStyle(host).position === 'static') host.style.position = 'relative';
+      const { top, left, containerRect } = computeSelectionBubblePosition({
+        host,
+        rangeRect,
+        bubbleHeight: 26,
+        bubbleWidth: 120,
+        offset: 8,
+      });
+      console.log('[SurfaceSelectionBubble] selection bubble position', {
+        host: {
+          tagName: host.tagName,
+          className: host.className,
+          clientHeight: host.clientHeight,
+          scrollHeight: host.scrollHeight,
+          clientWidth: host.clientWidth,
+          scrollWidth: host.scrollWidth,
+          offsetParentTag: (host.offsetParent as HTMLElement | null)?.tagName ?? null,
+          offsetParentClassName: (host.offsetParent as HTMLElement | null)?.className ?? null,
+        },
+        rangeRect: { top: rangeRect.top, left: rangeRect.left, right: rangeRect.right, bottom: rangeRect.bottom, width: rangeRect.width, height: rangeRect.height },
+        containerRect: { top: containerRect.top, left: containerRect.left, right: containerRect.right, bottom: containerRect.bottom, width: containerRect.width, height: containerRect.height },
+        scrollTop: host.scrollTop,
+        scrollLeft: host.scrollLeft,
+        top,
+        left,
+        rectSource,
+        rectCount,
+        strategy: 'true-scroll-container-absolute',
+      });
+      setPos({ left, top, target: anchor, host });
     };
 
     const onSelChange = () => {
@@ -73,7 +105,7 @@ export function SurfaceSelectionBubble({
       // Let the selection settle before measuring.
       setTimeout(compute, 0);
     };
-    const onScroll = () => setPos(null);
+    const onScroll = () => compute();
 
     document.addEventListener('selectionchange', onSelChange);
     document.addEventListener('mouseup', onMouseUp, true);
@@ -89,7 +121,7 @@ export function SurfaceSelectionBubble({
 
   if (!pos) return null;
 
-  return (
+  return createPortal(
     <button
       ref={btnRef}
       type="button"
@@ -104,12 +136,15 @@ export function SurfaceSelectionBubble({
         e.stopPropagation();
         const target = pos.target;
         const sel = window.getSelection();
-        let cx = pos.x;
-        let cy = pos.y + 12;
+        let cx = pos.left;
+        let cy = pos.top + 12;
         if (sel && sel.rangeCount > 0) {
-          const r = sel.getRangeAt(0).getBoundingClientRect();
-          cx = r.right;
-          cy = r.bottom;
+          const range = sel.getRangeAt(0);
+          const { rect } = getSelectionAnchorRect(range, pos.target);
+          if (rect) {
+            cx = rect.right;
+            cy = rect.bottom;
+          }
         }
         // Synthesise a right-click on the selection so the existing
         // QirContextualComments contextmenu handler captures the snippet
@@ -125,9 +160,9 @@ export function SurfaceSelectionBubble({
         setPos(null);
       }}
       style={{
-        position: 'fixed',
-        left: pos.x,
-        top: pos.y,
+        position: 'absolute',
+        left: pos.left,
+        top: pos.top,
         zIndex: 1600,
         display: 'inline-flex',
         alignItems: 'center',
@@ -145,6 +180,7 @@ export function SurfaceSelectionBubble({
       }}
     >
       <MessageSquare size={11} /> Comment
-    </button>
+    </button>,
+    pos.host,
   );
 }
