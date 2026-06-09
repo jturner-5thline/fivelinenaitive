@@ -88,15 +88,15 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
 }
 
-function getScrollContainer(start: HTMLElement | null, fallback: HTMLElement | null) {
+function getTrueScrollContainer(start: HTMLElement | null, fallback: HTMLElement | null) {
   let node = start;
-  while (node && node !== document.body) {
+  while (node && node !== document.body && node !== document.documentElement) {
     const style = window.getComputedStyle(node);
     const overflowY = style.overflowY;
     const overflowX = style.overflowX;
-    const isScrollable = /(auto|scroll|overlay)/.test(`${overflowY} ${overflowX}`)
-      && (node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth);
-    if (isScrollable) return node;
+    const allowsScroll = /(auto|scroll|overlay)/.test(`${overflowY} ${overflowX}`);
+    const hasScrollableContent = node.scrollHeight > node.clientHeight || node.scrollWidth > node.clientWidth;
+    if (allowsScroll && hasScrollableContent) return node;
     node = node.parentElement;
   }
   return fallback;
@@ -263,7 +263,7 @@ export function InsightsNarrativeEditor({
           setSelAction(null);
           return;
         }
-        const host = getScrollContainer(anchorEl.closest('.ProseMirror') as HTMLElement | null, root);
+        const host = getTrueScrollContainer(anchorEl, root);
         if (!host) {
           setSelAction(null);
           return;
@@ -272,7 +272,7 @@ export function InsightsNarrativeEditor({
         const containerRect = host.getBoundingClientRect();
         const BTN_H = 26;
         const BTN_W = 96;
-        const OFFSET = 6;
+        const OFFSET = 8;
         let top = (rangeRect.top - containerRect.top) + host.scrollTop - BTN_H - OFFSET;
         if (top < host.scrollTop + 8) {
           top = (rangeRect.bottom - containerRect.top) + host.scrollTop + OFFSET;
@@ -298,27 +298,13 @@ export function InsightsNarrativeEditor({
             offsetParentTag: (host.offsetParent as HTMLElement | null)?.tagName ?? null,
             offsetParentClassName: (host.offsetParent as HTMLElement | null)?.className ?? null,
           },
-          rangeRect: {
-            top: rangeRect.top,
-            left: rangeRect.left,
-            right: rangeRect.right,
-            bottom: rangeRect.bottom,
-            width: rangeRect.width,
-            height: rangeRect.height,
-          },
-          containerRect: {
-            top: containerRect.top,
-            left: containerRect.left,
-            right: containerRect.right,
-            bottom: containerRect.bottom,
-            width: containerRect.width,
-            height: containerRect.height,
-          },
+          rangeRect: { top: rangeRect.top, left: rangeRect.left, right: rangeRect.right, bottom: rangeRect.bottom, width: rangeRect.width, height: rangeRect.height },
+          containerRect: { top: containerRect.top, left: containerRect.left, right: containerRect.right, bottom: containerRect.bottom, width: containerRect.width, height: containerRect.height },
           scrollTop: host.scrollTop,
           scrollLeft: host.scrollLeft,
           top,
           left,
-          strategy: 'scroll-container-absolute',
+          strategy: 'true-scroll-container-absolute',
         });
         setSelAction({ text: text.slice(0, 400), left, top, host });
       } catch {
