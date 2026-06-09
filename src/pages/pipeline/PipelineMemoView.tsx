@@ -16,6 +16,10 @@ import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasReachedFinalCreditStage } from '@/lib/salesBdActivePipelineConversion';
+import { Toggle } from '@/components/ui/toggle';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ── Compact admin filter chip (multi-select popover) ───────────
 // Hoisted above PipelineMemoView so React Fast Refresh / module
