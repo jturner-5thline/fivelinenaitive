@@ -354,6 +354,36 @@ export function useDealMemoApproval(
               action_url: dealUrl,
             } as any);
 
+            // Email notification to James — reuse the existing enriched
+            // task_assigned template in send-notification-email. Fire-and-forget;
+            // never block the submission UX on email errors.
+            try {
+              const { data: submitterProfile } = await supabase
+                .from('profiles')
+                .select('display_name, email')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              const submittedBy = submitterProfile?.display_name || submitterProfile?.email || user.email || 'A teammate';
+              await supabase.functions.invoke('send-notification-email', {
+                body: {
+                  type: 'task_assigned',
+                  user_id: JAMES_TURNER_USER_ID,
+                  deal_id: dealId,
+                  deal_name: companyName,
+                  changed_by: submittedBy,
+                  metadata: {
+                    task_title: reviewTitle,
+                    priority: 'high',
+                    action_url: dealUrl,
+                    deal_name: companyName,
+                    description: `${submittedBy} submitted the Deal Memo for ${companyName} and it's ready for your review.`,
+                  },
+                },
+              });
+            } catch (emailErr) {
+              console.error('[MemoApproval] Failed to email James Turner:', emailErr);
+            }
+
             // Asana mirror — same sync path used by every other naitive task.
             // Best-effort: never block the in-app submission on Asana errors.
             try {
