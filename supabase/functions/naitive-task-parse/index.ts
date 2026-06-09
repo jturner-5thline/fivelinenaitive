@@ -118,13 +118,13 @@ serve(async (req) => {
     // Pull candidate entities (cap each list)
     const [dealsRes, lendersRes, contactsRes, teamRes] = await Promise.all([
       companyId
-        ? admin.from("deals").select("id, company").eq("company_id", companyId).limit(500)
+        ? admin.from("deals").select("id, company").eq("company_id", companyId).neq("status", "archived").limit(200)
         : Promise.resolve({ data: [] as any[] }),
       companyId
-        ? admin.from("master_lenders").select("id, name").eq("company_id", companyId).limit(500)
+        ? admin.from("master_lenders").select("id, name").eq("company_id", companyId).limit(200)
         : Promise.resolve({ data: [] as any[] }),
       companyId
-        ? admin.from("contacts").select("id, first_name, last_name, email").eq("org_company_id", companyId).limit(500)
+        ? admin.from("contacts").select("id, first_name, last_name, email").eq("org_company_id", companyId).limit(200)
         : Promise.resolve({ data: [] as any[] }),
       companyId
         ? admin.rpc("get_team_members_for_mention", { _user_id: user.id })
@@ -147,8 +147,8 @@ serve(async (req) => {
     const weekday = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][today.getUTCDay()];
 
     // Compact candidate lists for the model (names only)
-    const dealNames = deals.map((d: any) => d.company).filter(Boolean).slice(0, 200);
-    const lenderNames = lenders.map((l: any) => l.name).filter(Boolean).slice(0, 200);
+    const dealNames = deals.map((d: any) => d.company).filter(Boolean).slice(0, 120);
+    const lenderNames = lenders.map((l: any) => l.name).filter(Boolean).slice(0, 120);
     const teamNames = team.map((t: any) => t.display_name).filter(Boolean);
 
     const systemPrompt = `You convert short natural-language requests into a structured TaskDraft JSON.
@@ -198,7 +198,9 @@ TEAM: ${JSON.stringify(teamNames)}`;
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        // Lite is plenty for short NL → TaskDraft extraction and noticeably
+        // faster — matters because this fires on every debounced keystroke.
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: text },
