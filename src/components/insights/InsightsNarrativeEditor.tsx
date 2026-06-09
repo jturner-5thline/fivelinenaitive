@@ -89,7 +89,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 function getScrollContainer(start: HTMLElement | null, fallback: HTMLElement | null) {
-  let node = start?.parentElement ?? null;
+  let node = start;
   while (node && node !== document.body) {
     const style = window.getComputedStyle(node);
     const overflowY = style.overflowY;
@@ -288,6 +288,16 @@ export function InsightsNarrativeEditor({
           maxLeft,
         );
         console.log('[InsightsNarrativeEditor] selection bubble position', {
+          host: {
+            tagName: host.tagName,
+            className: host.className,
+            clientHeight: host.clientHeight,
+            scrollHeight: host.scrollHeight,
+            clientWidth: host.clientWidth,
+            scrollWidth: host.scrollWidth,
+            offsetParentTag: (host.offsetParent as HTMLElement | null)?.tagName ?? null,
+            offsetParentClassName: (host.offsetParent as HTMLElement | null)?.className ?? null,
+          },
           rangeRect: {
             top: rangeRect.top,
             left: rangeRect.left,
