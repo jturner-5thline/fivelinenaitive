@@ -821,8 +821,41 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
 
   const isInline = variant === 'inline';
 
+  // Keyboard shortcuts scoped to this composer:
+  //   Cmd/Ctrl + Shift + C → reveal Cc and focus it
+  //   Cmd/Ctrl + Shift + B → reveal Bcc and focus it
+  // (Bold/Italic/Underline + Cmd/Ctrl+K for links are handled inside the
+  // EmailRichTextEditor / Tiptap keymap.)
+  const composerRootRef = useRef<HTMLDivElement>(null);
+  const focusRecipient = useCallback((kind: 'cc' | 'bcc') => {
+    // The recipient fields render an <input> with a placeholder we can
+    // target — avoids forwarding refs through RecipientField.
+    requestAnimationFrame(() => {
+      const root = composerRootRef.current;
+      if (!root) return;
+      const sel = `input[placeholder="${kind}@example.com"]`;
+      const el = root.querySelector<HTMLInputElement>(sel);
+      el?.focus();
+    });
+  }, []);
+  const handleComposerKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod || !e.shiftKey || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === 'c') {
+      e.preventDefault();
+      setShowCcBcc(true);
+      focusRecipient('cc');
+    } else if (key === 'b') {
+      e.preventDefault();
+      setShowCcBcc(true);
+      focusRecipient('bcc');
+    }
+  }, [focusRecipient]);
+
   return (
     <div
+      ref={composerRootRef}
       className={cn(
         'relative flex flex-col bg-card/40 border border-white/10 rounded-lg shadow-lg overflow-hidden',
         isInline && 'mx-3 my-3 flex-1 min-h-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
@@ -835,6 +868,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       )}
       role="region"
       aria-label="Email composer"
+      onKeyDown={handleComposerKeyDown}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
