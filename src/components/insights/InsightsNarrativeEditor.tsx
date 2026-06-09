@@ -390,7 +390,7 @@ export function InsightsNarrativeEditor({
           }));
         }}
         style={{
-          position: 'fixed', left: selAction.left, top: selAction.top,
+          position: 'absolute', left: selAction.left, top: selAction.top,
           display: 'inline-flex', alignItems: 'center', gap: 4,
           padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
           background: 'rgba(16,28,52,0.95)', color: '#cfe6ff',
@@ -403,7 +403,7 @@ export function InsightsNarrativeEditor({
         <MessageSquarePlus size={12} />
         Comment
       </button>,
-      document.body,
+      selAction.host,
     )
     : null;
 
@@ -484,7 +484,6 @@ export function InsightsNarrativeEditor({
         }}
       >
         <EditorContent editor={editor} />
-        {selectionBubble}
         {chromeless && !focused && isEmpty && !readOnly && (
           <div
             onClick={() => editor.chain().focus().run()}
