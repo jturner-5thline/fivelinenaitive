@@ -16,6 +16,10 @@ import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/contexts/AuthContext';
+import { hasReachedFinalCreditStage } from '@/lib/salesBdActivePipelineConversion';
+import { Toggle } from '@/components/ui/toggle';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // ── Compact admin filter chip (multi-select popover) ───────────
 // Hoisted above PipelineMemoView so React Fast Refresh / module
@@ -347,9 +351,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   // ── Admin-only filter bar (manager / type / status) ──
   const { isAdmin } = useAdminRole();
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const [managerFilter, setManagerFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // 5th Line replaces the Status dropdown with an Active toggle that
+  // narrows to deals at "Final Credit Items" or later in the canonical
+  // pipeline order. Mirrors the /deals board chip.
+  const [activeStagesOnly, setActiveStagesOnly] = useState(false);
   // Tasks filter — single-select: 'late' (≥1 overdue open task) or 'none'
   // (zero non-archived tasks). Sits alongside the existing admin filters
   // and combines additively (AND).
@@ -409,12 +419,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const hasAnyFilter =
     isAdmin &&
-    (managerFilter.length + typeFilter.length + statusFilter.length > 0 || taskFilter !== null);
+    (managerFilter.length + typeFilter.length + statusFilter.length > 0 ||
+      taskFilter !== null ||
+      (is5thLine && activeStagesOnly));
   const clearAllFilters = () => {
     setManagerFilter([]);
     setTypeFilter([]);
     setStatusFilter([]);
     setTaskFilter(null);
+    setActiveStagesOnly(false);
   };
 
   const filteredSorted = useMemo(() => {
@@ -423,12 +436,13 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
       if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
       if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      if (is5thLine && activeStagesOnly && !hasReachedFinalCreditStage(d.stage)) return false;
       if (taskFilter === 'late' && !lateByDeal.get(d.id)) return false;
       // "No tasks" = no OPEN tasks (completed-only deals + zero-task deals).
       if (taskFilter === 'none' && (openCountByDeal.get(d.id) ?? 0) > 0) return false;
       return true;
     });
-  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, openCountByDeal]);
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, openCountByDeal, is5thLine, activeStagesOnly]);
 
   // Counts for chip option labels — computed against the post-other-filter
   // set so users see how many extra deals each Tasks option would surface
@@ -514,13 +528,35 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             onChange={setTypeFilter}
             formatLabel={titleCase}
           />
-          <FilterChip
-            label="Status"
-            options={filterOptions.statuses}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            formatLabel={titleCase}
-          />
+          {is5thLine ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={activeStagesOnly}
+                    onPressedChange={setActiveStagesOnly}
+                    variant="outline"
+                    size="sm"
+                    aria-label="Show only active-stage deals (Final Credit Items onward)"
+                    className={`h-7 px-2.5 text-xs font-medium backdrop-blur-md border transition-all duration-200 ${activeStagesOnly ? 'bg-gradient-to-br from-emerald-500/25 to-green-600/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_hsl(150,70%,45%,0.2)] hover:from-emerald-500/30 hover:to-green-600/25' : 'bg-gradient-to-br from-emerald-500/10 to-green-600/5 border-emerald-500/20 text-emerald-400/70 hover:from-emerald-500/15 hover:to-green-600/10 hover:border-emerald-500/35 hover:text-emerald-300'}`}
+                  >
+                    Active
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Only deals at "Final Credit Items" or later</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <FilterChip
+              label="Status"
+              options={filterOptions.statuses}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              formatLabel={titleCase}
+            />
+          )}
           <SingleSelectFilterChip<'late' | 'none'>
             label="Tasks"
             ariaLabel="Filter by tasks"
