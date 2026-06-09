@@ -26,11 +26,18 @@ const DEFAULT_PINNED: FilterKey[] = ['stage', 'status', 'manager'];
 interface DealFiltersProps {
   filters: FilterType;
   onFilterChange: (filters: Partial<FilterType>) => void;
+  /**
+   * When true, the Status quick-filter chip is suppressed from the pinned
+   * filter row (e.g. for the 5th Line Deal Rundown, where the "Active"
+   * toggle takes its place).
+   */
+  hideStatusFilter?: boolean;
 }
 
 export function DealFilters({
   filters,
   onFilterChange,
+  hideStatusFilter = false,
 }: DealFiltersProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const filterConfigs = useFilterConfigs();
@@ -202,7 +209,9 @@ export function DealFilters({
         </HintTooltip>
 
         {/* Quick Filters (Pinned) */}
-        {pinnedFilters.map((key) => (
+        {pinnedFilters
+          .filter((key) => !(hideStatusFilter && key === 'status'))
+          .map((key) => (
           <MultiSelectFilter
             key={key}
             label={FILTER_LABELS[key]}
