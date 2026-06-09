@@ -351,9 +351,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   // ── Admin-only filter bar (manager / type / status) ──
   const { isAdmin } = useAdminRole();
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const [managerFilter, setManagerFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // 5th Line replaces the Status dropdown with an Active toggle that
+  // narrows to deals at "Final Credit Items" or later in the canonical
+  // pipeline order. Mirrors the /deals board chip.
+  const [activeStagesOnly, setActiveStagesOnly] = useState(false);
   // Tasks filter — single-select: 'late' (≥1 overdue open task) or 'none'
   // (zero non-archived tasks). Sits alongside the existing admin filters
   // and combines additively (AND).
