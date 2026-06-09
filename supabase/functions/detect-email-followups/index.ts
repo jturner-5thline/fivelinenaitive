@@ -105,7 +105,7 @@ serve(async (req) => {
 
     const subject = threadData.subject || emailData?.subject || "(no subject)";
     const emails: any[] = Array.isArray(threadData.emails)
-      ? threadData.emails.slice(-6)
+      ? threadData.emails.slice(-3)
       : [];
     const latest = threadData.latestEmail || emailData || emails[emails.length - 1] || {};
 
@@ -113,7 +113,9 @@ serve(async (req) => {
       .map((e: any, i: number) => {
         const from = e?.from_name || e?.from_email || "Unknown";
         const when = e?.received_at || "";
-        const txt = (e?.body_text || e?.body_preview || "").toString().slice(0, 1500);
+        // Aggressive per-message trim — task extraction only needs the
+        // commitments/asks near the top of each message, not the full body.
+        const txt = (e?.body_text || e?.body_preview || "").toString().slice(0, 600);
         return `[#${i + 1}] From: ${from} (${when})\n${txt}`;
       })
       .join("\n\n---\n\n");
@@ -206,7 +208,10 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          // Lite is ~2-3x faster than the preview flash model and is more
+          // than capable of extracting concrete follow-ups from a short
+          // pre-trimmed transcript.
+          model: "google/gemini-2.5-flash-lite",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userPrompt },
