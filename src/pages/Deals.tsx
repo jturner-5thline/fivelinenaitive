@@ -133,6 +133,7 @@ export default function Dashboard() {
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [activeStagesOnly, setActiveStagesOnly] = useState(false);
   const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
