@@ -528,13 +528,35 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             onChange={setTypeFilter}
             formatLabel={titleCase}
           />
-          <FilterChip
-            label="Status"
-            options={filterOptions.statuses}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            formatLabel={titleCase}
-          />
+          {is5thLine ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Toggle
+                    pressed={activeStagesOnly}
+                    onPressedChange={setActiveStagesOnly}
+                    variant="outline"
+                    size="sm"
+                    aria-label="Show only active-stage deals (Final Credit Items onward)"
+                    className={`h-7 px-2.5 text-xs font-medium backdrop-blur-md border transition-all duration-200 ${activeStagesOnly ? 'bg-gradient-to-br from-emerald-500/25 to-green-600/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_hsl(150,70%,45%,0.2)] hover:from-emerald-500/30 hover:to-green-600/25' : 'bg-gradient-to-br from-emerald-500/10 to-green-600/5 border-emerald-500/20 text-emerald-400/70 hover:from-emerald-500/15 hover:to-green-600/10 hover:border-emerald-500/35 hover:text-emerald-300'}`}
+                  >
+                    Active
+                  </Toggle>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Only deals at "Final Credit Items" or later</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <FilterChip
+              label="Status"
+              options={filterOptions.statuses}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              formatLabel={titleCase}
+            />
+          )}
           <SingleSelectFilterChip<'late' | 'none'>
             label="Tasks"
             ariaLabel="Filter by tasks"
