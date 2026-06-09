@@ -248,11 +248,15 @@ export function QirContextualComments({
     if (!root) return;
     const onCtx = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Don't hijack right-click on form inputs / editable surfaces — preserve
-      // native UX there. Anchors (Goals/Initiatives link out to Asana) are
-      // intentionally NOT excluded: users still need the Queue/Comment menu
-      // on those rows.
-      if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // Don't hijack right-click on form inputs — preserve native UX. We DO
+      // intercept right-click inside the Insights narrative TipTap editor
+      // (`.insights-narrative-editor`) so JT/JM/SW reports get the same
+      // contextual-comment composer as Dashboard/Forecasts/Key Metrics.
+      // Anchors (Goals/Initiatives link out to Asana) are intentionally
+      // NOT excluded: users still need the Queue/Comment menu on those rows.
+      if (target.closest('input, textarea, select')) return;
+      const editable = target.closest('[contenteditable="true"]');
+      if (editable && !editable.closest('.insights-narrative-editor')) return;
       // Avoid intercepting clicks inside the comments drawer/composer themselves.
       if (target.closest('[data-qir-comments-ui]')) return;
       e.preventDefault();
