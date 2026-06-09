@@ -4,7 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 const ADMIN_EMAIL = 'jturner@5thline.co';
-const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
+// James Turner's auth.users.id (NOT his profiles.id). Tasks.assigned_to is
+// filtered by auth user_id everywhere in the app (see useTasks.ts), so using
+// the profile id here meant the task was created but never appeared in
+// James's task list.
+const JAMES_TURNER_USER_ID = 'a6b48ccd-0f2a-4018-886e-241287208ea0';
 const NAITIVE_BASE_URL = 'https://fivelinenaitive.lovable.app';
 const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
 
