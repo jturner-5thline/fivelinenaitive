@@ -357,8 +357,16 @@ export default function Dashboard() {
       });
     }
 
+    // "Active" chip (5th Line only) — narrow to deals at "Final Credit Items"
+    // stage or later in the canonical pipeline order.
+    if (is5thLine && activeStagesOnly) {
+      result = result.filter(deal =>
+        REACHED_FINAL_CREDIT_SLUGS.has(String(deal.stage ?? '').toLowerCase().trim()),
+      );
+    }
+
     return result;
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks, is5thLine, activeStagesOnly]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
