@@ -103,7 +103,20 @@ export function SharedTaskDrawer({ taskId, onClose }: SharedTaskDrawerProps) {
           ? { display_name: prof.display_name || '', avatar_url: prof.avatar_url, email: prof.email || '' }
           : null;
       }
-      return { ...(data as any), assignee_profile } as Task;
+      // Also resolve creator_profile so the activity tab can render the
+      // "Created by …" entry without a second fetch.
+      let creator_profile: Task['creator_profile'] = null;
+      if ((data as any).assigned_by) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('display_name, avatar_url, email')
+          .eq('user_id', (data as any).assigned_by)
+          .maybeSingle();
+        creator_profile = prof
+          ? { display_name: prof.display_name || '', avatar_url: prof.avatar_url, email: prof.email || '' }
+          : null;
+      }
+      return { ...(data as any), assignee_profile, creator_profile } as Task;
     },
   });
 
