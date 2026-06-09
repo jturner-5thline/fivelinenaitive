@@ -391,13 +391,13 @@ export function InsightsNarrativeEditor({
               }));
             }}
             style={{
-              position: 'absolute', left: Math.max(0, selAction.left), top: Math.max(0, selAction.top),
+              position: 'fixed', left: selAction.left, top: selAction.top,
               display: 'inline-flex', alignItems: 'center', gap: 4,
               padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
               background: 'rgba(16,28,52,0.95)', color: '#cfe6ff',
               border: '1px solid rgba(80,150,220,0.45)',
               boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-              cursor: 'pointer', zIndex: 30, whiteSpace: 'nowrap',
+              cursor: 'pointer', zIndex: 1600, whiteSpace: 'nowrap',
             }}
             title="Add a comment on the selected text"
           >
