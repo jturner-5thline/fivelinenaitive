@@ -2357,6 +2357,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onToggleStar={handleToggleStar}
                 onDelete={handleDeleteEmail}
                 onArchive={handleArchiveEmail}
+                onMarkRead={handleMarkRead}
+                onMarkUnread={handleMarkUnread}
                 onSendReply={async (emailData, threadId, linkContext) => {
                   if (!onGmailSend) {
                     setEmails(prev => [{ ...emailData, id: `mock-sent-${Date.now()}`, threadId }, ...prev]);
