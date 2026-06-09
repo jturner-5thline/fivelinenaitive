@@ -2965,6 +2965,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       }
       if (e.key === 'f' || e.key === 'F') { e.preventDefault(); handleForward(); }
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
+      if (e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+        e.preventDefault();
+        onMarkRead?.(thread.latestEmail);
+      }
+      if (e.shiftKey && (e.key === 'U' || e.key === 'u')) {
+        e.preventDefault();
+        onMarkUnread?.(thread.latestEmail);
+      }
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
         // Honor Assist gating — when disabled for this account/company,
@@ -2974,7 +2982,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink, handleReply, assistEnabled]);
+  }, [thread, onToggleLink, handleReply, handleForward, onMarkRead, onMarkUnread, assistEnabled]);
 
   const latest = thread.latestEmail;
   if (!thread?.latestEmail || !Array.isArray(thread.emails) || thread.emails.length === 0) {
