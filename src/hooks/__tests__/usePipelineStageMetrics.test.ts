@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { expandStageLabels, normalizeStageSlug } from '../usePipelineStageMetrics';
+import {
+  expandMetricStageLabels,
+  expandStageLabels,
+  normalizeMetricStageSlug,
+  normalizeStageSlug,
+} from '../usePipelineStageMetrics';
+
+const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
 describe('stage label normalization (regression: OpConnect Mar/Apr 2026)', () => {
   it('expands canonical slugs to all observed label/slug variants', () => {
@@ -20,5 +27,12 @@ describe('stage label normalization (regression: OpConnect Mar/Apr 2026)', () =>
   it('does NOT count "Indication of Interest" (In Development pipeline overload) as Closed Won', () => {
     // 478 historical rows have to_stage_id='closed-won' but to_stage='Indication of Interest'
     expect(normalizeStageSlug('Indication of Interest', 'closed-won')).toBeNull();
+  });
+
+  it('treats Active Pipeline closed-won history rows as funded for funded-only KPIs', () => {
+    expect(expandMetricStageLabels(['funded-invoiced'], ACTIVE_PIPELINE_ID)).toEqual(expect.arrayContaining([
+      'funded-invoiced', 'Funded / Invoiced', 'closed-won', 'Closed Won',
+    ]));
+    expect(normalizeMetricStageSlug('closed-won', '', ACTIVE_PIPELINE_ID, ['funded-invoiced'])).toBe('funded-invoiced');
   });
 });
