@@ -764,7 +764,7 @@ export function useDealsDatabase() {
 
     try {
       const dbUpdates: Record<string, any> = {};
-      if (updates.company !== undefined) dbUpdates.company = updates.company;
+      if (updates.company !== undefined) dbUpdates.company = (updates.company || '').trim();
       if (updates.value !== undefined) dbUpdates.value = updates.value;
       if (updates.status !== undefined) dbUpdates.status = updates.status;
       if (updates.stage !== undefined) dbUpdates.stage = updates.stage;
