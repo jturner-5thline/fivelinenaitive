@@ -2,8 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useScheduledCashFlows } from '@/components/cashflow/useScheduledCashFlows';
+import { useQuickbooksDerivedCashFlows } from '@/components/cashflow/useQuickbooksDerivedCashFlows';
+import { useDealCashflowOverrides } from '@/components/cashflow/useDealCashflowOverrides';
+import { useDealProjectedCashFlows } from '@/components/cashflow/useDealProjectedCashFlows';
+import { useCashInItems } from '@/components/cashflow/useCashInItems';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from '@/components/cashflow/weeklyHistoricalSeed';
-import { mergeScheduledIntoWeekly } from '@/components/cashflow/scheduledCashFlows';
+import { mergeScheduledIntoWeekly, type ScheduledCashFlow } from '@/components/cashflow/scheduledCashFlows';
 import type { WeeklyData, WeeklyOverrides } from '@/components/cashflow/types';
 
 export interface ForecastWeek {
@@ -35,7 +39,15 @@ export function useTwelveWeekCashflowForecast(): {
   isLoading: boolean;
 } {
   const { company } = useCompany();
-  const { items: scheduled, isLoading: schedLoading } = useScheduledCashFlows(company?.id);
+  const { items: scheduledItems, isLoading: schedLoading } = useScheduledCashFlows(company?.id);
+  const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
+  const { overrides: dealOverrides } = useDealCashflowOverrides(company?.id);
+  const { items: dealProjectedItems } = useDealProjectedCashFlows(
+    company?.id,
+    !!company?.id,
+    dealOverrides,
+  );
+  const { items: cashInDbItems } = useCashInItems();
   const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
   const [overridesLoading, setOverridesLoading] = useState(true);
 
@@ -60,6 +72,51 @@ export function useTwelveWeekCashflowForecast(): {
     })();
     return () => { active = false; };
   }, [company?.id]);
+
+  // Mirror CashFlowManager.cashInDbAsScheduled — wrap saved deal cash-in
+  // DB rows as one-time ScheduledCashFlow entries so they route through
+  // mergeScheduledIntoWeekly into the same categories Finance uses.
+  const cashInDbAsScheduled = useMemo<ScheduledCashFlow[]>(() => {
+    const FEE_TO_CATEGORY: Record<string, string> = {
+      retainer: 'Retainers',
+      milestone: 'Milestones',
+      closing: 'Closing Fees',
+    };
+    const FEE_LABEL: Record<string, string> = {
+      retainer: 'Retainer',
+      milestone: 'Milestone',
+      closing: 'Closing',
+    };
+    return (cashInDbItems || []).map((it: any) => {
+      const date = (it.target_date || '').slice(0, 10);
+      const category = FEE_TO_CATEGORY[it.fee_type] || 'Other Receipts';
+      const label = FEE_LABEL[it.fee_type] || it.fee_type;
+      return {
+        id: `cashin:${it.id}`,
+        company_id: company?.id || '',
+        account: it.deal_name || '',
+        category,
+        amount: Number(it.amount) || 0,
+        frequency_type: 'one_time',
+        frequency_config: { one_time_date: date },
+        flow_type: 'cash_in',
+        start_date: date,
+        end_date: date,
+        notes: `${it.deal_name} — ${label}`,
+      } as ScheduledCashFlow;
+    });
+  }, [cashInDbItems, company?.id]);
+
+  // Same composition as CashFlowManager.combinedScheduledItems.
+  const combinedScheduledItems = useMemo<ScheduledCashFlow[]>(
+    () => [
+      ...(qbDerivedItems || []),
+      ...(dealProjectedItems || []),
+      ...(scheduledItems || []),
+      ...cashInDbAsScheduled,
+    ],
+    [qbDerivedItems, dealProjectedItems, scheduledItems, cashInDbAsScheduled],
+  );
 
   const weeks = useMemo<ForecastWeek[]>(() => {
     // 1) Replay the historical seed with overrides applied to determine
@@ -102,8 +159,24 @@ export function useTwelveWeekCashflowForecast(): {
       forward[k] = { ...e };
     }
     // Generate enough forward weeks to cover any scheduled occurrences,
-    // but we'll only return the next 12.
-    const totalForward = 60;
+    // but we'll only return the next 12. Mirror CashFlowManager horizon
+    // (≥ 2026-12-25, extended by any scheduled occurrence beyond).
+    let horizonEnd = parseISO('2026-12-25');
+    for (const e of combinedScheduledItems) {
+      const candidates = [
+        e.frequency_config?.one_time_date,
+        e.end_date,
+        e.start_date,
+      ].filter(Boolean) as string[];
+      for (const c of candidates) {
+        const d = parseISO(c);
+        if (d > horizonEnd) horizonEnd = d;
+      }
+    }
+    const totalForward = Math.max(
+      60,
+      Math.ceil((horizonEnd.getTime() - weekEnd.getTime()) / (7 * 86400000)) + 2,
+    );
     for (let i = 0; i < totalForward; i++) {
       weekNum += 1;
       const weekStart = new Date(weekEnd);
@@ -129,33 +202,33 @@ export function useTwelveWeekCashflowForecast(): {
     }
 
     // 3) Merge scheduled entries — this also recomputes the rolling ENDING CASH.
-    const merged = mergeScheduledIntoWeekly(forward, scheduled || [], {
+    const merged = mergeScheduledIntoWeekly(forward, combinedScheduledItems, {
       lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING,
       weeklyOverrides,
     });
 
-    // 4) Pick the first 12 forward weeks (chronologically) starting after the
-    //    historical lock cutoff and on/after today's week.
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sortedKeys = Object.keys(merged).sort();
+    // 4) Pick 12 weeks starting at the current week — matching the
+    //    CashFlowManager "current week" anchor (first week whose
+    //    week_ending >= today ISO).
+    const todayISO = new Date().toISOString().split('T')[0];
+    const sortedEntries = Object.entries(merged).sort(([a], [b]) => a.localeCompare(b));
+    let currentIdx = sortedEntries.findIndex(([dateKey, entry]: any) => {
+      const we = typeof entry?.week_ending === 'string' ? entry.week_ending : dateKey;
+      return we >= todayISO;
+    });
+    if (currentIdx < 0) currentIdx = sortedEntries.length - 1;
     const out: ForecastWeek[] = [];
-    for (const k of sortedKeys) {
-      const entry: any = merged[k];
+    for (let i = currentIdx; i < sortedEntries.length && out.length < 12; i++) {
+      const [k, entry] = sortedEntries[i] as [string, any];
       const weekEnding: string = typeof entry.week_ending === 'string' ? entry.week_ending : k;
-      if (weekEnding <= LAST_HISTORICAL_WEEK_ENDING) continue;
-      // Skip past forward weeks (historical seed only goes through LAST_HISTORICAL_WEEK_ENDING,
-      // but if today is in the future we may want to skip already-elapsed weeks too).
-      if (parseISO(weekEnding) < today) continue;
       out.push({
         weekKey: k,
         weekEnding,
         endingCash: Math.round(Number(entry['ENDING CASH']) || 0),
       });
-      if (out.length >= 12) break;
     }
     return out;
-  }, [scheduled, weeklyOverrides]);
+  }, [combinedScheduledItems, weeklyOverrides]);
 
   return { weeks, isLoading: schedLoading || overridesLoading };
 }
