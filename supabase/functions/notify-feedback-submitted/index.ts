@@ -37,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     const typeColor = type === 'bug' ? '#dc2626' : '#8b5cf6';
 
     const emailResponse = await resend.emails.send({
-      from: buildFrom("naitive"),
+      from: buildFrom("Naitive"),
       to: ["jturner@5thline.co"],
       subject: `[Feedback] ${typeLabel}: ${title}`,
       text: `${typeLabel}: ${title}\n\nSubmitted by: ${user_name || 'Unknown'} (${user_email || 'No email'})\nPage: ${page_url || 'Unknown'}\n\nDescription:\n${message}\n\n${screenshot_url ? 'Screenshot attached - view in admin panel' : ''}\n\n— naitive Platform`,

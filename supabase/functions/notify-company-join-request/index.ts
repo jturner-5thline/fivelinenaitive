@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             to: [admin.email],
             subject: `New join request for ${companyName}`,
             html: `
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             to: [admin.email],
             subject: `New join request for ${companyName}`,
             html: `

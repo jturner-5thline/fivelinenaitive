@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
     const userName = profileData.first_name || profileData.display_name || 'there';
 
     const emailResponse = await resend.emails.send({
-      from: buildFrom("naitive"),
+      from: buildFrom("Naitive"),
       reply_to: "support@naitive.co",
       to: [userData.user.email],
       subject: `naitive: ${template.subject}`,

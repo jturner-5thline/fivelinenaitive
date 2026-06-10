@@ -433,7 +433,7 @@ naitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubs
 
         // Send email
         const emailResponse = await resend.emails.send({
-          from: buildFrom("naitive"),
+          from: buildFrom("Naitive"),
           reply_to: "support@naitive.co",
           to: [userEmail],
           subject: `🔥 Weekly FLEx Summary: ${totalViews} views from ${totalUniqueLenders} lenders`,

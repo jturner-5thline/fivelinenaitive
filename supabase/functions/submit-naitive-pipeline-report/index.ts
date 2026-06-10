@@ -213,7 +213,7 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             to: RECIPIENTS,
             subject: "Your naitive Pipeline Report",
             html,

@@ -15,7 +15,7 @@ const corsHeaders = {
 };
 
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://fivelinenaitive.lovable.app';
-const FROM_EMAIL = buildFrom("naitive");
+const FROM_EMAIL = buildFrom("Naitive");
 const MAX_ATTEMPTS = 3;
 
 // ---------- Template (exported for testing) ----------
