@@ -2543,7 +2543,7 @@ function MetricsInner() {
               {/* Slot for dashboard-specific header actions (e.g. QIR Comments notepad). */}
               <div id="qir-header-actions-slot" className="flex items-center gap-2" />
 
-              {isEditMode && canEditMetrics && (
+              {isEditMode && canEditMetrics && selectedDashboard === 'management-snapshot' && (
                 <>
                   <Button size="sm" onClick={handleAdd}>
                     <Plus className="h-4 w-4 mr-2" />
