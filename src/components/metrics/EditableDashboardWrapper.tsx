@@ -29,6 +29,11 @@ export function EditableDashboardWrapper({
 }: EditableDashboardWrapperProps) {
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      // Only treat clicks as widget-edit affordances when the user has
+      // explicitly entered layout edit mode via the header pencil button.
+      // Outside edit mode, normal chart/tile interactions (drilldowns,
+      // tooltips, links) must pass through untouched.
+      if (!isEditMode) return;
       // Walk up from the click target to find the nearest Card element
       let el = e.target as HTMLElement | null;
       let cardEl: HTMLElement | null = null;
@@ -58,7 +63,7 @@ export function EditableDashboardWrapper({
       const title = titleEl?.textContent?.trim() || 'Untitled Widget';
       onCardEdit(title);
     },
-    [onCardEdit]
+    [onCardEdit, isEditMode]
   );
 
   return (
@@ -71,19 +76,18 @@ export function EditableDashboardWrapper({
       onClick={handleClick}
     >
       <style>{`
-        .editable-dashboard-wrapper [data-slot="card"] {
+        /* Hover/click affordances only appear while the user is in
+           layout edit mode. Outside edit mode the wrapper is inert so
+           charts, drilldowns and tables behave normally. */
+        .editable-dashboard-edit-mode [data-slot="card"] {
           cursor: pointer;
           transition: box-shadow 0.2s, ring 0.2s;
           position: relative;
-        }
-        .editable-dashboard-wrapper [data-slot="card"]:hover {
-          box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4);
-        }
-        .editable-dashboard-edit-mode [data-slot="card"] {
           outline: 1px dashed hsl(var(--muted-foreground) / 0.3);
           outline-offset: -1px;
         }
         .editable-dashboard-edit-mode [data-slot="card"]:hover {
+          box-shadow: 0 0 0 1px hsl(var(--primary) / 0.4);
           outline-color: hsl(var(--primary) / 0.5);
         }
       `}</style>
