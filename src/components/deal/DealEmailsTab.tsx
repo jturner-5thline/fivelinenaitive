@@ -1270,6 +1270,16 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const handleSelectThread = useCallback((thread: EmailThread) => {
     setSelectedThread(thread);
     setComposeOpen(false);
+    // Tell the reading pane WHICH message in the conversation was clicked
+    // so it can expand + scroll to it. Rows are per-message, so
+    // `thread.latestEmail.id` is the clicked message id.
+    if (thread.latestEmail?.id) {
+      setDeepLinkTarget({
+        threadId: thread.threadId,
+        messageId: thread.latestEmail.id,
+        signal: 'click',
+      });
+    }
     if (thread.hasUnread) {
       const unreadIds = new Set(thread.emails.filter(e => !e.is_read).map(e => e.id));
       const prevSnapshot = emails;
@@ -1292,6 +1302,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const handleEmailDetailBack = useCallback(() => {
     setSelectedThread(null);
     setReadingPaneExpanded(false);
+    setDeepLinkTarget(null);
   }, []);
   const handleEmailDetailToggleExpand = useCallback(() => {
     setReadingPaneExpanded(prev => !prev);
