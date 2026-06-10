@@ -62,6 +62,7 @@ interface DbDeal {
   total_fee: number | null;
   retainer_fee: number | null;
   milestone_fee: number | null;
+  on_hold: boolean | null;
   status: string;
   stage: string;
   deal_type: string | null;
@@ -77,22 +78,44 @@ export function useMetricsData() {
     queryKey: ['metrics-deals'],
     queryFn: async () => {
       const startedAt = Date.now();
-      const queryPromise = supabase
-        .from('deals')
-        .select(
-          'id, company, value, total_fee, retainer_fee, milestone_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date',
-        )
-        .order('created_at', { ascending: false });
+      const pageSize = 1000;
+      const dealSelect = 'id, company, value, total_fee, retainer_fee, milestone_fee, on_hold, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date';
+
+      const queryPromise = (async () => {
+        const rows: DbDeal[] = [];
+        let from = 0;
+
+        while (true) {
+          const { data, error } = await supabase
+            .from('deals')
+            .select(dealSelect)
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+
+          if (error) {
+            console.error('[useMetricsData] supabase error', error);
+            throw error;
+          }
+
+          const page = (data || []) as DbDeal[];
+          rows.push(...page);
+
+          if (page.length < pageSize) break;
+          from += pageSize;
+        }
+
+        return rows;
+      })();
 
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
           () =>
             reject(
               new Error(
-                'Insights metrics query timed out after 15s. The deals table did not respond. This usually indicates a transient RLS / database slowness.',
+                'Insights metrics query timed out after 30s while loading the full deals dataset. This usually indicates a transient database slowness.',
               ),
             ),
-          15_000,
+          30_000,
         ),
       );
 
