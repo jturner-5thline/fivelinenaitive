@@ -678,6 +678,90 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       });
   }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
 
+  // Latest status note per deal (for hover tooltips on Deal Name + Status)
+  const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
+  const debtPipelineDealIds = useMemo(
+    () => activeDealsList.map((d: any) => d.id),
+    [activeDealsList],
+  );
+  const debtPipelineDealIdsKey = debtPipelineDealIds.join(',');
+  useEffect(() => {
+    let cancelled = false;
+    if (debtPipelineDealIds.length === 0) {
+      setDebtPipelineStatusNotes({});
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('deal_status_notes')
+        .select('deal_id, note, created_at')
+        .in('deal_id', debtPipelineDealIds)
+        .order('created_at', { ascending: false });
+      if (cancelled || error || !data) return;
+      const latest: Record<string, string> = {};
+      for (const row of data as any[]) {
+        if (!latest[row.deal_id]) latest[row.deal_id] = row.note;
+      }
+      setDebtPipelineStatusNotes(latest);
+    })();
+    return () => { cancelled = true; };
+  }, [debtPipelineDealIdsKey]);
+
+  // 6-month revenue chart: selected month + 5 following months.
+  // Revenue per month = sum of total_fee for active-pipeline deals whose
+  // projected_close_date falls in that month.
+  const debtPipelineChart = useMemo(() => {
+    const anchor = reportingPeriod?.view === 'month'
+      ? startOfMonth(periodRange.start)
+      : startOfMonth(periodRange.end);
+    const buckets: { key: string; label: string; start: Date; end: Date }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const s = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + i, 1));
+      const e = endOfMonth(s);
+      buckets.push({ key: format(s, 'yyyy-MM'), label: format(s, 'MMM yy'), start: s, end: e });
+    }
+    const totals = buckets.map(b => {
+      const sum = activeDealsList.reduce((acc: number, d: any) => {
+        if (!d.projected_close_date) return acc;
+        const dt = new Date(d.projected_close_date);
+        if (Number.isNaN(dt.getTime())) return acc;
+        if (dt >= b.start && dt <= b.end) return acc + Number(d.total_fee || 0);
+        return acc;
+      }, 0);
+      return sum;
+    });
+    return { labels: buckets.map(b => b.label), values: totals };
+  }, [activeDealsList, periodRange, reportingPeriod?.view]);
+
+  const debtPipelineChartRef = useRef<HTMLCanvasElement>(null);
+  useChart(
+    debtPipelineChartRef,
+    debtPipelineChart.labels.length > 0
+      ? {
+          type: 'bar',
+          data: {
+            labels: debtPipelineChart.labels,
+            datasets: [{
+              data: debtPipelineChart.values,
+              backgroundColor: 'hsla(213,90%,70%,0.65)',
+              borderColor: 'hsl(213,90%,70%)',
+              borderWidth: 1,
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            ...def,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx: any) => fmtUSD(Number(ctx.parsed.y || 0)) } },
+            },
+            scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } },
+          },
+        }
+      : null,
+    [JSON.stringify(debtPipelineChart.labels), JSON.stringify(debtPipelineChart.values)],
+  );
+
   const statusDisplay = (status: string): { label: string; color: string } | null => {
     if (status === 'on-track') return { label: 'On Track', color: '#3de89a' };
     if (status === 'at-risk') return { label: 'At Risk', color: '#ffbe1e' };
