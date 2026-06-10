@@ -699,6 +699,9 @@ function StageMovementStackedBarChart({
 }
 
 export function ConsolidatedDebtPipelineDashboard({
+  ...{} as Record<string, never>
+}: { selectedQuarter?: QuarterOption } & Record<string, never>): JSX.Element;
+export function ConsolidatedDebtPipelineDashboard({
   selectedQuarter,
 }: {
   selectedQuarter?: QuarterOption;
