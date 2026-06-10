@@ -18,6 +18,8 @@ type TokenRow = {
   expires_at: string;
   sync_email_enabled: boolean;
   status: string;
+  last_email_sync_cursor?: string | null;
+  initial_backfill_done?: boolean | null;
 };
 
 async function getValidAccessToken(
@@ -62,58 +64,126 @@ async function getValidAccessToken(
 async function syncForUser(
   supabase: ReturnType<typeof createClient>,
   row: TokenRow,
+  opts: { force_backfill?: boolean } = {},
 ): Promise<{ user_id: string; synced: number; error?: string }> {
   const token = await getValidAccessToken(supabase, row);
   if (!token) return { user_id: row.user_id, synced: 0, error: "no_token" };
 
-  const url =
-    "https://graph.microsoft.com/v1.0/me/messages?$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,conversationId&$orderby=receivedDateTime desc&$top=50";
-  let resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (resp.status === 429) {
-    const retryAfter = Number(resp.headers.get("Retry-After") ?? "2");
-    await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
-    resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  }
-  if (!resp.ok) {
-    const text = await resp.text();
-    console.error("Graph messages fetch failed", row.user_id, resp.status, text);
-    return { user_id: row.user_id, synced: 0, error: `graph_${resp.status}` };
-  }
-  const data = await resp.json();
-  const messages: any[] = data.value ?? [];
+  // ----------------------------------------------------------------------
+  // Two sync modes:
+  //   • Initial backfill (first connect, or `force_backfill`): pull up to
+  //     BACKFILL_DAYS of history, paging through @odata.nextLink until the
+  //     floor is reached or the page cap is hit.
+  //   • Incremental: pull only messages received after the last cursor
+  //     stored on `microsoft_tokens.last_email_sync_cursor`.
+  //
+  // The previous implementation was hard-capped at $top=50 with no paging,
+  // which made the Naitive inbox effectively show only ~24h of mail for
+  // active accounts.
+  // ----------------------------------------------------------------------
 
-  const rows = messages.map((m) => ({
-    user_id: row.user_id,
-    message_id: m.id,
-    provider: "microsoft",
-    thread_id: m.conversationId ?? null,
-    subject: m.subject ?? null,
-    from_email: m.from?.emailAddress?.address ?? null,
-    from_name: m.from?.emailAddress?.name ?? null,
-    to_emails: (m.toRecipients ?? [])
-      .map((r: any) => r?.emailAddress?.address)
-      .filter(Boolean),
-    preview: m.bodyPreview ?? null,
-    received_at: m.receivedDateTime ?? null,
-    is_read: !!m.isRead,
-    has_attachments: !!m.hasAttachments,
-  }));
+  const PAGE_SIZE = 100;
+  const BACKFILL_DAYS = 365;
+  const MAX_PAGES_BACKFILL = 50;       // ~5,000 messages cap on first sync
+  const MAX_PAGES_INCREMENTAL = 20;    // ~2,000 messages per incremental run
 
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from("emails")
-      .upsert(rows, { onConflict: "user_id,provider,message_id" });
-    if (error) {
-      console.error("Upsert failed", row.user_id, error);
-      return { user_id: row.user_id, synced: 0, error: error.message };
+  const wantBackfill = opts.force_backfill || !row.initial_backfill_done;
+  const sinceCursor = !wantBackfill && row.last_email_sync_cursor
+    ? new Date(row.last_email_sync_cursor)
+    : null;
+  const backfillFloor = wantBackfill
+    ? new Date(Date.now() - BACKFILL_DAYS * 24 * 60 * 60 * 1000)
+    : null;
+  // Lower bound for the Graph $filter — for incremental runs use the
+  // cursor; for backfill use the historical floor.
+  const filterFloor = sinceCursor ?? backfillFloor;
+
+  const selectFields =
+    "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,conversationId";
+
+  const baseParams = new URLSearchParams({
+    $select: selectFields,
+    $orderby: "receivedDateTime desc",
+    $top: String(PAGE_SIZE),
+  });
+  if (filterFloor) {
+    baseParams.set("$filter", `receivedDateTime ge ${filterFloor.toISOString()}`);
+  }
+
+  let nextUrl: string | null =
+    `https://graph.microsoft.com/v1.0/me/messages?${baseParams.toString()}`;
+
+  const maxPages = wantBackfill ? MAX_PAGES_BACKFILL : MAX_PAGES_INCREMENTAL;
+  let totalSynced = 0;
+  let newestReceivedAt: string | null = null;
+  let pages = 0;
+
+  while (nextUrl && pages < maxPages) {
+    pages++;
+    let resp = await fetch(nextUrl, {
+      headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.body-content-type="text"' },
+    });
+    if (resp.status === 429) {
+      const retryAfter = Number(resp.headers.get("Retry-After") ?? "2");
+      await new Promise((r) => setTimeout(r, Math.min(retryAfter, 10) * 1000));
+      resp = await fetch(nextUrl, { headers: { Authorization: `Bearer ${token}` } });
     }
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error("Graph messages fetch failed", row.user_id, resp.status, text);
+      return { user_id: row.user_id, synced: totalSynced, error: `graph_${resp.status}` };
+    }
+    const data = await resp.json();
+    const messages: any[] = data.value ?? [];
+
+    const rows = messages.map((m) => ({
+      user_id: row.user_id,
+      message_id: m.id,
+      provider: "microsoft",
+      thread_id: m.conversationId ?? null,
+      subject: m.subject ?? null,
+      from_email: m.from?.emailAddress?.address ?? null,
+      from_name: m.from?.emailAddress?.name ?? null,
+      to_emails: (m.toRecipients ?? [])
+        .map((r: any) => r?.emailAddress?.address)
+        .filter(Boolean),
+      preview: m.bodyPreview ?? null,
+      received_at: m.receivedDateTime ?? null,
+      is_read: !!m.isRead,
+      has_attachments: !!m.hasAttachments,
+    }));
+
+    if (rows.length > 0) {
+      const { error } = await supabase
+        .from("emails")
+        .upsert(rows, { onConflict: "user_id,provider,message_id" });
+      if (error) {
+        console.error("Upsert failed", row.user_id, error);
+        return { user_id: row.user_id, synced: totalSynced, error: error.message };
+      }
+      totalSynced += rows.length;
+      // Page is ordered desc, so the first received_at on the very first
+      // page is the newest message we saw across the whole run.
+      if (!newestReceivedAt && rows[0]?.received_at) {
+        newestReceivedAt = rows[0].received_at as string;
+      }
+    }
+
+    nextUrl = (data["@odata.nextLink"] as string | undefined) ?? null;
   }
+
+  const update: Record<string, unknown> = {
+    last_email_sync_at: new Date().toISOString(),
+  };
+  if (wantBackfill) update.initial_backfill_done = true;
+  if (newestReceivedAt) update.last_email_sync_cursor = newestReceivedAt;
+
   await supabase
     .from("microsoft_tokens")
-    .update({ last_email_sync_at: new Date().toISOString() })
+    .update(update)
     .eq("user_id", row.user_id);
 
-  return { user_id: row.user_id, synced: rows.length };
+  return { user_id: row.user_id, synced: totalSynced };
 }
 
 serve(async (req) => {
@@ -121,7 +191,7 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  let body: { user_id?: string } = {};
+  let body: { user_id?: string; force_backfill?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -130,7 +200,9 @@ serve(async (req) => {
 
   let query = supabase
     .from("microsoft_tokens")
-    .select("user_id, access_token, refresh_token, expires_at, sync_email_enabled, status")
+    .select(
+      "user_id, access_token, refresh_token, expires_at, sync_email_enabled, status, last_email_sync_cursor, initial_backfill_done",
+    )
     .eq("sync_email_enabled", true)
     .neq("status", "disconnected");
 
@@ -146,7 +218,7 @@ serve(async (req) => {
 
   const results = [];
   for (const t of tokens ?? []) {
-    results.push(await syncForUser(supabase, t as TokenRow));
+    results.push(await syncForUser(supabase, t as TokenRow, { force_backfill: body.force_backfill }));
   }
   return new Response(JSON.stringify({ ok: true, results }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -17285,8 +17285,10 @@ export type Database = {
           email: string | null
           expires_at: string
           id: string
+          initial_backfill_done: boolean
           last_calendar_sync_at: string | null
           last_email_sync_at: string | null
+          last_email_sync_cursor: string | null
           refresh_token: string | null
           scopes: string | null
           status: string
@@ -17303,8 +17305,10 @@ export type Database = {
           email?: string | null
           expires_at: string
           id?: string
+          initial_backfill_done?: boolean
           last_calendar_sync_at?: string | null
           last_email_sync_at?: string | null
+          last_email_sync_cursor?: string | null
           refresh_token?: string | null
           scopes?: string | null
           status?: string
@@ -17321,8 +17325,10 @@ export type Database = {
           email?: string | null
           expires_at?: string
           id?: string
+          initial_backfill_done?: boolean
           last_calendar_sync_at?: string | null
           last_email_sync_at?: string | null
+          last_email_sync_cursor?: string | null
           refresh_token?: string | null
           scopes?: string | null
           status?: string
