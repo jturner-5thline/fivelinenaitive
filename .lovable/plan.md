@@ -1,90 +1,87 @@
-# Diagnosis: Why opening an email is slow
 
 ## Root cause
 
-For Gmail/Nylas users, opening a message ALWAYS makes a live round-trip to Nylas — there is no DB cache, no prefetch-to-DB, and no read-through. Microsoft users are already served from `emails.raw` (instant), which is why the bug is Gmail-specific.
+The inbox is calling the `gmail-messages` `get` action with the **`email_cache.id` row UUID** instead of the **Nylas provider id** (`gmail_message_id`). Nylas 404s on the UUID, the edge function returns `{ message: null, not_found: true }`, and the viewer falls back to the snippet + Retry.
 
-### Call chain
+### Evidence chain
 
-1. `src/components/deal/email/useFullEmailMessage.ts:292–304` — `fetchFullEmailMessage()` calls `supabase.functions.invoke('gmail-messages', { action: 'get', message_id })` wrapped in `withTimeout(..., 15_000)` (line 213 `FETCH_TIMEOUT_MS = 15_000`). This is the 15s ceiling that produces the user-visible "gmail-messages get timed out after 15000ms".
-2. `supabase/functions/gmail-messages/index.ts:663–766` — the `case "get"` handler unconditionally does `fetch(${baseUrl}/messages/${message_id})` against Nylas (line 674). There is no `email_cache` / `emails.raw` lookup before the network call and nothing is written back after.
-3. `index.ts:360–408` — the Microsoft branch DOES read from `public.emails` (`select … raw … .eq(message_id)`) and never calls Graph live. That path is consistently fast; only Gmail/Nylas opens hang.
-4. There is no body field in either cache table:
-   - `public.emails` has `raw jsonb` — populated by Microsoft sync, empty for Gmail.
-   - `public.email_cache` has `body_text` only — no `body_html`, no inline-attachment metadata, and the `get` handler never reads or writes it.
-5. The `list` action (`index.ts:482–660`) fetches only message headers (no `body`) from Nylas, so even with healthy syncs the body is fetched lazily on first open every time, every user, every device.
-6. Nylas message-detail latency: typical 800ms–4s, spikes >15s on large mailboxes (we already have a 25s timeout on `list` at line 528 acknowledging this). With no cache, every spike → user-visible timeout + Retry.
+1. **Symptom UUID is an `email_cache` PK.** Console: `[link-deal hydrate] timeout` and `[email.load_failed]` for `messageId="cb140867-615e-4799-826a-196f6facda37"`. A direct DB lookup confirms:
+   - `email_cache.id = cb140867-615e-4799-826a-196f6facda37`
+   - `email_cache.gmail_message_id = 19eae400c6b1bd4a` (real Nylas id)
+   - `subject = "Re: Gabb Wireless Financial Model"` — exactly the user's thread.
 
-There is no N+1 here — it's a single call — but it's a SYNCHRONOUS, UNCACHED call to a slow provider on the user's critical render path.
+2. **The inbox spreads the cache row, so `email.id` becomes the UUID.** `src/hooks/useEmailIntelligence.ts:340-348` (`loadEnrichedEmails`) builds `EnrichedEmail` via `{ ...(c as CachedEmail), analysis }`. `CachedEmail.id` is the table PK (UUID), and `CachedEmail.gmail_message_id` is the provider id — distinct fields. Downstream the inbox treats `email.id` as the message id and passes it to `fetchFullEmailMessage(messageId)` in `src/components/deal/email/useFullEmailMessage.ts:297-309`.
+
+3. **Edge function `case "get"` cannot recover from this.** `supabase/functions/gmail-messages/index.ts:680-690` filters by `.eq("gmail_message_id", message_id)` so a UUID never matches a row. Falls through to `fetch(${baseUrl}/messages/${UUID})` (line 769). Nylas returns 404. Lines 786-794 return `{ message: null, not_found: true }`. Client throws `"Message could not be loaded"` (`useFullEmailMessage.ts:335-337`), which the viewer renders as **"Full message unavailable"** at `src/components/deal/email/EmailListAndDetail.tsx:1772-1781` (`!resolvedHtml && !hasRenderableBody` branch).
+
+4. **Cache-first never hits for the broken path.** `email_cache` has 8,120 rows; only **2** have `body_fetched_at IS NOT NULL`. Every other open is forced to live Nylas. With the wrong id it can never succeed; with the right id it does, but the cache is essentially cold.
+
+5. **The two "succeed" rows** (`body_fetched_at` set) are the only paths that pass the proper hex `gmail_message_id` — confirming that when the id is correct the new cache-first code works; the problem is the id, not the body parser, not Nylas auth, not grant expiry.
+
+### What this rules out
+
+- Not a missing-body / NULL-`body_html` cache-hit bug — cache `select` filters those out via `.not('body_fetched_at','is',null)`.
+- Not silent Nylas success-with-empty-body — Nylas never gets called with a real id on the broken path.
+- Not a sync gap — bodies aren't backfilled, but that's a secondary issue (slow first open). The user-visible failure is the 404 caused by the id.
+- Not rate-limit (only 429s seen are on `list`, not `get`).
 
 ## Fix (no changes yet — for approval)
 
-Goal: first open is at most one Nylas round-trip; every subsequent open across devices/sessions is instant from Postgres.
+Two-part, smallest-blast-radius first.
 
-### 1. Persist Gmail/Nylas bodies in Postgres
+### A. Make the inbox pass the provider id (primary fix)
 
-Add columns to `public.email_cache` (and ensure parity with what the `get` handler returns):
-
-```
-ALTER TABLE public.email_cache
-  ADD COLUMN body_html        text,
-  ADD COLUMN attachments      jsonb NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN inline_attachments jsonb NOT NULL DEFAULT '[]'::jsonb,
-  ADD COLUMN provider         text NOT NULL DEFAULT 'gmail',
-  ADD COLUMN body_fetched_at  timestamptz;
-
-CREATE UNIQUE INDEX IF NOT EXISTS email_cache_user_msg_uidx
-  ON public.email_cache (user_id, gmail_message_id);
-
-CREATE INDEX IF NOT EXISTS email_cache_user_thread_idx
-  ON public.email_cache (user_id, thread_id);
-```
-
-(`gmail_message_id` is the existing column; we'll reuse it as the provider message id for Nylas regardless of upstream provider.)
-
-### 2. Cache-first read in `gmail-messages` `get` handler
-
-`supabase/functions/gmail-messages/index.ts:663–766` — wrap the existing Nylas fetch:
+`src/hooks/useEmailIntelligence.ts:339-349` (`loadEnrichedEmails`) — when building `EnrichedEmail`, set the consumer-facing `id` to the provider id:
 
 ```text
-case "get":
-  1. SELECT body_html, body_text, attachments, inline_attachments, …
-       FROM email_cache
-       WHERE user_id=? AND gmail_message_id=?
-       AND body_fetched_at IS NOT NULL
-  2. If hit → return immediately (no Nylas call). Kick off a
-     background revalidation only if body_fetched_at is older than 24h
-     using EdgeRuntime.waitUntil(...).
-  3. If miss → existing Nylas fetch (line 674), then UPSERT the full
-     normalized message into email_cache before returning.
+enriched.push({
+  ...(c as CachedEmail),
+  id: c.gmail_message_id ?? c.id, // <- public id used by the inbox / get handler
+  row_id: c.id,                   // keep PK for analysis joins / unlink
+  analysis: analysisMap.get(c.id) as EmailAnalysis | undefined,
+});
 ```
 
-Same pattern for the Microsoft branch at `index.ts:360–408` — already DB-backed, no change needed.
+Audit and update callers that previously joined analysis by `email.id` to use `email.row_id` instead. Specifically:
+- `email_analysis.email_cache_id` join in `useEmailIntelligence.ts:311-321, 411-440` (use `row_id`).
+- `unlinkEmail`, deal-email linking, `useEmailIntelligence` realtime subscription (`useEmailIntelligence.ts:490-499`).
+- Any inbox component that keys list rows by `email.id` — keying by provider id is correct and will fix the click-through.
 
-### 3. Backfill on `list` / sync, so the very first open is also instant
+### B. Defense-in-depth: make the edge function tolerant of either id
 
-- `gmail-sync` / `nylas-sync-emails` (whichever sync job populates `email_cache` today — they currently store headers only): on sync, for the top N most-recent messages (e.g. last 50 per folder) fetch `/messages/{id}` in a bounded-concurrency pool (max 5) and upsert bodies. This makes the inbox feel instant from cold load.
-- Add a lightweight `prefetch` action on `gmail-messages` that takes `message_ids[]`, fetches in parallel (concurrency 5), and writes to `email_cache`. The client already calls `prefetchFullEmailMessage` on hover/render (`useFullEmailMessage.ts:254`) — change it to call this batch action instead of N individual `get` invocations.
+`supabase/functions/gmail-messages/index.ts:680-769` — before/inside the cache lookup, if `message_id` is UUID-shaped (regex `/^[0-9a-f]{8}-[0-9a-f]{4}-/`), resolve to the real provider id first:
 
-### 4. Tighten the client timeout once cache-first is live
+```text
+if (isUuid(message_id)) {
+  const { data: row } = await supabase
+    .from('email_cache')
+    .select('gmail_message_id')
+    .eq('user_id', user.id)
+    .eq('id', message_id)
+    .maybeSingle();
+  if (row?.gmail_message_id) message_id = row.gmail_message_id;
+}
+```
 
-`src/components/deal/email/useFullEmailMessage.ts:213` — drop `FETCH_TIMEOUT_MS` from 15s to 5s. With cache hits the edge function returns in <200ms; the 15s ceiling only existed to ride out cold Nylas calls, which are now off the critical path.
+This unblocks any other surface that still passes the UUID and is cheap (single index lookup).
 
-### 5. Verification
+### C. Backfill bodies opportunistically (secondary, separate follow-up)
 
-- DB: after fix, `SELECT count(*) FROM email_cache WHERE body_html IS NOT NULL` grows on every inbox open.
-- Network tab: second open of the same email shows `gmail-messages` returning in <300ms.
-- Edge function logs: cache-hit log line dominates; live Nylas calls only on first open per message.
-- The "Couldn't load this message" toast no longer fires on slow networks because retry has a body to fall back to.
+With (A) fixed, every first open is still a live Nylas round-trip because only 2 rows have `body_fetched_at`. Add a bounded-concurrency backfill action (`action: "prefetch", message_ids: [...]`) and have the inbox call it for the visible page after `list`. Out of scope for this hotfix but worth queueing.
 
-## Files / lines summary
+## Files / lines
 
 | Concern | File | Lines |
 | --- | --- | --- |
-| 15s client timeout | `src/components/deal/email/useFullEmailMessage.ts` | 213, 297–304 |
-| Gmail get = live Nylas, no cache | `supabase/functions/gmail-messages/index.ts` | 663–766 (esp. 674) |
-| Microsoft get already DB-backed (reference) | `supabase/functions/gmail-messages/index.ts` | 360–408 |
-| List fetches headers only | `supabase/functions/gmail-messages/index.ts` | 482–660 |
-| Cache table missing body_html | `public.email_cache` schema | — |
+| Spreads cache PK as `email.id` | `src/hooks/useEmailIntelligence.ts` | 339–349 (and analysis joins 311–321, 411–440, realtime 490–499) |
+| Calls `get` with whatever `email.id` is | `src/components/deal/email/useFullEmailMessage.ts` | 297–309 |
+| Cache lookup uses provider id | `supabase/functions/gmail-messages/index.ts` | 680–690 |
+| Nylas live fetch with the (wrong) id → 404 | `supabase/functions/gmail-messages/index.ts` | 768–794 |
+| Renders "Full message unavailable" on no body | `src/components/deal/email/EmailListAndDetail.tsx` | 1772–1781 |
 
-No behavior change for Microsoft users. Gmail/Nylas users get instant opens after the first fetch and a one-time backfill.
+### Verification after fix
+
+- Open the Gabb Wireless thread → cache miss → Nylas live → 200 with body → upsert with `body_fetched_at` → second open <300ms.
+- DB: `SELECT count(*) FROM email_cache WHERE body_fetched_at IS NOT NULL` climbs as users browse.
+- Edge logs: `[gmail-messages:get] attachment-debug` lines appear (currently absent — proving `get` never reaches body parsing today).
+- "Full message unavailable" no longer fires for healthy mailboxes.
