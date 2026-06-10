@@ -24,14 +24,37 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 
+/**
+ * Consolidated Debt Pipeline Board currency display.
+ * Always renders as abbreviated millions with two decimals, e.g. $2.00MM, $0.75MM.
+ * Used for KPI tiles, drilldown table cells, totals, and chart tooltips so every
+ * surface on this board reconciles.
+ */
 const formatCurrency = (value: number) => {
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
+  const n = Number(value) || 0;
+  const sign = n < 0 ? '-' : '';
+  return `${sign}$${(Math.abs(n) / 1_000_000).toFixed(2)}MM`;
 };
 
-const formatCurrencyFull = (value: number) =>
-  value.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+const formatCurrencyFull = formatCurrency;
+
+/**
+ * Stage-slug → display-label map for this board. Centralized so KPI tiles,
+ * drilldown tables, and tooltips never show a malformed title-cased slug
+ * (e.g. "Ndaneeds List Sent").
+ */
+const STAGE_LABEL_OVERRIDES: Record<string, string> = {
+  'ndaneeds-list-sent': 'NDA/Needs List Sent',
+  'nda-needs-list-sent': 'NDA/Needs List Sent',
+  'nda_needs_list_sent': 'NDA/Needs List Sent',
+};
+
+const formatStageLabel = (slug: string | null | undefined): string => {
+  if (!slug) return '—';
+  const key = String(slug).toLowerCase().trim();
+  if (STAGE_LABEL_OVERRIDES[key]) return STAGE_LABEL_OVERRIDES[key];
+  return slug.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+};
 
 interface MetricCardConfig {
   id: string;
@@ -368,7 +391,7 @@ function DrilldownModal({
                     <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {deal.current_stage?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || '—'}
+                      {formatStageLabel(deal.current_stage)}
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {new Date(deal.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
