@@ -1548,7 +1548,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                                 <TooltipTrigger asChild>
                                   <span style={{ cursor: 'help' }}>{d.company}</span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                                <TooltipContent side="top" className="max-w-[280px] whitespace-normal break-words text-[12px] font-normal leading-snug normal-case tracking-normal text-left">{note}</TooltipContent>
                               </Tooltip>
                             </td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.total_fee == null || Number(d.total_fee) === 0 ? '—' : fmtUSD(Number(d.total_fee))}</td>
@@ -1560,7 +1560,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                                 <TooltipTrigger asChild>
                                   <span style={{ cursor: 'help' }}>{sd?.label ?? '—'}</span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                                <TooltipContent side="top" className="max-w-[280px] whitespace-normal break-words text-[12px] font-normal leading-snug normal-case tracking-normal text-left">{note}</TooltipContent>
                               </Tooltip>
                             </td>
                           </tr>
@@ -1569,42 +1569,156 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     </tbody>
                   </table>
                 )}
-                <div style={{ marginTop: 2, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.10)' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 10, color: 'rgba(255,255,255,0.72)' }}>
-                    <span>Total candidates: <strong style={{ color: 'hsl(0,0%,100%)' }}>{debtPipelineDebug.totalCandidates}</strong></span>
-                    <span>Included: <strong style={{ color: '#3de89a' }}>{activeDealsList.length}</strong></span>
-                    <span>Excluded: <strong style={{ color: '#ffbe1e' }}>{debtPipelineDebug.excluded.length}</strong></span>
+                <details
+                  style={{
+                    marginTop: 12,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '1px dashed rgba(255,255,255,0.10)',
+                  }}
+                >
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      listStyle: 'none',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '1px',
+                      textTransform: 'uppercase',
+                      color: 'rgba(255,255,255,0.55)',
+                      userSelect: 'none',
+                    }}
+                  >
+                    Debug · Inclusion Diagnostics
+                  </summary>
+
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                      gap: 8,
+                    }}
+                  >
+                    {[
+                      { label: 'Total candidates', value: debtPipelineDebug.totalCandidates, color: 'hsl(0,0%,100%)' },
+                      { label: 'Included', value: activeDealsList.length, color: '#3de89a' },
+                      { label: 'Excluded', value: debtPipelineDebug.excluded.length, color: '#ffbe1e' },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: 6,
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <div style={{ fontSize: 9, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>{stat.label}</div>
+                        <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: stat.color }}>{stat.value}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.6)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {Object.entries(debtPipelineDebug.reasonCounts).length === 0 ? (
-                      <span>No exclusions</span>
-                    ) : Object.entries(debtPipelineDebug.reasonCounts)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([reason, count]) => (
-                        <span key={reason}>{reason}: {count}</span>
-                      ))}
+
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 9, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
+                      Exclusion reasons
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {Object.entries(debtPipelineDebug.reasonCounts).length === 0 ? (
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)' }}>No exclusions</span>
+                      ) : Object.entries(debtPipelineDebug.reasonCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([reason, count]) => (
+                          <span
+                            key={reason}
+                            style={{
+                              fontSize: 10,
+                              color: 'rgba(255,255,255,0.78)',
+                              background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                            }}
+                          >
+                            {reason}: <strong style={{ color: 'hsl(0,0%,100%)' }}>{count}</strong>
+                          </span>
+                        ))}
+                    </div>
                   </div>
-                  <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-                    {debtPipelineDebug.trackedDeals.map((deal) => {
-                      const exclusion = debtPipelineDebug.excluded.find((item) => item.id === deal.id);
-                      return (
-                        <div key={deal.id} style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', lineHeight: 1.45 }}>
-                          <strong style={{ color: '#e8f6ff' }}>{deal.name}</strong>
-                          {' · '}stage: {String(deal.rawStage || '—')}
-                          {' · '}normalized: {deal.normalizedStage || '—'}
-                          {' · '}status: {deal.status || '—'}
-                          {' · '}on hold: {deal.onHold ? 'yes' : 'no'}
-                          {' · '}active pipeline: {deal.inActivePipeline ? 'yes' : 'no'}
-                          {' · '}close: {deal.projectedCloseDate || '—'}
-                          {' · '}fee: {deal.totalFee == null || deal.totalFee === 0 ? '—' : fmtUSD(deal.totalFee)}
-                          {' · '}retainer: {deal.retainerFee == null || deal.retainerFee === 0 ? '—' : fmtUSD(deal.retainerFee)}
-                          {' · '}milestone: {deal.milestoneFee == null || deal.milestoneFee === 0 ? '—' : fmtUSD(deal.milestoneFee)}
-                          {' · '}result: <span style={{ color: exclusion ? '#ffbe1e' : '#3de89a' }}>{exclusion ? exclusion.reason : 'included'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+
+                  {debtPipelineDebug.trackedDeals.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ fontSize: 9, letterSpacing: '0.5px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
+                        Tracked deals
+                      </div>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        {debtPipelineDebug.trackedDeals.map((deal) => {
+                          const exclusion = debtPipelineDebug.excluded.find((item) => item.id === deal.id);
+                          const rows: Array<[string, React.ReactNode]> = [
+                            ['Stage', String(deal.rawStage || '—')],
+                            ['Normalized', deal.normalizedStage || '—'],
+                            ['Status', deal.status || '—'],
+                            ['On hold', deal.onHold ? 'Yes' : 'No'],
+                            ['Active pipeline', deal.inActivePipeline ? 'Yes' : 'No'],
+                            ['Close', deal.projectedCloseDate || '—'],
+                            ['Fee', deal.totalFee == null || deal.totalFee === 0 ? '—' : fmtUSD(deal.totalFee)],
+                            ['Retainer', deal.retainerFee == null || deal.retainerFee === 0 ? '—' : fmtUSD(deal.retainerFee)],
+                            ['Milestone', deal.milestoneFee == null || deal.milestoneFee === 0 ? '—' : fmtUSD(deal.milestoneFee)],
+                          ];
+                          return (
+                            <div
+                              key={deal.id}
+                              style={{
+                                padding: '8px 10px',
+                                borderRadius: 6,
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.06)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                                <strong style={{ fontSize: 12, color: '#e8f6ff' }}>{deal.name}</strong>
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    letterSpacing: '0.5px',
+                                    textTransform: 'uppercase',
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: 4,
+                                    color: exclusion ? '#ffbe1e' : '#3de89a',
+                                    background: exclusion ? 'rgba(255,190,30,0.10)' : 'rgba(61,232,154,0.10)',
+                                    border: `1px solid ${exclusion ? 'rgba(255,190,30,0.25)' : 'rgba(61,232,154,0.25)'}`,
+                                  }}
+                                >
+                                  {exclusion ? exclusion.reason : 'included'}
+                                </span>
+                              </div>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                                  gap: '4px 12px',
+                                  fontSize: 10,
+                                  color: 'rgba(255,255,255,0.72)',
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                {rows.map(([k, v]) => (
+                                  <div key={k} style={{ display: 'flex', gap: 6, minWidth: 0 }}>
+                                    <span style={{ color: 'rgba(255,255,255,0.45)' }}>{k}:</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </details>
                 <div style={{ marginTop: 4 }}>
                   <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, padding: '4px 8px' }}>
                     Revenue by Month · Next 6 Months
