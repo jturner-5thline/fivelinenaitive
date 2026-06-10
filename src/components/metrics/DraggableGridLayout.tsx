@@ -138,18 +138,23 @@ export function DraggableGridLayout({
   }, [isEditMode, onLayoutChange]);
 
   const handleDragStop = useCallback((_layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+    // Defensive guard: react-grid-layout should already block drags when
+    // isDraggable is false, but never persist a layout mutation unless the
+    // user has explicitly entered edit mode via the header pencil button.
+    if (!isEditMode) return;
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
     suppressClickUntilRef.current = Date.now() + 400;
     onLayoutChange(mapped, true); // immediate save
-  }, [onLayoutChange]);
+  }, [onLayoutChange, isEditMode]);
 
   const handleResizeStop = useCallback((_layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
+    if (!isEditMode) return;
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
     suppressClickUntilRef.current = Date.now() + 400;
     onLayoutChange(mapped, true); // immediate save
-  }, [onLayoutChange]);
+  }, [onLayoutChange, isEditMode]);
 
   const handleClickCapture = useCallback((e: React.MouseEvent) => {
     if (Date.now() < suppressClickUntilRef.current) {
