@@ -683,7 +683,14 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
+  const [drilldown, setDrilldown] = useState<{
+    title: string;
+    deals: StageEntryDeal[];
+    periodNote?: string;
+    metricType?: 'count' | 'dollars' | 'average' | 'none';
+    valueFormatter?: (v: number) => string;
+    chartColor?: string;
+  } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -716,6 +723,9 @@ export function ConsolidatedDebtPipelineDashboard({
       title: `${metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
       deals: bucket.deals,
       periodNote: buildTrendPeriodNote(bucket, metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+      metricType: metric === 'deals-closed' ? 'count' : 'dollars',
+      valueFormatter: metric === 'deals-closed' ? (v: number) => `${Math.round(v)}` : formatCurrency,
+      chartColor: metric === 'deals-closed' ? 'hsl(var(--chart-3))' : 'hsl(var(--success))',
     });
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, selectedQuarter, trendMode]);
 
@@ -729,6 +739,9 @@ export function ConsolidatedDebtPipelineDashboard({
       title: `${pendingTrendReopen.metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
       deals: bucket.deals,
       periodNote: buildTrendPeriodNote(bucket, pendingTrendReopen.metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+      metricType: pendingTrendReopen.metric === 'deals-closed' ? 'count' : 'dollars',
+      valueFormatter: pendingTrendReopen.metric === 'deals-closed' ? (v: number) => `${Math.round(v)}` : formatCurrency,
+      chartColor: pendingTrendReopen.metric === 'deals-closed' ? 'hsl(var(--chart-3))' : 'hsl(var(--success))',
     });
     setPendingTrendReopen(null);
   }, [m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, pendingTrendReopen, trendMode]);
