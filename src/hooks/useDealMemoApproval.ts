@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateAllTaskCaches } from '@/lib/taskCache';
 const ADMIN_EMAIL = 'jturner@5thline.co';
 // James Turner's auth.users.id (NOT his profiles.id). Tasks.assigned_to is
 // filtered by auth user_id everywhere in the app (see useTasks.ts), so using
@@ -125,6 +127,7 @@ export function useDealMemoApproval(
   options?: { saveMemo?: () => Promise<void> }
 ): DealMemoApprovalHook {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [approvalInfo, setApprovalInfo] = useState<ApprovalInfo>({
     approvalState: 'not_submitted',
     currentApprovalLevel: null,
