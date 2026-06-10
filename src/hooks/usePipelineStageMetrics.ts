@@ -37,6 +37,40 @@ const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'fs-active-client': ['fs-active-client', 'Active Client'],
 };
 
+const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+
+function isActivePipelineFundedOnlyMetric(slugs: string[], pipelineId?: string): boolean {
+  return pipelineId === ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === 'funded-invoiced';
+}
+
+export function expandMetricStageLabels(slugs: string[], pipelineId?: string): string[] {
+  const out = new Set(expandStageLabels(slugs));
+
+  if (isActivePipelineFundedOnlyMetric(slugs, pipelineId)) {
+    for (const variant of expandStageLabels(['closed-won'])) out.add(variant);
+  }
+
+  return Array.from(out);
+}
+
+export function normalizeMetricStageSlug(
+  toStage: string | null | undefined,
+  toStageId: string | null | undefined,
+  pipelineId: string | undefined,
+  targetStages: string[],
+): string | null {
+  const normalized = normalizeStageSlug(toStage, toStageId);
+
+  if (
+    isActivePipelineFundedOnlyMetric(targetStages, pipelineId)
+    && normalized === 'closed-won'
+  ) {
+    return 'funded-invoiced';
+  }
+
+  return normalized;
+}
+
 /** Expand canonical slugs → full list of `to_stage` text values to filter on. */
 export function expandStageLabels(slugs: string[]): string[] {
   const out = new Set<string>();
@@ -523,6 +557,7 @@ function useStageEntryMetric(
 ): StageMetricResult {
   const { user } = useAuth();
   const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
+  const queryStages = expandMetricStageLabels(targetStages, pipelineId);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-metric-dsh', targetStages.join(','), quarter.value, pipelineId],
@@ -553,7 +588,7 @@ function useStageEntryMetric(
           )
         `)
         .eq('event_type', 'stage_enter')
-        .in('to_stage', expandStageLabels(targetStages))
+        .in('to_stage', queryStages)
         .gte('changed_at', startDate)
         .lte('changed_at', endDate + 'T23:59:59.999Z');
 
@@ -585,7 +620,12 @@ function useStageEntryMetric(
       if (!deal) continue;
       // If pipelineId filter specified but inner join didn't filter (safety)
       if (pipelineId && deal.pipeline_id !== pipelineId) continue;
-      const stageSlug = normalizeStageSlug((row as any).to_stage, (row as any).to_stage_id);
+        const stageSlug = normalizeMetricStageSlug(
+          (row as any).to_stage,
+          (row as any).to_stage_id,
+          pipelineId,
+          targetStages,
+        );
       if (!stageSlug || !targetStages.includes(stageSlug)) continue;
       seen.set(row.deal_id, {
         deal_id: row.deal_id,
@@ -608,7 +648,7 @@ function useStageEntryMetric(
       isLoading: loading,
       mrr,
     };
-  }, [data, isLoading, isFetching, pipelineId]);
+  }, [data, isLoading, isFetching, pipelineId, targetStages]);
 }
 
 /**
@@ -728,7 +768,6 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
 }
 
 // 5th Line company's pipeline IDs
-const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
 const DEBT_REALM_ID = '193514877331929';
 
