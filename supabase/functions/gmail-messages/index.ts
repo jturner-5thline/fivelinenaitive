@@ -295,8 +295,13 @@ async function handleMicrosoftAction(
 ): Promise<Response | null> {
   const action = requestData.action;
   if (action === "list") {
-    const max = Math.min((requestData as any).max_results || 50, 200);
+    // Match the Gmail/Nylas path's ceiling (1,000) so the inbox isn't
+    // artificially capped at 200 for Outlook accounts.
+    const max = Math.min((requestData as any).max_results || 50, 1000);
     const labelIds = (requestData as any).label_ids as string[] | undefined;
+    // Keyset cursor: pageToken encodes the oldest `received_at` from the
+    // previous page so we paginate older-than the last row we returned.
+    const pageToken = (requestData as any).page_token as string | undefined;
     const explicit = labelIds?.[0]?.toUpperCase();
     // Only INBOX-style lists are supported today (Microsoft sync covers inbox).
     if (explicit && explicit !== "INBOX") {
@@ -306,13 +311,17 @@ async function handleMicrosoftAction(
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    const { data, error } = await supabase
+    let q = supabase
       .from("emails")
       .select("message_id, thread_id, subject, from_email, from_name, to_emails, preview, received_at, is_read, has_attachments")
       .eq("user_id", userId)
       .eq("provider", "microsoft")
       .order("received_at", { ascending: false })
       .limit(max);
+    if (pageToken) {
+      q = q.lt("received_at", pageToken);
+    }
+    const { data, error } = await q;
     if (error) {
       console.error(`[gmail-messages][microsoft] list error user=${userId}:`, error);
       return new Response(
@@ -336,8 +345,15 @@ async function handleMicrosoftAction(
       has_attachments: !!m.has_attachments,
       provider: "microsoft",
     }));
+    // Emit a next_page_token whenever the page was full — it's the oldest
+    // received_at we returned, used by the client as a keyset cursor on
+    // the next call. When the page is short we know we've drained the
+    // table and can return null.
+    const nextPageToken = messages.length === max && messages.length > 0
+      ? (messages[messages.length - 1].received_at ?? null)
+      : null;
     return new Response(
-      JSON.stringify({ messages, next_page_token: null, provider: "microsoft" }),
+      JSON.stringify({ messages, next_page_token: nextPageToken, provider: "microsoft" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
