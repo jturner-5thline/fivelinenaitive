@@ -27,6 +27,7 @@ export function AsanaSyncDebug() {
   const [open, setOpen] = useState(false);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [authed, setAuthed] = useState(false);
+  const successCount = rows.filter((r) => r.success).length;
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
@@ -84,7 +85,7 @@ export function AsanaSyncDebug() {
         style={{ cursor: "pointer", userSelect: "none", fontWeight: 600 }}
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? "▼" : "▶"} Asana sync log ({rows.length})
+        {open ? "▼" : "▶"} Asana sync log ({successCount})
       </div>
       {open && (
         <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
