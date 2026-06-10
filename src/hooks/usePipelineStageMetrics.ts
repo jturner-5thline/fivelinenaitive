@@ -39,10 +39,14 @@ const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
 
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
+function isActivePipelineFundedOnlyMetric(slugs: string[], pipelineId?: string): boolean {
+  return pipelineId === ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === 'funded-invoiced';
+}
+
 export function expandMetricStageLabels(slugs: string[], pipelineId?: string): string[] {
   const out = new Set(expandStageLabels(slugs));
 
-  if (pipelineId === ACTIVE_PIPELINE_ID && slugs.includes('funded-invoiced')) {
+  if (isActivePipelineFundedOnlyMetric(slugs, pipelineId)) {
     for (const variant of expandStageLabels(['closed-won'])) out.add(variant);
   }
 
@@ -58,8 +62,7 @@ export function normalizeMetricStageSlug(
   const normalized = normalizeStageSlug(toStage, toStageId);
 
   if (
-    pipelineId === ACTIVE_PIPELINE_ID
-    && targetStages.includes('funded-invoiced')
+    isActivePipelineFundedOnlyMetric(targetStages, pipelineId)
     && normalized === 'closed-won'
   ) {
     return 'funded-invoiced';
