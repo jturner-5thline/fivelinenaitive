@@ -1569,6 +1569,42 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     </tbody>
                   </table>
                 )}
+                <div style={{ marginTop: 2, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.10)' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 10, color: 'rgba(255,255,255,0.72)' }}>
+                    <span>Total candidates: <strong style={{ color: 'hsl(0,0%,100%)' }}>{debtPipelineDebug.totalCandidates}</strong></span>
+                    <span>Included: <strong style={{ color: '#3de89a' }}>{activeDealsList.length}</strong></span>
+                    <span>Excluded: <strong style={{ color: '#ffbe1e' }}>{debtPipelineDebug.excluded.length}</strong></span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.6)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(debtPipelineDebug.reasonCounts).length === 0 ? (
+                      <span>No exclusions</span>
+                    ) : Object.entries(debtPipelineDebug.reasonCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([reason, count]) => (
+                        <span key={reason}>{reason}: {count}</span>
+                      ))}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                    {debtPipelineDebug.trackedDeals.map((deal) => {
+                      const exclusion = debtPipelineDebug.excluded.find((item) => item.id === deal.id);
+                      return (
+                        <div key={deal.id} style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', lineHeight: 1.45 }}>
+                          <strong style={{ color: '#e8f6ff' }}>{deal.name}</strong>
+                          {' · '}stage: {String(deal.rawStage || '—')}
+                          {' · '}normalized: {deal.normalizedStage || '—'}
+                          {' · '}status: {deal.status || '—'}
+                          {' · '}on hold: {deal.onHold ? 'yes' : 'no'}
+                          {' · '}active pipeline: {deal.inActivePipeline ? 'yes' : 'no'}
+                          {' · '}close: {deal.projectedCloseDate || '—'}
+                          {' · '}fee: {deal.totalFee == null || deal.totalFee === 0 ? '—' : fmtUSD(deal.totalFee)}
+                          {' · '}retainer: {deal.retainerFee == null || deal.retainerFee === 0 ? '—' : fmtUSD(deal.retainerFee)}
+                          {' · '}milestone: {deal.milestoneFee == null || deal.milestoneFee === 0 ? '—' : fmtUSD(deal.milestoneFee)}
+                          {' · '}result: <span style={{ color: exclusion ? '#ffbe1e' : '#3de89a' }}>{exclusion ? exclusion.reason : 'included'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div style={{ marginTop: 4 }}>
                   <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, padding: '4px 8px' }}>
                     Revenue by Month · Next 6 Months
