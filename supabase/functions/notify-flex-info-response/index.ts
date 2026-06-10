@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
           const appUrl = "https://naitive.co";
 
           await resend.emails.send({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             reply_to: profile?.email || "support@naitive.co",
             to: [payload.user_email],
             subject: `naitive: Update on your information request for ${dealName}`,

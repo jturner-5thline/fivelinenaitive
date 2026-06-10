@@ -89,7 +89,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: buildFrom("naitive"),
+        from: buildFrom("Naitive"),
         to: [user_email],
         subject: "Your naitive Account Has Been Approved!",
         headers: {

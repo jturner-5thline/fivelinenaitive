@@ -386,7 +386,7 @@ Deno.serve(async (req) => {
         if (type === 'fake') continue;
         const email = buildSummaryEmail(type as 'daily' | 'weekly', userName, emailData);
         await resend.emails.send({
-          from: buildFrom("naitive"),
+          from: buildFrom("Naitive"),
           reply_to: 'support@naitive.co',
           to: [testMode.email!],
           subject: `[TEST] ${email.subject}`,
@@ -510,7 +510,7 @@ Deno.serve(async (req) => {
           });
 
           await resend.emails.send({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             reply_to: 'support@naitive.co',
             to: [userData.user.email],
             subject: email.subject,
@@ -569,7 +569,7 @@ Deno.serve(async (req) => {
           });
 
           await resend.emails.send({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             reply_to: 'support@naitive.co',
             to: [userData.user.email],
             subject: email.subject,

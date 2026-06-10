@@ -22,7 +22,7 @@ export function getFromDomain(): string {
  * Returns a fully formatted Resend `from` header, e.g.
  *   "Naitive <noreply@updates.naitive.co>"
  */
-export function buildFrom(displayName = "naitive", localPart?: string): string {
+export function buildFrom(displayName = "Naitive", localPart?: string): string {
   if (localPart) {
     const domain = getFromDomain();
     return `${displayName} <${localPart}@${domain}>`;

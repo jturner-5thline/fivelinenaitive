@@ -161,7 +161,7 @@ async function executeEmailAction(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: buildFrom("naitive"),
+        from: buildFrom("Naitive"),
         to: [userEmail],
         subject: subject,
         html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">

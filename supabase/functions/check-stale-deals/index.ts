@@ -782,7 +782,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           await resend.emails.send({
-            from: buildFrom("naitive"),
+            from: buildFrom("Naitive"),
             to: [email],
             subject: `naitive: ${recipient.deals.length} Deal${recipient.deals.length !== 1 ? 's' : ''} Need${recipient.deals.length === 1 ? 's' : ''} Attention`,
             html: emailHtml,

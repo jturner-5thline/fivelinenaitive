@@ -579,7 +579,7 @@ const handler = async (req: Request): Promise<Response> => {
       const emailHtml = buildDigestEmailHtml('James', deals, activityByDeal, labels, true, lenderInfoByDeal);
 
       await resend.emails.send({
-        from: buildFrom("naitive"),
+        from: buildFrom("Naitive"),
         to: [testEmail],
         subject: `[Test] Pipeline Digest — ${deals.length} Active Deals`,
         html: emailHtml,
@@ -849,7 +849,7 @@ const handler = async (req: Request): Promise<Response> => {
             const subject = `Pipeline Digest — ${userDeals.length} Deals · ${activityCount} Update${activityCount !== 1 ? 's' : ''}`;
 
             await resend.emails.send({
-              from: buildFrom("naitive"),
+              from: buildFrom("Naitive"),
               to: [recipientEmail],
               subject,
               html: emailHtml,

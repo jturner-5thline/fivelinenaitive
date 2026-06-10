@@ -152,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const r of list) {
       try {
         const { error: sendErr } = await resend.emails.send({
-          from: buildFrom("naitive"),
+          from: buildFrom("Naitive"),
           reply_to: "support@naitive.co",
           to: [r.email],
           subject: "Your Weekly Rundown is Ready",

@@ -66,6 +66,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     approveApproval,
     rejectApproval,
     nextApproverLabel,
+    isApprovalEnabled,
   } = useDealMemoApproval(dealId, memo?.id, {
     saveMemo: async () => {
       // CRITICAL: never blank an existing memo on submit. Only persist when
@@ -477,8 +478,8 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                 </div>
               )}
 
-              {/* Submit for Approval button - only show when memo has content */}
-              {userRole && !isCurrentApprover && userRole !== 'admin' && memo && (
+              {/* Submit for Approval button - only shown for 5th Line accounts */}
+              {isApprovalEnabled && userRole && !isCurrentApprover && userRole !== 'admin' && memo && (
                 localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
               ) && (
                 <Button
@@ -492,7 +493,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
               )}
 
               {/* Admin self-approve button - only show when memo has content and is not already approved without changes */}
-              {userRole === 'admin' && !isCurrentApprover && memo && (
+              {isApprovalEnabled && userRole === 'admin' && !isCurrentApprover && memo && (
                 approvalInfo.approvalState !== 'approved' || hasChanges
               ) && (
                 localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
