@@ -67,7 +67,8 @@ describe('Finance ↔ Insights weekly balance parity', () => {
       weeklyOverrides: {},
     });
     // Use a fixed anchor so the test is deterministic across CI clocks.
-    const todayISO = '2027-01-04';
+    // Anchor inside the default Finance horizon (≥ 2026-12-25) so 12 weeks fit.
+    const todayISO = '2026-09-01';
     const insightsView = pickForwardWeeks(result, 12, todayISO);
     expect(insightsView).toHaveLength(12);
     for (const w of insightsView) {
