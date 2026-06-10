@@ -60,6 +60,8 @@ interface DbDeal {
   company: string;
   value: number;
   total_fee: number | null;
+  retainer_fee: number | null;
+  milestone_fee: number | null;
   status: string;
   stage: string;
   deal_type: string | null;
@@ -78,7 +80,7 @@ export function useMetricsData() {
       const queryPromise = supabase
         .from('deals')
         .select(
-          'id, company, value, total_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date',
+          'id, company, value, total_fee, retainer_fee, milestone_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date',
         )
         .order('created_at', { ascending: false });
 
