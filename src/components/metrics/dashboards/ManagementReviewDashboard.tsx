@@ -28,6 +28,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
+import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
@@ -676,6 +678,90 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       });
   }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
 
+  // Latest status note per deal (for hover tooltips on Deal Name + Status)
+  const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
+  const debtPipelineDealIds = useMemo(
+    () => activeDealsList.map((d: any) => d.id),
+    [activeDealsList],
+  );
+  const debtPipelineDealIdsKey = debtPipelineDealIds.join(',');
+  useEffect(() => {
+    let cancelled = false;
+    if (debtPipelineDealIds.length === 0) {
+      setDebtPipelineStatusNotes({});
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('deal_status_notes')
+        .select('deal_id, note, created_at')
+        .in('deal_id', debtPipelineDealIds)
+        .order('created_at', { ascending: false });
+      if (cancelled || error || !data) return;
+      const latest: Record<string, string> = {};
+      for (const row of data as any[]) {
+        if (!latest[row.deal_id]) latest[row.deal_id] = row.note;
+      }
+      setDebtPipelineStatusNotes(latest);
+    })();
+    return () => { cancelled = true; };
+  }, [debtPipelineDealIdsKey]);
+
+  // 6-month revenue chart: selected month + 5 following months.
+  // Revenue per month = sum of total_fee for active-pipeline deals whose
+  // projected_close_date falls in that month.
+  const debtPipelineChart = useMemo(() => {
+    const anchor = reportingPeriod?.view === 'month'
+      ? startOfMonth(periodRange.start)
+      : startOfMonth(periodRange.end);
+    const buckets: { key: string; label: string; start: Date; end: Date }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const s = startOfMonth(new Date(anchor.getFullYear(), anchor.getMonth() + i, 1));
+      const e = endOfMonth(s);
+      buckets.push({ key: format(s, 'yyyy-MM'), label: format(s, 'MMM yy'), start: s, end: e });
+    }
+    const totals = buckets.map(b => {
+      const sum = activeDealsList.reduce((acc: number, d: any) => {
+        if (!d.projected_close_date) return acc;
+        const dt = new Date(d.projected_close_date);
+        if (Number.isNaN(dt.getTime())) return acc;
+        if (dt >= b.start && dt <= b.end) return acc + Number(d.total_fee || 0);
+        return acc;
+      }, 0);
+      return sum;
+    });
+    return { labels: buckets.map(b => b.label), values: totals };
+  }, [activeDealsList, periodRange, reportingPeriod?.view]);
+
+  const debtPipelineChartRef = useRef<HTMLCanvasElement>(null);
+  useChart(
+    debtPipelineChartRef,
+    debtPipelineChart.labels.length > 0
+      ? {
+          type: 'bar',
+          data: {
+            labels: debtPipelineChart.labels,
+            datasets: [{
+              data: debtPipelineChart.values,
+              backgroundColor: 'hsla(213,90%,70%,0.65)',
+              borderColor: 'hsl(213,90%,70%)',
+              borderWidth: 1,
+              borderRadius: 4,
+            }],
+          },
+          options: {
+            ...def,
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { label: (ctx: any) => fmtUSD(Number(ctx.parsed.y || 0)) } },
+            },
+            scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } },
+          },
+        }
+      : null,
+    [JSON.stringify(debtPipelineChart.labels), JSON.stringify(debtPipelineChart.values)],
+  );
+
   const statusDisplay = (status: string): { label: string; color: string } | null => {
     if (status === 'on-track') return { label: 'On Track', color: '#3de89a' };
     if (status === 'at-risk') return { label: 'At Risk', color: '#ffbe1e' };
@@ -1294,36 +1380,65 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
         <div key="active-deals-list" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Active Deals · Final Credit → In Due Diligence">
-            <div style={{ height: '100%', overflow: 'auto' }}>
-              {activeDealsList.length === 0 ? (
-                <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeDealsList.map((d: any) => {
-                      const sd = statusDisplay(d.status);
-                      return (
-                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                          <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>{d.company}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          <GridShell isEditMode={isEditMode} title="Debt Pipeline">
+            <TooltipProvider>
+              <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activeDealsList.length === 0 ? (
+                  <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Retainer</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Milestone Fee</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeDealsList.map((d: any) => {
+                        const sd = statusDisplay(d.status);
+                        const note = debtPipelineStatusNotes[d.id] || 'No status note yet';
+                        return (
+                          <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span style={{ cursor: 'help' }}>{d.company}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.retainer_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.milestone_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span style={{ cursor: 'help' }}>{sd?.label ?? '—'}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, padding: '4px 8px' }}>
+                    Revenue by Month · Next 6 Months
+                  </div>
+                  <div style={{ position: 'relative', height: 140 }}>
+                    <canvas ref={debtPipelineChartRef} />
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
           </GridShell>
         </div>
 
