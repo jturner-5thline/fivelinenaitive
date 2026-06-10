@@ -634,6 +634,26 @@ export function ConsolidatedDebtPipelineDashboard({
       description: 'Deals entering Funded / Invoiced in the Active Pipeline',
       cards: [
         {
+          id: 'deals-closed',
+          title: 'Deals Closed',
+          icon: FileSignature,
+          value: m.fundedInvoicedOnly.count,
+          isLoading: m.fundedInvoicedOnly.isLoading,
+          deals: m.fundedInvoicedOnly.deals,
+          color: 'hsl(var(--chart-3))',
+          drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
+        },
+        {
+          id: 'dollars-funded',
+          title: 'Dollars Funded',
+          icon: Banknote,
+          value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
+          isLoading: m.fundedInvoicedOnly.isLoading,
+          deals: m.fundedInvoicedOnly.deals,
+          color: 'hsl(var(--success))',
+          drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
+        },
+        {
           id: 'average-deal-closed',
           title: 'Average Deal Closed',
           icon: Banknote,
