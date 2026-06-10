@@ -26,6 +26,7 @@ import { useDealCashflowOverrides } from './useDealCashflowOverrides';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
+import { buildFinanceWeeklyBalance, composeCombinedScheduledItems } from './financeWeeklyBalance';
 import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -178,49 +179,20 @@ export function CashFlowManager() {
     !!company?.id,
     dealOverrides,
   );
-  // Wrap saved deal cash-in DB rows (cashflow_cash_in_items) as one-time
-  // ScheduledCashFlow entries so they get routed by category through
-  // mergeScheduledIntoWeekly into the visible Retainers / Milestones /
-  // Closing Fees rows in the correct week bucket — instead of being
-  // dumped into a generic "Customer Payment" line that no row renders.
-  const cashInDbAsScheduled = useMemo<ScheduledCashFlow[]>(() => {
-    const FEE_TO_CATEGORY: Record<string, string> = {
-      retainer: 'Retainers',
-      milestone: 'Milestones',
-      closing: 'Closing Fees',
-    };
-    const FEE_LABEL: Record<string, string> = {
-      retainer: 'Retainer',
-      milestone: 'Milestone',
-      closing: 'Closing',
-    };
-    return (cashInDbItems || []).map((it) => {
-      const date = (it.target_date || '').slice(0, 10);
-      const category = FEE_TO_CATEGORY[it.fee_type] || 'Other Receipts';
-      const label = FEE_LABEL[it.fee_type] || it.fee_type;
-      return {
-        id: `cashin:${it.id}`,
-        company_id: company?.id || '',
-        account: it.deal_name || '',
-        category,
-        amount: Number(it.amount) || 0,
-        frequency_type: 'one_time',
-        frequency_config: { one_time_date: date },
-        flow_type: 'cash_in',
-        start_date: date,
-        end_date: date,
-        notes: `${it.deal_name} — ${label}`,
-      } as ScheduledCashFlow;
-    });
-  }, [cashInDbItems, company?.id]);
+  // Canonical scheduled-items composition — defined in financeWeeklyBalance.ts
+  // so /insights "12-Week Cashflow Forecast" sees the same exact inputs as
+  // the weekly grid here. Do not inline any equivalent — both surfaces must
+  // call this composer for parity.
   const combinedScheduledItems = useMemo(
-    () => [
-      ...(qbDerivedItems || []),
-      ...(dealProjectedItems || []),
-      ...(scheduledItems || []),
-      ...cashInDbAsScheduled,
-    ],
-    [qbDerivedItems, dealProjectedItems, scheduledItems, cashInDbAsScheduled],
+    () =>
+      composeCombinedScheduledItems({
+        qbDerivedItems,
+        dealProjectedItems,
+        scheduledItems,
+        cashInDbItems,
+        companyId: company?.id,
+      }),
+    [qbDerivedItems, dealProjectedItems, scheduledItems, cashInDbItems, company?.id],
   );
   const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
@@ -711,135 +683,15 @@ export function CashFlowManager() {
   //                  | else resolved Beginning Cash + Net Change
   // The resolved Ending Cash carries into the next week's Beginning Cash unless
   // that next week has its own explicit override (which starts a new chain).
-  // Build the weekly grid as: historical seed (≤ LAST_HISTORICAL_WEEK_ENDING)
-  // + empty Friday-ending forward weeks (from the next Friday through end of
-  // the planning horizon). Forward weeks are populated by the Configure
-  // Payments & Revenue merge below — historical weeks are LOCKED and never
-  // mutated by Configure edits.
-  const rawWeekly = useMemo<WeeklyData>(() => {
-    const out: WeeklyData = {};
-
-    // 1) Seed historical weeks (deep-copy values so downstream mutations
-    //    can't bleed back into the imported constant).
-    //    IMPORTANT: manual Beginning/Ending Cash overrides must apply here too.
-    //    WK 68 is still part of the historical seed, so if we only honor
-    //    overrides in the forward roll-forward pass, the UI appears to save
-    //    and then immediately snaps back to the seeded historical balance.
-    let lastHistoricalEnd = 0;
-    let lastHistoricalAddl = 0;
-    let lastHistoricalWeekNum = 0;
-    // Roll-forward chain for TOTAL CASH ON HAND. Used so that
-    // Add'l Liquidity defaults to the prior week's TOTAL CASH ON HAND
-    // whenever no explicit override exists for that week.
-    let prevTotalCashOnHand = 0;
-    const historicalKeys = Object.keys(WEEKLY_HISTORICAL_SEED).sort();
-    for (let i = 0; i < historicalKeys.length; i++) {
-      const k = historicalKeys[i];
-      const entry = WEEKLY_HISTORICAL_SEED[k] as any;
-      const ov = weeklyOverrides?.[k];
-      const seededBegin = Number(entry['BEGINNING CASH']);
-      const seededEnd = Number(entry['ENDING CASH']);
-      const seededNet = Number(entry['NET CHANGE'] ?? entry['TOTAL NET CASH CHANGE']);
-      const seededAddl = Number(
-        entry['Addl Liquidity Chase Tax Reserve MT Chk'] ?? entry["Add'l Liquidity (Delayed Draw)"]
-      ) || 0;
-      const hasBeginningOverride = ov?.beginningCash !== undefined && ov.beginningCash !== null;
-      const hasEndingOverride = ov?.endingCash !== undefined && ov.endingCash !== null;
-      const beginningCash = hasBeginningOverride
-        ? Math.round(Number(ov.beginningCash))
-        : (Number.isFinite(seededBegin) ? Math.round(seededBegin) : 0);
-      const endingCash = hasEndingOverride
-        ? Math.round(Number(ov.endingCash))
-        : (hasBeginningOverride && Number.isFinite(seededNet)
-            ? Math.round(beginningCash + seededNet)
-            : (Number.isFinite(seededEnd) ? Math.round(seededEnd) : beginningCash));
-      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
-      // For the first week with no override, fall back to the seeded value
-      // (preserves historical balances). For all subsequent weeks, default
-      // to the previous week's TOTAL CASH ON HAND.
-      const addlLiquidity = hasAddlOverride
-        ? Math.round(Number(ov.addlLiquidity))
-        : (i === 0 ? Math.round(seededAddl) : Math.round(prevTotalCashOnHand));
-      const totalCashOnHand = Math.round(endingCash + addlLiquidity);
-
-      out[k] = {
-        ...entry,
-        'BEGINNING CASH': beginningCash,
-        'ENDING CASH': endingCash,
-        "Add'l Liquidity (Delayed Draw)": addlLiquidity,
-        'TOTAL CASH ON HAND': totalCashOnHand,
-      };
-      lastHistoricalEnd = endingCash;
-      lastHistoricalAddl = addlLiquidity;
-      lastHistoricalWeekNum = Number(entry.week_num) || lastHistoricalWeekNum;
-      prevTotalCashOnHand = totalCashOnHand;
-    }
-
-    // 2) Determine the forward horizon — at minimum end of 2026-12-25 (last
-    //    Friday of 2026), extended further if Configure entries reach beyond.
-    const parseISO = (s: string) => new Date(s + 'T00:00:00');
-    const fmtISO = (d: Date) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
-    };
-    let horizonEnd = parseISO('2026-12-25');
-    for (const e of combinedScheduledItems || []) {
-      const candidates = [
-        e.frequency_config?.one_time_date,
-        e.end_date,
-        e.start_date,
-      ].filter(Boolean) as string[];
-      for (const c of candidates) {
-        const d = parseISO(c);
-        if (d > horizonEnd) horizonEnd = d;
-      }
-    }
-
-    // 3) Generate Friday-ending forward weeks (week-start = prior Saturday).
-    // First forward week ending = first Friday strictly after LAST_HISTORICAL_WEEK_ENDING.
-    const lastHistEnd = parseISO(LAST_HISTORICAL_WEEK_ENDING);
-    let weekEnd = new Date(lastHistEnd);
-    weekEnd.setDate(weekEnd.getDate() + 7); // next Friday
-    let prevEnd = lastHistoricalEnd;
-    let weekNum = lastHistoricalWeekNum;
-    while (weekEnd <= horizonEnd) {
-      weekNum += 1;
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekStart.getDate() - 6); // Saturday before that Friday
-      const startKey = fmtISO(weekStart);
-      const endKey = fmtISO(weekEnd);
-      const ov = weeklyOverrides?.[startKey];
-      const begin = ov?.beginningCash !== undefined ? ov.beginningCash : prevEnd;
-      const end = ov?.endingCash !== undefined ? ov.endingCash : begin;
-      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
-      const addlLiquidity = hasAddlOverride
-        ? Math.round(Number(ov.addlLiquidity))
-        : Math.round(prevTotalCashOnHand);
-      const totalCashOnHand = Math.round((Number(end) || 0) + addlLiquidity);
-      out[startKey] = {
-        week_num: weekNum,
-        week_ending: endKey,
-        'BEGINNING CASH': begin,
-        'ENDING CASH': end,
-        // Add'l Liquidity defaults to the prior week's TOTAL CASH ON HAND
-        // unless the user enters an explicit per-week override.
-        'Addl Liquidity Chase Tax Reserve MT Chk': addlLiquidity,
-        "Add'l Liquidity (Delayed Draw)": addlLiquidity,
-        'TOTAL CASH ON HAND': totalCashOnHand,
-        'TOTAL RECEIPTS': 0,
-        'TOTAL DISBURSEMENTS': 0,
-        'NET CHANGE': 0,
-      } as any;
-      prevEnd = end;
-      prevTotalCashOnHand = totalCashOnHand;
-      weekEnd = new Date(weekEnd);
-      weekEnd.setDate(weekEnd.getDate() + 7);
-    }
-
-    return out;
-  }, [combinedScheduledItems, weeklyOverrides]);
+  // SHARED SOURCE OF TRUTH — see financeWeeklyBalance.ts. /insights "12-Week
+  // Cashflow Forecast" reads from the same builder. Do not inline an
+  // equivalent here or the two surfaces will drift.
+  const financeWeeklyBalance = useMemo(
+    () => buildFinanceWeeklyBalance({ combinedScheduledItems, weeklyOverrides }),
+    [combinedScheduledItems, weeklyOverrides],
+  );
+  const rawWeekly = financeWeeklyBalance.rawWeekly;
+  const unfilteredWeeklyWithScheduled = financeWeeklyBalance.weeklyWithScheduled;
 
   // Apply Entity and Category filters to the scheduled (Configure) entries.
   // When neither filter is active, all entries pass through unchanged.
@@ -896,12 +748,22 @@ export function CashFlowManager() {
 
   // Merge scheduled (filtered) cash flow entries into the weekly grid.
   const weeklyWithScheduled = useMemo<WeeklyData>(
-    () => mergeScheduledIntoWeekly(
-      isConfigureFilterActive ? zeroedWeeklyShell : rawWeekly,
+    () =>
+      isConfigureFilterActive
+        ? mergeScheduledIntoWeekly(zeroedWeeklyShell, filteredScheduledItems, {
+            lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING,
+            weeklyOverrides,
+          })
+        : // Unfiltered path: reuse the canonical series so /insights and
+          // /finance render byte-identical ENDING CASH values.
+          unfilteredWeeklyWithScheduled,
+    [
+      unfilteredWeeklyWithScheduled,
+      zeroedWeeklyShell,
       filteredScheduledItems,
-      { lockHistoricalThrough: LAST_HISTORICAL_WEEK_ENDING, weeklyOverrides },
-    ),
-    [rawWeekly, zeroedWeeklyShell, filteredScheduledItems, isConfigureFilterActive, weeklyOverrides],
+      isConfigureFilterActive,
+      weeklyOverrides,
+    ],
   );
 
   // Overlay Line of Credit availability onto the weekly data:
