@@ -3,7 +3,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Sparkles, Plus, Search, Gauge, BarChart3, Check, TrendingUp } from 'lucide-react';
-import { KPI_TEMPLATES, type KpiTemplateId } from './kpiTemplates';
+import { type KpiTemplateId } from './kpiTemplates';
 import {
   buildInsightsMetricOptions,
   flattenInsightsMetricOptions,
