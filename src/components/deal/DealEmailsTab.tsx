@@ -943,20 +943,35 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       if (f.hasAttachments === true) filtered = filtered.filter(e => e.has_attachments);
       if (f.hasAttachments === false) filtered = filtered.filter(e => !e.has_attachments);
     } else if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
       // Emails sourced from the Gmail "all-mail" search backfill have already
       // been matched server-side (full body + headers, broader than substring),
       // so we accept them unconditionally. Locally-loaded inbox mail still
-      // needs to pass the substring check.
+      // needs to pass the substring check — but we match across sender AND
+      // recipient AND body, and tokenize so a multi-word query like
+      // "Matt Rich" matches a row where "Matt" is in from_name and "Rich" is
+      // in the body or recipient header.
+      const tokens = searchQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
       const allMailHitIds = new Set(allMailSearch.results.map((e) => e.id));
       filtered = filtered.filter((e) => {
         if (allMailHitIds.has(e.id)) return true;
-        return (
-          e.subject.toLowerCase().includes(q) ||
-          e.from_name.toLowerCase().includes(q) ||
-          e.from_email.toLowerCase().includes(q) ||
-          e.snippet.toLowerCase().includes(q)
-        );
+        const haystack = [
+          e.subject,
+          e.from_name,
+          e.from_email,
+          (e as any).to_name,
+          (e as any).to_email,
+          e.snippet,
+          (e as any).body_preview,
+          (e as any).body_text,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return tokens.every((t) => haystack.includes(t));
       });
     }
     return filtered;
