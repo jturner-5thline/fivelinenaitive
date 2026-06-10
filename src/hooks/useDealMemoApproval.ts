@@ -138,6 +138,7 @@ export function useDealMemoApproval(
   const [userRole, setUserRole] = useState<ApprovalRole>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFifthLineDeal, setIsFifthLineDeal] = useState(false);
 
   const fetchState = useCallback(async () => {
     if (!dealId || !memoId || !user) { setIsLoading(false); return; }
@@ -166,6 +167,29 @@ export function useDealMemoApproval(
       // Resolve role
       const role = await resolveUserRole(user.id, user.email || '', dealId);
       setUserRole(role);
+
+      // Resolve whether this deal belongs to the 5th Line org (the only
+      // tenant where the memo approval workflow is enabled).
+      try {
+        const { data: dealRow } = await supabase
+          .from('deals')
+          .select('company_id')
+          .eq('id', dealId)
+          .maybeSingle();
+        let orgId: string | null = dealRow?.company_id ?? null;
+        if (!orgId) {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .maybeSingle();
+          orgId = membership?.company_id ?? null;
+        }
+        setIsFifthLineDeal(orgId === FIFTH_LINE_COMPANY_ID);
+      } catch {
+        setIsFifthLineDeal(false);
+      }
     } catch (e) {
       console.error('Error fetching approval state:', e);
     } finally {
@@ -213,6 +237,12 @@ export function useDealMemoApproval(
 
   const submitForApproval = useCallback(async () => {
     if (!dealId || !memoId || !user || !userRole) return;
+    // Memo approval workflow is restricted to 5th Line accounts. For any
+    // other tenant this is a no-op so non-5th-Line deals are unaffected.
+    if (!isFifthLineDeal) {
+      toast.error('Deal Memo approvals are not enabled for this account.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       // Auto-save memo before submitting
@@ -610,5 +640,6 @@ export function useDealMemoApproval(
     approveApproval,
     rejectApproval,
     nextApproverLabel,
+    isApprovalEnabled: isFifthLineDeal,
   };
 }
