@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -43,6 +43,12 @@ interface MetricCardConfig {
   color: string;
   drilldownTitle: string;
   drilldownPeriodNote?: string;
+  /** How the drilldown bar chart should aggregate `deals`. */
+  drilldownMetricType?: 'count' | 'dollars' | 'average' | 'none';
+  /** Formatter applied to each bar value (and chart total). Defaults inferred from metric type. */
+  drilldownValueFormatter?: (value: number) => string;
+  /** Bar/total color override. Defaults to card color. */
+  drilldownChartColor?: string;
 }
 
 function MetricKPICard({
@@ -94,36 +100,256 @@ function MetricKPICard({
   );
 }
 
+interface DrilldownBucket {
+  key: string;
+  label: string;
+  start: string;
+  end: string;
+  deals: StageEntryDeal[];
+  count: number;
+  sum: number;
+  value: number; // aggregated value per metric type
+}
+
+function buildDrilldownBuckets(
+  deals: StageEntryDeal[],
+  quarter: QuarterOption,
+  granularity: TrendChartMode,
+  metricType: 'count' | 'dollars' | 'average',
+): DrilldownBucket[] {
+  // Monthly buckets from quarter.months; quarterly buckets group months into 3-month windows.
+  const monthlyBuckets = quarter.months.map((m) => ({
+    key: m.key,
+    label: `${m.label} ${m.key.slice(2, 4)}`,
+    start: m.start,
+    end: m.end,
+  }));
+
+  let baseBuckets: { key: string; label: string; start: string; end: string }[];
+  if (granularity === 'monthly') {
+    baseBuckets = monthlyBuckets;
+  } else {
+    const grouped = new Map<string, { key: string; label: string; start: string; end: string }>();
+    for (const m of quarter.months) {
+      const [yearStr, monthStr] = m.key.split('-');
+      const monthIdx = parseInt(monthStr, 10) - 1;
+      const q = Math.floor(monthIdx / 3) + 1;
+      const key = `${yearStr}-Q${q}`;
+      const existing = grouped.get(key);
+      if (!existing) {
+        grouped.set(key, { key, label: `Q${q} ${yearStr.slice(2)}`, start: m.start, end: m.end });
+      } else if (m.end > existing.end) {
+        existing.end = m.end;
+      }
+    }
+    baseBuckets = Array.from(grouped.values());
+  }
+
+  return baseBuckets.map((b) => {
+    const bucketDeals = deals.filter((d) => {
+      if (!d.entered_at) return false;
+      const day = d.entered_at.slice(0, 10);
+      return day >= b.start && day <= b.end;
+    });
+    const count = bucketDeals.length;
+    const sum = bucketDeals.reduce((s, d) => s + (Number(d.value) || 0), 0);
+    const value =
+      metricType === 'count' ? count :
+      metricType === 'dollars' ? sum :
+      count > 0 ? sum / count : 0;
+    return { ...b, deals: bucketDeals, count, sum, value };
+  });
+}
+
+function DrilldownBarChart({
+  buckets,
+  color,
+  formatter,
+  selectedKey,
+  onSelect,
+  metricType,
+}: {
+  buckets: DrilldownBucket[];
+  color: string;
+  formatter: (v: number) => string;
+  selectedKey: string | null;
+  onSelect: (key: string | null) => void;
+  metricType: 'count' | 'dollars' | 'average';
+}) {
+  return (
+    <div style={{ height: 140 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={buckets} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+            axisLine={{ stroke: 'hsl(var(--border))' }}
+            tickLine={false}
+          />
+          <YAxis
+            allowDecimals={metricType !== 'count'}
+            tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v: number) => formatter(v)}
+            width={54}
+          />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload || !payload.length) return null;
+              const b = payload[0].payload as DrilldownBucket;
+              return (
+                <div
+                  style={{
+                    backgroundColor: 'hsl(var(--popover) / 0.96)',
+                    border: '1px solid hsl(0 0% 100% / 0.14)',
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    fontSize: 12,
+                    color: 'hsl(0 0% 100%)',
+                    boxShadow: 'var(--shadow-xl)',
+                    backdropFilter: 'blur(16px)',
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{b.label} · {formatter(b.value)}</div>
+                  <div style={{ color: 'hsl(0 0% 100% / 0.78)' }}>
+                    {b.count} deal{b.count !== 1 ? 's' : ''} · {formatCurrency(b.sum)}
+                  </div>
+                </div>
+              );
+            }}
+            wrapperStyle={{ outline: 'none' }}
+            cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+          />
+          <Bar
+            dataKey="value"
+            shape={createGlassBarShape({ radius: 3, dataKey: 'value' })}
+            cursor="pointer"
+            onClick={(b: DrilldownBucket) => onSelect(selectedKey === b.key ? null : b.key)}
+          >
+            {buckets.map((b, i) => {
+              const isActive = selectedKey === null || selectedKey === b.key;
+              return (
+                <Cell
+                  key={`${b.key}-${i}`}
+                  fill={b.value > 0 ? color : 'hsl(var(--muted))'}
+                  fillOpacity={b.value > 0 ? (isActive ? 0.85 : 0.35) : 0.25}
+                />
+              );
+            })}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function DrilldownModal({
-  open, onClose, title, deals, periodNote,
+  open, onClose, title, deals, periodNote, selectedQuarter,
+  metricType = 'dollars', valueFormatter, chartColor,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   deals: StageEntryDeal[];
   periodNote?: string;
+  selectedQuarter?: QuarterOption;
+  metricType?: 'count' | 'dollars' | 'average' | 'none';
+  valueFormatter?: (v: number) => string;
+  chartColor?: string;
 }) {
+  const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
+  const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setGranularity('monthly');
+      setSelectedBucketKey(null);
+    }
+  }, [open, title]);
+
+  const showChart = metricType !== 'none' && !!selectedQuarter && deals.length > 0;
+  const chartMetricType = (metricType === 'none' ? 'count' : metricType) as 'count' | 'dollars' | 'average';
+  const formatter = valueFormatter ?? (chartMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency);
+  const color = chartColor ?? 'hsl(var(--chart-3))';
+
+  const buckets = useMemo<DrilldownBucket[]>(() => {
+    if (!selectedQuarter) return [];
+    return buildDrilldownBuckets(deals, selectedQuarter, granularity, chartMetricType);
+  }, [deals, selectedQuarter, granularity, chartMetricType]);
+
+  const filteredDeals = useMemo(() => {
+    if (!selectedBucketKey) return deals;
+    const b = buckets.find((x) => x.key === selectedBucketKey);
+    return b ? b.deals : deals;
+  }, [deals, buckets, selectedBucketKey]);
+
   const total = deals.reduce((s, d) => s + d.value, 0);
+  const selectedBucket = selectedBucketKey ? buckets.find((b) => b.key === selectedBucketKey) ?? null : null;
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileCheck className="h-4 w-4" />
             {title}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {deals.length} deal{deals.length !== 1 ? 's' : ''}
           </Badge>
           <Badge variant="secondary" className="text-xs font-mono">
             {formatCurrencyFull(total)}
           </Badge>
-          <span className="text-xs text-muted-foreground">{periodNote ?? 'Filtered by selected period'}</span>
+          <span className="text-xs text-muted-foreground">
+            {showChart
+              ? `${granularity === 'monthly' ? 'Monthly' : 'Quarterly'} trend for selected period`
+              : (periodNote ?? 'Filtered by selected period')}
+          </span>
         </div>
-        {deals.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No deals found for this period.</p>
+
+        {showChart && (
+          <div className="mb-4 rounded-lg border border-border/40 bg-muted/10 p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {chartMetricType === 'count' ? 'Deals' : chartMetricType === 'dollars' ? 'Dollar volume' : 'Average'} by {granularity === 'monthly' ? 'month' : 'quarter'}
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedBucket && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBucketKey(null)}
+                    className="text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                  >
+                    Clear · {selectedBucket.label}
+                  </button>
+                )}
+                <Tabs value={granularity} onValueChange={(v) => { setGranularity(v as TrendChartMode); setSelectedBucketKey(null); }}>
+                  <TabsList className="h-7 bg-muted/40 border border-border/40">
+                    <TabsTrigger value="monthly" className="h-6 px-2 text-[11px]">Monthly</TabsTrigger>
+                    <TabsTrigger value="quarterly" className="h-6 px-2 text-[11px]">Quarterly</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </div>
+            <DrilldownBarChart
+              buckets={buckets}
+              color={color}
+              formatter={formatter}
+              selectedKey={selectedBucketKey}
+              onSelect={setSelectedBucketKey}
+              metricType={chartMetricType}
+            />
+          </div>
+        )}
+
+        {filteredDeals.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            {selectedBucketKey ? 'No deals in this bucket.' : 'No deals found for this period.'}
+          </p>
         ) : (
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
@@ -137,7 +363,7 @@ function DrilldownModal({
                 </tr>
               </thead>
               <tbody>
-                {deals.map(deal => (
+                {filteredDeals.map(deal => (
                   <tr key={deal.deal_id} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
@@ -153,9 +379,13 @@ function DrilldownModal({
               </tbody>
               <tfoot>
                 <tr className="bg-muted/20">
-                  <td className="px-3 py-2 text-xs font-medium">Total</td>
+                  <td className="px-3 py-2 text-xs font-medium">
+                    Total {selectedBucketKey ? '(all periods)' : ''}
+                  </td>
                   <td className="px-3 py-2 text-xs text-right font-mono font-bold">{formatCurrencyFull(total)}</td>
-                  <td colSpan={3} />
+                  <td colSpan={3} className="px-3 py-2 text-xs text-muted-foreground">
+                    {deals.length} deal{deals.length !== 1 ? 's' : ''} across all buckets
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -453,7 +683,14 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
+  const [drilldown, setDrilldown] = useState<{
+    title: string;
+    deals: StageEntryDeal[];
+    periodNote?: string;
+    metricType?: 'count' | 'dollars' | 'average' | 'none';
+    valueFormatter?: (v: number) => string;
+    chartColor?: string;
+  } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
 
   useEffect(() => {
@@ -486,6 +723,9 @@ export function ConsolidatedDebtPipelineDashboard({
       title: `${metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
       deals: bucket.deals,
       periodNote: buildTrendPeriodNote(bucket, metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+      metricType: metric === 'deals-closed' ? 'count' : 'dollars',
+      valueFormatter: metric === 'deals-closed' ? (v: number) => `${Math.round(v)}` : formatCurrency,
+      chartColor: metric === 'deals-closed' ? 'hsl(var(--chart-3))' : 'hsl(var(--success))',
     });
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, selectedQuarter, trendMode]);
 
@@ -499,6 +739,9 @@ export function ConsolidatedDebtPipelineDashboard({
       title: `${pendingTrendReopen.metric === 'deals-closed' ? 'Deals Closed' : 'Dollars Funded'} — ${bucket.label}`,
       deals: bucket.deals,
       periodNote: buildTrendPeriodNote(bucket, pendingTrendReopen.metric === 'deals-closed' ? 'Deal count' : 'Dollar volume'),
+      metricType: pendingTrendReopen.metric === 'deals-closed' ? 'count' : 'dollars',
+      valueFormatter: pendingTrendReopen.metric === 'deals-closed' ? (v: number) => `${Math.round(v)}` : formatCurrency,
+      chartColor: pendingTrendReopen.metric === 'deals-closed' ? 'hsl(var(--chart-3))' : 'hsl(var(--success))',
     });
     setPendingTrendReopen(null);
   }, [m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, pendingTrendReopen, trendMode]);
@@ -528,6 +771,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--primary))',
           drilldownTitle: 'Deals on the Board — added to Active Pipeline',
+          drilldownMetricType: 'count',
         },
         {
           id: 'debt-dollar-on-board',
@@ -538,6 +782,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Debt $ on the Board — added to Active Pipeline',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-on-board',
@@ -549,6 +794,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
           drilldownPeriodNote: 'Selected period · Debt $ on the Board ÷ Deals on the Board',
+          drilldownMetricType: 'average',
         },
       ],
     },
@@ -566,6 +812,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.proposalsIssued.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Proposals Issued — entered Proposal Issued',
+          drilldownMetricType: 'count',
         },
         {
           id: 'dollars-proposed',
@@ -576,6 +823,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.proposalsIssued.deals,
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Dollars Proposed — entered Proposal Issued',
+          drilldownMetricType: 'dollars',
         },
       ],
     },
@@ -593,6 +841,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
+          drilldownMetricType: 'count',
         },
         {
           id: 'debt-dollar-signed',
@@ -603,6 +852,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--success))',
           drilldownTitle: 'Debt $ Signed — entered Final Credit Items',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-signed',
@@ -614,6 +864,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Average Deal Signed — entered Final Credit Items',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+          drilldownMetricType: 'average',
         },
         {
           id: 'average-revenue-per-deal-signed',
@@ -625,6 +876,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Average Revenue per Deal Signed — Final Credit Items',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
+          drilldownMetricType: 'none',
         },
       ],
     },
@@ -642,6 +894,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.fundedInvoicedOnly.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
+          drilldownMetricType: 'count',
         },
         {
           id: 'dollars-funded',
@@ -652,6 +905,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.fundedInvoicedOnly.deals,
           color: 'hsl(var(--success))',
           drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-closed',
@@ -663,6 +917,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Average Deal Closed — entered Funded / Invoiced',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+          drilldownMetricType: 'average',
         },
         {
           id: 'average-revenue-per-deal-closed',
@@ -674,6 +929,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Average Revenue per Deal Closed — Funded / Invoiced',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
+          drilldownMetricType: 'none',
         },
       ],
     },
@@ -691,6 +947,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.termsIssued.deals,
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Terms Issued — entered Terms Issued',
+          drilldownMetricType: 'count',
         },
         {
           id: 'terms-issued-dollars',
@@ -701,6 +958,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.termsIssued.deals,
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Terms Issued $ — entered Terms Issued',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'terms-signed',
@@ -711,6 +969,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.inDueDiligence.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Terms Signed — entered In Due Diligence',
+          drilldownMetricType: 'count',
         },
         {
           id: 'terms-signed-dollars',
@@ -721,6 +980,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.inDueDiligence.deals,
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Terms Signed $ — entered In Due Diligence',
+          drilldownMetricType: 'dollars',
         },
       ],
     },
@@ -748,7 +1008,15 @@ export function ConsolidatedDebtPipelineDashboard({
               <MetricKPICard
                 key={card.id}
                 config={card}
-                onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals, periodNote: card.drilldownPeriodNote })}
+                onClick={() => setDrilldown({
+                  title: card.drilldownTitle,
+                  deals: card.deals,
+                  periodNote: card.drilldownPeriodNote,
+                  metricType: card.drilldownMetricType ?? 'dollars',
+                  valueFormatter: card.drilldownValueFormatter
+                    ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                  chartColor: card.drilldownChartColor ?? card.color,
+                })}
               />
             ))}
           </div>
@@ -817,6 +1085,9 @@ export function ConsolidatedDebtPipelineDashboard({
               title: `Stage Movement — ${bucket.label}`,
               deals: bucket.deals,
               periodNote: `Funded / Invoiced + Closed Won stage_enter events · ${bucket.label}`,
+              metricType: 'count',
+              valueFormatter: (v: number) => `${Math.round(v)}`,
+              chartColor: FUNDED_INVOICED_COLOR,
             })
           }
         />
@@ -830,6 +1101,10 @@ export function ConsolidatedDebtPipelineDashboard({
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
         periodNote={drilldown?.periodNote}
+        selectedQuarter={selectedQuarter}
+        metricType={drilldown?.metricType}
+        valueFormatter={drilldown?.valueFormatter}
+        chartColor={drilldown?.chartColor}
       />
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
