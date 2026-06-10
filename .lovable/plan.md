@@ -1,102 +1,103 @@
 ## What's actually happening
 
-Matt's inbound messages **are** in the search result set. They are not hidden by the query — they are hidden by how each row is rendered.
+Clicking a specific row opens the thread, but the detail pane doesn't know *which* message the user picked — so it expands the conversation's newest message and never scrolls anywhere. Multiple pieces are involved.
 
-### Root cause (primary): row label always shows the *thread's* newest sender, not the *row's* sender
+### Cause 1 — Row click drops the message id (primary)
 
-`src/components/deal/email/EmailListAndDetail.tsx`
-
-1. `threads` (lines **948–983**) builds **one row per message** (`threadId: msg.id`, `latestEmail: msg`), but attaches the **entire conversation** to each row via `emails: convoEmails`.
-2. `ThreadListItemImpl` (lines **294–313**) then computes the row's visible sender from the newest message in the *whole conversation*, not from this row's message:
-   ```ts
-   const newestInThread = [...thread.emails].sort(... newest first)[0];
-   const newestIsOutbound = newestInThread.folder === 'sent' || newestInThread.from_name === 'You';
-   const displayName = newestIsOutbound ? 'Me' : newestInThread.from_name;
-   const previewSnippet = newestInThread.snippet || newestInThread.body_preview || ...;
-   ```
-   Every row in a Matt↔Niki thread therefore renders sender = **Niki (the latest replier)** and the **same preview snippet from Niki's latest reply**, even the rows that actually represent Matt's inbound messages. To the user this looks like "only Niki's emails, repeated multiple times."
-
-This is also why the open thread proves Matt sent mail — the underlying message is in `convoEmails`; the list view just relabels every row with the newest sender.
-
-### Contributing cause #2: local substring filter is sender-only
-
-`src/components/deal/DealEmailsTab.tsx` lines **945–960**:
+`src/components/deal/DealEmailsTab.tsx` lines **1270–1286**:
 
 ```ts
-} else if (searchQuery.trim()) {
-  const q = searchQuery.toLowerCase();
-  const allMailHitIds = new Set(allMailSearch.results.map((e) => e.id));
-  filtered = filtered.filter((e) => {
-    if (allMailHitIds.has(e.id)) return true;
-    return (
-      e.subject.toLowerCase().includes(q) ||
-      e.from_name.toLowerCase().includes(q) ||
-      e.from_email.toLowerCase().includes(q) ||
-      e.snippet.toLowerCase().includes(q)
-    );
-  });
-}
+const handleSelectThread = useCallback((thread: EmailThread) => {
+  setSelectedThread(thread);
+  setComposeOpen(false);
+  if (thread.hasUnread) { … mark read … }
+}, …);
 ```
 
-Recipients (`to_name`, `to_email`), CC, and body are **never matched**. A locally-loaded inbound message from Matt only survives the filter when Matt's stored `from_name` literally contains both words "matt rich". If Matt's Gmail display name is just "Matt" / "Matt R." / the bare email, the substring fails and the row is dropped.
+It only sets `selectedThread`. It **never sets `deepLinkTarget`**, even though `thread.latestEmail.id` *is* the clicked message id (rows are per-message — `EmailListAndDetail.tsx` lines 948–983 build one `EmailThread` per message with `threadId: msg.id`, `latestEmail: msg`).
 
-### Contributing cause #3: Gmail all-mail search uses AND-tokenization
+`deepLinkTarget` is set only by priority-signal navigation (`DealEmailsTab.tsx` line 411). Because of that, the entire auto-expand + auto-scroll pipeline downstream never fires on a normal click.
 
-`src/hooks/useGmailAllMailSearch.ts` (lines 67–72, 145–153) forwards the raw query to `gmail-messages` as `search_query_native` (`supabase/functions/gmail-messages/index.ts` lines **483–516**). Gmail tokenizes `Matt Rich` as `Matt AND Rich` across indexed fields. Niki's outbound mail has both tokens (To: header `"Matt Rich" <matt.rich@gabb.com>` plus her signature) and matches. Matt's outbound display name in his own account often isn't "Matt Rich", so messages he sends may not contain both tokens in headers and won't match — they only return when "Rich" also appears in the body. Even when they do return, cause #1 still labels their row as "Niki".
+### Cause 2 — Expand-by-default keys off `thread.latestEmail.id`, not the clicked id
+
+`src/components/deal/email/EmailListAndDetail.tsx` lines **3454–3490**:
+
+```ts
+const chronological = [...thread.emails].reverse();   // oldest → newest
+const newestId = thread.latestEmail.id;
+…
+<ThreadMessage
+  defaultExpanded={
+    email.id === newestId
+    || userExpandedMessages.has(email.id)
+    || (!!deepLinkMessageId && email.id === deepLinkMessageId)
+  }
+/>
+```
+
+`currentThread.latestEmail` is overwritten with the clicked message at `DealEmailsTab.tsx:1095` (`latestEmail: liveMsg`), so in theory `newestId === clicked id`. That works **only when the clicked message is also present in `currentThread.emails`** (the `chronological` array). When it isn't — e.g. older messages that were dropped/never synced into the local `emails` pool, or when `emails.find(e => e.id === selectedMsgId)` finds nothing and `liveMsg` falls back to the stale row object — `chronological` only contains the synced messages, no row matches `newestId`, and nothing is expanded by default.
+
+### Cause 3 — Auto-collapse always keeps the newest 3
+
+Lines **2784–2786**:
+```ts
+const VISIBLE_RECENT = 3;
+const shouldAutoCollapse = totalMessages > 5;
+```
+
+And lines **3458–3465**:
+```ts
+const olderHidden = shouldAutoCollapse && !olderExpanded;
+const sliceStart = olderHidden
+  ? Math.max(0, chronological.length - VISIBLE_RECENT)  // ← always the tail
+  : 0;
+const visible = chronological.slice(sliceStart);
+```
+
+For threads > 5 messages, the slice is **always the last 3 chronologically**, never the slice around the clicked message. An older clicked message is hidden behind the "show older" bar and doesn't render at all.
+
+For the Gabb thread (3 messages, header says "3 messages") `shouldAutoCollapse = false`, so all 3 *do* render — the problem there is Causes 1+2, not the slice. But on longer threads the slice compounds the bug.
+
+### Cause 4 — Scroll-to-clicked never runs
+
+`EmailListAndDetail.tsx` lines **1977–1994** scrolls and highlights `[data-deeplink-msg-id="…"]` **only when `deepLinkMessageId` is set**. Because Cause 1 never sets it for a normal click, no scroll happens — the ScrollArea opens at the top of the conversation regardless of which row was clicked.
+
+### Cause 5 — Thread isn't backfilled on open
+
+`currentThread.emails` in `DealEmailsTab.tsx` lines **1077–1088** only filters the *in-memory* `emails` pool by `provider_thread_id || threadId`. There is no `get_thread` fetch on click — `fetchFullEmailThread` exists (`useFullEmailMessage.ts:365`) but isn't invoked when the user opens a thread. So whatever isn't already in `emails` (older messages, mail in other labels) silently disappears from the conversation, contributing to Cause 2.
 
 ### Not the cause
-- No folder filter excluding inbound (`search_all_mail: true` drops `in=INBOX`, lines 491–516 of `gmail-messages/index.ts`).
-- No deal/label filter — `isSearching` bypasses the sidebar/deal filter (`DealEmailsTab.tsx` line 841: `if (isSearching) ...`).
-- No tsvector — server search is Gmail's native index; local search is `String.includes`.
-- Thread de-dup is **not** what's collapsing rows — rows are per-message. The bug is that per-message rows borrow the *thread's* newest sender for display.
+- No "show only recent N" cap on Gabb-sized threads — `shouldAutoCollapse` only kicks in past 5.
+- No per-message body fetch issue — `useFullEmailMessage` lazy-loads bodies when a row expands, but the row has to render expanded first, which is exactly what's failing here.
+- No deal/label filter — the detail pane uses the live `emails` array, not the filtered list.
 
 ## Proposed fix
 
-### 1. Render rows by their own message, not the thread's newest (primary fix)
+1. **Pass the clicked message id as a deep link.** In `DealEmailsTab.tsx` `handleSelectThread` (~1270), after `setSelectedThread(thread)`, also:
+   ```ts
+   setDeepLinkTarget({
+     threadId: thread.threadId,
+     messageId: thread.latestEmail.id,
+     signal: 'click',
+   });
+   ```
+   Drop the existing 6 s auto-clear when `signal === 'click'` — the deep link can stay sticky for the lifetime of the open thread so the scroll runs once and the expand state persists. Reset on `handleEmailDetailBack`.
 
-In `src/components/deal/email/EmailListAndDetail.tsx` (~lines 294–313), drive `displayName` / `previewSnippet` from `latest` (the row's message) instead of `newestInThread`. Keep the "newest" lookup only for the unsearched inbox-collapsed mode if we still want it; the cleanest fix is:
+2. **Slice around the clicked message, not the tail.** In `EmailListAndDetail.tsx` lines 3458–3465, when `deepLinkMessageId` is set and falls outside the tail slice, either:
+   - Auto-set `olderExpanded = true` (simplest), or
+   - Compute `sliceStart = Math.min(tailStart, indexOfClicked)` so the clicked message and everything after it render.
 
-```ts
-const displayName = latest.folder === 'sent' || latest.from_name === 'You'
-  ? 'Me'
-  : latest.from_name;
-const previewSnippet = latest.snippet || latest.body_preview || latest.body_text || '';
-```
+3. **Make `defaultExpanded` use the deep-link id as the source of truth.** Treat `deepLinkMessageId ?? thread.latestEmail.id` as the canonical expand target so the clicked message is expanded even when there's no separate "newest" concept to fall back on.
 
-This restores per-message identity in the list, so Matt's inbound rows show "Matt Rich" + his snippet, and Niki's outbound rows show "Me" + her snippet — exactly like Gmail's All Mail view, which the surrounding comment already claims to emulate.
+4. **Backfill the thread on open.** In the `EmailDetail` (or `currentThread` memo), when `selectedThread` changes and `convoEmails.length < expected` (or always, idempotently), invoke `fetchFullEmailThread(thread.provider_thread_id)` and merge the returned messages into `currentThread.emails`. This guarantees the clicked older message is in `chronological` and therefore eligible for expansion + scroll.
 
-### 2. Broaden the local substring filter
-
-In `src/components/deal/DealEmailsTab.tsx` lines 952–960:
-
-- Add `to_name`, `to_email`, `body_preview`, `body_text` to the OR.
-- Tokenize the query on whitespace and require all tokens (AND-of-substring) across the combined haystack — so `"Matt Rich"` matches a row where "Matt" is in `from_name` and "Rich" is anywhere in body/recipients.
-
-### 3. Broaden Gmail's server-side query for short name-like queries
-
-In `useGmailAllMailSearch.ts` `scopeQuery`, when the trimmed query is 1–3 words and has no Gmail operator, expand it to:
-
-```
-("Matt Rich" OR from:"Matt Rich" OR to:"Matt Rich")
-```
-
-This guarantees inbound mail from Matt is returned even when his display name in his own account isn't "Matt Rich".
-
-### 4. (Optional) Surface the matching participant on the row
-
-When `searchQuery` is active, render a small "matched: Matt Rich" chip on rows whose match comes from a non-sender field, so the user can tell *why* a row appeared.
-
-## Verification plan
-
-- Search "Matt Rich" in the inbox on `/deals`:
-  - Rows where Matt is the sender show "Matt Rich" and his preview.
-  - Rows where Niki is the sender show "Me" and Niki's preview.
-  - No row mislabels Matt's inbound message as Niki's.
-- Search "matt.rich@gabb.com" — same behavior.
-- Search a body-only term ("Gabb Wireless Financial Model") — locally-loaded inbox rows now match via body, not just snippet.
+5. **Verification:**
+   - Click Matt Rich's "Gabb Wireless Financial Model" message in the list → detail opens, Matt's message is expanded, ScrollArea scrolls to it, brief amber highlight ring.
+   - Click the same thread's newest reply → that reply is expanded and in view; older messages remain collapsed.
+   - Open a 10-message thread, click the 7th message → "show older" auto-unfolds, the 7th is expanded and scrolled to.
 
 ## Files to touch
 
-- `src/components/deal/email/EmailListAndDetail.tsx` (lines ~294–313) — switch display to per-row message
-- `src/components/deal/DealEmailsTab.tsx` (lines 945–960) — broaden local filter + tokenize
-- `src/hooks/useGmailAllMailSearch.ts` (lines 67–72) — expand short name queries to from/to OR
+- `src/components/deal/DealEmailsTab.tsx` — `handleSelectThread` (~1270), reset target in `handleEmailDetailBack` (~1292), allow `signal: 'click'` in the `deepLinkTarget` type (~392).
+- `src/components/deal/email/EmailListAndDetail.tsx` — `EmailDetail` slice + `defaultExpanded` (3454–3490), scroll effect (1977–1994) — minor: trigger when deep-link target equals the row's own message id.
+- `src/components/deal/email/useFullEmailMessage.ts` — expose a small hook (or invoke `fetchFullEmailThread` from `EmailDetail`) to merge full thread messages when the conversation is partially loaded.
