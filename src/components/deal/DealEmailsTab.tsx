@@ -2211,6 +2211,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                         )} />
                       Stale Emails
                     </button>
+                    <button
+                      onClick={() => setChipFilter(chipFilter === 'attachments' ? null : 'attachments')}
+                      title="Show only emails with one or more attachments"
+                      className={cn(
+                        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors mr-1',
+                        chipFilter === 'attachments'
+                          ? 'bg-[hsl(var(--outlook-blue))] text-white'
+                          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      )}
+                    >
+                      <Paperclip className="h-2.5 w-2.5" />
+                      Attachments
+                    </button>
                     {(['all', 'unread', 'needs_response'] as ViewFilter[]).map(vf => (
                       <button
                         key={vf}
