@@ -315,7 +315,7 @@ export function useDealMemoApproval(
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .insert({
-          title: `Review ${companyName}`,
+          title: `Review deal memo – ${companyName}`,
           assigned_to: nextApprover.userId,
           assigned_by: user.id,
           deal_id: dealId,
@@ -339,7 +339,7 @@ export function useDealMemoApproval(
       const orgCompanyId = membership?.company_id || deal?.company_id || null;
       let jamesTaskCreated = false;
       if (orgCompanyId === FIFTH_LINE_COMPANY_ID) {
-        const reviewTitle = `Review ${companyName} Memo`;
+        const reviewTitle = `Review deal memo – ${companyName}`;
         const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
 
         // Duplicate check: skip if an open task with same title already exists for this deal
@@ -456,6 +456,9 @@ export function useDealMemoApproval(
       } else {
         toast.success(`Submitted to ${nextApprover.label} for review`);
       }
+      // Refresh all task-aware caches so the new review task appears
+      // immediately on the deal task list, Tasks page, and rundowns.
+      invalidateAllTaskCaches(queryClient);
       await fetchState();
     } catch (e) {
       console.error('Error submitting for approval:', e);
