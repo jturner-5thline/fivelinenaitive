@@ -223,8 +223,12 @@ function CashflowForecastWidget() {
               {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
-                backgroundColor: 'hsla(213,90%,70%,0.55)',
-                borderColor: 'hsla(213,90%,70%,0.85)',
+                backgroundColor: weeks.map((w) =>
+                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.55)' : 'hsla(213,90%,70%,0.55)',
+                ),
+                borderColor: weeks.map((w) =>
+                  w.endingCash < 0 ? 'hsla(0,75%,60%,0.85)' : 'hsla(213,90%,70%,0.85)',
+                ),
                 borderWidth: 1,
                 borderRadius: 4,
               },
