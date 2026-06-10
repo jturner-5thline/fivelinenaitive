@@ -96,7 +96,11 @@ export async function createTaskFromDraft(
   draft: TaskDraft,
   userId: string,
   companyId: string | null,
-  options?: { syncSource?: string; sourceThreadId?: string | null }
+  options?: {
+    syncSource?: string;
+    sourceThreadId?: string | null;
+    initialAsanaSyncStatus?: string | null;
+  }
 ): Promise<{ id: string; assigned_to: string } | { id: string; assigned_to: string; _error?: never } | null> {
   // tasks_priority_urgent_only_chk: priority must be NULL or 'urgent'.
   // Only flag explicitly urgent drafts; everything else leaves priority unset.
@@ -137,6 +141,9 @@ export async function createTaskFromDraft(
   insertRow.task_type = draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task';
   insertRow.sync_source = options?.syncSource || 'naitive_nl_input';
   insertRow.is_recurring = draft.is_recurring;
+  if (options?.initialAsanaSyncStatus) {
+    insertRow.asana_sync_status = options.initialAsanaSyncStatus;
+  }
   // No source_thread_id column on tasks — append the reference to description
   const threadId = options?.sourceThreadId ?? draft.source_thread_id;
   if (threadId) {
