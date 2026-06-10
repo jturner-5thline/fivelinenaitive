@@ -2551,6 +2551,17 @@ function MetricsInner() {
                   </Button>
                   <Button
                     size="sm"
+                    onClick={() => {
+                      saveSnapshotGridLayout(snapshotGridLayout, true);
+                      toast({ title: 'Saved as default layout', description: 'This arrangement is now the default for everyone in your workspace.' });
+                    }}
+                    title="Persist the current arrangement as the default layout for all members"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save as Default
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => {
                       if (window.confirm('Reset this dashboard to the default layout? Your current arrangement will be replaced.')) {
