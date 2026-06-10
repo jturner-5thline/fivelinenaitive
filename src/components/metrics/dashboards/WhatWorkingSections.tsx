@@ -49,12 +49,31 @@ function CommentaryBlock({
   const [editing, setEditing] = React.useState(false);
   const dirtyRef = React.useRef(false);
   const [savedFlash, setSavedFlash] = React.useState(false);
+  const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = React.useRef<((v: string) => Promise<void>) | null>(null);
+  // Keep latest save fn (captures latest reportKey) for use in flush logic.
+  React.useEffect(() => { pendingSaveRef.current = save; }, [save]);
+
+  // When the report period (reportKey) changes, flush any pending save against
+  // the PREVIOUS key, then reset local state so the new period's notes hydrate
+  // cleanly instead of inheriting the prior period's text.
+  const prevKeyRef = React.useRef(reportKey);
+  React.useEffect(() => {
+    if (prevKeyRef.current === reportKey) return;
+    // Cancel any pending debounce — the queued save would otherwise write the
+    // old period's text into the new period if reportKey rebinds first.
+    if (tRef.current) { clearTimeout(tRef.current); tRef.current = null; }
+    prevKeyRef.current = reportKey;
+    dirtyRef.current = false;
+    setLocal('');
+    setEditing(false);
+  }, [reportKey]);
+
   React.useEffect(() => {
     if (!loaded) return;
     if (!dirtyRef.current) setLocal(body);
   }, [body, loaded]);
 
-  const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChange = (v: string) => {
     setLocal(v);
     dirtyRef.current = true;
