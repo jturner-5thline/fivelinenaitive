@@ -543,7 +543,7 @@ export function useDealsDatabase() {
       const { data, error } = await supabase
         .from('deals')
         .insert({
-          company: dealData.company || 'New Deal',
+          company: (dealData.company || 'New Deal').trim() || 'New Deal',
           value: dealData.value || 0,
           status: dealData.status ?? null,
           stage: dealData.stage || 'final-credit-items',
