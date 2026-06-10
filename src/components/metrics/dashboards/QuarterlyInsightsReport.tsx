@@ -1338,6 +1338,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
       <AddKpiDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        reportPeriod={deriveReportPeriod(s)}
         onPickTemplate={(id) => addTemplateKPI(id)}
         onPickCustom={() => addCustomKPI()}
         onPickMetric={(opt) => addMetricKPI(opt)}

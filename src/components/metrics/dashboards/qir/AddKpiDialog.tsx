@@ -12,12 +12,12 @@ import {
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
-import { formatUSD } from '@/lib/formatters/currency';
+import { type LiveMetricPeriod, useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  reportPeriod?: LiveMetricPeriod | null;
   /** Insert a KPI built from a template. */
   onPickTemplate: (templateId: KpiTemplateId) => void;
   /** Insert a blank custom KPI (legacy actual/target/format). */
@@ -32,7 +32,7 @@ interface Props {
  * (KPI tile, mini chart, template). Supports multi-select and a single
  * "Add Selected Widgets" action. Search + source filter preserved.
  */
-export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPickMetric }: Props) {
+export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPickCustom, onPickMetric }: Props) {
   const [query, setQuery] = useState('');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -160,6 +160,7 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
                         option={opt}
                         selected={selectedIds.includes(opt.id)}
                         onToggle={() => toggleSelect(opt.id)}
+                        reportPeriod={reportPeriod}
                       />
                     ))}
                   </div>
@@ -218,12 +219,15 @@ function SourceChip({
   );
 }
 
-/** Format a numeric value using the metric's format hint. */
+/** Format a numeric value using the report's live KPI formatting semantics. */
 function formatLiveValue(value: number, format: InsightsMetricOption['format']): string {
   if (!Number.isFinite(value)) return '—';
   if (format === 'currency') {
-    // formatUSD expects thousands; values come back as raw dollars.
-    return formatUSD(value / 1000);
+    const abs = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
+    if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+    return `${sign}$${Math.round(abs).toLocaleString('en-US')}`;
   }
   if (format === 'percentage') {
     const pct = Math.abs(value) <= 1 ? value * 100 : value;
@@ -234,8 +238,8 @@ function formatLiveValue(value: number, format: InsightsMetricOption['format']):
 }
 
 function WidgetTile({
-  option, selected, onToggle,
-}: { option: InsightsMetricOption; selected: boolean; onToggle: () => void }) {
+  option, selected, onToggle, reportPeriod,
+}: { option: InsightsMetricOption; selected: boolean; onToggle: () => void; reportPeriod?: LiveMetricPeriod | null }) {
   const isTemplate = option.kind === 'template';
   const isCustom = option.kind === 'custom-metric';
   const isChart = !!option.derivedFromChart;
@@ -246,7 +250,7 @@ function WidgetTile({
   // custom metrics don't have an Insights metric source id, so they
   // skip the lookup and render an explicit "no live preview" state
   // instead of fabricating a number.
-  const live = useInsightsLiveMetricValue(option.metricSourceId ?? null, null);
+  const live = useInsightsLiveMetricValue(option.metricSourceId ?? null, reportPeriod ?? null);
 
   let valueDisplay: React.ReactNode;
   let captionDisplay: string;
