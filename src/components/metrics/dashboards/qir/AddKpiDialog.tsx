@@ -32,7 +32,7 @@ interface Props {
  * (KPI tile, mini chart, template). Supports multi-select and a single
  * "Add Selected Widgets" action. Search + source filter preserved.
  */
-export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPickMetric }: Props) {
+export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPickCustom, onPickMetric }: Props) {
   const [query, setQuery] = useState('');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -160,6 +160,7 @@ export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPi
                         option={opt}
                         selected={selectedIds.includes(opt.id)}
                         onToggle={() => toggleSelect(opt.id)}
+                        reportPeriod={reportPeriod}
                       />
                     ))}
                   </div>
@@ -222,12 +223,11 @@ function SourceChip({
 function formatLiveValue(value: number, format: InsightsMetricOption['format']): string {
   if (!Number.isFinite(value)) return '—';
   if (format === 'currency') {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-      minimumFractionDigits: 0,
-    }).format(Math.trunc(value));
+    const abs = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
+    if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
+    if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+    return `${sign}$${Math.round(abs).toLocaleString('en-US')}`;
   }
   if (format === 'percentage') {
     const pct = Math.abs(value) <= 1 ? value * 100 : value;
