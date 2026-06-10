@@ -661,7 +661,7 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "get": {
-        const { message_id } = requestData;
+        let { message_id } = requestData;
         if (!message_id) {
           return new Response(JSON.stringify({ error: "Message ID required" }), {
             status: 400,
@@ -671,6 +671,32 @@ serve(async (req: Request): Promise<Response> => {
 
         const forceRefresh = (requestData as any).force_refresh === true;
         const STALE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
+
+        // Some callers (e.g. the email-intelligence inbox built from
+        // `email_cache`) pass the row PK (UUID) as `message_id` instead of
+        // the Nylas provider id. Nylas would 404 on a UUID, surfacing as
+        // "Full message unavailable". Resolve to the real provider id
+        // before the cache lookup / live fetch.
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(message_id)) {
+          try {
+            const { data: row } = await supabase
+              .from("email_cache")
+              .select("gmail_message_id")
+              .eq("user_id", user.id)
+              .eq("id", message_id)
+              .maybeSingle();
+            if (row?.gmail_message_id) {
+              console.log(
+                `[gmail-messages:get] resolved row-uuid ${message_id} -> ${row.gmail_message_id}`,
+              );
+              message_id = row.gmail_message_id;
+            }
+          } catch (resolveErr) {
+            console.warn(
+              `[gmail-messages:get] uuid resolve failed for ${message_id}: ${(resolveErr as Error)?.message}`,
+            );
+          }
+        }
 
         // Cache-first: serve body from public.email_cache when available so
         // repeat opens are instant and do not hit Nylas. The Microsoft path
