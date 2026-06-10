@@ -179,49 +179,20 @@ export function CashFlowManager() {
     !!company?.id,
     dealOverrides,
   );
-  // Wrap saved deal cash-in DB rows (cashflow_cash_in_items) as one-time
-  // ScheduledCashFlow entries so they get routed by category through
-  // mergeScheduledIntoWeekly into the visible Retainers / Milestones /
-  // Closing Fees rows in the correct week bucket — instead of being
-  // dumped into a generic "Customer Payment" line that no row renders.
-  const cashInDbAsScheduled = useMemo<ScheduledCashFlow[]>(() => {
-    const FEE_TO_CATEGORY: Record<string, string> = {
-      retainer: 'Retainers',
-      milestone: 'Milestones',
-      closing: 'Closing Fees',
-    };
-    const FEE_LABEL: Record<string, string> = {
-      retainer: 'Retainer',
-      milestone: 'Milestone',
-      closing: 'Closing',
-    };
-    return (cashInDbItems || []).map((it) => {
-      const date = (it.target_date || '').slice(0, 10);
-      const category = FEE_TO_CATEGORY[it.fee_type] || 'Other Receipts';
-      const label = FEE_LABEL[it.fee_type] || it.fee_type;
-      return {
-        id: `cashin:${it.id}`,
-        company_id: company?.id || '',
-        account: it.deal_name || '',
-        category,
-        amount: Number(it.amount) || 0,
-        frequency_type: 'one_time',
-        frequency_config: { one_time_date: date },
-        flow_type: 'cash_in',
-        start_date: date,
-        end_date: date,
-        notes: `${it.deal_name} — ${label}`,
-      } as ScheduledCashFlow;
-    });
-  }, [cashInDbItems, company?.id]);
+  // Canonical scheduled-items composition — defined in financeWeeklyBalance.ts
+  // so /insights "12-Week Cashflow Forecast" sees the same exact inputs as
+  // the weekly grid here. Do not inline any equivalent — both surfaces must
+  // call this composer for parity.
   const combinedScheduledItems = useMemo(
-    () => [
-      ...(qbDerivedItems || []),
-      ...(dealProjectedItems || []),
-      ...(scheduledItems || []),
-      ...cashInDbAsScheduled,
-    ],
-    [qbDerivedItems, dealProjectedItems, scheduledItems, cashInDbAsScheduled],
+    () =>
+      composeCombinedScheduledItems({
+        qbDerivedItems,
+        dealProjectedItems,
+        scheduledItems,
+        cashInDbItems,
+        companyId: company?.id,
+      }),
+    [qbDerivedItems, dealProjectedItems, scheduledItems, cashInDbItems, company?.id],
   );
   const { rows: customRows, addRow: addCustomRow, removeRow: removeCustomRow } = useCustomCashFlowRows(company?.id);
   const [addCashInOpen, setAddCashInOpen] = useState(false);
