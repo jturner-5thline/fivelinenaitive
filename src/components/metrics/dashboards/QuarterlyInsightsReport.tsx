@@ -3304,7 +3304,10 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportRisksSection s={s} set={set} print={print} />
           </div>
           <div id="qir-section-whats-working" className="qir-unified-section">
-            <WhatWorkingSections reportKey={`qir:${rk}`} />
+            <WhatWorkingSections
+              reportKey={`qir:${activeCompositeKey || rk}`}
+              periodLabel={s.period === 'monthly' ? s.month : s.quarter}
+            />
           </div>
         </div>
       </Card>

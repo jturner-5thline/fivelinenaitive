@@ -49,12 +49,31 @@ function CommentaryBlock({
   const [editing, setEditing] = React.useState(false);
   const dirtyRef = React.useRef(false);
   const [savedFlash, setSavedFlash] = React.useState(false);
+  const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSaveRef = React.useRef<((v: string) => Promise<void>) | null>(null);
+  // Keep latest save fn (captures latest reportKey) for use in flush logic.
+  React.useEffect(() => { pendingSaveRef.current = save; }, [save]);
+
+  // When the report period (reportKey) changes, flush any pending save against
+  // the PREVIOUS key, then reset local state so the new period's notes hydrate
+  // cleanly instead of inheriting the prior period's text.
+  const prevKeyRef = React.useRef(reportKey);
+  React.useEffect(() => {
+    if (prevKeyRef.current === reportKey) return;
+    // Cancel any pending debounce — the queued save would otherwise write the
+    // old period's text into the new period if reportKey rebinds first.
+    if (tRef.current) { clearTimeout(tRef.current); tRef.current = null; }
+    prevKeyRef.current = reportKey;
+    dirtyRef.current = false;
+    setLocal('');
+    setEditing(false);
+  }, [reportKey]);
+
   React.useEffect(() => {
     if (!loaded) return;
     if (!dirtyRef.current) setLocal(body);
   }, [body, loaded]);
 
-  const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const onChange = (v: string) => {
     setLocal(v);
     dirtyRef.current = true;
@@ -147,25 +166,26 @@ function CommentaryBlock({
  * Each section is rendered as a first-class report card matching the
  * surrounding sections (Narrative, Goals, Initiatives, Open Risks).
  */
-function WhatWorkingSections({ reportKey }: { reportKey: string }) {
+function WhatWorkingSections({ reportKey, periodLabel }: { reportKey: string; periodLabel?: string }) {
+  const suffix = periodLabel ? ` — ${periodLabel}` : '';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, marginTop: 8 }}>
       <section className="qir-ww-section">
         <CommentaryBlock
-          heading="What's Working"
+          heading={`What's Working${suffix}`}
           reportKey={reportKey}
           sectionKey="whats-working"
-          placeholder="What's driving results this period? Wins, momentum, levers worth doubling down on…"
-          helper="Capture the wins, tailwinds, and bright spots for this period."
+          placeholder={`What's driving results${periodLabel ? ` in ${periodLabel}` : ' this period'}? Wins, momentum, levers worth doubling down on…`}
+          helper={`Scoped to ${periodLabel || 'this period'}. Save/Reset act on this period only.`}
         />
       </section>
       <section className="qir-ww-section" style={{ borderTop: '1px solid rgba(120,170,255,0.10)', paddingTop: 24 }}>
         <CommentaryBlock
-          heading="What's not Working"
+          heading={`What's not Working${suffix}`}
           reportKey={reportKey}
           sectionKey="whats-not-working"
-          placeholder="Where are we falling short, hitting friction, or losing time?"
-          helper="Be candid — surface the blockers, misses, and risks worth raising."
+          placeholder={`Where are we falling short${periodLabel ? ` in ${periodLabel}` : ''}, hitting friction, or losing time?`}
+          helper={`Scoped to ${periodLabel || 'this period'}. Surface blockers, misses, and risks worth raising.`}
         />
       </section>
     </div>
