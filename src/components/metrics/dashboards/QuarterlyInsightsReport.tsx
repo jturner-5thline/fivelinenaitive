@@ -545,9 +545,16 @@ export function useQuarterlyReportState(
           ? { ...seed, ...exactRow }
           : seed;
 
-        const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
-        if (resolvedSharedKpis) {
-          next = { ...next, kpis: resolvedSharedKpis };
+        // KPI selection is period-scoped: when a sharedKpiKey is supplied
+        // we still mirror from it (legacy callers), but per-period callers
+        // intentionally omit it so the active period's saved KPIs (or an
+        // empty list) is the source of truth — prior-month KPIs must not
+        // leak into a new month.
+        if (sharedKpiKey) {
+          const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
+          if (resolvedSharedKpis) {
+            next = { ...next, kpis: resolvedSharedKpis };
+          }
         }
 
         console.log('[QIR] Fetch result:', {
@@ -651,10 +658,12 @@ export function useQuarterlyReportState(
         let next = exactRow !== undefined
         ? { ...seed, ...exactRow }
         : payload;
-        const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
-        if (resolvedSharedKpis) {
-          next = { ...next, kpis: resolvedSharedKpis };
-      }
+        if (sharedKpiKey) {
+          const resolvedSharedKpis = resolveSharedKpisFromConfig(fpaConfig, configKey, seed, sharedKpiKey);
+          if (resolvedSharedKpis) {
+            next = { ...next, kpis: resolvedSharedKpis };
+          }
+        }
 
       setStateLocal(next);
       latestStateRef.current = next;
@@ -1077,6 +1086,16 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
             + Manage KPIs
           </button>
         }>KPIs</SectionTitle>
+        <div
+          className="qir-no-print"
+          style={{
+            fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
+            color: 'rgba(160,200,255,0.55)', margin: '-4px 0 10px',
+          }}
+          title="KPI selection is saved per reporting period"
+        >
+          KPIs for {reportLabel} · saved per reporting period
+        </div>
         <div style={{
           display: 'grid',
           gap: 12,

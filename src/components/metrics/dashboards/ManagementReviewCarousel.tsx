@@ -99,9 +99,11 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, l
     dataKey,
     // No onSelectionChange: the period is owned by the global header, not
     // mutated from inside the report editor.
-    // sharedKpiKey: KPIs persist across Month/Quarter toggles for the same
-    // report tab (their live values still re-resolve per active period).
-    { sharedKpiKey: `qir:${reportKey}:kpis` },
+    // NOTE: KPI selection is intentionally scoped to the active reporting
+    // period (composite dataKey). We do NOT pass a sharedKpiKey, so
+    // switching months/quarters loads that period's own KPI selection
+    // (or an empty state if none has been saved) — prior-period KPIs
+    // never bleed forward.
   );
 
   // When the report is submitted/locked, neutralize edit/save: callers
