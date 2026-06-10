@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Sparkles, Plus, Search, Gauge, BarChart3, Check, TrendingUp } from 'lucide-react';
+import { Sparkles, Plus, Search, Gauge, BarChart3, Check } from 'lucide-react';
 import { type KpiTemplateId } from './kpiTemplates';
 import {
   buildInsightsMetricOptions,
