@@ -28,6 +28,8 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
+import { supabase } from '@/integrations/supabase/client';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
