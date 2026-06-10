@@ -854,6 +854,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   proposalsIssued: StageMetricResult;
   finalCreditItems: StageMetricResult;
   fundedInvoiced: StageMetricResult;
+  fundedInvoicedOnly: StageMetricResult;
   fundedInvoicedTrend: StageTrendSeriesResult;
   closedSplitTrend: StageSplitTrendSeriesResult;
   termsIssued: StageMetricResult;
@@ -902,6 +903,10 @@ export function useConsolidatedDebtPipelineMetrics(
   // entries within the Active Pipeline, per product spec.
   const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
   const fundedInvoiced = useStageEntryMetric(CLOSED_STAGES, quarter, ACTIVE_PIPELINE_ID);
+  // Closed KPI tiles (Deals Closed / Dollars Funded) are strictly entries into
+  // Funded / Invoiced only — Closed Won is excluded per product spec. Trend
+  // charts below continue to include Closed Won via CLOSED_STAGES.
+  const fundedInvoicedOnly = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, todayAnchor, ACTIVE_PIPELINE_ID);
   const closedSplitTrend = useStageEntrySplitTrendSeries(todayAnchor, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
@@ -918,6 +923,7 @@ export function useConsolidatedDebtPipelineMetrics(
     proposalsIssued,
     finalCreditItems,
     fundedInvoiced,
+    fundedInvoicedOnly,
     fundedInvoicedTrend,
     closedSplitTrend,
     termsIssued,
