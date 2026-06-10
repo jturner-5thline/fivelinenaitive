@@ -120,14 +120,10 @@ export function useMetricsData() {
       );
 
       try {
-        const { data, error } = (await Promise.race([
+        const data = await Promise.race([
           queryPromise,
           timeoutPromise,
-        ])) as Awaited<typeof queryPromise>;
-        if (error) {
-          console.error('[useMetricsData] supabase error', error);
-          throw error;
-        }
+        ]) as Awaited<typeof queryPromise>;
         console.info(
           `[useMetricsData] loaded ${data?.length ?? 0} deals in ${Date.now() - startedAt}ms`,
         );
