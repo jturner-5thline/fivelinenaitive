@@ -1086,6 +1086,16 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
             + Manage KPIs
           </button>
         }>KPIs</SectionTitle>
+        <div
+          className="qir-no-print"
+          style={{
+            fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em',
+            color: 'rgba(160,200,255,0.55)', margin: '-4px 0 10px',
+          }}
+          title="KPI selection is saved per reporting period"
+        >
+          KPIs for {reportLabel} · saved per reporting period
+        </div>
         <div style={{
           display: 'grid',
           gap: 12,
