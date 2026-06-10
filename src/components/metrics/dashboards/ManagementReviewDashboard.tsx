@@ -655,6 +655,28 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // - Only deals in the active pipeline
   // - Stages between Final Credit Items and In Due Diligence (inclusive)
   // - Exclude On Hold and Archived statuses
+  // Centralized stage normalization shared by inclusion logic + display.
+  // Accepts slug, human label, or legacy variants and returns a canonical slug.
+  const normalizeDebtPipelineStage = (raw: unknown): string => {
+    const s = String(raw ?? '').toLowerCase().trim().replace(/[\s/]+/g, '-').replace(/-+/g, '-');
+    const aliases: Record<string, string> = {
+      'final-credit-items': 'final-credit-items',
+      'final-credit-item': 'final-credit-items',
+      'submitted-to-lenders': 'submitted-to-lenders',
+      'submitted': 'submitted-to-lenders',
+      'lenders-in-review': 'lenders-in-review',
+      'lender-review': 'lenders-in-review',
+      'in-lender-review': 'lenders-in-review',
+      'terms-issued': 'terms-issued',
+      'term-sheet': 'terms-issued',
+      'term-sheets': 'terms-issued',
+      'in-due-diligence': 'in-due-diligence',
+      'due-diligence': 'in-due-diligence',
+      'diligence': 'in-due-diligence',
+    };
+    return aliases[s] ?? s;
+  };
+
   const ACTIVE_DEAL_LIST_STAGES = useMemo(() => new Set([
     'final-credit-items',
     'submitted-to-lenders',
@@ -664,18 +686,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   ]), []);
 
   const activeDealsList = useMemo(() => {
-    return allDeals
-      .filter((d: any) => {
-        if (!ACTIVE_DEAL_LIST_STAGES.has(d.stage)) return false;
-        if (d.status === 'archived' || d.status === 'on-hold') return false;
-        if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) return false;
-        return true;
-      })
-      .sort((a: any, b: any) => {
-        const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
-        const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
-        return ad - bd;
-      });
+    const excluded: Array<{ name: string; rawStage: unknown; normalized: string; reason: string }> = [];
+    const included = allDeals.filter((d: any) => {
+      const normalized = normalizeDebtPipelineStage(d.stage);
+      if (!ACTIVE_DEAL_LIST_STAGES.has(normalized)) {
+        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: 'stage-out-of-range' });
+        return false;
+      }
+      if (d.status === 'archived' || d.status === 'on-hold') {
+        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `status:${d.status}` });
+        return false;
+      }
+      if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) {
+        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `wrong-pipeline:${d.pipeline_id}` });
+        return false;
+      }
+      return true;
+    });
+    if (import.meta.env.DEV) {
+      const interesting = excluded.filter(e =>
+        /upflex|athyna/i.test(e.name || '') || e.normalized === 'in-due-diligence' || e.normalized === 'final-credit-items'
+      );
+      if (interesting.length) {
+        // eslint-disable-next-line no-console
+        console.info('[DebtPipeline] excluded candidates', interesting);
+      }
+      // eslint-disable-next-line no-console
+      console.info('[DebtPipeline] included', included.map((d: any) => ({ name: d.company, stage: d.stage, pipeline: d.pipeline_id })));
+    }
+    return included.sort((a: any, b: any) => {
+      const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
+      const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
+      if (ad !== bd) return ad - bd;
+      return String(a.company || '').localeCompare(String(b.company || ''));
+    });
   }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
 
   // Latest status note per deal (for hover tooltips on Deal Name + Status)
