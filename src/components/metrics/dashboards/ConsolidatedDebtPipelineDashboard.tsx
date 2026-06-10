@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Users, DollarSign, FileCheck, FileSignature, FileText, ClipboardCheck,
-  Coins, ScrollText, Handshake, Banknote,
+  Coins, ScrollText, Handshake, Banknote, LayoutGrid, Table as TableIcon,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
