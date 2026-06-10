@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Users, DollarSign, FileCheck, FileSignature, FileText, ClipboardCheck,
-  Coins, ScrollText, Handshake, Banknote,
+  Coins, ScrollText, Handshake, Banknote, LayoutGrid, Table as TableIcon,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
@@ -698,6 +698,168 @@ function StageMovementStackedBarChart({
   );
 }
 
+function PipelineMatrixTable({
+  sections,
+  selectedQuarter,
+  onCellClick,
+}: {
+  sections: SectionDef[];
+  selectedQuarter: QuarterOption;
+  onCellClick: (card: MetricCardConfig, bucket: { key: string; label: string; deals: StageEntryDeal[] } | null) => void;
+}) {
+  const months = selectedQuarter.months;
+
+  const rowsBySection = sections.map((section) => ({
+    section,
+    rows: section.cards.filter(c => !/average/i.test(c.title)),
+  })).filter(s => s.rows.length > 0);
+
+  const renderCell = (card: MetricCardConfig, monthStart: string, monthEnd: string) => {
+    const dealsInMonth = card.deals.filter(d => {
+      if (!d.entered_at) return false;
+      const day = d.entered_at.slice(0, 10);
+      return day >= monthStart && day <= monthEnd;
+    });
+    const metricType = card.drilldownMetricType ?? 'dollars';
+    const count = dealsInMonth.length;
+    const sum = dealsInMonth.reduce((s, d) => s + (Number(d.value) || 0), 0);
+    if (metricType === 'count') return { display: count > 0 ? String(count) : '—', empty: count === 0, deals: dealsInMonth };
+    return { display: count > 0 ? formatCurrency(sum) : '—', empty: count === 0, deals: dealsInMonth };
+  };
+
+  const renderTotal = (card: MetricCardConfig) => {
+    const metricType = card.drilldownMetricType ?? 'dollars';
+    if (metricType === 'count') return String(card.deals.length);
+    const sum = card.deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
+    return formatCurrency(sum);
+  };
+
+  // Average cards across all sections, for the band below the table.
+  const averageCards = sections.flatMap(s => s.cards.filter(c => /average/i.test(c.title)));
+
+  return (
+    <div className="space-y-4">
+      <Card className="glass-module overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-border/40 bg-muted/20">
+                <th className="sticky left-0 z-10 bg-muted/40 backdrop-blur text-left px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground min-w-[220px]">
+                  Metric
+                </th>
+                {months.map(mo => (
+                  <th
+                    key={mo.key}
+                    className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap min-w-[88px]"
+                  >
+                    {mo.label} {mo.key.slice(2, 4)}
+                  </th>
+                ))}
+                <th className="text-right px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-foreground whitespace-nowrap min-w-[100px] border-l border-border/40">
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rowsBySection.map(({ section, rows }) => (
+                <Fragment key={section.id}>
+                  <tr className="bg-muted/10">
+                    <td
+                      colSpan={months.length + 2}
+                      className="sticky left-0 z-10 bg-muted/20 backdrop-blur px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground/80"
+                    >
+                      {section.title}
+                      <span className="ml-2 text-muted-foreground font-normal normal-case tracking-normal">
+                        {section.description}
+                      </span>
+                    </td>
+                  </tr>
+                  {rows.map(card => (
+                    <tr key={card.id} className="border-b border-border/20 hover:bg-muted/10">
+                      <td className="sticky left-0 z-10 bg-card/95 backdrop-blur px-3 py-2 font-medium text-foreground whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => onCellClick(card, null)}
+                          className="flex items-center gap-2 text-left hover:text-primary"
+                        >
+                          <span
+                            className="h-1.5 w-1.5 rounded-full shrink-0"
+                            style={{ background: card.color }}
+                          />
+                          {card.title}
+                        </button>
+                      </td>
+                      {months.map(mo => {
+                        const cell = renderCell(card, mo.start, mo.end);
+                        return (
+                          <td key={mo.key} className="px-3 py-2 text-right font-mono tabular-nums">
+                            {card.isLoading ? (
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground inline" />
+                            ) : cell.empty ? (
+                              <span className="text-muted-foreground/40">—</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onCellClick(card, {
+                                    key: mo.key,
+                                    label: `${mo.label} ${mo.key.slice(2, 4)}`,
+                                    deals: cell.deals,
+                                  })
+                                }
+                                className="hover:text-primary hover:underline underline-offset-2"
+                              >
+                                {cell.display}
+                              </button>
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td className="px-3 py-2 text-right font-mono tabular-nums font-bold text-foreground border-l border-border/40">
+                        {card.isLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground inline" />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => onCellClick(card, null)}
+                            className="hover:text-primary hover:underline underline-offset-2"
+                          >
+                            {renderTotal(card)}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {averageCards.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">Averages</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Trailing-period averages — separated from the matrix because they are derived metrics
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {averageCards.map(card => (
+              <MetricKPICard
+                key={card.id}
+                config={card}
+                onClick={() => onCellClick(card, null)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ConsolidatedDebtPipelineDashboard({
   selectedQuarter,
 }: {
@@ -705,6 +867,7 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
@@ -1011,14 +1174,46 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Consolidated Debt Pipeline</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Consolidated Debt Pipeline</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
+          </p>
+        </div>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
+          <TabsList className="bg-muted/40 border border-border/40">
+            <TabsTrigger value="cards" className="gap-1.5">
+              <LayoutGrid className="h-3.5 w-3.5" /> Cards
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-1.5">
+              <TableIcon className="h-3.5 w-3.5" /> Table
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {sections.map(section => (
+      {viewMode === 'table' ? (
+        <PipelineMatrixTable
+          sections={sections}
+          selectedQuarter={selectedQuarter}
+          onCellClick={(card, bucket) => {
+            const metricType = card.drilldownMetricType ?? 'dollars';
+            setDrilldown({
+              title: bucket
+                ? `${card.drilldownTitle} — ${bucket.label}`
+                : card.drilldownTitle,
+              deals: bucket ? bucket.deals : card.deals,
+              periodNote: card.drilldownPeriodNote,
+              metricType,
+              valueFormatter: card.drilldownValueFormatter
+                ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+              chartColor: card.drilldownChartColor ?? card.color,
+            });
+          }}
+        />
+      ) : (
+        sections.map(section => (
         <div key={section.id} className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
@@ -1044,7 +1239,8 @@ export function ConsolidatedDebtPipelineDashboard({
             ))}
           </div>
         </div>
-      ))}
+        ))
+      )}
 
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
