@@ -527,7 +527,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.ndaNeedsList.isLoading,
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--primary))',
-          drilldownTitle: 'Deals on the Board — entered NDA/Needs List Sent',
+          drilldownTitle: 'Deals on the Board — added to Active Pipeline',
         },
         {
           id: 'debt-dollar-on-board',
@@ -537,7 +537,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.ndaNeedsList.isLoading,
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--chart-2))',
-          drilldownTitle: 'Debt $ on the Board — entered NDA/Needs List Sent',
+          drilldownTitle: 'Debt $ on the Board — added to Active Pipeline',
         },
         {
           id: 'average-deal-on-board',
@@ -547,8 +547,8 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.averageDealOnBoard.isLoading,
           deals: m.averageDealOnBoard.deals,
           color: 'hsl(var(--chart-4))',
-          drilldownTitle: 'Average Deal on the Board — entered NDA / Needs List Sent',
-          drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+          drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
+          drilldownPeriodNote: 'Selected period · Debt $ on the Board ÷ Deals on the Board',
         },
       ],
     },
