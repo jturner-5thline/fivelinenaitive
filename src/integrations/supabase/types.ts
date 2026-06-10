@@ -11488,6 +11488,9 @@ export type Database = {
       }
       email_cache: {
         Row: {
+          attachments: Json
+          body_fetched_at: string | null
+          body_html: string | null
           body_text: string | null
           cc_emails: string[] | null
           created_at: string
@@ -11496,9 +11499,11 @@ export type Database = {
           from_name: string | null
           gmail_message_id: string
           id: string
+          inline_attachments: Json
           is_read: boolean | null
           is_starred: boolean | null
           labels: string[] | null
+          provider: string
           received_at: string | null
           snippet: string | null
           subject: string | null
@@ -11508,6 +11513,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments?: Json
+          body_fetched_at?: string | null
+          body_html?: string | null
           body_text?: string | null
           cc_emails?: string[] | null
           created_at?: string
@@ -11516,9 +11524,11 @@ export type Database = {
           from_name?: string | null
           gmail_message_id: string
           id?: string
+          inline_attachments?: Json
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
+          provider?: string
           received_at?: string | null
           snippet?: string | null
           subject?: string | null
@@ -11528,6 +11538,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments?: Json
+          body_fetched_at?: string | null
+          body_html?: string | null
           body_text?: string | null
           cc_emails?: string[] | null
           created_at?: string
@@ -11536,9 +11549,11 @@ export type Database = {
           from_name?: string | null
           gmail_message_id?: string
           id?: string
+          inline_attachments?: Json
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
+          provider?: string
           received_at?: string | null
           snippet?: string | null
           subject?: string | null

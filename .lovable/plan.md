@@ -1,58 +1,90 @@
-# Diagnosis: Inbox only shows ~24h of email
+# Diagnosis: Why opening an email is slow
 
-## Where the inbox gets its data
+## Root cause
 
-The mail modal on `/deals` is `InboxDialog` (lazy-loaded from `src/components/deals/DealsHeader.tsx:40,488`). Both first-page and pagination calls go through `supabase.functions.invoke('gmail-messages', { action: 'list', label_ids: ['INBOX'], ... })`:
+For Gmail/Nylas users, opening a message ALWAYS makes a live round-trip to Nylas — there is no DB cache, no prefetch-to-DB, and no read-through. Microsoft users are already served from `emails.raw` (instant), which is why the bug is Gmail-specific.
 
-- Prefetch: `src/stores/inboxCacheStore.ts` `fetchPage()` (≈ line 145) — `PAGE_SIZE = 100`, no time filter
-- Dialog pagination: `src/components/dashboard/InboxDialog.tsx` `fetchPage()` (line 150) and `autoPaginate()` (line 416) — `AUTO_LOAD_CAP = 1000`, no time filter
-- Cache backfill: `loadOlderFromCache()` (line 390) reads `email_cache` ordered by `received_at desc` with no `gte`/`lt` floor
+### Call chain
 
-## Where the time window is actually imposed
+1. `src/components/deal/email/useFullEmailMessage.ts:292–304` — `fetchFullEmailMessage()` calls `supabase.functions.invoke('gmail-messages', { action: 'get', message_id })` wrapped in `withTimeout(..., 15_000)` (line 213 `FETCH_TIMEOUT_MS = 15_000`). This is the 15s ceiling that produces the user-visible "gmail-messages get timed out after 15000ms".
+2. `supabase/functions/gmail-messages/index.ts:663–766` — the `case "get"` handler unconditionally does `fetch(${baseUrl}/messages/${message_id})` against Nylas (line 674). There is no `email_cache` / `emails.raw` lookup before the network call and nothing is written back after.
+3. `index.ts:360–408` — the Microsoft branch DOES read from `public.emails` (`select … raw … .eq(message_id)`) and never calls Graph live. That path is consistently fast; only Gmail/Nylas opens hang.
+4. There is no body field in either cache table:
+   - `public.emails` has `raw jsonb` — populated by Microsoft sync, empty for Gmail.
+   - `public.email_cache` has `body_text` only — no `body_html`, no inline-attachment metadata, and the `get` handler never reads or writes it.
+5. The `list` action (`index.ts:482–660`) fetches only message headers (no `body`) from Nylas, so even with healthy syncs the body is fetched lazily on first open every time, every user, every device.
+6. Nylas message-detail latency: typical 800ms–4s, spikes >15s on large mailboxes (we already have a 25s timeout on `list` at line 528 acknowledging this). With no cache, every spike → user-visible timeout + Retry.
 
-The edge function `supabase/functions/gmail-messages/index.ts` branches on the user's connected provider (line 445‑458). It does **not** add any time filter on either branch.
+There is no N+1 here — it's a single call — but it's a SYNCHRONOUS, UNCACHED call to a slow provider on the user's critical render path.
 
-### Microsoft (Outlook) branch — this is the bug
+## Fix (no changes yet — for approval)
 
-`handleMicrosoftAction` (lines 295‑341) reads from the `emails` table — it does not query Graph live. That table is populated by `microsoft-sync-emails`.
+Goal: first open is at most one Nylas round-trip; every subsequent open across devices/sessions is instant from Postgres.
 
-`supabase/functions/microsoft-sync-emails/index.ts` line **70**:
+### 1. Persist Gmail/Nylas bodies in Postgres
+
+Add columns to `public.email_cache` (and ensure parity with what the `get` handler returns):
 
 ```
-"https://graph.microsoft.com/v1.0/me/messages?$select=...&$orderby=receivedDateTime desc&$top=50"
+ALTER TABLE public.email_cache
+  ADD COLUMN body_html        text,
+  ADD COLUMN attachments      jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN inline_attachments jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN provider         text NOT NULL DEFAULT 'gmail',
+  ADD COLUMN body_fetched_at  timestamptz;
+
+CREATE UNIQUE INDEX IF NOT EXISTS email_cache_user_msg_uidx
+  ON public.email_cache (user_id, gmail_message_id);
+
+CREATE INDEX IF NOT EXISTS email_cache_user_thread_idx
+  ON public.email_cache (user_id, thread_id);
 ```
 
-The Graph URL is hard-capped to `$top=50`, with no `$skip` / `@odata.nextLink` follow, no historical backfill, and no per-user "last_synced_message_id" cursor. Every sync run replaces the working set with at most the 50 most recent messages, so the inbox ends up showing roughly the last day (the exact window depends on email volume, but for an active mailbox 50 messages ≈ < 24h).
+(`gmail_message_id` is the existing column; we'll reuse it as the provider message id for Nylas regardless of upstream provider.)
 
-Additionally, `gmail-messages` Microsoft list path (lines 309‑315) caps results at `Math.min(max_results || 50, 200)` — even if the table had more, the UI would only get up to 200 per page. The dialog never pages this branch because `next_page_token` is hard-coded to `null` (line 340).
+### 2. Cache-first read in `gmail-messages` `get` handler
 
-### Gmail / Nylas branch — clean, no 24h cap
+`supabase/functions/gmail-messages/index.ts:663–766` — wrap the existing Nylas fetch:
 
-Lines 466‑514 forward to Nylas `/messages` with `limit`, `page_token`, optional `search_query_native`, and `in=INBOX`. No `after:` / `newer_than:` is added. `AUTO_LOAD_CAP=1000` in `InboxDialog` is the only ceiling. So Gmail-connected users are not affected; this matters only for the Microsoft 365 connection.
+```text
+case "get":
+  1. SELECT body_html, body_text, attachments, inline_attachments, …
+       FROM email_cache
+       WHERE user_id=? AND gmail_message_id=?
+       AND body_fetched_at IS NOT NULL
+  2. If hit → return immediately (no Nylas call). Kick off a
+     background revalidation only if body_fetched_at is older than 24h
+     using EdgeRuntime.waitUntil(...).
+  3. If miss → existing Nylas fetch (line 674), then UPSERT the full
+     normalized message into email_cache before returning.
+```
 
-## Proposed fix (no edits yet)
+Same pattern for the Microsoft branch at `index.ts:360–408` — already DB-backed, no change needed.
 
-Two changes, scoped to the Microsoft path so Gmail behavior is unchanged:
+### 3. Backfill on `list` / sync, so the very first open is also instant
 
-1. **Backfill + incremental sync in `supabase/functions/microsoft-sync-emails/index.ts`**
-   - Replace the fixed `$top=50` URL (line 70) with a paged loop that follows `@odata.nextLink` until either (a) a configurable historical floor is reached (default: 365 days, via `$filter=receivedDateTime ge {iso}`) or (b) a `last_synced_message_id` from `microsoft_tokens` is encountered on first page (delta cursor).
-   - Use `$top=100` per page (Graph max ≈ 1000 but 100 is the sweet spot for memory + rate limits), upsert in batches, and store a `last_email_sync_cursor` on `microsoft_tokens` so subsequent runs only fetch new mail.
-   - Add a one-time backfill flag (`initial_backfill_done` on `microsoft_tokens`) so the first run pulls the historical window, then steady-state runs are tiny deltas.
+- `gmail-sync` / `nylas-sync-emails` (whichever sync job populates `email_cache` today — they currently store headers only): on sync, for the top N most-recent messages (e.g. last 50 per folder) fetch `/messages/{id}` in a bounded-concurrency pool (max 5) and upsert bodies. This makes the inbox feel instant from cold load.
+- Add a lightweight `prefetch` action on `gmail-messages` that takes `message_ids[]`, fetches in parallel (concurrency 5), and writes to `email_cache`. The client already calls `prefetchFullEmailMessage` on hover/render (`useFullEmailMessage.ts:254`) — change it to call this batch action instead of N individual `get` invocations.
 
-2. **Lift the Microsoft list cap and add pagination in `supabase/functions/gmail-messages/index.ts`**
-   - In `handleMicrosoftAction` (lines 297‑341), keep `max_results` honored but support `page_token` by switching to keyset pagination on `received_at` (use `.lt('received_at', cursor)`), and return a `next_page_token` (the oldest `received_at` of the returned page) instead of hard-coding `null` (line 340). This lets `InboxDialog.autoPaginate` and the cache‑backed "load older" path drain the full `emails` table the same way they do for Gmail.
+### 4. Tighten the client timeout once cache-first is live
 
-3. **(Optional, after #1/#2) trigger an immediate backfill** for already-connected Microsoft users by clearing `initial_backfill_done` once, or by exposing a "Resync history" button next to "Sync now" in `src/pages/Integrations.tsx` (lines 391‑402). No client-side time math needs to change.
+`src/components/deal/email/useFullEmailMessage.ts:213` — drop `FETCH_TIMEOUT_MS` from 15s to 5s. With cache hits the edge function returns in <200ms; the 15s ceiling only existed to ride out cold Nylas calls, which are now off the critical path.
 
-## Verification plan
+### 5. Verification
 
-- DB: `select min(received_at), max(received_at), count(*) from emails where user_id = … and provider='microsoft';` before and after the first run of the patched sync should show the window expanding from ~1 day to the configured floor (e.g., 365 days).
-- UI: open the mail modal on `/deals`, scroll past the first page; `InboxDialog.autoPaginate` should successfully fetch additional pages for a Microsoft account (today it bails because `next_page_token` is always `null`).
-- Gmail accounts: confirm no regression — the Nylas branch is untouched.
+- DB: after fix, `SELECT count(*) FROM email_cache WHERE body_html IS NOT NULL` grows on every inbox open.
+- Network tab: second open of the same email shows `gmail-messages` returning in <300ms.
+- Edge function logs: cache-hit log line dominates; live Nylas calls only on first open per message.
+- The "Couldn't load this message" toast no longer fires on slow networks because retry has a body to fall back to.
 
-## Files / lines to change
+## Files / lines summary
 
-- `supabase/functions/microsoft-sync-emails/index.ts` line **70** (and the `syncForUser` function around lines 62‑117): paged Graph fetch + cursor.
-- `supabase/functions/gmail-messages/index.ts` lines **297‑341**: respect `page_token`, return real `next_page_token`, drop the `Math.min(..., 200)` hard ceiling or raise to `1000`.
-- `microsoft_tokens` table: add `last_email_sync_cursor text` and `initial_backfill_done boolean default false` (new migration).
-- (Optional UI) `src/pages/Integrations.tsx` lines 391‑402: add "Resync history" action.
+| Concern | File | Lines |
+| --- | --- | --- |
+| 15s client timeout | `src/components/deal/email/useFullEmailMessage.ts` | 213, 297–304 |
+| Gmail get = live Nylas, no cache | `supabase/functions/gmail-messages/index.ts` | 663–766 (esp. 674) |
+| Microsoft get already DB-backed (reference) | `supabase/functions/gmail-messages/index.ts` | 360–408 |
+| List fetches headers only | `supabase/functions/gmail-messages/index.ts` | 482–660 |
+| Cache table missing body_html | `public.email_cache` schema | — |
+
+No behavior change for Microsoft users. Gmail/Nylas users get instant opens after the first fetch and a one-time backfill.

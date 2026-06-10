@@ -669,6 +669,101 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
+        const forceRefresh = (requestData as any).force_refresh === true;
+        const STALE_AFTER_MS = 24 * 60 * 60 * 1000; // 24h
+
+        // Cache-first: serve body from public.email_cache when available so
+        // repeat opens are instant and do not hit Nylas. The Microsoft path
+        // already does this from public.emails.raw; this brings Gmail/Nylas
+        // to parity. Background revalidation (>24h stale) keeps the cache
+        // fresh without blocking the user.
+        if (!forceRefresh) {
+          try {
+            const { data: cached } = await supabase
+              .from("email_cache")
+              .select(
+                "gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, body_html, body_text, attachments, inline_attachments, is_read, is_starred, labels, received_at, body_fetched_at",
+              )
+              .eq("user_id", user.id)
+              .eq("gmail_message_id", message_id)
+              .not("body_fetched_at", "is", null)
+              .maybeSingle();
+
+            if (cached) {
+              const ageMs = cached.body_fetched_at
+                ? Date.now() - new Date(cached.body_fetched_at as string).getTime()
+                : Number.POSITIVE_INFINITY;
+              const isStale = ageMs > STALE_AFTER_MS;
+
+              if (isStale) {
+                // Fire-and-forget revalidation; do NOT await — user still
+                // gets the cached body immediately.
+                try {
+                  // @ts-ignore — EdgeRuntime is available in Supabase Edge
+                  EdgeRuntime.waitUntil(
+                    (async () => {
+                      try {
+                        const r = await fetch(`${baseUrl}/messages/${message_id}`, { headers });
+                        if (!r.ok) return;
+                        const j = await r.json();
+                        const m = j.data || j;
+                        const { body_html, body_text } = pickBodyHtmlAndText(m);
+                        const all = mergeAndNormalizeAttachments(m);
+                        await supabase
+                          .from("email_cache")
+                          .update({
+                            body_html,
+                            body_text,
+                            attachments: all.filter((a: any) => !a.is_inline),
+                            inline_attachments: all.filter((a: any) => a.is_inline),
+                            is_read: !m.unread,
+                            is_starred: m.starred || false,
+                            labels: m.folders || m.labels || [],
+                            body_fetched_at: new Date().toISOString(),
+                          })
+                          .eq("user_id", user.id)
+                          .eq("gmail_message_id", message_id);
+                      } catch (_) { /* swallow */ }
+                    })(),
+                  );
+                } catch (_) { /* EdgeRuntime not available — skip */ }
+              }
+
+              return new Response(
+                JSON.stringify({
+                  message: {
+                    id: cached.gmail_message_id,
+                    thread_id: cached.thread_id || cached.gmail_message_id,
+                    subject: cached.subject || "",
+                    from_email: cached.from_email || "",
+                    from_name: cached.from_name || "",
+                    to_emails: cached.to_emails ?? [],
+                    cc_emails: cached.cc_emails ?? [],
+                    snippet: cached.snippet || "",
+                    body_text: cached.body_text || "",
+                    body_html: cached.body_html || "",
+                    is_read: !!cached.is_read,
+                    is_starred: !!cached.is_starred,
+                    labels: cached.labels ?? [],
+                    received_at: cached.received_at,
+                    attachments: cached.attachments ?? [],
+                    inline_attachments: cached.inline_attachments ?? [],
+                    has_attachments:
+                      Array.isArray(cached.attachments) && cached.attachments.length > 0,
+                  },
+                  cached: true,
+                }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+              );
+            }
+          } catch (cacheErr) {
+            console.warn(
+              `[gmail-messages:get] cache read failed for ${message_id}: ${(cacheErr as Error)?.message}`,
+            );
+            // fall through to live fetch
+          }
+        }
+
         let msgResponse: Response;
         try {
           msgResponse = await fetch(`${baseUrl}/messages/${message_id}`, { headers });
@@ -758,6 +853,43 @@ serve(async (req: Request): Promise<Response> => {
           inline_attachments: inlineAtts,
           has_attachments: visibleAtts.length > 0,
         };
+
+        // Persist to email_cache so subsequent opens (any device, any
+        // session) are served from Postgres in <200ms instead of a fresh
+        // Nylas round-trip. Errors are non-fatal — log and continue.
+        try {
+          await supabase
+            .from("email_cache")
+            .upsert(
+              {
+                user_id: user.id,
+                gmail_message_id: msg.id,
+                thread_id: message.thread_id,
+                subject: message.subject,
+                from_email: message.from_email,
+                from_name: message.from_name,
+                to_emails: message.to_emails,
+                cc_emails: message.cc_emails,
+                snippet: message.snippet,
+                body_text: message.body_text,
+                body_html: message.body_html,
+                attachments: message.attachments,
+                inline_attachments: message.inline_attachments,
+                is_read: message.is_read,
+                is_starred: message.is_starred,
+                labels: message.labels,
+                received_at: message.received_at,
+                provider: "gmail",
+                body_fetched_at: new Date().toISOString(),
+                fetched_at: new Date().toISOString(),
+              },
+              { onConflict: "user_id,gmail_message_id" },
+            );
+        } catch (writeErr) {
+          console.warn(
+            `[gmail-messages:get] cache write failed for ${msg.id}: ${(writeErr as Error)?.message}`,
+          );
+        }
 
         return new Response(JSON.stringify({ message }), {
           status: 200,

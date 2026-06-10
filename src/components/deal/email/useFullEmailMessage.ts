@@ -210,7 +210,12 @@ function hydrateFromLS(id: string): FullMessage | null {
  * symptom Niki reported as "Email message not loading, refreshed multiple
  * times."
  */
-const FETCH_TIMEOUT_MS = 15_000;
+// With server-side cache-first (gmail-messages :get reads from
+// public.email_cache before hitting Nylas), the edge function returns in
+// <200ms on cache hits. The 15s ceiling that used to ride out cold Nylas
+// calls is no longer needed on the critical path. 5s is generous for the
+// first (uncached) open while still bounding any provider stall.
+const FETCH_TIMEOUT_MS = 5_000;
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
