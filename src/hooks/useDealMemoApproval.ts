@@ -48,6 +48,8 @@ export interface DealMemoApprovalHook {
   approveApproval: () => Promise<void>;
   rejectApproval: (reason: string) => Promise<void>;
   nextApproverLabel: string | null;
+  /** Memo submit-for-approval workflow is restricted to 5th Line accounts. */
+  isApprovalEnabled: boolean;
 }
 
 /** Determine the user's role for this deal based on deal fields */
