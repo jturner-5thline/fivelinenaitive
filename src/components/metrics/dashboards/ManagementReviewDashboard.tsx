@@ -685,24 +685,94 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     'in-due-diligence',
   ]), []);
 
-  const activeDealsList = useMemo(() => {
-    const excluded: Array<{ name: string; rawStage: unknown; normalized: string; reason: string }> = [];
+  const DEBT_PIPELINE_EXCLUDED_STATUSES = useMemo(
+    () => new Set(['archived', 'closed-lost', 'closed lost']),
+    [],
+  );
+
+  const debtPipelineDebug = useMemo(() => {
+    const excluded: Array<{
+      id: string;
+      name: string;
+      rawStage: unknown;
+      normalized: string;
+      reason: string;
+      status: string | null;
+      onHold: boolean | null;
+      pipelineId: string | null;
+      projectedCloseDate: string | null;
+      totalFee: number | null;
+      retainerFee: number | null;
+      milestoneFee: number | null;
+      inActivePipeline: boolean;
+    }> = [];
     const included = allDeals.filter((d: any) => {
       const normalized = normalizeDebtPipelineStage(d.stage);
+      const normalizedStatus = String(d.status ?? '').toLowerCase().trim();
+      const inActivePipeline = !activePipelineId || !d.pipeline_id || d.pipeline_id === activePipelineId;
+
       if (!ACTIVE_DEAL_LIST_STAGES.has(normalized)) {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: 'stage-out-of-range' });
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: 'stage-out-of-range',
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
-      if (d.status === 'archived' || d.status === 'on-hold') {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `status:${d.status}` });
+      if (DEBT_PIPELINE_EXCLUDED_STATUSES.has(normalizedStatus)) {
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: `status:${normalizedStatus || 'unknown'}`,
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
-      if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `wrong-pipeline:${d.pipeline_id}` });
+      if (!inActivePipeline) {
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: `wrong-pipeline:${d.pipeline_id}`,
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
       return true;
     });
+
+    const reasonCounts = excluded.reduce<Record<string, number>>((acc, item) => {
+      acc[item.reason] = (acc[item.reason] || 0) + 1;
+      return acc;
+    }, {});
+
     if (import.meta.env.DEV) {
       const interesting = excluded.filter(e =>
         /upflex|athyna/i.test(e.name || '') || e.normalized === 'in-due-diligence' || e.normalized === 'final-credit-items'
@@ -714,13 +784,39 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       // eslint-disable-next-line no-console
       console.info('[DebtPipeline] included', included.map((d: any) => ({ name: d.company, stage: d.stage, pipeline: d.pipeline_id })));
     }
-    return included.sort((a: any, b: any) => {
+
+    const sortedIncluded = included.sort((a: any, b: any) => {
       const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
       const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
       if (ad !== bd) return ad - bd;
       return String(a.company || '').localeCompare(String(b.company || ''));
     });
-  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
+
+    return {
+      included: sortedIncluded,
+      excluded,
+      totalCandidates: allDeals.length,
+      reasonCounts,
+      trackedDeals: allDeals
+        .filter((d: any) => /upflex|athyna/i.test(String(d.company || '')))
+        .map((d: any) => ({
+          id: d.id,
+          name: d.company,
+          rawStage: d.stage,
+          normalizedStage: normalizeDebtPipelineStage(d.stage),
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline: !activePipelineId || !d.pipeline_id || d.pipeline_id === activePipelineId,
+        })),
+    };
+  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES, DEBT_PIPELINE_EXCLUDED_STATUSES]);
+
+  const activeDealsList = debtPipelineDebug.included;
 
   // Latest status note per deal (for hover tooltips on Deal Name + Status)
   const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
