@@ -57,6 +57,10 @@ function setCached(key: string, results: MockEmail[]) {
 // in those cases we must NOT inject our default 90-day window.
 const DATE_OPERATOR_RE = /\b(?:after|before|older|newer|older_than|newer_than|on)\s*[:=]/i;
 
+// Gmail search operators — if the user already typed one (from:, to:, subject:,
+// has:, label:, etc.), don't expand the query.
+const GMAIL_OPERATOR_RE = /\b(?:from|to|cc|bcc|subject|in|is|has|label|list|filename|category|deliveredto|rfc822msgid|larger|smaller)\s*:/i;
+
 function formatGmailDate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -64,11 +68,29 @@ function formatGmailDate(d: Date): string {
   return `${y}/${m}/${day}`;
 }
 
+// Short, name-like queries get expanded so inbound mail matches even when the
+// sender's display name in their own account isn't the full phrase the user
+// typed. Without this, searching "Matt Rich" returns Niki→Matt threads (To
+// header has "Matt Rich") but misses Matt→Niki threads if Matt's Gmail
+// display name is just "Matt".
+function expandPhraseQuery(raw: string): string {
+  if (GMAIL_OPERATOR_RE.test(raw)) return raw;
+  const trimmed = raw.trim();
+  if (!trimmed) return raw;
+  if (trimmed.includes('"')) return raw; // user already quoted
+  if (trimmed.includes('@')) return raw; // bare email — Gmail handles it
+  const words = trimmed.split(/\s+/);
+  if (words.length < 1 || words.length > 3) return raw;
+  const phrase = `"${trimmed}"`;
+  return `(${phrase} OR from:${phrase} OR to:${phrase} OR cc:${phrase})`;
+}
+
 function scopeQuery(raw: string): string {
-  if (DATE_OPERATOR_RE.test(raw)) return raw;
+  const expanded = expandPhraseQuery(raw);
+  if (DATE_OPERATOR_RE.test(expanded)) return expanded;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - SEARCH_WINDOW_DAYS);
-  return `${raw} after:${formatGmailDate(cutoff)}`;
+  return `${expanded} after:${formatGmailDate(cutoff)}`;
 }
 
 function mapToMockEmail(msg: any): MockEmail | null {
