@@ -211,6 +211,12 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
 
   // Sync local values with memo data when dialog opens or memo changes
   useEffect(() => {
+    // CRITICAL: never blank localValues while the memo is still loading
+    // from the DB. Doing so would (a) flash empty inputs and (b) let an
+    // autosave/blur write those blanks over an existing persisted memo
+    // after the user navigates away and returns. Only initialise once the
+    // fetch has settled.
+    if (isLoading) return;
     if (memo && !hasChanges) {
       setLocalValues({
         narrative: memo.narrative || dealNarrative || '',
@@ -222,7 +228,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
       });
       setHighlightsList(parseList(memo.highlights));
       setHurdlesList(parseHurdles(memo.hurdles));
-    } else {
+    } else if (!memo) {
       setLocalValues({
         narrative: dealNarrative || '',
         highlights: '',
@@ -237,7 +243,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     setNewHighlight('');
     setNewHurdle('');
     setHasChanges(false);
-  }, [memo, isOpen, dealNarrative]);
+  }, [memo, isOpen, dealNarrative, isLoading]);
 
   const handleChange = (key: string, value: string) => {
     setLocalValues(prev => ({ ...prev, [key]: value }));
