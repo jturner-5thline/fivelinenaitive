@@ -292,24 +292,16 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   const [hovered, setHovered] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const latest = thread.latestEmail;
-  // Preview/sender should always reflect the most-recent message in the
-  // entire conversation (inbox + sent), regardless of who sent it. The row
-  // identity (`latest`) still drives selection / unread state, but the
-  // visible snippet + sender name follow the newest reply so the user sees
-  // their own reply when they replied last.
-  const newestInThread = (thread.emails && thread.emails.length > 0)
-    ? [...thread.emails].sort(
-        (a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime(),
-      )[0]
-    : latest;
-  const newestIsOutbound = newestInThread.folder === 'sent' || newestInThread.from_name === 'You';
-  const displayName = newestIsOutbound
-    ? 'Me'
-    : newestInThread.from_name;
+  // Each row represents a specific message (`latest`). Display its own
+  // sender + snippet — Gmail's All Mail behaviour — so search results don't
+  // mislabel an inbound message with the thread's most-recent replier.
+  const newestInThread = latest;
+  const newestIsOutbound = latest.folder === 'sent' || latest.from_name === 'You';
+  const displayName = newestIsOutbound ? 'Me' : latest.from_name;
   const previewSnippet =
-    newestInThread.snippet ||
-    newestInThread.body_preview ||
-    newestInThread.body_text ||
+    latest.snippet ||
+    latest.body_preview ||
+    latest.body_text ||
     '';
   const threadCount = thread.emails.length;
   const isUnread = thread.hasUnread;

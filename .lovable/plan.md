@@ -1,87 +1,102 @@
+## What's actually happening
 
-## Root cause
+Matt's inbound messages **are** in the search result set. They are not hidden by the query — they are hidden by how each row is rendered.
 
-The inbox is calling the `gmail-messages` `get` action with the **`email_cache.id` row UUID** instead of the **Nylas provider id** (`gmail_message_id`). Nylas 404s on the UUID, the edge function returns `{ message: null, not_found: true }`, and the viewer falls back to the snippet + Retry.
+### Root cause (primary): row label always shows the *thread's* newest sender, not the *row's* sender
 
-### Evidence chain
+`src/components/deal/email/EmailListAndDetail.tsx`
 
-1. **Symptom UUID is an `email_cache` PK.** Console: `[link-deal hydrate] timeout` and `[email.load_failed]` for `messageId="cb140867-615e-4799-826a-196f6facda37"`. A direct DB lookup confirms:
-   - `email_cache.id = cb140867-615e-4799-826a-196f6facda37`
-   - `email_cache.gmail_message_id = 19eae400c6b1bd4a` (real Nylas id)
-   - `subject = "Re: Gabb Wireless Financial Model"` — exactly the user's thread.
+1. `threads` (lines **948–983**) builds **one row per message** (`threadId: msg.id`, `latestEmail: msg`), but attaches the **entire conversation** to each row via `emails: convoEmails`.
+2. `ThreadListItemImpl` (lines **294–313**) then computes the row's visible sender from the newest message in the *whole conversation*, not from this row's message:
+   ```ts
+   const newestInThread = [...thread.emails].sort(... newest first)[0];
+   const newestIsOutbound = newestInThread.folder === 'sent' || newestInThread.from_name === 'You';
+   const displayName = newestIsOutbound ? 'Me' : newestInThread.from_name;
+   const previewSnippet = newestInThread.snippet || newestInThread.body_preview || ...;
+   ```
+   Every row in a Matt↔Niki thread therefore renders sender = **Niki (the latest replier)** and the **same preview snippet from Niki's latest reply**, even the rows that actually represent Matt's inbound messages. To the user this looks like "only Niki's emails, repeated multiple times."
 
-2. **The inbox spreads the cache row, so `email.id` becomes the UUID.** `src/hooks/useEmailIntelligence.ts:340-348` (`loadEnrichedEmails`) builds `EnrichedEmail` via `{ ...(c as CachedEmail), analysis }`. `CachedEmail.id` is the table PK (UUID), and `CachedEmail.gmail_message_id` is the provider id — distinct fields. Downstream the inbox treats `email.id` as the message id and passes it to `fetchFullEmailMessage(messageId)` in `src/components/deal/email/useFullEmailMessage.ts:297-309`.
+This is also why the open thread proves Matt sent mail — the underlying message is in `convoEmails`; the list view just relabels every row with the newest sender.
 
-3. **Edge function `case "get"` cannot recover from this.** `supabase/functions/gmail-messages/index.ts:680-690` filters by `.eq("gmail_message_id", message_id)` so a UUID never matches a row. Falls through to `fetch(${baseUrl}/messages/${UUID})` (line 769). Nylas returns 404. Lines 786-794 return `{ message: null, not_found: true }`. Client throws `"Message could not be loaded"` (`useFullEmailMessage.ts:335-337`), which the viewer renders as **"Full message unavailable"** at `src/components/deal/email/EmailListAndDetail.tsx:1772-1781` (`!resolvedHtml && !hasRenderableBody` branch).
+### Contributing cause #2: local substring filter is sender-only
 
-4. **Cache-first never hits for the broken path.** `email_cache` has 8,120 rows; only **2** have `body_fetched_at IS NOT NULL`. Every other open is forced to live Nylas. With the wrong id it can never succeed; with the right id it does, but the cache is essentially cold.
+`src/components/deal/DealEmailsTab.tsx` lines **945–960**:
 
-5. **The two "succeed" rows** (`body_fetched_at` set) are the only paths that pass the proper hex `gmail_message_id` — confirming that when the id is correct the new cache-first code works; the problem is the id, not the body parser, not Nylas auth, not grant expiry.
-
-### What this rules out
-
-- Not a missing-body / NULL-`body_html` cache-hit bug — cache `select` filters those out via `.not('body_fetched_at','is',null)`.
-- Not silent Nylas success-with-empty-body — Nylas never gets called with a real id on the broken path.
-- Not a sync gap — bodies aren't backfilled, but that's a secondary issue (slow first open). The user-visible failure is the 404 caused by the id.
-- Not rate-limit (only 429s seen are on `list`, not `get`).
-
-## Fix (no changes yet — for approval)
-
-Two-part, smallest-blast-radius first.
-
-### A. Make the inbox pass the provider id (primary fix)
-
-`src/hooks/useEmailIntelligence.ts:339-349` (`loadEnrichedEmails`) — when building `EnrichedEmail`, set the consumer-facing `id` to the provider id:
-
-```text
-enriched.push({
-  ...(c as CachedEmail),
-  id: c.gmail_message_id ?? c.id, // <- public id used by the inbox / get handler
-  row_id: c.id,                   // keep PK for analysis joins / unlink
-  analysis: analysisMap.get(c.id) as EmailAnalysis | undefined,
-});
-```
-
-Audit and update callers that previously joined analysis by `email.id` to use `email.row_id` instead. Specifically:
-- `email_analysis.email_cache_id` join in `useEmailIntelligence.ts:311-321, 411-440` (use `row_id`).
-- `unlinkEmail`, deal-email linking, `useEmailIntelligence` realtime subscription (`useEmailIntelligence.ts:490-499`).
-- Any inbox component that keys list rows by `email.id` — keying by provider id is correct and will fix the click-through.
-
-### B. Defense-in-depth: make the edge function tolerant of either id
-
-`supabase/functions/gmail-messages/index.ts:680-769` — before/inside the cache lookup, if `message_id` is UUID-shaped (regex `/^[0-9a-f]{8}-[0-9a-f]{4}-/`), resolve to the real provider id first:
-
-```text
-if (isUuid(message_id)) {
-  const { data: row } = await supabase
-    .from('email_cache')
-    .select('gmail_message_id')
-    .eq('user_id', user.id)
-    .eq('id', message_id)
-    .maybeSingle();
-  if (row?.gmail_message_id) message_id = row.gmail_message_id;
+```ts
+} else if (searchQuery.trim()) {
+  const q = searchQuery.toLowerCase();
+  const allMailHitIds = new Set(allMailSearch.results.map((e) => e.id));
+  filtered = filtered.filter((e) => {
+    if (allMailHitIds.has(e.id)) return true;
+    return (
+      e.subject.toLowerCase().includes(q) ||
+      e.from_name.toLowerCase().includes(q) ||
+      e.from_email.toLowerCase().includes(q) ||
+      e.snippet.toLowerCase().includes(q)
+    );
+  });
 }
 ```
 
-This unblocks any other surface that still passes the UUID and is cheap (single index lookup).
+Recipients (`to_name`, `to_email`), CC, and body are **never matched**. A locally-loaded inbound message from Matt only survives the filter when Matt's stored `from_name` literally contains both words "matt rich". If Matt's Gmail display name is just "Matt" / "Matt R." / the bare email, the substring fails and the row is dropped.
 
-### C. Backfill bodies opportunistically (secondary, separate follow-up)
+### Contributing cause #3: Gmail all-mail search uses AND-tokenization
 
-With (A) fixed, every first open is still a live Nylas round-trip because only 2 rows have `body_fetched_at`. Add a bounded-concurrency backfill action (`action: "prefetch", message_ids: [...]`) and have the inbox call it for the visible page after `list`. Out of scope for this hotfix but worth queueing.
+`src/hooks/useGmailAllMailSearch.ts` (lines 67–72, 145–153) forwards the raw query to `gmail-messages` as `search_query_native` (`supabase/functions/gmail-messages/index.ts` lines **483–516**). Gmail tokenizes `Matt Rich` as `Matt AND Rich` across indexed fields. Niki's outbound mail has both tokens (To: header `"Matt Rich" <matt.rich@gabb.com>` plus her signature) and matches. Matt's outbound display name in his own account often isn't "Matt Rich", so messages he sends may not contain both tokens in headers and won't match — they only return when "Rich" also appears in the body. Even when they do return, cause #1 still labels their row as "Niki".
 
-## Files / lines
+### Not the cause
+- No folder filter excluding inbound (`search_all_mail: true` drops `in=INBOX`, lines 491–516 of `gmail-messages/index.ts`).
+- No deal/label filter — `isSearching` bypasses the sidebar/deal filter (`DealEmailsTab.tsx` line 841: `if (isSearching) ...`).
+- No tsvector — server search is Gmail's native index; local search is `String.includes`.
+- Thread de-dup is **not** what's collapsing rows — rows are per-message. The bug is that per-message rows borrow the *thread's* newest sender for display.
 
-| Concern | File | Lines |
-| --- | --- | --- |
-| Spreads cache PK as `email.id` | `src/hooks/useEmailIntelligence.ts` | 339–349 (and analysis joins 311–321, 411–440, realtime 490–499) |
-| Calls `get` with whatever `email.id` is | `src/components/deal/email/useFullEmailMessage.ts` | 297–309 |
-| Cache lookup uses provider id | `supabase/functions/gmail-messages/index.ts` | 680–690 |
-| Nylas live fetch with the (wrong) id → 404 | `supabase/functions/gmail-messages/index.ts` | 768–794 |
-| Renders "Full message unavailable" on no body | `src/components/deal/email/EmailListAndDetail.tsx` | 1772–1781 |
+## Proposed fix
 
-### Verification after fix
+### 1. Render rows by their own message, not the thread's newest (primary fix)
 
-- Open the Gabb Wireless thread → cache miss → Nylas live → 200 with body → upsert with `body_fetched_at` → second open <300ms.
-- DB: `SELECT count(*) FROM email_cache WHERE body_fetched_at IS NOT NULL` climbs as users browse.
-- Edge logs: `[gmail-messages:get] attachment-debug` lines appear (currently absent — proving `get` never reaches body parsing today).
-- "Full message unavailable" no longer fires for healthy mailboxes.
+In `src/components/deal/email/EmailListAndDetail.tsx` (~lines 294–313), drive `displayName` / `previewSnippet` from `latest` (the row's message) instead of `newestInThread`. Keep the "newest" lookup only for the unsearched inbox-collapsed mode if we still want it; the cleanest fix is:
+
+```ts
+const displayName = latest.folder === 'sent' || latest.from_name === 'You'
+  ? 'Me'
+  : latest.from_name;
+const previewSnippet = latest.snippet || latest.body_preview || latest.body_text || '';
+```
+
+This restores per-message identity in the list, so Matt's inbound rows show "Matt Rich" + his snippet, and Niki's outbound rows show "Me" + her snippet — exactly like Gmail's All Mail view, which the surrounding comment already claims to emulate.
+
+### 2. Broaden the local substring filter
+
+In `src/components/deal/DealEmailsTab.tsx` lines 952–960:
+
+- Add `to_name`, `to_email`, `body_preview`, `body_text` to the OR.
+- Tokenize the query on whitespace and require all tokens (AND-of-substring) across the combined haystack — so `"Matt Rich"` matches a row where "Matt" is in `from_name` and "Rich" is anywhere in body/recipients.
+
+### 3. Broaden Gmail's server-side query for short name-like queries
+
+In `useGmailAllMailSearch.ts` `scopeQuery`, when the trimmed query is 1–3 words and has no Gmail operator, expand it to:
+
+```
+("Matt Rich" OR from:"Matt Rich" OR to:"Matt Rich")
+```
+
+This guarantees inbound mail from Matt is returned even when his display name in his own account isn't "Matt Rich".
+
+### 4. (Optional) Surface the matching participant on the row
+
+When `searchQuery` is active, render a small "matched: Matt Rich" chip on rows whose match comes from a non-sender field, so the user can tell *why* a row appeared.
+
+## Verification plan
+
+- Search "Matt Rich" in the inbox on `/deals`:
+  - Rows where Matt is the sender show "Matt Rich" and his preview.
+  - Rows where Niki is the sender show "Me" and Niki's preview.
+  - No row mislabels Matt's inbound message as Niki's.
+- Search "matt.rich@gabb.com" — same behavior.
+- Search a body-only term ("Gabb Wireless Financial Model") — locally-loaded inbox rows now match via body, not just snippet.
+
+## Files to touch
+
+- `src/components/deal/email/EmailListAndDetail.tsx` (lines ~294–313) — switch display to per-row message
+- `src/components/deal/DealEmailsTab.tsx` (lines 945–960) — broaden local filter + tokenize
+- `src/hooks/useGmailAllMailSearch.ts` (lines 67–72) — expand short name queries to from/to OR
