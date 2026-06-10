@@ -1455,9 +1455,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                                 <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
                               </Tooltip>
                             </td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.retainer_fee || 0))}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.milestone_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.total_fee == null || Number(d.total_fee) === 0 ? '—' : fmtUSD(Number(d.total_fee))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.retainer_fee == null || Number(d.retainer_fee) === 0 ? '—' : fmtUSD(Number(d.retainer_fee))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.milestone_fee == null || Number(d.milestone_fee) === 0 ? '—' : fmtUSD(Number(d.milestone_fee))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                               <Tooltip>
