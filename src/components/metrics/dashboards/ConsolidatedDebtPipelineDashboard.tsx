@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -762,8 +762,8 @@ function PipelineMatrixTable({
             </thead>
             <tbody>
               {rowsBySection.map(({ section, rows }) => (
-                <>
-                  <tr key={`${section.id}-header`} className="bg-muted/10">
+                <Fragment key={section.id}>
+                  <tr className="bg-muted/10">
                     <td
                       colSpan={months.length + 2}
                       className="sticky left-0 z-10 bg-muted/20 backdrop-blur px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-foreground/80"
@@ -830,7 +830,7 @@ function PipelineMatrixTable({
                       </td>
                     </tr>
                   ))}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
