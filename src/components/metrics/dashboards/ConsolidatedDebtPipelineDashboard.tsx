@@ -771,6 +771,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--primary))',
           drilldownTitle: 'Deals on the Board — added to Active Pipeline',
+          drilldownMetricType: 'count',
         },
         {
           id: 'debt-dollar-on-board',
@@ -781,6 +782,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Debt $ on the Board — added to Active Pipeline',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-on-board',
@@ -792,6 +794,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
           drilldownPeriodNote: 'Selected period · Debt $ on the Board ÷ Deals on the Board',
+          drilldownMetricType: 'average',
         },
       ],
     },
@@ -809,6 +812,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.proposalsIssued.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Proposals Issued — entered Proposal Issued',
+          drilldownMetricType: 'count',
         },
         {
           id: 'dollars-proposed',
@@ -819,6 +823,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.proposalsIssued.deals,
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Dollars Proposed — entered Proposal Issued',
+          drilldownMetricType: 'dollars',
         },
       ],
     },
@@ -836,6 +841,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
+          drilldownMetricType: 'count',
         },
         {
           id: 'debt-dollar-signed',
@@ -846,6 +852,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--success))',
           drilldownTitle: 'Debt $ Signed — entered Final Credit Items',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-signed',
@@ -857,6 +864,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Average Deal Signed — entered Final Credit Items',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+          drilldownMetricType: 'average',
         },
         {
           id: 'average-revenue-per-deal-signed',
@@ -868,6 +876,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Average Revenue per Deal Signed — Final Credit Items',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
+          drilldownMetricType: 'none',
         },
       ],
     },
@@ -885,6 +894,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.fundedInvoicedOnly.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
+          drilldownMetricType: 'count',
         },
         {
           id: 'dollars-funded',
@@ -895,6 +905,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.fundedInvoicedOnly.deals,
           color: 'hsl(var(--success))',
           drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'average-deal-closed',
@@ -906,6 +917,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Average Deal Closed — entered Funded / Invoiced',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
+          drilldownMetricType: 'average',
         },
         {
           id: 'average-revenue-per-deal-closed',
@@ -917,6 +929,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Average Revenue per Deal Closed — Funded / Invoiced',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
+          drilldownMetricType: 'none',
         },
       ],
     },
@@ -934,6 +947,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.termsIssued.deals,
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Terms Issued — entered Terms Issued',
+          drilldownMetricType: 'count',
         },
         {
           id: 'terms-issued-dollars',
@@ -944,6 +958,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.termsIssued.deals,
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Terms Issued $ — entered Terms Issued',
+          drilldownMetricType: 'dollars',
         },
         {
           id: 'terms-signed',
@@ -954,6 +969,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.inDueDiligence.deals,
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Terms Signed — entered In Due Diligence',
+          drilldownMetricType: 'count',
         },
         {
           id: 'terms-signed-dollars',
@@ -964,6 +980,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.inDueDiligence.deals,
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Terms Signed $ — entered In Due Diligence',
+          drilldownMetricType: 'dollars',
         },
       ],
     },
@@ -991,7 +1008,15 @@ export function ConsolidatedDebtPipelineDashboard({
               <MetricKPICard
                 key={card.id}
                 config={card}
-                onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals, periodNote: card.drilldownPeriodNote })}
+                onClick={() => setDrilldown({
+                  title: card.drilldownTitle,
+                  deals: card.deals,
+                  periodNote: card.drilldownPeriodNote,
+                  metricType: card.drilldownMetricType ?? 'dollars',
+                  valueFormatter: card.drilldownValueFormatter
+                    ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                  chartColor: card.drilldownChartColor ?? card.color,
+                })}
               />
             ))}
           </div>
@@ -1060,6 +1085,9 @@ export function ConsolidatedDebtPipelineDashboard({
               title: `Stage Movement — ${bucket.label}`,
               deals: bucket.deals,
               periodNote: `Funded / Invoiced + Closed Won stage_enter events · ${bucket.label}`,
+              metricType: 'count',
+              valueFormatter: (v: number) => `${Math.round(v)}`,
+              chartColor: FUNDED_INVOICED_COLOR,
             })
           }
         />
@@ -1073,6 +1101,10 @@ export function ConsolidatedDebtPipelineDashboard({
         title={drilldown?.title ?? ''}
         deals={drilldown?.deals ?? []}
         periodNote={drilldown?.periodNote}
+        selectedQuarter={selectedQuarter}
+        metricType={drilldown?.metricType}
+        valueFormatter={drilldown?.valueFormatter}
+        chartColor={drilldown?.chartColor}
       />
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
