@@ -23,6 +23,18 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'funded-invoiced': ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
   'closed-won': ['closed-won', 'Closed Won', 'Closed won'],
+  // Active Pipeline canonical stages — `deal_stage_history.to_stage` is
+  // written in mixed slug/label forms across historical and current rows.
+  // Both variants must be included or the SQL `.in()` filter and the
+  // normalize-back-to-slug safety check will drop valid entries.
+  'proposal-issued': ['proposal-issued', 'Proposal Issued'],
+  'terms-issued': ['terms-issued', 'Terms Issued'],
+  'final-credit-items': ['final-credit-items', 'Final Credit Items'],
+  'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
+  'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
+  'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
+  'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
+  'fs-active-client': ['fs-active-client', 'Active Client'],
 };
 
 /** Expand canonical slugs → full list of `to_stage` text values to filter on. */
