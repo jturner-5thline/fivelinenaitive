@@ -1380,36 +1380,65 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
         <div key="active-deals-list" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Active Deals · Final Credit → In Due Diligence">
-            <div style={{ height: '100%', overflow: 'auto' }}>
-              {activeDealsList.length === 0 ? (
-                <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
-              ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeDealsList.map((d: any) => {
-                      const sd = statusDisplay(d.status);
-                      return (
-                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                          <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>{d.company}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          <GridShell isEditMode={isEditMode} title="Debt Pipeline">
+            <TooltipProvider>
+              <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {activeDealsList.length === 0 ? (
+                  <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                        <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Retainer</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Milestone Fee</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeDealsList.map((d: any) => {
+                        const sd = statusDisplay(d.status);
+                        const note = debtPipelineStatusNotes[d.id] || 'No status note yet';
+                        return (
+                          <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span style={{ cursor: 'help' }}>{d.company}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.retainer_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.milestone_fee || 0))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span style={{ cursor: 'help' }}>{sd?.label ?? '—'}</span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs whitespace-pre-wrap">{note}</TooltipContent>
+                              </Tooltip>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, padding: '4px 8px' }}>
+                    Revenue by Month · Next 6 Months
+                  </div>
+                  <div style={{ position: 'relative', height: 140 }}>
+                    <canvas ref={debtPipelineChartRef} />
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
           </GridShell>
         </div>
 
