@@ -1533,7 +1533,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                         <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
-                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Success Fee</th>
                         <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Retainer</th>
                         <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Milestone Fee</th>
                         <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
@@ -1572,7 +1572,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                                 <TooltipContent side="top" className="max-w-[280px] whitespace-normal break-words text-[12px] font-normal leading-snug normal-case tracking-normal text-left">{note}</TooltipContent>
                               </Tooltip>
                             </td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.total_fee == null || Number(d.total_fee) === 0 ? '—' : fmtUSD(Number(d.total_fee))}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{(() => {
+                              const pct = Number(d.success_fee_percent);
+                              const val = Number(d.value);
+                              if (!pct || !val || !isFinite(pct) || !isFinite(val)) return '—';
+                              const sf = (val * pct) / 100;
+                              return sf === 0 ? '—' : fmtUSD(sf);
+                            })()}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.retainer_fee == null || Number(d.retainer_fee) === 0 ? '—' : fmtUSD(Number(d.retainer_fee))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.milestone_fee == null || Number(d.milestone_fee) === 0 ? '—' : fmtUSD(Number(d.milestone_fee))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
