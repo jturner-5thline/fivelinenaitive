@@ -30,6 +30,8 @@ import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, t
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import type { Deal } from '@/types/deal';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
@@ -396,6 +398,7 @@ interface ManagementReviewDashboardProps {
 }
 
 export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }: ManagementReviewDashboardProps = {}) {
+  const [openDealId, setOpenDealId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
@@ -1546,7 +1549,25 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                             <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span style={{ cursor: 'help' }}>{d.company}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenDealId(String(d.id))}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      padding: 0,
+                                      margin: 0,
+                                      font: 'inherit',
+                                      color: '#e8f6ff',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      textDecoration: 'underline',
+                                      textDecorationColor: 'rgba(255,255,255,0.25)',
+                                      textUnderlineOffset: 3,
+                                    }}
+                                  >
+                                    {d.company}
+                                  </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="top" className="max-w-[280px] whitespace-normal break-words text-[12px] font-normal leading-snug normal-case tracking-normal text-left">{note}</TooltipContent>
                               </Tooltip>
@@ -1622,6 +1643,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         rows={drilldown?.rows ?? []}
         emptyHint={drilldown?.emptyHint}
         trend={drilldown?.trend}
+      />
+
+      <NaitiveDealOverlay
+        deal={openDealId ? ({ id: openDealId, company: 'Deal' } as unknown as Deal) : null}
+        orderedDeals={[]}
+        stages={[]}
+        onClose={() => setOpenDealId(null)}
+        onNavigate={(d) => setOpenDealId(d.id)}
+        onStageChange={() => { /* stage changes handled inside embedded deal detail */ }}
       />
     </div>
   );
