@@ -460,7 +460,7 @@ export function useDealMemoApproval(
     } finally {
       setIsSubmitting(false);
     }
-  }, [dealId, memoId, user, userRole, getNextApprover, fetchState]);
+  }, [dealId, memoId, user, userRole, getNextApprover, fetchState, isFifthLineDeal]);
 
   const approveApproval = useCallback(async () => {
     if (!dealId || !memoId || !user) return;
