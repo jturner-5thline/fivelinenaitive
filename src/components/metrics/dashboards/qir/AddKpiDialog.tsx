@@ -12,6 +12,8 @@ import {
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
+import { formatUSD } from '@/lib/formatters/currency';
 
 interface Props {
   open: boolean;
@@ -216,21 +218,58 @@ function SourceChip({
   );
 }
 
-/** Format a placeholder preview value based on the format hint. Purely visual —
- *  the real value is computed when the widget is added to the dashboard. */
-function previewSampleValue(opt: InsightsMetricOption): string {
-  if (opt.format === 'currency') return '$1.2M';
-  if (opt.format === 'percentage') return '68%';
-  return '24';
+/** Format a numeric value using the metric's format hint. */
+function formatLiveValue(value: number, format: InsightsMetricOption['format']): string {
+  if (!Number.isFinite(value)) return '—';
+  if (format === 'currency') {
+    // formatUSD expects thousands; values come back as raw dollars.
+    return formatUSD(value / 1000);
+  }
+  if (format === 'percentage') {
+    const pct = Math.abs(value) <= 1 ? value * 100 : value;
+    return `${pct.toFixed(1)}%`;
+  }
+  if (Math.abs(value) >= 1000) return value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
 function WidgetTile({
   option, selected, onToggle,
 }: { option: InsightsMetricOption; selected: boolean; onToggle: () => void }) {
   const isTemplate = option.kind === 'template';
+  const isCustom = option.kind === 'custom-metric';
   const isChart = !!option.derivedFromChart;
   const TypeIcon = isTemplate ? Sparkles : isChart ? BarChart3 : Gauge;
   const typeLabel = isTemplate ? 'Template' : isChart ? 'Chart → value' : 'KPI';
+
+  // Pull a real live value from the canonical resolver. Templates and
+  // custom metrics don't have an Insights metric source id, so they
+  // skip the lookup and render an explicit "no live preview" state
+  // instead of fabricating a number.
+  const live = useInsightsLiveMetricValue(option.metricSourceId ?? null, null);
+
+  let valueDisplay: React.ReactNode;
+  let captionDisplay: string;
+  if (isTemplate) {
+    valueDisplay = <span className="text-[11px] text-muted-foreground">Template · live on add</span>;
+    captionDisplay = 'Computed when added';
+  } else if (isCustom) {
+    valueDisplay = <span className="text-[11px] text-muted-foreground">Custom formula</span>;
+    captionDisplay = 'Evaluated on add';
+  } else if (!live.supported) {
+    valueDisplay = <span className="text-[11px] text-muted-foreground">No live data available</span>;
+    captionDisplay = 'Unmapped source';
+  } else if (live.status === 'loading' || live.value === undefined) {
+    valueDisplay = <span className="text-[11px] text-muted-foreground animate-pulse">Loading…</span>;
+    captionDisplay = live.sourceSurface ? `from ${live.sourceSurface}` : 'Loading live value';
+  } else {
+    valueDisplay = (
+      <span className="text-xl font-bold tabular-nums">
+        {formatLiveValue(live.value, option.format)}
+      </span>
+    );
+    captionDisplay = live.sourceSurface ? `Live · ${live.sourceSurface}` : 'Live value';
+  }
 
   return (
     <button
@@ -258,21 +297,15 @@ function WidgetTile({
 
       {/* Widget-style preview */}
       <div className="p-3.5">
-        {isChart ? (
-          <div className="h-[88px] rounded-lg bg-muted/30 border border-border/40 px-2.5 py-2 flex flex-col justify-between">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{option.label}</div>
-            <MiniBars />
+        <div className="h-[88px] rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex flex-col justify-center">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">
+            {option.label}
           </div>
-        ) : (
-          <div className="h-[88px] rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex flex-col justify-center">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">{option.label}</div>
-            <div className="mt-1 flex items-baseline gap-1.5">
-              <span className="text-xl font-bold tabular-nums">{previewSampleValue(option)}</span>
-              <TrendingUp className="h-3 w-3 text-emerald-400" />
-            </div>
-            <div className="text-[9px] text-muted-foreground/70 mt-0.5 truncate">Preview · live data on add</div>
+          <div className="mt-1 flex items-baseline gap-1.5 min-h-[28px]">
+            {valueDisplay}
           </div>
-        )}
+          <div className="text-[9px] text-muted-foreground/70 mt-0.5 truncate">{captionDisplay}</div>
+        </div>
       </div>
 
       {/* Meta */}
@@ -304,20 +337,5 @@ function Pill({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 
     >
       {children}
     </span>
-  );
-}
-
-function MiniBars() {
-  const bars = [40, 60, 45, 72, 55, 80, 68];
-  return (
-    <div className="flex items-end gap-[3px] h-9">
-      {bars.map((h, i) => (
-        <div
-          key={i}
-          className="flex-1 rounded-sm bg-primary/60"
-          style={{ height: `${h}%` }}
-        />
-      ))}
-    </div>
   );
 }
