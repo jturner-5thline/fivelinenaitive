@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useQueryClient } from '@tanstack/react-query';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
-import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { syncTaskAfterCreate, retryAsanaSyncForTask } from '@/lib/asana/syncTaskAfterCreate';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -66,6 +66,101 @@ async function resolveDealManagerUserId(dealId: string): Promise<{ userId: strin
     .limit(1)
     .maybeSingle();
   return { userId: profile?.id || null, label: name };
+}
+
+/**
+ * Run an Asana sync in the background with a hard timeout and one retry,
+ * never blocking the UI. On final failure, persist `asana_sync_status='failed'`
+ * to the task row and surface a non-blocking toast with a Retry action.
+ */
+function fireBackgroundAsanaSync(opts: {
+  taskId: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  assignedTo: string | null;
+  companyId: string | null;
+  dealName: string | null;
+}) {
+  const TIMEOUT_MS = 7000;
+
+  const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+    new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('Asana sync timed out')), TIMEOUT_MS);
+      p.then((v) => { clearTimeout(t); resolve(v); })
+       .catch((e) => { clearTimeout(t); reject(e); });
+    });
+
+  const markFailed = async (msg: string) => {
+    try {
+      await supabase
+        .from('tasks')
+        .update({ asana_sync_status: 'failed', asana_sync_error: msg } as any)
+        .eq('id', opts.taskId);
+    } catch { /* ignore */ }
+  };
+
+  const showFailureToast = (msg: string) => {
+    toast.error('Asana sync failed', {
+      description: msg,
+      action: {
+        label: 'Retry sync',
+        onClick: () => {
+          toast.message('Retrying Asana sync…');
+          void retryAsanaSyncForTask(opts.taskId).then((r) => {
+            if (r.ok) toast.success('Synced to Asana');
+            else showFailureToast(r.error || 'Asana sync failed');
+          });
+        },
+      },
+    });
+  };
+
+  void (async () => {
+    const attempt = async () =>
+      withTimeout(syncTaskAfterCreate({
+        taskId: opts.taskId,
+        title: opts.title,
+        description: opts.description,
+        dueDate: opts.dueDate,
+        assignedTo: opts.assignedTo,
+        companyId: opts.companyId,
+      }));
+
+    try {
+      const r = await attempt();
+      if (r.ok) {
+        if (!r.skipped) toast.success('Synced to Asana');
+        return;
+      }
+      // Backoff + retry once
+      await new Promise((res) => setTimeout(res, 1500));
+      const r2 = await attempt();
+      if (r2.ok) {
+        if (!r2.skipped) toast.success('Synced to Asana');
+        return;
+      }
+      await markFailed(r2.error || 'Asana sync failed');
+      showFailureToast(r2.error || 'Asana sync failed');
+    } catch (e: any) {
+      const msg = e?.message || 'Asana sync failed';
+      // One retry on timeout / unexpected error
+      try {
+        await new Promise((res) => setTimeout(res, 1500));
+        const r2 = await attempt();
+        if (r2.ok) {
+          if (!r2.skipped) toast.success('Synced to Asana');
+          return;
+        }
+        await markFailed(r2.error || msg);
+        showFailureToast(r2.error || msg);
+      } catch (e2: any) {
+        const finalMsg = e2?.message || msg;
+        await markFailed(finalMsg);
+        showFailureToast(finalMsg);
+      }
+    }
+  })();
 }
 
 /**
