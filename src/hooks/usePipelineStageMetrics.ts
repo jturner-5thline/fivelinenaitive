@@ -877,7 +877,13 @@ export function useConsolidatedDebtPipelineMetrics(
     [todayAnchor],
   );
 
-  const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  // "Deals on the Board" / "Debt $ on the Board" / "Average Deal on the Board":
+  // deals ADDED TO the Active Pipeline within the selected period. Mirrors the
+  // definition used by PipelineMetricsSection (usePipelineDealsInPeriod): filters
+  // `deals.pipeline_id = ACTIVE_PIPELINE_ID` and `deals.created_at` within range,
+  // excluding closed-won / closed-lost / on-hold / archived deals. Dollar value
+  // uses `deals.value` (same as other Active-pipeline widgets).
+  const ndaNeedsList = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
@@ -889,7 +895,6 @@ export function useConsolidatedDebtPipelineMetrics(
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
 
-  const ndaNeedsListRolling6 = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling6 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
@@ -905,7 +910,9 @@ export function useConsolidatedDebtPipelineMetrics(
     closedSplitTrend,
     termsIssued,
     inDueDiligence,
-    averageDealOnBoard: useAverageDealMetric(ndaNeedsListRolling6),
+    // Average Deal on the Board = Debt $ on the Board / Deals on the Board for
+    // the selected period (N/A when count is 0).
+    averageDealOnBoard: useAverageDealMetric(ndaNeedsList),
     averageDealSigned: useAverageDealMetric(finalCreditItemsRolling6),
     averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
