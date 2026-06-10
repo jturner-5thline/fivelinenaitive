@@ -2792,6 +2792,19 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setUserExpandedMessages(new Set());
   }, [thread.threadId]);
 
+  // When the user opens a thread by clicking a specific (older) message,
+  // make sure that message is rendered — auto-expand the "older messages"
+  // section if the deep-link target falls outside the recent tail.
+  useEffect(() => {
+    if (!deepLinkMessageId) return;
+    if (!shouldAutoCollapse) return;
+    const idx = thread.emails.findIndex((e) => e.id === deepLinkMessageId);
+    if (idx === -1) return;
+    // thread.emails is newest-first; the visible tail is the first
+    // VISIBLE_RECENT entries. Anything past that is hidden behind the bar.
+    if (idx >= VISIBLE_RECENT) setOlderExpanded(true);
+  }, [deepLinkMessageId, shouldAutoCollapse, thread.emails]);
+
   // ─── Q&A detection (inbound reply containing answers to prior outbound questions) ───
   // Runs once per thread open, debounced. Respects the global Auto-suggest toggle
   // and writes a pending suggestion the user must confirm.
