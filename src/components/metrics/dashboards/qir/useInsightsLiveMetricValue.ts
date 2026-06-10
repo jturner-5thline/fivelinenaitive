@@ -23,13 +23,16 @@ import {
   endOfMonth,
   endOfQuarter,
   format,
+  isWithinInterval,
   parse,
+  parseISO,
   startOfMonth,
   startOfQuarter,
 } from 'date-fns';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
+import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { ReportState } from '../QuarterlyInsightsReport';
 
 export interface LiveMetricPeriod {
@@ -81,8 +84,14 @@ export function deriveReportPeriod(
 function filterDealsByPeriod(rawDeals: any[] | undefined, period: LiveMetricPeriod) {
   if (!rawDeals?.length) return [] as any[];
   return rawDeals.filter(d => {
-    const u = d.updated_at ? String(d.updated_at).slice(0, 10) : '';
-    return u >= period.start && u <= period.end;
+    if (isExcludedDealName(d.company)) return false;
+    if (!d.updated_at) return false;
+    const updatedAt = parseISO(d.updated_at);
+    if (Number.isNaN(updatedAt.getTime())) return false;
+    return isWithinInterval(updatedAt, {
+      start: parseISO(`${period.start}T00:00:00`),
+      end: parseISO(`${period.end}T23:59:59`),
+    });
   });
 }
 
