@@ -18,6 +18,7 @@ import { syncTaskAfterCreate, retryAsanaSyncForTask } from '@/lib/asana/syncTask
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { useContactBySenderEmail } from '@/hooks/useContactBySenderEmail';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 
 interface Props {
   dealId?: string | null;
@@ -84,10 +85,12 @@ function fireBackgroundAsanaSync(opts: {
 }) {
   const TIMEOUT_MS = 7000;
 
-  const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+  const withTimeout = <T,>(factory: () => Promise<T>): Promise<T> =>
     new Promise((resolve, reject) => {
       const t = setTimeout(() => reject(new Error('Asana sync timed out')), TIMEOUT_MS);
-      p.then((v) => { clearTimeout(t); resolve(v); })
+      Promise.resolve()
+       .then(factory)
+       .then((v) => { clearTimeout(t); resolve(v); })
        .catch((e) => { clearTimeout(t); reject(e); });
     });
 
@@ -116,9 +119,20 @@ function fireBackgroundAsanaSync(opts: {
     });
   };
 
+  const markPending = async () => {
+    try {
+      await supabase
+        .from('tasks')
+        .update({ asana_sync_status: 'pending', asana_sync_error: null } as any)
+        .eq('id', opts.taskId);
+    } catch {
+      /* ignore */
+    }
+  };
+
   void (async () => {
     const attempt = async () =>
-      withTimeout(syncTaskAfterCreate({
+      withTimeout(() => syncTaskAfterCreate({
         taskId: opts.taskId,
         title: opts.title,
         description: opts.description,
@@ -128,6 +142,7 @@ function fireBackgroundAsanaSync(opts: {
       }));
 
     try {
+      await markPending();
       const r = await attempt();
       if (r.ok) {
         if (!r.skipped) toast.success('Synced to Asana');
@@ -299,13 +314,24 @@ export function CreateTaskInlineCard({
       const result = await createTaskFromDraft(draft, user.id, company?.id || null, {
         syncSource: 'naitive_email_assist_create_task_button',
         sourceThreadId: threadId || null,
+        initialAsanaSyncStatus: asanaSync ? 'pending' : null,
       });
 
       if (result?.id) {
-        // Optimistic UI: close the form and toast immediately. Asana sync
-        // runs in the background so the user is never blocked on the API.
-        setCreated({ taskId: result.id, dealName: dealName || null });
+        const isFifthLineTenant = company?.id === FIFTH_LINE_COMPANY_ID;
+        // Optimistic UI: local DB row exists, so clear loading and close the
+        // 5th Line AI Assist panel immediately before any Asana network work.
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['deal-tasks'] });
+
+        if (isFifthLineTenant && defaultOpen) {
+          onCancel?.();
+        } else {
+          setCreated({ taskId: result.id, dealName: dealName || null });
+        }
+
+        setBusy(false);
 
         if (asanaSync) {
           toast.success(
@@ -329,6 +355,7 @@ export function CreateTaskInlineCard({
               : 'Task created',
           );
         }
+        return;
       }
     } catch (e: any) {
       console.error('[CreateTaskInlineCard] create failed', e);
