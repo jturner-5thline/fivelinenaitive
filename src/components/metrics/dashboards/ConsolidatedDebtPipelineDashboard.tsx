@@ -1012,14 +1012,46 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Consolidated Debt Pipeline</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Consolidated Debt Pipeline</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
+          </p>
+        </div>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
+          <TabsList className="bg-muted/40 border border-border/40">
+            <TabsTrigger value="cards" className="gap-1.5">
+              <LayoutGrid className="h-3.5 w-3.5" /> Cards
+            </TabsTrigger>
+            <TabsTrigger value="table" className="gap-1.5">
+              <TableIcon className="h-3.5 w-3.5" /> Table
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {sections.map(section => (
+      {viewMode === 'table' ? (
+        <PipelineMatrixTable
+          sections={sections}
+          selectedQuarter={selectedQuarter}
+          onCellClick={(card, bucket) => {
+            const metricType = card.drilldownMetricType ?? 'dollars';
+            setDrilldown({
+              title: bucket
+                ? `${card.drilldownTitle} — ${bucket.label}`
+                : card.drilldownTitle,
+              deals: bucket ? bucket.deals : card.deals,
+              periodNote: card.drilldownPeriodNote,
+              metricType,
+              valueFormatter: card.drilldownValueFormatter
+                ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+              chartColor: card.drilldownChartColor ?? card.color,
+            });
+          }}
+        />
+      ) : (
+        sections.map(section => (
         <div key={section.id} className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
@@ -1045,7 +1077,8 @@ export function ConsolidatedDebtPipelineDashboard({
             ))}
           </div>
         </div>
-      ))}
+        ))
+      )}
 
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
