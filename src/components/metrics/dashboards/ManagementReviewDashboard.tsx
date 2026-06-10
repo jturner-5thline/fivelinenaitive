@@ -685,24 +685,94 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     'in-due-diligence',
   ]), []);
 
-  const activeDealsList = useMemo(() => {
-    const excluded: Array<{ name: string; rawStage: unknown; normalized: string; reason: string }> = [];
+  const DEBT_PIPELINE_EXCLUDED_STATUSES = useMemo(
+    () => new Set(['archived', 'closed-lost', 'closed lost']),
+    [],
+  );
+
+  const debtPipelineDebug = useMemo(() => {
+    const excluded: Array<{
+      id: string;
+      name: string;
+      rawStage: unknown;
+      normalized: string;
+      reason: string;
+      status: string | null;
+      onHold: boolean | null;
+      pipelineId: string | null;
+      projectedCloseDate: string | null;
+      totalFee: number | null;
+      retainerFee: number | null;
+      milestoneFee: number | null;
+      inActivePipeline: boolean;
+    }> = [];
     const included = allDeals.filter((d: any) => {
       const normalized = normalizeDebtPipelineStage(d.stage);
+      const normalizedStatus = String(d.status ?? '').toLowerCase().trim();
+      const inActivePipeline = !activePipelineId || !d.pipeline_id || d.pipeline_id === activePipelineId;
+
       if (!ACTIVE_DEAL_LIST_STAGES.has(normalized)) {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: 'stage-out-of-range' });
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: 'stage-out-of-range',
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
-      if (d.status === 'archived' || d.status === 'on-hold') {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `status:${d.status}` });
+      if (DEBT_PIPELINE_EXCLUDED_STATUSES.has(normalizedStatus)) {
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: `status:${normalizedStatus || 'unknown'}`,
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
-      if (activePipelineId && d.pipeline_id && d.pipeline_id !== activePipelineId) {
-        excluded.push({ name: d.company, rawStage: d.stage, normalized, reason: `wrong-pipeline:${d.pipeline_id}` });
+      if (!inActivePipeline) {
+        excluded.push({
+          id: String(d.id ?? d.company ?? normalized),
+          name: d.company,
+          rawStage: d.stage,
+          normalized,
+          reason: `wrong-pipeline:${d.pipeline_id}`,
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline,
+        });
         return false;
       }
       return true;
     });
+
+    const reasonCounts = excluded.reduce<Record<string, number>>((acc, item) => {
+      acc[item.reason] = (acc[item.reason] || 0) + 1;
+      return acc;
+    }, {});
+
     if (import.meta.env.DEV) {
       const interesting = excluded.filter(e =>
         /upflex|athyna/i.test(e.name || '') || e.normalized === 'in-due-diligence' || e.normalized === 'final-credit-items'
@@ -714,13 +784,39 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       // eslint-disable-next-line no-console
       console.info('[DebtPipeline] included', included.map((d: any) => ({ name: d.company, stage: d.stage, pipeline: d.pipeline_id })));
     }
-    return included.sort((a: any, b: any) => {
+
+    const sortedIncluded = included.sort((a: any, b: any) => {
       const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
       const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
       if (ad !== bd) return ad - bd;
       return String(a.company || '').localeCompare(String(b.company || ''));
     });
-  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES]);
+
+    return {
+      included: sortedIncluded,
+      excluded,
+      totalCandidates: allDeals.length,
+      reasonCounts,
+      trackedDeals: allDeals
+        .filter((d: any) => /upflex|athyna/i.test(String(d.company || '')))
+        .map((d: any) => ({
+          id: d.id,
+          name: d.company,
+          rawStage: d.stage,
+          normalizedStage: normalizeDebtPipelineStage(d.stage),
+          status: d.status ?? null,
+          onHold: d.on_hold ?? null,
+          pipelineId: d.pipeline_id ?? null,
+          projectedCloseDate: d.projected_close_date ?? null,
+          totalFee: d.total_fee == null ? null : Number(d.total_fee),
+          retainerFee: d.retainer_fee == null ? null : Number(d.retainer_fee),
+          milestoneFee: d.milestone_fee == null ? null : Number(d.milestone_fee),
+          inActivePipeline: !activePipelineId || !d.pipeline_id || d.pipeline_id === activePipelineId,
+        })),
+    };
+  }, [allDeals, activePipelineId, ACTIVE_DEAL_LIST_STAGES, DEBT_PIPELINE_EXCLUDED_STATUSES]);
+
+  const activeDealsList = debtPipelineDebug.included;
 
   // Latest status note per deal (for hover tooltips on Deal Name + Status)
   const [debtPipelineStatusNotes, setDebtPipelineStatusNotes] = useState<Record<string, string>>({});
@@ -1473,6 +1569,42 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     </tbody>
                   </table>
                 )}
+                <div style={{ marginTop: 2, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.10)' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 10, color: 'rgba(255,255,255,0.72)' }}>
+                    <span>Total candidates: <strong style={{ color: 'hsl(0,0%,100%)' }}>{debtPipelineDebug.totalCandidates}</strong></span>
+                    <span>Included: <strong style={{ color: '#3de89a' }}>{activeDealsList.length}</strong></span>
+                    <span>Excluded: <strong style={{ color: '#ffbe1e' }}>{debtPipelineDebug.excluded.length}</strong></span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 10, color: 'rgba(255,255,255,0.6)', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(debtPipelineDebug.reasonCounts).length === 0 ? (
+                      <span>No exclusions</span>
+                    ) : Object.entries(debtPipelineDebug.reasonCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([reason, count]) => (
+                        <span key={reason}>{reason}: {count}</span>
+                      ))}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                    {debtPipelineDebug.trackedDeals.map((deal) => {
+                      const exclusion = debtPipelineDebug.excluded.find((item) => item.id === deal.id);
+                      return (
+                        <div key={deal.id} style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', lineHeight: 1.45 }}>
+                          <strong style={{ color: '#e8f6ff' }}>{deal.name}</strong>
+                          {' · '}stage: {String(deal.rawStage || '—')}
+                          {' · '}normalized: {deal.normalizedStage || '—'}
+                          {' · '}status: {deal.status || '—'}
+                          {' · '}on hold: {deal.onHold ? 'yes' : 'no'}
+                          {' · '}active pipeline: {deal.inActivePipeline ? 'yes' : 'no'}
+                          {' · '}close: {deal.projectedCloseDate || '—'}
+                          {' · '}fee: {deal.totalFee == null || deal.totalFee === 0 ? '—' : fmtUSD(deal.totalFee)}
+                          {' · '}retainer: {deal.retainerFee == null || deal.retainerFee === 0 ? '—' : fmtUSD(deal.retainerFee)}
+                          {' · '}milestone: {deal.milestoneFee == null || deal.milestoneFee === 0 ? '—' : fmtUSD(deal.milestoneFee)}
+                          {' · '}result: <span style={{ color: exclusion ? '#ffbe1e' : '#3de89a' }}>{exclusion ? exclusion.reason : 'included'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div style={{ marginTop: 4 }}>
                   <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 700, padding: '4px 8px' }}>
                     Revenue by Month · Next 6 Months
