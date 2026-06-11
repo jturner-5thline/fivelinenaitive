@@ -233,22 +233,116 @@ export default function EmailIntelligencePage() {
       </div>
 
       {/* Email List */}
-      <div className="space-y-2">
-        {filteredEmails.length === 0 ? (
-          <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {emails.length === 0 ? 'No emails synced yet.' : 'No emails match your filters.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredEmails.map(email => (
-            <EmailCard key={email.id} email={email} onReanalyze={reanalyzeEmail} />
-          ))
-        )}
-      </div>
+      {emails.length === 0 && isLoading ? (
+        <EmailListSkeleton />
+      ) : filteredEmails.length === 0 ? (
+        <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              {emails.length === 0 ? 'No emails synced yet.' : 'No emails match your filters.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <VirtualEmailList
+          emails={filteredEmails}
+          onReanalyze={reanalyzeEmail}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+        />
+      )}
     </div>
+  );
+}
+
+function EmailListSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="border-white/[0.06] bg-card/80 backdrop-blur-md">
+          <CardContent className="p-3 flex gap-3">
+            <Skeleton className="h-7 w-7 rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VirtualEmailList({
+  emails,
+  onReanalyze,
+  hasMore,
+  onLoadMore,
+}: {
+  emails: EnrichedEmail[];
+  onReanalyze: (id: string) => void;
+  hasMore: boolean;
+  onLoadMore: () => void;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: emails.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 132,
+    overscan: 6,
+    getItemKey: (i) => emails[i].id,
+  });
+
+  return (
+    <>
+      <div
+        ref={parentRef}
+        className="relative overflow-auto"
+        style={{ maxHeight: 'calc(100vh - 320px)', minHeight: 400 }}
+      >
+        <div
+          style={{
+            height: rowVirtualizer.getTotalSize(),
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const email = emails[virtualRow.index];
+            return (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                  paddingBottom: 8,
+                }}
+              >
+                <EmailCard email={email} onReanalyze={onReanalyze} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]"
+            onClick={onLoadMore}
+          >
+            Load older messages
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
 
