@@ -5330,7 +5330,7 @@ export default function DealDetail() {
                         >
                           Management
                           {infoRequestActionCount > 0 && (
-                            <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                            <Badge variant="destructive" className="h-[18px] min-w-[18px] px-1 text-[11px] leading-none rounded-full justify-center">
                               {infoRequestActionCount}
                             </Badge>
                           )}
