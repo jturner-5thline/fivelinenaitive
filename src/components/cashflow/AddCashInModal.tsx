@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import { fmtShort } from './formatters';
+import { computeTotalFee } from '@/lib/fees';
 
 interface Deal {
   id: string;
@@ -13,7 +14,6 @@ interface Deal {
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
-  total_fee: number | null;
 }
 
 interface RowState {
