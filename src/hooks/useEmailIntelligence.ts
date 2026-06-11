@@ -500,12 +500,28 @@ export function useEmailIntelligence() {
     loadSettings();
   }, [loadSettings]);
 
-  // Initial sync when Gmail connected
+  // Initial paint: hydrate from cache FIRST, then kick off Gmail sync in
+  // the background. The previous version awaited a 100-message Gmail API
+  // round-trip before showing anything; that's the slowest path on this
+  // page and it's avoidable when the cache already has rows.
   useEffect(() => {
-    if (gmailStatus.connected && settingsLoaded && user) {
-      syncEmails(true);
-    }
+    if (!gmailStatus.connected || !settingsLoaded || !user) return;
+    let cancelled = false;
+    (async () => {
+      await loadEnrichedEmails();
+      if (cancelled) return;
+      // Fire-and-forget background sync — refreshes cache + analyses,
+      // doesn't gate the UI.
+      void syncEmails(true);
+    })();
+    return () => { cancelled = true; };
   }, [gmailStatus.connected, settingsLoaded, user]);
+
+  // Re-load when the user pages in older messages.
+  useEffect(() => {
+    if (!user) return;
+    void loadEnrichedEmails();
+  }, [pageLimit, user, loadEnrichedEmails]);
 
   // Auto-analyze after sync
   useEffect(() => {
@@ -554,6 +570,8 @@ export function useEmailIntelligence() {
     isLoading,
     isAnalyzing,
     settingsLoaded,
+    hasMore,
+    loadMore,
     syncEmails,
     saveSettings,
     reanalyzeEmail,
