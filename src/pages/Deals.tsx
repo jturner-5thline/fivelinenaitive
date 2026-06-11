@@ -38,7 +38,6 @@ import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
-import { REACHED_FINAL_CREDIT_SLUGS } from '@/lib/salesBdActivePipelineConversion';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -134,7 +133,6 @@ export default function Dashboard() {
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
-  const [activeStagesOnly, setActiveStagesOnly] = useState(false);
   const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
@@ -358,16 +356,8 @@ export default function Dashboard() {
       });
     }
 
-    // "Active" chip (5th Line only) — narrow to deals at "Final Credit Items"
-    // stage or later in the canonical pipeline order.
-    if (is5thLine && activeStagesOnly) {
-      result = result.filter(deal =>
-        REACHED_FINAL_CREDIT_SLUGS.has(String(deal.stage ?? '').toLowerCase().trim()),
-      );
-    }
-
     return result;
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks, is5thLine, activeStagesOnly]);
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
