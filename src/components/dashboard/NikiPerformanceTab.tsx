@@ -38,17 +38,41 @@ type PerfMode = 'quarterly' | 'ytd';
 const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 /**
+ * Current calendar quarter (Q1-Q4). YTD plan/actual sums Q1..currentQuarter
+ * so a YTD column never includes future, unrealized quarters.
+ */
+function currentQuarterKey(): QuarterKey {
+  const m = new Date().getMonth();
+  if (m <= 2) return 'Q1';
+  if (m <= 5) return 'Q2';
+  if (m <= 8) return 'Q3';
+  return 'Q4';
+}
+
+/**
  * Resolve plan/actual for a row at a given period, accounting for
  * quarter-by-quarter vs cumulative YTD display mode.
  */
 function resolvePeriod(
   row: MetricRow,
   planMap: ReturnType<typeof useNikiPerformancePlan>['plan'],
-  k: QuarterKey | 'YEAR',
+  k: QuarterKey | 'YEAR' | 'YTD',
   mode: PerfMode,
 ): { planVal: number; actualVal: number } {
   const p = planMap[row.key];
   if (k === 'YEAR') return { planVal: p.total, actualVal: row.yearTotal };
+  if (k === 'YTD') {
+    const cur = currentQuarterKey();
+    const idx = QUARTER_ORDER_LIST.indexOf(cur);
+    let plan = 0;
+    let actual = 0;
+    for (let i = 0; i <= idx; i++) {
+      const qk = QUARTER_ORDER_LIST[i];
+      plan += p[qk];
+      actual += row.byQuarter[qk].value;
+    }
+    return { planVal: plan, actualVal: actual };
+  }
   if (mode === 'quarterly') {
     return { planVal: p[k], actualVal: row.byQuarter[k].value };
   }
