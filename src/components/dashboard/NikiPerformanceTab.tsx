@@ -776,7 +776,10 @@ function NikiPerformanceTabInner() {
                     </button>
                   ))}
                 </div>
-                {/* Quarter selector */}
+                {/* Quarter selector — only meaningful in Quarter-by-Quarter
+                    mode. YTD mode collapses to a single YTD column so the
+                    individual-quarter chips would be misleading. */}
+                {perfMode === 'quarterly' && (
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
                     const active = selectedPeriods.includes(k);
@@ -798,6 +801,7 @@ function NikiPerformanceTabInner() {
                     );
                   })}
                 </div>
+                )}
                 {/* Column visibility toggles */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([
