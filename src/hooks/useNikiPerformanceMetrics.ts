@@ -21,6 +21,47 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 export const ACTIVE_PIPELINE_ID_5THLINE = 'b78ad452-b489-4c89-8a91-789347c05f79';
 export const NIKI_NAME = 'Niki Heikali';
 
+/**
+ * Canonical stage order for the 5th Line Active Pipeline. Used so we can
+ * count a deal as having "reached" a stage even when its stage-transition
+ * was never logged — if the deal's CURRENT stage sits at or past the
+ * target stage in the canonical flow, we infer entry from `deals.created_at`.
+ *
+ * `closed-lost` and `on-hold` are intentionally OMITTED from ordering:
+ * they're side-branches, not progression points, so we cannot infer prior
+ * stage entry from them — those deals only count when an explicit stage
+ * log exists.
+ */
+const STAGE_ORDER_ACTIVE = [
+  'ndaneeds-list-sent',
+  'pre-credit-needs',
+  'initial-lender-review',
+  'initial-feedback',
+  'proposal-in-development',
+  'proposal-issued',
+  'agreement-pending',
+  'final-credit-items',
+  'client-strategy-review',
+  'write-up-pending',
+  'submitted-to-lenders',
+  'lenders-in-review',
+  'terms-issued',
+  'in-due-diligence',
+  'funded-invoiced',
+  'closed-won',
+] as const;
+
+function stageIdx(s: string | null | undefined): number {
+  if (!s) return -1;
+  return STAGE_ORDER_ACTIVE.indexOf(s as any);
+}
+function isAtOrPast(currentStage: string | null | undefined, targetStage: string): boolean {
+  const c = stageIdx(currentStage);
+  const t = stageIdx(targetStage);
+  if (c < 0 || t < 0) return false;
+  return c >= t;
+}
+
 export type PerfDeal = {
   deal_id: string;
   company: string;
@@ -55,38 +96,114 @@ function nikiFilter(row: any): boolean {
   return row?.deal_owner === NIKI_NAME || row?.manager === NIKI_NAME;
 }
 
-function useStageEntryDeals(stageId: string) {
+/**
+ * Consolidated pipeline-data hook. Fetches Niki's Active-Pipeline deals plus
+ * every stage-transition log (activity_logs + deal_stage_history) ONCE, then
+ * exposes a `entriesFor(stageId)` helper that returns one PerfDeal per deal
+ * that ever reached the target stage in 2026.
+ *
+ * Counting strategy (per the Rep Scorecard spec):
+ *   1. Earliest stage_change to=stageId in `activity_logs` wins, then
+ *   2. earliest stage_enter in `deal_stage_history` for the same target, then
+ *   3. fallback for deals whose CURRENT stage sits at or past the target in
+ *      the canonical order but have no log entry → use `deals.created_at`.
+ *
+ * A deal counts for the period in which it was issued/entered, NOT its
+ * current stage. Closed-Lost deals still count for every prior stage they
+ * reached. Excluded test-deal names are filtered out.
+ */
+function useNikiPipelineData() {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ['niki-perf-stage', stageId],
+    queryKey: ['niki-perf-pipeline-data'],
     enabled: !!user,
-    queryFn: async (): Promise<PerfDeal[]> => {
-      const { data, error } = await supabase
-        .from('activity_logs')
-        .select(`deal_id, created_at, deals!inner(company, value, deal_owner, manager, pipeline_id)`)
-        .eq('activity_type', 'stage_change')
-        .eq('metadata->>to', stageId)
-        .eq('deals.pipeline_id', ACTIVE_PIPELINE_ID_5THLINE)
-        .gte('created_at', '2026-01-01')
-        .lte('created_at', '2026-12-31T23:59:59.999Z')
-        .order('created_at', { ascending: true });
-      if (error) throw error;
-      const seen = new Map<string, PerfDeal>();
-      for (const row of data ?? []) {
-        const d: any = (row as any).deals;
-        if (!d || !nikiFilter(d)) continue;
-        if (isExcludedDealName(d.company)) continue;
-        if (seen.has(row.deal_id)) continue; // first entry only
-        seen.set(row.deal_id, {
-          deal_id: row.deal_id,
-          company: d.company ?? '—',
-          value: Number(d.value) || 0,
-          entered_at: row.created_at,
-        });
+    queryFn: async () => {
+      // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
+      //    deals still count for the stages they passed through).
+      const dealsRes = await supabase
+        .from('deals')
+        .select('id, company, value, deal_owner, manager, stage, created_at')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID_5THLINE);
+      if (dealsRes.error) throw dealsRes.error;
+      const allNiki = (dealsRes.data ?? []).filter(
+        (d: any) => nikiFilter(d) && !isExcludedDealName(d.company),
+      );
+      const nikiIds = allNiki.map((d: any) => d.id);
+      const dealsById = new Map<string, any>(allNiki.map((d: any) => [d.id, d]));
+
+      if (nikiIds.length === 0) {
+        return { allNiki, dealsById, eventsByStage: new Map<string, Map<string, string>>() };
       }
-      return Array.from(seen.values());
+
+      // 2. All stage-change events for these deals, from BOTH event sources.
+      //    activity_logs.metadata->>'to' is the canonical stage id.
+      const [alRes, dshRes] = await Promise.all([
+        supabase
+          .from('activity_logs')
+          .select('deal_id, created_at, metadata')
+          .eq('activity_type', 'stage_change')
+          .in('deal_id', nikiIds),
+        supabase
+          .from('deal_stage_history')
+          .select('deal_id, changed_at, to_stage, to_stage_id')
+          .eq('event_type', 'stage_enter')
+          .in('deal_id', nikiIds),
+      ]);
+      if (alRes.error) throw alRes.error;
+      if (dshRes.error) throw dshRes.error;
+
+      // Map<stageId, Map<deal_id, earliest_iso_date>>
+      const eventsByStage = new Map<string, Map<string, string>>();
+      const record = (stage: string | null | undefined, dealId: string, at: string) => {
+        if (!stage || !dealId || !at) return;
+        let m = eventsByStage.get(stage);
+        if (!m) {
+          m = new Map();
+          eventsByStage.set(stage, m);
+        }
+        const prev = m.get(dealId);
+        if (!prev || at < prev) m.set(dealId, at);
+      };
+      for (const r of alRes.data ?? []) {
+        const to = (r as any).metadata?.to;
+        record(to, r.deal_id, r.created_at);
+      }
+      for (const r of dshRes.data ?? []) {
+        record((r as any).to_stage_id ?? (r as any).to_stage, r.deal_id, r.changed_at);
+      }
+
+      return { allNiki, dealsById, eventsByStage };
     },
   });
+}
+
+function entriesForStage(
+  data: { allNiki: any[]; dealsById: Map<string, any>; eventsByStage: Map<string, Map<string, string>> } | undefined,
+  stageId: string,
+): PerfDeal[] {
+  if (!data) return [];
+  const merged = new Map<string, string>(data.eventsByStage.get(stageId) ?? new Map());
+
+  // Fallback: any Niki deal currently at-or-past target stage with no event.
+  for (const d of data.allNiki) {
+    if (merged.has(d.id)) continue;
+    if (isAtOrPast(d.stage, stageId)) {
+      merged.set(d.id, d.created_at);
+    }
+  }
+
+  const out: PerfDeal[] = [];
+  for (const [id, at] of merged.entries()) {
+    const d = data.dealsById.get(id);
+    if (!d) continue;
+    out.push({
+      deal_id: id,
+      company: d.company ?? '—',
+      value: Number(d.value) || 0,
+      entered_at: at,
+    });
+  }
+  return out;
 }
 
 function usePipelineAddedDeals() {
@@ -166,41 +283,38 @@ function aggregate(
 
 export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
   const added = usePipelineAddedDeals();
-  const proposal = useStageEntryDeals('proposal-issued');
-  const finalCredit = useStageEntryDeals('final-credit-items');
-  const termsIssued = useStageEntryDeals('terms-issued');
-  const inDueDil = useStageEntryDeals('in-due-diligence');
-  const funded = useStageEntryDeals('funded-invoiced');
+  const pipelineData = useNikiPipelineData();
   const revenue = useNikiRevenueActuals();
 
   const isLoading =
     added.isLoading ||
-    proposal.isLoading ||
-    finalCredit.isLoading ||
-    termsIssued.isLoading ||
-    inDueDil.isLoading ||
-    funded.isLoading ||
+    pipelineData.isLoading ||
     revenue.isLoading;
 
   const rows = useMemo<MetricRow[]>(() => {
+    const proposal     = entriesForStage(pipelineData.data, 'proposal-issued');
+    const finalCredit  = entriesForStage(pipelineData.data, 'final-credit-items');
+    const termsIssued  = entriesForStage(pipelineData.data, 'terms-issued');
+    const inDueDil     = entriesForStage(pipelineData.data, 'in-due-diligence');
+    const funded       = entriesForStage(pipelineData.data, 'funded-invoiced');
     return [
       aggregate('dealsOnBoard',         'Deals on Board',           'count',    added.data ?? []),
       aggregate('dollarsOnBoard',       'Dollars on Board',         'currency', added.data ?? []),
-      aggregate('proposalsIssued',      'Proposals Issued #',       'count',    proposal.data ?? []),
-      aggregate('dollarsProposed',      'Dollars Proposed',         'currency', proposal.data ?? []),
-      aggregate('clientsSigned',        'Clients Signed',           'count',    finalCredit.data ?? []),
-      aggregate('dollarsSigned',        'Dollars Signed',           'currency', finalCredit.data ?? []),
-      aggregate('clientsReceivingTerms','Clients Receiving Terms',  'count',    termsIssued.data ?? []),
-      aggregate('termsSigned',          'Terms Signed',             'count',    inDueDil.data ?? []),
-      aggregate('volumeTermsSigned',    'Volume of Terms Signed',   'currency', inDueDil.data ?? []),
-      aggregate('dealsClosed',          'Deals Closed',             'count',    funded.data ?? []),
-      aggregate('dollarsFunded',        'Dollars Funded',           'currency', funded.data ?? []),
+      aggregate('proposalsIssued',      'Proposals Issued #',       'count',    proposal),
+      aggregate('dollarsProposed',      'Dollars Proposed',         'currency', proposal),
+      aggregate('clientsSigned',        'Clients Signed',           'count',    finalCredit),
+      aggregate('dollarsSigned',        'Dollars Signed',           'currency', finalCredit),
+      aggregate('clientsReceivingTerms','Clients Receiving Terms',  'count',    termsIssued),
+      aggregate('termsSigned',          'Terms Signed',             'count',    inDueDil),
+      aggregate('volumeTermsSigned',    'Volume of Terms Signed',   'currency', inDueDil),
+      aggregate('dealsClosed',          'Deals Closed',             'count',    funded),
+      aggregate('dollarsFunded',        'Dollars Funded',           'currency', funded),
       aggregate('retainerRevenue',            'Retainer Revenue',  'currency', revenue.data?.retainer ?? []),
       aggregate('consultingMilestoneRevenue', 'Milestone Revenue', 'currency', revenue.data?.milestone ?? []),
       aggregate('feeRevenue',                 'Closing Fee',       'currency', revenue.data?.closing ?? []),
       aggregate('totalRevenue',               'Total Revenue',     'currency', revenue.data?.total ?? []),
     ];
-  }, [added.data, proposal.data, finalCredit.data, termsIssued.data, inDueDil.data, funded.data, revenue.data]);
+  }, [added.data, pipelineData.data, revenue.data]);
 
   return { isLoading, rows };
 }
