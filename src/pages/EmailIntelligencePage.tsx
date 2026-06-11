@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, memo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,9 @@ import { useEmailIntelligence, EnrichedEmail } from '@/hooks/useEmailIntelligenc
 import { useGmail } from '@/hooks/useGmail';
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 const CATEGORY_COLORS: Record<string, string> = {
   deal_update: 'bg-primary/10 text-primary border-primary/20',
@@ -50,9 +53,11 @@ const SENTIMENT_ICONS: Record<string, { icon: typeof TrendingUp; className: stri
 export default function EmailIntelligencePage() {
   const navigate = useNavigate();
   const { status, isStatusLoading } = useGmail();
-  const { emails, stats, isLoading, isAnalyzing, syncEmails, reanalyzeEmail } = useEmailIntelligence();
+  const { emails, stats, isLoading, isAnalyzing, syncEmails, reanalyzeEmail, hasMore, loadMore } = useEmailIntelligence();
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Debounce search input so we don't refilter on every keystroke.
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
@@ -72,8 +77,8 @@ export default function EmailIntelligencePage() {
   // Filter emails
   const filteredEmails = useMemo(() => {
     return emails.filter(e => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
         const matchesSearch =
           e.subject?.toLowerCase().includes(q) ||
           e.from_name?.toLowerCase().includes(q) ||
@@ -93,7 +98,7 @@ export default function EmailIntelligencePage() {
       if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
       return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
     });
-  }, [emails, searchQuery, categoryFilter, priorityFilter, sentimentFilter, dealFilter]);
+  }, [emails, debouncedSearch, categoryFilter, priorityFilter, sentimentFilter, dealFilter]);
 
   if (isStatusLoading) {
     return (
@@ -228,22 +233,116 @@ export default function EmailIntelligencePage() {
       </div>
 
       {/* Email List */}
-      <div className="space-y-2">
-        {filteredEmails.length === 0 ? (
-          <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                {emails.length === 0 ? 'No emails synced yet.' : 'No emails match your filters.'}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          filteredEmails.map(email => (
-            <EmailCard key={email.id} email={email} onReanalyze={reanalyzeEmail} />
-          ))
-        )}
-      </div>
+      {emails.length === 0 && isLoading ? (
+        <EmailListSkeleton />
+      ) : filteredEmails.length === 0 ? (
+        <Card className="border-white/[0.06] bg-card/80 backdrop-blur-md">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              {emails.length === 0 ? 'No emails synced yet.' : 'No emails match your filters.'}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <VirtualEmailList
+          emails={filteredEmails}
+          onReanalyze={reanalyzeEmail}
+          hasMore={hasMore}
+          onLoadMore={loadMore}
+        />
+      )}
     </div>
+  );
+}
+
+function EmailListSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Card key={i} className="border-white/[0.06] bg-card/80 backdrop-blur-md">
+          <CardContent className="p-3 flex gap-3">
+            <Skeleton className="h-7 w-7 rounded-md" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VirtualEmailList({
+  emails,
+  onReanalyze,
+  hasMore,
+  onLoadMore,
+}: {
+  emails: EnrichedEmail[];
+  onReanalyze: (id: string) => void;
+  hasMore: boolean;
+  onLoadMore: () => void;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: emails.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 132,
+    overscan: 6,
+    getItemKey: (i) => emails[i].id,
+  });
+
+  return (
+    <>
+      <div
+        ref={parentRef}
+        className="relative overflow-auto"
+        style={{ maxHeight: 'calc(100vh - 320px)', minHeight: 400 }}
+      >
+        <div
+          style={{
+            height: rowVirtualizer.getTotalSize(),
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const email = emails[virtualRow.index];
+            return (
+              <div
+                key={virtualRow.key}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                  paddingBottom: 8,
+                }}
+              >
+                <EmailCard email={email} onReanalyze={onReanalyze} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/[0.1] bg-white/[0.04] hover:bg-white/[0.08]"
+            onClick={onLoadMore}
+          >
+            Load older messages
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -273,7 +372,7 @@ function StatCard({
   );
 }
 
-function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: (id: string) => void }) {
+const EmailCard = memo(function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: (id: string) => void }) {
   const navigate = useNavigate();
   const analysis = email.analysis;
   const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
@@ -376,4 +475,12 @@ function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: 
       </CardContent>
     </Card>
   );
-}
+}, (prev, next) =>
+  prev.email.id === next.email.id &&
+  prev.email.is_read === next.email.is_read &&
+  prev.email.subject === next.email.subject &&
+  prev.email.snippet === next.email.snippet &&
+  prev.email.received_at === next.email.received_at &&
+  prev.email.analysis === next.email.analysis &&
+  prev.onReanalyze === next.onReanalyze
+);

@@ -25,10 +25,10 @@ export interface CachedEmail {
   thread_id: string | null;
   subject: string | null;
   snippet: string | null;
-  body_text: string | null;
+  body_text?: string | null;
   from_email: string | null;
   from_name: string | null;
-  to_emails: string[] | null;
+  to_emails?: string[] | null;
   labels: string[] | null;
   is_read: boolean;
   is_starred: boolean;
@@ -75,6 +75,20 @@ const DEFAULT_SETTINGS: EmailIntelligenceSettings = {
 };
 
 const SYNC_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
+
+// Initial page size and pagination step. Keep tight so the inbox paints
+// fast; older messages load on demand via `loadMore`.
+const INITIAL_PAGE_SIZE = 25;
+const PAGE_STEP = 25;
+// Hard cap on rows pulled from email_cache in a single window — covers
+// thread-handled filtering without blowing up payload size.
+const MAX_PAGE_LIMIT = 200;
+
+// Skinny column set used for list rendering. Excludes body_text /
+// body_html / attachments / cc_emails — those are loaded on demand when
+// an email is opened or analyzed.
+const LIST_COLUMNS =
+  'id, gmail_message_id, thread_id, subject, snippet, from_email, from_name, to_emails, labels, is_read, is_starred, received_at, fetched_at';
 
 /**
  * Owner mailbox used to determine whether a thread has already been
@@ -126,6 +140,8 @@ export function useEmailIntelligence() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [pageLimit, setPageLimit] = useState(INITIAL_PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSyncRef = useRef<number>(0);
 
@@ -290,25 +306,31 @@ export function useEmailIntelligence() {
   }, [user, gmailStatus.connected, listMessages]);
 
   // Load emails with analysis data from DB
-  const loadEnrichedEmails = useCallback(async () => {
+  const loadEnrichedEmails = useCallback(async (limitOverride?: number) => {
     if (!user) return;
     try {
+      const limit = Math.min(limitOverride ?? pageLimit, MAX_PAGE_LIMIT);
       // Get cached emails
       const { data: cached, error: cacheErr } = await supabase
         .from('email_cache')
-        .select('*')
+        .select(LIST_COLUMNS)
         .eq('user_id', user.id)
         .order('received_at', { ascending: false })
-        .limit(200);
+        .limit(limit + 1); // fetch one extra to detect "more available"
 
       if (cacheErr) throw cacheErr;
       if (!cached || cached.length === 0) {
         setEmails([]);
+        setHasMore(false);
         return;
       }
 
+      const more = cached.length > limit;
+      const window = more ? cached.slice(0, limit) : cached;
+      setHasMore(more);
+
       // Get analysis for these emails
-      const cacheIds = cached.map(c => c.id);
+      const cacheIds = window.map(c => c.id);
       const { data: analyses, error: analysisErr } = await supabase
         .from('email_analysis')
         .select('*')
@@ -324,7 +346,7 @@ export function useEmailIntelligence() {
       // whether the owner (James) has already replied in any thread —
       // including replies he sent that are still inside the working set.
       const byThread = new Map<string, CachedEmail[]>();
-      for (const c of cached) {
+      for (const c of window) {
         const tid = c.thread_id;
         if (!tid) continue;
         const arr = byThread.get(tid) || [];
@@ -337,7 +359,7 @@ export function useEmailIntelligence() {
       // that is read AND has an owner reply after it.
       const seenThreads = new Set<string>();
       const enriched: EnrichedEmail[] = [];
-      for (const c of cached) {
+      for (const c of window) {
         if (!isUnhandled(c as CachedEmail, byThread)) continue;
         const tid = c.thread_id || c.id;
         if (seenThreads.has(tid)) continue;
@@ -352,7 +374,11 @@ export function useEmailIntelligence() {
     } catch (err) {
       console.error('Failed to load enriched emails:', err);
     }
-  }, [user]);
+  }, [user, pageLimit]);
+
+  const loadMore = useCallback(() => {
+    setPageLimit((prev) => Math.min(prev + PAGE_STEP, MAX_PAGE_LIMIT));
+  }, []);
 
   // Trigger AI analysis for unanalyzed emails
   const analyzeUnanalyzed = useCallback(async () => {
@@ -363,11 +389,19 @@ export function useEmailIntelligence() {
 
     setIsAnalyzing(true);
     try {
-      const emailBatch = unanalyzed.slice(0, 15).map(e => ({
+      const slice = unanalyzed.slice(0, 15);
+      // Bodies are not in the list payload (skinny select). Pull just the
+      // body_text for this analyze batch on demand.
+      const { data: bodies } = await supabase
+        .from('email_cache')
+        .select('id, body_text')
+        .in('id', slice.map(e => e.id));
+      const bodyMap = new Map((bodies || []).map(b => [b.id, b.body_text || '']));
+      const emailBatch = slice.map(e => ({
         cache_id: e.id,
         subject: e.subject || '',
         snippet: e.snippet || '',
-        body_text: e.body_text || '',
+        body_text: bodyMap.get(e.id) || '',
         from_email: e.from_email || '',
         from_name: e.from_name || '',
       }));
@@ -422,13 +456,19 @@ export function useEmailIntelligence() {
         .delete()
         .eq('email_cache_id', emailCacheId);
 
+      const { data: bodyRow } = await supabase
+        .from('email_cache')
+        .select('body_text')
+        .eq('id', emailCacheId)
+        .maybeSingle();
+
       const { data, error } = await supabase.functions.invoke('analyze-emails', {
         body: {
           emails: [{
             cache_id: email.id,
             subject: email.subject || '',
             snippet: email.snippet || '',
-            body_text: email.body_text || '',
+            body_text: bodyRow?.body_text || '',
             from_email: email.from_email || '',
             from_name: email.from_name || '',
           }],
@@ -460,12 +500,28 @@ export function useEmailIntelligence() {
     loadSettings();
   }, [loadSettings]);
 
-  // Initial sync when Gmail connected
+  // Initial paint: hydrate from cache FIRST, then kick off Gmail sync in
+  // the background. The previous version awaited a 100-message Gmail API
+  // round-trip before showing anything; that's the slowest path on this
+  // page and it's avoidable when the cache already has rows.
   useEffect(() => {
-    if (gmailStatus.connected && settingsLoaded && user) {
-      syncEmails(true);
-    }
+    if (!gmailStatus.connected || !settingsLoaded || !user) return;
+    let cancelled = false;
+    (async () => {
+      await loadEnrichedEmails();
+      if (cancelled) return;
+      // Fire-and-forget background sync — refreshes cache + analyses,
+      // doesn't gate the UI.
+      void syncEmails(true);
+    })();
+    return () => { cancelled = true; };
   }, [gmailStatus.connected, settingsLoaded, user]);
+
+  // Re-load when the user pages in older messages.
+  useEffect(() => {
+    if (!user) return;
+    void loadEnrichedEmails();
+  }, [pageLimit, user, loadEnrichedEmails]);
 
   // Auto-analyze after sync
   useEffect(() => {
@@ -514,6 +570,8 @@ export function useEmailIntelligence() {
     isLoading,
     isAnalyzing,
     settingsLoaded,
+    hasMore,
+    loadMore,
     syncEmails,
     saveSettings,
     reanalyzeEmail,
