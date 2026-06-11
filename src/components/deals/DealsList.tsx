@@ -166,7 +166,10 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   };
 
   const getGroupLabel = (key: string, value: string): string => {
-    if (key === 'status') return STATUS_CONFIG[value as DealStatus]?.label || value;
+    if (key === 'status') {
+      if (value === '__no_status__') return 'No status';
+      return STATUS_CONFIG[value as DealStatus]?.label || value;
+    }
     if (key === 'stage') return STAGE_CONFIG[value]?.label || value;
     if (key === 'engagementType') return ENGAGEMENT_TYPE_CONFIG[value]?.label || value;
     return value || 'Unassigned';
