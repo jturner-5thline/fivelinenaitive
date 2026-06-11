@@ -27,6 +27,7 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [recordId, setRecordId] = useState<string | null>(null);
+  const [recordCompanyId, setRecordCompanyId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [channelChoice, setChannelChoice] = useState<string>('');
@@ -37,21 +38,25 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
     let cancelled = false;
     (async () => {
       setLoading(true);
+      const escaped = referredBy.replace(/[\\%_]/g, (m) => '\\' + m);
       const { data, error } = await supabase
         .from('referral_sources')
-        .select('id, name, company, channel')
-        .eq('company_id', company.id)
-        .ilike('name', referredBy)
-        .maybeSingle();
+        .select('id, name, company, channel, company_id')
+        .or(`company_id.eq.${company.id},company_id.is.null`)
+        .ilike('name', escaped)
+        .order('company_id', { ascending: false, nullsFirst: false })
+        .limit(1);
+      const row = data && data.length ? data[0] : null;
       if (cancelled) return;
       if (error && error.code !== 'PGRST116') {
         toast.error(error.message);
       }
-      if (data) {
-        setRecordId(data.id);
-        setName(data.name || referredBy);
-        setCompanyName(data.company || initialCompany || '');
-        const ch = data.channel || '';
+      if (row) {
+        setRecordId(row.id);
+        setRecordCompanyId(row.company_id ?? null);
+        setName(row.name || referredBy);
+        setCompanyName(row.company || initialCompany || '');
+        const ch = row.channel || '';
         if (ch && !CHANNEL_PRESETS.includes(ch)) {
           setChannelChoice('Other');
           setChannelOther(ch);
@@ -61,6 +66,7 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
         }
       } else {
         setRecordId(null);
+        setRecordCompanyId(null);
         setName(referredBy);
         setCompanyName(initialCompany || '');
         setChannelChoice('');
@@ -85,13 +91,15 @@ export function ReferralSourceEditDialog({ open, onOpenChange, referredBy, initi
 
     try {
       if (recordId) {
+        const updatePayload: Record<string, any> = {
+          name: name.trim(),
+          company: companyName.trim() || null,
+          channel: channelValue,
+        };
+        if (!recordCompanyId) updatePayload.company_id = company.id;
         const { error } = await supabase
           .from('referral_sources')
-          .update({
-            name: name.trim(),
-            company: companyName.trim() || null,
-            channel: channelValue,
-          })
+          .update(updatePayload)
           .eq('id', recordId);
         if (error) throw error;
       } else {
