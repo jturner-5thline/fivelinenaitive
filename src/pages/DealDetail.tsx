@@ -16,6 +16,7 @@ import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
+import { computeTotalFee } from '@/lib/fees';
 import {
   loadPersistedDealOrigin,
   persistDealOrigin,
