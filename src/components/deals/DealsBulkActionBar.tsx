@@ -55,11 +55,17 @@ export function DealsBulkActionBar({ selectedDealIds, onClearSelection, onComple
       </div>
 
       {/* Status */}
-      <Select onValueChange={(val) => applyBulkUpdate({ status: val }, 'status')} disabled={isUpdating}>
+      <Select
+        onValueChange={(val) =>
+          applyBulkUpdate({ status: val === '__no_status__' ? null : val }, 'status')
+        }
+        disabled={isUpdating}
+      >
         <SelectTrigger className="h-8 w-[120px] text-xs">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
+          <SelectItem value="__no_status__">No status</SelectItem>
           {Object.entries(STATUS_CONFIG).map(([key, config]) => (
             <SelectItem key={key} value={key}>{config.label}</SelectItem>
           ))}

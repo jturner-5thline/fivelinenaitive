@@ -1,5 +1,6 @@
 import { DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
+import { CircleDashed } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,13 +10,13 @@ import {
 
 interface InlineStatusDropdownProps {
   dealId: string;
-  status: DealStatus;
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  status: DealStatus | null;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   className?: string;
 }
 
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
-  const statusConfig = STATUS_CONFIG[status] || { label: status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
+  const statusConfig = status ? STATUS_CONFIG[status] : null;
 
   const onTrackStyle: React.CSSProperties | undefined =
     status === 'on-track'
@@ -40,13 +41,22 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
           onPointerDown={(e) => e.stopPropagation()}
           className="focus:outline-none"
         >
-          <Badge
-            variant="outline"
-            style={onTrackStyle}
-            className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
-          >
-            {statusConfig.label}
-          </Badge>
+          {statusConfig ? (
+            <Badge
+              variant="outline"
+              style={onTrackStyle}
+              className={`${status === 'on-track' ? '' : `${statusConfig.badgeColor} border-0`} text-xs rounded-lg font-semibold cursor-pointer hover:opacity-80 transition-opacity ${className}`}
+            >
+              {statusConfig.label}
+            </Badge>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium border border-border/60 bg-muted/40 text-muted-foreground cursor-pointer hover:bg-muted/60 transition-colors ${className}`}
+            >
+              <CircleDashed className="h-3 w-3" />
+              No status
+            </span>
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -58,6 +68,18 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
         onClick={(e) => { e.stopPropagation(); e.preventDefault(); }}
         onPointerDown={(e) => e.stopPropagation()}
       >
+        <DropdownMenuItem
+          key="__no_status__"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onStatusChange(dealId, null);
+          }}
+          className={`flex items-center gap-2 ${status === null ? 'bg-muted' : ''}`}
+        >
+          <CircleDashed className="h-2.5 w-2.5 text-muted-foreground" />
+          No status
+        </DropdownMenuItem>
         {Object.entries(STATUS_CONFIG).map(([key, { label, dotColor }]) => (
           <DropdownMenuItem
             key={key}
