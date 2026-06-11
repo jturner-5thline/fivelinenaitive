@@ -22,3 +22,22 @@ export function computeTotalFee(
   if (!Number.isFinite(v) || v <= 0) return 0;
   return v * normalizeSuccessFeePercent(successFeePercent);
 }
+
+/**
+ * Closing Fee (cash collected at close) =
+ *   max(0, computeTotalFee(value, sf%) − milestone_fee)
+ *
+ * Milestones are advance payments credited against the Success Fee, so they
+ * reduce what's owed at closing. Retainers are recurring revenue tracked as
+ * their own cash-in series and are NOT deducted here.
+ */
+export function computeClosingFee(
+  dealValue: number | null | undefined,
+  successFeePercent: number | null | undefined,
+  milestoneFee: number | null | undefined,
+): number {
+  const total = computeTotalFee(dealValue, successFeePercent);
+  const m = Number(milestoneFee);
+  const milestone = Number.isFinite(m) && m > 0 ? m : 0;
+  return Math.max(0, total - milestone);
+}

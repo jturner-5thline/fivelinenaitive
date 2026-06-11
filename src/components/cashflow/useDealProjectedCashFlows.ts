@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
 import type { DealCashflowOverride } from './useDealCashflowOverrides';
-import { computeTotalFee, normalizeSuccessFeePercent } from '@/lib/fees';
+import { computeTotalFee, computeClosingFee, normalizeSuccessFeePercent } from '@/lib/fees';
 
 /**
  * Stage tokens (case-insensitive, separators normalized) that indicate the
@@ -80,12 +80,14 @@ export function useDealProjectedCashFlows(
         ) continue;
 
         // Closing Fee projection
-        // SOURCE OF TRUTH: deal.value × normalized success_fee_percent.
-        // Never fall back to deals.total_fee — Closing Fees must always
-        // reflect the Success Fee only (project-wide rule, see src/lib/fees.ts).
+        // SOURCE OF TRUTH: Success Fee total − Milestone. Milestones are
+        // advance payments credited against the success fee, so they reduce
+        // what is collected at closing. Retainers are tracked separately and
+        // are NOT deducted here. See src/lib/fees.ts.
         const dealValue = Number(d.value) || 0;
         const sfPct = Number(d.success_fee_percent);
-        const closingAmount = computeTotalFee(dealValue, sfPct);
+        const milestoneFee = Number(d.milestone_fee) || 0;
+        const closingAmount = computeClosingFee(dealValue, sfPct, milestoneFee);
         const closeDate = (d.projected_close_date || '').toString().slice(0, 10);
         if (closeDate && closingAmount > 0) {
           const normalizedPctDisplay = normalizeSuccessFeePercent(sfPct) * 100;
@@ -100,7 +102,9 @@ export function useDealProjectedCashFlows(
             flow_type: 'cash_in',
             start_date: closeDate,
             end_date: closeDate,
-            notes: `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`,
+            notes: milestoneFee > 0
+              ? `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()} − $${milestoneFee.toLocaleString()} milestone`
+              : `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`,
           });
         }
 
