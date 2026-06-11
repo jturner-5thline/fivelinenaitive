@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, memo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,9 @@ import { useEmailIntelligence, EnrichedEmail } from '@/hooks/useEmailIntelligenc
 import { useGmail } from '@/hooks/useGmail';
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 const CATEGORY_COLORS: Record<string, string> = {
   deal_update: 'bg-primary/10 text-primary border-primary/20',
@@ -50,9 +53,11 @@ const SENTIMENT_ICONS: Record<string, { icon: typeof TrendingUp; className: stri
 export default function EmailIntelligencePage() {
   const navigate = useNavigate();
   const { status, isStatusLoading } = useGmail();
-  const { emails, stats, isLoading, isAnalyzing, syncEmails, reanalyzeEmail } = useEmailIntelligence();
+  const { emails, stats, isLoading, isAnalyzing, syncEmails, reanalyzeEmail, hasMore, loadMore } = useEmailIntelligence();
 
   const [searchQuery, setSearchQuery] = useState('');
+  // Debounce search input so we don't refilter on every keystroke.
+  const debouncedSearch = useDebouncedValue(searchQuery, 300);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [sentimentFilter, setSentimentFilter] = useState<string>('all');
@@ -72,8 +77,8 @@ export default function EmailIntelligencePage() {
   // Filter emails
   const filteredEmails = useMemo(() => {
     return emails.filter(e => {
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
         const matchesSearch =
           e.subject?.toLowerCase().includes(q) ||
           e.from_name?.toLowerCase().includes(q) ||
@@ -93,7 +98,7 @@ export default function EmailIntelligencePage() {
       if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
       return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
     });
-  }, [emails, searchQuery, categoryFilter, priorityFilter, sentimentFilter, dealFilter]);
+  }, [emails, debouncedSearch, categoryFilter, priorityFilter, sentimentFilter, dealFilter]);
 
   if (isStatusLoading) {
     return (
