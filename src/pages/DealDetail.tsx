@@ -3807,9 +3807,24 @@ export default function DealDetail() {
                                       value={
                                         deal.referralSourceContactId
                                           ? { id: deal.referralSourceContactId, name: deal.referredBy?.name }
-                                          : null
+                                          : deal.referredBy?.name
+                                            ? { id: deal.referredBy.name, name: deal.referredBy.name }
+                                            : null
                                       }
-                                      onChange={(c) => updateDeal('referralSourceContactId' as any, (c?.id ?? null) as any)}
+                                      onChange={(sel) => {
+                                        if (!sel) {
+                                          updateDeal('referralSourceContactId' as any, null as any);
+                                          updateDeal('referredBy' as any, null as any);
+                                          return;
+                                        }
+                                        if (sel.kind === 'contact') {
+                                          updateDeal('referralSourceContactId' as any, sel.id as any);
+                                          updateDeal('referredBy' as any, { name: sel.name, email: sel.email || '' } as any);
+                                        } else {
+                                          updateDeal('referralSourceContactId' as any, null as any);
+                                          updateDeal('referredBy' as any, { name: sel.name, email: sel.email || '' } as any);
+                                        }
+                                      }}
                                       className="[&_input]:h-8 [&_input]:text-sm"
                                     />
                                   </div>
