@@ -286,7 +286,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // Group deals by the selected field
   const getGroupValue = (deal: Deal): string => {
-    if (groupBy === 'status') return deal.status || 'Unknown';
+    if (groupBy === 'status') return deal.status || '__no_status__';
     if (groupBy === 'stage') return deal.stage || 'Unknown';
     if (groupBy === 'engagementType') return deal.engagementType || 'Unknown';
     if (groupBy === 'manager') return deal.manager || 'Unassigned';
@@ -309,8 +309,11 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // For status, use predefined order
   const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
-  const orderedKeys = groupBy === 'status' 
-    ? STATUS_ORDER.filter(s => groupMap.has(s))
+  const orderedKeys = groupBy === 'status'
+    ? [
+        ...STATUS_ORDER.filter(s => groupMap.has(s)),
+        ...(groupMap.has('__no_status__') ? ['__no_status__'] : []),
+      ]
     : groupOrder;
 
   return (
