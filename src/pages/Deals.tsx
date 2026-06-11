@@ -400,7 +400,7 @@ export default function Dashboard() {
         // Recalculate total fee based on new deal value and existing success fee percent
         const deal = allDeals.find(d => d.id === dealId);
         if (deal?.successFeePercent) {
-          updates.totalFee = (deal.successFeePercent / 100) * valueOverride;
+          updates.totalFee = computeTotalFee(valueOverride, deal.successFeePercent);
         }
       }
       await updateDeal(dealId, updates);
