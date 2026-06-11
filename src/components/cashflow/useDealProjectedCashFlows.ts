@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
 import type { DealCashflowOverride } from './useDealCashflowOverrides';
+import { computeTotalFee, normalizeSuccessFeePercent } from '@/lib/fees';
 
 /**
  * Stage tokens (case-insensitive, separators normalized) that indicate the
@@ -57,7 +58,7 @@ export function useDealProjectedCashFlows(
       setIsLoading(true);
       const { data, error } = await supabase
         .from('deals')
-        .select('id, company, value, stage, total_fee, retainer_fee, milestone_fee, success_fee_percent, projected_close_date, contract_start_date')
+        .select('id, company, value, stage, retainer_fee, milestone_fee, success_fee_percent, projected_close_date, contract_start_date')
         .eq('company_id', companyId)
         .limit(500);
       if (cancelled) return;
@@ -79,13 +80,15 @@ export function useDealProjectedCashFlows(
         ) continue;
 
         // Closing Fee projection
+        // SOURCE OF TRUTH: deal.value × normalized success_fee_percent.
+        // Never fall back to deals.total_fee — Closing Fees must always
+        // reflect the Success Fee only (project-wide rule, see src/lib/fees.ts).
         const dealValue = Number(d.value) || 0;
         const sfPct = Number(d.success_fee_percent);
-        const closingAmount = Number.isFinite(sfPct) && sfPct > 0
-          ? dealValue * (sfPct / 100)
-          : Number(d.total_fee) || dealValue * 0.02;
+        const closingAmount = computeTotalFee(dealValue, sfPct);
         const closeDate = (d.projected_close_date || '').toString().slice(0, 10);
         if (closeDate && closingAmount > 0) {
+          const normalizedPctDisplay = normalizeSuccessFeePercent(sfPct) * 100;
           out.push({
             id: `deal:${d.id}:closing`,
             company_id: '',
@@ -97,7 +100,7 @@ export function useDealProjectedCashFlows(
             flow_type: 'cash_in',
             start_date: closeDate,
             end_date: closeDate,
-            notes: `naitive Deal — ${name} · Closing Fee (P)${Number.isFinite(sfPct) && sfPct > 0 ? ` · ${sfPct}% of $${dealValue.toLocaleString()}` : ''}`,
+            notes: `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`,
           });
         }
 

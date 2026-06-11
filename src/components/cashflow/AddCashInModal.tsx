@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import { fmtShort } from './formatters';
+import { computeTotalFee } from '@/lib/fees';
 
 interface Deal {
   id: string;
@@ -13,7 +14,6 @@ interface Deal {
   retainer_fee: number | null;
   milestone_fee: number | null;
   success_fee_percent: number | null;
-  total_fee: number | null;
 }
 
 interface RowState {
@@ -92,7 +92,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
       .then(({ data: pipeline }) => {
         let query = supabase
           .from('deals')
-          .select('id, company, stage, status, value, retainer_fee, milestone_fee, success_fee_percent, total_fee')
+          .select('id, company, stage, status, value, retainer_fee, milestone_fee, success_fee_percent')
           .eq('company_id', company.id)
           .not('status', 'in', '("on-hold","archived")')
           .not('stage', 'in', `(${EXCLUDED_STAGES.map(s => `"${s}"`).join(',')})`)
@@ -106,16 +106,12 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
           d.forEach(deal => {
             const retainer = Number(deal.retainer_fee) || 0;
             const milestone = Number(deal.milestone_fee) || 0;
-            const totalFee = Number(deal.total_fee) || 0;
             const value = Number(deal.value) || 0;
             const sfPct = Number(deal.success_fee_percent);
-            // Closing = explicit success fee (value * success_fee_percent),
-            // otherwise the residual of total_fee after retainer & milestone.
-            const closingFromPct = Number.isFinite(sfPct) && sfPct > 0
-              ? value * (sfPct / 100)
-              : 0;
-            const closingResidual = Math.max(0, totalFee - retainer - milestone);
-            const closingAmt = closingFromPct > 0 ? closingFromPct : closingResidual;
+            // Closing Fee = deal.value × normalized success_fee_percent ONLY.
+            // Never derived from total_fee — Closing Fees must always reflect
+            // the Success Fee. If success_fee_percent is missing/invalid → 0.
+            const closingAmt = computeTotalFee(value, sfPct);
             init[deal.id] = {
               retainerEnabled: false,
               retainerAmt: retainer,
