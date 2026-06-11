@@ -236,7 +236,7 @@ function GroupCard({ title, description, rows, openDrill }: {
   title: string;
   description?: string;
   rows: MetricRow[];
-  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR' | 'YTD') => void;
 }) {
   return (
     <Card>
@@ -322,9 +322,9 @@ function QuarterlyChart({ rows, title, description, unit }: {
 
 function FunnelSection({ rows, openDrill, mode, period, periodLabel, onToggleHide }: {
   rows: MetricRow[];
-  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR' | 'YTD') => void;
   mode: PerfMode;
-  period: QuarterKey | 'YEAR';
+  period: QuarterKey | 'YEAR' | 'YTD';
   periodLabel: string;
   onToggleHide?: () => void;
 }) {
