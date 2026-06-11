@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
+import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
 import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw } from 'lucide-react';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
@@ -400,7 +401,7 @@ export default function Dashboard() {
         // Recalculate total fee based on new deal value and existing success fee percent
         const deal = allDeals.find(d => d.id === dealId);
         if (deal?.successFeePercent) {
-          updates.totalFee = (deal.successFeePercent / 100) * valueOverride;
+          updates.totalFee = computeTotalFee(valueOverride, deal.successFeePercent);
         }
       }
       await updateDeal(dealId, updates);

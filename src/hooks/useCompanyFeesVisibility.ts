@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { computeTotalFee } from '@/lib/fees';
 
 export interface CompanyFeesVisibility {
   retainerEnabled: boolean;
@@ -77,7 +78,8 @@ export function formatComputedTotal(value: number | null | undefined, percent: n
   if (value == null || percent == null) return '—';
   if (!Number.isFinite(value) || !Number.isFinite(percent)) return '—';
   if (value <= 0 || percent <= 0) return '—';
-  const total = (value * percent) / 100;
+  const total = computeTotalFee(value, percent);
+  if (total <= 0) return '—';
   if (total >= 1000) return `$${Math.round(total).toLocaleString()}`;
   return `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }

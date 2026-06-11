@@ -16,6 +16,7 @@ import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
+import { computeTotalFee } from '@/lib/fees';
 import {
   loadPersistedDealOrigin,
   persistDealOrigin,
@@ -2660,14 +2661,13 @@ export default function DealDetail() {
       const updated = { ...prev, ...syncedPatch, updatedAt: new Date().toISOString() };
 
       // Total Fee is a Postgres generated column:
-      //   total_fee = retainer_fee + milestone_fee + value * success_fee_percent / 100
-      // Recompute locally so the UI stays in sync until the next refetch.
-      if (field === 'successFeePercent' || field === 'value' || field === 'retainerFee' || field === 'milestoneFee') {
-        const dealValue = Number(field === 'value' ? (value as number) : prev.value) || 0;
-        const successPercent = Number(field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent) || 0;
-        const retainer = Number(field === 'retainerFee' ? (value as number | undefined) : prev.retainerFee) || 0;
-        const milestone = Number(field === 'milestoneFee' ? (value as number | undefined) : prev.milestoneFee) || 0;
-        updated.totalFee = retainer + milestone + (dealValue * successPercent) / 100;
+      //   total_fee = value * success_fee_percent / 100
+      // Recompute locally via the shared helper so the UI stays in sync
+      // until the next refetch.
+      if (field === 'successFeePercent' || field === 'value') {
+        const dealValue = field === 'value' ? (value as number | undefined) : prev.value;
+        const successPercent = field === 'successFeePercent' ? (value as number | undefined) : prev.successFeePercent;
+        updated.totalFee = computeTotalFee(dealValue, successPercent);
       }
 
       // FinServ deals derive their displayed pipeline-card amount and the
