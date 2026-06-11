@@ -38,7 +38,6 @@ import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
-import { REACHED_FINAL_CREDIT_SLUGS } from '@/lib/salesBdActivePipelineConversion';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -134,7 +133,6 @@ export default function Dashboard() {
   const [flaggedCarouselOpen, setFlaggedCarouselOpen] = useState(false);
   const [savedViewWarningDismissed, setSavedViewWarningDismissed] = useState(false);
   const [showDuplicates, setShowDuplicates] = useState(false);
-  const [activeStagesOnly, setActiveStagesOnly] = useState(false);
   const [mergeCluster, setMergeCluster] = useState<DuplicateCluster | null>(null);
   const [expandAllSignal, setExpandAllSignal] = useState(0);
   const [collapseAllSignal, setCollapseAllSignal] = useState(0);
@@ -358,16 +356,8 @@ export default function Dashboard() {
       });
     }
 
-    // "Active" chip (5th Line only) — narrow to deals at "Final Credit Items"
-    // stage or later in the canonical pipeline order.
-    if (is5thLine && activeStagesOnly) {
-      result = result.filter(deal =>
-        REACHED_FINAL_CREDIT_SLUGS.has(String(deal.stage ?? '').toLowerCase().trim()),
-      );
-    }
-
     return result;
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks, is5thLine, activeStagesOnly]);
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
@@ -800,28 +790,6 @@ export default function Dashboard() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                )}
-
-                {is5thLine && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Toggle
-                          pressed={activeStagesOnly}
-                          onPressedChange={(pressed) => setActiveStagesOnly(pressed)}
-                          variant="outline"
-                          size="sm"
-                          aria-label="Show only active-stage deals (Final Credit Items onward)"
-                          className={`h-8 px-3 text-xs font-medium backdrop-blur-md border transition-all duration-200 ${activeStagesOnly ? 'bg-gradient-to-br from-emerald-500/25 to-green-600/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_12px_hsl(150,70%,45%,0.2)] hover:from-emerald-500/30 hover:to-green-600/25' : 'bg-gradient-to-br from-emerald-500/10 to-green-600/5 border-emerald-500/20 text-emerald-400/70 hover:from-emerald-500/15 hover:to-green-600/10 hover:border-emerald-500/35 hover:text-emerald-300'}`}
-                        >
-                          Active
-                        </Toggle>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Only deals at "Final Credit Items" or later</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
                 )}
 
                 <DropdownMenu>
