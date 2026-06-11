@@ -33,7 +33,7 @@ import { DealsBulkActionBar } from './DealsBulkActionBar';
 
 interface DealsListProps {
   deals: Deal[];
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;

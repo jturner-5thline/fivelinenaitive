@@ -42,7 +42,7 @@ interface DealEditDrawerProps {
   deal: Deal;
   isOpen: boolean;
   onClose: () => void;
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
 }
 
 export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEditDrawerProps) {
