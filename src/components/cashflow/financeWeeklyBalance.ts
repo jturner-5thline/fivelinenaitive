@@ -276,9 +276,20 @@ export function composeCombinedScheduledItems({
       notes: `${it.deal_name} — ${label}`,
     } as ScheduledCashFlow;
   });
+  // Dedupe: when a manual cash-in row exists for a given deal_id + fee_type,
+  // suppress the corresponding projected `deal:<id>:<feeType>` entry so the
+  // grid does not double-count (manual takes precedence — user-explicit).
+  const suppressedProjectedIds = new Set<string>();
+  for (const it of cashInDbItems || []) {
+    if (!it.deal_id) continue;
+    suppressedProjectedIds.add(`deal:${it.deal_id}:${it.fee_type}`);
+  }
+  const filteredProjected = (dealProjectedItems || []).filter(
+    (e) => !suppressedProjectedIds.has(e.id),
+  );
   return [
     ...(qbDerivedItems || []),
-    ...(dealProjectedItems || []),
+    ...filteredProjected,
     ...(scheduledItems || []),
     ...cashInDbAsScheduled,
   ];
