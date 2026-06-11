@@ -25,10 +25,10 @@ export interface CachedEmail {
   thread_id: string | null;
   subject: string | null;
   snippet: string | null;
-  body_text: string | null;
+  body_text?: string | null;
   from_email: string | null;
   from_name: string | null;
-  to_emails: string[] | null;
+  to_emails?: string[] | null;
   labels: string[] | null;
   is_read: boolean;
   is_starred: boolean;
@@ -75,6 +75,20 @@ const DEFAULT_SETTINGS: EmailIntelligenceSettings = {
 };
 
 const SYNC_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
+
+// Initial page size and pagination step. Keep tight so the inbox paints
+// fast; older messages load on demand via `loadMore`.
+const INITIAL_PAGE_SIZE = 25;
+const PAGE_STEP = 25;
+// Hard cap on rows pulled from email_cache in a single window — covers
+// thread-handled filtering without blowing up payload size.
+const MAX_PAGE_LIMIT = 200;
+
+// Skinny column set used for list rendering. Excludes body_text /
+// body_html / attachments / cc_emails — those are loaded on demand when
+// an email is opened or analyzed.
+const LIST_COLUMNS =
+  'id, gmail_message_id, thread_id, subject, snippet, from_email, from_name, to_emails, labels, is_read, is_starred, received_at, fetched_at';
 
 /**
  * Owner mailbox used to determine whether a thread has already been
@@ -126,6 +140,8 @@ export function useEmailIntelligence() {
   const [isLoading, setIsLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [pageLimit, setPageLimit] = useState(INITIAL_PAGE_SIZE);
+  const [hasMore, setHasMore] = useState(false);
   const syncTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSyncRef = useRef<number>(0);
 
