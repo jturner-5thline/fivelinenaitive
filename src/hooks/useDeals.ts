@@ -202,7 +202,7 @@ export function useDeals(options?: UseDealsOptions) {
     return result;
   }, [deals, filters, sortField, sortDirection, stages, aiRules, aiMatchMode]);
 
-  const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
+  const updateDealStatus = (dealId: string, newStatus: DealStatus | null) => {
     updateStatus(dealId, newStatus);
   };
 
