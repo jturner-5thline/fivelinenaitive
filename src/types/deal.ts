@@ -233,6 +233,14 @@ export const STATUS_CONFIG: Record<DealStatus, { label: string; dotColor: string
   'archived': { label: 'Archived', dotColor: 'bg-orange-500', badgeColor: 'bg-orange-500' },
 };
 
+/**
+ * UI-only sentinel for the "No status" choice. NEVER persisted to the DB
+ * (a deal with no status is stored as NULL). Used by Selects/filters that
+ * cannot use an empty string as a value.
+ */
+export const NO_STATUS_VALUE = '__no_status__' as const;
+export const NO_STATUS_LABEL = 'No status';
+
 export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> = {
   'advisory': { label: 'Advisory' },
   'managed-process': { label: 'Managed Process' },
