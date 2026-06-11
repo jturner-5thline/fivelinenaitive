@@ -389,11 +389,19 @@ export function useEmailIntelligence() {
 
     setIsAnalyzing(true);
     try {
-      const emailBatch = unanalyzed.slice(0, 15).map(e => ({
+      const slice = unanalyzed.slice(0, 15);
+      // Bodies are not in the list payload (skinny select). Pull just the
+      // body_text for this analyze batch on demand.
+      const { data: bodies } = await supabase
+        .from('email_cache')
+        .select('id, body_text')
+        .in('id', slice.map(e => e.id));
+      const bodyMap = new Map((bodies || []).map(b => [b.id, b.body_text || '']));
+      const emailBatch = slice.map(e => ({
         cache_id: e.id,
         subject: e.subject || '',
         snippet: e.snippet || '',
-        body_text: e.body_text || '',
+        body_text: bodyMap.get(e.id) || '',
         from_email: e.from_email || '',
         from_name: e.from_name || '',
       }));
@@ -448,13 +456,19 @@ export function useEmailIntelligence() {
         .delete()
         .eq('email_cache_id', emailCacheId);
 
+      const { data: bodyRow } = await supabase
+        .from('email_cache')
+        .select('body_text')
+        .eq('id', emailCacheId)
+        .maybeSingle();
+
       const { data, error } = await supabase.functions.invoke('analyze-emails', {
         body: {
           emails: [{
             cache_id: email.id,
             subject: email.subject || '',
             snippet: email.snippet || '',
-            body_text: email.body_text || '',
+            body_text: bodyRow?.body_text || '',
             from_email: email.from_email || '',
             from_name: email.from_name || '',
           }],
