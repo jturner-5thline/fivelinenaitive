@@ -372,7 +372,7 @@ function StatCard({
   );
 }
 
-function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: (id: string) => void }) {
+const EmailCard = memo(function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: (id: string) => void }) {
   const navigate = useNavigate();
   const analysis = email.analysis;
   const sentimentInfo = SENTIMENT_ICONS[analysis?.sentiment || 'neutral'] || SENTIMENT_ICONS.neutral;
@@ -475,4 +475,12 @@ function EmailCard({ email, onReanalyze }: { email: EnrichedEmail; onReanalyze: 
       </CardContent>
     </Card>
   );
-}
+}, (prev, next) =>
+  prev.email.id === next.email.id &&
+  prev.email.is_read === next.email.is_read &&
+  prev.email.subject === next.email.subject &&
+  prev.email.snippet === next.email.snippet &&
+  prev.email.received_at === next.email.received_at &&
+  prev.email.analysis === next.email.analysis &&
+  prev.onReanalyze === next.onReanalyze
+);
