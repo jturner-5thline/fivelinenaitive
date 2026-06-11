@@ -253,7 +253,7 @@ export function useDealContextSummary(dealId: string | undefined) {
         dealId: deal.id,
         dealName: (deal as any).company || '',
         stage: deal.stage || '',
-        status: deal.status || 'on-track',
+        status: deal.status ?? null,
         pipelineId: deal.pipeline_id,
         daysInStage,
         stageEnteredAt,

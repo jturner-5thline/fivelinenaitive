@@ -32,7 +32,7 @@ import {
 
 interface DealsPipelineViewProps {
   deals: Deal[];
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
@@ -40,7 +40,7 @@ interface DealsPipelineViewProps {
 
 interface DraggableDealCardProps {
   deal: Deal;
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
@@ -91,7 +91,7 @@ interface DroppableStageColumnProps {
   stageLabel: string;
   stageColor: string;
   deals: Deal[];
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;

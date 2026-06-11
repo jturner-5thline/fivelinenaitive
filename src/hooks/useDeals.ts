@@ -87,7 +87,15 @@ export function useDeals(options?: UseDealsOptions) {
     }
 
     if (filters.status.length > 0) {
-      result = result.filter((deal) => filters.status.includes(deal.status));
+      result = result.filter((deal) => {
+        if (deal.status == null) {
+          // Allow either the explicit "No status" sentinel or a literal null
+          // in the filter set to match unset-status deals.
+          return (filters.status as unknown[]).includes('__no_status__' as never)
+            || (filters.status as unknown[]).includes(null as never);
+        }
+        return filters.status.includes(deal.status);
+      });
     }
 
     if (filters.engagementType.length > 0) {
@@ -150,6 +158,9 @@ export function useDeals(options?: UseDealsOptions) {
       'on-hold': 3,
       'archived': 4,
     };
+    // Deals with no status always sort last regardless of direction, so the
+    // empty pill never floats to the top of the list when sorting by status.
+    const STATUS_NULL_RANK = Number.MAX_SAFE_INTEGER;
 
     result.sort((a, b) => {
       let comparison = 0;
@@ -167,9 +178,15 @@ export function useDeals(options?: UseDealsOptions) {
         case 'updatedAt':
           comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
           break;
-        case 'status':
-          comparison = statusOrder[a.status] - statusOrder[b.status];
+        case 'status': {
+          const aRank = a.status ? statusOrder[a.status] : STATUS_NULL_RANK;
+          const bRank = b.status ? statusOrder[b.status] : STATUS_NULL_RANK;
+          // Force nulls to the bottom for both directions.
+          if (aRank === STATUS_NULL_RANK && bRank !== STATUS_NULL_RANK) return 1;
+          if (bRank === STATUS_NULL_RANK && aRank !== STATUS_NULL_RANK) return -1;
+          comparison = aRank - bRank;
           break;
+        }
         case 'stage': {
           const stageOrder = new Map(stages.map((s, i) => [s.id, i]));
           const aIdx = stageOrder.get(a.stage) ?? 999;
@@ -185,7 +202,7 @@ export function useDeals(options?: UseDealsOptions) {
     return result;
   }, [deals, filters, sortField, sortDirection, stages, aiRules, aiMatchMode]);
 
-  const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
+  const updateDealStatus = (dealId: string, newStatus: DealStatus | null) => {
     updateStatus(dealId, newStatus);
   };
 

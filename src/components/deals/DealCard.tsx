@@ -36,7 +36,7 @@ import { Separator } from '@/components/ui/separator';
 
 interface DealCardProps {
   deal: Deal;
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;

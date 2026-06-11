@@ -66,10 +66,13 @@ export function FiltersPopover({
     label,
   }));
 
-  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
-    value: key,
-    label,
-  }));
+  const statusOptions = [
+    ...Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
+      value: key,
+      label,
+    })),
+    { value: '__no_status__', label: 'No status' },
+  ];
 
   const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
     value: key,
@@ -285,10 +288,13 @@ export function useFilterConfigs() {
     label,
   }));
 
-  const statusOptions = Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
-    value: key,
-    label,
-  }));
+  const statusOptions = [
+    ...Object.entries(STATUS_CONFIG).map(([key, { label }]) => ({
+      value: key,
+      label,
+    })),
+    { value: '__no_status__', label: 'No status' },
+  ];
 
   const engagementTypeOptions = Object.entries(ENGAGEMENT_TYPE_CONFIG).map(([key, { label }]) => ({
     value: key,

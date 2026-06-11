@@ -33,7 +33,7 @@ import { DealsBulkActionBar } from './DealsBulkActionBar';
 
 interface DealsListProps {
   deals: Deal[];
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
   onStageChange?: (dealId: string, newStage: string) => void;
   onMarkReviewed?: (dealId: string) => void;
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
@@ -166,7 +166,10 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   };
 
   const getGroupLabel = (key: string, value: string): string => {
-    if (key === 'status') return STATUS_CONFIG[value as DealStatus]?.label || value;
+    if (key === 'status') {
+      if (value === '__no_status__') return 'No status';
+      return STATUS_CONFIG[value as DealStatus]?.label || value;
+    }
     if (key === 'stage') return STAGE_CONFIG[value]?.label || value;
     if (key === 'engagementType') return ENGAGEMENT_TYPE_CONFIG[value]?.label || value;
     return value || 'Unassigned';
@@ -286,7 +289,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // Group deals by the selected field
   const getGroupValue = (deal: Deal): string => {
-    if (groupBy === 'status') return deal.status || 'Unknown';
+    if (groupBy === 'status') return deal.status || '__no_status__';
     if (groupBy === 'stage') return deal.stage || 'Unknown';
     if (groupBy === 'engagementType') return deal.engagementType || 'Unknown';
     if (groupBy === 'manager') return deal.manager || 'Unassigned';
@@ -309,8 +312,11 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // For status, use predefined order
   const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
-  const orderedKeys = groupBy === 'status' 
-    ? STATUS_ORDER.filter(s => groupMap.has(s))
+  const orderedKeys = groupBy === 'status'
+    ? [
+        ...STATUS_ORDER.filter(s => groupMap.has(s)),
+        ...(groupMap.has('__no_status__') ? ['__no_status__'] : []),
+      ]
     : groupOrder;
 
   return (

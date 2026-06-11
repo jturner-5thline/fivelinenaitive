@@ -42,7 +42,7 @@ interface DealEditDrawerProps {
   deal: Deal;
   isOpen: boolean;
   onClose: () => void;
-  onStatusChange: (dealId: string, newStatus: DealStatus) => void;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
 }
 
 export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEditDrawerProps) {
@@ -190,7 +190,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
       const updates: Partial<Deal> = isFinServ
         ? {
             company: formData.company,
-            status: formData.status as DealStatus,
+            status: formData.status,
             stage: formData.stage as DealStage,
             dealOwner: formData.dealOwner || undefined,
             narrative: formData.narrative || undefined,
@@ -212,7 +212,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         : {
             company: formData.company,
             value: formData.value,
-            status: formData.status as DealStatus,
+            status: formData.status,
             stage: formData.stage as DealStage,
             engagementType: formData.engagementType as EngagementType,
             exclusivity: (formData.exclusivity as ExclusivityType) || undefined,
@@ -352,13 +352,19 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value as DealStatus })}
+                value={formData.status ?? '__no_status__'}
+                onValueChange={(value) =>
+                  setFormData({
+                    ...formData,
+                    status: value === '__no_status__' ? null : (value as DealStatus),
+                  })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__no_status__">No status</SelectItem>
                   {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
                     <SelectItem key={key} value={key}>
                       {label}

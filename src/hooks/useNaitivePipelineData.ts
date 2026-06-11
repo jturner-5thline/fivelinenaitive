@@ -138,7 +138,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       businessModel: d.business_model || undefined,
       contactInfo: d.contact_info || undefined,
       stage: d.stage || 'prospects',
-      status: d.status || 'on-track',
+      status: d.status ?? null,
       engagementType: d.engagement_type || 'advisory',
       exclusivity: d.exclusivity || undefined,
       dealTypes: d.deal_types || undefined,

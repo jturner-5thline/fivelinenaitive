@@ -122,7 +122,9 @@ export function DealFilters({
     });
 
     filters.status.forEach((value) => {
-      const label = STATUS_CONFIG[value as DealStatus]?.label || value;
+      const label = (value as string) === '__no_status__'
+        ? 'No status'
+        : (STATUS_CONFIG[value as DealStatus]?.label || value);
       chips.push({ type: 'status', value, label });
     });
 
