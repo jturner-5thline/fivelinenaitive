@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { toast } from '@/hooks/use-toast';
 
 export interface ReferralSource {
@@ -13,6 +14,7 @@ export interface ReferralSource {
 
 export function useReferralSources() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const [referralSources, setReferralSources] = useState<ReferralSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,6 +55,7 @@ export function useReferralSources() {
         .insert({
           name: name.trim(),
           user_id: user.id,
+          company_id: company?.id ?? null,
         })
         .select('id, name, email, phone, company')
         .single();
