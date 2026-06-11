@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import { fmtShort } from './formatters';
-import { computeTotalFee } from '@/lib/fees';
+import { computeClosingFee } from '@/lib/fees';
 
 interface Deal {
   id: string;
@@ -108,10 +108,10 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
             const milestone = Number(deal.milestone_fee) || 0;
             const value = Number(deal.value) || 0;
             const sfPct = Number(deal.success_fee_percent);
-            // Closing Fee = deal.value × normalized success_fee_percent ONLY.
-            // Never derived from total_fee — Closing Fees must always reflect
-            // the Success Fee. If success_fee_percent is missing/invalid → 0.
-            const closingAmt = computeTotalFee(value, sfPct);
+            // Closing Fee = Success Fee total − Milestone (milestones are
+            // advance payments credited against the success fee). Retainers
+            // are NOT deducted — they are a separate recurring cash-in series.
+            const closingAmt = computeClosingFee(value, sfPct, milestone);
             init[deal.id] = {
               retainerEnabled: false,
               retainerAmt: retainer,
