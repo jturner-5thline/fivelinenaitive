@@ -306,25 +306,31 @@ export function useEmailIntelligence() {
   }, [user, gmailStatus.connected, listMessages]);
 
   // Load emails with analysis data from DB
-  const loadEnrichedEmails = useCallback(async () => {
+  const loadEnrichedEmails = useCallback(async (limitOverride?: number) => {
     if (!user) return;
     try {
+      const limit = Math.min(limitOverride ?? pageLimit, MAX_PAGE_LIMIT);
       // Get cached emails
       const { data: cached, error: cacheErr } = await supabase
         .from('email_cache')
-        .select('*')
+        .select(LIST_COLUMNS)
         .eq('user_id', user.id)
         .order('received_at', { ascending: false })
-        .limit(200);
+        .limit(limit + 1); // fetch one extra to detect "more available"
 
       if (cacheErr) throw cacheErr;
       if (!cached || cached.length === 0) {
         setEmails([]);
+        setHasMore(false);
         return;
       }
 
+      const more = cached.length > limit;
+      const window = more ? cached.slice(0, limit) : cached;
+      setHasMore(more);
+
       // Get analysis for these emails
-      const cacheIds = cached.map(c => c.id);
+      const cacheIds = window.map(c => c.id);
       const { data: analyses, error: analysisErr } = await supabase
         .from('email_analysis')
         .select('*')
@@ -340,7 +346,7 @@ export function useEmailIntelligence() {
       // whether the owner (James) has already replied in any thread —
       // including replies he sent that are still inside the working set.
       const byThread = new Map<string, CachedEmail[]>();
-      for (const c of cached) {
+      for (const c of window) {
         const tid = c.thread_id;
         if (!tid) continue;
         const arr = byThread.get(tid) || [];
@@ -353,7 +359,7 @@ export function useEmailIntelligence() {
       // that is read AND has an owner reply after it.
       const seenThreads = new Set<string>();
       const enriched: EnrichedEmail[] = [];
-      for (const c of cached) {
+      for (const c of window) {
         if (!isUnhandled(c as CachedEmail, byThread)) continue;
         const tid = c.thread_id || c.id;
         if (seenThreads.has(tid)) continue;
@@ -368,7 +374,11 @@ export function useEmailIntelligence() {
     } catch (err) {
       console.error('Failed to load enriched emails:', err);
     }
-  }, [user]);
+  }, [user, pageLimit]);
+
+  const loadMore = useCallback(() => {
+    setPageLimit((prev) => Math.min(prev + PAGE_STEP, MAX_PAGE_LIMIT));
+  }, []);
 
   // Trigger AI analysis for unanalyzed emails
   const analyzeUnanalyzed = useCallback(async () => {
