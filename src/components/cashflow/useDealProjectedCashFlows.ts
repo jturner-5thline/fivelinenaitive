@@ -102,7 +102,9 @@ export function useDealProjectedCashFlows(
             flow_type: 'cash_in',
             start_date: closeDate,
             end_date: closeDate,
-            notes: `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`,
+            notes: milestoneFee > 0
+              ? `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()} − $${milestoneFee.toLocaleString()} milestone`
+              : `naitive Deal — ${name} · Closing Fee (P) · ${normalizedPctDisplay}% of $${dealValue.toLocaleString()}`,
           });
         }
 
