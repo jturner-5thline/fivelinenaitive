@@ -38,17 +38,41 @@ type PerfMode = 'quarterly' | 'ytd';
 const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
 
 /**
+ * Current calendar quarter (Q1-Q4). YTD plan/actual sums Q1..currentQuarter
+ * so a YTD column never includes future, unrealized quarters.
+ */
+function currentQuarterKey(): QuarterKey {
+  const m = new Date().getMonth();
+  if (m <= 2) return 'Q1';
+  if (m <= 5) return 'Q2';
+  if (m <= 8) return 'Q3';
+  return 'Q4';
+}
+
+/**
  * Resolve plan/actual for a row at a given period, accounting for
  * quarter-by-quarter vs cumulative YTD display mode.
  */
 function resolvePeriod(
   row: MetricRow,
   planMap: ReturnType<typeof useNikiPerformancePlan>['plan'],
-  k: QuarterKey | 'YEAR',
+  k: QuarterKey | 'YEAR' | 'YTD',
   mode: PerfMode,
 ): { planVal: number; actualVal: number } {
   const p = planMap[row.key];
   if (k === 'YEAR') return { planVal: p.total, actualVal: row.yearTotal };
+  if (k === 'YTD') {
+    const cur = currentQuarterKey();
+    const idx = QUARTER_ORDER_LIST.indexOf(cur);
+    let plan = 0;
+    let actual = 0;
+    for (let i = 0; i <= idx; i++) {
+      const qk = QUARTER_ORDER_LIST[i];
+      plan += p[qk];
+      actual += row.byQuarter[qk].value;
+    }
+    return { planVal: plan, actualVal: actual };
+  }
   if (mode === 'quarterly') {
     return { planVal: p[k], actualVal: row.byQuarter[k].value };
   }
@@ -212,7 +236,7 @@ function GroupCard({ title, description, rows, openDrill }: {
   title: string;
   description?: string;
   rows: MetricRow[];
-  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR' | 'YTD') => void;
 }) {
   return (
     <Card>
@@ -298,9 +322,9 @@ function QuarterlyChart({ rows, title, description, unit }: {
 
 function FunnelSection({ rows, openDrill, mode, period, periodLabel, onToggleHide }: {
   rows: MetricRow[];
-  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  openDrill: (row: MetricRow, q: QuarterKey | 'YEAR' | 'YTD') => void;
   mode: PerfMode;
-  period: QuarterKey | 'YEAR';
+  period: QuarterKey | 'YEAR' | 'YTD';
   periodLabel: string;
   onToggleHide?: () => void;
 }) {
@@ -445,9 +469,26 @@ function NikiPerformanceTabInner() {
 
   const get = (k: MetricRowKey) => byKey.get(k);
 
-  const openDrill = (row: MetricRow, q: QuarterKey | 'YEAR') => {
-    const deals = q === 'YEAR' ? row.yearDeals : row.byQuarter[q].deals;
-    const label = q === 'YEAR' ? '2026 YTD' : `${q} 2026`;
+  const openDrill = (row: MetricRow, q: QuarterKey | 'YEAR' | 'YTD') => {
+    let deals: PerfDeal[];
+    let label: string;
+    if (q === 'YEAR') {
+      deals = row.yearDeals;
+      label = '2026';
+    } else if (q === 'YTD') {
+      // YTD = quarters Q1..currentQuarter so drilldown totals match displayed value.
+      const cur = currentQuarterKey();
+      const idx = QUARTER_ORDER_LIST.indexOf(cur);
+      deals = [];
+      for (let i = 0; i <= idx; i++) {
+        const qk = QUARTER_ORDER_LIST[i];
+        deals = deals.concat(row.byQuarter[qk].deals);
+      }
+      label = `${cur} 2026 YTD`;
+    } else {
+      deals = row.byQuarter[q].deals;
+      label = `${q} 2026`;
+    }
     setDrill({ title: `${row.label} — ${label}`, deals });
   };
 
@@ -472,17 +513,11 @@ function NikiPerformanceTabInner() {
   ] as MetricRowKey[];
 
   // ─── Period selection (multi-quarter capable) ────────────────────────────
-  type PeriodKey = QuarterKey | 'YEAR';
+  type PeriodKey = QuarterKey | 'YEAR' | 'YTD';
   const allQuarterKeys: QuarterKey[] = NIKI_QUARTERS.map((q) => q.key);
 
   // Default to current quarter (May 2026 → Q2)
-  const currentQuarter: QuarterKey = (() => {
-    const m = new Date().getMonth();
-    if (m <= 2) return 'Q1' as QuarterKey;
-    if (m <= 5) return 'Q2' as QuarterKey;
-    if (m <= 8) return 'Q3' as QuarterKey;
-    return 'Q4' as QuarterKey;
-  })();
+  const currentQuarter: QuarterKey = currentQuarterKey();
 
   const [selectedPeriods, setSelectedPeriods] = useState<PeriodKey[]>([currentQuarter]);
 
@@ -499,14 +534,18 @@ function NikiPerformanceTabInner() {
 
   const periodLabel = (k: PeriodKey) => {
     if (k === 'YEAR') return '2026';
-    return perfMode === 'ytd' ? `${k} YTD` : `${k} 2026`;
+    if (k === 'YTD') return `${currentQuarterKey()} 2026 YTD`;
+    return `${k} 2026`;
   };
 
-  // Order selected periods consistently: Q1..Q4, then YEAR
+  // In YTD mode, the per-quarter breakdown is hidden — render exactly one
+  // YTD column (cumulative through the current quarter). In quarterly mode
+  // keep the multi-quarter selection behavior.
   const orderedSelected: PeriodKey[] = useMemo(() => {
+    if (perfMode === 'ytd') return ['YTD'];
     const order: PeriodKey[] = [...allQuarterKeys, 'YEAR'];
     return order.filter((k) => selectedPeriods.includes(k));
-  }, [selectedPeriods]);
+  }, [selectedPeriods, perfMode]);
 
   const isSingle = orderedSelected.length === 1;
 
@@ -516,17 +555,16 @@ function NikiPerformanceTabInner() {
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
 
-  // Primary period for KPI cards: highest quarter selected (or YEAR if only YEAR).
+  // Primary period for KPI cards: YTD when in YTD mode, otherwise the
+  // highest quarter selected (or YEAR if only YEAR is selected).
   const kpiPeriod: PeriodKey = useMemo(() => {
+    if (perfMode === 'ytd') return 'YTD';
     const quarters = orderedSelected.filter((k) => k !== 'YEAR') as QuarterKey[];
     if (quarters.length === 0) return 'YEAR';
     return quarters[quarters.length - 1];
-  }, [orderedSelected]);
+  }, [orderedSelected, perfMode]);
 
-  const kpiPeriodLabel = (() => {
-    if (kpiPeriod === 'YEAR') return '2026';
-    return perfMode === 'ytd' ? `${kpiPeriod} YTD` : `${kpiPeriod} 2026`;
-  })();
+  const kpiPeriodLabel = periodLabel(kpiPeriod);
 
   const perPeriodCols = (showPlan ? 1 : 0) + (showActual ? 1 : 0) + (showVarDelta ? 2 : 0);
   const totalCols = isSingle
@@ -738,7 +776,10 @@ function NikiPerformanceTabInner() {
                     </button>
                   ))}
                 </div>
-                {/* Quarter selector */}
+                {/* Quarter selector — only meaningful in Quarter-by-Quarter
+                    mode. YTD mode collapses to a single YTD column so the
+                    individual-quarter chips would be misleading. */}
+                {perfMode === 'quarterly' && (
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
                     const active = selectedPeriods.includes(k);
@@ -760,6 +801,7 @@ function NikiPerformanceTabInner() {
                     );
                   })}
                 </div>
+                )}
                 {/* Column visibility toggles */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([
