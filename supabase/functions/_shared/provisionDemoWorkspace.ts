@@ -5,7 +5,7 @@
 // repair missing data without ever creating duplicates.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-export const SEED_VERSION = "1.1.0";
+export const SEED_VERSION = "1.2.0";
 
 export const DEMO_TARGETS = {
   deals: 12,
@@ -13,6 +13,9 @@ export const DEMO_TARGETS = {
   crmCompanies: 50,
   tasks: 20,
   fundingSources: 50,
+  calendarEvents: 12, // per member user
+  inboxEmails: 15,    // per member user
+  dealActivities: 24, // total across demo deals
 } as const;
 
 export type DemoCounts = Record<keyof typeof DEMO_TARGETS, number>;
@@ -83,6 +86,30 @@ const TASK_TITLES = [
   "Walk through model","Confirm closing timeline","Review legal redline","Push update to VDR",
   "Send weekly summary","Schedule diligence meeting","Review proposed structure","Send signed engagement",
 ];
+const MEETING_TEMPLATES = [
+  { title: "Intro call — {company}", duration: 30, type: "intro" },
+  { title: "Management call — {company}", duration: 60, type: "mgmt" },
+  { title: "Diligence review — {company}", duration: 45, type: "diligence" },
+  { title: "Lender call — {company} x {lender}", duration: 30, type: "lender" },
+  { title: "IC prep — {company}", duration: 45, type: "ic" },
+  { title: "Pipeline check-in", duration: 30, type: "internal" },
+  { title: "Closing call — {company}", duration: 60, type: "closing" },
+  { title: "Term sheet walkthrough — {company}", duration: 45, type: "termsheet" },
+  { title: "Weekly client sync — {company}", duration: 30, type: "weekly" },
+  { title: "Post-mortem — {company}", duration: 30, type: "postmortem" },
+];
+const EMAIL_TEMPLATES = [
+  { subject: "Intro — {company}", body: "Wanted to introduce our team and walk through the opportunity at {company}. Can we find time this week for an intro call?", from: "contact" },
+  { subject: "Re: {company} — diligence checklist", body: "Attached is the diligence checklist for {company}. Let me know what's still outstanding so we can keep things moving.", from: "user" },
+  { subject: "{company} — financials follow-up", body: "Following up on the most recent financials package for {company}. We need TTM EBITDA reconciled before we send to lenders.", from: "contact" },
+  { subject: "Lender outreach — {company}", body: "Reaching out re: {company}. Initial reaction from {lender} was positive; they'd like to see the CIM and a model.", from: "lender" },
+  { subject: "Re: term sheet — {company}", body: "Attached is the redlined term sheet for {company}. Key change is the pricing grid; happy to jump on a call to walk through.", from: "lender" },
+  { subject: "CIM ready — {company}", body: "CIM for {company} is final. Sending out to the lender list this morning.", from: "user" },
+  { subject: "IC prep — {company}", body: "Here's the IC memo for {company} ahead of Thursday. Please flag any open items by EOD.", from: "user" },
+  { subject: "Re: {company} closing logistics", body: "Confirming closing date for {company}. We'll need signature blocks finalized by Friday.", from: "contact" },
+  { subject: "Weekly update — {company}", body: "Quick weekly update on {company}: diligence on track, two lenders in committee, targeting close end of month.", from: "user" },
+  { subject: "Pass — {company}", body: "Unfortunately {lender} is going to pass on {company} — wrong industry fit. Will keep them in mind for the next one.", from: "lender" },
+];
 
 function pick<T>(arr: readonly T[], i: number): T { return arr[i % arr.length]; }
 function rand(seed: number, max: number) {
@@ -96,6 +123,39 @@ async function countDemo(admin: Admin, table: string, filters: Record<string, un
   for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
   q = q.contains("tags", ["demo"]);
   const { count } = await q;
+  return count ?? 0;
+}
+
+// Comms tables (calendar_events, email_cache, activity_logs) have no `tags`
+// column. We mark seeded rows with a stable prefix on the natural-key id and
+// count by prefix. This keeps the seed idempotent without schema changes.
+const DEMO_CAL_PREFIX = "demo-seed-cal-";
+const DEMO_GMAIL_PREFIX = "demo-seed-msg-";
+const DEMO_ACTIVITY_PREFIX = "demo-seed-act-";
+
+async function countCalendarSeed(admin: Admin, userId: string): Promise<number> {
+  const { count } = await admin
+    .from("calendar_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .like("event_id", `${DEMO_CAL_PREFIX}%`);
+  return count ?? 0;
+}
+async function countEmailSeed(admin: Admin, userId: string): Promise<number> {
+  const { count } = await admin
+    .from("email_cache")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .like("gmail_message_id", `${DEMO_GMAIL_PREFIX}%`);
+  return count ?? 0;
+}
+async function countActivitySeed(admin: Admin, dealIds: string[]): Promise<number> {
+  if (dealIds.length === 0) return 0;
+  const { count } = await admin
+    .from("activity_logs")
+    .select("id", { count: "exact", head: true })
+    .in("deal_id", dealIds)
+    .like("message_id", `${DEMO_ACTIVITY_PREFIX}%`);
   return count ?? 0;
 }
 
@@ -150,6 +210,7 @@ export async function provisionDemoWorkspace(
 
   const insertedThisRun: DemoCounts = {
     deals: 0, contacts: 0, crmCompanies: 0, tasks: 0, fundingSources: 0,
+    calendarEvents: 0, inboxEmails: 0, dealActivities: 0,
   };
 
   // 4) Top-up CRM companies.
@@ -249,9 +310,10 @@ export async function provisionDemoWorkspace(
 
   // Re-fetch deals for task FKs.
   const { data: dealList } = await admin
-    .from("deals").select("id").eq("company_id", companyId)
+    .from("deals").select("id, company, crm_company_id").eq("company_id", companyId)
     .contains("tags", ["demo"]).order("created_at", { ascending: true });
-  const dealIds = (dealList ?? []).map((d) => d.id as string);
+  const demoDeals = (dealList ?? []) as Array<{ id: string; company: string | null; crm_company_id: string | null }>;
+  const dealIds = demoDeals.map((d) => d.id);
 
   // 7) Top-up tasks.
   const haveTasks = await countDemo(admin, "tasks", { company_id: companyId });
@@ -325,7 +387,143 @@ export async function provisionDemoWorkspace(
     insertedThisRun.fundingSources = rows.length;
   }
 
-  // 9) Validate counts. If anything is short, mark provisioning failed.
+  // 9) Re-fetch contacts + lenders so comms rows can reference seeded entities.
+  const [{ data: contactList }, { data: lenderList }] = await Promise.all([
+    admin.from("contacts").select("id, first_name, last_name, email, crm_company_id")
+      .eq("org_company_id", companyId).contains("tags", ["demo"]).limit(200),
+    admin.from("master_lenders").select("id, name, contact_name, email")
+      .eq("company_id", companyId).contains("tags", ["demo"]).limit(60),
+  ]);
+  const demoContacts = (contactList ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null; crm_company_id: string | null }>;
+  const demoLenders = (lenderList ?? []) as Array<{ id: string; name: string | null; contact_name: string | null; email: string | null }>;
+
+  // 10) Seed calendar events + inbox emails per member user.
+  const now = Date.now();
+  for (const uid of memberUserIds) {
+    // calendar
+    const haveCal = await countCalendarSeed(admin, uid);
+    if (haveCal < DEMO_TARGETS.calendarEvents) {
+      const rows = [];
+      for (let i = haveCal; i < DEMO_TARGETS.calendarEvents; i++) {
+        const tpl = MEETING_TEMPLATES[i % MEETING_TEMPLATES.length];
+        const deal = demoDeals[i % Math.max(demoDeals.length, 1)];
+        const companyName = deal?.company ?? "Demo Co";
+        const lender = demoLenders[i % Math.max(demoLenders.length, 1)];
+        const contact = demoContacts[i % Math.max(demoContacts.length, 1)];
+        // Spread events across -10 .. +14 days from now.
+        const offsetDays = (i - 5);
+        const start = new Date(now + offsetDays * 86_400_000 + (9 + (i % 6)) * 3_600_000);
+        const end = new Date(start.getTime() + tpl.duration * 60_000);
+        const attendees: string[] = [];
+        if (contact?.email) attendees.push(contact.email);
+        if (tpl.type === "lender" && lender?.email) attendees.push(lender.email);
+        const title = tpl.title
+          .replace("{company}", companyName)
+          .replace("{lender}", lender?.name ?? "Lender");
+        rows.push({
+          user_id: uid,
+          provider: "demo",
+          event_id: `${DEMO_CAL_PREFIX}${uid}-${i}`,
+          title,
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          organizer_email: contact?.email ?? null,
+          attendees,
+          location: tpl.type === "internal" ? "naitive HQ" : "Google Meet",
+          meeting_url: `https://meet.example.com/demo-${i}`,
+          is_all_day: false, is_cancelled: false,
+          raw: { demo: true, deal_id: deal?.id, crm_company_id: deal?.crm_company_id, kind: tpl.type },
+        });
+      }
+      if (rows.length) {
+        const { error } = await admin.from("calendar_events").insert(rows);
+        if (error) throw new Error(`calendar_events top-up: ${error.message}`);
+        insertedThisRun.calendarEvents += rows.length;
+      }
+    }
+
+    // inbox emails (email_cache)
+    const haveMail = await countEmailSeed(admin, uid);
+    if (haveMail < DEMO_TARGETS.inboxEmails) {
+      const rows = [];
+      for (let i = haveMail; i < DEMO_TARGETS.inboxEmails; i++) {
+        const tpl = EMAIL_TEMPLATES[i % EMAIL_TEMPLATES.length];
+        const deal = demoDeals[i % Math.max(demoDeals.length, 1)];
+        const companyName = deal?.company ?? "Demo Co";
+        const contact = demoContacts[i % Math.max(demoContacts.length, 1)];
+        const lender = demoLenders[i % Math.max(demoLenders.length, 1)];
+        const senderContact = tpl.from === "lender"
+          ? { name: lender?.contact_name ?? lender?.name ?? "Lender", email: lender?.email ?? "lender@example.com" }
+          : tpl.from === "user"
+            ? { name: "Me", email: "me@naitive.example" }
+            : { name: `${contact?.first_name ?? "Client"} ${contact?.last_name ?? ""}`.trim(), email: contact?.email ?? "client@example.com" };
+        const subject = tpl.subject.replace("{company}", companyName).replace("{lender}", lender?.name ?? "Lender");
+        const body = tpl.body.replace("{company}", companyName).replace("{lender}", lender?.name ?? "Lender");
+        const receivedAt = new Date(now - (i + 1) * 3_600_000 * 6).toISOString();
+        rows.push({
+          user_id: uid,
+          gmail_message_id: `${DEMO_GMAIL_PREFIX}${uid}-${i}`,
+          thread_id: `${DEMO_GMAIL_PREFIX}thread-${uid}-${Math.floor(i / 2)}`,
+          subject, snippet: body.slice(0, 120), body_text: body, body_html: `<p>${body}</p>`,
+          from_email: senderContact.email, from_name: senderContact.name,
+          to_emails: ["me@naitive.example"], cc_emails: [],
+          labels: ["INBOX", "DEMO"],
+          is_read: i % 3 !== 0, is_starred: i % 5 === 0,
+          received_at: receivedAt,
+          provider: "demo",
+          attachments: [], inline_attachments: [],
+        });
+      }
+      if (rows.length) {
+        const { error } = await admin.from("email_cache").insert(rows);
+        if (error) throw new Error(`email_cache top-up: ${error.message}`);
+        insertedThisRun.inboxEmails += rows.length;
+      }
+    }
+  }
+
+  // 11) Seed deal activity logs (email-style activity per demo deal).
+  if (dealIds.length > 0) {
+    const haveAct = await countActivitySeed(admin, dealIds);
+    if (haveAct < DEMO_TARGETS.dealActivities) {
+      const rows = [];
+      for (let i = haveAct; i < DEMO_TARGETS.dealActivities; i++) {
+        const tpl = EMAIL_TEMPLATES[i % EMAIL_TEMPLATES.length];
+        const deal = demoDeals[i % demoDeals.length];
+        const companyName = deal.company ?? "Demo Co";
+        const contact = demoContacts[i % Math.max(demoContacts.length, 1)];
+        const lender = demoLenders[i % Math.max(demoLenders.length, 1)];
+        const direction: "inbound" | "outbound" = tpl.from === "user" ? "outbound" : "inbound";
+        const subject = tpl.subject.replace("{company}", companyName).replace("{lender}", lender?.name ?? "Lender");
+        const body = tpl.body.replace("{company}", companyName).replace("{lender}", lender?.name ?? "Lender");
+        const sentAt = new Date(now - (i + 1) * 86_400_000).toISOString();
+        const fromAddr = direction === "outbound" ? "me@naitive.example" : (contact?.email ?? "client@example.com");
+        const toAddr = direction === "outbound" ? (contact?.email ?? "client@example.com") : "me@naitive.example";
+        rows.push({
+          deal_id: deal.id,
+          user_id: attributingUserId,
+          activity_type: "email",
+          description: `Email ${direction}: ${subject}`,
+          metadata: { demo: true, kind: "email" },
+          user_display_name: "Demo User",
+          direction, subject, body,
+          from_address: fromAddr, to_addresses: [toAddr],
+          sent_at: sentAt,
+          message_id: `${DEMO_ACTIVITY_PREFIX}${deal.id}-${i}`,
+          thread_id: `${DEMO_ACTIVITY_PREFIX}thread-${deal.id}-${Math.floor(i / 3)}`,
+          provider: "demo",
+          created_at: sentAt,
+        });
+      }
+      if (rows.length) {
+        const { error } = await admin.from("activity_logs").insert(rows);
+        if (error) throw new Error(`activity_logs top-up: ${error.message}`);
+        insertedThisRun.dealActivities = rows.length;
+      }
+    }
+  }
+
+  // 12) Validate counts. If anything is short, mark provisioning failed.
   const validation = await validateDemoSeed(admin, companyId);
 
   const seededAt = new Date().toISOString();
@@ -356,19 +554,55 @@ export async function validateDemoSeed(
   admin: Admin,
   companyId: string,
 ): Promise<DemoValidation> {
-  const [deals, contacts, crmCompanies, tasks, fundingSources, pipe] = await Promise.all([
+  const [deals, contacts, crmCompanies, tasks, fundingSources, pipe, members] = await Promise.all([
     countDemo(admin, "deals", { company_id: companyId }),
     countDemo(admin, "contacts", { org_company_id: companyId }),
     countDemo(admin, "crm_companies", { org_company_id: companyId }),
     countDemo(admin, "tasks", { company_id: companyId }),
     countDemo(admin, "master_lenders", { company_id: companyId }),
     admin.from("deal_pipelines").select("id").eq("company_id", companyId).eq("is_default", true).maybeSingle(),
+    admin.from("profiles").select("user_id").eq("company_id", companyId),
   ]);
-  const counts: DemoCounts = { deals, contacts, crmCompanies, tasks, fundingSources };
+  const memberIds = ((members.data ?? []) as Array<{ user_id: string }>).map((m) => m.user_id).filter(Boolean);
+  const { data: dealsForActivity } = await admin
+    .from("deals").select("id").eq("company_id", companyId).contains("tags", ["demo"]);
+  const demoDealIds = ((dealsForActivity ?? []) as Array<{ id: string }>).map((d) => d.id);
+
+  // Comms counts are aggregated across all member users; treat as ok when
+  // every member meets the per-user target (or if there are no members yet).
+  let calendarEvents = 0;
+  let inboxEmails = 0;
+  let calOk = true;
+  let mailOk = true;
+  for (const uid of memberIds) {
+    const c = await countCalendarSeed(admin, uid);
+    const m = await countEmailSeed(admin, uid);
+    calendarEvents += c;
+    inboxEmails += m;
+    if (c < DEMO_TARGETS.calendarEvents) calOk = false;
+    if (m < DEMO_TARGETS.inboxEmails) mailOk = false;
+  }
+  if (memberIds.length === 0) { calOk = false; mailOk = false; }
+  const dealActivities = await countActivitySeed(admin, demoDealIds);
+
+  const counts: DemoCounts = {
+    deals, contacts, crmCompanies, tasks, fundingSources,
+    calendarEvents, inboxEmails, dealActivities,
+  };
   const missing: Partial<DemoCounts> = {};
   (Object.keys(DEMO_TARGETS) as Array<keyof typeof DEMO_TARGETS>).forEach((k) => {
-    if (counts[k] < DEMO_TARGETS[k]) missing[k] = DEMO_TARGETS[k] - counts[k];
+    // For per-user comms targets, "missing" reflects total shortfall across members.
+    if (k === "calendarEvents") {
+      const target = DEMO_TARGETS.calendarEvents * Math.max(memberIds.length, 1);
+      if (counts.calendarEvents < target) missing[k] = target - counts.calendarEvents;
+    } else if (k === "inboxEmails") {
+      const target = DEMO_TARGETS.inboxEmails * Math.max(memberIds.length, 1);
+      if (counts.inboxEmails < target) missing[k] = target - counts.inboxEmails;
+    } else {
+      if (counts[k] < DEMO_TARGETS[k]) missing[k] = DEMO_TARGETS[k] - counts[k];
+    }
   });
+  void calOk; void mailOk;
   return {
     ok: Object.keys(missing).length === 0 && !!pipe.data?.id,
     targets: DEMO_TARGETS, counts, missing,

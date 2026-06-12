@@ -26,6 +26,9 @@ const FIELDS: Array<{ key: keyof TenantRow["counts"]; label: string }> = [
   { key: "crmCompanies", label: "Companies" },
   { key: "tasks", label: "Tasks" },
   { key: "fundingSources", label: "Funding sources" },
+  { key: "calendarEvents", label: "Calendar" },
+  { key: "inboxEmails", label: "Inbox" },
+  { key: "dealActivities", label: "Activity" },
 ];
 
 export function DemoSeedHealthPanel() {
