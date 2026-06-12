@@ -43,7 +43,7 @@ export default function Studio() {
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-transparent">
       <div className="container mx-auto py-5 px-4 space-y-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Newspaper className="h-3.5 w-3.5" />

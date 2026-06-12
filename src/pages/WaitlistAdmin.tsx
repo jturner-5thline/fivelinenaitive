@@ -99,7 +99,7 @@ export default function WaitlistAdmin() {
         <title>Waitlist Admin - naitive</title>
       </Helmet>
 
-      <div className="bg-background">
+      <div className="bg-transparent">
 
         <main className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
