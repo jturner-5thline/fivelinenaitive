@@ -1086,11 +1086,11 @@
   /* Tiles sit barely above the page canvas — same navy family, only a
      whisper of brightness and a thin cool-blue rim for separation. No
      bright card fill, no glow, no purple. */
+  /* Near-flat fill — gradient reduced to a whisper for subtle depth only. */
   background:
     linear-gradient(180deg,
-      rgba(150, 195, 245, 0.085) 0%,
-      rgba(150, 195, 245, 0.058) 60%,
-      rgba(150, 195, 245, 0.042) 100%
+      rgba(150, 195, 245, 0.070) 0%,
+      rgba(150, 195, 245, 0.062) 100%
     ) !important;
   border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 10px !important;
@@ -1109,9 +1109,8 @@
 .deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(160, 205, 250, 0.115) 0%,
-      rgba(160, 205, 250, 0.078) 60%,
-      rgba(160, 205, 250, 0.054) 100%
+      rgba(160, 205, 250, 0.095) 0%,
+      rgba(160, 205, 250, 0.085) 100%
     ) !important;
   border-color: rgba(165, 210, 252, 0.38) !important;
   box-shadow:
@@ -1153,17 +1152,15 @@
 .deal-tile.deal-glass {
   background:
     linear-gradient(180deg,
-      rgba(150, 195, 245, 0.080) 0%,
-      rgba(150, 195, 245, 0.055) 60%,
-      rgba(150, 195, 245, 0.038) 100%
+      rgba(150, 195, 245, 0.066) 0%,
+      rgba(150, 195, 245, 0.058) 100%
     ) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(160, 205, 250, 0.110) 0%,
-      rgba(160, 205, 250, 0.074) 60%,
-      rgba(160, 205, 250, 0.052) 100%
+      rgba(160, 205, 250, 0.092) 0%,
+      rgba(160, 205, 250, 0.082) 100%
     ) !important;
 }
 
