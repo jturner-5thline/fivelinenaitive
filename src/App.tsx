@@ -84,12 +84,16 @@ function RootRedirect() {
 function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+  const isDemoAccess = new URLSearchParams(location.search).get("demo") === "1";
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+  if (isDemoAccess) {
+    return <>{children}</>;
   }
   if (user) {
     const params = new URLSearchParams(location.search);
