@@ -32,6 +32,7 @@ interface MFAChallenge {
 
 const Auth = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const locationState = location.state as { waitlistEmail?: string; waitlistName?: string; waitlistCompany?: string } | null;
   const [mode, setMode] = useState<AuthMode>(searchParams.get("demo") === "1" ? "login" : "login");
   const [email, setEmail] = useState(locationState?.waitlistEmail || searchParams.get("email") || "");
@@ -45,7 +46,6 @@ const Auth = () => {
   const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   
   // Store waitlist info for onboarding pre-fill
   useEffect(() => {
