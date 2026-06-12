@@ -25,7 +25,7 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
     <Html lang="en" dir="ltr">
       <Head />
       <Preview>
-        Your one-click access to the {SITE_NAME} demo workspace is ready
+        Your {SITE_NAME} demo login is ready
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -42,17 +42,17 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
             command center for deal management, lender intelligence, and financial operations.
           </Text>
           <Text style={text}>
-            No account to create, no password to set. Just click below to open your workspace
-            already signed in, with sample deals, companies, contacts, tasks, and funding sources
-            ready to explore.
+            Click below to open your Naitive demo access page with your email and demo password already filled in.
+            From there, just click Login to go straight into your seeded workspace with sample deals, companies,
+            contacts, tasks, and funding sources ready to explore.
           </Text>
           <Section style={buttonSection}>
             <Button style={button} href={url}>
-              Open your demo workspace
+              Open Your Naitive Demo
             </Button>
           </Section>
           <Text style={smallText}>
-            Or copy this secure access link: {url}
+            Or copy this demo access link: {url}
           </Text>
           {trialLine ? (
             <Section style={trialBox}>
@@ -61,7 +61,7 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
           ) : null}
           <Hr style={divider} />
           <Text style={footer}>
-            This is a single-use, time-limited access link. Questions? Just reply to this email.<br />
+            This link opens your Naitive demo login page. Questions? Just reply to this email.<br />
             — The {SITE_NAME} team
           </Text>
         </Container>
@@ -81,7 +81,7 @@ export const template = {
     name: 'Jane',
     companyName: 'Acme Capital',
     inviterName: 'James Turner',
-    acceptUrl: 'https://naitive.co/?demo=1',
+    acceptUrl: 'https://naitive.co/login?email=jane%40acme.com&password=User1234&demo=1&redirect=%2Fdeals',
     trialEndsAt: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString(),
     role: 'Admin',
   },
