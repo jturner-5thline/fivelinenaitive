@@ -15,7 +15,7 @@ import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
  */
 
 const STATUS_TAG_THEME: Record<DealStatus, string> = {
-  'on-track': 'bg-green-500/15 text-green-400 border-green-500/20',
+  'on-track': 'bg-teal-400/15 text-teal-300 border-teal-400/30',
   'at-risk': 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
   'off-track': 'bg-red-500/15 text-red-400 border-red-500/20',
   'on-hold': 'bg-blue-500/15 text-blue-400 border-blue-500/20',
