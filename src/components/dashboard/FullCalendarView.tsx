@@ -89,6 +89,40 @@ import { useGoogleCalendar, CalendarEvent, Calendar } from '@/hooks/useGoogleCal
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// ─── Shared helpers ──────────────────────────────────────────
+// Build a single Map<YYYY-MM-DD, CalendarEvent[]> once per event-list change.
+// Replaces O(days × events) `events.filter(isSameDay(parseISO(...)))` loops
+// inside Month/Agenda views, which were re-running parseISO on every event
+// for every visible day on every render.
+function useEventsByDay(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
+  return useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    for (const e of events) {
+      // event.start can be ISO string or yyyy-MM-dd (all-day). Take first 10
+      // chars when it already looks like a date; otherwise parse + format.
+      let key: string;
+      const s = e.start;
+      if (typeof s === 'string' && s.length >= 10 && s[4] === '-' && s[7] === '-') {
+        key = s.slice(0, 10);
+      } else {
+        try { key = format(parseISO(s as string), 'yyyy-MM-dd'); } catch { continue; }
+      }
+      const bucket = map.get(key);
+      if (bucket) bucket.push(e); else map.set(key, [e]);
+    }
+    // Sort each bucket once so per-day renders don't re-sort on every paint.
+    for (const list of map.values()) {
+      list.sort((a, b) => {
+        const at = typeof a.start === 'string' ? a.start : '';
+        const bt = typeof b.start === 'string' ? b.start : '';
+        return at < bt ? -1 : at > bt ? 1 : 0;
+      });
+    }
+    return map;
+  }, [events]);
+}
+const dayKey = (d: Date) => format(d, 'yyyy-MM-dd');
 import ReactMarkdown from 'react-markdown';
 import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
 import { AgendaIntel } from './AgendaIntel';
