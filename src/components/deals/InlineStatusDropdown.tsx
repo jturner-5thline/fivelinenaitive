@@ -21,9 +21,10 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
   const onTrackStyle: React.CSSProperties | undefined =
     status === 'on-track'
       ? {
-          background: 'rgba(34, 201, 122, 0.12)',
-          border: '0.5px solid rgba(34, 201, 122, 0.30)',
-          color: '#22c97a',
+          background: 'rgba(45, 212, 191, 0.14)',
+          border: '1px solid rgba(94, 234, 212, 0.35)',
+          color: '#5eead4',
+          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
         }
       : undefined;
 
