@@ -143,11 +143,11 @@
 
     /* Secondary: glass-elevated surface */
     --secondary: 225 18% 32%;
-    --secondary-foreground: 0 0% 94%;
+    --secondary-foreground: 0 0% 98%;
 
     /* Muted */
     --muted: 225 18% 28%;
-    --muted-foreground: 0 0% 78%;
+    --muted-foreground: 215 18% 86%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
@@ -612,8 +612,8 @@
    */
   .glass-module {
     position: relative;
-    background: rgba(16, 28, 52, 0.75) !important;
-    border: 0.5px solid rgba(80, 140, 255, 0.18) !important;
+    background: rgba(26, 42, 72, 0.78) !important;
+    border: 0.5px solid rgba(110, 170, 255, 0.24) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -1194,8 +1194,8 @@
 
 /* Card surfaces — only inside the dark theme, only inside the skin */
 .dark .insights-glass-skin [data-slot="card"] {
-  background: rgba(16, 28, 52, 0.75) !important;
-  border: 0.5px solid rgba(80, 140, 255, 0.18) !important;
+  background: rgba(26, 42, 72, 0.78) !important;
+  border: 0.5px solid rgba(110, 170, 255, 0.24) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
@@ -1367,7 +1367,7 @@
 .lg-shell {
   position: relative;
   border-radius: 14px;
-  background: rgba(20, 32, 56, 0.42);
+  background: rgba(30, 46, 76, 0.46);
   border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
