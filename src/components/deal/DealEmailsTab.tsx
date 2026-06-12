@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUndoSend } from '@/contexts/UndoSendContext';
@@ -67,7 +67,13 @@ import {
 import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
-import { InlineComposePanel } from './email/InlineComposePanel';
+// Lazy compose panel: the editor + AI Assist sidebar + pre-send checks pull
+// in heavy editor/state code only needed once the user clicks New / Reply /
+// Forward. Keeping it out of the popup's initial chunk keeps the popup shell
+// paint instant.
+const InlineComposePanel = lazy(() =>
+  import('./email/InlineComposePanel').then((m) => ({ default: m.InlineComposePanel })),
+);
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
 import { useGmailAllMailSearch } from '@/hooks/useGmailAllMailSearch';
