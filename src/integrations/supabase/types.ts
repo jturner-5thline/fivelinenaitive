@@ -4197,11 +4197,14 @@ export type Database = {
           employee_size: string | null
           id: string
           industry: string | null
+          is_demo: boolean
           is_seeding: boolean
           logo_url: string | null
           name: string
           notes: string | null
           primary_domain: string | null
+          seed_version: string | null
+          seeded_at: string | null
           state: string | null
           subscription_status: string | null
           suspended_at: string | null
@@ -4228,11 +4231,14 @@ export type Database = {
           employee_size?: string | null
           id?: string
           industry?: string | null
+          is_demo?: boolean
           is_seeding?: boolean
           logo_url?: string | null
           name: string
           notes?: string | null
           primary_domain?: string | null
+          seed_version?: string | null
+          seeded_at?: string | null
           state?: string | null
           subscription_status?: string | null
           suspended_at?: string | null
@@ -4259,11 +4265,14 @@ export type Database = {
           employee_size?: string | null
           id?: string
           industry?: string | null
+          is_demo?: boolean
           is_seeding?: boolean
           logo_url?: string | null
           name?: string
           notes?: string | null
           primary_domain?: string | null
+          seed_version?: string | null
+          seeded_at?: string | null
           state?: string | null
           subscription_status?: string | null
           suspended_at?: string | null
@@ -19651,6 +19660,7 @@ export type Database = {
           notify_info_request_emails: boolean
           notify_stale_alerts: boolean
           onboarding_completed: boolean
+          onboarding_skipped: boolean
           phone: string | null
           stale_deal_threshold_days: number
           stale_lender_threshold_days: number
@@ -19706,6 +19716,7 @@ export type Database = {
           notify_info_request_emails?: boolean
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
+          onboarding_skipped?: boolean
           phone?: string | null
           stale_deal_threshold_days?: number
           stale_lender_threshold_days?: number
@@ -19761,6 +19772,7 @@ export type Database = {
           notify_info_request_emails?: boolean
           notify_stale_alerts?: boolean
           onboarding_completed?: boolean
+          onboarding_skipped?: boolean
           phone?: string | null
           stale_deal_threshold_days?: number
           stale_lender_threshold_days?: number
