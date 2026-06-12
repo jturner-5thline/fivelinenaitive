@@ -74,6 +74,7 @@ import { useGmailAllMailSearch } from '@/hooks/useGmailAllMailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
 import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
+import { recordMailEvent, startMailTimer } from '@/lib/perfDiagnostics';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -1242,9 +1243,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
+    const t0 = performance.now();
     const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Archived');
+    // Optimistic UI: measure the user-perceived time (state update only).
+    recordMailEvent('move', performance.now() - t0);
     void providerArchiveMessage(email.id).then((ok) => {
       if (ok) return;
       setEmails(prevSnapshot);
@@ -1255,9 +1259,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, providerArchiveMessage]);
 
   const handleDeleteEmail = useCallback((email: MockEmail) => {
+    const t0 = performance.now();
     const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Deleted');
+    recordMailEvent('move', performance.now() - t0);
     void providerTrashMessage(email.id).then((ok) => {
       if (ok) { onAfterTrash?.(); return; }
       setEmails(prevSnapshot);
@@ -1268,6 +1274,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, providerTrashMessage, onAfterTrash]);
 
   const handleSelectThread = useCallback((thread: EmailThread) => {
+    const stopThreadTimer = startMailTimer('threadOpen');
     setSelectedThread(thread);
     setComposeOpen(false);
     // Tell the reading pane WHICH message in the conversation was clicked
@@ -1293,6 +1300,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         () => setEmails(prevSnapshot)
       );
     }
+    // Measure shell-paint time for the reading pane (post-commit).
+    requestAnimationFrame(stopThreadTimer);
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   // Stable handlers for the EmailDetail right-pane. Keeping these out of the
