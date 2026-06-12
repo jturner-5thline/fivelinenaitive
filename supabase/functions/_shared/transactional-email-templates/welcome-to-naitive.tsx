@@ -5,8 +5,8 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "naitive"
-const PLATFORM_URL = "https://fivelinenaitive.lovable.app"
+const SITE_NAME = "Naitive"
+const PLATFORM_URL = "https://naitive.co"
 
 interface WelcomeProps {
   name?: string
@@ -19,14 +19,14 @@ const WelcomeToNaitiveEmail = ({ name }: WelcomeProps) => (
     <Body style={main}>
       <Container style={container}>
         <Section style={logoSection}>
-          <Text style={logoText}>naitive</Text>
+          <Text style={logoText}>Naitive</Text>
         </Section>
         <Hr style={divider} />
         <Heading style={h1}>
-          {name ? `Welcome, ${name}!` : 'Welcome to naitive!'}
+          {name ? `Welcome, ${name}!` : `Welcome to ${SITE_NAME}!`}
         </Heading>
         <Text style={text}>
-          Your account has been created and you have full admin access to the naitive platform.
+          Your account has been created and you have full admin access to the {SITE_NAME} platform.
         </Text>
         <Text style={text}>
           You can log in using your email and password to access deals, pipeline management, lender intelligence, and the full suite of tools.
@@ -41,7 +41,7 @@ const WelcomeToNaitiveEmail = ({ name }: WelcomeProps) => (
         </Text>
         <Hr style={divider} />
         <Text style={footer}>
-          — The naitive team
+          — The {SITE_NAME} team
         </Text>
       </Container>
     </Body>
@@ -50,8 +50,8 @@ const WelcomeToNaitiveEmail = ({ name }: WelcomeProps) => (
 
 export const template = {
   component: WelcomeToNaitiveEmail,
-  subject: 'Welcome to naitive — Your account is ready',
-  displayName: 'Welcome to naitive',
+  subject: 'Welcome to Naitive — Your account is ready',
+  displayName: 'Welcome to Naitive',
   previewData: { name: 'Jaritt' },
 } satisfies TemplateEntry
 
