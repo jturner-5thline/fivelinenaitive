@@ -2386,13 +2386,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (
-              <InlineComposePanel
-                onSend={handleComposeSend}
-                onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
-                replyTo={composeReplyTo}
-                dealId={dealId}
-                signature={composerSignature}
-              />
+              <Suspense fallback={<div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Loading composer…</div>}>
+                <InlineComposePanel
+                  onSend={handleComposeSend}
+                  onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
+                  replyTo={composeReplyTo}
+                  dealId={dealId}
+                  signature={composerSignature}
+                />
+              </Suspense>
             ) : currentThread ? (
               <EmailDetail
                 thread={currentThread}
