@@ -357,6 +357,7 @@ const handler = async (req: Request): Promise<Response> => {
         company,
         results,
         seeded,
+        seedError,
         crmLead,
         emailRequested: sendWanted,
         emailFailures,
