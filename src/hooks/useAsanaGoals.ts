@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 
 export interface AsanaGoalRow {
   id: string;            // local row id (asana_gid)
@@ -210,9 +211,11 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
   useEffect(() => {
     if (!companyId) return;
     void fetchGoals();
-    const id = setInterval(() => { void fetchGoals(); }, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
   }, [companyId, fetchGoals]);
+  useVisibilityAwareInterval(
+    () => { void fetchGoals(); },
+    companyId ? 6 * 60 * 60 * 1000 : null,
+  );
 
   const fetchSubgoals = useCallback(async (parentGid: string): Promise<AsanaGoalRow[]> => {
     const integrationId = integrationIdRef.current;

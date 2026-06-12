@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
@@ -693,11 +694,8 @@ export function AgendaEditor() {
     return () => { editor.off('update', handler); };
   }, [editor, loaded, persist]);
 
-  // Re-render the "saved … ago" indicator every 15s
-  useEffect(() => {
-    const id = window.setInterval(() => force(x => x + 1), 15000);
-    return () => window.clearInterval(id);
-  }, []);
+  // Re-render the "saved … ago" indicator every 15s. Pauses while hidden.
+  useVisibilityAwareInterval(() => force((x) => x + 1), 15000);
 
   // Flush on unmount
   useEffect(() => () => { flushPending(); }, [flushPending]);

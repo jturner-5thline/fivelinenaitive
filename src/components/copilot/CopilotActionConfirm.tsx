@@ -1,5 +1,6 @@
 import { useState, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTriangle, FileText, ExternalLink, X, AlertCircle } from 'lucide-react';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -295,12 +296,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   }, [action]);
 
   // Re-render the "Updated Xs ago" label on a steady tick so the
-  // timestamp on the Done card stays accurate without a heavy interval.
-  useEffect(() => {
-    if (status !== 'done') return;
-    const id = window.setInterval(() => setRelativeTick(t => t + 1), 5000);
-    return () => window.clearInterval(id);
-  }, [status]);
+  // timestamp on the Done card stays accurate. Visibility-aware.
+  useVisibilityAwareInterval(
+    () => setRelativeTick((t) => t + 1),
+    status === 'done' ? 5000 : null,
+  );
 
   const relativeTime = (ms: number | null) => {
     if (!ms) return '';

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 
 /**
  * Dev-only floating panel that lists the 10 most recent Asana sync log
@@ -54,9 +55,20 @@ export function AsanaSyncDebug() {
       if (!cancelled && data) setRows(data as any);
     };
     load();
-    const i = setInterval(load, 5000);
-    return () => { cancelled = true; clearInterval(i); };
+    return () => { cancelled = true; };
   }, [open, authed]);
+  // Visibility-aware: stop pounding the table when the tab is hidden.
+  useVisibilityAwareInterval(
+    () => {
+      void supabase
+        .from('asana_sync_log' as any)
+        .select('id, action, success, http_status, error_message, attempt_number, task_id, asana_task_gid, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10)
+        .then(({ data }) => { if (data) setRows(data as any); });
+    },
+    open && authed ? 5000 : null,
+  );
 
   if (!authed) return null;
 
