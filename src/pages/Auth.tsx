@@ -159,7 +159,7 @@ const Auth = () => {
           return;
         }
 
-        if (isBlockedEmailDomain(email)) {
+        if (!isDemoAccess && isBlockedEmailDomain(email)) {
           toast.error(BLOCKED_DOMAIN_ERROR);
           setLoading(false);
           return;
@@ -190,7 +190,7 @@ const Auth = () => {
           return;
         }
 
-        if (isBlockedEmailDomain(email)) {
+        if (!isDemoAccess && isBlockedEmailDomain(email)) {
           toast.error(BLOCKED_DOMAIN_ERROR);
           setLoading(false);
           return;
@@ -439,7 +439,7 @@ const Auth = () => {
                       required
                       className={`bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 ${email && isBlockedEmailDomain(email) ? 'border-red-500/60 focus:border-red-500/80' : ''}`}
                     />
-                    {email && isBlockedEmailDomain(email) && (
+                    {email && !isDemoAccess && isBlockedEmailDomain(email) && (
                       <p className="text-sm text-red-400 mt-1">
                         Personal email addresses are not allowed. Please use your professional work email (e.g. you@company.com).
                       </p>
