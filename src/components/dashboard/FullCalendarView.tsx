@@ -884,7 +884,8 @@ function MonthView({
   const weeks: Date[][] = [];
   for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
-  const getEventsForDay = (day: Date) => allEvents.filter(e => isSameDay(parseISO(e.start), day));
+  const eventsByDay = useEventsByDay(allEvents);
+  const getEventsForDay = (day: Date) => eventsByDay.get(dayKey(day)) ?? [];
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
