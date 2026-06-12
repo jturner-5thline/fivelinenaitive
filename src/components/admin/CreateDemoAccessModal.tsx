@@ -34,9 +34,10 @@ interface UserRow {
   role: "Admin" | "Member" | "Read Only";
 }
 
-const ACCOUNT_TYPES = ["Pilot", "Demo", "Partner", "Client"] as const;
-const TRIAL_PLANS = ["Starter Trial", "Pro Trial", "Full Access"] as const;
 const ROLES: UserRow["role"][] = ["Admin", "Member", "Read Only"];
+
+const HARDCODED_COMPANY_TYPE = "Demo";
+const HARDCODED_TRIAL_PLAN = "Full Access";
 
 interface Props {
   open: boolean;
@@ -48,20 +49,16 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const [companyName, setCompanyName] = useState("");
-  const [accountType, setAccountType] = useState<typeof ACCOUNT_TYPES[number]>("Pilot");
   const [notes, setNotes] = useState("");
   const [users, setUsers] = useState<UserRow[]>([{ name: "", email: "", role: "Admin" }]);
   const [trialEndsAt, setTrialEndsAt] = useState<Date | undefined>(undefined);
-  const [trialPlan, setTrialPlan] = useState<typeof TRIAL_PLANS[number]>("Pro Trial");
   const [sendWelcomeEmail, setSendWelcomeEmail] = useState(true);
 
   const reset = () => {
     setCompanyName("");
-    setAccountType("Pilot");
     setNotes("");
     setUsers([{ name: "", email: "", role: "Admin" }]);
     setTrialEndsAt(undefined);
-    setTrialPlan("Pro Trial");
     setSendWelcomeEmail(true);
   };
 
@@ -93,10 +90,11 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const { data, error } = await supabase.functions.invoke("create-demo-access", {
         body: {
           companyName: companyName.trim(),
-          accountType,
+          accountType: HARDCODED_COMPANY_TYPE,
           notes: notes.trim() || null,
           trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null,
-          trialPlan,
+          trialPlan: HARDCODED_TRIAL_PLAN,
+          accessLevel: HARDCODED_TRIAL_PLAN,
           sendWelcomeEmail,
           users: users.map((u) => ({
             name: u.name.trim(),
@@ -170,21 +168,12 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
           {/* Section A — Company info */}
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Company info</h3>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
+            <div className="grid gap-3">
+              <div className="space-y-1.5">
                 <Label htmlFor="company-name">Company Name *</Label>
                 <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Capital" />
               </div>
               <div className="space-y-1.5">
-                <Label>Company Type</Label>
-                <Select value={accountType} onValueChange={(v) => setAccountType(v as typeof ACCOUNT_TYPES[number])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNT_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Contacted via Michael Krall referral" rows={2} />
               </div>
@@ -238,7 +227,7 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Access settings</h3>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Access Expiry</Label>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -256,15 +245,6 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
                     )}
                   </PopoverContent>
                 </Popover>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Trial Plan</Label>
-                <Select value={trialPlan} onValueChange={(v) => setTrialPlan(v as typeof TRIAL_PLANS[number])}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TRIAL_PLANS.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="flex items-center justify-between sm:col-span-2 rounded-md border border-border bg-muted/30 px-3 py-2">
                 <div>
