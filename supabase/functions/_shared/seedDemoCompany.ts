@@ -162,7 +162,6 @@ export async function seedDemoCompanyData(
         seniority: pick(["c_level","vp","director","manager"], i),
         lifecycle_stage: "lead", status: "active",
         owner_user_id: attributingUserId,
-        primary_company_id: crm?.id ?? null,
         crm_company_id: crm?.id ?? null,
         company_id: companyId, org_company_id: companyId,
         created_by: attributingUserId, tags: ["demo"],
