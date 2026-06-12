@@ -409,7 +409,9 @@ const Admin = () => {
         return <UserActivityPanel />;
       case "demo-metrics":
         return (
-          <Card>
+          <>
+            <DemoSeedHealthPanel />
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
@@ -421,7 +423,8 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><DemoMetricsPanel /></CardContent>
-          </Card>
+            </Card>
+          </>
         );
       case "feedback":
         return (
