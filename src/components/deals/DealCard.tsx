@@ -352,7 +352,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           <div className="flex items-start justify-between gap-2 min-w-0">
             <h3
               className="text-base font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
-              style={{ color: '#f1f6fc' }}
+              style={{ color: '#f8fbff' }}
               title={deal.company}
             >
               {deal.company}
@@ -417,7 +417,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               <span className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
                 <span
                   className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                  style={{ color: '#f1f6fc' }}
+                  style={{ color: '#f8fbff' }}
                 >
                   {formatCurrencyValue(deal.mrr ?? 0)}
                 </span>
@@ -428,7 +428,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             ) : (
               <span
                 className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                style={{ color: '#f1f6fc' }}
+                style={{ color: '#f8fbff' }}
               >
                 {formatCurrencyValue(deal.value)}
               </span>
@@ -536,7 +536,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 <div className="relative group/status">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(210, 225, 245, 0.82)' }}>
+                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(232, 240, 252, 0.95)' }}>
                         {notesPlainText}
                       </p>
                     </HoverCardTrigger>
@@ -556,7 +556,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 </div>
               ) : (
                 <div className="relative group/status">
-                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(180, 205, 235, 0.60)' }}>
+                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(215, 228, 248, 0.78)' }}>
                     No Status
                   </p>
                   <button
@@ -576,11 +576,11 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── ROW: Manager (left) | Time ago (right) ── */}
           {!compact && (
             <div className="flex items-center justify-between gap-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(195, 215, 240, 0.78)' }}>
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(220, 232, 250, 0.88)' }}>
                 <User className="h-3.5 w-3.5" />
                 <span className="truncate">{deal.manager || 'No manager'}</span>
               </div>
-              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(195, 215, 240, 0.75)' }}>
+              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(210, 224, 246, 0.82)' }}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
@@ -591,7 +591,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {!compact && (
             <div className="flex items-center gap-3 flex-wrap min-w-0">
               {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
-                <span className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
+                <span className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
                   {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
                 </span>
               )}
@@ -601,7 +601,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 </Badge>
               )}
               {dealTypeLabels.map((label, index) => (
-                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
+                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
                   {label}
                 </span>
               ))}
