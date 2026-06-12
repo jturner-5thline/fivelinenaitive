@@ -165,7 +165,7 @@ export default function Agents() {
   if (showCanvas) {
     const graphConfig = (canvasAgent as any)?.graph_config;
     return (
-      <AppLayout mainClassName="bg-background">
+      <AppLayout mainClassName="bg-transparent">
         <div className="h-[calc(100vh-64px)]">
           <AgentCanvas
             initialNodes={graphConfig?.nodes || []}
@@ -185,7 +185,7 @@ export default function Agents() {
   }
 
   return (
-    <AppLayout mainClassName="bg-background">
+    <AppLayout mainClassName="bg-transparent">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

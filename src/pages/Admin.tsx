@@ -388,7 +388,7 @@ const Admin = () => {
 
   if (roleLoading) {
     return (
-      <div className="bg-background">
+      <div className="bg-transparent">
         <div className="container mx-auto py-8 px-4 space-y-8">
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8" />
@@ -706,7 +706,7 @@ const Admin = () => {
   };
 
   return (
-    <div className="bg-background">
+    <div className="bg-transparent">
       <div className="container mx-auto py-5 px-4 space-y-4">
         {/* Stats overview (kept — already a thin row, not the hero card) */}
         <AdminStatsCards stats={stats ?? null} isLoading={statsLoading} />

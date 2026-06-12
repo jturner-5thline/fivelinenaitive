@@ -246,7 +246,7 @@ export default function LenderSyncHistory() {
         <meta name="description" content="Track all lender changes synced from Flex" />
       </Helmet>
 
-      <div className="bg-background min-h-screen">
+      <div className="bg-transparent">
 
         <main className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
