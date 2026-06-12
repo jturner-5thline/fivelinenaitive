@@ -5,7 +5,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = "naitive"
+const SITE_NAME = "Naitive"
 
 interface DemoInviteProps {
   name?: string
@@ -17,7 +17,7 @@ interface DemoInviteProps {
 }
 
 const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsAt, role }: DemoInviteProps) => {
-  const url = acceptUrl || 'https://fivelinenaitive.lovable.app'
+  const url = acceptUrl || 'https://naitive.co'
   const trialLine = trialEndsAt
     ? `Your pilot access runs through ${new Date(trialEndsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
     : null
@@ -30,7 +30,7 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
       <Body style={main}>
         <Container style={container}>
           <Section style={logoSection}>
-            <Text style={logoText}>naitive</Text>
+            <Text style={logoText}>Naitive</Text>
           </Section>
           <Hr style={divider} />
           <Heading style={h1}>
@@ -75,14 +75,14 @@ export const template = {
   component: DemoInviteEmail,
   subject: (data: Record<string, any>) =>
     data?.companyName
-      ? `Your ${SITE_NAME} pilot for ${data.companyName} is ready`
-      : `You're invited to try ${SITE_NAME}`,
+      ? `Your ${SITE_NAME} workspace for ${data.companyName} is ready`
+      : `You're invited to ${SITE_NAME}`,
   displayName: 'Demo / pilot invite',
   previewData: {
     name: 'Jane',
     companyName: 'Acme Capital',
     inviterName: 'James Turner',
-    acceptUrl: 'https://fivelinenaitive.lovable.app/accept-invite?token=preview',
+    acceptUrl: 'https://naitive.co/accept-invite?token=preview',
     trialEndsAt: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString(),
     role: 'Admin',
   },

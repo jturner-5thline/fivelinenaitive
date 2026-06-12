@@ -16,10 +16,11 @@ interface DemoUserInput {
 
 interface CreateDemoBody {
   companyName: string;
-  accountType?: string;            // Pilot | Demo | Partner | Client
+  accountType?: string;            // Hardcoded to "Demo"
   notes?: string;
   trialEndsAt?: string | null;     // ISO date or null
-  trialPlan?: string;              // free text bucket
+  trialPlan?: string;              // Hardcoded to "Full Access"
+  accessLevel?: string;            // Alias for trialPlan, hardcoded to "Full Access"
   sendWelcomeEmail?: boolean;
   seedSampleData?: boolean;        // default true for demo/pilot
   users: DemoUserInput[];
@@ -87,7 +88,9 @@ const handler = async (req: Request): Promise<Response> => {
     const trialEnds = body.trialEndsAt
       ? new Date(body.trialEndsAt).toISOString()
       : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const accountType = (body.accountType || "Demo").trim();
+    // Company type and trial plan are now hardcoded for the demo access flow.
+    const accountType = "Demo";
+    const trialPlan = "Full Access";
     const subscriptionStatus = "trialing";
 
     // 1. Create company
@@ -116,9 +119,8 @@ const handler = async (req: Request): Promise<Response> => {
       (caller.user_metadata as Record<string, unknown> | null)?.full_name as string | undefined ||
       (caller.email?.split("@")[0] ?? "An admin");
 
-    const PLATFORM_URL = Deno.env.get("APP_URL") ?? "https://fivelinenaitive.lovable.app";
-    const isDemoLike = ["demo", "pilot", "trial", "partner"].includes(accountType.toLowerCase());
-    const shouldSeed = body.seedSampleData !== false && isDemoLike;
+    const PLATFORM_URL = Deno.env.get("APP_URL") ?? "https://naitive.co";
+    const shouldSeed = body.seedSampleData !== false;
 
     const results: Array<Record<string, unknown>> = [];
 
