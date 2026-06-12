@@ -988,13 +988,13 @@ function AgendaView({
     end: addDays(currentDate, 13),
   });
 
+  const eventsByDay = useEventsByDay(allEvents);
+
   return (
     <ScrollArea className="flex-1">
       <div>
         {agendaDays.map((day, dayIdx) => {
-          const dayEvents = allEvents
-            .filter(e => isSameDay(parseISO(e.start), day))
-            .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime());
+          const dayEvents = eventsByDay.get(dayKey(day)) ?? [];
 
           return (
             <div key={day.toISOString()}>
