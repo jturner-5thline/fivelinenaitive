@@ -3,6 +3,12 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import App from "./App.tsx";
 import "./index.css";
 import { markSessionEnd } from "./lib/usageLogger";
+import { initPerfDiagnostics } from "./lib/perfDiagnostics";
+
+// Boot lightweight perf instrumentation. No-op until something asks for
+// the snapshot (Admin → Observability → Performance), but the long-task
+// observer + memory sampler are always running so we can spot leaks.
+initPerfDiagnostics();
 
 // Best-effort session-end log when the tab/window is hidden or closed.
 window.addEventListener("pagehide", () => {

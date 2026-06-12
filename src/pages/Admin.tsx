@@ -95,6 +95,7 @@ import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal"
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
 import { DemoSeedHealthPanel } from "@/components/admin/DemoSeedHealthPanel";
+import { PerfDiagnosticsPanel } from "@/components/admin/PerfDiagnosticsPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
 import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
@@ -178,6 +179,7 @@ const SECTIONS: SectionDef[] = [
       { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, description: "Review every AI-driven action.", group: "AI" },
       { id: "ai-training", label: "AI Training", icon: Brain, description: "Prompts, model config and AI performance.", group: "AI" },
       { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, description: "Funnel and friction analytics.", group: "Insights" },
+      { id: "performance", label: "Performance", icon: Gauge, description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory.", group: "Insights" },
     ],
   },
 ];
@@ -627,6 +629,8 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
+      case "performance":
+        return <PerfDiagnosticsPanel />;
       case "ai-training":
         return (
           <Card>

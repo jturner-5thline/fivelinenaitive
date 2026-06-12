@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { AlertTriangle, Clock, Users, TrendingDown, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,12 +72,9 @@ export function ProactiveAlerts({ onAction }: ProactiveAlertsProps) {
     }
   }, [user]);
 
-  useEffect(() => {
-    fetchAlerts();
-    // Refresh alerts every 5 minutes
-    const interval = setInterval(fetchAlerts, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchAlerts]);
+  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
+  // Visibility-aware: skip ticks while tab is hidden, refresh on return.
+  useVisibilityAwareInterval(fetchAlerts, 5 * 60 * 1000);
 
   const handleDismiss = (alertKey: string) => {
     const newDismissed = new Set(dismissed).add(alertKey);
