@@ -155,7 +155,7 @@ export async function seedDemoCompanyData(
         | { id: string; name: string; domain: string } | undefined;
       const domain = crm?.domain ?? "example.com";
       return {
-        first_name: first, last_name: last, full_name: `${first} ${last}`,
+        first_name: first, last_name: last,
         email: `${first.toLowerCase()}.${last.toLowerCase()}${i}@${domain}`,
         phone_work: `+1 (${200 + rand(i, 700)}) ${100 + rand(i + 1, 900)}-${1000 + rand(i + 2, 9000)}`,
         job_title: pick(["CFO","CEO","COO","VP Finance","Treasurer","Controller","Head of Strategy","Director of Finance"], i),
