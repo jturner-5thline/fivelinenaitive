@@ -313,10 +313,21 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   // For status, use predefined order
   const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
   const orderedKeys = groupBy === 'status'
-    ? [
-        ...STATUS_ORDER.filter(s => groupMap.has(s)),
-        ...(groupMap.has('__no_status__') ? ['__no_status__'] : []),
-      ]
+    ? (() => {
+        const known = new Set<string>([...STATUS_ORDER, '__no_status__']);
+        const ordered: string[] = [
+          ...STATUS_ORDER.filter(s => groupMap.has(s)),
+          ...(groupMap.has('__no_status__') ? ['__no_status__'] : []),
+        ];
+        // Include any unknown/legacy status values (e.g. seeded demo data
+        // using raw DB enums like "active"/"closed_won") so they are not
+        // silently dropped from grid view. List/pipeline views already
+        // render these because they don't filter by known statuses.
+        for (const key of groupOrder) {
+          if (!known.has(key)) ordered.push(key);
+        }
+        return ordered;
+      })()
     : groupOrder;
 
   return (
