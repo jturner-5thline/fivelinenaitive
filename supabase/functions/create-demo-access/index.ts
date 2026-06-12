@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 type CompanyRole = "admin" | "member";
+const DEMO_PASSWORD = "User1234";
 
 interface DemoUserInput {
   name: string;
@@ -146,11 +147,26 @@ const handler = async (req: Request): Promise<Response> => {
 
         if (existing) {
           userId = existing.id;
+          const { error: updateUserErr } = await admin.auth.admin.updateUserById(existing.id, {
+            password: DEMO_PASSWORD,
+            email_confirm: true,
+            user_metadata: {
+              ...(existing.user_metadata ?? {}),
+              full_name: name,
+              invited_via: "demo-access",
+              demo_access: true,
+            },
+          });
+          if (updateUserErr) {
+            results.push({ email, ok: false, reason: updateUserErr.message ?? "Failed to update demo user" });
+            continue;
+          }
         } else {
           const { data: created, error: createErr } = await admin.auth.admin.createUser({
             email,
+            password: DEMO_PASSWORD,
             email_confirm: true,
-            user_metadata: { full_name: name, invited_via: "demo-access" },
+            user_metadata: { full_name: name, invited_via: "demo-access", demo_access: true },
           });
           if (createErr || !created.user) {
             results.push({ email, ok: false, reason: createErr?.message ?? "Failed to create user" });
@@ -178,6 +194,7 @@ const handler = async (req: Request): Promise<Response> => {
             full_name: name,
             email,
             is_active: true,
+            onboarding_completed: true,
             approved_at: nowIso,
             approved_by: caller.id,
             approval_requested_at: nowIso,
@@ -187,6 +204,7 @@ const handler = async (req: Request): Promise<Response> => {
             .from("profiles")
             .update({
               is_active: true,
+              onboarding_completed: true,
               approved_at: existingProfile.approved_at ?? nowIso,
               approved_by: caller.id,
             })
@@ -207,36 +225,14 @@ const handler = async (req: Request): Promise<Response> => {
 
         provisionedUserIds.push(userId!);
 
-        // 2d. Generate a one-click magic-link that auto-signs the user in and
-        //     lands them inside their seeded demo workspace. No password, no
-         //    account-setup step.
-        let magicLink: string | null = null;
-        let magicErr: string | null = null;
-        try {
-          const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
-            type: "magiclink",
-            email,
-            options: { redirectTo: `${PLATFORM_URL}/auth/demo/callback` },
-          });
-          if (linkErr) throw linkErr;
-          magicLink = (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? null;
-          if (!magicLink) throw new Error("magic link generation returned no action_link");
-        } catch (e) {
-          magicErr = e instanceof Error ? e.message : String(e);
-          console.error("[create-demo-access] magic link generation failed", email, magicErr);
-        }
-
-        if (!magicLink) {
-          results.push({ email, ok: true, userId, invited: false, reason: magicErr ?? "magic link unavailable" });
-          continue;
-        }
+        const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(DEMO_PASSWORD)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
 
         if (body.sendWelcomeEmail === false) {
-          results.push({ email, ok: true, userId, invited: false, magicLink });
+          results.push({ email, ok: true, userId, invited: false, loginUrl });
           continue;
         }
 
-        // 3. Send branded demo-access email with the magic link as the CTA.
+        // 3. Send branded demo-access email with the working demo login URL as the CTA.
         let sent = false;
         let sendErr: string | null = null;
         try {
@@ -250,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
                 name,
                 companyName: company.name,
                 inviterName,
-                acceptUrl: magicLink,
+                acceptUrl: loginUrl,
                 trialEndsAt: trialEnds,
                 role: platformRole,
               },
@@ -268,7 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
           ok: true,
           userId,
           invited: sent,
-          channel: sent ? "magic-link" : null,
+          channel: sent ? "demo-login" : null,
           reason: sent ? null : sendErr ?? "Email send failed",
         });
       } catch (err) {
