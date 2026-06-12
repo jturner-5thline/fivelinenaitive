@@ -335,6 +335,7 @@ const App = () => (
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
+                          <Route path="/auth/demo/callback" element={<DemoAuthCallback />} />
                           <Route path="/pending-approval" element={
                             <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
                           } />
