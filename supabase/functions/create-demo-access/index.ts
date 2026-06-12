@@ -38,6 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    console.log("[create-demo-access] request received");
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No authorization header" }), {
@@ -226,17 +227,30 @@ const handler = async (req: Request): Promise<Response> => {
         provisionedUserIds.push(userId!);
 
         const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(DEMO_PASSWORD)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
+        console.log("[create-demo-access] provisioned user", { email, userId, hasLoginUrl: !!loginUrl });
 
         if (body.sendWelcomeEmail === false) {
-          results.push({ email, ok: true, userId, invited: false, loginUrl });
+          console.log("[create-demo-access] welcome email disabled, skipping send", email);
+          results.push({
+            email,
+            ok: true,
+            provisioned: true,
+            userId,
+            invited: false,
+            email_sent: false,
+            email_skipped: true,
+            loginUrl,
+            error: null,
+          });
           continue;
         }
 
         // 3. Send branded demo-access email with the working demo login URL as the CTA.
         let sent = false;
         let sendErr: string | null = null;
+        console.log("[create-demo-access] attempting demo-invite send", email);
         try {
-          const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
+          const { data: txData, error: txErr } = await admin.functions.invoke("send-transactional-email", {
             headers: { Authorization: authHeader },
             body: {
               templateName: "demo-invite",
@@ -253,7 +267,12 @@ const handler = async (req: Request): Promise<Response> => {
             },
           });
           if (txErr) throw txErr;
+          if (txData && typeof txData === "object" && "error" in (txData as Record<string, unknown>)) {
+            const inner = (txData as { error?: string }).error;
+            if (inner) throw new Error(inner);
+          }
           sent = true;
+          console.log("[create-demo-access] demo-invite enqueued", email);
         } catch (e) {
           sendErr = e instanceof Error ? e.message : String(e);
           console.error("[create-demo-access] demo-access email failed", email, sendErr);
@@ -262,15 +281,26 @@ const handler = async (req: Request): Promise<Response> => {
         results.push({
           email,
           ok: true,
+          provisioned: true,
           userId,
           invited: sent,
+          email_sent: sent,
           channel: sent ? "demo-login" : null,
           reason: sent ? null : sendErr ?? "Email send failed",
+          error: sent ? null : sendErr ?? "Email send failed",
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[create-demo-access] user error", email, msg);
-        results.push({ email, ok: false, reason: msg });
+        results.push({
+          email,
+          ok: false,
+          provisioned: false,
+          invited: false,
+          email_sent: false,
+          reason: msg,
+          error: msg,
+        });
       }
     }
 
@@ -301,8 +331,29 @@ const handler = async (req: Request): Promise<Response> => {
       console.warn("[create-demo-access] CRM lead creation failed", crmErr);
     }
 
+    const sendWanted = body.sendWelcomeEmail !== false;
+    const provisionedCount = results.filter((r) => r.provisioned).length;
+    const emailFailures = sendWanted
+      ? results.filter((r) => r.provisioned && !r.email_sent).length
+      : 0;
+    const allEmailsSent = sendWanted && provisionedCount > 0 && emailFailures === 0;
+    console.log("[create-demo-access] complete", {
+      provisionedCount,
+      emailFailures,
+      sendWanted,
+    });
+
     return new Response(
-      JSON.stringify({ success: true, company, results, seeded, crmLead }),
+      JSON.stringify({
+        success: true,
+        company,
+        results,
+        seeded,
+        crmLead,
+        emailRequested: sendWanted,
+        emailFailures,
+        allEmailsSent,
+      }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
     );
   } catch (err) {
