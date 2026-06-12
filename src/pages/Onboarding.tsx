@@ -133,9 +133,9 @@ export default function Onboarding() {
     }
   }, [matchingCompanies, hasCompany, companiesLoading]);
 
-  // If user sent a join request, redirect to pending page
+  // Approval gate removed — after a join request, send user into the app.
   const handleJoinRequestSent = () => {
-    navigate('/pending-company-approval', { replace: true });
+    navigate('/pipeline', { replace: true });
   };
 
   const form = useForm<OnboardingForm>({
