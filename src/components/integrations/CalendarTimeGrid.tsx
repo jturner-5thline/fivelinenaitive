@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { DndContext, DragEndEvent, DragOverlay, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { format, parseISO, isSameDay, setHours, setMinutes, differenceInMinutes, addMinutes, isToday } from 'date-fns';
 import { DroppableTimeSlot } from './DroppableTimeSlot';

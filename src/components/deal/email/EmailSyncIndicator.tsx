@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { Loader2 } from 'lucide-react';
 import {
   subscribeEmailPrefetchStatus,

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, useRef, memo } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';

@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { useSearchParams } from 'react-router-dom';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/AuthContext';

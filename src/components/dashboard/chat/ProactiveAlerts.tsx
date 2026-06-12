@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { AlertTriangle, Clock, Users, TrendingDown, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

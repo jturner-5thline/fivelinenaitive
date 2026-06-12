@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 import { useAuth } from '@/contexts/AuthContext';
 import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 import {
