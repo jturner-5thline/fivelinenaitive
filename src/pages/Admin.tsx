@@ -94,6 +94,7 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
+import { DemoSeedHealthPanel } from "@/components/admin/DemoSeedHealthPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
 import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
