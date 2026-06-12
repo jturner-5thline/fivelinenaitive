@@ -1176,20 +1176,20 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Deals + Deal Detail — outlined (border-only) field treatment
+   Global — outlined (border-only) field treatment
    --------------------------------------------------------------------
-   On the Deals workspace and inside the Deal Detail overlay, remove the
-   filled background from inputs, textareas, selects, and small labeled
+   Across the entire platform, remove the filled background from inputs,
+   textareas, selects/comboboxes (dropdown triggers), and small labeled
    "display box" containers. Keep the existing border so fields read as
    crisp outlined shapes instead of filled boxes. No new effects, no
    shape/spacing/typography changes — only the surface fill is dropped.
    ───────────────────────────────────────────────────────────────────── */
-.deals-surface input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="range"]):not([type="color"]),
-.deals-surface textarea,
-.deals-surface [role="combobox"],
-.deal-carousel-viewport input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="range"]):not([type="color"]),
-.deal-carousel-viewport textarea,
-.deal-carousel-viewport [role="combobox"] {
+input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]):not([type="range"]):not([type="color"]),
+textarea,
+select,
+[role="combobox"],
+[data-radix-select-trigger],
+button[role="combobox"] {
   background-color: transparent !important;
   background-image: none !important;
 }
@@ -1197,8 +1197,7 @@
 /* Labeled value / display-box containers built with the bg-muted utility
    shades. Scoped to non-interactive block elements so button variants that
    also use bg-muted (e.g. ghost buttons) are not affected. */
-.deals-surface :is(div, section, article, span, p, label, dl, dd, li):is(.bg-muted, .bg-muted\/50, .bg-muted\/40, .bg-muted\/30, .bg-muted\/20, .bg-muted\/10),
-.deal-carousel-viewport :is(div, section, article, span, p, label, dl, dd, li):is(.bg-muted, .bg-muted\/50, .bg-muted\/40, .bg-muted\/30, .bg-muted\/20, .bg-muted\/10) {
+:is(div, section, article, span, p, label, dl, dd, li):is(.bg-muted, .bg-muted\/50, .bg-muted\/40, .bg-muted\/30, .bg-muted\/20, .bg-muted\/10) {
   background-color: transparent !important;
   border: 1px solid hsl(var(--border));
 }
