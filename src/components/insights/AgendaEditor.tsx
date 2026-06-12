@@ -693,11 +693,8 @@ export function AgendaEditor() {
     return () => { editor.off('update', handler); };
   }, [editor, loaded, persist]);
 
-  // Re-render the "saved … ago" indicator every 15s
-  useEffect(() => {
-    const id = window.setInterval(() => force(x => x + 1), 15000);
-    return () => window.clearInterval(id);
-  }, []);
+  // Re-render the "saved … ago" indicator every 15s. Pauses while hidden.
+  useVisibilityAwareInterval(() => force((x) => x + 1), 15000);
 
   // Flush on unmount
   useEffect(() => () => { flushPending(); }, [flushPending]);

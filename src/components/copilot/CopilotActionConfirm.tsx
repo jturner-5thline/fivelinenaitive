@@ -295,12 +295,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   }, [action]);
 
   // Re-render the "Updated Xs ago" label on a steady tick so the
-  // timestamp on the Done card stays accurate without a heavy interval.
-  useEffect(() => {
-    if (status !== 'done') return;
-    const id = window.setInterval(() => setRelativeTick(t => t + 1), 5000);
-    return () => window.clearInterval(id);
-  }, [status]);
+  // timestamp on the Done card stays accurate. Visibility-aware.
+  useVisibilityAwareInterval(
+    () => setRelativeTick((t) => t + 1),
+    status === 'done' ? 5000 : null,
+  );
 
   const relativeTime = (ms: number | null) => {
     if (!ms) return '';

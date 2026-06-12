@@ -96,10 +96,13 @@ export function useAsanaPortfolios(): UseAsanaPortfoliosResult {
   useEffect(() => {
     if (!companyId) return;
     void fetchPortfolios();
-    // Auto-refresh every 6 hours
-    const id = setInterval(() => { void fetchPortfolios(); }, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
   }, [companyId, fetchPortfolios]);
+  // Auto-refresh every 6 hours — visibility-aware so a long-lived
+  // background tab doesn't poll Asana indefinitely.
+  useVisibilityAwareInterval(
+    () => { void fetchPortfolios(); },
+    companyId ? 6 * 60 * 60 * 1000 : null,
+  );
 
   return { portfolios, loading, error, lastSyncedAt, configured, refresh: fetchPortfolios };
 }

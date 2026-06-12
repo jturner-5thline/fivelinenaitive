@@ -106,9 +106,11 @@ export function useAsanaPortfolioProjects(portfolioGid: string | null): UseAsana
   useEffect(() => {
     if (!companyId || !portfolioGid) return;
     void fetchProjects();
-    const id = setInterval(() => { void fetchProjects(); }, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
   }, [companyId, portfolioGid, fetchProjects]);
+  useVisibilityAwareInterval(
+    () => { void fetchProjects(); },
+    companyId && portfolioGid ? 6 * 60 * 60 * 1000 : null,
+  );
 
   return { projects, loading, error, configured, lastSyncedAt, refresh: fetchProjects };
 }

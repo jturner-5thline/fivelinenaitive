@@ -210,9 +210,11 @@ export function useAsanaGoals(): UseAsanaGoalsResult {
   useEffect(() => {
     if (!companyId) return;
     void fetchGoals();
-    const id = setInterval(() => { void fetchGoals(); }, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
   }, [companyId, fetchGoals]);
+  useVisibilityAwareInterval(
+    () => { void fetchGoals(); },
+    companyId ? 6 * 60 * 60 * 1000 : null,
+  );
 
   const fetchSubgoals = useCallback(async (parentGid: string): Promise<AsanaGoalRow[]> => {
     const integrationId = integrationIdRef.current;

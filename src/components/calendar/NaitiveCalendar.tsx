@@ -246,11 +246,9 @@ export function NaitiveCalendar({
   const [hoverMin, setHoverMin] = useState<number | null>(null);
   const [hoverDayIdx, setHoverDayIdx] = useState<number | null>(null);
 
-  // Tick "now" every minute for the live indicator.
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
+  // Tick "now" every minute for the live indicator. Visibility-aware so
+  // a backgrounded tab doesn't keep re-rendering a clock no one can see.
+  useVisibilityAwareInterval(() => setNow(new Date()), 60_000);
 
   const HOUR_HEIGHT = compact ? HOUR_HEIGHT_COMPACT : HOUR_HEIGHT_NORMAL;
 
