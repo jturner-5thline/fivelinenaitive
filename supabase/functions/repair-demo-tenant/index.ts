@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { seedDemoCompanyData } from "../_shared/seedDemoCompany.ts";
+import { provisionDemoWorkspace } from "../_shared/provisionDemoWorkspace.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,27 +74,21 @@ serve(async (req: Request) => {
     }
     if (!demoUserId) return json({ error: "No members on this company" }, 400);
 
-    // Force company + profiles into proper demo state.
-    const updates: Record<string, unknown> = { is_demo: true };
-    if (body.renameTo?.trim()) updates.name = body.renameTo.trim();
-    await admin.from("companies").update(updates).eq("id", companyId);
+    // Optional rename (the canonical provisioner handles all demo flags).
+    if (body.renameTo?.trim()) {
+      await admin.from("companies").update({ name: body.renameTo.trim() }).eq("id", companyId);
+    }
 
     const { data: companyMembers } = await admin
       .from("company_members").select("user_id").eq("company_id", companyId);
     const memberIds = (companyMembers ?? []).map((m) => m.user_id as string);
-    if (memberIds.length) {
-      await admin.from("profiles")
-        .update({
-          is_demo_user: true,
-          onboarding_completed: true,
-          onboarding_skipped: true,
-          is_active: true,
-        })
-        .in("user_id", memberIds);
-    }
 
-    // Run the idempotent seeder.
-    const seeded = await seedDemoCompanyData(admin, companyId, demoUserId);
+    // Single canonical provisioning service. Same code path as create.
+    const seeded = await provisionDemoWorkspace(admin, {
+      companyId,
+      attributingUserId: demoUserId,
+      memberUserIds: memberIds.length ? memberIds : [demoUserId],
+    });
 
     return json({
       success: true,

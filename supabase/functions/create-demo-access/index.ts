@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { seedDemoCompanyData, type SeedResult } from "../_shared/seedDemoCompany.ts";
+import { provisionDemoWorkspace, type ProvisionResult } from "../_shared/provisionDemoWorkspace.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -310,16 +310,20 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 4. Seed the demo workspace transactionally and idempotently so the
-    //    user lands in a fully populated tenant on first login.
-    let seeded: SeedResult | null = null;
+    // 4. Provision the canonical demo workspace (flags + pipeline + seeds +
+    //    validator). Idempotent: reruns top up to target without dupes.
+    let seeded: ProvisionResult | null = null;
     let seedError: string | null = null;
     if (shouldSeed && provisionedUserIds.length > 0) {
       try {
-        seeded = await seedDemoCompanyData(admin, company.id, provisionedUserIds[0]);
+        seeded = await provisionDemoWorkspace(admin, {
+          companyId: company.id,
+          attributingUserId: provisionedUserIds[0],
+          memberUserIds: provisionedUserIds,
+        });
       } catch (seedErr) {
         seedError = seedErr instanceof Error ? seedErr.message : String(seedErr);
-        console.error("[create-demo-access] sample seeding failed", seedError);
+        console.error("[create-demo-access] provisioning failed", seedError);
       }
     }
 

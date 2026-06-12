@@ -94,6 +94,7 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
+import { DemoSeedHealthPanel } from "@/components/admin/DemoSeedHealthPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
 import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
@@ -409,7 +410,9 @@ const Admin = () => {
         return <UserActivityPanel />;
       case "demo-metrics":
         return (
-          <Card>
+          <>
+            <DemoSeedHealthPanel />
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
@@ -421,7 +424,8 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><DemoMetricsPanel /></CardContent>
-          </Card>
+            </Card>
+          </>
         );
       case "feedback":
         return (
