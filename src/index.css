@@ -1088,20 +1088,20 @@
      bright card fill, no glow, no purple. */
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.022) 0%,
-      rgba(255, 255, 255, 0.012) 60%,
-      rgba(255, 255, 255, 0.006) 100%
+      rgba(120, 170, 235, 0.060) 0%,
+      rgba(120, 170, 235, 0.040) 60%,
+      rgba(120, 170, 235, 0.028) 100%
     ) !important;
-  border: 1px solid rgba(120, 170, 235, 0.10) !important;
+  border: 1px solid rgba(130, 180, 240, 0.22) !important;
   border-radius: 10px !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   /* Layered premium shadow — one tight close shadow + one wider soft
      bloom underneath. Whisper-soft inner top highlight, no rim glow. */
   box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.05),
-    0 1px 2px rgba(0, 0, 0, 0.28),
-    0 10px 28px -18px rgba(0, 0, 0, 0.55);
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 12px 32px -16px rgba(0, 0, 0, 0.62);
   /* No overflow:hidden — corner overlays (notification dot) must be able
      to overhang the tile edge. Inner content that needs clipping handles
      its own overflow locally. */
@@ -1109,15 +1109,15 @@
 .deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.034) 0%,
-      rgba(255, 255, 255, 0.018) 60%,
-      rgba(255, 255, 255, 0.010) 100%
+      rgba(130, 180, 240, 0.085) 0%,
+      rgba(130, 180, 240, 0.055) 60%,
+      rgba(130, 180, 240, 0.038) 100%
     ) !important;
-  border-color: rgba(140, 190, 245, 0.18) !important;
+  border-color: rgba(150, 200, 250, 0.34) !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.07),
-    0 1px 2px rgba(0, 0, 0, 0.32),
-    0 16px 36px -18px rgba(0, 0, 0, 0.62);
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.36),
+    0 18px 40px -16px rgba(0, 0, 0, 0.70);
 }
 .deal-glass::before {
   content: '';
@@ -1153,17 +1153,17 @@
 .deal-tile.deal-glass {
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.020) 0%,
-      rgba(255, 255, 255, 0.010) 60%,
-      rgba(255, 255, 255, 0.005) 100%
+      rgba(120, 170, 235, 0.055) 0%,
+      rgba(120, 170, 235, 0.038) 60%,
+      rgba(120, 170, 235, 0.026) 100%
     ) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.030) 0%,
-      rgba(255, 255, 255, 0.016) 60%,
-      rgba(255, 255, 255, 0.008) 100%
+      rgba(130, 180, 240, 0.080) 0%,
+      rgba(130, 180, 240, 0.052) 60%,
+      rgba(130, 180, 240, 0.036) 100%
     ) !important;
 }
 
