@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { TableVirtuoso } from 'react-virtuoso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -218,45 +219,53 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
-              <TableHead><SortHeader field="name">Company</SortHeader></TableHead>
-              <TableHead><SortHeader field="domain">Domain</SortHeader></TableHead>
-              <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
-              <TableHead><SortHeader field="company_type">Type</SortHeader></TableHead>
-              <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
-              <TableHead>Website</TableHead>
-              <TableHead>LinkedIn</TableHead>
-              <TableHead><SortHeader field="phone">Phone</SortHeader></TableHead>
-              <TableHead><SortHeader field="address">Address</SortHeader></TableHead>
-              <TableHead><SortHeader field="hq_address">HQ Address</SortHeader></TableHead>
-              <TableHead>Notes</TableHead>
-              <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
-              <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
-              <TableHead><SortHeader field="segment">Segment</SortHeader></TableHead>
-              <TableHead><SortHeader field="arr">ARR</SortHeader></TableHead>
-              <TableHead><SortHeader field="employee_range">Size</SortHeader></TableHead>
-              <TableHead><SortHeader field="hq_country">Location</SortHeader></TableHead>
-              <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={20} className="text-center py-12 text-muted-foreground">
-                  <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No companies found</p>
-                </TableCell>
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No companies found</p>
+          </div>
+        ) : (
+          <TableVirtuoso
+            // Virtualizes the CRM companies grid so the DOM only carries the
+            // visible window worth of rows regardless of tenant size.
+            style={{ height: Math.min(680, 56 + filtered.length * 44) }}
+            data={filtered}
+            components={{
+              Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
+              TableHead: TableHeader as any,
+              TableRow: TableRow as any,
+              TableBody: TableBody as any,
+            }}
+            fixedHeaderContent={() => (
+              <TableRow className="bg-muted/30">
+                <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
+                <TableHead><SortHeader field="name">Company</SortHeader></TableHead>
+                <TableHead><SortHeader field="domain">Domain</SortHeader></TableHead>
+                <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
+                <TableHead><SortHeader field="company_type">Type</SortHeader></TableHead>
+                <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
+                <TableHead>Website</TableHead>
+                <TableHead>LinkedIn</TableHead>
+                <TableHead><SortHeader field="phone">Phone</SortHeader></TableHead>
+                <TableHead><SortHeader field="address">Address</SortHeader></TableHead>
+                <TableHead><SortHeader field="hq_address">HQ Address</SortHeader></TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
+                <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
+                <TableHead><SortHeader field="segment">Segment</SortHeader></TableHead>
+                <TableHead><SortHeader field="arr">ARR</SortHeader></TableHead>
+                <TableHead><SortHeader field="employee_range">Size</SortHeader></TableHead>
+                <TableHead><SortHeader field="hq_country">Location</SortHeader></TableHead>
+                <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
+                <TableHead className="w-10" />
               </TableRow>
-            ) : filtered.map(co => (
-              <TableRow key={co.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/crm-companies/${co.id}`)}>
+            )}
+            itemContent={(_i, co) => (
+              <>
                 <TableCell onClick={e => e.stopPropagation()}>
                   <Checkbox checked={selectedIds.has(co.id)} onCheckedChange={() => toggleOne(co.id)} />
                 </TableCell>
-                <TableCell>
+                <TableCell className="cursor-pointer" onClick={() => navigate(`/crm-companies/${co.id}`)}>
                   <div className="flex items-center gap-2">
                     {co.logo_url ? (
                       <img src={co.logo_url} alt="" className="h-6 w-6 rounded object-contain" />
@@ -309,10 +318,10 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              </>
+            )}
+          />
+        )}
       </div>
       <p className="text-xs text-muted-foreground">{filtered.length} compan{filtered.length !== 1 ? 'ies' : 'y'}</p>
 
