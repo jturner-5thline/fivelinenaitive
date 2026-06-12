@@ -576,7 +576,7 @@ export default function Integrations() {
   const totalConnected = connectedIntegrations.length;
 
   return (
-    <AppLayout mainClassName="bg-background">
+    <AppLayout mainClassName="bg-transparent">
       <Helmet>
         <title>Integrations | naitive</title>
       </Helmet>

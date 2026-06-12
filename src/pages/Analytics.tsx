@@ -1253,7 +1253,7 @@ export default function Analytics() {
         <meta name="description" content="View and manage analytics charts for your deals pipeline" />
       </Helmet>
       
-      <div className="bg-background">
+      <div className="bg-transparent">
         
         <main className="container mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">

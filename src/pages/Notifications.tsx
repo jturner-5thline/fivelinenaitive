@@ -193,7 +193,7 @@ export default function Notifications() {
         <meta name="description" content="View all your notifications and alerts" />
       </Helmet>
       
-      <div className="bg-background">
+      <div className="bg-transparent">
         
         <main className="container max-w-4xl py-8">
           <div className="flex items-center justify-between mb-6">
