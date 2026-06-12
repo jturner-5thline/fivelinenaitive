@@ -5,7 +5,7 @@
 // repair missing data without ever creating duplicates.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-export const SEED_VERSION = "1.1.0";
+export const SEED_VERSION = "1.2.0";
 
 export const DEMO_TARGETS = {
   deals: 12,
@@ -13,6 +13,9 @@ export const DEMO_TARGETS = {
   crmCompanies: 50,
   tasks: 20,
   fundingSources: 50,
+  calendarEvents: 12, // per member user
+  inboxEmails: 15,    // per member user
+  dealActivities: 24, // total across demo deals
 } as const;
 
 export type DemoCounts = Record<keyof typeof DEMO_TARGETS, number>;
@@ -83,6 +86,30 @@ const TASK_TITLES = [
   "Walk through model","Confirm closing timeline","Review legal redline","Push update to VDR",
   "Send weekly summary","Schedule diligence meeting","Review proposed structure","Send signed engagement",
 ];
+const MEETING_TEMPLATES = [
+  { title: "Intro call — {company}", duration: 30, type: "intro" },
+  { title: "Management call — {company}", duration: 60, type: "mgmt" },
+  { title: "Diligence review — {company}", duration: 45, type: "diligence" },
+  { title: "Lender call — {company} x {lender}", duration: 30, type: "lender" },
+  { title: "IC prep — {company}", duration: 45, type: "ic" },
+  { title: "Pipeline check-in", duration: 30, type: "internal" },
+  { title: "Closing call — {company}", duration: 60, type: "closing" },
+  { title: "Term sheet walkthrough — {company}", duration: 45, type: "termsheet" },
+  { title: "Weekly client sync — {company}", duration: 30, type: "weekly" },
+  { title: "Post-mortem — {company}", duration: 30, type: "postmortem" },
+];
+const EMAIL_TEMPLATES = [
+  { subject: "Intro — {company}", body: "Wanted to introduce our team and walk through the opportunity at {company}. Can we find time this week for an intro call?", from: "contact" },
+  { subject: "Re: {company} — diligence checklist", body: "Attached is the diligence checklist for {company}. Let me know what's still outstanding so we can keep things moving.", from: "user" },
+  { subject: "{company} — financials follow-up", body: "Following up on the most recent financials package for {company}. We need TTM EBITDA reconciled before we send to lenders.", from: "contact" },
+  { subject: "Lender outreach — {company}", body: "Reaching out re: {company}. Initial reaction from {lender} was positive; they'd like to see the CIM and a model.", from: "lender" },
+  { subject: "Re: term sheet — {company}", body: "Attached is the redlined term sheet for {company}. Key change is the pricing grid; happy to jump on a call to walk through.", from: "lender" },
+  { subject: "CIM ready — {company}", body: "CIM for {company} is final. Sending out to the lender list this morning.", from: "user" },
+  { subject: "IC prep — {company}", body: "Here's the IC memo for {company} ahead of Thursday. Please flag any open items by EOD.", from: "user" },
+  { subject: "Re: {company} closing logistics", body: "Confirming closing date for {company}. We'll need signature blocks finalized by Friday.", from: "contact" },
+  { subject: "Weekly update — {company}", body: "Quick weekly update on {company}: diligence on track, two lenders in committee, targeting close end of month.", from: "user" },
+  { subject: "Pass — {company}", body: "Unfortunately {lender} is going to pass on {company} — wrong industry fit. Will keep them in mind for the next one.", from: "lender" },
+];
 
 function pick<T>(arr: readonly T[], i: number): T { return arr[i % arr.length]; }
 function rand(seed: number, max: number) {
@@ -96,6 +123,39 @@ async function countDemo(admin: Admin, table: string, filters: Record<string, un
   for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
   q = q.contains("tags", ["demo"]);
   const { count } = await q;
+  return count ?? 0;
+}
+
+// Comms tables (calendar_events, email_cache, activity_logs) have no `tags`
+// column. We mark seeded rows with a stable prefix on the natural-key id and
+// count by prefix. This keeps the seed idempotent without schema changes.
+const DEMO_CAL_PREFIX = "demo-seed-cal-";
+const DEMO_GMAIL_PREFIX = "demo-seed-msg-";
+const DEMO_ACTIVITY_PREFIX = "demo-seed-act-";
+
+async function countCalendarSeed(admin: Admin, userId: string): Promise<number> {
+  const { count } = await admin
+    .from("calendar_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .like("event_id", `${DEMO_CAL_PREFIX}%`);
+  return count ?? 0;
+}
+async function countEmailSeed(admin: Admin, userId: string): Promise<number> {
+  const { count } = await admin
+    .from("email_cache")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .like("gmail_message_id", `${DEMO_GMAIL_PREFIX}%`);
+  return count ?? 0;
+}
+async function countActivitySeed(admin: Admin, dealIds: string[]): Promise<number> {
+  if (dealIds.length === 0) return 0;
+  const { count } = await admin
+    .from("activity_logs")
+    .select("id", { count: "exact", head: true })
+    .in("deal_id", dealIds)
+    .like("message_id", `${DEMO_ACTIVITY_PREFIX}%`);
   return count ?? 0;
 }
 
