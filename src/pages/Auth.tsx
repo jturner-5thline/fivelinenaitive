@@ -454,20 +454,22 @@ const Auth = () => {
                       <div className="relative">
                         <Input
                           id="password"
-                          type={showPassword ? "text" : "password"}
+                          type={isDemoAccess || showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
                           required
                           className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 pr-10"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                        {!isDemoAccess && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        )}
                       </div>
                        {mode === "login" && !isDemoAccess && (
                         <button
