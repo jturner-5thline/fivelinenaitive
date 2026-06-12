@@ -126,15 +126,15 @@
        ═══════════════════════════════════════════════ */
 
     /* Surface 1: page background — Linear/Vercel-style airy dark navy */
-    --background: 226 25% 24%;
+    --background: 226 25% 32%;
     --foreground: 0 0% 100%;
 
     /* Surface 2: card glass layer — clearly elevated above page */
-    --card: 225 22% 30%;
+    --card: 225 22% 38%;
     --card-foreground: 0 0% 100%;
 
     /* Surface 3: elevated (popover) */
-    --popover: 224 20% 34%;
+    --popover: 224 20% 42%;
     --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
@@ -142,12 +142,12 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 225 18% 36%;
+    --secondary: 225 18% 44%;
     --secondary-foreground: 0 0% 98%;
 
     /* Muted */
-    --muted: 225 18% 32%;
-    --muted-foreground: 215 18% 86%;
+    --muted: 225 18% 40%;
+    --muted-foreground: 215 22% 92%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
@@ -162,18 +162,18 @@
     --destructive-foreground: 0 0% 95%;
 
     /* Borders — clearly visible delineation between sections */
-    --border: 224 16% 44%;
-    --input: 224 16% 44%;
+    --border: 224 18% 52%;
+    --input: 224 18% 52%;
     --ring: 213 90% 70%;
 
     /* Sidebar */
-    --sidebar-background: 226 25% 26%;
+    --sidebar-background: 226 25% 34%;
     --sidebar-foreground: 0 0% 94%;
     --sidebar-primary: 213 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 90% 70% / 0.1;
     --sidebar-accent-foreground: 213 90% 80%;
-    --sidebar-border: 224 16% 44%;
+    --sidebar-border: 224 18% 52%;
     --sidebar-ring: 213 90% 70%;
 
     /* Brand */
