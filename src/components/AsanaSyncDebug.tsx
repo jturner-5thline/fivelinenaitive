@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
 
 /**
  * Dev-only floating panel that lists the 10 most recent Asana sync log

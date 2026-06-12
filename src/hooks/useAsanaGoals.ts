@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 
 export interface AsanaGoalRow {
   id: string;            // local row id (asana_gid)

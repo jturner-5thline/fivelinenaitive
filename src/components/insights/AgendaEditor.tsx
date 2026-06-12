@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
