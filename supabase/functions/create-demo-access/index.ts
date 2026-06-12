@@ -123,6 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
     const shouldSeed = body.seedSampleData !== false;
 
     const results: Array<Record<string, unknown>> = [];
+    const provisionedUserIds: string[] = [];
 
     for (const u of body.users) {
       const email = u.email?.trim().toLowerCase();
@@ -204,88 +205,72 @@ const handler = async (req: Request): Promise<Response> => {
             { onConflict: "company_id,user_id" },
           );
 
-        // 2d. Create invitation row (token auto-gens)
-        const { data: invitation, error: inviteErr } = await admin
-          .from("company_invitations")
-          .insert({
-            company_id: company.id,
+        provisionedUserIds.push(userId!);
+
+        // 2d. Generate a one-click magic-link that auto-signs the user in and
+        //     lands them inside their seeded demo workspace. No password, no
+         //    account-setup step.
+        let magicLink: string | null = null;
+        let magicErr: string | null = null;
+        try {
+          const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
+            type: "magiclink",
             email,
-            role: companyRole,
-            invited_by: caller.id,
-          })
-          .select("id, token")
-          .single();
-
-        if (inviteErr) {
-          // Could be a unique constraint hit — surface but continue
-          results.push({ email, ok: true, userId, invited: false, warn: inviteErr.message });
-        } else if (body.sendWelcomeEmail !== false) {
-          // 3. Send branded demo-invite email via the shared transactional sender.
-          //    Falls back to legacy send-invite if the transactional path errors.
-          const acceptUrl = `${PLATFORM_URL}/accept-invite?token=${invitation.token}`;
-          let sentBranded = false;
-          let brandedError: string | null = null;
-          try {
-            const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
-              // verify_jwt=true on the receiver — forward the caller's JWT so it passes.
-              headers: { Authorization: authHeader },
-              body: {
-                templateName: "demo-invite",
-                recipientEmail: email,
-                idempotencyKey: `demo-invite-${invitation.id}`,
-                templateData: {
-                  name,
-                  companyName: company.name,
-                  inviterName,
-                  acceptUrl,
-                  trialEndsAt: trialEnds,
-                  role: platformRole,
-                },
-              },
-            });
-            if (txErr) throw txErr;
-            sentBranded = true;
-          } catch (txErr) {
-            brandedError = txErr instanceof Error ? txErr.message : String(txErr);
-            console.warn("[create-demo-access] branded invite failed, falling back", brandedError);
-          }
-
-          let sentFallback = false;
-          let fallbackError: string | null = null;
-          if (!sentBranded) {
-            try {
-              const { error: fbErr } = await admin.functions.invoke("send-invite", {
-                body: {
-                  invitationId: invitation.id,
-                  email,
-                  companyName: company.name,
-                  inviterName,
-                  role: platformRole,
-                  token: invitation.token,
-                },
-                headers: { Authorization: authHeader },
-              });
-              if (fbErr) throw fbErr;
-              sentFallback = true;
-            } catch (sendErr) {
-              fallbackError = sendErr instanceof Error ? sendErr.message : String(sendErr);
-              console.error("[create-demo-access] send-invite fallback failed", fallbackError);
-            }
-          }
-
-          const invited = sentBranded || sentFallback;
-          results.push({
-            email,
-            ok: true,
-            userId,
-            invited,
-            invitationId: invitation.id,
-            channel: sentBranded ? "branded" : sentFallback ? "fallback" : null,
-            reason: invited ? null : (brandedError ?? fallbackError ?? "Email send failed"),
+            options: { redirectTo: `${PLATFORM_URL}/?demo=1` },
           });
-        } else {
-          results.push({ email, ok: true, userId, invited: false });
+          if (linkErr) throw linkErr;
+          magicLink = (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? null;
+          if (!magicLink) throw new Error("magic link generation returned no action_link");
+        } catch (e) {
+          magicErr = e instanceof Error ? e.message : String(e);
+          console.error("[create-demo-access] magic link generation failed", email, magicErr);
         }
+
+        if (!magicLink) {
+          results.push({ email, ok: true, userId, invited: false, reason: magicErr ?? "magic link unavailable" });
+          continue;
+        }
+
+        if (body.sendWelcomeEmail === false) {
+          results.push({ email, ok: true, userId, invited: false, magicLink });
+          continue;
+        }
+
+        // 3. Send branded demo-access email with the magic link as the CTA.
+        let sent = false;
+        let sendErr: string | null = null;
+        try {
+          const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
+            headers: { Authorization: authHeader },
+            body: {
+              templateName: "demo-invite",
+              recipientEmail: email,
+              idempotencyKey: `demo-access-${company.id}-${userId}-${Date.now()}`,
+              templateData: {
+                name,
+                companyName: company.name,
+                inviterName,
+                acceptUrl: magicLink,
+                trialEndsAt: trialEnds,
+                role: platformRole,
+              },
+            },
+          });
+          if (txErr) throw txErr;
+          sent = true;
+        } catch (e) {
+          sendErr = e instanceof Error ? e.message : String(e);
+          console.error("[create-demo-access] demo-access email failed", email, sendErr);
+        }
+
+        results.push({
+          email,
+          ok: true,
+          userId,
+          invited: sent,
+          channel: sent ? "magic-link" : null,
+          reason: sent ? null : sendErr ?? "Email send failed",
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error("[create-demo-access] user error", email, msg);
@@ -295,10 +280,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     // 4. Seed lightweight sample data for demo / pilot accounts so the workspace
     //    feels alive on first login. Best-effort — never block the response.
-    let seeded: { deals: number; contacts: number } | null = null;
-    if (shouldSeed) {
+    let seeded: { deals: number; contacts: number; tasks: number; fundingPlans: number } | null = null;
+    if (shouldSeed && provisionedUserIds.length > 0) {
       try {
-        seeded = await seedDemoCompanyData(admin, company.id, caller.id);
+        seeded = await seedDemoCompanyData(admin, company.id, provisionedUserIds[0]);
       } catch (seedErr) {
         console.warn("[create-demo-access] sample seeding failed", seedErr);
       }
@@ -399,9 +384,66 @@ async function seedDemoCompanyData(
     console.warn("[create-demo-access] seed contacts skipped", e);
   }
 
+  // Seed a handful of tasks tied to seeded deals so the Tasks module is
+  // populated on first login. assigned_to/assigned_by use the demo user so
+  // RLS (is_same_company_as_user) resolves correctly.
+  let tasksInserted = 0;
+  try {
+    const dealIds = (insertedDeals ?? []).map((d) => d.id as string);
+    const today = new Date();
+    const inDays = (n: number) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const SAMPLE_TASKS = [
+      { title: "Review Acme Capital term sheet", description: "Walk through proposed structure with lender.", due_date: inDays(2), status: "pending" },
+      { title: "Send Northwind diligence checklist", description: "Email IRL with financial requirements.",       due_date: inDays(4), status: "in_progress" },
+      { title: "Schedule Stellar Health intro call", description: "Coordinate 30-min intro with their CFO.",     due_date: inDays(1), status: "pending" },
+      { title: "Update Apex Manufacturing memo",    description: "Add updated EBITDA figures to investment memo.", due_date: inDays(7), status: "pending" },
+      { title: "Confirm Harbor Foods data room access", description: "Verify VDR access for senior lender.",     due_date: inDays(3), status: "pending" },
+    ].map((t, i) => ({
+      ...t,
+      deal_id: dealIds[i % Math.max(dealIds.length, 1)] ?? null,
+      assigned_to: attributingUserId,
+      assigned_by: attributingUserId,
+    }));
+    const { data: insertedTasks } = await admin
+      .from("tasks")
+      .insert(SAMPLE_TASKS)
+      .select("id");
+    tasksInserted = insertedTasks?.length ?? 0;
+  } catch (e) {
+    console.warn("[create-demo-access] seed tasks skipped", e);
+  }
+
+  // Seed a current-year funding source acquisition plan so the Funding
+  // Sources / Lenders dashboards have realistic targets.
+  let fundingPlansInserted = 0;
+  try {
+    const year = new Date().getUTCFullYear();
+    const planRows = Array.from({ length: 4 }, (_, i) => ({
+      tenant_id: companyId,
+      year,
+      cadence: "quarterly",
+      period: i + 1,
+      target_count: [3, 4, 5, 4][i],
+      updated_by: attributingUserId,
+    }));
+    const { data: insertedPlans } = await admin
+      .from("funding_source_acquisition_plans")
+      .insert(planRows)
+      .select("id");
+    fundingPlansInserted = insertedPlans?.length ?? 0;
+  } catch (e) {
+    console.warn("[create-demo-access] seed funding plans skipped", e);
+  }
+
   return {
     deals: insertedDeals?.length ?? 0,
     contacts: contactsInserted,
+    tasks: tasksInserted,
+    fundingPlans: fundingPlansInserted,
   };
 }
 

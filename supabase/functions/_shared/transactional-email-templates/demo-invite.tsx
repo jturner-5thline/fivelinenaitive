@@ -19,13 +19,13 @@ interface DemoInviteProps {
 const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsAt, role }: DemoInviteProps) => {
   const url = acceptUrl || 'https://naitive.co'
   const trialLine = trialEndsAt
-    ? `Your pilot access runs through ${new Date(trialEndsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+    ? `Your demo access runs through ${new Date(trialEndsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
     : null
   return (
     <Html lang="en" dir="ltr">
       <Head />
       <Preview>
-        {inviterName ? `${inviterName} invited you` : 'You have been invited'} to try {SITE_NAME}
+        Your one-click access to the {SITE_NAME} demo workspace is ready
       </Preview>
       <Body style={main}>
         <Container style={container}>
@@ -34,26 +34,25 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
           </Section>
           <Hr style={divider} />
           <Heading style={h1}>
-            {name ? `${name}, you're invited to ${SITE_NAME}` : `You're invited to ${SITE_NAME}`}
+            {name ? `${name}, your ${SITE_NAME} demo is ready` : `Your ${SITE_NAME} demo is ready`}
           </Heading>
           <Text style={text}>
-            {inviterName ? `${inviterName} has set up` : 'We have set up'} a pilot workspace for
+            {inviterName ? `${inviterName} has prepared` : 'We have prepared'} a fully-seeded demo workspace for
             {' '}<strong>{companyName || 'your team'}</strong> on the {SITE_NAME} platform — an AI-native
             command center for deal management, lender intelligence, and financial operations.
           </Text>
-          {role ? (
-            <Text style={text}>
-              You'll join as <strong>{role}</strong> with full access to deals, the lender directory,
-              VDR, and analytics.
-            </Text>
-          ) : null}
+          <Text style={text}>
+            No account to create, no password to set. Just click below to open your workspace
+            already signed in, with sample deals, companies, contacts, tasks, and funding sources
+            ready to explore.
+          </Text>
           <Section style={buttonSection}>
             <Button style={button} href={url}>
-              Accept your invite
+              Open your demo workspace
             </Button>
           </Section>
           <Text style={smallText}>
-            Or copy this link: {url}
+            Or copy this secure access link: {url}
           </Text>
           {trialLine ? (
             <Section style={trialBox}>
@@ -62,7 +61,7 @@ const DemoInviteEmail = ({ name, companyName, inviterName, acceptUrl, trialEndsA
           ) : null}
           <Hr style={divider} />
           <Text style={footer}>
-            Questions? Just reply to this email.<br />
+            This is a single-use, time-limited access link. Questions? Just reply to this email.<br />
             — The {SITE_NAME} team
           </Text>
         </Container>
@@ -75,14 +74,14 @@ export const template = {
   component: DemoInviteEmail,
   subject: (data: Record<string, any>) =>
     data?.companyName
-      ? `Your ${SITE_NAME} workspace for ${data.companyName} is ready`
-      : `You're invited to ${SITE_NAME}`,
-  displayName: 'Demo / pilot invite',
+      ? `Your ${SITE_NAME} demo workspace for ${data.companyName} is ready`
+      : `Your ${SITE_NAME} demo workspace is ready`,
+  displayName: 'Demo access link',
   previewData: {
     name: 'Jane',
     companyName: 'Acme Capital',
     inviterName: 'James Turner',
-    acceptUrl: 'https://naitive.co/accept-invite?token=preview',
+    acceptUrl: 'https://naitive.co/?demo=1',
     trialEndsAt: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString(),
     role: 'Admin',
   },
