@@ -76,7 +76,7 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
       <CardContent className="flex flex-col items-center justify-center gap-1 px-2 py-3 h-full text-center">
         <p
           className="w-full text-[10px] font-medium uppercase tracking-wide truncate leading-tight"
-          style={{ color: 'rgba(160, 200, 255, 0.55)' }}
+          style={{ color: 'rgba(195, 215, 245, 0.75)' }}
           title={widget.label}
         >
           {widget.label}
@@ -84,7 +84,7 @@ export function WidgetCard({ widget, value, isEditMode, isClickable, onEdit, onD
         <p
           className="w-full font-semibold tabular-nums leading-tight whitespace-nowrap overflow-hidden text-ellipsis"
           style={{
-            color: '#dde8f8',
+            color: '#f4f8ff',
             // Step the value font down at narrow desktop widths so larger
             // values like "$79.75MM" never wrap or truncate at xl 6-up.
             fontSize: 'clamp(0.95rem, 1.1vw + 0.25rem, 1.25rem)',
