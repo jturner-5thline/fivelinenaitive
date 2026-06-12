@@ -1,10 +1,8 @@
-// v3 - with pending company join request redirect
+// v4 - approval gate removed; auth + profile only
 import { Navigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
-import { useIsApproved } from '@/hooks/useUserApproval';
-import { useMyJoinRequests } from '@/hooks/useCompanyJoinRequests';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -16,23 +14,16 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ 
   children, 
   skipOnboarding = false,
-  skipApprovalCheck = false 
+  skipApprovalCheck: _skipApprovalCheck = false 
 }: ProtectedRouteProps) {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, isLoading: profileLoading } = useProfile();
-  const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
-  const { data: joinRequests, isLoading: joinRequestsLoading } = useMyJoinRequests();
   const location = useLocation();
 
-  // Check if user is a 5thline.co user (auto-approved)
-  const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
-
-  // Demo users (provisioned through Create Demo Access) are auto-approved and skip
-  // onboarding entirely — they go straight to their seeded workspace.
+  // Demo users skip onboarding entirely — they go straight to their seeded workspace.
   const isDemoUser = Boolean((profile as { is_demo_user?: boolean } | null)?.is_demo_user);
-  const autoApproved = is5thLineUser || isDemoUser;
 
-  const isLoading = authLoading || profileLoading || (!autoApproved && !skipApprovalCheck && approvalLoading) || joinRequestsLoading;
+  const isLoading = authLoading || profileLoading;
 
   if (isLoading) {
     return (
@@ -43,21 +34,9 @@ export function ProtectedRoute({
   }
 
   if (!user) {
-    // Preserve the originally requested path so the auth flow returns
-    // the user back here after sign-in (e.g. email CTA -> /insights).
     const target = `${location.pathname}${location.search}${location.hash}`;
     const redirectQuery = target && target !== '/' ? `?redirect=${encodeURIComponent(target)}` : '';
     return <Navigate to={`/login${redirectQuery}`} replace />;
-  }
-
-  // Check approval status (skip for 5thline.co users, demo users, or if explicitly skipped)
-  if (!skipApprovalCheck && !autoApproved && isApproved === false) {
-    // Check if user has a pending company join request — redirect to pending-company-approval instead
-    const hasPendingJoinRequest = joinRequests?.some((r: any) => r.status === 'pending');
-    if (hasPendingJoinRequest) {
-      return <Navigate to="/pending-company-approval" replace />;
-    }
-    return <Navigate to="/pending-approval" replace />;
   }
 
   // Redirect to onboarding if not completed (unless skipOnboarding is true or demo user)
