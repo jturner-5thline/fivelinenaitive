@@ -175,12 +175,15 @@ export async function seedDemoCompanyData(
     (contactsInserted ?? []).forEach((c) => inserted.contacts.push(c.id as string));
 
     const DEAL_VALUES = [1_200_000, 2_500_000, 3_800_000, 5_000_000, 6_500_000, 8_000_000, 9_750_000, 11_250_000, 13_500_000, 15_000_000, 17_500_000, 19_800_000];
-    const STATUS_CYCLE = ["active","active","active","active","active","active","active","active","on_hold","closed_won","closed_lost","active"];
+    // Canonical UI status taxonomy (see src/types/deal.ts STATUS_CONFIG).
+    // Using raw DB enums like "active"/"closed_won" causes grid view to
+    // drop those deals because they aren't in the known status order.
+    const STATUS_CYCLE = ["on-track","on-track","on-track","on-track","at-risk","at-risk","off-track","on-track","on-hold","archived","archived","on-track"];
     const dealRows = DEAL_VALUES.map((value, i) => {
       const crm = (crmInserted ?? [])[i % Math.max(crmInserted?.length ?? 1, 1)] as
         | { id: string; name: string; domain: string } | undefined;
       const status = STATUS_CYCLE[i];
-      const stageIdx = status === "closed_won" ? 8 : status === "closed_lost" ? 9 : status === "on_hold" ? 10 : i % 8;
+      const stageIdx = i === 9 ? 8 : i === 10 ? 9 : status === "on-hold" ? 10 : i % 8;
       return {
         company: crm?.name ?? `Demo Deal ${i + 1}`,
         value, stage: stageId(stageIdx), status,
@@ -192,7 +195,7 @@ export async function seedDemoCompanyData(
         pipeline_id: pipeline.id,
         deal_class: "standard", tags: ["demo"],
         notes: `Seeded demo deal #${i + 1}. Value $${(value / 1_000_000).toFixed(1)}MM.`,
-        on_hold: status === "on_hold",
+        on_hold: status === "on-hold",
       };
     });
     const { data: dealsInserted, error: dealsErr } = await admin
