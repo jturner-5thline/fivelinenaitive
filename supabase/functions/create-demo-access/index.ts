@@ -384,9 +384,66 @@ async function seedDemoCompanyData(
     console.warn("[create-demo-access] seed contacts skipped", e);
   }
 
+  // Seed a handful of tasks tied to seeded deals so the Tasks module is
+  // populated on first login. assigned_to/assigned_by use the demo user so
+  // RLS (is_same_company_as_user) resolves correctly.
+  let tasksInserted = 0;
+  try {
+    const dealIds = (insertedDeals ?? []).map((d) => d.id as string);
+    const today = new Date();
+    const inDays = (n: number) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const SAMPLE_TASKS = [
+      { title: "Review Acme Capital term sheet", description: "Walk through proposed structure with lender.", due_date: inDays(2), status: "pending" },
+      { title: "Send Northwind diligence checklist", description: "Email IRL with financial requirements.",       due_date: inDays(4), status: "in_progress" },
+      { title: "Schedule Stellar Health intro call", description: "Coordinate 30-min intro with their CFO.",     due_date: inDays(1), status: "pending" },
+      { title: "Update Apex Manufacturing memo",    description: "Add updated EBITDA figures to investment memo.", due_date: inDays(7), status: "pending" },
+      { title: "Confirm Harbor Foods data room access", description: "Verify VDR access for senior lender.",     due_date: inDays(3), status: "pending" },
+    ].map((t, i) => ({
+      ...t,
+      deal_id: dealIds[i % Math.max(dealIds.length, 1)] ?? null,
+      assigned_to: attributingUserId,
+      assigned_by: attributingUserId,
+    }));
+    const { data: insertedTasks } = await admin
+      .from("tasks")
+      .insert(SAMPLE_TASKS)
+      .select("id");
+    tasksInserted = insertedTasks?.length ?? 0;
+  } catch (e) {
+    console.warn("[create-demo-access] seed tasks skipped", e);
+  }
+
+  // Seed a current-year funding source acquisition plan so the Funding
+  // Sources / Lenders dashboards have realistic targets.
+  let fundingPlansInserted = 0;
+  try {
+    const year = new Date().getUTCFullYear();
+    const planRows = Array.from({ length: 4 }, (_, i) => ({
+      tenant_id: companyId,
+      year,
+      cadence: "quarterly",
+      period: i + 1,
+      target_count: [3, 4, 5, 4][i],
+      updated_by: attributingUserId,
+    }));
+    const { data: insertedPlans } = await admin
+      .from("funding_source_acquisition_plans")
+      .insert(planRows)
+      .select("id");
+    fundingPlansInserted = insertedPlans?.length ?? 0;
+  } catch (e) {
+    console.warn("[create-demo-access] seed funding plans skipped", e);
+  }
+
   return {
     deals: insertedDeals?.length ?? 0,
     contacts: contactsInserted,
+    tasks: tasksInserted,
+    fundingPlans: fundingPlansInserted,
   };
 }
 
