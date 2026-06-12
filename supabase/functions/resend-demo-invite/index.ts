@@ -41,50 +41,97 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const { companyId } = await req.json();
+    const { companyId, email: singleEmail } = await req.json();
     if (!companyId) {
       return new Response(JSON.stringify({ error: "companyId required" }), {
         status: 400, headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
-    // Fetch unaccepted invitations for this company
-    const { data: invites } = await admin
-      .from("company_invitations")
-      .select("id, email, role, token, accepted_at, company_id")
-      .eq("company_id", companyId)
-      .is("accepted_at", null);
-
     const { data: company } = await admin
-      .from("companies").select("name").eq("id", companyId).single();
+      .from("companies").select("id, name").eq("id", companyId).single();
+    if (!company) {
+      return new Response(JSON.stringify({ error: "Company not found" }), {
+        status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Fetch members of this demo company
+    const { data: members } = await admin
+      .from("company_members")
+      .select("user_id")
+      .eq("company_id", companyId);
+    const memberIds = (members ?? []).map((m) => m.user_id as string);
+    if (memberIds.length === 0) {
+      return new Response(JSON.stringify({ error: "No members found for this company" }), {
+        status: 404, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    const { data: profiles } = await admin
+      .from("profiles")
+      .select("user_id, email, full_name, display_name")
+      .in("user_id", memberIds);
 
     const inviterName =
       (caller.user_metadata as Record<string, unknown> | null)?.full_name as string | undefined ||
       (caller.email?.split("@")[0] ?? "An admin");
 
-    let sent = 0;
-    for (const inv of invites ?? []) {
+    const PLATFORM_URL = Deno.env.get("APP_URL") ?? "https://naitive.co";
+    const DEMO_PASSWORD = "User1234";
+
+    const targets = (profiles ?? []).filter((p) =>
+      singleEmail ? (p.email ?? "").toLowerCase() === String(singleEmail).toLowerCase() : true
+    );
+
+    const results: Array<{ email: string; sent: boolean; error: string | null }> = [];
+    for (const p of targets) {
+      const email = (p.email ?? "").toLowerCase();
+      const name = (p.full_name as string) || (p.display_name as string) || email;
+      if (!email) continue;
+
+      // Ensure password is current so the prefilled login works.
       try {
-        await admin.functions.invoke("send-invite", {
-          body: {
-            invitationId: inv.id,
-            email: inv.email,
-            companyName: company?.name ?? "",
-            inviterName,
-            role: inv.role,
-            token: inv.token,
-          },
-          headers: { Authorization: authHeader },
+        await admin.auth.admin.updateUserById(p.user_id as string, {
+          password: DEMO_PASSWORD,
+          email_confirm: true,
         });
-        sent++;
       } catch (e) {
-        console.warn("[resend-demo-invite] send failed", inv.email, e);
+        console.warn("[resend-demo-invite] password reset failed", email, e);
+      }
+
+      const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(DEMO_PASSWORD)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
+
+      try {
+        const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
+          headers: { Authorization: authHeader },
+          body: {
+            templateName: "demo-invite",
+            recipientEmail: email,
+            idempotencyKey: `demo-access-resend-${company.id}-${p.user_id}-${Date.now()}`,
+            templateData: {
+              name,
+              companyName: company.name,
+              inviterName,
+              acceptUrl: loginUrl,
+              role: "Member",
+            },
+          },
+        });
+        if (txErr) throw txErr;
+        results.push({ email, sent: true, error: null });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn("[resend-demo-invite] send failed", email, msg);
+        results.push({ email, sent: false, error: msg });
       }
     }
 
-    return new Response(JSON.stringify({ success: true, sent, total: invites?.length ?? 0 }), {
-      status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    const sent = results.filter((r) => r.sent).length;
+    return new Response(
+      JSON.stringify({ success: true, sent, total: results.length, results }),
+      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } },
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ error: msg }), {

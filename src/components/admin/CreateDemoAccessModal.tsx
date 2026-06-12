@@ -107,43 +107,57 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const results = (data?.results ?? []) as Array<{
         email?: string;
         ok?: boolean;
+        provisioned?: boolean;
         invited?: boolean;
+        email_sent?: boolean;
+        email_skipped?: boolean;
         reason?: string | null;
+        error?: string | null;
       }>;
-      const sent = results.filter((r) => r.invited).length;
-      const notSent = results.filter((r) => r.ok && !r.invited && sendWelcomeEmail);
-      const userFailures = results.filter((r) => !r.ok);
+      const provisioned = results.filter((r) => r.provisioned ?? r.ok).length;
+      const userFailures = results.filter((r) => !(r.provisioned ?? r.ok));
+      const sent = results.filter((r) => r.email_sent ?? r.invited).length;
+      const emailFailures = sendWelcomeEmail
+        ? results.filter(
+            (r) => (r.provisioned ?? r.ok) && !(r.email_sent ?? r.invited) && !r.email_skipped,
+          )
+        : [];
 
-      const provisioned = results.filter((r) => r.ok).length;
-      const userLabel = provisioned === 1 ? "user can" : `${provisioned} users can`;
-      if (sent > 0) {
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-invitations"] });
+
+      // Show per-user provisioning failures first
+      for (const r of userFailures) {
+        toast.error(`User ${r.email}: ${r.error || r.reason || "failed"}`);
+      }
+
+      if (sendWelcomeEmail && emailFailures.length > 0) {
+        // Partial or full email failure — keep dialog open so admin can retry.
+        const first = emailFailures[0];
+        const partial = sent > 0;
+        toast.error(
+          partial
+            ? `Demo workspace created, but ${emailFailures.length} access email${emailFailures.length === 1 ? "" : "s"} failed to send. ${first.email}: ${first.error || first.reason || "unknown error"}`
+            : `Demo workspace was created, but the access email could not be sent. ${first.email}: ${first.error || first.reason || "unknown error"}`,
+          { duration: 10000 },
+        );
+        return; // keep modal open so admin can fix and retry
+      }
+
+      if (sendWelcomeEmail && sent > 0) {
         toast.success(
-          `Demo access ready for ${companyName} — ${userLabel} open their demo login link, click Login, and land in the seeded workspace. ${sent} demo access email${sent === 1 ? "" : "s"} sent.`,
+          `Demo workspace created and access email${sent === 1 ? "" : "s"} sent to ${companyName}.`,
+          { duration: 7000 },
+        );
+      } else if (!sendWelcomeEmail && provisioned > 0) {
+        toast.success(
+          `Demo workspace created for ${companyName}. Share the demo login link with ${provisioned === 1 ? "the user" : "users"} manually.`,
           { duration: 7000 },
         );
       } else if (provisioned > 0) {
-        toast.success(
-          `Demo access ready for ${companyName} — ${userLabel} use their demo login link to enter the seeded workspace.`,
-          { duration: 7000 },
-        );
-      } else {
         toast.success(`Demo workspace created for ${companyName}.`);
       }
-      if (notSent.length) {
-        for (const r of notSent) {
-          toast.error(
-            `Demo access email failed for ${r.email}: ${r.reason || "unknown error"}. Use “Resend invites” on the company row.`,
-            { duration: 8000 },
-          );
-        }
-      }
-      if (userFailures.length) {
-        for (const r of userFailures) {
-          toast.error(`User ${r.email}: ${r.reason || "failed"}`);
-        }
-      }
-      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
-      queryClient.invalidateQueries({ queryKey: ["admin-invitations"] });
+
       onOpenChange(false);
       reset();
     } catch (e) {
