@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { TableVirtuoso } from 'react-virtuoso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -238,129 +239,131 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
 
       {/* Table */}
       <div className="border rounded-lg overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/30">
-              <TableHead className="w-10">
-                <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
-              </TableHead>
-              <TableHead><SortHeader field="full_name">Name</SortHeader></TableHead>
-              <TableHead><SortHeader field="job_title">Title</SortHeader></TableHead>
-              <TableHead><SortHeader field="contact_type">Type</SortHeader></TableHead>
-              <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>LinkedIn</TableHead>
-              <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
-              <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
-              <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
-              <TableHead><SortHeader field="lead_source">Source</SortHeader></TableHead>
-              <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
-              <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
-              <TableHead className="w-10" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
-                  <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No contacts found</p>
-                </TableCell>
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No contacts found</p>
+          </div>
+        ) : (
+          <TableVirtuoso
+            // Virtualizes the contacts list so the DOM never carries more than the
+            // visible window worth of rows (~20). Massive perf win for large CRMs.
+            style={{ height: Math.min(640, 56 + filtered.length * 44) }}
+            data={filtered}
+            components={{
+              Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
+              TableHead: TableHeader as any,
+              TableRow: TableRow as any,
+              TableBody: TableBody as any,
+            }}
+            fixedHeaderContent={() => (
+              <TableRow className="bg-muted/30">
+                <TableHead className="w-10">
+                  <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
+                </TableHead>
+                <TableHead><SortHeader field="full_name">Name</SortHeader></TableHead>
+                <TableHead><SortHeader field="job_title">Title</SortHeader></TableHead>
+                <TableHead><SortHeader field="contact_type">Type</SortHeader></TableHead>
+                <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>LinkedIn</TableHead>
+                <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
+                <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
+                <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
+                <TableHead><SortHeader field="lead_source">Source</SortHeader></TableHead>
+                <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
+                <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
+                <TableHead className="w-10" />
               </TableRow>
-            ) : (
-              filtered.map(contact => {
-                const crmCompany = (contact as any).crm_company;
-                const companyName = crmCompany?.name || null;
-                const companyId = (contact as any).crm_company_id;
-                return (
-                  <TableRow
-                    key={contact.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/contacts/${contact.id}`)}
-                  >
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium text-sm">{contact.full_name || '—'}</div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
-                    <TableCell className="text-sm">
-                      {(contact as any).contact_type ? (
-                        <Badge variant="outline" className="text-[10px]">{(contact as any).contact_type}</Badge>
-                      ) : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {companyName ? (
-                        <span
-                          className="text-primary hover:underline cursor-pointer"
-                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
-                        >{companyName}</span>
-                      ) : '—'}
-                    </TableCell>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      {contact.linkedin_url ? (
-                        <a
-                          href={contact.linkedin_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={contact.linkedin_url}
-                          className="inline-flex items-center text-primary hover:underline"
-                        >
-                          <Linkedin className="h-4 w-4" />
-                        </a>
-                      ) : <span className="text-muted-foreground text-sm">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>
-                        {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label || contact.lifecycle_stage}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={cn('text-[10px]', statusColors[contact.status] || '')}>
-                        {CONTACT_STATUSES.find(s => s.value === contact.status)?.label || contact.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {contact.owner_user_id ? (ownerNameById.get(contact.owner_user_id) || 'Unknown') : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
-                    </TableCell>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/contacts/${contact.id}`)}>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Send Email</DropdownMenuItem>
-                          <DropdownMenuItem>Log Call</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setLinkCompanyContactId(contact.id)}>
-                            <Building2 className="h-3.5 w-3.5 mr-1.5" /> Link to Company
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setLinkDealContactId(contact.id)}>
-                            <Briefcase className="h-3.5 w-3.5 mr-1.5" /> Link to Deal
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteContactId(contact.id)}>
-                            <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
             )}
-          </TableBody>
-        </Table>
+            itemContent={(_index, contact) => {
+              const crmCompany = (contact as any).crm_company;
+              const companyName = crmCompany?.name || null;
+              const companyId = (contact as any).crm_company_id;
+              return (
+                <>
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
+                  </TableCell>
+                  <TableCell onClick={() => navigate(`/contacts/${contact.id}`)} className="cursor-pointer">
+                    <div className="font-medium text-sm">{contact.full_name || '—'}</div>
+                  </TableCell>
+                  <TableCell onClick={() => navigate(`/contacts/${contact.id}`)} className="cursor-pointer text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
+                  <TableCell className="text-sm">
+                    {(contact as any).contact_type ? (
+                      <Badge variant="outline" className="text-[10px]">{(contact as any).contact_type}</Badge>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {companyName ? (
+                      <span
+                        className="text-primary hover:underline cursor-pointer"
+                        onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
+                      >{companyName}</span>
+                    ) : '—'}
+                  </TableCell>
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    {contact.linkedin_url ? (
+                      <a
+                        href={contact.linkedin_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={contact.linkedin_url}
+                        className="inline-flex items-center text-primary hover:underline"
+                      >
+                        <Linkedin className="h-4 w-4" />
+                      </a>
+                    ) : <span className="text-muted-foreground text-sm">—</span>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>
+                      {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label || contact.lifecycle_stage}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className={cn('text-[10px]', statusColors[contact.status] || '')}>
+                      {CONTACT_STATUSES.find(s => s.value === contact.status)?.label || contact.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {contact.owner_user_id ? (ownerNameById.get(contact.owner_user_id) || 'Unknown') : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
+                  </TableCell>
+                  <TableCell onClick={e => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => navigate(`/contacts/${contact.id}`)}>View Details</DropdownMenuItem>
+                        <DropdownMenuItem>Send Email</DropdownMenuItem>
+                        <DropdownMenuItem>Log Call</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setLinkCompanyContactId(contact.id)}>
+                          <Building2 className="h-3.5 w-3.5 mr-1.5" /> Link to Company
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setLinkDealContactId(contact.id)}>
+                          <Briefcase className="h-3.5 w-3.5 mr-1.5" /> Link to Deal
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteContactId(contact.id)}>
+                          <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </>
+              );
+            }}
+          />
+        )}
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} contact{filtered.length !== 1 ? 's' : ''}</p>
