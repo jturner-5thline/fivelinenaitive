@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
           const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
             type: "magiclink",
             email,
-            options: { redirectTo: `${PLATFORM_URL}/?demo=1` },
+            options: { redirectTo: `${PLATFORM_URL}/auth/demo/callback` },
           });
           if (linkErr) throw linkErr;
           magicLink = (linkData as { properties?: { action_link?: string } })?.properties?.action_link ?? null;
