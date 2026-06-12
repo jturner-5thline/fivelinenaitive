@@ -204,6 +204,11 @@ export function TaskListView({
   );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
+  // Per-group render cap. Keeps DOM small for large task lists and protects
+  // dnd-kit (which must keep draggable items mounted) by rendering only a
+  // bounded window. Users can expand individual groups via "Show more".
+  const GROUP_RENDER_CAP = 100;
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
   const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
 
@@ -398,7 +403,15 @@ export function TaskListView({
 
                 {(isFlat || !isCollapsed) && (
                   <div className="pt-1.5 pb-1 space-y-1 px-2">
-                    {group.tasks.map(task => {
+                    {(() => {
+                      const isExpanded = expandedGroups.has(group.key);
+                      const visibleTasks = isExpanded || group.tasks.length <= GROUP_RENDER_CAP
+                        ? group.tasks
+                        : group.tasks.slice(0, GROUP_RENDER_CAP);
+                      const hiddenCount = group.tasks.length - visibleTasks.length;
+                      return (
+                        <>
+                    {visibleTasks.map(task => {
                       const globalIndex = tasks.indexOf(task);
                       return (
                         <SortableTaskRow
@@ -422,6 +435,22 @@ export function TaskListView({
                         />
                       );
                     })}
+                    {hiddenCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedGroups(prev => {
+                          const next = new Set(prev);
+                          next.add(group.key);
+                          return next;
+                        })}
+                        className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1.5 rounded transition-colors hover:bg-white/[0.03]"
+                      >
+                        Show {hiddenCount.toLocaleString()} more
+                      </button>
+                    )}
+                        </>
+                      );
+                    })()}
 
                     {/* Inline add for first section */}
                     {group === groups[0] && (
@@ -500,6 +529,10 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const OVERDUE_CAP = 100;
+  const visibleOverdue = showAll || tasks.length <= OVERDUE_CAP ? tasks : tasks.slice(0, OVERDUE_CAP);
+  const hiddenOverdue = tasks.length - visibleOverdue.length;
 
   return (
     <div>
@@ -542,7 +575,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
         {cols.map(c => <div key={c.id} aria-hidden />)}
         <div aria-hidden />
       </button>
-      {!collapsed && tasks.map(task => {
+      {!collapsed && visibleOverdue.map(task => {
         const globalIndex = allTasks.indexOf(task);
         return (
           <SortableTaskRow
@@ -565,6 +598,15 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           />
         );
       })}
+      {!collapsed && hiddenOverdue > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1.5 rounded transition-colors hover:bg-white/[0.03]"
+        >
+          Show {hiddenOverdue.toLocaleString()} more overdue
+        </button>
+      )}
     </div>
   );
 }
