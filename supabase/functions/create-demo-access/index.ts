@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { seedDemoCompanyData, type SeedResult } from "../_shared/seedDemoCompany.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,6 @@ const corsHeaders = {
 
 type CompanyRole = "admin" | "member";
 const DEMO_PASSWORD = "User1234";
-const SEED_VERSION = "1.0.0";
 
 interface DemoUserInput {
   name: string;
