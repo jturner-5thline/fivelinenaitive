@@ -310,14 +310,16 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 4. Seed lightweight sample data for demo / pilot accounts so the workspace
-    //    feels alive on first login. Best-effort — never block the response.
-    let seeded: { deals: number; contacts: number; tasks: number; fundingPlans: number } | null = null;
+    // 4. Seed the demo workspace transactionally and idempotently so the
+    //    user lands in a fully populated tenant on first login.
+    let seeded: SeedResult | null = null;
+    let seedError: string | null = null;
     if (shouldSeed && provisionedUserIds.length > 0) {
       try {
         seeded = await seedDemoCompanyData(admin, company.id, provisionedUserIds[0]);
       } catch (seedErr) {
-        console.warn("[create-demo-access] sample seeding failed", seedErr);
+        seedError = seedErr instanceof Error ? seedErr.message : String(seedErr);
+        console.error("[create-demo-access] sample seeding failed", seedError);
       }
     }
 
