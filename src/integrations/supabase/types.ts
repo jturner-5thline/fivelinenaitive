@@ -19630,6 +19630,7 @@ export type Database = {
           id: string
           in_app_notifications: boolean
           is_active: boolean
+          is_demo_user: boolean
           last_daily_rundown_notice_at: string | null
           last_name: string | null
           lender_updates_app: boolean
@@ -19684,6 +19685,7 @@ export type Database = {
           id?: string
           in_app_notifications?: boolean
           is_active?: boolean
+          is_demo_user?: boolean
           last_daily_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean
@@ -19738,6 +19740,7 @@ export type Database = {
           id?: string
           in_app_notifications?: boolean
           is_active?: boolean
+          is_demo_user?: boolean
           last_daily_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean

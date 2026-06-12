@@ -27,7 +27,12 @@ export function ProtectedRoute({
   // Check if user is a 5thline.co user (auto-approved)
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
 
-  const isLoading = authLoading || profileLoading || (!is5thLineUser && !skipApprovalCheck && approvalLoading) || joinRequestsLoading;
+  // Demo users (provisioned through Create Demo Access) are auto-approved and skip
+  // onboarding entirely — they go straight to their seeded workspace.
+  const isDemoUser = Boolean((profile as { is_demo_user?: boolean } | null)?.is_demo_user);
+  const autoApproved = is5thLineUser || isDemoUser;
+
+  const isLoading = authLoading || profileLoading || (!autoApproved && !skipApprovalCheck && approvalLoading) || joinRequestsLoading;
 
   if (isLoading) {
     return (
@@ -45,8 +50,8 @@ export function ProtectedRoute({
     return <Navigate to={`/login${redirectQuery}`} replace />;
   }
 
-  // Check approval status (skip for 5thline.co users or if explicitly skipped)
-  if (!skipApprovalCheck && !is5thLineUser && isApproved === false) {
+  // Check approval status (skip for 5thline.co users, demo users, or if explicitly skipped)
+  if (!skipApprovalCheck && !autoApproved && isApproved === false) {
     // Check if user has a pending company join request — redirect to pending-company-approval instead
     const hasPendingJoinRequest = joinRequests?.some((r: any) => r.status === 'pending');
     if (hasPendingJoinRequest) {
@@ -55,8 +60,8 @@ export function ProtectedRoute({
     return <Navigate to="/pending-approval" replace />;
   }
 
-  // Redirect to onboarding if not completed (unless skipOnboarding is true)
-  if (!skipOnboarding && profile && !profile.onboarding_completed) {
+  // Redirect to onboarding if not completed (unless skipOnboarding is true or demo user)
+  if (!skipOnboarding && !isDemoUser && profile && !profile.onboarding_completed) {
     return <Navigate to="/onboarding" replace />;
   }
 

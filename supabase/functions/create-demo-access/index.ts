@@ -199,6 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
             approved_at: nowIso,
             approved_by: caller.id,
             approval_requested_at: nowIso,
+            is_demo_user: true,
           });
         } else {
           await admin
@@ -208,6 +209,7 @@ const handler = async (req: Request): Promise<Response> => {
               onboarding_completed: true,
               approved_at: existingProfile.approved_at ?? nowIso,
               approved_by: caller.id,
+              is_demo_user: true,
             })
             .eq("user_id", userId);
         }
