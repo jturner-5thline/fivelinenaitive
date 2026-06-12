@@ -629,6 +629,8 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
+      case "performance":
+        return <PerfDiagnosticsPanel />;
       case "ai-training":
         return (
           <Card>
