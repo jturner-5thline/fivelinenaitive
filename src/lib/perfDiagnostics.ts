@@ -55,6 +55,21 @@ export interface PerfSnapshot {
   longTasks: PerfLongTask[];
   routes: PerfRouteSample[];
   warnings: string[];
+  mail: PerfMailSummary;
+}
+
+export interface PerfMailEventSummary {
+  count: number;
+  lastMs: number;
+  avgMs: number;
+  maxMs: number;
+}
+
+export interface PerfMailSummary {
+  popupOpen: PerfMailEventSummary;
+  threadOpen: PerfMailEventSummary;
+  move: PerfMailEventSummary;
+  composeOpen: PerfMailEventSummary;
 }
 
 const STATE = {
@@ -66,6 +81,12 @@ const STATE = {
   channels: 0,
   intervals: 0,
   memoryTimer: 0 as unknown as ReturnType<typeof setInterval> | 0,
+  mail: {
+    popupOpen: { count: 0, lastMs: 0, totalMs: 0, maxMs: 0 },
+    threadOpen: { count: 0, lastMs: 0, totalMs: 0, maxMs: 0 },
+    move: { count: 0, lastMs: 0, totalMs: 0, maxMs: 0 },
+    composeOpen: { count: 0, lastMs: 0, totalMs: 0, maxMs: 0 },
+  } as Record<'popupOpen' | 'threadOpen' | 'move' | 'composeOpen', { count: number; lastMs: number; totalMs: number; maxMs: number }>,
 };
 
 const MAX_LONG_TASKS = 50;
@@ -139,6 +160,33 @@ export function recordRouteRender(route: string, ms: number): void {
   STATE.routes.set(route, r);
 }
 
+// ── Mail perf events ─────────────────────────────────────────────────
+// Lightweight per-event timers for the mail hot path. Call
+// `recordMailEvent('threadOpen', ms)` after the user-perceived action
+// completes; surfaced in the Observability panel and in `__naitivePerf()`.
+
+export type MailPerfEvent = 'popupOpen' | 'threadOpen' | 'move' | 'composeOpen';
+
+export function recordMailEvent(event: MailPerfEvent, ms: number): void {
+  if (!Number.isFinite(ms) || ms < 0) return;
+  const r = STATE.mail[event];
+  r.count += 1;
+  r.lastMs = ms;
+  r.totalMs += ms;
+  r.maxMs = Math.max(r.maxMs, ms);
+}
+
+// Convenience: time the next animation frame after a click. Returns a
+// function that, when invoked (after the action completes), records the
+// elapsed milliseconds via `recordMailEvent`.
+export function startMailTimer(event: MailPerfEvent): () => void {
+  const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  return () => {
+    const t1 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    recordMailEvent(event, t1 - t0);
+  };
+}
+
 // ── Snapshot ────────────────────────────────────────────────────────
 
 export function getPerfSnapshot(): PerfSnapshot {
@@ -174,6 +222,21 @@ export function getPerfSnapshot(): PerfSnapshot {
     longTasks: STATE.longTasks.slice().reverse(),
     routes,
     warnings,
+    mail: {
+      popupOpen: summarize(STATE.mail.popupOpen),
+      threadOpen: summarize(STATE.mail.threadOpen),
+      move: summarize(STATE.mail.move),
+      composeOpen: summarize(STATE.mail.composeOpen),
+    },
+  };
+}
+
+function summarize(r: { count: number; lastMs: number; totalMs: number; maxMs: number }): PerfMailEventSummary {
+  return {
+    count: r.count,
+    lastMs: Math.round(r.lastMs),
+    avgMs: r.count > 0 ? Math.round(r.totalMs / r.count) : 0,
+    maxMs: Math.round(r.maxMs),
   };
 }
 

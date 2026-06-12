@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { startMailTimer } from '@/lib/perfDiagnostics';
 
 function InboxRefreshStatus({
   isRefreshing,
@@ -228,9 +229,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // exactly once after the dialog mounts with `open === true`. This lets
   // us measure click → first paint in the console / User Timing track.
   const perfLoggedRef = useRef(false);
+  const popupOpenTimerRef = useRef<null | (() => void)>(null);
   useEffect(() => {
     if (!open || perfLoggedRef.current) return;
     perfLoggedRef.current = true;
+    // Mail perf: click → first paint of the popup shell.
+    if (!popupOpenTimerRef.current) popupOpenTimerRef.current = startMailTimer('popupOpen');
     // Wait one frame so we measure post-commit (first paint), not mount.
     requestAnimationFrame(() => {
       try {
@@ -242,6 +246,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       } catch {
         // Timer may not have been started (e.g. modal opened via deep link).
       }
+      // Record into mail perf bucket exposed by the Observability panel.
+      popupOpenTimerRef.current?.();
+      popupOpenTimerRef.current = null;
     });
   }, [open]);
 

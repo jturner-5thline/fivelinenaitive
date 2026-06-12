@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity, AlertTriangle, MemoryStick, Radio, Timer } from 'lucide-react';
+import { Activity, AlertTriangle, Mail, MemoryStick, Radio, Timer } from 'lucide-react';
 import { getPerfSnapshot, type PerfSnapshot } from '@/lib/perfDiagnostics';
 import { toast } from 'sonner';
 
@@ -133,6 +133,27 @@ export function PerfDiagnosticsPanel() {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Mail className="h-4 w-4" />
+            Mail interaction latency
+          </CardTitle>
+          <CardDescription>
+            User-perceived timings for the email popup hot path. Captured at
+            optimistic-update / first-paint moments — lower is snappier.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MailTile label="Popup open" stat={snap.mail.popupOpen} />
+            <MailTile label="Thread open" stat={snap.mail.threadOpen} />
+            <MailTile label="Move / archive" stat={snap.mail.move} />
+            <MailTile label="Compose open" stat={snap.mail.composeOpen} />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -145,6 +166,27 @@ function StatTile({
       <div className="flex items-center gap-2 text-xs text-muted-foreground">{icon}{label}</div>
       <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
       {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function MailTile({
+  label, stat,
+}: { label: string; stat: { count: number; lastMs: number; avgMs: number; maxMs: number } }) {
+  const valColor =
+    stat.lastMs > 300 ? 'text-destructive' :
+    stat.lastMs > 120 ? 'text-amber-300' : 'text-emerald-300';
+  return (
+    <div className="rounded-md border border-border/60 bg-card/40 p-3">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-xl font-semibold tabular-nums ${valColor}`}>
+        {stat.count === 0 ? '—' : `${stat.lastMs} ms`}
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-0.5">
+        {stat.count === 0
+          ? 'No samples yet'
+          : `${stat.count} samples · avg ${stat.avgMs} · max ${stat.maxMs}`}
+      </div>
     </div>
   );
 }

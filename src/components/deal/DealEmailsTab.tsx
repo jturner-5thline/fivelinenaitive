@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useUndoSend } from '@/contexts/UndoSendContext';
@@ -67,13 +67,20 @@ import {
 import { EmailList, EmailDetail } from './email/EmailListAndDetail';
 import { cn } from '@/lib/utils';
 import { EmailIntelligenceDialog } from './email/EmailIntelligenceDialog';
-import { InlineComposePanel } from './email/InlineComposePanel';
+// Lazy compose panel: the editor + AI Assist sidebar + pre-send checks pull
+// in heavy editor/state code only needed once the user clicks New / Reply /
+// Forward. Keeping it out of the popup's initial chunk keeps the popup shell
+// paint instant.
+const InlineComposePanel = lazy(() =>
+  import('./email/InlineComposePanel').then((m) => ({ default: m.InlineComposePanel })),
+);
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useAIEmailSearch } from '@/hooks/useAIEmailSearch';
 import { useGmailAllMailSearch } from '@/hooks/useGmailAllMailSearch';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useGmail } from '@/hooks/useGmail';
 import { logSentReplyToDeal } from '@/lib/logSentReplyToDeal';
+import { recordMailEvent, startMailTimer } from '@/lib/perfDiagnostics';
 import { createTaskFromDraft, type TaskDraft } from '@/hooks/useNaitiveTaskParse';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -1242,9 +1249,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
+    const t0 = performance.now();
     const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Archived');
+    // Optimistic UI: measure the user-perceived time (state update only).
+    recordMailEvent('move', performance.now() - t0);
     void providerArchiveMessage(email.id).then((ok) => {
       if (ok) return;
       setEmails(prevSnapshot);
@@ -1255,9 +1265,11 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, providerArchiveMessage]);
 
   const handleDeleteEmail = useCallback((email: MockEmail) => {
+    const t0 = performance.now();
     const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Deleted');
+    recordMailEvent('move', performance.now() - t0);
     void providerTrashMessage(email.id).then((ok) => {
       if (ok) { onAfterTrash?.(); return; }
       setEmails(prevSnapshot);
@@ -1268,6 +1280,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, providerTrashMessage, onAfterTrash]);
 
   const handleSelectThread = useCallback((thread: EmailThread) => {
+    const stopThreadTimer = startMailTimer('threadOpen');
     setSelectedThread(thread);
     setComposeOpen(false);
     // Tell the reading pane WHICH message in the conversation was clicked
@@ -1293,6 +1306,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         () => setEmails(prevSnapshot)
       );
     }
+    // Measure shell-paint time for the reading pane (post-commit).
+    requestAnimationFrame(stopThreadTimer);
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   // Stable handlers for the EmailDetail right-pane. Keeping these out of the
@@ -1664,7 +1679,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           variant="outline"
           size="sm"
           className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)] bg-transparent shrink-0"
-          onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+          onClick={() => {
+            const stop = startMailTimer('composeOpen');
+            setComposeOpen(true);
+            setComposeReplyTo(null);
+            requestAnimationFrame(stop);
+          }}
         >
           <PenSquare className="h-3.5 w-3.5" />
           New
@@ -2366,13 +2386,15 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (
-              <InlineComposePanel
-                onSend={handleComposeSend}
-                onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
-                replyTo={composeReplyTo}
-                dealId={dealId}
-                signature={composerSignature}
-              />
+              <Suspense fallback={<div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">Loading composer…</div>}>
+                <InlineComposePanel
+                  onSend={handleComposeSend}
+                  onClose={() => { setComposeOpen(false); setComposeReplyTo(null); }}
+                  replyTo={composeReplyTo}
+                  dealId={dealId}
+                  signature={composerSignature}
+                />
+              </Suspense>
             ) : currentThread ? (
               <EmailDetail
                 thread={currentThread}
