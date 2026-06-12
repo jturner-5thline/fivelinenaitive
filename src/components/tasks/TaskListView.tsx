@@ -598,6 +598,15 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           />
         );
       })}
+      {!collapsed && hiddenOverdue > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1.5 rounded transition-colors hover:bg-white/[0.03]"
+        >
+          Show {hiddenOverdue.toLocaleString()} more overdue
+        </button>
+      )}
     </div>
   );
 }
