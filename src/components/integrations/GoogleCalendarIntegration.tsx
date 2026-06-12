@@ -111,14 +111,17 @@ export function GoogleCalendarIntegration({ onDisconnect }: GoogleCalendarIntegr
     }
   }, [currentView, currentDate, currentWeekStart]);
 
-  // Load events when connected or date range changes
+  // Load events when connected or date range changes. Refresh every 3
+  // minutes — but only while the tab is visible, otherwise a long-lived
+  // background tab hammers the calendar API.
   useEffect(() => {
-    if (status.connected && user) {
-      loadEvents();
-      const interval = setInterval(loadEvents, 3 * 60 * 1000); // refresh every 3 minutes
-      return () => clearInterval(interval);
-    }
+    if (status.connected && user) loadEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.connected, user, dateRange.start.toISOString(), dateRange.end.toISOString()]);
+  useVisibilityAwareInterval(
+    () => { void loadEvents(); },
+    status.connected && user ? 3 * 60 * 1000 : null,
+  );
 
   const loadEvents = async () => {
     await listEvents({

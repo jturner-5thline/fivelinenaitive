@@ -28,10 +28,8 @@ function InboxRefreshStatus({
 }) {
   const [, force] = useState(0);
   // Tick once per 30s so the relative timestamp stays fresh while open.
-  useEffect(() => {
-    const id = setInterval(() => force((n) => n + 1), 30_000);
-    return () => clearInterval(id);
-  }, []);
+  // Visibility-aware so a backgrounded tab doesn't keep re-rendering.
+  useVisibilityAwareInterval(() => force((n) => n + 1), 30_000);
   if (error) {
     return (
       <div className="px-4 py-1 text-[11px] text-destructive flex items-center gap-2">

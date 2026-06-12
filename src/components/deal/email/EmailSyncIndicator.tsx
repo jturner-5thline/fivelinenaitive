@@ -36,12 +36,9 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   );
 
   // Tick once a minute so the relative timestamp updates without
-  // re-rendering the whole list.
+  // re-rendering the whole list. Pauses while the tab is hidden.
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(id);
-  }, []);
+  useVisibilityAwareInterval(() => setNow(Date.now()), 60_000);
 
   const { pending, lastFetchAt, ok } = status;
   const syncing = pending > 0;

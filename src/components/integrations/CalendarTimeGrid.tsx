@@ -31,12 +31,10 @@ export function CalendarTimeGrid({ days, onEventUpdate, onEventEdit, isUpdating 
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } });
   const sensors = useSensors(mouseSensor, touchSensor);
 
-  // Now indicator position
+  // Now indicator position. Visibility-aware so a backgrounded tab
+  // doesn't burn CPU re-rendering a clock no one can see.
   const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(interval);
-  }, []);
+  useVisibilityAwareInterval(() => setNow(new Date()), 60000);
 
   const nowHour = now.getHours();
   const nowMinute = now.getMinutes();

@@ -590,10 +590,8 @@ function TimeGridEvent({
 // ─── Current time indicator ──────────────────────────────────
 function CurrentTimeIndicator() {
   const [, setTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60000);
-    return () => clearInterval(interval);
-  }, []);
+  // Visibility-aware: don't tick while the tab is hidden.
+  useVisibilityAwareInterval(() => setTick((t) => t + 1), 60000);
 
   const nowTime = new Date();
   const minutes = getHours(nowTime) * 60 + getMinutes(nowTime);
