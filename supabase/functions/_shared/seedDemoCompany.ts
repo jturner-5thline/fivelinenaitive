@@ -216,7 +216,7 @@ export async function seedDemoCompanyData(
       title, description: `${title} — auto-seeded demo task.`,
       due_date: inDays((i % 14) - 3),
       status: pick(["pending","in_progress","pending","completed"], i),
-      priority: pick(["low","medium","high"], i),
+      priority: i % 5 === 0 ? "urgent" : null,
       task_type: "task",
       deal_id: inserted.deals[i % inserted.deals.length] ?? null,
       assigned_to: attributingUserId, assigned_by: attributingUserId, created_by: attributingUserId,
