@@ -8,6 +8,7 @@ const corsHeaders = {
 
 type CompanyRole = "admin" | "member";
 const DEMO_PASSWORD = "User1234";
+const SEED_VERSION = "1.0.0";
 
 interface DemoUserInput {
   name: string;
@@ -105,6 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
         trial_ends_at: trialEnds,
         subscription_status: subscriptionStatus,
         created_by: caller.id,
+        is_demo: true,
       })
       .select("id, name")
       .single();
@@ -196,6 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
             email,
             is_active: true,
             onboarding_completed: true,
+            onboarding_skipped: true,
             approved_at: nowIso,
             approved_by: caller.id,
             approval_requested_at: nowIso,
@@ -207,6 +210,7 @@ const handler = async (req: Request): Promise<Response> => {
             .update({
               is_active: true,
               onboarding_completed: true,
+              onboarding_skipped: true,
               approved_at: existingProfile.approved_at ?? nowIso,
               approved_by: caller.id,
               is_demo_user: true,
