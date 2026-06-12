@@ -102,7 +102,6 @@ function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
 // Lazy-load all pages with retry to handle stale chunk URLs after deploys
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Auth = lazy(lazyRetry(() => import("./pages/Auth")));
-const DemoAuthCallback = lazy(lazyRetry(() => import("./pages/DemoAuthCallback")));
 const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
 const Deals = lazy(lazyRetry(() => import("./pages/Deals")));
 // /dashboard route removed — global popup overlays now live in the floating
@@ -335,7 +334,6 @@ const App = () => (
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
-                          <Route path="/auth/demo/callback" element={<DemoAuthCallback />} />
                           <Route path="/pending-approval" element={
                             <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
                           } />
