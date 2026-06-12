@@ -17,6 +17,7 @@
  * Both will be additive — the current API is forward-compatible.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import {
   startOfWeek,
   endOfWeek,
