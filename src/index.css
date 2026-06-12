@@ -226,18 +226,18 @@
     --shadow-2xl: 0 30px 60px -12px hsl(0 0% 0% / 0.6);
 
     /* ═══ Liquid Glass Tokens ═══ (lighter, airier — less heavy overlay) */
-    --glass-surface: rgba(255,255,255,0.06);
-    --glass-elevated: rgba(255,255,255,0.09);
-    --glass-content-surface: rgba(255,255,255,0.03);
-    --glass-border: rgba(255,255,255,0.18);
+    --glass-surface: rgba(255,255,255,0.10);
+    --glass-elevated: rgba(255,255,255,0.14);
+    --glass-content-surface: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.24);
     --glass-border-accent: rgba(126,184,247,0.32);
     --glass-glow: rgba(126,184,247,0.16);
     --glass-shadow: 0 4px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
     --glass-blur: blur(12px) saturate(1.4);
     --glass-content-blur: blur(40px) saturate(1.2);
-    --glass-row-hover: rgba(126,184,247,0.10);
-    --glass-row-alt: rgba(255,255,255,0.02);
-    --glass-header-bg: rgba(255,255,255,0.04);
+    --glass-row-hover: rgba(126,184,247,0.14);
+    --glass-row-alt: rgba(255,255,255,0.04);
+    --glass-header-bg: rgba(255,255,255,0.07);
   }
 }
 
@@ -612,8 +612,8 @@
    */
   .glass-module {
     position: relative;
-    background: rgba(70, 95, 140, 0.82) !important;
-    border: 0.5px solid rgba(150, 200, 255, 0.34) !important;
+    background: rgba(100, 130, 180, 0.84) !important;
+    border: 0.5px solid rgba(180, 215, 255, 0.40) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -1364,8 +1364,8 @@
 .lg-shell {
   position: relative;
   border-radius: 14px;
-  background: rgba(74, 100, 144, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(110, 140, 190, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   box-shadow:
