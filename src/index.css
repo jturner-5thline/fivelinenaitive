@@ -118,6 +118,12 @@
     --font-sans: Figtree, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Cascadia Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+
+    /* Tile / option-row surface tokens (light fallbacks). The dark theme
+       overrides these with darker navy values for the data-dense look. */
+    --surface-tile: 210 20% 96%;
+    --surface-tile-hover: 210 20% 92%;
+    --surface-tile-selected: 213 90% 92%;
   }
 
   .dark {
