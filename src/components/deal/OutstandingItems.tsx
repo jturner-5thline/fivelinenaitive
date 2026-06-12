@@ -588,8 +588,10 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
     return (
       <div
         key={item.id}
+        data-outstanding-tile="true"
+        data-selected={isSelected ? "true" : undefined}
         className={cn(
-          "flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
+          "outstanding-item-tile flex items-center gap-3 p-3 rounded-lg border bg-card transition-colors cursor-pointer",
           isCompletedRow && "opacity-60",
           "border-border hover:border-primary/50",
           isSelected && "border-primary/50 bg-primary/5"
