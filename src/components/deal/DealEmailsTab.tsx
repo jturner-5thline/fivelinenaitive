@@ -1673,7 +1673,12 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           variant="outline"
           size="sm"
           className="gap-1.5 text-xs h-8 px-4 border-[hsl(var(--outlook-blue)/0.3)] text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue)/0.08)] bg-transparent shrink-0"
-          onClick={() => { setComposeOpen(true); setComposeReplyTo(null); }}
+          onClick={() => {
+            const stop = startMailTimer('composeOpen');
+            setComposeOpen(true);
+            setComposeReplyTo(null);
+            requestAnimationFrame(stop);
+          }}
         >
           <PenSquare className="h-3.5 w-3.5" />
           New
