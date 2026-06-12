@@ -1083,27 +1083,48 @@
  */
 .deal-glass {
   position: relative;
-  background: rgba(28, 44, 74, 0.86) !important;
-  border: 1px solid rgba(120, 170, 240, 0.28) !important;
-  border-radius: 8px !important;
+  /* Layered navy glass — brighter at the top, deeper at the bottom, with a
+     faint cyan inner highlight and a restrained outer cyan glow. Matches
+     the premium dark-fintech reference: deep navy surface, electric-blue
+     edge lighting, no purple, no warm tones. */
+  background:
+    linear-gradient(180deg,
+      rgba(34, 54, 92, 0.94) 0%,
+      rgba(20, 34, 62, 0.92) 55%,
+      rgba(14, 26, 50, 0.94) 100%
+    ) !important;
+  border: 1px solid rgba(110, 175, 245, 0.32) !important;
+  border-radius: 10px !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  /* Inner top highlight + grounded outer shadow for subtle lift. */
+  /* Inner top highlight (cool white) + faint cyan rim glow + grounded
+     outer shadow for subtle lift. Restrained — not flashy. */
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 1px 0 0 rgba(0, 0, 0, 0.25),
-    0 6px 18px -10px rgba(0, 0, 0, 0.55);
+    inset 0 1px 0 0 rgba(190, 220, 255, 0.10),
+    inset 0 0 0 1px rgba(120, 180, 250, 0.05),
+    0 0 0 1px rgba(80, 160, 255, 0.04),
+    0 1px 0 0 rgba(0, 0, 0, 0.30),
+    0 8px 24px -14px rgba(0, 0, 0, 0.65),
+    0 0 18px -6px rgba(80, 170, 255, 0.18);
   /* No overflow:hidden — corner overlays (notification dot) must be able
      to overhang the tile edge. Inner content that needs clipping handles
      its own overflow locally. */
 }
 .deal-glass:hover {
-  background: rgba(34, 52, 86, 0.92) !important;
-  border-color: rgba(150, 195, 255, 0.42) !important;
+  background:
+    linear-gradient(180deg,
+      rgba(42, 64, 106, 0.96) 0%,
+      rgba(26, 42, 74, 0.94) 55%,
+      rgba(18, 32, 58, 0.96) 100%
+    ) !important;
+  border-color: rgba(150, 205, 255, 0.48) !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 2px 0 0 rgba(0, 0, 0, 0.28),
-    0 12px 28px -12px rgba(0, 0, 0, 0.65);
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.13),
+    inset 0 0 0 1px rgba(140, 195, 255, 0.07),
+    0 0 0 1px rgba(100, 180, 255, 0.06),
+    0 2px 0 0 rgba(0, 0, 0, 0.32),
+    0 14px 32px -14px rgba(0, 0, 0, 0.70),
+    0 0 26px -6px rgba(100, 190, 255, 0.28);
 }
 .deal-glass::before {
   content: '';
@@ -1113,7 +1134,7 @@
   pointer-events: none;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.10) 0%,
+    rgba(180, 220, 255, 0.10) 0%,
     rgba(255, 255, 255, 0.00) 55%
   );
   z-index: 0;
@@ -1137,10 +1158,20 @@
    tiles still feel like dense workflow objects rather than glossy cards.
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
-  background: rgba(24, 38, 64, 0.88) !important;
+  background:
+    linear-gradient(180deg,
+      rgba(30, 48, 82, 0.92) 0%,
+      rgba(18, 32, 58, 0.92) 55%,
+      rgba(12, 24, 46, 0.94) 100%
+    ) !important;
 }
 .deal-tile.deal-glass:hover {
-  background: rgba(30, 46, 76, 0.93) !important;
+  background:
+    linear-gradient(180deg,
+      rgba(38, 58, 96, 0.95) 0%,
+      rgba(24, 40, 70, 0.94) 55%,
+      rgba(16, 30, 54, 0.96) 100%
+    ) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
