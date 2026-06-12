@@ -1083,29 +1083,25 @@
  */
 .deal-glass {
   position: relative;
-  /* Layered navy glass — brighter at the top, deeper at the bottom, with a
-     faint cyan inner highlight and a restrained outer cyan glow. Matches
-     the premium dark-fintech reference: deep navy surface, electric-blue
-     edge lighting, no purple, no warm tones. */
+  /* Tiles sit barely above the page canvas — same navy family, only a
+     whisper of brightness and a thin cool-blue rim for separation. No
+     bright card fill, no glow, no purple. */
   background:
     linear-gradient(180deg,
-      rgba(34, 54, 92, 0.94) 0%,
-      rgba(20, 34, 62, 0.92) 55%,
-      rgba(14, 26, 50, 0.94) 100%
+      rgba(255, 255, 255, 0.022) 0%,
+      rgba(255, 255, 255, 0.012) 60%,
+      rgba(255, 255, 255, 0.006) 100%
     ) !important;
-  border: 1px solid rgba(110, 175, 245, 0.32) !important;
+  border: 1px solid rgba(120, 170, 235, 0.10) !important;
   border-radius: 10px !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  /* Inner top highlight (cool white) + faint cyan rim glow + grounded
-     outer shadow for subtle lift. Restrained — not flashy. */
+  /* Layered premium shadow — one tight close shadow + one wider soft
+     bloom underneath. Whisper-soft inner top highlight, no rim glow. */
   box-shadow:
-    inset 0 1px 0 0 rgba(190, 220, 255, 0.10),
-    inset 0 0 0 1px rgba(120, 180, 250, 0.05),
-    0 0 0 1px rgba(80, 160, 255, 0.04),
-    0 1px 0 0 rgba(0, 0, 0, 0.30),
-    0 8px 24px -14px rgba(0, 0, 0, 0.65),
-    0 0 18px -6px rgba(80, 170, 255, 0.18);
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 10px 28px -18px rgba(0, 0, 0, 0.55);
   /* No overflow:hidden — corner overlays (notification dot) must be able
      to overhang the tile edge. Inner content that needs clipping handles
      its own overflow locally. */
@@ -1113,18 +1109,15 @@
 .deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(42, 64, 106, 0.96) 0%,
-      rgba(26, 42, 74, 0.94) 55%,
-      rgba(18, 32, 58, 0.96) 100%
+      rgba(255, 255, 255, 0.034) 0%,
+      rgba(255, 255, 255, 0.018) 60%,
+      rgba(255, 255, 255, 0.010) 100%
     ) !important;
-  border-color: rgba(150, 205, 255, 0.48) !important;
+  border-color: rgba(140, 190, 245, 0.18) !important;
   box-shadow:
-    inset 0 1px 0 0 rgba(200, 225, 255, 0.13),
-    inset 0 0 0 1px rgba(140, 195, 255, 0.07),
-    0 0 0 1px rgba(100, 180, 255, 0.06),
-    0 2px 0 0 rgba(0, 0, 0, 0.32),
-    0 14px 32px -14px rgba(0, 0, 0, 0.70),
-    0 0 26px -6px rgba(100, 190, 255, 0.28);
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 16px 36px -18px rgba(0, 0, 0, 0.62);
 }
 .deal-glass::before {
   content: '';
@@ -1134,7 +1127,7 @@
   pointer-events: none;
   background: linear-gradient(
     135deg,
-    rgba(180, 220, 255, 0.10) 0%,
+    rgba(180, 220, 255, 0.04) 0%,
     rgba(255, 255, 255, 0.00) 55%
   );
   z-index: 0;
@@ -1160,17 +1153,17 @@
 .deal-tile.deal-glass {
   background:
     linear-gradient(180deg,
-      rgba(30, 48, 82, 0.92) 0%,
-      rgba(18, 32, 58, 0.92) 55%,
-      rgba(12, 24, 46, 0.94) 100%
+      rgba(255, 255, 255, 0.020) 0%,
+      rgba(255, 255, 255, 0.010) 60%,
+      rgba(255, 255, 255, 0.005) 100%
     ) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(38, 58, 96, 0.95) 0%,
-      rgba(24, 40, 70, 0.94) 55%,
-      rgba(16, 30, 54, 0.96) 100%
+      rgba(255, 255, 255, 0.030) 0%,
+      rgba(255, 255, 255, 0.016) 60%,
+      rgba(255, 255, 255, 0.008) 100%
     ) !important;
 }
 
