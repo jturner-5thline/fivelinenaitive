@@ -227,7 +227,18 @@ export function useGmail() {
       // false "Connect your mail" prompts for users (e.g. polly@blount.capital)
       // who connected Microsoft instead of Gmail.
       const [gmailRes, msRes] = await Promise.allSettled([
-        supabase.functions.invoke('gmail-status'),
+        // Retry once on transient cold-boot failures (503 LOAD_FUNCTION_ERROR)
+        (async () => {
+          const first = await supabase.functions.invoke('gmail-status');
+          if (first.error) {
+            const msg = String((first.error as { message?: string }).message ?? '');
+            if (/503|LOAD_FUNCTION_ERROR|Failed to load edge function|Failed to send a request/i.test(msg)) {
+              await new Promise((r) => setTimeout(r, 400));
+              return await supabase.functions.invoke('gmail-status');
+            }
+          }
+          return first;
+        })(),
         supabase
           .from('microsoft_tokens')
           .select('email, connected_at, expires_at, status')
