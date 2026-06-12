@@ -126,15 +126,15 @@
        ═══════════════════════════════════════════════ */
 
     /* Surface 1: page background — Linear/Vercel-style airy dark navy */
-    --background: 226 25% 32%;
+    --background: 226 25% 42%;
     --foreground: 0 0% 100%;
 
     /* Surface 2: card glass layer — clearly elevated above page */
-    --card: 225 22% 38%;
+    --card: 225 22% 48%;
     --card-foreground: 0 0% 100%;
 
     /* Surface 3: elevated (popover) */
-    --popover: 224 20% 42%;
+    --popover: 224 20% 52%;
     --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
@@ -142,12 +142,12 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 225 18% 44%;
+    --secondary: 225 18% 54%;
     --secondary-foreground: 0 0% 98%;
 
     /* Muted */
-    --muted: 225 18% 40%;
-    --muted-foreground: 215 22% 92%;
+    --muted: 225 18% 50%;
+    --muted-foreground: 215 22% 95%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
@@ -162,18 +162,18 @@
     --destructive-foreground: 0 0% 95%;
 
     /* Borders — clearly visible delineation between sections */
-    --border: 224 18% 52%;
-    --input: 224 18% 52%;
+    --border: 224 20% 62%;
+    --input: 224 20% 62%;
     --ring: 213 90% 70%;
 
     /* Sidebar */
-    --sidebar-background: 226 25% 34%;
+    --sidebar-background: 226 25% 44%;
     --sidebar-foreground: 0 0% 94%;
     --sidebar-primary: 213 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 90% 70% / 0.1;
     --sidebar-accent-foreground: 213 90% 80%;
-    --sidebar-border: 224 18% 52%;
+    --sidebar-border: 224 20% 62%;
     --sidebar-ring: 213 90% 70%;
 
     /* Brand */
@@ -612,8 +612,8 @@
    */
   .glass-module {
     position: relative;
-    background: rgba(44, 64, 100, 0.80) !important;
-    border: 0.5px solid rgba(130, 185, 255, 0.30) !important;
+    background: rgba(70, 95, 140, 0.82) !important;
+    border: 0.5px solid rgba(150, 200, 255, 0.34) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -1364,7 +1364,7 @@
 .lg-shell {
   position: relative;
   border-radius: 14px;
-  background: rgba(48, 68, 104, 0.52);
+  background: rgba(74, 100, 144, 0.58);
   border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
