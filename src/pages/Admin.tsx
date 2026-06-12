@@ -699,18 +699,6 @@ const Admin = () => {
   const sectionCount = (s: SectionDef) =>
     s.pages.reduce((acc, p) => acc + countFor(p.countKey), 0);
 
-  // Group pages within a section (preserves declared order).
-  const groupedPages = useMemo(() => {
-    const groups: { name: string | null; pages: PageDef[] }[] = [];
-    activeSection.pages.forEach((p) => {
-      const key = p.group ?? null;
-      const last = groups[groups.length - 1];
-      if (last && last.name === key) last.pages.push(p);
-      else groups.push({ name: key, pages: [p] });
-    });
-    return groups;
-  }, [activeSection]);
-
   const handleCta = () => {
     // Phase 1: only the demo modal is wired. Other CTAs are no-ops
     // placeholders that Phase 2-4 will hook up to the right flows.
