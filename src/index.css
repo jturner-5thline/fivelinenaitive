@@ -173,6 +173,13 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 90% 70% / 0.1;
     --sidebar-accent-foreground: 213 90% 80%;
+
+    /* Data-dense dark surface for tile rows and option list items.
+       Significantly darker than --card to read as a contained, bordered tile
+       on top of the brightened card/page surfaces. */
+    --surface-tile: 224 38% 22%;
+    --surface-tile-hover: 224 38% 27%;
+    --surface-tile-selected: 224 42% 31%;
     --sidebar-border: 224 22% 70%;
     --sidebar-ring: 213 90% 70%;
 
