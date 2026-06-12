@@ -484,7 +484,7 @@ export default function Dashboard() {
           content="Manage your deal pipeline with advanced filtering, sorting, and status tracking."
         />
       </Helmet>
-
+      <div className="deals-surface contents">
       {/*
         Page surface — routed through the shared `<WorkspacePage>` primitive
         so this page and the Directory can never drift apart on
@@ -1078,6 +1078,7 @@ export default function Dashboard() {
         }}
         onStageChange={handleStageChange}
       />
+      </div>
     </>
   );
 }
