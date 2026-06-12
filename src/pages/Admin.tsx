@@ -371,6 +371,21 @@ const Admin = () => {
   const activeSection = SECTIONS.find(s => s.id === resolved.section)!;
   const activePage = activeSection.pages.find(p => p.id === resolved.page) ?? activeSection.pages[0];
 
+  // Hooks MUST run before any conditional early-return below to satisfy the
+  // Rules of Hooks. (Previously declared further down the body; moving it
+  // here avoids a "Rendered more hooks than during the previous render"
+  // crash when `roleLoading` flips false.)
+  const groupedPages = useMemo(() => {
+    const groups: { name: string | null; pages: PageDef[] }[] = [];
+    activeSection.pages.forEach((p) => {
+      const key = p.group ?? null;
+      const last = groups[groups.length - 1];
+      if (last && last.name === key) last.pages.push(p);
+      else groups.push({ name: key, pages: [p] });
+    });
+    return groups;
+  }, [activeSection]);
+
   if (roleLoading) {
     return (
       <div className="bg-background">
