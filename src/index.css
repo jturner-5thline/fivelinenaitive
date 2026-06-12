@@ -126,15 +126,15 @@
        ═══════════════════════════════════════════════ */
 
     /* Surface 1: page background — Linear/Vercel-style airy dark navy */
-    --background: 226 25% 16%;
+    --background: 226 25% 20%;
     --foreground: 0 0% 100%;
 
     /* Surface 2: card glass layer — clearly elevated above page */
-    --card: 225 22% 22%;
+    --card: 225 22% 26%;
     --card-foreground: 0 0% 100%;
 
     /* Surface 3: elevated (popover) */
-    --popover: 224 20% 26%;
+    --popover: 224 20% 30%;
     --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
@@ -142,11 +142,11 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 225 18% 28%;
+    --secondary: 225 18% 32%;
     --secondary-foreground: 0 0% 94%;
 
     /* Muted */
-    --muted: 225 18% 24%;
+    --muted: 225 18% 28%;
     --muted-foreground: 0 0% 78%;
 
     /* Accent: Logo blue for interactive */
@@ -162,18 +162,18 @@
     --destructive-foreground: 0 0% 95%;
 
     /* Borders — clearly visible delineation between sections */
-    --border: 224 16% 32%;
-    --input: 224 16% 32%;
+    --border: 224 16% 38%;
+    --input: 224 16% 38%;
     --ring: 213 90% 70%;
 
     /* Sidebar */
-    --sidebar-background: 226 25% 18%;
+    --sidebar-background: 226 25% 22%;
     --sidebar-foreground: 0 0% 94%;
     --sidebar-primary: 213 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 90% 70% / 0.1;
     --sidebar-accent-foreground: 213 90% 80%;
-    --sidebar-border: 224 16% 32%;
+    --sidebar-border: 224 16% 38%;
     --sidebar-ring: 213 90% 70%;
 
     /* Brand */
@@ -1088,11 +1088,11 @@
      bright card fill, no glow, no purple. */
   background:
     linear-gradient(180deg,
-      rgba(120, 170, 235, 0.060) 0%,
-      rgba(120, 170, 235, 0.040) 60%,
-      rgba(120, 170, 235, 0.028) 100%
+      rgba(150, 195, 245, 0.085) 0%,
+      rgba(150, 195, 245, 0.058) 60%,
+      rgba(150, 195, 245, 0.042) 100%
     ) !important;
-  border: 1px solid rgba(130, 180, 240, 0.22) !important;
+  border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 10px !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -1109,11 +1109,11 @@
 .deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(130, 180, 240, 0.085) 0%,
-      rgba(130, 180, 240, 0.055) 60%,
-      rgba(130, 180, 240, 0.038) 100%
+      rgba(160, 205, 250, 0.115) 0%,
+      rgba(160, 205, 250, 0.078) 60%,
+      rgba(160, 205, 250, 0.054) 100%
     ) !important;
-  border-color: rgba(150, 200, 250, 0.34) !important;
+  border-color: rgba(165, 210, 252, 0.38) !important;
   box-shadow:
     inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.36),
@@ -1153,17 +1153,17 @@
 .deal-tile.deal-glass {
   background:
     linear-gradient(180deg,
-      rgba(120, 170, 235, 0.055) 0%,
-      rgba(120, 170, 235, 0.038) 60%,
-      rgba(120, 170, 235, 0.026) 100%
+      rgba(150, 195, 245, 0.080) 0%,
+      rgba(150, 195, 245, 0.055) 60%,
+      rgba(150, 195, 245, 0.038) 100%
     ) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
     linear-gradient(180deg,
-      rgba(130, 180, 240, 0.080) 0%,
-      rgba(130, 180, 240, 0.052) 60%,
-      rgba(130, 180, 240, 0.036) 100%
+      rgba(160, 205, 250, 0.110) 0%,
+      rgba(160, 205, 250, 0.074) 60%,
+      rgba(160, 205, 250, 0.052) 100%
     ) !important;
 }
 
