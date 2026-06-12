@@ -118,21 +118,21 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const userLabel = provisioned === 1 ? "user can" : `${provisioned} users can`;
       if (sent > 0) {
         toast.success(
-          `Demo access granted for ${companyName} — ${userLabel} log in directly; no admin approval required. ${sent} invite${sent === 1 ? "" : "s"} sent.`,
+          `Demo access ready for ${companyName} — ${userLabel} click their one-click link and land straight in the seeded workspace. ${sent} demo access email${sent === 1 ? "" : "s"} sent.`,
           { duration: 7000 },
         );
       } else if (provisioned > 0) {
         toast.success(
-          `Demo access granted for ${companyName} — ${userLabel} log in directly; no admin approval required.`,
+          `Demo access ready for ${companyName} — ${userLabel} use their one-click link to enter the seeded workspace.`,
           { duration: 7000 },
         );
       } else {
-        toast.success(`Demo access created for ${companyName}.`);
+        toast.success(`Demo workspace created for ${companyName}.`);
       }
       if (notSent.length) {
         for (const r of notSent) {
           toast.error(
-            `Invite email failed for ${r.email}: ${r.reason || "unknown error"}. Use “Resend invites” on the company row.`,
+            `Demo access email failed for ${r.email}: ${r.reason || "unknown error"}. Use “Resend invites” on the company row.`,
             { duration: 8000 },
           );
         }
@@ -160,7 +160,7 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Create Demo Access</DialogTitle>
           <DialogDescription>
-            Provision a new pilot or demo company with user accounts and send invite emails.
+            Provision a fully seeded Naitive demo workspace and send each user a one-click access link — no signup, no password.
           </DialogDescription>
         </DialogHeader>
 
@@ -248,8 +248,8 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
               </div>
               <div className="flex items-center justify-between sm:col-span-2 rounded-md border border-border bg-muted/30 px-3 py-2">
                 <div>
-                  <Label className="text-sm">Send Welcome Email</Label>
-                  <p className="text-xs text-muted-foreground">Email each user an invite link to set up their account.</p>
+                  <Label className="text-sm">Send Demo Access Email</Label>
+                  <p className="text-xs text-muted-foreground">Email each user a one-click secure access link to their seeded Naitive demo workspace — no account setup or password required.</p>
                 </div>
                 <Switch checked={sendWelcomeEmail} onCheckedChange={setSendWelcomeEmail} />
               </div>
