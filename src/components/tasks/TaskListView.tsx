@@ -529,6 +529,10 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const OVERDUE_CAP = 100;
+  const visibleOverdue = showAll || tasks.length <= OVERDUE_CAP ? tasks : tasks.slice(0, OVERDUE_CAP);
+  const hiddenOverdue = tasks.length - visibleOverdue.length;
 
   return (
     <div>
@@ -571,7 +575,7 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
         {cols.map(c => <div key={c.id} aria-hidden />)}
         <div aria-hidden />
       </button>
-      {!collapsed && tasks.map(task => {
+      {!collapsed && visibleOverdue.map(task => {
         const globalIndex = allTasks.indexOf(task);
         return (
           <SortableTaskRow
