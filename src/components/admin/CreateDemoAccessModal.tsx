@@ -118,12 +118,12 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const userLabel = provisioned === 1 ? "user can" : `${provisioned} users can`;
       if (sent > 0) {
         toast.success(
-          `Demo access ready for ${companyName} — ${userLabel} click their one-click link and land straight in the seeded workspace. ${sent} demo access email${sent === 1 ? "" : "s"} sent.`,
+          `Demo access ready for ${companyName} — ${userLabel} open their demo login link, click Login, and land in the seeded workspace. ${sent} demo access email${sent === 1 ? "" : "s"} sent.`,
           { duration: 7000 },
         );
       } else if (provisioned > 0) {
         toast.success(
-          `Demo access ready for ${companyName} — ${userLabel} use their one-click link to enter the seeded workspace.`,
+          `Demo access ready for ${companyName} — ${userLabel} use their demo login link to enter the seeded workspace.`,
           { duration: 7000 },
         );
       } else {
@@ -160,7 +160,7 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Create Demo Access</DialogTitle>
           <DialogDescription>
-            Provision a fully seeded Naitive demo workspace and send each user a one-click access link — no signup, no password.
+            Provision a fully seeded Naitive demo workspace and send each user a demo login link with prefilled credentials.
           </DialogDescription>
         </DialogHeader>
 
@@ -249,7 +249,7 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
               <div className="flex items-center justify-between sm:col-span-2 rounded-md border border-border bg-muted/30 px-3 py-2">
                 <div>
                   <Label className="text-sm">Send Demo Access Email</Label>
-                  <p className="text-xs text-muted-foreground">Email each user a one-click secure access link to their seeded Naitive demo workspace — no account setup or password required.</p>
+                  <p className="text-xs text-muted-foreground">Email each user a Naitive demo login link with their email and demo password prefilled so they can click Login and open the seeded workspace.</p>
                 </div>
                 <Switch checked={sendWelcomeEmail} onCheckedChange={setSendWelcomeEmail} />
               </div>

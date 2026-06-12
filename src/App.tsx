@@ -84,12 +84,16 @@ function RootRedirect() {
 function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
+  const isDemoAccess = new URLSearchParams(location.search).get("demo") === "1";
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+  if (isDemoAccess) {
+    return <>{children}</>;
   }
   if (user) {
     const params = new URLSearchParams(location.search);
@@ -99,10 +103,18 @@ function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function DemoCallbackRedirect() {
+  const location = useLocation();
+  const hash = location.hash.startsWith("#") ? location.hash.slice(1) : location.hash;
+  const hashParams = new URLSearchParams(hash);
+  const email = hashParams.get("email") || "";
+  const target = `/login?demo=1&password=${encodeURIComponent("User1234")}&redirect=${encodeURIComponent("/deals")}${email ? `&email=${encodeURIComponent(email)}` : ""}`;
+  return <Navigate to={target} replace />;
+}
+
 // Lazy-load all pages with retry to handle stale chunk URLs after deploys
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Auth = lazy(lazyRetry(() => import("./pages/Auth")));
-const DemoAuthCallback = lazy(lazyRetry(() => import("./pages/DemoAuthCallback")));
 const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
 const Deals = lazy(lazyRetry(() => import("./pages/Deals")));
 // /dashboard route removed — global popup overlays now live in the floating
@@ -335,7 +347,7 @@ const App = () => (
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
-                          <Route path="/auth/demo/callback" element={<DemoAuthCallback />} />
+                          <Route path="/auth/demo/callback" element={<DemoCallbackRedirect />} />
                           <Route path="/pending-approval" element={
                             <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
                           } />

@@ -32,10 +32,11 @@ interface MFAChallenge {
 
 const Auth = () => {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const locationState = location.state as { waitlistEmail?: string; waitlistName?: string; waitlistCompany?: string } | null;
-  const [mode, setMode] = useState<AuthMode>("login");
-  const [email, setEmail] = useState(locationState?.waitlistEmail || "");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<AuthMode>(searchParams.get("demo") === "1" ? "login" : "login");
+  const [email, setEmail] = useState(locationState?.waitlistEmail || searchParams.get("email") || "");
+  const [password, setPassword] = useState(searchParams.get("password") || (searchParams.get("demo") === "1" ? "User1234" : ""));
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -45,7 +46,6 @@ const Auth = () => {
   const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   
   // Store waitlist info for onboarding pre-fill
   useEffect(() => {
@@ -59,6 +59,16 @@ const Auth = () => {
   
   // Get redirect URL from query params (for invite links, etc.)
   const redirectUrl = searchParams.get('redirect') || '/deals';
+  const isDemoAccess = searchParams.get('demo') === '1';
+
+  useEffect(() => {
+    const queryEmail = searchParams.get("email");
+    const queryPassword = searchParams.get("password");
+    if (queryEmail) setEmail(queryEmail);
+    if (queryPassword) setPassword(queryPassword);
+    else if (isDemoAccess) setPassword("User1234");
+    if (isDemoAccess) setMode("login");
+  }, [searchParams, isDemoAccess]);
 
   // Check if user was redirected due to blocked domain (e.g. Google SSO with personal email)
   useEffect(() => {
@@ -149,7 +159,7 @@ const Auth = () => {
           return;
         }
 
-        if (isBlockedEmailDomain(email)) {
+        if (!isDemoAccess && isBlockedEmailDomain(email)) {
           toast.error(BLOCKED_DOMAIN_ERROR);
           setLoading(false);
           return;
@@ -180,7 +190,7 @@ const Auth = () => {
           return;
         }
 
-        if (isBlockedEmailDomain(email)) {
+        if (!isDemoAccess && isBlockedEmailDomain(email)) {
           toast.error(BLOCKED_DOMAIN_ERROR);
           setLoading(false);
           return;
@@ -323,7 +333,7 @@ const Auth = () => {
       case "reset": return "Enter your new password";
       case "signup": return "Create your account";
       case "mfa": return "Enter the code from your authenticator app";
-      default: return "Welcome back";
+      default: return isDemoAccess ? "Naitive demo access" : "Welcome back";
     }
   };
 
@@ -349,6 +359,11 @@ const Auth = () => {
           
           <div className="w-full max-w-md">
             <form onSubmit={mode === "mfa" ? handleMFAVerify : handleSubmit} className="space-y-6">
+              {isDemoAccess && mode === "login" && (
+                <div className="rounded-md border border-white/15 bg-white/5 px-4 py-3 text-sm text-white/80">
+                  This is your Naitive demo access page. Your demo credentials are prefilled below — click Login to open your seeded workspace.
+                </div>
+              )}
               {mode === "mfa" ? (
                 <div className="space-y-4">
                   <div className="flex justify-center mb-4">
@@ -424,7 +439,7 @@ const Auth = () => {
                       required
                       className={`bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 ${email && isBlockedEmailDomain(email) ? 'border-red-500/60 focus:border-red-500/80' : ''}`}
                     />
-                    {email && isBlockedEmailDomain(email) && (
+                    {email && !isDemoAccess && isBlockedEmailDomain(email) && (
                       <p className="text-sm text-red-400 mt-1">
                         Personal email addresses are not allowed. Please use your professional work email (e.g. you@company.com).
                       </p>
@@ -439,22 +454,24 @@ const Auth = () => {
                       <div className="relative">
                         <Input
                           id="password"
-                          type={showPassword ? "text" : "password"}
+                          type={isDemoAccess || showPassword ? "text" : "password"}
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="••••••••"
                           required
                           className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 pr-10"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                        {!isDemoAccess && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        )}
                       </div>
-                      {mode === "login" && (
+                       {mode === "login" && !isDemoAccess && (
                         <button
                           type="button"
                           onClick={() => setMode("forgot")}
@@ -463,7 +480,7 @@ const Auth = () => {
                           Forgot password?
                         </button>
                       )}
-                      {mode === "login" && (
+                       {mode === "login" && !isDemoAccess && (
                         <div className="flex items-center space-x-2 mt-3">
                           <Checkbox
                             id="rememberMe"
@@ -497,7 +514,7 @@ const Auth = () => {
                     mode === "login" ? "Login" : "Sign Up"}
               </Button>
 
-              {(mode === "login" || mode === "signup") && (
+              {!isDemoAccess && (mode === "login" || mode === "signup") && (
                 <>
                   <div className="relative">
                     <div className="absolute inset-0 flex items-center">
@@ -542,7 +559,7 @@ const Auth = () => {
                 </>
               )}
               
-              {mode === "login" && (
+              {!isDemoAccess && mode === "login" && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -595,7 +612,7 @@ const Auth = () => {
               )}
             </form>
             
-            {mode !== "reset" && mode !== "mfa" && (
+            {!isDemoAccess && mode !== "reset" && mode !== "mfa" && (
               <p className="text-center text-white/50 mt-6 font-light">
                 {mode === "forgot" ? (
                   <button
