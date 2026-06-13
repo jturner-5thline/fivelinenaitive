@@ -2169,6 +2169,8 @@ function selectToolsWithScopes(
     // Always-available FinServ ops (5th Line internal pipeline).
     "get_finserv_pipeline_summary", "list_finserv_deals", "get_finserv_deal_full",
     "get_finserv_revenue_summary", "list_finserv_milestones",
+    // Admin Agent — Duty 1: Verify Deal Information.
+    "verify_deal_information",
   ]);
 
   if (page.includes("lender")) {
