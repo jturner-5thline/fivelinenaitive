@@ -25,7 +25,6 @@ interface FloatingAgentChatProps {
 export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: FloatingAgentChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const openCopilotWithPrompt = useCopilotStore((s) => s.openPanelWithPrompt);
   const openCopilot = useCopilotStore((s) => s.openPanel);
 
   if (!isOpen) {
