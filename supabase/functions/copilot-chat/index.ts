@@ -2080,6 +2080,20 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "verify_deal_information",
+      description: "Admin Agent — Duty 1: Verify Deal Information. Audits active deals (in the company's default/active pipeline) for stale or missing critical items: Deal Status, Deal Stage, Milestones, Status Notes, and Funding Sources (each lender's stage/status and last update). An item is flagged 'may need review' when it has no post-creation update recorded OR has not been updated in >3 US business days (weekends + US federal holidays excluded). Use for prompts like 'audit my deals', 'which deals need attention', 'verify <Deal>', 'is anything stale', 'check the portfolio for missing updates'. Pass deal_id for a single-deal audit (returns full breakdown). Omit deal_id for a portfolio audit (returns short summary + the 3 most-stale deals in detail, with show_more_available=true if more exist). The tone is advisory — phrase findings as 'may need review' or 'no post-creation update recorded', never as enforcement. After presenting findings, ASK the user (per-deal or per-field) whether to update, create, or leave each flagged item unchanged before doing anything else.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "UUID of a single deal for a focused audit. Omit for portfolio-wide." },
+          offset: { type: "number", description: "For paginated 'Show more' on portfolio audits. Default 0. Page size is 3." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
