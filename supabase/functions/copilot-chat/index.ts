@@ -5633,6 +5633,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         note: "Stubbed: no calendar event created. Render as a Schedule meeting preview card; user must approve before booking.",
       };
     }
+    case "verify_deal_information": {
+      return await verifyDealInformation(supabase, args, scope);
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
