@@ -5788,6 +5788,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "verify_deal_information": {
       return await verifyDealInformation(supabase, args, scope, userId);
     }
+    case "record_admin_agent_selection": {
+      return await recordAdminAgentSelection(supabase, args, scope, userId);
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
