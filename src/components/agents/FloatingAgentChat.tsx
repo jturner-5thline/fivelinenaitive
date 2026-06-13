@@ -53,8 +53,7 @@ export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: Floati
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <MessageCircle className="h-4 w-4 text-primary shrink-0" />
-          {agents.length > 0 || true ? (
-            <Select
+          <Select
               value={activeAgent?.id || ''}
               onValueChange={(id) => {
                 if (id === ADMIN_AGENT_PICKER_ID) {
@@ -82,8 +81,7 @@ export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: Floati
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
-          ) : null}
+          </Select>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsExpanded(!isExpanded)}>
