@@ -363,6 +363,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             )}
                             <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
                               <span className="uppercase tracking-wide">{meta?.label}</span>
+                              {item.source?.origin === 'admin_agent' && (
+                                <>
+                                  <span>·</span>
+                                  <Badge
+                                    variant="outline"
+                                    className="h-4 px-1.5 text-[9px] font-medium border-primary/40 bg-primary/10 text-primary uppercase tracking-wide"
+                                  >
+                                    Admin Agent
+                                  </Badge>
+                                </>
+                              )}
                               <span>·</span>
                               <span>{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</span>
                               <span>·</span>
