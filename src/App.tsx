@@ -407,6 +407,7 @@ const App = () => (
                             <Route path="/integrations/hubspot/health" element={<HubspotSyncHealth />} />
                             <Route path="/wf" element={<WfHub />} />
                             <Route path="/wf-deals/:id" element={<WfDealDetail />} />
+                            <Route path="/agents" element={<Agents />} />
                             {/* Insights still needs its access guard; keep it
                                 inline on the element so the shell remains
                                 shared with sibling routes. */}
@@ -439,12 +440,11 @@ const App = () => (
                           <Route path="/integrations" element={
                             <ProtectedRoute><Integrations /></ProtectedRoute>
                           } />
-                          <Route path="/agents" element={
-                            <ProtectedRoute><Agents /></ProtectedRoute>
-                          } />
                           <Route path="/finance" element={
                             <ProtectedRoute><Finance /></ProtectedRoute>
                           } />
+                          {/* /agents now lives inside ProtectedShell so it shares
+                              the persistent app canvas (matches Deals). */}
                           <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/unsubscribe" element={<Unsubscribe />} />
                           <Route path="/schedule/confirm" element={<ScheduleConfirm />} />
