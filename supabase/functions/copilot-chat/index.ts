@@ -4,6 +4,12 @@ import {
   verifiedDealUpdate,
   WriteNotPersistedError,
 } from "../_shared/verifiedDealUpdate.ts";
+import {
+  auditDeal as admAuditDeal,
+  auditPortfolio as admAuditPortfolio,
+  loadAuditConfig as admLoadAuditConfig,
+  logAuditRun as admLogAuditRun,
+} from "../_shared/adminAgentAudit.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
