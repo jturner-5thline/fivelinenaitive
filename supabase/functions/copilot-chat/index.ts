@@ -2194,6 +2194,103 @@ function selectToolsWithScopes(
 }
 
 
+// ── Admin Agent · Duty 1: Verify Deal Information (wrapper) ──────
+// Thin shim over supabase/functions/_shared/adminAgentAudit.ts so the
+// chat tool surface and a future scheduled Friday sweep share the
+// exact same audit engine, config loader, and run logger.
+async function verifyDealInformation(
+  supabase: any,
+  args: any,
+  scope: ChatScope,
+  userId: string,
+) {
+  const companyId = scope.company_id;
+  if (!companyId) {
+    return { error: "Admin Agent requires a workspace company context." };
+  }
+  const cfg = await admLoadAuditConfig(supabase, companyId);
+  if (cfg.settings.enabled === false) {
+    return { error: "The Admin Agent's Verify Deal Information capability is disabled for this workspace." };
+  }
+
+  const now = new Date();
+  const isFriday = now.getDay() === 5;
+  const fridaySweep = !!cfg.settings.friday_sweep_enabled && isFriday;
+
+  // ── Single-deal mode ──
+  if (typeof args?.deal_id === "string" && args.deal_id) {
+    const { data: deal, error } = await supabase.from("deals")
+      .select("id, company, stage, status, pipeline_id, created_at, updated_at")
+      .eq("id", args.deal_id).single();
+    if (error || !deal) return { error: "Deal not found." };
+    const audit = await admAuditDeal(supabase, deal, cfg, now);
+    await admLogAuditRun(supabase, {
+      companyId,
+      userId,
+      scopeType: "single_deal",
+      dealIds: [audit.deal_id],
+      findingsSummary: {
+        flagged_count: audit.flagged_count,
+        never_updated_count: audit.never_updated_count,
+        oldest_business_days: audit.oldest_business_days,
+      },
+      totalEvaluated: 1,
+      totalFlagged: audit.flagged_count > 0 ? 1 : 0,
+      totalNeverUpdated: audit.never_updated_count > 0 ? 1 : 0,
+      triggeredBy: "chat",
+    });
+    return {
+      mode: "single_deal",
+      audited_at: now.toISOString(),
+      stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
+      friday_sweep: fridaySweep,
+      deal: audit,
+      guidance: audit.flagged_count === 0
+        ? "All critical items are current. Reply briefly — no follow-up actions needed."
+        : `Present the flagged items with advisory phrasing ('may need review', 'no post-creation update recorded'). ASK the user — per deal or per field — whether to update, create, or leave each item unchanged. When confirmed, propose ONE create_task per flagged field, assigned to the deal owner, and emit a create_task confirmation card per task. ${fridaySweep ? "FRIDAY SWEEP is on — be slightly more thorough and remind the user this is the end-of-week strict pass." : ""}`,
+    };
+  }
+
+  // ── Portfolio mode ──
+  const pageSize = cfg.settings.default_chat_behavior?.portfolio_page_size ?? 3;
+  const offset = Math.max(0, Number(args?.offset) || 0);
+  const result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
+
+  await admLogAuditRun(supabase, {
+    companyId,
+    userId,
+    scopeType: "portfolio",
+    dealIds: result._evaluated_deal_ids,
+    findingsSummary: {
+      pipeline_id: result.pipeline_id,
+      total_evaluated: result.total_evaluated,
+      total_flagged: result.total_flagged,
+      total_never_updated: result.total_never_updated,
+      flagged_deal_ids: result._flagged_deal_ids,
+      offset,
+    },
+    totalEvaluated: result.total_evaluated,
+    totalFlagged: result.total_flagged,
+    totalNeverUpdated: result.total_never_updated,
+    triggeredBy: fridaySweep ? "friday_sweep" : "chat",
+  });
+
+  // Strip internal-only keys from the model-facing payload.
+  const { _evaluated_deal_ids: _ev, _flagged_deal_ids: _fl, ...modelPayload } = result;
+
+  const summarySentence = result.total_flagged === 0
+    ? `All ${result.total_evaluated} active deal(s) in scope are current — nothing needs review.`
+    : `${result.total_flagged} of ${result.total_evaluated} active deal(s) may need review — ${result.total_never_updated} have items with no post-creation update recorded; ${result.total_stale_only} have items not updated in >${cfg.settings.stale_threshold_business_days} business days.`;
+
+  return {
+    ...modelPayload,
+    deals: modelPayload.page, // alias for backward compatibility with system prompt
+    guidance: result.total_flagged === 0
+      ? "All active deals are current. Reply briefly — no follow-up actions needed."
+      : `Open with this exact summary sentence: "${summarySentence}" Then show the ${result.page.length} deal(s) in detail below. ${result.show_more_available ? `Offer "Show more" — call verify_deal_information again with offset=${result.next_offset}.` : ""} Advisory tone only ('may need review', 'no post-creation update recorded') — never enforcement. After the breakdown, ASK the user, per-deal or per-field, whether to update, create, or leave each item unchanged before proposing any tasks. When the user confirms, propose ONE create_task per flagged field assigned to the deal owner. ${fridaySweep ? "FRIDAY SWEEP is on — treat this as the end-of-week strict pass and remind the user." : ""}`,
+  };
+}
+
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string, scope: ChatScope = parseChatScope(null)): Promise<any> {
   // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
