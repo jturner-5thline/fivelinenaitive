@@ -2338,6 +2338,112 @@ async function verifyDealInformation(
 }
 
 // ── Tool executors ──────────────────────────────────────────────
+// ── Admin Agent · Duty 1 — Follow-up intent capture ─────────────
+// Stage 2: parse the user's natural-language reply (already mapped to
+// structured selections by the model via tool args), persist into
+// admin_agent_selected_actions, and return an ack the chat can render.
+// Stage 2 deliberately does NOT trigger reminders, tasks, or approvals —
+// those are the responsibility of Duties 2–4.
+const VALID_ADMIN_FIELDS = new Set([
+  "status", "stage", "milestones", "status_notes", "funding_sources",
+]);
+const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore"]);
+
+async function recordAdminAgentSelection(
+  supabase: any,
+  args: any,
+  scope: ChatScope,
+  userId: string,
+) {
+  const companyId = scope.company_id;
+  if (!companyId) {
+    return { error: "Admin Agent requires a workspace company context." };
+  }
+  const sourceMessage = typeof args?.source_message === "string" ? args.source_message : "";
+  const auditRunId = typeof args?.audit_run_id === "string" && args.audit_run_id ? args.audit_run_id : null;
+
+  if (args?.ambiguous === true) {
+    const q = typeof args?.clarifying_question === "string" && args.clarifying_question.trim()
+      ? args.clarifying_question.trim()
+      : "Could you clarify which deal or field you'd like me to act on?";
+    return {
+      ok: true,
+      ambiguous: true,
+      clarifying_question: q,
+      saved_count: 0,
+      guidance: `Reply with ONLY this single short clarifying question, verbatim: "${q}" — do not list options unless they were provided. Stage 2 stores nothing on ambiguous turns.`,
+    };
+  }
+
+  const rawSelections = Array.isArray(args?.selections) ? args.selections : [];
+  const cleaned = rawSelections
+    .map((s: any) => ({
+      deal_id: typeof s?.deal_id === "string" ? s.deal_id : null,
+      field: typeof s?.field === "string" ? s.field : null,
+      lender_id: typeof s?.lender_id === "string" && s.lender_id ? s.lender_id : null,
+      action: typeof s?.action === "string" ? s.action : null,
+      note: typeof s?.note === "string" ? s.note.slice(0, 1000) : null,
+    }))
+    .filter((s) =>
+      s.deal_id && s.field && s.action
+        && VALID_ADMIN_FIELDS.has(s.field)
+        && VALID_ADMIN_ACTIONS.has(s.action)
+    );
+
+  if (cleaned.length === 0) {
+    return {
+      ok: false,
+      ambiguous: true,
+      clarifying_question: "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?",
+      saved_count: 0,
+      guidance: "Ask ONE concise clarifying question — nothing was saved.",
+    };
+  }
+
+  const rows = cleaned.map((s) => ({
+    audit_run_id: auditRunId,
+    company_id: companyId,
+    user_id: userId,
+    deal_id: s.deal_id,
+    field: s.field,
+    lender_id: s.lender_id,
+    action: s.action,
+    note: s.note,
+    source_message: sourceMessage.slice(0, 4000) || null,
+    status: "pending",
+  }));
+
+  const { data, error } = await supabase
+    .from("admin_agent_selected_actions")
+    .insert(rows)
+    .select("id, deal_id, field, lender_id, action");
+
+  if (error) {
+    console.warn("[admin_agent] record selection insert failed:", error.message);
+    return { ok: false, error: error.message };
+  }
+
+  const counts = cleaned.reduce(
+    (acc: any, s) => {
+      acc[s.action] = (acc[s.action] || 0) + 1;
+      return acc;
+    },
+    { update: 0, create: 0, ignore: 0 },
+  );
+
+  return {
+    ok: true,
+    ambiguous: false,
+    saved_count: data?.length ?? rows.length,
+    selections: data ?? [],
+    counts,
+    guidance:
+      "Confirm back to the user briefly and advisorily — e.g. \"Got it — captured " +
+      `${counts.update} item(s) to update, ${counts.create} to create, ${counts.ignore} to leave alone. I'll line those up; ` +
+      `nothing has been changed yet.\" DO NOT emit any create_task or other write confirmation cards in Stage 2 — execution lands in Duties 2–4.`,
+  };
+}
+
 async function executeTool(supabase: any, name: string, args: any, userId: string, scope: ChatScope = parseChatScope(null)): Promise<any> {
   // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
   // Audit writes happen at the call sites that have access to the user prompt.)
