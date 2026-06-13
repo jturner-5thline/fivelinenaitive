@@ -350,6 +350,179 @@ export type Database = {
           },
         ]
       }
+      admin_agent_audit_runs: {
+        Row: {
+          company_id: string
+          created_at: string
+          deal_ids: string[]
+          findings_summary: Json
+          id: string
+          scope_type: string
+          total_evaluated: number
+          total_flagged: number
+          total_never_updated: number
+          triggered_by: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          deal_ids?: string[]
+          findings_summary?: Json
+          id?: string
+          scope_type: string
+          total_evaluated?: number
+          total_flagged?: number
+          total_never_updated?: number
+          triggered_by?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          deal_ids?: string[]
+          findings_summary?: Json
+          id?: string
+          scope_type?: string
+          total_evaluated?: number
+          total_flagged?: number
+          total_never_updated?: number
+          triggered_by?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_audit_runs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_agent_holidays: {
+        Row: {
+          company_id: string
+          created_at: string
+          holiday_date: string
+          id: string
+          label: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          holiday_date: string
+          id?: string
+          label?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          holiday_date?: string
+          id?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_holidays_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_agent_settings: {
+        Row: {
+          active_pipeline_ids: string[]
+          active_stage_ids: string[]
+          advisory_tone: boolean
+          company_id: string
+          created_at: string
+          critical_fields: string[]
+          default_chat_behavior: Json
+          enabled: boolean
+          friday_sweep_enabled: boolean
+          id: string
+          stale_threshold_business_days: number
+          updated_at: string
+        }
+        Insert: {
+          active_pipeline_ids?: string[]
+          active_stage_ids?: string[]
+          advisory_tone?: boolean
+          company_id: string
+          created_at?: string
+          critical_fields?: string[]
+          default_chat_behavior?: Json
+          enabled?: boolean
+          friday_sweep_enabled?: boolean
+          id?: string
+          stale_threshold_business_days?: number
+          updated_at?: string
+        }
+        Update: {
+          active_pipeline_ids?: string[]
+          active_stage_ids?: string[]
+          advisory_tone?: boolean
+          company_id?: string
+          created_at?: string
+          critical_fields?: string[]
+          default_chat_behavior?: Json
+          enabled?: boolean
+          friday_sweep_enabled?: boolean
+          id?: string
+          stale_threshold_business_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_agent_user_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_user_overrides_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_logs: {
         Row: {
           action_type: string
