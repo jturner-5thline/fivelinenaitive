@@ -1505,10 +1505,11 @@ export function AICopilotPanel() {
       if (err?.name === 'AbortError') return;
       console.error('Copilot stream error:', err);
       setLastFailedMessage(text);
+      const reason = (err?.message && String(err.message)) || 'Unknown error';
       addMessage({
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: '__ERROR__',
+        content: `__ERROR__::${reason}`,
         timestamp: new Date(),
       });
     } finally {
