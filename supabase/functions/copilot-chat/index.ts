@@ -2213,6 +2213,7 @@ function selectToolsWithScopes(
     "get_finserv_revenue_summary", "list_finserv_milestones",
     // Admin Agent — Duty 1: Verify Deal Information.
     "verify_deal_information",
+    "record_admin_agent_selection",
   ]);
 
   if (page.includes("lender")) {
