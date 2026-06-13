@@ -14,17 +14,36 @@ import {
   LineChart,
   Sparkles,
   Banknote,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { AdminAgentDuty1Config } from './admin-agent/AdminAgentDuty1Config';
 
 interface CatalogAgent {
   name: string;
   subtitle: string;
   description: string;
   icon: LucideIcon;
+  /** Stable key the configure dialog uses to pick the right config surface. */
+  configKey?: 'admin-agent';
 }
 
 const CATALOG: CatalogAgent[] = [
+  {
+    name: 'Admin Agent',
+    subtitle: 'Operational copilot · Verify Deal Information',
+    description:
+      'Audits active deals for stale or missing critical updates — status, stage, milestones, status notes, and per-lender funding sources — and surfaces findings in Ask nAItive AI for review.',
+    icon: ShieldCheck,
+    configKey: 'admin-agent',
+  },
   {
     name: 'Data Room Manager',
     subtitle: 'Document & VDR specialist',
