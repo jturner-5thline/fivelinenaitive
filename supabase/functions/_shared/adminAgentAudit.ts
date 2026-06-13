@@ -245,7 +245,7 @@ export async function auditDeal(
     supabase.from("deal_milestones").select("updated_at, created_at, title").eq("deal_id", dealId)
       .order("updated_at", { ascending: false }),
     supabase.from("deal_lenders").select(
-      "id, name, stage, tracking_status, updated_at, created_at, last_status_change_at, last_contact_at, is_archived",
+      "id, name, stage, tracking_status, updated_at, created_at, last_status_change_at, last_contact_at",
     ).eq("deal_id", dealId),
     supabase.from("deal_stage_history").select("changed_at").eq("deal_id", dealId)
       .order("changed_at", { ascending: false }).limit(1),
@@ -294,7 +294,7 @@ export async function auditDeal(
     }
   }
   if (fields.has("funding_sources")) {
-    const lenders = ((lendersRes.data || []) as any[]).filter((l) => l.is_archived !== true);
+    const lenders = (lendersRes.data || []) as any[];
     if (lenders.length === 0) {
       items.push({
         field: "funding_sources", label: "Funding Sources",
@@ -392,9 +392,9 @@ export async function auditPortfolio(
   const offset = Math.max(0, opts.offset ?? 0);
 
   let q = supabase.from("deals")
-    .select("id, company, stage, status, pipeline_id, created_at, updated_at, is_archived")
+    .select("id, company, stage, status, pipeline_id, created_at, updated_at, on_hold")
     .eq("company_id", opts.companyId)
-    .neq("is_archived", true);
+    .or("on_hold.is.null,on_hold.eq.false");
   if (opts.cfg.resolved_pipeline_ids.length > 0) {
     q = q.in("pipeline_id", opts.cfg.resolved_pipeline_ids);
   }
