@@ -161,12 +161,10 @@ export default function Agents() {
     </div>
   );
 
-  // If canvas is open, render full-screen canvas
   if (showCanvas) {
     const graphConfig = (canvasAgent as any)?.graph_config;
     return (
-      <AppLayout mainClassName="bg-transparent">
-        <div className="h-[calc(100vh-64px)]">
+      <div className="h-[calc(100vh-64px)]">
           <AgentCanvas
             initialNodes={graphConfig?.nodes || []}
             initialEdges={graphConfig?.edges || []}
@@ -179,14 +177,13 @@ export default function Agents() {
             }}
             isSaving={createAgent.isPending || updateAgent.isPending}
           />
-        </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout mainClassName="bg-transparent">
-      <div className="p-6 space-y-6">
+    <>
+      <div className="p-6 space-y-6 bg-transparent">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
