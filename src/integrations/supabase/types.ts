@@ -432,17 +432,78 @@ export type Database = {
           },
         ]
       }
+      admin_agent_parse_logs: {
+        Row: {
+          audit_run_id: string | null
+          clarifying_question: string | null
+          company_id: string
+          created_at: string
+          error_message: string | null
+          id: string
+          outcome: string
+          parsed_interpretation: Json
+          raw_user_response: string | null
+          selections_created: number
+          user_id: string | null
+        }
+        Insert: {
+          audit_run_id?: string | null
+          clarifying_question?: string | null
+          company_id: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          outcome: string
+          parsed_interpretation?: Json
+          raw_user_response?: string | null
+          selections_created?: number
+          user_id?: string | null
+        }
+        Update: {
+          audit_run_id?: string | null
+          clarifying_question?: string | null
+          company_id?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          outcome?: string
+          parsed_interpretation?: Json
+          raw_user_response?: string | null
+          selections_created?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_parse_logs_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "admin_agent_audit_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_agent_parse_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_agent_selected_actions: {
         Row: {
           action: string
           audit_run_id: string | null
           company_id: string
+          confirmation_status: string
           created_at: string
           deal_id: string | null
           field: string
           id: string
           lender_id: string | null
           note: string | null
+          parsed_interpretation: Json
+          raw_user_response: string | null
+          scope_level: string
           source_message: string | null
           status: string
           updated_at: string
@@ -452,12 +513,16 @@ export type Database = {
           action: string
           audit_run_id?: string | null
           company_id: string
+          confirmation_status?: string
           created_at?: string
           deal_id?: string | null
           field: string
           id?: string
           lender_id?: string | null
           note?: string | null
+          parsed_interpretation?: Json
+          raw_user_response?: string | null
+          scope_level?: string
           source_message?: string | null
           status?: string
           updated_at?: string
@@ -467,12 +532,16 @@ export type Database = {
           action?: string
           audit_run_id?: string | null
           company_id?: string
+          confirmation_status?: string
           created_at?: string
           deal_id?: string | null
           field?: string
           id?: string
           lender_id?: string | null
           note?: string | null
+          parsed_interpretation?: Json
+          raw_user_response?: string | null
+          scope_level?: string
           source_message?: string | null
           status?: string
           updated_at?: string
