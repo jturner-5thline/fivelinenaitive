@@ -32,7 +32,7 @@ export default function Company() {
         <Helmet>
           <title>Company - naitive</title>
         </Helmet>
-        <div className="bg-background">
+        <div>
           <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -49,7 +49,7 @@ export default function Company() {
         <Helmet>
           <title>Company - naitive</title>
         </Helmet>
-        <div className="bg-background">
+        <div>
           <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
             <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
               <Link to="/settings">
@@ -80,7 +80,7 @@ export default function Company() {
         <title>{company.name} - Company Settings</title>
       </Helmet>
 
-      <div className="bg-background">
+      <div>
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
