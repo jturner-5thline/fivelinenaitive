@@ -2122,11 +2122,12 @@ const tools = [
             items: {
               type: "object",
               properties: {
-                deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
-                field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
-                lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
-                action: { type: "string", enum: ["update", "create", "ignore"], description: "What the user wants done with this item." },
-                note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
+                 deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
+                 field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
+                 lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
+                 action: { type: "string", enum: ["update", "create", "ignore", "follow_up"], description: "What the user wants done with this item. 'follow_up' = user wants a reminder/check-back, not an immediate change." },
+                 scope_level: { type: "string", enum: ["portfolio", "deal", "field"], description: "Scope of the selection. 'deal' when the user addressed the entire deal; 'field' when they named a specific bucket; 'portfolio' for sweep-wide directives." },
+                 note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
               },
               required: ["deal_id", "field", "action"],
             },
