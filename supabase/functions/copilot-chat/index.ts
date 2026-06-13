@@ -2228,7 +2228,7 @@ async function verifyDealInformation(
       .eq("id", args.deal_id).single();
     if (error || !deal) return { error: "Deal not found." };
     const audit = await admAuditDeal(supabase, deal, cfg, now);
-    await admLogAuditRun(supabase, {
+    const runId = await admLogAuditRun(supabase, {
       companyId,
       userId,
       scopeType: "single_deal",
@@ -2245,13 +2245,15 @@ async function verifyDealInformation(
     });
     return {
       mode: "single_deal",
+      audit_run_id: runId,
       audited_at: now.toISOString(),
       stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
       friday_sweep: fridaySweep,
       deal: audit,
+      chat_blocks: admFormatDealBlock(audit),
       guidance: audit.flagged_count === 0
         ? "All critical items are current. Reply briefly — no follow-up actions needed."
-        : `Present the flagged items with advisory phrasing ('may need review', 'no post-creation update recorded'). ASK the user — per deal or per field — whether to update, create, or leave each item unchanged. When confirmed, propose ONE create_task per flagged field, assigned to the deal owner, and emit a create_task confirmation card per task. ${fridaySweep ? "FRIDAY SWEEP is on — be slightly more thorough and remind the user this is the end-of-week strict pass." : ""}`,
+        : `Render the provided 'chat_blocks' VERBATIM as the body of your reply. Advisory tone only — 'may need review' / 'no post-creation update recorded', never enforcement. Then end with the single follow-up question already in chat_blocks. DO NOT propose tasks or create_task confirmation cards in this stage. When the user replies with what to update/create/ignore, your NEXT step is to call record_admin_agent_selection with audit_run_id=${runId ?? "null"}, deal_id=${audit.deal_id}, and the parsed selections — Stage 2 only captures intent. ${fridaySweep ? "FRIDAY SWEEP is on — be slightly more thorough and remind the user this is the end-of-week strict pass." : ""}`,
     };
   }
 
@@ -2260,7 +2262,7 @@ async function verifyDealInformation(
   const offset = Math.max(0, Number(args?.offset) || 0);
   const result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
 
-  await admLogAuditRun(supabase, {
+  const runId = await admLogAuditRun(supabase, {
     companyId,
     userId,
     scopeType: "portfolio",
@@ -2288,10 +2290,17 @@ async function verifyDealInformation(
 
   return {
     ...modelPayload,
+    audit_run_id: runId,
     deals: modelPayload.page, // alias for backward compatibility with system prompt
+    chat_blocks: admFormatPortfolioBlocks({
+      summarySentence,
+      page: result.page,
+      showMore: result.show_more_available,
+      nextOffset: result.next_offset,
+    }),
     guidance: result.total_flagged === 0
       ? "All active deals are current. Reply briefly — no follow-up actions needed."
-      : `Open with this exact summary sentence: "${summarySentence}" Then show the ${result.page.length} deal(s) in detail below. ${result.show_more_available ? `Offer "Show more" — call verify_deal_information again with offset=${result.next_offset}.` : ""} Advisory tone only ('may need review', 'no post-creation update recorded') — never enforcement. After the breakdown, ASK the user, per-deal or per-field, whether to update, create, or leave each item unchanged before proposing any tasks. When the user confirms, propose ONE create_task per flagged field assigned to the deal owner. ${fridaySweep ? "FRIDAY SWEEP is on — treat this as the end-of-week strict pass and remind the user." : ""}`,
+      : `Render the provided 'chat_blocks' VERBATIM as the body of your reply — it already contains the summary sentence, the ${result.page.length} per-deal breakdowns, and the show-more hint. ${result.show_more_available ? `If the user asks for more, call verify_deal_information again with offset=${result.next_offset}.` : ""} Advisory tone only. DO NOT propose tasks or emit create_task confirmation cards in this stage. When the user replies with what to update/create/ignore for a deal or field, call record_admin_agent_selection with audit_run_id=${runId ?? "null"} and the parsed selections — Stage 2 captures intent only. ${fridaySweep ? "FRIDAY SWEEP is on — treat this as the end-of-week strict pass and remind the user." : ""}`,
   };
 }
 
