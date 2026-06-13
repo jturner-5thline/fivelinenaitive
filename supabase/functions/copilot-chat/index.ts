@@ -10,6 +10,10 @@ import {
   loadAuditConfig as admLoadAuditConfig,
   logAuditRun as admLogAuditRun,
 } from "../_shared/adminAgentAudit.ts";
+import {
+  formatDealBlock as admFormatDealBlock,
+  formatPortfolioBlocks as admFormatPortfolioBlocks,
+} from "../_shared/adminAgentFormat.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
