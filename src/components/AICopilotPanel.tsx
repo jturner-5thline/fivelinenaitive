@@ -2085,7 +2085,7 @@ export function AICopilotPanel() {
                 className={msg.role === 'assistant' ? 'group/msg' : ''}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: 4, position: 'relative' }}
               >
-                {msg.role === 'assistant' && msg.content !== '__ERROR__' && (
+                {msg.role === 'assistant' && !msg.content?.startsWith('__ERROR__') && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
                     <img src={naitiveFavicon} alt="" style={{ width: 16, height: 16 }} />
                     <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>Copilot</span>
@@ -2127,13 +2127,16 @@ export function AICopilotPanel() {
                     <span>📰</span>
                     <span>Your Daily Rundown is Ready</span>
                   </button>
-                ) : msg.content === '__ERROR__' ? (
+                ) : msg.content?.startsWith('__ERROR__') ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',
                     background: 'rgba(220,53,69,0.08)', border: '1px solid rgba(220,53,69,0.25)', color: 'var(--foreground)',
                     fontSize: 14, lineHeight: 1.5,
                   }}>
-                    <p style={{ margin: '0 0 8px 0' }}>Something went wrong. Please try again.</p>
+                    <p style={{ margin: '0 0 4px 0', fontWeight: 500 }}>Something went wrong.</p>
+                    <p style={{ margin: '0 0 8px 0', fontSize: 12, opacity: 0.85, wordBreak: 'break-word' }}>
+                      {msg.content.slice('__ERROR__::'.length) || 'Unknown error'}
+                    </p>
                     <button
                       onClick={handleRetry}
                       aria-label="Retry message"
