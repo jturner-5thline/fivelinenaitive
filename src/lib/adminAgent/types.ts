@@ -145,9 +145,21 @@ export interface AdminAgentAuditRunRecord {
  * with an action of update / create / ignore. Stage 2 only stores; the
  * execution workflows live in Duties 2–4 and consume these rows.
  */
-export type AdminAgentSelectionAction = 'update' | 'create' | 'ignore';
+export type AdminAgentSelectionAction = 'update' | 'create' | 'ignore' | 'follow_up';
 export type AdminAgentSelectionStatus = 'pending' | 'queued' | 'executed' | 'cancelled';
+export type AdminAgentScopeLevel = 'portfolio' | 'deal' | 'field';
+export type AdminAgentConfirmationStatus =
+  | 'unconfirmed'
+  | 'clarification_pending'
+  | 'confirmed'
+  | 'dismissed';
 
+/**
+ * Stage 4 — full persistence shape for a captured follow-up selection.
+ * Downstream Duties 2–4 (reminders, approval queue, task creation)
+ * read these rows and use `confirmation_status='confirmed'` + `status='pending'`
+ * as the work queue, then transition `status` through queued → executed.
+ */
 export interface AdminAgentSelectedAction {
   id: string;
   audit_run_id: string | null;
@@ -156,10 +168,33 @@ export interface AdminAgentSelectedAction {
   deal_id: string | null;
   field: AdminAgentCriticalField;
   lender_id: string | null;
+  scope_level: AdminAgentScopeLevel;
   action: AdminAgentSelectionAction;
   note: string | null;
   source_message: string | null;
+  raw_user_response: string | null;
+  parsed_interpretation: Record<string, unknown>;
+  confirmation_status: AdminAgentConfirmationStatus;
   status: AdminAgentSelectionStatus;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Stage 4 — observability row for every chat follow-up parse attempt.
+ * Used by ops dashboards to track parse success rate, ambiguity rate,
+ * and downstream confirmed update/create/ignore/follow_up volumes.
+ */
+export interface AdminAgentParseLog {
+  id: string;
+  company_id: string;
+  user_id: string | null;
+  audit_run_id: string | null;
+  raw_user_response: string | null;
+  parsed_interpretation: Record<string, unknown>;
+  outcome: 'parsed' | 'clarification_needed' | 'no_op' | 'error';
+  clarifying_question: string | null;
+  selections_created: number;
+  error_message: string | null;
+  created_at: string;
 }

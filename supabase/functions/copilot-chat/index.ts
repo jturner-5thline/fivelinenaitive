@@ -2122,11 +2122,12 @@ const tools = [
             items: {
               type: "object",
               properties: {
-                deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
-                field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
-                lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
-                action: { type: "string", enum: ["update", "create", "ignore"], description: "What the user wants done with this item." },
-                note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
+                 deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
+                 field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
+                 lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
+                 action: { type: "string", enum: ["update", "create", "ignore", "follow_up"], description: "What the user wants done with this item. 'follow_up' = user wants a reminder/check-back, not an immediate change." },
+                 scope_level: { type: "string", enum: ["portfolio", "deal", "field"], description: "Scope of the selection. 'deal' when the user addressed the entire deal; 'field' when they named a specific bucket; 'portfolio' for sweep-wide directives." },
+                 note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
               },
               required: ["deal_id", "field", "action"],
             },
@@ -2254,13 +2255,33 @@ async function verifyDealInformation(
   const isFriday = now.getDay() === 5;
   const fridaySweep = !!cfg.settings.friday_sweep_enabled && isFriday;
 
+  // Stage 4 — surface configuration edge cases up-front so the model can
+  // render a friendly, actionable message instead of a vague "no deals".
+  const edgeNotes: string[] = [];
+  if (cfg.resolved_pipeline_ids.length === 0) {
+    edgeNotes.push(
+      "No active pipeline is configured for this workspace and no default pipeline was found. Ask the user to set an active pipeline in Admin Agent settings before running again.",
+    );
+  }
+  if (cfg.holidays.size === 0) {
+    edgeNotes.push(
+      "No company holiday calendar is configured; freshness is being computed against US federal holidays only.",
+    );
+  }
+
   // ── Single-deal mode ──
   if (typeof args?.deal_id === "string" && args.deal_id) {
     const { data: deal, error } = await supabase.from("deals")
       .select("id, company, stage, status, pipeline_id, created_at, updated_at")
       .eq("id", args.deal_id).single();
     if (error || !deal) return { error: "Deal not found." };
-    const audit = await admAuditDeal(supabase, deal, cfg, now);
+    let audit;
+    try {
+      audit = await admAuditDeal(supabase, deal, cfg, now);
+    } catch (e) {
+      console.error("[admin_agent] auditDeal failed:", e);
+      return { error: `Audit execution failed: ${(e as Error)?.message ?? "unknown error"}` };
+    }
     const runId = await admLogAuditRun(supabase, {
       companyId,
       userId,
@@ -2282,6 +2303,7 @@ async function verifyDealInformation(
       audited_at: now.toISOString(),
       stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
       friday_sweep: fridaySweep,
+      edge_notes: edgeNotes,
       deal: audit,
       chat_blocks: admFormatDealBlock(audit),
       guidance: audit.flagged_count === 0
@@ -2293,7 +2315,49 @@ async function verifyDealInformation(
   // ── Portfolio mode ──
   const pageSize = cfg.settings.default_chat_behavior?.portfolio_page_size ?? 3;
   const offset = Math.max(0, Number(args?.offset) || 0);
-  const result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
+  let result;
+  try {
+    result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
+  } catch (e) {
+    console.error("[admin_agent] auditPortfolio failed:", e);
+    return { error: `Audit execution failed: ${(e as Error)?.message ?? "unknown error"}` };
+  }
+
+  // Empty-scope short-circuit — log the run so we have observability,
+  // then return a clear, friendly payload instead of an awkward zero.
+  if (result.total_evaluated === 0) {
+    const runId = await admLogAuditRun(supabase, {
+      companyId,
+      userId,
+      scopeType: "portfolio",
+      dealIds: [],
+      findingsSummary: {
+        pipeline_id: result.pipeline_id,
+        empty_scope: true,
+        reason: cfg.resolved_pipeline_ids.length === 0 ? "no_active_pipeline" : "no_deals_in_scope",
+      },
+      totalEvaluated: 0,
+      totalFlagged: 0,
+      totalNeverUpdated: 0,
+      triggeredBy: fridaySweep ? "friday_sweep" : "chat",
+    });
+    const reason = cfg.resolved_pipeline_ids.length === 0
+      ? "No active pipeline is configured — ask the user to pick one in Admin Agent settings."
+      : "No active deals are in scope right now — nothing to review.";
+    return {
+      mode: "portfolio",
+      audit_run_id: runId,
+      audited_at: now.toISOString(),
+      stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
+      friday_sweep: fridaySweep,
+      edge_notes: edgeNotes,
+      empty_scope: true,
+      total_evaluated: 0,
+      total_flagged: 0,
+      chat_blocks: reason,
+      guidance: `Reply briefly with: "${reason}" Do not invent deals or follow-up questions.`,
+    };
+  }
 
   const runId = await admLogAuditRun(supabase, {
     companyId,
@@ -2324,6 +2388,7 @@ async function verifyDealInformation(
   return {
     ...modelPayload,
     audit_run_id: runId,
+    edge_notes: edgeNotes,
     deals: modelPayload.page, // alias for backward compatibility with system prompt
     chat_blocks: admFormatPortfolioBlocks({
       summarySentence,
@@ -2347,7 +2412,41 @@ async function verifyDealInformation(
 const VALID_ADMIN_FIELDS = new Set([
   "status", "stage", "milestones", "status_notes", "funding_sources",
 ]);
-const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore"]);
+const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore", "follow_up"]);
+const VALID_ADMIN_SCOPE_LEVELS = new Set(["portfolio", "deal", "field"]);
+
+// Stage 4 observability — write one row per chat follow-up parse attempt.
+// Never throws: parse logging must not block the user-facing reply.
+async function writeAdminAgentParseLog(
+  supabase: any,
+  row: {
+    company_id: string;
+    user_id: string | null;
+    audit_run_id: string | null;
+    raw_user_response: string | null;
+    parsed_interpretation: any;
+    outcome: "parsed" | "clarification_needed" | "no_op" | "error";
+    clarifying_question?: string | null;
+    selections_created?: number;
+    error_message?: string | null;
+  },
+) {
+  try {
+    await supabase.from("admin_agent_parse_logs").insert({
+      company_id: row.company_id,
+      user_id: row.user_id,
+      audit_run_id: row.audit_run_id,
+      raw_user_response: row.raw_user_response?.slice(0, 4000) ?? null,
+      parsed_interpretation: row.parsed_interpretation ?? {},
+      outcome: row.outcome,
+      clarifying_question: row.clarifying_question ?? null,
+      selections_created: row.selections_created ?? 0,
+      error_message: row.error_message ?? null,
+    });
+  } catch (e) {
+    console.warn("[admin_agent] parse log insert failed:", (e as Error)?.message);
+  }
+}
 
 async function recordAdminAgentSelection(
   supabase: any,
@@ -2366,6 +2465,15 @@ async function recordAdminAgentSelection(
     const q = typeof args?.clarifying_question === "string" && args.clarifying_question.trim()
       ? args.clarifying_question.trim()
       : "Could you clarify which deal or field you'd like me to act on?";
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { ambiguous: true, raw_args: args },
+      outcome: "clarification_needed",
+      clarifying_question: q,
+    });
     return {
       ok: true,
       ambiguous: true,
@@ -2382,6 +2490,9 @@ async function recordAdminAgentSelection(
       field: typeof s?.field === "string" ? s.field : null,
       lender_id: typeof s?.lender_id === "string" && s.lender_id ? s.lender_id : null,
       action: typeof s?.action === "string" ? s.action : null,
+      scope_level: typeof s?.scope_level === "string" && VALID_ADMIN_SCOPE_LEVELS.has(s.scope_level)
+        ? s.scope_level
+        : (s?.lender_id ? "field" : "field"),
       note: typeof s?.note === "string" ? s.note.slice(0, 1000) : null,
     }))
     .filter((s) =>
@@ -2391,10 +2502,20 @@ async function recordAdminAgentSelection(
     );
 
   if (cleaned.length === 0) {
+    const q = "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?";
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { raw_args: args, reason: "no_valid_selections" },
+      outcome: "no_op",
+      clarifying_question: q,
+    });
     return {
       ok: false,
       ambiguous: true,
-      clarifying_question: "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?",
+      clarifying_question: q,
       saved_count: 0,
       guidance: "Ask ONE concise clarifying question — nothing was saved.",
     };
@@ -2408,18 +2529,38 @@ async function recordAdminAgentSelection(
     field: s.field,
     lender_id: s.lender_id,
     action: s.action,
+    scope_level: s.scope_level,
     note: s.note,
     source_message: sourceMessage.slice(0, 4000) || null,
+    raw_user_response: sourceMessage.slice(0, 4000) || null,
+    parsed_interpretation: {
+      deal_id: s.deal_id,
+      field: s.field,
+      lender_id: s.lender_id,
+      action: s.action,
+      scope_level: s.scope_level,
+      note: s.note,
+    },
+    confirmation_status: "confirmed",
     status: "pending",
   }));
 
   const { data, error } = await supabase
     .from("admin_agent_selected_actions")
     .insert(rows)
-    .select("id, deal_id, field, lender_id, action");
+    .select("id, deal_id, field, lender_id, action, scope_level, confirmation_status");
 
   if (error) {
     console.warn("[admin_agent] record selection insert failed:", error.message);
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { rows },
+      outcome: "error",
+      error_message: error.message,
+    });
     return { ok: false, error: error.message };
   }
 
@@ -2428,8 +2569,18 @@ async function recordAdminAgentSelection(
       acc[s.action] = (acc[s.action] || 0) + 1;
       return acc;
     },
-    { update: 0, create: 0, ignore: 0 },
+    { update: 0, create: 0, ignore: 0, follow_up: 0 },
   );
+
+  await writeAdminAgentParseLog(supabase, {
+    company_id: companyId,
+    user_id: userId,
+    audit_run_id: auditRunId,
+    raw_user_response: sourceMessage,
+    parsed_interpretation: { selections: cleaned, counts },
+    outcome: "parsed",
+    selections_created: data?.length ?? rows.length,
+  });
 
   return {
     ok: true,
@@ -2439,7 +2590,7 @@ async function recordAdminAgentSelection(
     counts,
     guidance:
       "Confirm back to the user briefly and advisorily — e.g. \"Got it — captured " +
-      `${counts.update} item(s) to update, ${counts.create} to create, ${counts.ignore} to leave alone. I'll line those up; ` +
+      `${counts.update} to update, ${counts.create} to create, ${counts.follow_up} to follow up on, ${counts.ignore} to leave alone. I'll line those up; ` +
       `nothing has been changed yet.\" DO NOT emit any create_task or other write confirmation cards in Stage 2 — execution lands in Duties 2–4.`,
   };
 }
