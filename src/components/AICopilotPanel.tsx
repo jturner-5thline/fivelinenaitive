@@ -37,7 +37,7 @@ import { cleanupCopilotResponse } from '@/lib/copilotResponseCleanup';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logUsage } from '@/lib/usageLogger';
-import { useCopilotChatScope, serializeScope, type CopilotScopeOverride } from '@/lib/copilotChatScope';
+import { useCopilotChatScope, serializeScope } from '@/lib/copilotChatScope';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { matchDemoScript } from '@/lib/ai/demoScripts';
 
@@ -900,7 +900,7 @@ export function AICopilotPanel() {
   const { user } = useAuth();
   // Canonical data scope (workspace + pipeline + status) sent on every
   // request so the AI's deal queries match what the dashboard shows.
-  const { scope: chatScope, override: chatScopeOverride, setOverride: setChatScopeOverride } = useCopilotChatScope();
+  const { scope: chatScope } = useCopilotChatScope();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
