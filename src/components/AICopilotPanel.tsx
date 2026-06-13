@@ -957,7 +957,7 @@ export function AICopilotPanel() {
   useEffect(() => {
     if (!messages.length) return;
     const last = messages[messages.length - 1];
-    if (!last || last.role !== 'assistant' || !last.content || last.content === '__ERROR__' || last.isLoading) return;
+    if (!last || last.role !== 'assistant' || !last.content || last.content?.startsWith('__ERROR__') || last.isLoading) return;
     setWorkspaceItems((prev) => {
       if (prev.some((p) => p.sourceMessageId === last.id)) return prev;
       const detected = detectWorkspaceItems(last.id, last.content);
@@ -1308,7 +1308,7 @@ export function AICopilotPanel() {
     setProcessing(true);
 
     const currentMessages = useCopilotStore.getState().messages;
-    const history = currentMessages.filter(m => m.content !== '__ERROR__').map((m) => ({ role: m.role, content: m.content }));
+    const history = currentMessages.filter(m => !m.content?.startsWith('__ERROR__')).map((m) => ({ role: m.role, content: m.content }));
     const ctx = getPageContext();
     // Telemetry: log every global Ask naitive AI invocation so we can
     // monitor regressions (e.g. deal context not auto-detected, zero docs
@@ -1627,7 +1627,7 @@ export function AICopilotPanel() {
     if (!lastFailedMessage) return;
     // Remove the error message
     const store = useCopilotStore.getState();
-    const filtered = store.messages.filter((m) => m.content !== '__ERROR__');
+    const filtered = store.messages.filter((m) => !m.content?.startsWith('__ERROR__'));
     // Also remove the last user message that failed
     const withoutLastUser = filtered.slice(0, -1);
     setMessages(withoutLastUser);
