@@ -2104,6 +2104,38 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "record_admin_agent_selection",
+      description: "Admin Agent — Duty 1 follow-up intent capture. After verify_deal_information has produced findings and the user replies in natural language with what to do ('handle everything on Acme', 'update stage and notes only', 'leave funding sources alone', 'ignore Globex for now', etc.), call this tool to parse the reply into structured selections and persist them. Stage 2 ONLY captures intent — do NOT also emit create_task or other write confirmation cards. If the reply is ambiguous (e.g. 'fix the stale ones' without naming a deal or field), pass ambiguous=true with a single concise clarifying_question and an empty selections array. Otherwise, emit one selection per (deal_id, field [, lender_id]) the user addressed. Accept deal-level ('handle everything on <Deal>' → one selection per flagged field on that deal), field-level ('update stage and notes only' → one selection per named field), and ignore-level ('leave funding sources alone' → action='ignore' for that field).",
+      parameters: {
+        type: "object",
+        properties: {
+          audit_run_id: { type: "string", description: "ID returned by the most recent verify_deal_information call. Pass null if unknown." },
+          source_message: { type: "string", description: "The user's verbatim natural-language reply being parsed." },
+          ambiguous: { type: "boolean", description: "True if the reply is too vague to map to specific (deal, field) selections." },
+          clarifying_question: { type: "string", description: "One short clarifying question (only when ambiguous=true). Example: 'Did you mean to update Acme only, or every flagged deal?'" },
+          selections: {
+            type: "array",
+            description: "Structured selections parsed from the user's reply. One entry per (deal_id, field [, lender_id]).",
+            items: {
+              type: "object",
+              properties: {
+                deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
+                field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
+                lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
+                action: { type: "string", enum: ["update", "create", "ignore"], description: "What the user wants done with this item." },
+                note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
+              },
+              required: ["deal_id", "field", "action"],
+            },
+          },
+        },
+        required: ["source_message"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
