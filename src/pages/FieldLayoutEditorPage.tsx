@@ -12,7 +12,7 @@ export default function FieldLayoutEditorPage() {
       <Helmet>
         <title>Field Layout Editor | naitive</title>
       </Helmet>
-      <div className="bg-background min-h-screen">
+      <div className="min-h-screen">
         <div className="container mx-auto py-6 px-4 space-y-6">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>

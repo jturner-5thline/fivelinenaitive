@@ -16,7 +16,7 @@ export default function ContactDetail() {
         <title>{contact?.full_name || 'Contact'} | naitive</title>
       </Helmet>
 
-      <div className="bg-background min-h-screen">
+      <div className="min-h-screen">
         <div className="container mx-auto py-6 px-4 space-y-6">
           <Button variant="ghost" size="sm" onClick={() => navigate('/contacts')} className="gap-1.5">
             <ArrowLeft className="h-4 w-4" /> Contacts
