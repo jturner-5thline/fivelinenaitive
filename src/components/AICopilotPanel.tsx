@@ -37,7 +37,7 @@ import { cleanupCopilotResponse } from '@/lib/copilotResponseCleanup';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logUsage } from '@/lib/usageLogger';
-import { useCopilotChatScope, serializeScope, type CopilotScopeOverride } from '@/lib/copilotChatScope';
+import { useCopilotChatScope, serializeScope } from '@/lib/copilotChatScope';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { matchDemoScript } from '@/lib/ai/demoScripts';
 
@@ -900,7 +900,7 @@ export function AICopilotPanel() {
   const { user } = useAuth();
   // Canonical data scope (workspace + pipeline + status) sent on every
   // request so the AI's deal queries match what the dashboard shows.
-  const { scope: chatScope, override: chatScopeOverride, setOverride: setChatScopeOverride } = useCopilotChatScope();
+  const { scope: chatScope } = useCopilotChatScope();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
@@ -1847,16 +1847,10 @@ export function AICopilotPanel() {
               top: '100%',
               left: 8,
               right: 8,
-              // Push the dropdown clearly below both the panel header
-              // (HISTORY/Clear/Switch Context row) and the Context/Scope
-              // badge row underneath, so it never visually overlaps either.
-              // Push the dropdown below the panel header (HISTORY toolbar),
-              // PLUS the Context badge row (~36px) AND the Scope chip row
-              // (~32px) that render as siblings underneath, with a 16px
-              // breathing gap so the list never sits on top of the
-              // Context/Scope chrome. ~36 + ~32 + 16 ≈ 84; use 90 for
-              // safety against border + padding rounding.
-              marginTop: 90,
+              // Push the dropdown below the panel header (HISTORY toolbar)
+              // and the Context badge row underneath, with breathing room
+              // so the list never sits on top of the Context chrome.
+              marginTop: 58,
               maxHeight: 360,
               display: 'flex',
               flexDirection: 'column',
@@ -2003,70 +1997,12 @@ export function AICopilotPanel() {
         )}
       </div>
 
-      {/* Data Scope chip — controls (and shows) which workspace / pipeline /
-          status the AI sees. Every tool call is constrained to this scope so
-          the numbers reported by the AI match the dashboard. */}
-      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, minHeight: 32, fontSize: 11 }}>
-        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Scope:</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              title="Change the data scope the AI sees. Tool calls are constrained to this slice."
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '3px 8px', borderRadius: 999, fontSize: 11,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--glass-border)',
-                color: 'var(--foreground)', cursor: 'pointer', fontWeight: 600,
-              }}
-            >
-              {chatScope.label}
-              <ChevronDown size={11} style={{ color: 'hsl(var(--muted-foreground))' }} />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" style={{ minWidth: 240 }}>
-            <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={chatScopeOverride.workspace_mode}
-              onValueChange={(v) => {
-                setChatScopeOverride({ workspace_mode: v as CopilotScopeOverride['workspace_mode'] });
-                toast.success('Scope updated');
-              }}
-            >
-              <DropdownMenuRadioItem value="workspace">Current workspace</DropdownMenuRadioItem>
-              {chatScope.can_broaden_workspaces ? (
-                <DropdownMenuRadioItem value="all">All workspaces (admin)</DropdownMenuRadioItem>
-              ) : null}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Pipeline</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={chatScopeOverride.pipeline_mode}
-              onValueChange={(v) => {
-                setChatScopeOverride({ pipeline_mode: v as CopilotScopeOverride['pipeline_mode'] });
-                toast.success('Scope updated');
-              }}
-            >
-              <DropdownMenuRadioItem value="default">Active pipeline</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="all">All pipelines</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Status</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              value={chatScopeOverride.status_mode}
-              onValueChange={(v) => {
-                setChatScopeOverride({ status_mode: v as CopilotScopeOverride['status_mode'] });
-                toast.success('Scope updated');
-              }}
-            >
-              <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="include_inactive">Include closed &amp; on-hold</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="include_archived">Include archived</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {/* Scope is now inferred automatically from page/deal/workspace
+          context + the user's natural-language request. The chip-based
+          manual scope selector was removed so the experience feels
+          invisible. The resolved scope is still serialized and sent to
+          the edge function via `serializeScope(chatScope)` below so
+          downstream Admin Agent duties keep working unchanged. */}
 
       {/* Proactive Nudges */}
       {nudges.length > 0 && messages.length === 0 && (
