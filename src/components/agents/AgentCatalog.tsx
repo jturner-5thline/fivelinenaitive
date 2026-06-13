@@ -14,17 +14,36 @@ import {
   LineChart,
   Sparkles,
   Banknote,
+  ShieldCheck,
   type LucideIcon,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { AdminAgentDuty1Config } from './admin-agent/AdminAgentDuty1Config';
 
 interface CatalogAgent {
   name: string;
   subtitle: string;
   description: string;
   icon: LucideIcon;
+  /** Stable key the configure dialog uses to pick the right config surface. */
+  configKey?: 'admin-agent';
 }
 
 const CATALOG: CatalogAgent[] = [
+  {
+    name: 'Admin Agent',
+    subtitle: 'Operational copilot · Verify Deal Information',
+    description:
+      'Audits active deals for stale or missing critical updates — status, stage, milestones, status notes, and per-lender funding sources — and surfaces findings in Ask nAItive AI for review.',
+    icon: ShieldCheck,
+    configKey: 'admin-agent',
+  },
   {
     name: 'Data Room Manager',
     subtitle: 'Document & VDR specialist',
@@ -85,6 +104,8 @@ const CATALOG: CatalogAgent[] = [
 
 export function AgentCatalog() {
   const [query, setQuery] = useState('');
+  const [configKey, setConfigKey] = useState<CatalogAgent['configKey'] | null>(null);
+  const [configTitle, setConfigTitle] = useState<string>('');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -156,7 +177,17 @@ export function AgentCatalog() {
                   {agent.description}
                 </p>
                 <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-                  <Button size="sm" variant="outline" className="h-7 text-xs">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={!agent.configKey}
+                    onClick={() => {
+                      if (!agent.configKey) return;
+                      setConfigKey(agent.configKey);
+                      setConfigTitle(agent.name);
+                    }}
+                  >
                     Configure
                   </Button>
                   <Button size="sm" className="h-7 text-xs">
@@ -174,6 +205,18 @@ export function AgentCatalog() {
           No agents match "{query}".
         </p>
       )}
+
+      <Dialog open={configKey !== null} onOpenChange={(o) => !o && setConfigKey(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{configTitle}</DialogTitle>
+            <DialogDescription>
+              Configure how this agent behaves inside Ask nAItive AI.
+            </DialogDescription>
+          </DialogHeader>
+          {configKey === 'admin-agent' && <AdminAgentDuty1Config />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
