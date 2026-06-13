@@ -2663,7 +2663,6 @@ async function recordAdminAgentSelection(
           payload: {
             title,
             description,
-            priority: "medium",
             due_date: dueDate,
             admin_agent_selection_id: sel.id,
             admin_agent_field: sel.field,

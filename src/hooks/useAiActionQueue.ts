@@ -293,11 +293,15 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
     switch (item.action_type) {
       case 'create_task': {
         const p = item.payload || {};
+        // tasks.priority is constrained to NULL or 'urgent' — coerce anything
+        // else (legacy 'medium'/'low'/etc) to null so the insert doesn't fail
+        // the check constraint.
+        const safePriority = p.priority === 'urgent' ? 'urgent' : null;
         const { data: created, error } = await supabase.from('tasks').insert({
           title: p.title || item.title,
           description: p.description ?? item.description ?? null,
           due_date: p.due_date ?? null,
-          priority: p.priority ?? 'medium',
+          priority: safePriority,
           deal_id: item.deal_id,
           assigned_to: p.assigned_to ?? userId,
           assigned_by: userId,
