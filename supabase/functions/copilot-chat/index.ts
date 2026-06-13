@@ -10,6 +10,10 @@ import {
   loadAuditConfig as admLoadAuditConfig,
   logAuditRun as admLogAuditRun,
 } from "../_shared/adminAgentAudit.ts";
+import {
+  formatDealBlock as admFormatDealBlock,
+  formatPortfolioBlocks as admFormatPortfolioBlocks,
+} from "../_shared/adminAgentFormat.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
@@ -2100,6 +2104,38 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "record_admin_agent_selection",
+      description: "Admin Agent — Duty 1 follow-up intent capture. After verify_deal_information has produced findings and the user replies in natural language with what to do ('handle everything on Acme', 'update stage and notes only', 'leave funding sources alone', 'ignore Globex for now', etc.), call this tool to parse the reply into structured selections and persist them. Stage 2 ONLY captures intent — do NOT also emit create_task or other write confirmation cards. If the reply is ambiguous (e.g. 'fix the stale ones' without naming a deal or field), pass ambiguous=true with a single concise clarifying_question and an empty selections array. Otherwise, emit one selection per (deal_id, field [, lender_id]) the user addressed. Accept deal-level ('handle everything on <Deal>' → one selection per flagged field on that deal), field-level ('update stage and notes only' → one selection per named field), and ignore-level ('leave funding sources alone' → action='ignore' for that field).",
+      parameters: {
+        type: "object",
+        properties: {
+          audit_run_id: { type: "string", description: "ID returned by the most recent verify_deal_information call. Pass null if unknown." },
+          source_message: { type: "string", description: "The user's verbatim natural-language reply being parsed." },
+          ambiguous: { type: "boolean", description: "True if the reply is too vague to map to specific (deal, field) selections." },
+          clarifying_question: { type: "string", description: "One short clarifying question (only when ambiguous=true). Example: 'Did you mean to update Acme only, or every flagged deal?'" },
+          selections: {
+            type: "array",
+            description: "Structured selections parsed from the user's reply. One entry per (deal_id, field [, lender_id]).",
+            items: {
+              type: "object",
+              properties: {
+                deal_id: { type: "string", description: "UUID of the deal the selection applies to." },
+                field: { type: "string", enum: ["status", "stage", "milestones", "status_notes", "funding_sources"], description: "Critical field bucket." },
+                lender_id: { type: "string", description: "Optional lender UUID when the selection is scoped to a single funding source." },
+                action: { type: "string", enum: ["update", "create", "ignore"], description: "What the user wants done with this item." },
+                note: { type: "string", description: "Optional short note from the user's reply (e.g. 'will refresh tomorrow')." },
+              },
+              required: ["deal_id", "field", "action"],
+            },
+          },
+        },
+        required: ["source_message"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -2177,6 +2213,7 @@ function selectToolsWithScopes(
     "get_finserv_revenue_summary", "list_finserv_milestones",
     // Admin Agent — Duty 1: Verify Deal Information.
     "verify_deal_information",
+    "record_admin_agent_selection",
   ]);
 
   if (page.includes("lender")) {
@@ -2224,7 +2261,7 @@ async function verifyDealInformation(
       .eq("id", args.deal_id).single();
     if (error || !deal) return { error: "Deal not found." };
     const audit = await admAuditDeal(supabase, deal, cfg, now);
-    await admLogAuditRun(supabase, {
+    const runId = await admLogAuditRun(supabase, {
       companyId,
       userId,
       scopeType: "single_deal",
@@ -2241,13 +2278,15 @@ async function verifyDealInformation(
     });
     return {
       mode: "single_deal",
+      audit_run_id: runId,
       audited_at: now.toISOString(),
       stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
       friday_sweep: fridaySweep,
       deal: audit,
+      chat_blocks: admFormatDealBlock(audit),
       guidance: audit.flagged_count === 0
         ? "All critical items are current. Reply briefly — no follow-up actions needed."
-        : `Present the flagged items with advisory phrasing ('may need review', 'no post-creation update recorded'). ASK the user — per deal or per field — whether to update, create, or leave each item unchanged. When confirmed, propose ONE create_task per flagged field, assigned to the deal owner, and emit a create_task confirmation card per task. ${fridaySweep ? "FRIDAY SWEEP is on — be slightly more thorough and remind the user this is the end-of-week strict pass." : ""}`,
+        : `Render the provided 'chat_blocks' VERBATIM as the body of your reply. Advisory tone only — 'may need review' / 'no post-creation update recorded', never enforcement. Then end with the single follow-up question already in chat_blocks. DO NOT propose tasks or create_task confirmation cards in this stage. When the user replies with what to update/create/ignore, your NEXT step is to call record_admin_agent_selection with audit_run_id=${runId ?? "null"}, deal_id=${audit.deal_id}, and the parsed selections — Stage 2 only captures intent. ${fridaySweep ? "FRIDAY SWEEP is on — be slightly more thorough and remind the user this is the end-of-week strict pass." : ""}`,
     };
   }
 
@@ -2256,7 +2295,7 @@ async function verifyDealInformation(
   const offset = Math.max(0, Number(args?.offset) || 0);
   const result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
 
-  await admLogAuditRun(supabase, {
+  const runId = await admLogAuditRun(supabase, {
     companyId,
     userId,
     scopeType: "portfolio",
@@ -2284,14 +2323,127 @@ async function verifyDealInformation(
 
   return {
     ...modelPayload,
+    audit_run_id: runId,
     deals: modelPayload.page, // alias for backward compatibility with system prompt
+    chat_blocks: admFormatPortfolioBlocks({
+      summarySentence,
+      page: result.page,
+      showMore: result.show_more_available,
+      nextOffset: result.next_offset,
+    }),
     guidance: result.total_flagged === 0
       ? "All active deals are current. Reply briefly — no follow-up actions needed."
-      : `Open with this exact summary sentence: "${summarySentence}" Then show the ${result.page.length} deal(s) in detail below. ${result.show_more_available ? `Offer "Show more" — call verify_deal_information again with offset=${result.next_offset}.` : ""} Advisory tone only ('may need review', 'no post-creation update recorded') — never enforcement. After the breakdown, ASK the user, per-deal or per-field, whether to update, create, or leave each item unchanged before proposing any tasks. When the user confirms, propose ONE create_task per flagged field assigned to the deal owner. ${fridaySweep ? "FRIDAY SWEEP is on — treat this as the end-of-week strict pass and remind the user." : ""}`,
+      : `Render the provided 'chat_blocks' VERBATIM as the body of your reply — it already contains the summary sentence, the ${result.page.length} per-deal breakdowns, and the show-more hint. ${result.show_more_available ? `If the user asks for more, call verify_deal_information again with offset=${result.next_offset}.` : ""} Advisory tone only. DO NOT propose tasks or emit create_task confirmation cards in this stage. When the user replies with what to update/create/ignore for a deal or field, call record_admin_agent_selection with audit_run_id=${runId ?? "null"} and the parsed selections — Stage 2 captures intent only. ${fridaySweep ? "FRIDAY SWEEP is on — treat this as the end-of-week strict pass and remind the user." : ""}`,
   };
 }
 
 // ── Tool executors ──────────────────────────────────────────────
+// ── Admin Agent · Duty 1 — Follow-up intent capture ─────────────
+// Stage 2: parse the user's natural-language reply (already mapped to
+// structured selections by the model via tool args), persist into
+// admin_agent_selected_actions, and return an ack the chat can render.
+// Stage 2 deliberately does NOT trigger reminders, tasks, or approvals —
+// those are the responsibility of Duties 2–4.
+const VALID_ADMIN_FIELDS = new Set([
+  "status", "stage", "milestones", "status_notes", "funding_sources",
+]);
+const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore"]);
+
+async function recordAdminAgentSelection(
+  supabase: any,
+  args: any,
+  scope: ChatScope,
+  userId: string,
+) {
+  const companyId = scope.company_id;
+  if (!companyId) {
+    return { error: "Admin Agent requires a workspace company context." };
+  }
+  const sourceMessage = typeof args?.source_message === "string" ? args.source_message : "";
+  const auditRunId = typeof args?.audit_run_id === "string" && args.audit_run_id ? args.audit_run_id : null;
+
+  if (args?.ambiguous === true) {
+    const q = typeof args?.clarifying_question === "string" && args.clarifying_question.trim()
+      ? args.clarifying_question.trim()
+      : "Could you clarify which deal or field you'd like me to act on?";
+    return {
+      ok: true,
+      ambiguous: true,
+      clarifying_question: q,
+      saved_count: 0,
+      guidance: `Reply with ONLY this single short clarifying question, verbatim: "${q}" — do not list options unless they were provided. Stage 2 stores nothing on ambiguous turns.`,
+    };
+  }
+
+  const rawSelections = Array.isArray(args?.selections) ? args.selections : [];
+  const cleaned = rawSelections
+    .map((s: any) => ({
+      deal_id: typeof s?.deal_id === "string" ? s.deal_id : null,
+      field: typeof s?.field === "string" ? s.field : null,
+      lender_id: typeof s?.lender_id === "string" && s.lender_id ? s.lender_id : null,
+      action: typeof s?.action === "string" ? s.action : null,
+      note: typeof s?.note === "string" ? s.note.slice(0, 1000) : null,
+    }))
+    .filter((s) =>
+      s.deal_id && s.field && s.action
+        && VALID_ADMIN_FIELDS.has(s.field)
+        && VALID_ADMIN_ACTIONS.has(s.action)
+    );
+
+  if (cleaned.length === 0) {
+    return {
+      ok: false,
+      ambiguous: true,
+      clarifying_question: "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?",
+      saved_count: 0,
+      guidance: "Ask ONE concise clarifying question — nothing was saved.",
+    };
+  }
+
+  const rows = cleaned.map((s) => ({
+    audit_run_id: auditRunId,
+    company_id: companyId,
+    user_id: userId,
+    deal_id: s.deal_id,
+    field: s.field,
+    lender_id: s.lender_id,
+    action: s.action,
+    note: s.note,
+    source_message: sourceMessage.slice(0, 4000) || null,
+    status: "pending",
+  }));
+
+  const { data, error } = await supabase
+    .from("admin_agent_selected_actions")
+    .insert(rows)
+    .select("id, deal_id, field, lender_id, action");
+
+  if (error) {
+    console.warn("[admin_agent] record selection insert failed:", error.message);
+    return { ok: false, error: error.message };
+  }
+
+  const counts = cleaned.reduce(
+    (acc: any, s) => {
+      acc[s.action] = (acc[s.action] || 0) + 1;
+      return acc;
+    },
+    { update: 0, create: 0, ignore: 0 },
+  );
+
+  return {
+    ok: true,
+    ambiguous: false,
+    saved_count: data?.length ?? rows.length,
+    selections: data ?? [],
+    counts,
+    guidance:
+      "Confirm back to the user briefly and advisorily — e.g. \"Got it — captured " +
+      `${counts.update} item(s) to update, ${counts.create} to create, ${counts.ignore} to leave alone. I'll line those up; ` +
+      `nothing has been changed yet.\" DO NOT emit any create_task or other write confirmation cards in Stage 2 — execution lands in Duties 2–4.`,
+  };
+}
+
 async function executeTool(supabase: any, name: string, args: any, userId: string, scope: ChatScope = parseChatScope(null)): Promise<any> {
   // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
   // Audit writes happen at the call sites that have access to the user prompt.)
@@ -5742,6 +5894,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "verify_deal_information": {
       return await verifyDealInformation(supabase, args, scope, userId);
     }
+    case "record_admin_agent_selection": {
+      return await recordAdminAgentSelection(supabase, args, scope, userId);
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -7350,7 +7505,7 @@ DEAL-SPACE QUESTION ANSWERING (apply when the focused deal is set):
 PERSONAL TASK & REMINDER CREATION (apply when the user says "remind me to …", "create a task for me to …", "add a to-do for …", "set a reminder", or any equivalent natural-language reminder):
 - ALWAYS use the create_task tool. NEVER persist the task yourself or in any other way — create_task returns an { action: "confirm", action_type: "create_task" } payload that the UI renders as an approval card. The user must click Save before anything is written.
 - ALLOWED FIELDS (the only keys you may pass): title (required), description (optional, maps to Notes), assignee_id (uuid, optional owner — defaults to current user), due_date (YYYY-MM-DD only — NEVER include a time-of-day, "T...", or timezone), deal_id (uuid, optional), type (one of task | follow_up | call | email | meeting), collaborator_ids (uuid[]). DO NOT pass priority, due_time, add_to_calendar, calendar, or any other key — the tasks table has no priority column the AI may set and no calendar field. The schema rejects extra keys.
-- Owner default: leave BOTH assignee_id AND assignee_name UNSET only for FIRST-PERSON reminders ("remind me to …", "create a task for me to …"). The executor will default the owner to the current user. The MOMENT the user names ANY teammate ("for James Turner", "have Scott do this", "Niki should …"), you MUST pass that exact verbatim name string as `assignee_name` on the create_task call — the handler will fuzzy-resolve it server-side. Calling search_team_members beforehand is OPTIONAL; if you do, also pass `assignee_id`. NEVER silently default to the caller when the user named someone — bug #1215344941044854.
+- Owner default: leave BOTH assignee_id AND assignee_name UNSET only for FIRST-PERSON reminders ("remind me to …", "create a task for me to …"). The executor will default the owner to the current user. The MOMENT the user names ANY teammate ("for James Turner", "have Scott do this", "Niki should …"), you MUST pass that exact verbatim name string as \`assignee_name\` on the create_task call — the handler will fuzzy-resolve it server-side. Calling search_team_members beforehand is OPTIONAL; if you do, also pass \`assignee_id\`. NEVER silently default to the caller when the user named someone — bug #1215344941044854.
 - Deal link: if the focused deal is set (entityType=deal above OR a RESOLVED DEAL FROM PROMPT block is present) AND the reminder text plausibly relates to that deal (mentions the company, the lender on it, "this deal", "this company", "here", "the write-up", "the memo", a milestone, etc.), set deal_id to that focused deal's UUID — task_type stays the default "task" and the tool will treat it as a deal-linked task. If the user is NOT on a deal page and does not name a deal, omit deal_id — it becomes a personal task for the current user.
 - Title: extract a concise, action-oriented title from the reminder. Strip the "remind me to" / "create a task to" prefix. Keep the verb. Example: "Remind me to call Dan tomorrow" → title "Call Dan". "Create a task for me to review the write-up on Friday" → title "Review the write-up".
 - Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string (date only, no time) and pass as due_date. If the user gave NO date at all, DEFAULT due_date to TODAY in the user's local timezone. If genuinely AMBIGUOUS, ask ONE short clarifying question first.
@@ -7367,7 +7522,7 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
   3. If the user is NOT on a deal page and names a deal, resolve via RESOLVED DEAL FROM PROMPT first; if absent, call search_deals.
   4. Ambiguity / low confidence: if search_deals returns multiple plausible matches (e.g. "Worthy" matches more than one active deal) OR no clear single best match, STOP. Ask ONE short clarifying question listing the top 2–3 candidates with company + stage. Do NOT call create_task with a guessed deal_id. Never link a task to the wrong deal.
   5. If the user clearly intends a personal (non-deal) task even from a deal page (e.g. "remind me to pick up groceries", "personal task: book flight"), omit deal_id — fall back to the PERSONAL TASK rules above.
-- Owner: default to the current user ONLY when no person is named (omit BOTH assignee_id and assignee_name). When the user names a teammate ("assign to <Person>", "task for <Person>"), pass that exact verbatim name as `assignee_name` on the create_task call — the handler fuzzy-resolves server-side. Optionally also call search_team_members first and pass the UUID as `assignee_id`. NEVER silently reassign to the caller — bug #1215344941044854.
+- Owner: default to the current user ONLY when no person is named (omit BOTH assignee_id and assignee_name). When the user names a teammate ("assign to <Person>", "task for <Person>"), pass that exact verbatim name as \`assignee_name\` on the create_task call — the handler fuzzy-resolves server-side. Optionally also call search_team_members first and pass the UUID as \`assignee_id\`. NEVER silently reassign to the caller — bug #1215344941044854.
 - Title: concise and action-oriented. Strip "create a task to" / "remind me to" / "add a task on <Deal> to" prefixes and any deal-name preamble. Example: "Create a task to follow up with management on Xnergy" → title "Follow up with management". "Add a task on Worthy to check in with Dan in 5 days" → "Check in with Dan".
 - Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — no time-of-day) and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DEFAULT due_date to TODAY in the user's local timezone.
 - Description: optional. Only include if the user added context beyond the title (e.g. "…about the CIM revisions" → description carries that detail). Do not invent context.
@@ -7379,8 +7534,8 @@ DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER
 - ALWAYS use the create_task tool. NEVER write the task directly. The tool returns an approval card { action: "confirm", action_type: "create_task" } which the UI renders as a PROPOSED ASSIGNMENT requiring explicit human approval. No assignment happens until the user clicks Save.
 - Assignee resolution (do this BEFORE calling create_task):
   1. Extract the named person from the prompt (first name, last name, full name, or email).
-  2. ALWAYS pass that exact verbatim string as `assignee_name` on the create_task call. The handler will fuzzy-resolve it server-side against the workspace roster. You may ALSO call search_team_members and pass the resolved UUID as `assignee_id`, but `assignee_name` is the authoritative input — never omit it when the user named someone.
-  3. If the handler returns an error like "No teammate matched <name>" or "Multiple teammates matched <name>", relay that to the user (list the candidates if provided) and ask one short clarifying question. Then retry create_task with the corrected name or the picked UUID. Do NOT call create_task with `assignee_name` omitted — that silently reassigns to the caller, which is bug #1215344941044854.
+  2. ALWAYS pass that exact verbatim string as \`assignee_name\` on the create_task call. The handler will fuzzy-resolve it server-side against the workspace roster. You may ALSO call search_team_members and pass the resolved UUID as \`assignee_id\`, but \`assignee_name\` is the authoritative input — never omit it when the user named someone.
+  3. If the handler returns an error like "No teammate matched <name>" or "Multiple teammates matched <name>", relay that to the user (list the candidates if provided) and ask one short clarifying question. Then retry create_task with the corrected name or the picked UUID. Do NOT call create_task with \`assignee_name\` omitted — that silently reassigns to the caller, which is bug #1215344941044854.
   4. Never silently substitute the current user as the assignee for a delegated task — if you cannot resolve the named person, ask; do not fall back to "me".
 - Deal linking: same rules as DEAL TASK CREATION above.
   - On a deal page and the delegated task plausibly relates to the focused deal (mentions the company/lender/"this deal"/"here"/the write-up/memo/milestone) → set deal_id to the focused deal's UUID.
@@ -8043,7 +8198,7 @@ WRITE ACTION TOOLS:
 - update_deal_stage: Move deal to a different stage WITHIN its current pipeline (HIGH RISK, needs confirmation). Do NOT use this to move between pipelines.
 
 STAGE vs STATUS — NEVER confuse these two fields:
-- STAGE = pipeline column on the board (Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold-as-stage, Passed, etc.). Changes which column the deal card sits in. Tools: update_deal_stage, or the `stage` param of update_deal_fields.
+- STAGE = pipeline column on the board (Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold-as-stage, Passed, etc.). Changes which column the deal card sits in. Tools: update_deal_stage, or the \`stage\` param of update_deal_fields.
 - STATUS = deal HEALTH badge, strict enum {on-track, at-risk, off-track, on-hold, archived}. Tool: update_deal_status.
 Disambiguation rules — apply these literally:
 - "move <Deal> to <X>" / "change stage to <X>" / "mark as closed lost" / "mark as closed won" / "close <Deal> won|lost" → ALWAYS update_deal_stage.
@@ -8059,11 +8214,10 @@ READ TOOLS:
 
 ADMIN AGENT — DUTY 1 (VERIFY DEAL INFORMATION):
 - Trigger verify_deal_information whenever the user asks to audit deals / check what needs review / verify a deal / find stale or missing updates / "is anything missing on <Deal>". Pass deal_id for a single-deal request; omit for portfolio. Pass offset for "Show more".
-- Output rules (portfolio mode): open with ONE concise summary sentence (X of Y deals may need review — N never updated, M stale >3 BD), then render the 3 deals in detail. If show_more_available, end with a short "Show more" offer.
-- Output rules (single-deal mode): render the full per-item breakdown immediately. Show ONLY when each item was last updated — never WHO updated it.
+- Output rules: the tool returns a 'chat_blocks' string already formatted as readable markdown (summary, per-deal breakdowns, lender-level findings, follow-up question). Render chat_blocks VERBATIM as the body of your reply, then append your chip line. Show ONLY when each item was last updated — never WHO updated it.
 - Tone: advisory, concise, direct. Use the exact phrases "may need review" and "no post-creation update recorded". Never use enforcement language ("must", "should have", "you failed to"). The Admin Agent is a chat-first copilot, not an enforcer.
-- After presenting findings, ASK the user — per deal or per field — whether to update, create, or leave each flagged item unchanged. Accept natural-language replies at either granularity. If the instruction is ambiguous (e.g. "fix the stale ones"), ask ONE short clarifying question before doing anything.
-- When the user confirms updates, propose ONE create_task per flagged field, assigned to the deal owner, with a description like 'Verify Deal Information: <Deal> — <Field> may need review (last updated <relative time> or no post-creation update recorded)'. Emit a create_task confirmation card per task — never auto-execute.
+- FOLLOW-UP HANDLING (Stage 2): when the user replies in natural language with what to update/create/ignore — at deal-level ("handle everything on Acme"), field-level ("update stage and notes only"), or ignore-level ("leave funding sources alone") — your NEXT action MUST be a single call to record_admin_agent_selection with audit_run_id from the prior verify_deal_information result, the user's verbatim source_message, and one structured selection per (deal_id, field [, lender_id]). Use the field enum: status, stage, milestones, status_notes, funding_sources. For deal-level instructions, expand into one selection per flagged field on that deal. For ignore-level instructions, set action='ignore' for the named field(s). If the reply is ambiguous (e.g. "fix the stale ones" without a deal/field), call record_admin_agent_selection with ambiguous=true and ONE concise clarifying_question — empty selections.
+- STAGE 2 SCOPE: DO NOT emit create_task, update_deal_*, or any other write confirmation cards yet — Stage 2 only captures intent. After record_admin_agent_selection returns ok=true, reply briefly using its 'guidance' field; the actual task/reminder/approval workflows land in Duties 2–4.
 ${orgPreferencesSection}
 
 FUZZY DEAL NAME INTERPRETATION (STRICT):
