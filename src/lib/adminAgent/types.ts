@@ -138,3 +138,28 @@ export interface AdminAgentAuditRunRecord {
   triggered_by: 'chat' | 'friday_sweep' | 'manual' | 'scheduled';
   created_at: string;
 }
+
+/**
+ * Stage 2 — captured follow-up intent. The chat layer parses the
+ * user's natural-language reply into one row per (deal, field [, lender])
+ * with an action of update / create / ignore. Stage 2 only stores; the
+ * execution workflows live in Duties 2–4 and consume these rows.
+ */
+export type AdminAgentSelectionAction = 'update' | 'create' | 'ignore';
+export type AdminAgentSelectionStatus = 'pending' | 'queued' | 'executed' | 'cancelled';
+
+export interface AdminAgentSelectedAction {
+  id: string;
+  audit_run_id: string | null;
+  company_id: string;
+  user_id: string;
+  deal_id: string | null;
+  field: AdminAgentCriticalField;
+  lender_id: string | null;
+  action: AdminAgentSelectionAction;
+  note: string | null;
+  source_message: string | null;
+  status: AdminAgentSelectionStatus;
+  created_at: string;
+  updated_at: string;
+}
