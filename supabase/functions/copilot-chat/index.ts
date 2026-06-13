@@ -2187,6 +2187,269 @@ function selectToolsWithScopes(
   return filterByScopes(tools.filter((t) => coreNames.has(t.function.name)));
 }
 
+// ── Admin Agent · Duty 1: Verify Deal Information ────────────────
+// Business-day helpers (mirror src/lib/businessDays.ts + usFederalHolidays.ts)
+// so the audit thresholds match the rest of the app exactly.
+const _ADMIN_AGENT_STALE_BD_THRESHOLD = 3;
+function _admPad(n: number) { return n < 10 ? `0${n}` : String(n); }
+function _admYmd(y: number, m: number, d: number) { return `${y}-${_admPad(m)}-${_admPad(d)}`; }
+function _admObserved(y: number, m: number, d: number): string {
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay();
+  if (dow === 6) return _admYmd(y, m, d - 1);
+  if (dow === 0) return _admYmd(y, m, d + 1);
+  return _admYmd(y, m, d);
+}
+function _admNth(y: number, m: number, weekday: number, n: number): string {
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const offset = (weekday - first.getUTCDay() + 7) % 7;
+  return _admYmd(y, m, 1 + offset + (n - 1) * 7);
+}
+function _admLast(y: number, m: number, weekday: number): string {
+  const last = new Date(Date.UTC(y, m, 0));
+  const offset = (last.getUTCDay() - weekday + 7) % 7;
+  return _admYmd(y, m, last.getUTCDate() - offset);
+}
+function _admHolidays(y: number): string[] {
+  return [
+    _admObserved(y, 1, 1), _admNth(y, 1, 1, 3), _admNth(y, 2, 1, 3),
+    _admLast(y, 5, 1), _admObserved(y, 6, 19), _admObserved(y, 7, 4),
+    _admNth(y, 9, 1, 1), _admNth(y, 10, 1, 2), _admObserved(y, 11, 11),
+    _admNth(y, 11, 4, 4), _admObserved(y, 12, 25),
+  ];
+}
+const _ADMIN_AGENT_HOLIDAYS: Set<string> = new Set(
+  [2024, 2025, 2026, 2027, 2028, 2029, 2030].flatMap(_admHolidays)
+);
+function _admBusinessDaysBetween(from: Date, to: Date): number {
+  const start = new Date(from); start.setHours(0,0,0,0);
+  const end = new Date(to); end.setHours(0,0,0,0);
+  if (end <= start) return 0;
+  let count = 0;
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  while (cursor <= end) {
+    const dow = cursor.getDay();
+    const key = _admYmd(cursor.getFullYear(), cursor.getMonth() + 1, cursor.getDate());
+    if (dow !== 0 && dow !== 6 && !_ADMIN_AGENT_HOLIDAYS.has(key)) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
+type AdmItem = {
+  field: string;
+  label: string;
+  last_updated_at: string | null;
+  business_days_since: number | null; // null = never updated post-creation
+  may_need_review: boolean;
+  reason: "never_updated" | "stale" | "ok";
+  detail?: string;
+};
+
+function _admItem(
+  field: string,
+  label: string,
+  lastUpdated: string | null | undefined,
+  createdAt: string | null | undefined,
+  now: Date,
+  detail?: string,
+): AdmItem {
+  // "no post-creation update recorded" = lastUpdated missing OR within ~1 second of createdAt.
+  const created = createdAt ? new Date(createdAt) : null;
+  const last = lastUpdated ? new Date(lastUpdated) : null;
+  const isNever = !last || (created && Math.abs(last.getTime() - created.getTime()) < 2000);
+  if (isNever) {
+    return { field, label, last_updated_at: last ? last.toISOString() : null,
+      business_days_since: null, may_need_review: true, reason: "never_updated", detail };
+  }
+  const bd = _admBusinessDaysBetween(last!, now);
+  return {
+    field, label, last_updated_at: last!.toISOString(),
+    business_days_since: bd,
+    may_need_review: bd > _ADMIN_AGENT_STALE_BD_THRESHOLD,
+    reason: bd > _ADMIN_AGENT_STALE_BD_THRESHOLD ? "stale" : "ok",
+    detail,
+  };
+}
+
+async function _admAuditOneDeal(supabase: any, deal: any, now: Date) {
+  const dealId = deal.id;
+  const [statusNotesRes, milestonesRes, lendersRes, stageHistRes] = await Promise.all([
+    supabase.from("deal_status_notes").select("created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(1),
+    supabase.from("deal_milestones").select("updated_at, created_at, title, completed").eq("deal_id", dealId).order("updated_at", { ascending: false }),
+    supabase.from("deal_lenders").select("id, name, stage, tracking_status, updated_at, created_at, last_status_change_at, last_contact_at, is_archived").eq("deal_id", dealId),
+    supabase.from("deal_stage_history").select("changed_at").eq("deal_id", dealId).order("changed_at", { ascending: false }).limit(1),
+  ]);
+
+  const items: AdmItem[] = [];
+
+  // Deal Status — use deals.updated_at as proxy for status edits.
+  items.push(_admItem("status", "Deal Status", deal.updated_at, deal.created_at, now,
+    `Current: ${deal.status ?? "—"}`));
+
+  // Deal Stage — last stage_history entry (falls back to deal.updated_at).
+  const lastStageAt = stageHistRes.data?.[0]?.changed_at ?? deal.updated_at;
+  items.push(_admItem("stage", "Deal Stage", lastStageAt, deal.created_at, now,
+    `Current: ${deal.stage ?? "—"}`));
+
+  // Milestones — newest updated milestone, or "never" if none exist.
+  const milestones = milestonesRes.data || [];
+  if (milestones.length === 0) {
+    items.push({ field: "milestones", label: "Milestones", last_updated_at: null,
+      business_days_since: null, may_need_review: true, reason: "never_updated",
+      detail: "No milestones created" });
+  } else {
+    const newest = milestones[0];
+    items.push(_admItem("milestones", "Milestones", newest.updated_at, newest.created_at, now,
+      `${milestones.length} milestone(s); newest: "${newest.title}"`));
+  }
+
+  // Status Notes — most recent note.
+  const latestNote = statusNotesRes.data?.[0]?.created_at ?? null;
+  if (!latestNote) {
+    items.push({ field: "status_notes", label: "Status Notes", last_updated_at: null,
+      business_days_since: null, may_need_review: true, reason: "never_updated",
+      detail: "No status notes recorded" });
+  } else {
+    items.push(_admItem("status_notes", "Status Notes", latestNote, null, now));
+  }
+
+  // Funding Sources — flag each active lender whose last update is stale.
+  const lenders = (lendersRes.data || []).filter((l: any) => l.is_archived !== true);
+  if (lenders.length === 0) {
+    items.push({ field: "funding_sources", label: "Funding Sources", last_updated_at: null,
+      business_days_since: null, may_need_review: true, reason: "never_updated",
+      detail: "No funding sources added" });
+  } else {
+    const lenderRows = lenders.map((l: any) => {
+      const lastTouch = l.last_status_change_at || l.updated_at || l.last_contact_at || l.created_at;
+      const sub = _admItem(`lender:${l.id}`, l.name || "Lender", lastTouch, l.created_at, now,
+        `Stage: ${l.stage ?? "—"}${l.tracking_status ? ` · ${l.tracking_status}` : ""}`);
+      return sub;
+    });
+    const stale = lenderRows.filter(r => r.may_need_review);
+    items.push({
+      field: "funding_sources",
+      label: "Funding Sources",
+      last_updated_at: lenderRows.reduce<string | null>((acc, r) => {
+        if (!r.last_updated_at) return acc;
+        return !acc || r.last_updated_at > acc ? r.last_updated_at : acc;
+      }, null),
+      business_days_since: lenderRows.reduce<number | null>((acc, r) => {
+        if (r.business_days_since == null) return acc;
+        return acc == null || r.business_days_since < acc ? r.business_days_since : acc;
+      }, null),
+      may_need_review: stale.length > 0,
+      reason: stale.length > 0 ? "stale" : "ok",
+      detail: `${lenders.length} funding source(s); ${stale.length} may need review`,
+    });
+    // Attach per-lender breakdown as additional items so the model can cite each.
+    for (const r of lenderRows) items.push(r);
+  }
+
+  const flagged = items.filter(i => i.may_need_review && !i.field.startsWith("lender:"))
+    .concat(items.filter(i => i.may_need_review && i.field.startsWith("lender:")));
+  const oldestBd = items
+    .map(i => i.business_days_since)
+    .filter((v): v is number => typeof v === "number")
+    .reduce((m, v) => (v > m ? v : m), 0);
+
+  return {
+    deal_id: dealId,
+    deal_name: deal.company,
+    stage: deal.stage,
+    status: deal.status,
+    pipeline_id: deal.pipeline_id,
+    items,
+    flagged_count: flagged.length,
+    oldest_business_days: oldestBd,
+    has_never_updated: items.some(i => i.reason === "never_updated"),
+  };
+}
+
+async function verifyDealInformation(supabase: any, args: any, scope: ChatScope) {
+  const now = new Date();
+
+  // Single-deal audit: skip pipeline filter entirely.
+  if (typeof args?.deal_id === "string" && args.deal_id) {
+    const { data: deal, error } = await supabase.from("deals")
+      .select("id, company, stage, status, pipeline_id, created_at, updated_at")
+      .eq("id", args.deal_id).single();
+    if (error || !deal) return { error: "Deal not found." };
+    const audit = await _admAuditOneDeal(supabase, deal, now);
+    return {
+      mode: "single",
+      audited_at: now.toISOString(),
+      stale_threshold_business_days: _ADMIN_AGENT_STALE_BD_THRESHOLD,
+      deal: audit,
+      guidance: audit.flagged_count === 0
+        ? "All critical items are current. Reply briefly confirming everything is up to date — no follow-up actions needed."
+        : "Present the flagged items as 'may need review' (advisory tone) and ASK the user whether to update, create, or leave each item unchanged. Accept per-deal or per-field answers. If the user says 'yes update them all' or similar, propose ONE create_task per flagged field (assigned to the deal owner) and emit a single create_task confirm card per task — never auto-create.",
+    };
+  }
+
+  // Portfolio audit: scoped to default pipeline + active deals in current workspace.
+  let pipelineId: string | null = scope.pipeline_id;
+  if (!pipelineId && scope.company_id) {
+    const { data: defaultPipe } = await supabase.from("deal_pipelines")
+      .select("id").eq("company_id", scope.company_id).eq("is_default", true).maybeSingle();
+    pipelineId = defaultPipe?.id ?? null;
+  }
+
+  let q = supabase.from("deals")
+    .select("id, company, stage, status, pipeline_id, created_at, updated_at")
+    .order("updated_at", { ascending: true });
+  if (scope.company_id) q = q.eq("company_id", scope.company_id);
+  if (pipelineId) q = q.eq("pipeline_id", pipelineId);
+  // Active-only: exclude closed/on-hold/archived (mirrors applyDealScope active_only).
+  q = q.not("status", "in", '("closed","on-hold","archived","closed-won","closed-lost")')
+       .not("stage", "in", '("closed-won","closed-lost","on-hold","passed")')
+       .neq("is_archived", true);
+
+  const { data: deals, error } = await q.limit(200);
+  if (error) return { error: `Failed to load deals: ${error.message}` };
+
+  const filtered = (deals || []).filter((d: any) => !isGloballyExcludedDealName(d.company));
+  if (filtered.length === 0) {
+    return { mode: "portfolio", audited_at: now.toISOString(), total_active: 0,
+      total_flagged: 0, summary: "No active deals found in the current scope to audit." };
+  }
+
+  // Audit every in-scope deal so the summary count is exact.
+  const audits = await Promise.all(filtered.map((d: any) => _admAuditOneDeal(supabase, d, now)));
+  const flaggedAudits = audits
+    .filter(a => a.flagged_count > 0)
+    .sort((a, b) =>
+      (b.oldest_business_days - a.oldest_business_days) ||
+      (b.flagged_count - a.flagged_count));
+
+  const offset = Math.max(0, Number(args?.offset) || 0);
+  const page = flaggedAudits.slice(offset, offset + 3);
+  const showMoreAvailable = flaggedAudits.length > offset + page.length;
+
+  const neverUpdatedCount = flaggedAudits.filter(a => a.has_never_updated).length;
+  const staleOnlyCount = flaggedAudits.length - neverUpdatedCount;
+
+  return {
+    mode: "portfolio",
+    audited_at: now.toISOString(),
+    stale_threshold_business_days: _ADMIN_AGENT_STALE_BD_THRESHOLD,
+    pipeline_id: pipelineId,
+    total_active: audits.length,
+    total_clean: audits.length - flaggedAudits.length,
+    total_flagged: flaggedAudits.length,
+    stale_only: staleOnlyCount,
+    never_updated: neverUpdatedCount,
+    show_more_available: showMoreAvailable,
+    next_offset: showMoreAvailable ? offset + page.length : null,
+    deals: page,
+    guidance: flaggedAudits.length === 0
+      ? "All active deals are current. Reply briefly — no follow-up actions needed."
+      : `Open with ONE concise sentence summary (e.g. "${flaggedAudits.length} of ${audits.length} active deals may need review — ${neverUpdatedCount} have items with no post-creation update recorded; ${staleOnlyCount} have items not updated in >3 business days."). Then show the ${page.length} deal(s) in detail below. ${showMoreAvailable ? `Offer "Show more" — call verify_deal_information again with offset=${offset + page.length} when the user asks.` : ""} Use advisory phrasing ('may need review', 'no post-creation update recorded') — never enforcement. After the breakdown, ASK the user, per-deal or per-field, whether to update, create, or leave each item unchanged before proposing any tasks. When the user confirms, propose ONE create_task per flagged field assigned to the deal owner.`,
+  };
+}
+
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string, scope: ChatScope = parseChatScope(null)): Promise<any> {
   // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
