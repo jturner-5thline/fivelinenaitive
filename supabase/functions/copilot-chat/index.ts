@@ -2348,7 +2348,41 @@ async function verifyDealInformation(
 const VALID_ADMIN_FIELDS = new Set([
   "status", "stage", "milestones", "status_notes", "funding_sources",
 ]);
-const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore"]);
+const VALID_ADMIN_ACTIONS = new Set(["update", "create", "ignore", "follow_up"]);
+const VALID_ADMIN_SCOPE_LEVELS = new Set(["portfolio", "deal", "field"]);
+
+// Stage 4 observability — write one row per chat follow-up parse attempt.
+// Never throws: parse logging must not block the user-facing reply.
+async function writeAdminAgentParseLog(
+  supabase: any,
+  row: {
+    company_id: string;
+    user_id: string | null;
+    audit_run_id: string | null;
+    raw_user_response: string | null;
+    parsed_interpretation: any;
+    outcome: "parsed" | "clarification_needed" | "no_op" | "error";
+    clarifying_question?: string | null;
+    selections_created?: number;
+    error_message?: string | null;
+  },
+) {
+  try {
+    await supabase.from("admin_agent_parse_logs").insert({
+      company_id: row.company_id,
+      user_id: row.user_id,
+      audit_run_id: row.audit_run_id,
+      raw_user_response: row.raw_user_response?.slice(0, 4000) ?? null,
+      parsed_interpretation: row.parsed_interpretation ?? {},
+      outcome: row.outcome,
+      clarifying_question: row.clarifying_question ?? null,
+      selections_created: row.selections_created ?? 0,
+      error_message: row.error_message ?? null,
+    });
+  } catch (e) {
+    console.warn("[admin_agent] parse log insert failed:", (e as Error)?.message);
+  }
+}
 
 async function recordAdminAgentSelection(
   supabase: any,
@@ -2367,6 +2401,15 @@ async function recordAdminAgentSelection(
     const q = typeof args?.clarifying_question === "string" && args.clarifying_question.trim()
       ? args.clarifying_question.trim()
       : "Could you clarify which deal or field you'd like me to act on?";
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { ambiguous: true, raw_args: args },
+      outcome: "clarification_needed",
+      clarifying_question: q,
+    });
     return {
       ok: true,
       ambiguous: true,
@@ -2383,6 +2426,9 @@ async function recordAdminAgentSelection(
       field: typeof s?.field === "string" ? s.field : null,
       lender_id: typeof s?.lender_id === "string" && s.lender_id ? s.lender_id : null,
       action: typeof s?.action === "string" ? s.action : null,
+      scope_level: typeof s?.scope_level === "string" && VALID_ADMIN_SCOPE_LEVELS.has(s.scope_level)
+        ? s.scope_level
+        : (s?.lender_id ? "field" : "field"),
       note: typeof s?.note === "string" ? s.note.slice(0, 1000) : null,
     }))
     .filter((s) =>
@@ -2392,10 +2438,20 @@ async function recordAdminAgentSelection(
     );
 
   if (cleaned.length === 0) {
+    const q = "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?";
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { raw_args: args, reason: "no_valid_selections" },
+      outcome: "no_op",
+      clarifying_question: q,
+    });
     return {
       ok: false,
       ambiguous: true,
-      clarifying_question: "Which deal and field should I focus on — update, create a follow-up, or leave unchanged?",
+      clarifying_question: q,
       saved_count: 0,
       guidance: "Ask ONE concise clarifying question — nothing was saved.",
     };
@@ -2409,18 +2465,38 @@ async function recordAdminAgentSelection(
     field: s.field,
     lender_id: s.lender_id,
     action: s.action,
+    scope_level: s.scope_level,
     note: s.note,
     source_message: sourceMessage.slice(0, 4000) || null,
+    raw_user_response: sourceMessage.slice(0, 4000) || null,
+    parsed_interpretation: {
+      deal_id: s.deal_id,
+      field: s.field,
+      lender_id: s.lender_id,
+      action: s.action,
+      scope_level: s.scope_level,
+      note: s.note,
+    },
+    confirmation_status: "confirmed",
     status: "pending",
   }));
 
   const { data, error } = await supabase
     .from("admin_agent_selected_actions")
     .insert(rows)
-    .select("id, deal_id, field, lender_id, action");
+    .select("id, deal_id, field, lender_id, action, scope_level, confirmation_status");
 
   if (error) {
     console.warn("[admin_agent] record selection insert failed:", error.message);
+    await writeAdminAgentParseLog(supabase, {
+      company_id: companyId,
+      user_id: userId,
+      audit_run_id: auditRunId,
+      raw_user_response: sourceMessage,
+      parsed_interpretation: { rows },
+      outcome: "error",
+      error_message: error.message,
+    });
     return { ok: false, error: error.message };
   }
 
@@ -2429,8 +2505,18 @@ async function recordAdminAgentSelection(
       acc[s.action] = (acc[s.action] || 0) + 1;
       return acc;
     },
-    { update: 0, create: 0, ignore: 0 },
+    { update: 0, create: 0, ignore: 0, follow_up: 0 },
   );
+
+  await writeAdminAgentParseLog(supabase, {
+    company_id: companyId,
+    user_id: userId,
+    audit_run_id: auditRunId,
+    raw_user_response: sourceMessage,
+    parsed_interpretation: { selections: cleaned, counts },
+    outcome: "parsed",
+    selections_created: data?.length ?? rows.length,
+  });
 
   return {
     ok: true,
@@ -2440,7 +2526,7 @@ async function recordAdminAgentSelection(
     counts,
     guidance:
       "Confirm back to the user briefly and advisorily — e.g. \"Got it — captured " +
-      `${counts.update} item(s) to update, ${counts.create} to create, ${counts.ignore} to leave alone. I'll line those up; ` +
+      `${counts.update} to update, ${counts.create} to create, ${counts.follow_up} to follow up on, ${counts.ignore} to leave alone. I'll line those up; ` +
       `nothing has been changed yet.\" DO NOT emit any create_task or other write confirmation cards in Stage 2 — execution lands in Duties 2–4.`,
   };
 }
