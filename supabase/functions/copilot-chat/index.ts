@@ -2475,7 +2475,16 @@ async function recordAdminAgentSelection(
     return { error: "Admin Agent requires a workspace company context." };
   }
   const sourceMessage = typeof args?.source_message === "string" ? args.source_message : "";
-  const auditRunId = typeof args?.audit_run_id === "string" && args.audit_run_id ? args.audit_run_id : null;
+  // Only persist real UUID audit_run_ids. The audit logger can return a
+  // synthetic id like `audit_20260613_1557_solo` when the run-log insert
+  // is skipped/fails, and the model echoes it back here — which then
+  // breaks the `admin_agent_selected_actions.audit_run_id uuid` insert
+  // with "invalid input syntax for type uuid".
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const auditRunId = typeof args?.audit_run_id === "string"
+    && UUID_RE.test(args.audit_run_id)
+    ? args.audit_run_id
+    : null;
 
   if (args?.ambiguous === true) {
     const q = typeof args?.clarifying_question === "string" && args.clarifying_question.trim()
