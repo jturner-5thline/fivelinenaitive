@@ -2242,7 +2242,23 @@ async function verifyDealInformation(
   scope: ChatScope,
   userId: string,
 ) {
-  const companyId = scope.company_id;
+  let companyId = scope.company_id;
+  // Fallback: client scope didn't hydrate (e.g. /agents route, first request
+  // after refresh). Resolve the user's workspace from company_members so the
+  // audit always runs instead of returning an empty / hallucinated reply.
+  if (!companyId && userId) {
+    try {
+      const { data: membership } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
+      if (membership?.company_id) companyId = membership.company_id;
+    } catch (e) {
+      console.warn("[admin_agent] company fallback lookup failed:", (e as Error)?.message);
+    }
+  }
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
   }

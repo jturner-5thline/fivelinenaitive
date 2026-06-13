@@ -6,6 +6,15 @@ import { MessageCircle, X, Minimize2, Maximize2 } from 'lucide-react';
 import { AgentTestChat } from './AgentTestChat';
 import type { Agent } from '@/hooks/useAgents';
 import { cn } from '@/lib/utils';
+import { useCopilotStore } from '@/stores/copilotStore';
+
+/**
+ * Synthetic id used to inject the Admin Agent (Verify Deal Information) into
+ * the floating chat picker. The Admin Agent is a copilot tool, not a row in
+ * the `agents` table, so the picker has to surface it separately. Selecting
+ * it opens the global Ask nAItive panel instead of rendering AgentTestChat.
+ */
+const ADMIN_AGENT_PICKER_ID = '__admin_agent__';
 
 interface FloatingAgentChatProps {
   agents: Agent[];
@@ -16,6 +25,7 @@ interface FloatingAgentChatProps {
 export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: FloatingAgentChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const openCopilot = useCopilotStore((s) => s.openPanel);
 
   if (!isOpen) {
     return (
@@ -42,10 +52,16 @@ export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: Floati
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-card">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <MessageCircle className="h-4 w-4 text-primary shrink-0" />
-          {agents.length > 0 ? (
-            <Select
+          <Select
               value={activeAgent?.id || ''}
               onValueChange={(id) => {
+                if (id === ADMIN_AGENT_PICKER_ID) {
+                  // Admin Agent lives in the global Ask nAItive panel —
+                  // hand off there and close the floating widget.
+                  openCopilot();
+                  setIsOpen(false);
+                  return;
+                }
                 const agent = agents.find(a => a.id === id);
                 onSelectAgent(agent || null);
               }}
@@ -54,16 +70,17 @@ export function FloatingAgentChat({ agents, activeAgent, onSelectAgent }: Floati
                 <SelectValue placeholder="Pick an agent…" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={ADMIN_AGENT_PICKER_ID} className="text-xs">
+                  <span className="mr-1">🛡️</span> Admin Agent
+                  <span className="ml-2 text-[10px] text-muted-foreground">(opens Ask nAItive)</span>
+                </SelectItem>
                 {agents.map(a => (
                   <SelectItem key={a.id} value={a.id} className="text-xs">
                     <span className="mr-1">{a.avatar_emoji}</span> {a.name}
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
-          ) : (
-            <span className="text-xs text-muted-foreground">No agents available</span>
-          )}
+          </Select>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsExpanded(!isExpanded)}>
