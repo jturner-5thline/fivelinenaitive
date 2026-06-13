@@ -2597,12 +2597,130 @@ async function recordAdminAgentSelection(
     { update: 0, create: 0, ignore: 0, follow_up: 0 },
   );
 
+  // ── Duty 3 — bridge captured selections into the Approval Queue ──
+  // Each non-ignore selection becomes a `create_task` row in
+  // ai_action_queue so the human can approve it through the existing
+  // Approval Queue UI. On approve, executeQueuedAction('create_task')
+  // lands a row in /tasks. Ignore selections do NOT enqueue work.
+  const enqueueable = (data ?? []).filter(
+    (r: any) => r && r.action !== "ignore",
+  );
+  let queuedCount = 0;
+  if (enqueueable.length > 0) {
+    try {
+      const dealIds = Array.from(
+        new Set(
+          enqueueable
+            .map((r: any) => r.deal_id)
+            .filter((v: any): v is string => typeof v === "string"),
+        ),
+      );
+      let dealNameById: Record<string, string> = {};
+      if (dealIds.length > 0) {
+        const { data: dealRows } = await supabase
+          .from("deals")
+          .select("id, company")
+          .in("id", dealIds);
+        for (const d of dealRows ?? []) {
+          if (d?.id) dealNameById[d.id] = d.company ?? "Untitled Deal";
+        }
+      }
+
+      const FIELD_LABEL: Record<string, string> = {
+        status: "status",
+        stage: "stage",
+        milestones: "milestones",
+        status_notes: "status notes",
+        funding_sources: "funding sources",
+      };
+      const VERB: Record<string, string> = {
+        update: "Update",
+        create: "Create",
+        follow_up: "Follow up on",
+      };
+      // T+3 calendar days is a reasonable default; user can edit in queue.
+      const dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
+      const queueRows = enqueueable.map((sel: any) => {
+        const dealName = sel.deal_id
+          ? dealNameById[sel.deal_id] ?? "Untitled Deal"
+          : null;
+        const fieldLabel = FIELD_LABEL[sel.field] ?? sel.field;
+        const verb = VERB[sel.action] ?? "Review";
+        const title = dealName
+          ? `${verb} ${fieldLabel} for ${dealName}`
+          : `${verb} ${fieldLabel}`;
+        const description = `Admin Agent captured this from the deal audit on ${new Date().toLocaleDateString()}. Approve to create a task in /tasks.`;
+        return {
+          user_id: userId,
+          deal_id: sel.deal_id,
+          deal_name: dealName,
+          action_type: "create_task",
+          title,
+          description,
+          payload: {
+            title,
+            description,
+            priority: "medium",
+            due_date: dueDate,
+            admin_agent_selection_id: sel.id,
+            admin_agent_field: sel.field,
+            admin_agent_action: sel.action,
+            admin_agent_lender_id: sel.lender_id ?? null,
+          },
+          source: {
+            origin: "admin_agent",
+            audit_run_id: auditRunId,
+            selection_id: sel.id,
+            field: sel.field,
+            action: sel.action,
+          },
+        };
+      });
+
+      const { data: queued, error: queueErr } = await supabase
+        .from("ai_action_queue")
+        .insert(queueRows)
+        .select("id");
+      if (queueErr) {
+        console.warn(
+          "[admin_agent] ai_action_queue insert failed:",
+          queueErr.message,
+        );
+      } else {
+        queuedCount = queued?.length ?? queueRows.length;
+        // Flip the source selections to 'queued' so Duty 4 can detect
+        // which captured intents already have an approval row.
+        const ids = enqueueable.map((r: any) => r.id);
+        if (ids.length > 0) {
+          const { error: updErr } = await supabase
+            .from("admin_agent_selected_actions")
+            .update({ status: "queued" })
+            .in("id", ids);
+          if (updErr) {
+            console.warn(
+              "[admin_agent] selection status->queued update failed:",
+              updErr.message,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(
+        "[admin_agent] enqueue to ai_action_queue threw:",
+        (e as Error)?.message,
+      );
+    }
+  }
+
   await writeAdminAgentParseLog(supabase, {
     company_id: companyId,
     user_id: userId,
     audit_run_id: auditRunId,
     raw_user_response: sourceMessage,
-    parsed_interpretation: { selections: cleaned, counts },
+    parsed_interpretation: { selections: cleaned, counts, queued_count: queuedCount },
     outcome: "parsed",
     selections_created: data?.length ?? rows.length,
   });
@@ -2611,12 +2729,14 @@ async function recordAdminAgentSelection(
     ok: true,
     ambiguous: false,
     saved_count: data?.length ?? rows.length,
+    queued_count: queuedCount,
     selections: data ?? [],
     counts,
     guidance:
       "Confirm back to the user briefly and advisorily — e.g. \"Got it — captured " +
-      `${counts.update} to update, ${counts.create} to create, ${counts.follow_up} to follow up on, ${counts.ignore} to leave alone. I'll line those up; ` +
-      `nothing has been changed yet.\" DO NOT emit any create_task or other write confirmation cards in Stage 2 — execution lands in Duties 2–4.`,
+      `${counts.update} to update, ${counts.create} to create, ${counts.follow_up} to follow up on, ${counts.ignore} to leave alone. ` +
+      `${queuedCount > 0 ? `Added ${queuedCount} item${queuedCount !== 1 ? "s" : ""} to your Approval Queue for review.` : ""}` +
+      `\" DO NOT emit any create_task or other write confirmation cards yourself — the Approval Queue handles execution after the user approves.`,
   };
 }
 
