@@ -2255,13 +2255,33 @@ async function verifyDealInformation(
   const isFriday = now.getDay() === 5;
   const fridaySweep = !!cfg.settings.friday_sweep_enabled && isFriday;
 
+  // Stage 4 — surface configuration edge cases up-front so the model can
+  // render a friendly, actionable message instead of a vague "no deals".
+  const edgeNotes: string[] = [];
+  if (cfg.resolved_pipeline_ids.length === 0) {
+    edgeNotes.push(
+      "No active pipeline is configured for this workspace and no default pipeline was found. Ask the user to set an active pipeline in Admin Agent settings before running again.",
+    );
+  }
+  if (cfg.holidays.size === 0) {
+    edgeNotes.push(
+      "No company holiday calendar is configured; freshness is being computed against US federal holidays only.",
+    );
+  }
+
   // ── Single-deal mode ──
   if (typeof args?.deal_id === "string" && args.deal_id) {
     const { data: deal, error } = await supabase.from("deals")
       .select("id, company, stage, status, pipeline_id, created_at, updated_at")
       .eq("id", args.deal_id).single();
     if (error || !deal) return { error: "Deal not found." };
-    const audit = await admAuditDeal(supabase, deal, cfg, now);
+    let audit;
+    try {
+      audit = await admAuditDeal(supabase, deal, cfg, now);
+    } catch (e) {
+      console.error("[admin_agent] auditDeal failed:", e);
+      return { error: `Audit execution failed: ${(e as Error)?.message ?? "unknown error"}` };
+    }
     const runId = await admLogAuditRun(supabase, {
       companyId,
       userId,
@@ -2283,6 +2303,7 @@ async function verifyDealInformation(
       audited_at: now.toISOString(),
       stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
       friday_sweep: fridaySweep,
+      edge_notes: edgeNotes,
       deal: audit,
       chat_blocks: admFormatDealBlock(audit),
       guidance: audit.flagged_count === 0
@@ -2294,7 +2315,49 @@ async function verifyDealInformation(
   // ── Portfolio mode ──
   const pageSize = cfg.settings.default_chat_behavior?.portfolio_page_size ?? 3;
   const offset = Math.max(0, Number(args?.offset) || 0);
-  const result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
+  let result;
+  try {
+    result = await admAuditPortfolio(supabase, { companyId, cfg, offset, pageSize, now });
+  } catch (e) {
+    console.error("[admin_agent] auditPortfolio failed:", e);
+    return { error: `Audit execution failed: ${(e as Error)?.message ?? "unknown error"}` };
+  }
+
+  // Empty-scope short-circuit — log the run so we have observability,
+  // then return a clear, friendly payload instead of an awkward zero.
+  if (result.total_evaluated === 0) {
+    const runId = await admLogAuditRun(supabase, {
+      companyId,
+      userId,
+      scopeType: "portfolio",
+      dealIds: [],
+      findingsSummary: {
+        pipeline_id: result.pipeline_id,
+        empty_scope: true,
+        reason: cfg.resolved_pipeline_ids.length === 0 ? "no_active_pipeline" : "no_deals_in_scope",
+      },
+      totalEvaluated: 0,
+      totalFlagged: 0,
+      totalNeverUpdated: 0,
+      triggeredBy: fridaySweep ? "friday_sweep" : "chat",
+    });
+    const reason = cfg.resolved_pipeline_ids.length === 0
+      ? "No active pipeline is configured — ask the user to pick one in Admin Agent settings."
+      : "No active deals are in scope right now — nothing to review.";
+    return {
+      mode: "portfolio",
+      audit_run_id: runId,
+      audited_at: now.toISOString(),
+      stale_threshold_business_days: cfg.settings.stale_threshold_business_days,
+      friday_sweep: fridaySweep,
+      edge_notes: edgeNotes,
+      empty_scope: true,
+      total_evaluated: 0,
+      total_flagged: 0,
+      chat_blocks: reason,
+      guidance: `Reply briefly with: "${reason}" Do not invent deals or follow-up questions.`,
+    };
+  }
 
   const runId = await admLogAuditRun(supabase, {
     companyId,
@@ -2325,6 +2388,7 @@ async function verifyDealInformation(
   return {
     ...modelPayload,
     audit_run_id: runId,
+    edge_notes: edgeNotes,
     deals: modelPayload.page, // alias for backward compatibility with system prompt
     chat_blocks: admFormatPortfolioBlocks({
       summarySentence,
