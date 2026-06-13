@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
 /**
  * AI Approval Queue — deferred AI suggestions awaiting user approval.
@@ -293,6 +294,15 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
     switch (item.action_type) {
       case 'create_task': {
         const p = item.payload || {};
+        const { data: membership, error: membershipError } = await supabase
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+        if (membershipError) {
+          return { ok: false, error: `[create_task] membership lookup failed: ${membershipError.message}` };
+        }
         // tasks.priority is constrained to NULL or 'urgent' — coerce anything
         // else (legacy 'medium'/'low'/etc) to null so the insert doesn't fail
         // the check constraint.
@@ -305,6 +315,7 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
           deal_id: item.deal_id,
           assigned_to: p.assigned_to ?? userId,
           assigned_by: userId,
+          company_id: membership?.company_id ?? null,
         } as any).select('id').single();
         if (error) return { ok: false, error: error.message };
         if (created?.id) {
@@ -425,6 +436,7 @@ export function useApproveAiAction() {
         })
         .eq('id', item.id);
       invalidateQueueAll(qc);
+      if (result.ok) invalidateAllTaskCaches(qc);
       return result;
     },
     [user, qc],
