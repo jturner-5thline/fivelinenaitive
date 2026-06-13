@@ -3,6 +3,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
 import {
   Search as SearchIcon,
   FolderOpen,
@@ -106,6 +111,52 @@ export function AgentCatalog() {
   const [query, setQuery] = useState('');
   const [configKey, setConfigKey] = useState<CatalogAgent['configKey'] | null>(null);
   const [configTitle, setConfigTitle] = useState<string>('');
+  const { company, isAdmin } = useCompany();
+  const companyId = company?.id ?? null;
+  const qc = useQueryClient();
+  const [activatingKey, setActivatingKey] = useState<string | null>(null);
+
+  const adminAgentSettingsQ = useQuery({
+    queryKey: ['admin-agent-settings', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_agent_settings')
+        .select('enabled')
+        .eq('company_id', companyId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as { enabled: boolean } | null;
+    },
+  });
+
+  async function toggleAdminAgent(nextEnabled: boolean) {
+    if (!companyId) {
+      toast.error('No workspace selected.');
+      return;
+    }
+    if (!isAdmin) {
+      toast.error('Only workspace admins can activate this agent.');
+      return;
+    }
+    setActivatingKey('admin-agent');
+    try {
+      const { error } = await supabase
+        .from('admin_agent_settings')
+        .upsert(
+          { company_id: companyId, enabled: nextEnabled },
+          { onConflict: 'company_id' },
+        );
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
+      toast.success(nextEnabled ? 'Admin Agent activated.' : 'Admin Agent deactivated.');
+    } catch (e: any) {
+      console.error('[agent-activate] failed', e);
+      toast.error(e?.message || 'Failed to update agent activation.');
+    } finally {
+      setActivatingKey(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -166,9 +217,15 @@ export function AgentCatalog() {
                   </div>
                   <Badge
                     variant="secondary"
-                    className="shrink-0 h-5 px-1.5 text-[10px] font-medium uppercase tracking-wide bg-primary/10 text-primary border border-primary/20 hover:bg-primary/10"
+                    className={`shrink-0 h-5 px-1.5 text-[10px] font-medium uppercase tracking-wide border ${
+                      agent.configKey === 'admin-agent' && adminAgentSettingsQ.data?.enabled
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10'
+                        : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/10'
+                    }`}
                   >
-                    Available
+                    {agent.configKey === 'admin-agent' && adminAgentSettingsQ.data?.enabled
+                      ? 'Active'
+                      : 'Available'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -190,9 +247,29 @@ export function AgentCatalog() {
                   >
                     Configure
                   </Button>
-                  <Button size="sm" className="h-7 text-xs">
-                    Activate
-                  </Button>
+                  {agent.configKey === 'admin-agent' ? (
+                    <Button
+                      size="sm"
+                      variant={adminAgentSettingsQ.data?.enabled ? 'outline' : 'default'}
+                      className="h-7 text-xs"
+                      disabled={activatingKey === 'admin-agent' || !companyId}
+                      onClick={() => toggleAdminAgent(!adminAgentSettingsQ.data?.enabled)}
+                    >
+                      {activatingKey === 'admin-agent' && (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      )}
+                      {adminAgentSettingsQ.data?.enabled ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled
+                      title="Coming soon"
+                    >
+                      Activate
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

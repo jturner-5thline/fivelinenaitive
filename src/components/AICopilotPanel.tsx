@@ -957,7 +957,7 @@ export function AICopilotPanel() {
   useEffect(() => {
     if (!messages.length) return;
     const last = messages[messages.length - 1];
-    if (!last || last.role !== 'assistant' || !last.content || last.content === '__ERROR__' || last.isLoading) return;
+    if (!last || last.role !== 'assistant' || !last.content || last.content?.startsWith('__ERROR__') || last.isLoading) return;
     setWorkspaceItems((prev) => {
       if (prev.some((p) => p.sourceMessageId === last.id)) return prev;
       const detected = detectWorkspaceItems(last.id, last.content);
@@ -1308,7 +1308,7 @@ export function AICopilotPanel() {
     setProcessing(true);
 
     const currentMessages = useCopilotStore.getState().messages;
-    const history = currentMessages.filter(m => m.content !== '__ERROR__').map((m) => ({ role: m.role, content: m.content }));
+    const history = currentMessages.filter(m => !m.content?.startsWith('__ERROR__')).map((m) => ({ role: m.role, content: m.content }));
     const ctx = getPageContext();
     // Telemetry: log every global Ask naitive AI invocation so we can
     // monitor regressions (e.g. deal context not auto-detected, zero docs
@@ -1505,10 +1505,11 @@ export function AICopilotPanel() {
       if (err?.name === 'AbortError') return;
       console.error('Copilot stream error:', err);
       setLastFailedMessage(text);
+      const reason = (err?.message && String(err.message)) || 'Unknown error';
       addMessage({
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: '__ERROR__',
+        content: `__ERROR__::${reason}`,
         timestamp: new Date(),
       });
     } finally {
@@ -1626,7 +1627,7 @@ export function AICopilotPanel() {
     if (!lastFailedMessage) return;
     // Remove the error message
     const store = useCopilotStore.getState();
-    const filtered = store.messages.filter((m) => m.content !== '__ERROR__');
+    const filtered = store.messages.filter((m) => !m.content?.startsWith('__ERROR__'));
     // Also remove the last user message that failed
     const withoutLastUser = filtered.slice(0, -1);
     setMessages(withoutLastUser);
@@ -2084,7 +2085,7 @@ export function AICopilotPanel() {
                 className={msg.role === 'assistant' ? 'group/msg' : ''}
                 style={{ display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', gap: 4, position: 'relative' }}
               >
-                {msg.role === 'assistant' && msg.content !== '__ERROR__' && (
+                {msg.role === 'assistant' && !msg.content?.startsWith('__ERROR__') && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
                     <img src={naitiveFavicon} alt="" style={{ width: 16, height: 16 }} />
                     <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>Copilot</span>
@@ -2126,13 +2127,16 @@ export function AICopilotPanel() {
                     <span>📰</span>
                     <span>Your Daily Rundown is Ready</span>
                   </button>
-                ) : msg.content === '__ERROR__' ? (
+                ) : msg.content?.startsWith('__ERROR__') ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',
                     background: 'rgba(220,53,69,0.08)', border: '1px solid rgba(220,53,69,0.25)', color: 'var(--foreground)',
                     fontSize: 14, lineHeight: 1.5,
                   }}>
-                    <p style={{ margin: '0 0 8px 0' }}>Something went wrong. Please try again.</p>
+                    <p style={{ margin: '0 0 4px 0', fontWeight: 500 }}>Something went wrong.</p>
+                    <p style={{ margin: '0 0 8px 0', fontSize: 12, opacity: 0.85, wordBreak: 'break-word' }}>
+                      {msg.content.slice('__ERROR__::'.length) || 'Unknown error'}
+                    </p>
                     <button
                       onClick={handleRetry}
                       aria-label="Retry message"
