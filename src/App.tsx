@@ -408,8 +408,6 @@ const App = () => (
                             <Route path="/wf" element={<WfHub />} />
                             <Route path="/wf-deals/:id" element={<WfDealDetail />} />
                             <Route path="/agents" element={<Agents />} />
-                            <Route path="/integrations" element={<Integrations />} />
-                            <Route path="/finance" element={<Finance />} />
                             {/* Insights still needs its access guard; keep it
                                 inline on the element so the shell remains
                                 shared with sibling routes. */}
@@ -439,8 +437,14 @@ const App = () => (
                           <Route path="/migrate" element={
                             <ProtectedRoute><MigrationTool /></ProtectedRoute>
                           } />
-                          {/* /agents, /integrations, /finance now live inside ProtectedShell
-                              so they share the persistent app canvas (matches Deals). */}
+                          <Route path="/integrations" element={
+                            <ProtectedRoute><Integrations /></ProtectedRoute>
+                          } />
+                          <Route path="/finance" element={
+                            <ProtectedRoute><Finance /></ProtectedRoute>
+                          } />
+                          {/* /agents now lives inside ProtectedShell so it shares
+                              the persistent app canvas (matches Deals). */}
                           <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/unsubscribe" element={<Unsubscribe />} />
                           <Route path="/schedule/confirm" element={<ScheduleConfirm />} />
