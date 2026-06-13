@@ -432,6 +432,62 @@ export type Database = {
           },
         ]
       }
+      admin_agent_selected_actions: {
+        Row: {
+          action: string
+          audit_run_id: string | null
+          company_id: string
+          created_at: string
+          deal_id: string | null
+          field: string
+          id: string
+          lender_id: string | null
+          note: string | null
+          source_message: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          audit_run_id?: string | null
+          company_id: string
+          created_at?: string
+          deal_id?: string | null
+          field: string
+          id?: string
+          lender_id?: string | null
+          note?: string | null
+          source_message?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          audit_run_id?: string | null
+          company_id?: string
+          created_at?: string
+          deal_id?: string | null
+          field?: string
+          id?: string
+          lender_id?: string | null
+          note?: string | null
+          source_message?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_selected_actions_audit_run_id_fkey"
+            columns: ["audit_run_id"]
+            isOneToOne: false
+            referencedRelation: "admin_agent_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_agent_settings: {
         Row: {
           active_pipeline_ids: string[]
