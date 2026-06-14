@@ -305,6 +305,7 @@ Deno.serve(async (req) => {
   const totals = summary.reduce(
     (acc, s) => {
       acc.companies++;
+      if (s.skipped_reason === "no_activated_users") acc.skipped_no_activated_users++;
       acc.evaluated += s.evaluated || 0;
       acc.flagged += s.flagged || 0;
       acc.new_selections += s.new_selections || 0;
@@ -316,6 +317,7 @@ Deno.serve(async (req) => {
     },
     {
       companies: 0,
+      skipped_no_activated_users: 0,
       evaluated: 0,
       flagged: 0,
       new_selections: 0,
