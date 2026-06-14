@@ -616,6 +616,7 @@ export type Database = {
           created_at: string
           enabled: boolean
           id: string
+          is_activated: boolean
           notes: string | null
           updated_at: string
           user_id: string
@@ -625,6 +626,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          is_activated?: boolean
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -634,6 +636,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          is_activated?: boolean
           notes?: string | null
           updated_at?: string
           user_id?: string
@@ -27790,6 +27793,10 @@ export type Database = {
       }
       is_5thline_user: { Args: { _user_id: string }; Returns: boolean }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_agent_activated: {
+        Args: { p_company_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_company_admin: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
