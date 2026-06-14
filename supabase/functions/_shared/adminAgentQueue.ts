@@ -288,6 +288,9 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       for (const row of insertedQueue ?? []) {
         const to = (row as any)?.payload?.assigned_to ?? attributionUserId;
         if (!to) continue;
+        // Never notify a deactivated user, even if we somehow assigned to
+        // them via the deal-owner path.
+        if (activatedUserIds && !activatedUserIds.has(to)) continue;
         perUser.set(to, (perUser.get(to) ?? 0) + 1);
       }
       if (perUser.size > 0) {
