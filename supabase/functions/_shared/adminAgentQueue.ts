@@ -56,6 +56,15 @@ export interface EnqueueOpts {
   forced?: boolean;
   /** When true, also insert in-app notification_instances rows. */
   emitNotifications?: boolean;
+  /**
+   * Optional set of user_ids that have activated the Admin Agent. When
+   * provided, deal-owner assignment is only honoured if the owner is in
+   * the allowlist; otherwise we fall back to the (already-activated)
+   * attribution user. Notification fanout is likewise restricted to
+   * allowlisted recipients. This is the server-side enforcement of the
+   * per-user activation gate.
+   */
+  activatedUserIds?: Set<string>;
 }
 
 export interface EnqueueResult {
