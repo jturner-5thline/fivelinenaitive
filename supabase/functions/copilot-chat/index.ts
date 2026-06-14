@@ -2236,6 +2236,36 @@ function selectToolsWithScopes(
 // Thin shim over supabase/functions/_shared/adminAgentAudit.ts so the
 // chat tool surface and a future scheduled Friday sweep share the
 // exact same audit engine, config loader, and run logger.
+
+// Per-user activation gate. The Admin Agent is opt-in: a user must
+// flip `is_activated` in admin_agent_user_overrides before the chat
+// tools (verify_deal_information / record_admin_agent_selection) will
+// run for them. Enforced server-side so the UI can't bypass it.
+async function isAdminAgentActivatedFor(
+  supabase: any,
+  userId: string | null | undefined,
+  companyId: string | null | undefined,
+): Promise<boolean> {
+  if (!userId || !companyId) return false;
+  try {
+    const { data, error } = await supabase.rpc("is_admin_agent_activated", {
+      p_user_id: userId,
+      p_company_id: companyId,
+    });
+    if (error) {
+      console.warn("[admin_agent] activation rpc failed:", error.message);
+      return false;
+    }
+    return data === true;
+  } catch (e) {
+    console.warn("[admin_agent] activation rpc threw:", (e as Error)?.message);
+    return false;
+  }
+}
+
+const ADMIN_AGENT_NOT_ACTIVATED_MESSAGE =
+  "The Admin Agent is not activated for this user. Open Agents → Admin Agent and turn on \"Activate Admin Agent for me\" to enable verify / capture / queue / create-task actions.";
+
 async function verifyDealInformation(
   supabase: any,
   args: any,
@@ -2261,6 +2291,9 @@ async function verifyDealInformation(
   }
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
+  }
+  if (!(await isAdminAgentActivatedFor(supabase, userId, companyId))) {
+    return { error: ADMIN_AGENT_NOT_ACTIVATED_MESSAGE, not_activated: true };
   }
   const cfg = await admLoadAuditConfig(supabase, companyId);
   if (cfg.settings.enabled === false) {
