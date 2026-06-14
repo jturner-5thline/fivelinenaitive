@@ -30,6 +30,10 @@ import {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Tunable caps to keep the sweep from flooding the Approval Queue.
+const MAX_FLAGGED_PER_DEAL = 5;
+const MAX_QUEUE_ROWS_PER_COMPANY = 50;
+
 const FIELD_LABEL: Record<string, string> = {
   status: "status",
   stage: "stage",
@@ -98,6 +102,7 @@ Deno.serve(async (req) => {
       new_selections: 0,
       new_queue_rows: 0,
       skipped_duplicates: 0,
+      capped: 0,
       audit_run_id: null as string | null,
       error: null as string | null,
     };
@@ -195,9 +200,22 @@ Deno.serve(async (req) => {
         lender_id: string | null;
       };
       const flat: FlatSel[] = [];
-      for (const dealAudit of result.page) {
-        for (const it of dealAudit.items) {
-          if (it.review_status === "fresh") continue;
+      // Sort deals globally by stalest first to prioritize when we hit
+      // the per-company cap.
+      const sortedDeals = [...result.page].sort(
+        (a, b) => (b.oldest_business_days ?? 0) - (a.oldest_business_days ?? 0),
+      );
+      for (const dealAudit of sortedDeals) {
+        // Only consider may_need_review items (skip fresh + never-updated).
+        const candidateItems = dealAudit.items
+          .filter((it) => it.review_status === "may_need_review")
+          .sort(
+            (a, b) =>
+              (b.business_days_since_last_update ?? 0) -
+              (a.business_days_since_last_update ?? 0),
+          );
+        let perDealKept = 0;
+        for (const it of candidateItems) {
           // Skip the funding_sources rollup — we attribute per lender,
           // which the chat path also uses. If there are no per-lender
           // items (e.g. no lenders), keep the rollup so the user still
@@ -218,7 +236,17 @@ Deno.serve(async (req) => {
             perCompany.skipped_duplicates++;
             continue;
           }
+          // Apply caps: per-deal first, then global per-company.
+          if (perDealKept >= MAX_FLAGGED_PER_DEAL) {
+            perCompany.capped++;
+            continue;
+          }
+          if (flat.length >= MAX_QUEUE_ROWS_PER_COMPANY) {
+            perCompany.capped++;
+            continue;
+          }
           seen.add(k);
+          perDealKept++;
           flat.push({
             deal_id: dealAudit.deal_id,
             deal_name: dealAudit.deal_name,
@@ -350,6 +378,7 @@ Deno.serve(async (req) => {
       acc.new_selections += s.new_selections || 0;
       acc.new_queue_rows += s.new_queue_rows || 0;
       acc.skipped_duplicates += s.skipped_duplicates || 0;
+      acc.capped += s.capped || 0;
       if (s.error) acc.errors++;
       return acc;
     },
@@ -360,6 +389,7 @@ Deno.serve(async (req) => {
       new_selections: 0,
       new_queue_rows: 0,
       skipped_duplicates: 0,
+      capped: 0,
       errors: 0,
     },
   );
@@ -370,6 +400,11 @@ Deno.serve(async (req) => {
       ran_at: now.toISOString(),
       is_friday_et: isFri,
       forced: force,
+      caps: {
+        max_flagged_per_deal: MAX_FLAGGED_PER_DEAL,
+        max_queue_rows_per_company: MAX_QUEUE_ROWS_PER_COMPANY,
+        bucket: "may_need_review",
+      },
       totals,
       per_company: summary,
     }),
