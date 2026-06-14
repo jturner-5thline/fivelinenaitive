@@ -1619,21 +1619,21 @@ export function VdrThreeColumnWorkspace({
           {/* TOP UTILITY PANEL (h-[72px]) — metrics, mirrors Internal dropzone wrapper */}
           <div className="h-[72px] px-3 pt-2 pb-2 border-b border-[hsl(272,100%,80%,0.18)]">
             <div className="grid grid-cols-4 gap-1.5 h-full">
-              <div className="rounded-md border border-[hsl(272,100%,80%,0.20)] bg-gradient-to-b from-card/70 to-card/30 px-2 py-1 flex flex-col justify-center min-w-0">
+              <div className="rounded-md border border-border/30 bg-transparent px-2 py-1 flex flex-col justify-center min-w-0">
                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground/70 truncate">Shared</div>
                 <div className="text-sm font-semibold tabular-nums leading-tight">
                   {dataroomCount}
                   <span className="text-[10px] text-muted-foreground/70 font-normal">/{totalDocsCount}</span>
                 </div>
               </div>
-              <div className="rounded-md border border-[hsl(272,100%,80%,0.20)] bg-gradient-to-b from-card/70 to-card/30 px-2 py-1 flex flex-col justify-center min-w-0">
+              <div className="rounded-md border border-border/30 bg-transparent px-2 py-1 flex flex-col justify-center min-w-0">
                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground/70 truncate">Required</div>
                 <div className="text-sm font-semibold tabular-nums leading-tight">
                   {requiredFulfilled}
                   <span className="text-[10px] text-muted-foreground/70 font-normal">/{requiredTotal || 0}</span>
                 </div>
               </div>
-              <div className="rounded-md border border-[hsl(272,100%,80%,0.20)] bg-gradient-to-b from-card/70 to-card/30 px-2 py-1 flex flex-col justify-center min-w-0">
+              <div className="rounded-md border border-border/30 bg-transparent px-2 py-1 flex flex-col justify-center min-w-0">
                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground/70 truncate">Indexed</div>
                 <div className="text-sm font-semibold tabular-nums leading-tight flex items-center gap-1">
                   {indexedCount}
@@ -1642,7 +1642,7 @@ export function VdrThreeColumnWorkspace({
                   )}
                 </div>
               </div>
-              <div className="rounded-md border border-[hsl(272,100%,80%,0.20)] bg-gradient-to-b from-card/70 to-card/30 px-2 py-1 flex flex-col justify-center min-w-0">
+              <div className="rounded-md border border-border/30 bg-transparent px-2 py-1 flex flex-col justify-center min-w-0">
                 <div className="text-[9px] uppercase tracking-wider text-muted-foreground/70 truncate">Last shared</div>
                 <div className="text-[11px] font-medium leading-tight truncate">{lastSharedLabel}</div>
               </div>
