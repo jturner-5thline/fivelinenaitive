@@ -152,6 +152,7 @@ export function AdminAgentDuty1Config() {
   const [fridaySweep, setFridaySweep] = useState(true);
   const [pipelineIds, setPipelineIds] = useState<string[]>([]);
   const [stageIds, setStageIds] = useState<string[]>([]);
+  const [staleThreshold, setStaleThreshold] = useState<number>(STALE_THRESHOLD_DEFAULT);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -162,6 +163,11 @@ export function AdminAgentDuty1Config() {
     setFridaySweep(s?.friday_sweep_enabled ?? true);
     setPipelineIds(s?.active_pipeline_ids ?? []);
     setStageIds(s?.active_stage_ids ?? []);
+    setStaleThreshold(
+      typeof s?.stale_threshold_business_days === 'number' && s.stale_threshold_business_days > 0
+        ? s.stale_threshold_business_days
+        : STALE_THRESHOLD_DEFAULT,
+    );
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -197,6 +203,7 @@ export function AdminAgentDuty1Config() {
         friday_sweep_enabled: fridaySweep,
         active_pipeline_ids: pipelineIds,
         active_stage_ids: stageIds,
+        stale_threshold_business_days: Math.max(1, Math.min(30, Math.round(staleThreshold || STALE_THRESHOLD_DEFAULT))),
       };
       const { error } = await supabase
         .from('admin_agent_settings')
@@ -398,18 +405,18 @@ export function AdminAgentDuty1Config() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-semibold tabular-nums">
-              {settingsQ.data?.stale_threshold_business_days ?? STALE_THRESHOLD_DEFAULT}
-            </span>
-            <span className="text-xs text-muted-foreground">business days</span>
-          </div>
-          <Badge
-            variant="secondary"
-            className="h-5 text-[10px] uppercase tracking-wide bg-muted text-muted-foreground border border-border/60"
-          >
-            Locked
-          </Badge>
+          <Input
+            type="number"
+            min={1}
+            max={30}
+            step={1}
+            value={staleThreshold}
+            onChange={(e) => setStaleThreshold(Number(e.target.value))}
+            disabled={readOnly}
+            className="h-9 w-20 text-center tabular-nums text-base font-semibold"
+            aria-label="Stale threshold in business days"
+          />
+          <span className="text-xs text-muted-foreground">business days (1–30)</span>
         </div>
 
         <Separator />

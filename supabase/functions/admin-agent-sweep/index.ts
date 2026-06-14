@@ -26,6 +26,7 @@ import {
   logAuditRun,
   isFridayET,
 } from "../_shared/adminAgentAudit.ts";
+import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,14 +34,6 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Tunable caps to keep the sweep from flooding the Approval Queue.
 const MAX_FLAGGED_PER_DEAL = 5;
 const MAX_QUEUE_ROWS_PER_COMPANY = 50;
-
-const FIELD_LABEL: Record<string, string> = {
-  status: "status",
-  stage: "stage",
-  milestones: "milestones",
-  status_notes: "status notes",
-  funding_sources: "funding sources",
-};
 
 function startOfIsoWeekUtc(d: Date = new Date()): string {
   const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -264,104 +257,34 @@ Deno.serve(async (req) => {
       // 6) Insert admin_agent_selected_actions in the same shape as the
       //    chat path: action='update', scope_level='field',
       //    confirmation_status='confirmed', status='pending'.
-      const selectionRows = flat.map((s) => ({
-        audit_run_id: auditRunId,
-        company_id: companyId,
-        user_id: ownerUserId,
-        deal_id: s.deal_id,
-        field: s.field,
-        lender_id: s.lender_id,
-        action: "update",
-        scope_level: "field",
-        note: null as string | null,
-        source_message: "[admin-agent-sweep:cron]",
-        raw_user_response: null as string | null,
-        parsed_interpretation: {
-          source: "cron",
+      const enqueueRes = await enqueueAdminAgentSelections({
+        supabase,
+        companyId,
+        attributionUserId: ownerUserId,
+        auditRunId,
+        selections: flat.map((s) => ({
+          deal_id: s.deal_id,
+          deal_name: s.deal_name,
           field: s.field,
           lender_id: s.lender_id,
           action: "update",
           scope_level: "field",
-        },
-        confirmation_status: "confirmed",
-        status: "pending",
-      }));
-
-      const { data: inserted, error: selErr } = await supabase
-        .from("admin_agent_selected_actions")
-        .insert(selectionRows)
-        .select("id, deal_id, field, lender_id");
-      if (selErr) {
-        perCompany.error = `selections insert: ${selErr.message}`;
-        summary.push(perCompany);
-        continue;
-      }
-      perCompany.new_selections = inserted?.length ?? 0;
-
-      // 7) Bridge to ai_action_queue exactly like the chat path. Title
-      //    uses the deal name + field label; due in 3 calendar days;
-      //    source.origin='admin_agent' + source.trigger='cron' so the
-      //    UI can show the ADMIN AGENT badge and we can audit later.
-      const dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(0, 10);
-      const dealNameById: Record<string, string> = {};
-      for (const s of flat) dealNameById[s.deal_id] = s.deal_name;
-
-      const queueRows = (inserted ?? []).map((sel: any) => {
-        const dealName = dealNameById[sel.deal_id] ?? "Untitled Deal";
-        const fieldLabel = FIELD_LABEL[sel.field] ?? sel.field;
-        const title = `Update ${fieldLabel} for ${dealName}`;
-        const description = `Admin Agent (Friday sweep) flagged this on ${
-          new Date().toLocaleDateString()
-        }. Approve to create a task in /tasks.`;
-        return {
-          user_id: ownerUserId,
-          deal_id: sel.deal_id,
-          deal_name: dealName,
-          action_type: "create_task",
-          title,
-          description,
-          payload: {
-            title,
-            description,
-            due_date: dueDate,
-            admin_agent_selection_id: sel.id,
-            admin_agent_field: sel.field,
-            admin_agent_action: "update",
-            admin_agent_lender_id: sel.lender_id ?? null,
-          },
-          source: {
-            origin: "admin_agent",
-            trigger: "cron",
-            audit_run_id: auditRunId,
-            selection_id: sel.id,
-            field: sel.field,
-            action: "update",
-            forced: force,
-          },
-        };
+          note: null,
+        })),
+        sourceMessage: "[admin-agent-sweep:cron]",
+        rawUserResponse: null,
+        fromCron: true,
+        forced: force,
+        emitNotifications: true,
       });
-
-      const { data: queued, error: qErr } = await supabase
-        .from("ai_action_queue")
-        .insert(queueRows)
-        .select("id");
-      if (qErr) {
-        perCompany.error = `queue insert: ${qErr.message}`;
+      if (enqueueRes.error) {
+        perCompany.error = enqueueRes.error;
         summary.push(perCompany);
         continue;
       }
-      perCompany.new_queue_rows = queued?.length ?? 0;
-
-      // Flip selections to status='queued' so Duty 4 stays consistent.
-      const ids = (inserted ?? []).map((r: any) => r.id);
-      if (ids.length > 0) {
-        await supabase
-          .from("admin_agent_selected_actions")
-          .update({ status: "queued" })
-          .in("id", ids);
-      }
+      perCompany.new_selections = enqueueRes.inserted_selections;
+      perCompany.new_queue_rows = enqueueRes.inserted_queue_rows;
+      (perCompany as any).notifications_sent = enqueueRes.notifications_sent;
     } catch (e) {
       perCompany.error = (e as Error)?.message ?? "unknown error";
       console.error("[admin-agent-sweep] company failed:", companyId, e);
