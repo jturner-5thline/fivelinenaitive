@@ -27,6 +27,10 @@ import {
   isFridayET,
 } from "../_shared/adminAgentAudit.ts";
 import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
+import {
+  AGENT_KEYS,
+  isAgentEnabledForCompany,
+} from "../_shared/agentEntitlement.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -103,6 +107,22 @@ Deno.serve(async (req) => {
     };
 
     try {
+      // ── Company-level entitlement gate (master) ────────────────
+      // The Admin Agent only runs for companies a platform admin has
+      // explicitly enabled in company_agent_access. This sits ABOVE the
+      // per-user activation gate below — if the company is not entitled,
+      // we skip without doing any audit work, queue rows, or notifications.
+      const companyEnabled = await isAgentEnabledForCompany(
+        supabase,
+        companyId,
+        AGENT_KEYS.ADMIN_AGENT,
+      );
+      if (!companyEnabled) {
+        perCompany.skipped_reason = "company_not_enabled";
+        summary.push(perCompany);
+        continue;
+      }
+
       // ── Per-user activation gate (server-side enforcement) ─────
       // The Admin Agent is opt-in per user. Only process the sweep
       // for workspaces where at least one user has flipped the
@@ -305,6 +325,7 @@ Deno.serve(async (req) => {
   const totals = summary.reduce(
     (acc, s) => {
       acc.companies++;
+      if (s.skipped_reason === "company_not_enabled") acc.skipped_company_not_enabled++;
       if (s.skipped_reason === "no_activated_users") acc.skipped_no_activated_users++;
       acc.evaluated += s.evaluated || 0;
       acc.flagged += s.flagged || 0;
@@ -317,6 +338,7 @@ Deno.serve(async (req) => {
     },
     {
       companies: 0,
+      skipped_company_not_enabled: 0,
       skipped_no_activated_users: 0,
       evaluated: 0,
       flagged: 0,
