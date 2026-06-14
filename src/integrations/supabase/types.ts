@@ -4592,6 +4592,50 @@ export type Database = {
           },
         ]
       }
+      company_agent_access: {
+        Row: {
+          access_mode: string | null
+          agent_key: string
+          company_id: string
+          created_at: string
+          enabled_by: string | null
+          id: string
+          is_enabled: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_mode?: string | null
+          agent_key: string
+          company_id: string
+          created_at?: string
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_mode?: string | null
+          agent_key?: string
+          company_id?: string
+          created_at?: string
+          enabled_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_agent_access_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_email_style_guide: {
         Row: {
           closing: string
@@ -27480,6 +27524,10 @@ export type Database = {
       }
       can_access_task: { Args: { _task_id: string }; Returns: boolean }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
+      can_user_use_agent: {
+        Args: { p_agent_key: string; p_company_id: string; p_user_id: string }
+        Returns: boolean
+      }
       can_view_company_insights: {
         Args: { _company_id: string }
         Returns: boolean
@@ -27795,6 +27843,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_agent_activated: {
         Args: { p_company_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_agent_enabled_for_company: {
+        Args: { p_agent_key: string; p_company_id: string }
         Returns: boolean
       }
       is_company_admin: {

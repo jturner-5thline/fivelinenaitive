@@ -2237,6 +2237,14 @@ function selectToolsWithScopes(
 // chat tool surface and a future scheduled Friday sweep share the
 // exact same audit engine, config loader, and run logger.
 
+// Company-level entitlement gate (master). Imported lazily to keep the
+// existing import block intact.
+import {
+  AGENT_KEYS,
+  AGENT_NOT_ENABLED_FOR_COMPANY_MESSAGE,
+  isAgentEnabledForCompany,
+} from "../_shared/agentEntitlement.ts";
+
 // Per-user activation gate. The Admin Agent is opt-in: a user must
 // flip `is_activated` in admin_agent_user_overrides before the chat
 // tools (verify_deal_information / record_admin_agent_selection) will
@@ -2291,6 +2299,9 @@ async function verifyDealInformation(
   }
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
+  }
+  if (!(await isAgentEnabledForCompany(supabase, companyId, AGENT_KEYS.ADMIN_AGENT))) {
+    return { error: AGENT_NOT_ENABLED_FOR_COMPANY_MESSAGE, company_not_enabled: true };
   }
   if (!(await isAdminAgentActivatedFor(supabase, userId, companyId))) {
     return { error: ADMIN_AGENT_NOT_ACTIVATED_MESSAGE, not_activated: true };
@@ -2506,6 +2517,9 @@ async function recordAdminAgentSelection(
   const companyId = scope.company_id;
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
+  }
+  if (!(await isAgentEnabledForCompany(supabase, companyId, AGENT_KEYS.ADMIN_AGENT))) {
+    return { error: AGENT_NOT_ENABLED_FOR_COMPANY_MESSAGE, company_not_enabled: true };
   }
   if (!(await isAdminAgentActivatedFor(supabase, userId, companyId))) {
     return { error: ADMIN_AGENT_NOT_ACTIVATED_MESSAGE, not_activated: true };

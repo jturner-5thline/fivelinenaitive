@@ -151,6 +151,25 @@ export function AdminAgentDuty1Config() {
     },
   });
 
+  // Company-level entitlement gate (master). Sits above the per-user
+  // activation flag below — if the company isn't entitled, the user
+  // can't even activate; the chat tools + sweep reject server-side.
+  const companyAccessQ = useQuery<{ is_enabled: boolean } | null>({
+    queryKey: ['company-agent-access', companyId, 'admin_agent'],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_agent_access')
+        .select('is_enabled')
+        .eq('company_id', companyId)
+        .eq('agent_key', 'admin_agent')
+        .maybeSingle();
+      if (error) throw error;
+      return (data as { is_enabled: boolean } | null) ?? null;
+    },
+  });
+  const companyEntitled = !!companyAccessQ.data?.is_enabled;
+
   // Local form state — seeded from server, debounced save on user action.
   const [enabled, setEnabled] = useState(true);
   const [fridaySweep, setFridaySweep] = useState(true);
@@ -349,6 +368,30 @@ export function AdminAgentDuty1Config() {
   }
 
   const readOnly = !isAdmin;
+
+  // Master gate: if the company isn't entitled, render only a
+  // disabled-state explainer. The chat tools + sweep enforce the same
+  // gate server-side; this UI just mirrors it.
+  if (!companyEntitled) {
+    return (
+      <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/40">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold leading-tight">
+              Admin Agent is not enabled for this company.
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              A platform admin must turn it on in Admin → Access &amp; Permissions →
+              Agent Access before activation and configuration become available.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <div className="space-y-6">

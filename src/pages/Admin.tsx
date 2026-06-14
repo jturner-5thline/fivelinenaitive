@@ -99,6 +99,7 @@ import { PerfDiagnosticsPanel } from "@/components/admin/PerfDiagnosticsPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
 import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
+import { AgentAccessPanel } from "@/components/admin/AgentAccessPanel";
 
 // ─── New IA ───────────────────────────────────────────────────────
 type SectionId = "people" | "access" | "communications" | "platform" | "observability";
@@ -140,6 +141,7 @@ const SECTIONS: SectionDef[] = [
       { id: "pages", label: "Page Access", icon: Layout, description: "Control which pages are visible to which audiences." },
       { id: "permissions", label: "User Permissions", icon: KeyRound, description: "Scope and capability flags per user." },
       { id: "company-features", label: "Company Features", icon: ToggleRight, description: "Per-company feature toggles. 5th Line always has full access." },
+      { id: "agent-access", label: "Agent Access", icon: ShieldHalf, description: "Master company-by-company agent entitlements." },
     ],
   },
   {
@@ -491,6 +493,8 @@ const Admin = () => {
             <CardContent><CompanyFeaturesPanel /></CardContent>
           </Card>
         );
+      case "agent-access":
+        return <AgentAccessPanel />;
       case "notifications":
         return (
           <Card>
