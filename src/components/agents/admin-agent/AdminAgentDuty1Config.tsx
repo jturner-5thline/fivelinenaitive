@@ -152,6 +152,7 @@ export function AdminAgentDuty1Config() {
   const [fridaySweep, setFridaySweep] = useState(true);
   const [pipelineIds, setPipelineIds] = useState<string[]>([]);
   const [stageIds, setStageIds] = useState<string[]>([]);
+  const [staleThreshold, setStaleThreshold] = useState<number>(STALE_THRESHOLD_DEFAULT);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -162,6 +163,11 @@ export function AdminAgentDuty1Config() {
     setFridaySweep(s?.friday_sweep_enabled ?? true);
     setPipelineIds(s?.active_pipeline_ids ?? []);
     setStageIds(s?.active_stage_ids ?? []);
+    setStaleThreshold(
+      typeof s?.stale_threshold_business_days === 'number' && s.stale_threshold_business_days > 0
+        ? s.stale_threshold_business_days
+        : STALE_THRESHOLD_DEFAULT,
+    );
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -197,6 +203,7 @@ export function AdminAgentDuty1Config() {
         friday_sweep_enabled: fridaySweep,
         active_pipeline_ids: pipelineIds,
         active_stage_ids: stageIds,
+        stale_threshold_business_days: Math.max(1, Math.min(30, Math.round(staleThreshold || STALE_THRESHOLD_DEFAULT))),
       };
       const { error } = await supabase
         .from('admin_agent_settings')
