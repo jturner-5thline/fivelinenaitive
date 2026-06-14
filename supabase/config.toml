@@ -245,3 +245,6 @@ verify_jwt = false
 
 [functions.share-pipeline-report]
 verify_jwt = true
+
+[functions.admin-agent-sweep]
+verify_jwt = false

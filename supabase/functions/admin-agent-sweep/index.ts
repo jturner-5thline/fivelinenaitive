@@ -1,0 +1,373 @@
+// deno-lint-ignore-file no-explicit-any
+/**
+ * Admin Agent · Proactive scheduled sweep.
+ *
+ * Server-side equivalent of the Ask nAItive AI chat flow for
+ * `verify_deal_information` + `record_admin_agent_selection`. Runs with
+ * no chat session, for every workspace that has the Admin Agent
+ * enabled. By default only runs on Fridays (ET) for companies whose
+ * `admin_agent_settings.friday_sweep_enabled` is true. Pass
+ * { "force": true } to bypass the day-of-week and friday-sweep checks
+ * (used by pg_cron-free manual triggers and by the verification
+ * curl below).
+ *
+ * For each flagged item it creates the same admin_agent_selected_actions
+ * + ai_action_queue rows the chat path creates, so the Approval Queue
+ * UI (badge + /pending-approval) surfaces them and approvals land tasks
+ * in /tasks through the existing executeQueuedAction('create_task')
+ * path. Idempotent within the current ISO week.
+ */
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import {
+  auditPortfolio,
+  loadAuditConfig,
+  logAuditRun,
+  isFridayET,
+} from "../_shared/adminAgentAudit.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const FIELD_LABEL: Record<string, string> = {
+  status: "status",
+  stage: "stage",
+  milestones: "milestones",
+  status_notes: "status notes",
+  funding_sources: "funding sources",
+};
+
+function startOfIsoWeekUtc(d: Date = new Date()): string {
+  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dow = x.getUTCDay(); // 0..6, Sun=0
+  const daysSinceMonday = (dow + 6) % 7;
+  x.setUTCDate(x.getUTCDate() - daysSinceMonday);
+  return x.toISOString();
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  let body: any = {};
+  try {
+    if (req.method !== "GET") body = await req.json();
+  } catch (_) {
+    body = {};
+  }
+  const force = body?.force === true;
+  const onlyCompanyId =
+    typeof body?.company_id === "string" && body.company_id ? body.company_id : null;
+
+  const now = new Date();
+  const isFri = isFridayET(now);
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // 1) Pull every company that has Admin Agent enabled.
+  let settingsQ = supabase
+    .from("admin_agent_settings")
+    .select("company_id, enabled, friday_sweep_enabled")
+    .eq("enabled", true);
+  if (onlyCompanyId) settingsQ = settingsQ.eq("company_id", onlyCompanyId);
+
+  const { data: settingsRows, error: settingsErr } = await settingsQ;
+  if (settingsErr) {
+    return new Response(
+      JSON.stringify({ ok: false, error: `settings query: ${settingsErr.message}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
+  const companies = (settingsRows ?? []).filter((r: any) =>
+    force || (isFri && r.friday_sweep_enabled === true)
+  );
+
+  const summary: any[] = [];
+
+  for (const row of companies) {
+    const companyId = row.company_id as string;
+    const perCompany: any = {
+      company_id: companyId,
+      evaluated: 0,
+      flagged: 0,
+      new_selections: 0,
+      new_queue_rows: 0,
+      skipped_duplicates: 0,
+      audit_run_id: null as string | null,
+      error: null as string | null,
+    };
+
+    try {
+      // Pick an "owner" user for the rows — chat path uses the chatting
+      // user. For the cron path we attribute to the first admin in the
+      // workspace, falling back to the earliest member. ai_action_queue
+      // requires a non-null user_id; admin_agent_selected_actions does too.
+      const { data: members } = await supabase
+        .from("company_members")
+        .select("user_id, role, joined_at")
+        .eq("company_id", companyId)
+        .order("joined_at", { ascending: true });
+      const admin = (members ?? []).find((m: any) =>
+        typeof m.role === "string" && m.role.toLowerCase() === "admin"
+      );
+      const ownerUserId = (admin?.user_id ?? members?.[0]?.user_id) as string | undefined;
+      if (!ownerUserId) {
+        perCompany.error = "no_member_to_attribute_rows";
+        summary.push(perCompany);
+        continue;
+      }
+
+      // 2) Load config + run portfolio audit with a large page so we see
+      //    every flagged deal in one pass.
+      const cfg = await loadAuditConfig(supabase, companyId);
+      if (cfg.settings.enabled === false) continue;
+
+      const result = await auditPortfolio(supabase, {
+        companyId,
+        cfg,
+        offset: 0,
+        pageSize: 500, // effectively unbounded for a sweep
+        now,
+      });
+      perCompany.evaluated = result.total_evaluated;
+      perCompany.flagged = result.total_flagged;
+
+      // 3) Persist an audit_run row first so we can stamp every selection
+      //    with its id (matches the chat path).
+      const auditRunId = await logAuditRun(supabase, {
+        companyId,
+        userId: ownerUserId,
+        scopeType: "portfolio",
+        dealIds: (result as any)._evaluated_deal_ids ?? [],
+        findingsSummary: {
+          pipeline_id: result.pipeline_id,
+          total_evaluated: result.total_evaluated,
+          total_flagged: result.total_flagged,
+          total_never_updated: result.total_never_updated,
+          flagged_deal_ids: (result as any)._flagged_deal_ids ?? [],
+          source: "cron",
+          forced: force,
+        },
+        totalEvaluated: result.total_evaluated,
+        totalFlagged: result.total_flagged,
+        totalNeverUpdated: result.total_never_updated,
+        triggeredBy: "friday_sweep",
+      });
+      perCompany.audit_run_id = auditRunId;
+
+      if (result.total_flagged === 0) {
+        summary.push(perCompany);
+        continue;
+      }
+
+      // 4) Idempotency: skip any (deal_id, field, lender_id) that already
+      //    has an open admin_agent_selected_actions row this ISO week.
+      const weekStart = startOfIsoWeekUtc(now);
+      const { data: existing } = await supabase
+        .from("admin_agent_selected_actions")
+        .select("deal_id, field, lender_id, status")
+        .eq("company_id", companyId)
+        .in("status", ["pending", "queued"])
+        .gte("created_at", weekStart);
+      const dedupeKey = (d: string | null, f: string, l: string | null) =>
+        `${d ?? ""}::${f}::${l ?? ""}`;
+      const seen = new Set<string>(
+        (existing ?? []).map((r: any) =>
+          dedupeKey(r.deal_id, r.field, r.lender_id ?? null)
+        ),
+      );
+
+      // 5) Build one selection row per flagged item per flagged deal.
+      type FlatSel = {
+        deal_id: string;
+        deal_name: string;
+        field: string;
+        lender_id: string | null;
+      };
+      const flat: FlatSel[] = [];
+      for (const dealAudit of result.page) {
+        for (const it of dealAudit.items) {
+          if (it.review_status === "fresh") continue;
+          // Skip the funding_sources rollup — we attribute per lender,
+          // which the chat path also uses. If there are no per-lender
+          // items (e.g. no lenders), keep the rollup so the user still
+          // gets a "no funding sources" task.
+          if (it.field === "funding_sources") {
+            const hasPerLender = dealAudit.items.some((x) =>
+              x.field.startsWith("funding_source:")
+            );
+            if (hasPerLender) continue;
+          }
+          const field = it.field.startsWith("funding_source:")
+            ? "funding_sources"
+            : it.field;
+          const lenderId =
+            it.field.startsWith("funding_source:") ? it.field.split(":")[1] : null;
+          const k = dedupeKey(dealAudit.deal_id, field, lenderId);
+          if (seen.has(k)) {
+            perCompany.skipped_duplicates++;
+            continue;
+          }
+          seen.add(k);
+          flat.push({
+            deal_id: dealAudit.deal_id,
+            deal_name: dealAudit.deal_name,
+            field,
+            lender_id: lenderId,
+          });
+        }
+      }
+
+      if (flat.length === 0) {
+        summary.push(perCompany);
+        continue;
+      }
+
+      // 6) Insert admin_agent_selected_actions in the same shape as the
+      //    chat path: action='update', scope_level='field',
+      //    confirmation_status='confirmed', status='pending'.
+      const selectionRows = flat.map((s) => ({
+        audit_run_id: auditRunId,
+        company_id: companyId,
+        user_id: ownerUserId,
+        deal_id: s.deal_id,
+        field: s.field,
+        lender_id: s.lender_id,
+        action: "update",
+        scope_level: "field",
+        note: null as string | null,
+        source_message: "[admin-agent-sweep:cron]",
+        raw_user_response: null as string | null,
+        parsed_interpretation: {
+          source: "cron",
+          field: s.field,
+          lender_id: s.lender_id,
+          action: "update",
+          scope_level: "field",
+        },
+        confirmation_status: "confirmed",
+        status: "pending",
+      }));
+
+      const { data: inserted, error: selErr } = await supabase
+        .from("admin_agent_selected_actions")
+        .insert(selectionRows)
+        .select("id, deal_id, field, lender_id");
+      if (selErr) {
+        perCompany.error = `selections insert: ${selErr.message}`;
+        summary.push(perCompany);
+        continue;
+      }
+      perCompany.new_selections = inserted?.length ?? 0;
+
+      // 7) Bridge to ai_action_queue exactly like the chat path. Title
+      //    uses the deal name + field label; due in 3 calendar days;
+      //    source.origin='admin_agent' + source.trigger='cron' so the
+      //    UI can show the ADMIN AGENT badge and we can audit later.
+      const dueDate = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      const dealNameById: Record<string, string> = {};
+      for (const s of flat) dealNameById[s.deal_id] = s.deal_name;
+
+      const queueRows = (inserted ?? []).map((sel: any) => {
+        const dealName = dealNameById[sel.deal_id] ?? "Untitled Deal";
+        const fieldLabel = FIELD_LABEL[sel.field] ?? sel.field;
+        const title = `Update ${fieldLabel} for ${dealName}`;
+        const description = `Admin Agent (Friday sweep) flagged this on ${
+          new Date().toLocaleDateString()
+        }. Approve to create a task in /tasks.`;
+        return {
+          user_id: ownerUserId,
+          deal_id: sel.deal_id,
+          deal_name: dealName,
+          action_type: "create_task",
+          title,
+          description,
+          payload: {
+            title,
+            description,
+            due_date: dueDate,
+            admin_agent_selection_id: sel.id,
+            admin_agent_field: sel.field,
+            admin_agent_action: "update",
+            admin_agent_lender_id: sel.lender_id ?? null,
+          },
+          source: {
+            origin: "admin_agent",
+            trigger: "cron",
+            audit_run_id: auditRunId,
+            selection_id: sel.id,
+            field: sel.field,
+            action: "update",
+            forced: force,
+          },
+        };
+      });
+
+      const { data: queued, error: qErr } = await supabase
+        .from("ai_action_queue")
+        .insert(queueRows)
+        .select("id");
+      if (qErr) {
+        perCompany.error = `queue insert: ${qErr.message}`;
+        summary.push(perCompany);
+        continue;
+      }
+      perCompany.new_queue_rows = queued?.length ?? 0;
+
+      // Flip selections to status='queued' so Duty 4 stays consistent.
+      const ids = (inserted ?? []).map((r: any) => r.id);
+      if (ids.length > 0) {
+        await supabase
+          .from("admin_agent_selected_actions")
+          .update({ status: "queued" })
+          .in("id", ids);
+      }
+    } catch (e) {
+      perCompany.error = (e as Error)?.message ?? "unknown error";
+      console.error("[admin-agent-sweep] company failed:", companyId, e);
+    }
+
+    summary.push(perCompany);
+  }
+
+  const totals = summary.reduce(
+    (acc, s) => {
+      acc.companies++;
+      acc.evaluated += s.evaluated || 0;
+      acc.flagged += s.flagged || 0;
+      acc.new_selections += s.new_selections || 0;
+      acc.new_queue_rows += s.new_queue_rows || 0;
+      acc.skipped_duplicates += s.skipped_duplicates || 0;
+      if (s.error) acc.errors++;
+      return acc;
+    },
+    {
+      companies: 0,
+      evaluated: 0,
+      flagged: 0,
+      new_selections: 0,
+      new_queue_rows: 0,
+      skipped_duplicates: 0,
+      errors: 0,
+    },
+  );
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      ran_at: now.toISOString(),
+      is_friday_et: isFri,
+      forced: force,
+      totals,
+      per_company: summary,
+    }),
+    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+});
