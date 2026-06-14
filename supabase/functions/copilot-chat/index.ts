@@ -2507,6 +2507,9 @@ async function recordAdminAgentSelection(
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
   }
+  if (!(await isAdminAgentActivatedFor(supabase, userId, companyId))) {
+    return { error: ADMIN_AGENT_NOT_ACTIVATED_MESSAGE, not_activated: true };
+  }
   const sourceMessage = typeof args?.source_message === "string" ? args.source_message : "";
   // Only persist real UUID audit_run_ids. The audit logger can return a
   // synthetic id like `audit_20260613_1557_solo` when the run-log insert
