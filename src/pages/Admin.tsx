@@ -493,6 +493,8 @@ const Admin = () => {
             <CardContent><CompanyFeaturesPanel /></CardContent>
           </Card>
         );
+      case "agent-access":
+        return <AgentAccessPanel />;
       case "notifications":
         return (
           <Card>
