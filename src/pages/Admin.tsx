@@ -102,7 +102,13 @@ import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPa
 import { AgentAccessPanel } from "@/components/admin/AgentAccessPanel";
 
 // ─── New IA ───────────────────────────────────────────────────────
-type SectionId = "people" | "access" | "communications" | "platform" | "observability";
+// Phase 5: collapsed top-level nav from 5 → 3 tabs:
+//   - users-permissions (= People + Access & Permissions)
+//   - communication      (= Communications)
+//   - platform           (= Platform + Observability)
+// All existing page IDs are preserved so renderSubPageContent and
+// every backward-compatible URL mapping continue to work.
+type SectionId = "users-permissions" | "communication" | "platform";
 type PageDef = {
   id: string;
   label: string;
@@ -121,38 +127,33 @@ type SectionDef = {
 
 const SECTIONS: SectionDef[] = [
   {
-    id: "people",
-    label: "People",
+    id: "users-permissions",
+    label: "Users & Permissions",
     icon: UsersRound,
     pages: [
-      { id: "users", label: "All Users", icon: Users, description: "Local accounts + synced external profiles in one directory.", cta: { label: "Create Demo Access", action: "demo" } },
-      { id: "companies", label: "Companies", icon: Building2, description: "Registered companies and synced external entities." },
-      { id: "access-requests", label: "Access Requests", icon: UserCheck, countKey: "accessRequests", description: "Approvals, join requests, invitations and waitlist — one queue." },
-      { id: "activity", label: "Activity", icon: Activity, description: "Recent user sessions and actions." },
-      { id: "demo-metrics", label: "Demo Metrics", icon: BarChart3, description: "Engagement snapshot for every demo / pilot workspace." },
-      { id: "client-lookup", label: "Client Lookup", icon: Search, description: "Open any company's workspace as if you were a member." },
+      // Directory
+      { id: "users", label: "Users", icon: Users, group: "Directory", description: "Local accounts + synced external profiles in one directory.", cta: { label: "Create Demo Access", action: "demo" } },
+      { id: "companies", label: "Companies", icon: Building2, group: "Directory", description: "Registered companies and synced external entities." },
+      { id: "demo-metrics", label: "Demo Users & Metrics", icon: BarChart3, group: "Directory", description: "Engagement snapshot for every demo / pilot workspace." },
+      { id: "access-requests", label: "Access Requests", icon: UserCheck, group: "Directory", countKey: "accessRequests", description: "Approvals, join requests, invitations and waitlist — one queue." },
+      { id: "client-lookup", label: "Client Lookup", icon: Search, group: "Directory", description: "Open any company's workspace as if you were a member." },
+      { id: "activity", label: "Activity", icon: Activity, group: "Directory", description: "Recent user sessions and actions." },
+      // Permissions & Access
+      { id: "permissions", label: "User Permissions", icon: KeyRound, group: "Permissions & Access", description: "Scope and capability flags per user." },
+      { id: "pages", label: "Page Access", icon: Layout, group: "Permissions & Access", description: "Control which pages are visible to which audiences." },
+      { id: "company-features", label: "Company Features", icon: ToggleRight, group: "Permissions & Access", description: "Per-company feature toggles. 5th Line always has full access." },
+      { id: "agent-access", label: "Agent Access", icon: ShieldHalf, group: "Permissions & Access", description: "Master company-by-company agent entitlements." },
     ],
   },
   {
-    id: "access",
-    label: "Access & Permissions",
-    icon: ShieldHalf,
-    pages: [
-      { id: "pages", label: "Page Access", icon: Layout, description: "Control which pages are visible to which audiences." },
-      { id: "permissions", label: "User Permissions", icon: KeyRound, description: "Scope and capability flags per user." },
-      { id: "company-features", label: "Company Features", icon: ToggleRight, description: "Per-company feature toggles. 5th Line always has full access." },
-      { id: "agent-access", label: "Agent Access", icon: ShieldHalf, description: "Master company-by-company agent entitlements." },
-    ],
-  },
-  {
-    id: "communications",
-    label: "Communications",
+    id: "communication",
+    label: "Communication",
     icon: MegaphoneIcon,
     pages: [
-      { id: "notifications", label: "Notifications", icon: Bell, description: "Notification rules, channels, templates and default recipients.", cta: { label: "New Rule", action: "demo" } },
+      { id: "notifications", label: "Dev Updates & Notifications", icon: Bell, description: "Notification rules, channels, templates and default recipients.", cta: { label: "New Rule", action: "demo" } },
       { id: "delivery-audit", label: "Delivery Audit", icon: ClipboardList, description: "Every notification sent, queued, or failed." },
-      { id: "announcements", label: "Announcements", icon: Megaphone, description: "System-wide announcements." },
-      { id: "emails", label: "Email Templates", icon: Mail, description: "Customize transactional email templates." },
+      { id: "announcements", label: "Announcements", icon: Megaphone, group: "Announcements & Email Templates", description: "System-wide announcements." },
+      { id: "emails", label: "Email Templates", icon: Mail, group: "Announcements & Email Templates", description: "Customize transactional email templates." },
     ],
   },
   {
@@ -160,84 +161,93 @@ const SECTIONS: SectionDef[] = [
     label: "Platform",
     icon: Server,
     pages: [
-      { id: "settings", label: "General", icon: Settings, description: "Maintenance mode, sessions and platform defaults." },
-      { id: "integrations", label: "Integrations", icon: Webhook, description: "Webhook and sync activity across third-party systems." },
-      { id: "qb-mapping", label: "Data Mapping", icon: Wallet, description: "QuickBooks → cash flow mapping and entity bindings." },
-      { id: "reports", label: "Reports", icon: FileText, description: "Recurring UX & engagement reports.", cta: { label: "Create Report", action: "demo" } },
-      { id: "data", label: "Data", icon: Database, description: "Demo data controls and exports." },
-      { id: "security", label: "Security", icon: Lock, description: "IP allowlist and blocked IPs." },
-    ],
-  },
-  {
-    id: "observability",
-    label: "Observability",
-    icon: Gauge,
-    pages: [
-      { id: "activity", label: "Activity", icon: Activity, description: "Cross-workspace user activity stream." },
-      { id: "audit", label: "Audit Log", icon: ClipboardList, description: "Track admin actions." },
-      { id: "errors", label: "Errors", icon: AlertCircle, countKey: "errors", description: "Aggregated error tracking." },
-      { id: "usage-overview", label: "Analytics Overview", icon: BarChart3, description: "Company-level engagement overview." },
-      { id: "pilot-kpis", label: "Pilot KPIs", icon: Activity, description: "Pilot KPI tracker." },
-      { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, description: "Review every AI-driven action.", group: "AI" },
-      { id: "ai-training", label: "AI Training", icon: Brain, description: "Prompts, model config and AI performance.", group: "AI" },
-      { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, description: "Funnel and friction analytics.", group: "Insights" },
-      { id: "performance", label: "Performance", icon: Gauge, description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory.", group: "Insights" },
+      // Platform Settings / Feature Flags
+      { id: "settings", label: "General", icon: Settings, group: "Platform Settings", description: "Maintenance mode, sessions and platform defaults." },
+      // Integrations / Infrastructure
+      { id: "integrations", label: "Integrations", icon: Webhook, group: "Integrations / Infrastructure", description: "Webhook and sync activity across third-party systems." },
+      { id: "qb-mapping", label: "Data Mapping", icon: Wallet, group: "Integrations / Infrastructure", description: "QuickBooks → cash flow mapping and entity bindings." },
+      // Workflows / Automation
+      { id: "reports", label: "Recurring Reports", icon: FileText, group: "Workflows / Automation", description: "Recurring UX & engagement reports.", cta: { label: "Create Report", action: "demo" } },
+      // Data / Security
+      { id: "data", label: "Data", icon: Database, group: "Data / Security", description: "Demo data controls and exports." },
+      { id: "security", label: "Security", icon: Lock, group: "Data / Security", description: "IP allowlist and blocked IPs." },
+      // Logs / Observability
+      { id: "audit", label: "Audit Log", icon: ClipboardList, group: "Logs / Observability", description: "Track admin actions." },
+      { id: "errors", label: "Errors", icon: AlertCircle, group: "Logs / Observability", countKey: "errors", description: "Aggregated error tracking." },
+      // System Metrics / Audit Trails
+      { id: "usage-overview", label: "Analytics Overview", icon: BarChart3, group: "System Metrics", description: "Company-level engagement overview." },
+      { id: "pilot-kpis", label: "Pilot KPIs", icon: Activity, group: "System Metrics", description: "Pilot KPI tracker." },
+      { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, group: "AI", description: "Review every AI-driven action." },
+      { id: "ai-training", label: "AI Training", icon: Brain, group: "AI", description: "Prompts, model config and AI performance." },
+      { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, group: "Insights", description: "Funnel and friction analytics." },
+      { id: "performance", label: "Performance", icon: Gauge, group: "Insights", description: "Live client perf diagnostics: realtime channels, intervals, long tasks, memory." },
     ],
   },
 ];
 
 // Old (?section,?tab) → new (?section,?page) remap.
 const LEGACY_SECTION_PAGE: Record<string, { section: SectionId; page?: string }> = {
-  "users":               { section: "people" },
-  "access":              { section: "access" },
+  // Pre-Phase-4 section IDs
+  "users":               { section: "users-permissions" },
+  "access":              { section: "users-permissions", page: "pages" },
   "data-security":       { section: "platform" },
   "settings":            { section: "platform", page: "settings" },
-  "product-enhancement": { section: "observability", page: "signalstack" },
-  "support":             { section: "people", page: "client-lookup" },
-  "usage-analytics":     { section: "observability" },
-  "blog":                { section: "communications", page: "blog-all" },
+  "product-enhancement": { section: "platform", page: "signalstack" },
+  "support":             { section: "users-permissions", page: "client-lookup" },
+  "usage-analytics":     { section: "platform", page: "usage-overview" },
+  "blog":                { section: "communication", page: "blog-all" },
+  // Phase-4 section IDs (kept working after Phase-5 consolidation)
+  "people":              { section: "users-permissions" },
+  "communications":      { section: "communication" },
+  "observability":       { section: "platform", page: "audit" },
 };
 const LEGACY_TAB_TO_PAGE: Record<string, { section: SectionId; page: string }> = {
   // From users
-  "pending-approvals":     { section: "people", page: "access-requests" },
-  "join-requests":         { section: "people", page: "access-requests" },
-  "users":                 { section: "people", page: "users" },
-  "companies":             { section: "people", page: "companies" },
-  "demo-metrics":          { section: "people", page: "demo-metrics" },
-  "activity":              { section: "people", page: "activity" },
-  "external":              { section: "people", page: "users" },
-  "invitations":           { section: "people", page: "access-requests" },
+  "pending-approvals":     { section: "users-permissions", page: "access-requests" },
+  "join-requests":         { section: "users-permissions", page: "access-requests" },
+  "users":                 { section: "users-permissions", page: "users" },
+  "companies":             { section: "users-permissions", page: "companies" },
+  "demo-metrics":          { section: "users-permissions", page: "demo-metrics" },
+  "activity":              { section: "users-permissions", page: "activity" },
+  "external":              { section: "users-permissions", page: "users" },
+  "invitations":           { section: "users-permissions", page: "access-requests" },
   // From access
-  "pages":                 { section: "access", page: "pages" },
-  "permissions":           { section: "access", page: "permissions" },
-  "company-features":      { section: "access", page: "company-features" },
-  "notifications-admin":   { section: "communications", page: "notifications" },
-  "notification-audit":    { section: "communications", page: "delivery-audit" },
-  "announcements":         { section: "communications", page: "announcements" },
-  "waitlist":              { section: "people", page: "access-requests" },
+  "pages":                 { section: "users-permissions", page: "pages" },
+  "permissions":           { section: "users-permissions", page: "permissions" },
+  "company-features":      { section: "users-permissions", page: "company-features" },
+  "agent-access":          { section: "users-permissions", page: "agent-access" },
+  "notifications-admin":   { section: "communication", page: "notifications" },
+  "notification-audit":    { section: "communication", page: "delivery-audit" },
+  "announcements":         { section: "communication", page: "announcements" },
+  "waitlist":              { section: "users-permissions", page: "access-requests" },
   // From data-security
   "data":                  { section: "platform", page: "data" },
   "security":              { section: "platform", page: "security" },
   "integrations":          { section: "platform", page: "integrations" },
-  "emails":                { section: "communications", page: "emails" },
+  "emails":                { section: "communication", page: "emails" },
   "qb-mapping":            { section: "platform", page: "qb-mapping" },
   // From settings
   "settings":              { section: "platform", page: "settings" },
   "reports":               { section: "platform", page: "reports" },
-  "errors":                { section: "observability", page: "errors" },
-  "audit":                 { section: "observability", page: "audit" },
+  "errors":                { section: "platform", page: "errors" },
+  "audit":                 { section: "platform", page: "audit" },
   // From product-enhancement / support / analytics
-  "signalstack":           { section: "observability", page: "signalstack" },
-  "client-viewer":         { section: "people", page: "client-lookup" },
-  "usage-overview":        { section: "observability", page: "usage-overview" },
-  "pilot-kpis":            { section: "observability", page: "pilot-kpis" },
-  "ai-training":           { section: "observability", page: "ai-training" },
-  "ai-audit":              { section: "observability", page: "ai-audit" },
-  "ux-analytics":          { section: "observability", page: "ux-analytics" },
+  "signalstack":           { section: "platform", page: "signalstack" },
+  "client-viewer":         { section: "users-permissions", page: "client-lookup" },
+  "usage-overview":        { section: "platform", page: "usage-overview" },
+  "pilot-kpis":            { section: "platform", page: "pilot-kpis" },
+  "ai-training":           { section: "platform", page: "ai-training" },
+  "ai-audit":              { section: "platform", page: "ai-audit" },
+  "ux-analytics":          { section: "platform", page: "ux-analytics" },
+  "performance":           { section: "platform", page: "performance" },
+  "client-lookup":         { section: "users-permissions", page: "client-lookup" },
+  "access-requests":       { section: "users-permissions", page: "access-requests" },
+  "delivery-audit":        { section: "communication", page: "delivery-audit" },
+  "notifications":         { section: "communication", page: "notifications" },
   // Blog
-  "blog-all":              { section: "communications", page: "blog-all" },
-  "blog-new":              { section: "communications", page: "blog-new" },
-  "blog-media":            { section: "communications", page: "blog-media" },
+  "blog-all":              { section: "communication", page: "blog-all" },
+  "blog-new":              { section: "communication", page: "blog-new" },
+  "blog-media":            { section: "communication", page: "blog-media" },
 };
 
 function useAdminCounts() {
@@ -337,7 +347,7 @@ const Admin = () => {
     // Modern section, no/unknown page → first page
     if (known) return { section: known.id, page: known.pages[0].id };
     // Default
-    return { section: "people" as SectionId, page: "users" };
+    return { section: "users-permissions" as SectionId, page: "users" };
   }, [rawSection, rawPage, rawTab]);
 
   // Persist resolved URL (clean) once.
@@ -823,25 +833,6 @@ const Admin = () => {
 
           {/* Page content */}
           <main className="min-w-0">
-            {(activeSection.id === "observability" || activeSection.id === "communications") && (
-              <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
-                <span>
-                  {activeSection.id === "observability"
-                    ? "SignalStack moved to its own workspace."
-                    : "Blog moved to Studio."}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-[11px]"
-                  onClick={() =>
-                    navigate(activeSection.id === "observability" ? "/signal" : "/studio?tab=all")
-                  }
-                >
-                  Open {activeSection.id === "observability" ? "/signal" : "/studio"}
-                </Button>
-              </div>
-            )}
             {/* Thin strip: icon + title + description (replaces the giant "N of 8" hero) */}
             <div className="flex items-center gap-3 mb-3 px-1">
               <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
