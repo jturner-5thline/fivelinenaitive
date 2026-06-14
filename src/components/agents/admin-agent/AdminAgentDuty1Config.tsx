@@ -405,18 +405,18 @@ export function AdminAgentDuty1Config() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-semibold tabular-nums">
-              {settingsQ.data?.stale_threshold_business_days ?? STALE_THRESHOLD_DEFAULT}
-            </span>
-            <span className="text-xs text-muted-foreground">business days</span>
-          </div>
-          <Badge
-            variant="secondary"
-            className="h-5 text-[10px] uppercase tracking-wide bg-muted text-muted-foreground border border-border/60"
-          >
-            Locked
-          </Badge>
+          <Input
+            type="number"
+            min={1}
+            max={30}
+            step={1}
+            value={staleThreshold}
+            onChange={(e) => setStaleThreshold(Number(e.target.value))}
+            disabled={readOnly}
+            className="h-9 w-20 text-center tabular-nums text-base font-semibold"
+            aria-label="Stale threshold in business days"
+          />
+          <span className="text-xs text-muted-foreground">business days (1–30)</span>
         </div>
 
         <Separator />
