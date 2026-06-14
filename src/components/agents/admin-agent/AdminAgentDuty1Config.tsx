@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 /**
@@ -67,6 +68,7 @@ type OverrideRow = {
   id: string;
   user_id: string;
   enabled: boolean;
+  is_activated: boolean;
   notes: string | null;
 };
 
@@ -74,6 +76,8 @@ const STALE_THRESHOLD_DEFAULT = 3;
 
 export function AdminAgentDuty1Config() {
   const { company, isAdmin } = useCompany();
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const companyId = company?.id ?? null;
   const qc = useQueryClient();
 
@@ -140,7 +144,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_user_overrides')
-        .select('id, user_id, enabled, notes')
+        .select('id, user_id, enabled, is_activated, notes')
         .eq('company_id', companyId);
       if (error) throw error;
       return (data || []) as OverrideRow[];
@@ -282,6 +286,50 @@ export function AdminAgentDuty1Config() {
     qc.invalidateQueries({ queryKey: ['admin-agent-overrides', companyId] });
   }
 
+  // ── Per-user activation (server-side gated) ─────────────────────
+  // The Admin Agent is opt-in per user. This toggle flips
+  // admin_agent_user_overrides.is_activated for the current user. The
+  // chat tools and the proactive Friday sweep both refuse to run for
+  // deactivated users — this UI just mirrors that gate.
+  const myActivation = useMemo(() => {
+    if (!currentUserId) return false;
+    return !!overridesByUser.get(currentUserId)?.is_activated;
+  }, [overridesByUser, currentUserId]);
+  const [isTogglingActivation, setIsTogglingActivation] = useState(false);
+
+  async function setMyActivation(next: boolean) {
+    if (!companyId || !currentUserId) return;
+    setIsTogglingActivation(true);
+    try {
+      const existing = overridesByUser.get(currentUserId);
+      const { error } = await supabase
+        .from('admin_agent_user_overrides')
+        .upsert(
+          {
+            company_id: companyId,
+            user_id: currentUserId,
+            // Preserve existing `enabled` flag (workspace override) so this
+            // activation toggle doesn't accidentally change the "Off for
+            // this user" workspace override below.
+            enabled: existing?.enabled ?? true,
+            is_activated: next,
+          },
+          { onConflict: 'company_id,user_id' },
+        );
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-overrides', companyId] });
+      toast.success(
+        next
+          ? 'Admin Agent activated for you.'
+          : 'Admin Agent deactivated for you.',
+      );
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update activation.');
+    } finally {
+      setIsTogglingActivation(false);
+    }
+  }
+
   if (!companyId) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -304,6 +352,40 @@ export function AdminAgentDuty1Config() {
 
   return (
     <div className="space-y-6">
+      {/* Per-user activation gate */}
+      <section className="rounded-lg border border-primary/40 bg-primary/5 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/40 bg-primary/10">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold leading-tight">
+                Activate Admin Agent for me
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                The Admin Agent is opt-in. While off, Ask nAItive AI's audit /
+                capture / queue / create-task actions refuse for you and the
+                proactive Friday sweep skips you entirely.
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={myActivation}
+            onCheckedChange={setMyActivation}
+            disabled={!currentUserId || isTogglingActivation}
+            aria-label="Activate Admin Agent for me"
+          />
+        </div>
+        {!myActivation && (
+          <p className="text-[11px] text-muted-foreground mt-3">
+            Status: <span className="font-medium text-foreground/80">Not activated for you.</span> The rest of the configuration is hidden until you turn this on.
+          </p>
+        )}
+      </section>
+
+      {!myActivation ? null : (
+      <>
       {/* Capability toggle */}
       <section className="rounded-lg border border-border/60 bg-card/40 p-4">
         <div className="flex items-start justify-between gap-4">
@@ -570,6 +652,8 @@ export function AdminAgentDuty1Config() {
           Save settings
         </Button>
       </div>
+      </>
+      )}
     </div>
   );
 }

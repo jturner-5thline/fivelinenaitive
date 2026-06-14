@@ -96,34 +96,42 @@ Deno.serve(async (req) => {
       new_queue_rows: 0,
       skipped_duplicates: 0,
       capped: 0,
+      activated_user_count: 0,
+      skipped_reason: null as string | null,
       audit_run_id: null as string | null,
       error: null as string | null,
     };
 
     try {
-      // Pick an "owner" user for the rows — chat path uses the chatting
-      // user. For the cron path we attribute to the first admin in the
-      // workspace, falling back to the earliest member. ai_action_queue
-      // requires a non-null user_id; admin_agent_selected_actions does too.
-      const { data: members } = await supabase
-        .from("company_members")
-        .select("user_id, role, created_at")
+      // ── Per-user activation gate (server-side enforcement) ─────
+      // The Admin Agent is opt-in per user. Only process the sweep
+      // for workspaces where at least one user has flipped the
+      // `is_activated` flag in admin_agent_user_overrides. Selections
+      // are attributed to the earliest activated user; deal-owner
+      // assignment in enqueueAdminAgentSelections is restricted to
+      // members of this set so deactivated users never receive
+      // sweep-generated tasks or notifications.
+      const { data: activatedRows, error: actErr } = await supabase
+        .from("admin_agent_user_overrides")
+        .select("user_id, created_at")
         .eq("company_id", companyId)
+        .eq("is_activated", true)
         .order("created_at", { ascending: true });
-      const owner = (members ?? []).find((m: any) =>
-        typeof m.role === "string" && m.role.toLowerCase() === "owner"
-      );
-      const admin = (members ?? []).find((m: any) =>
-        typeof m.role === "string" && m.role.toLowerCase() === "admin"
-      );
-      const ownerUserId = (owner?.user_id ?? admin?.user_id ?? members?.[0]?.user_id) as
-        | string
-        | undefined;
-      if (!ownerUserId) {
-        perCompany.error = "no_member_to_attribute_rows";
+      if (actErr) {
+        perCompany.error = `activated users query: ${actErr.message}`;
         summary.push(perCompany);
         continue;
       }
+      const activatedUserIds = new Set<string>(
+        (activatedRows ?? []).map((r: any) => r.user_id as string),
+      );
+      perCompany.activated_user_count = activatedUserIds.size;
+      if (activatedUserIds.size === 0) {
+        perCompany.skipped_reason = "no_activated_users";
+        summary.push(perCompany);
+        continue;
+      }
+      const ownerUserId = (activatedRows![0] as any).user_id as string;
 
       // 2) Load config + run portfolio audit with a large page so we see
       //    every flagged deal in one pass.
@@ -276,6 +284,7 @@ Deno.serve(async (req) => {
         fromCron: true,
         forced: force,
         emitNotifications: true,
+        activatedUserIds,
       });
       if (enqueueRes.error) {
         perCompany.error = enqueueRes.error;
@@ -296,6 +305,7 @@ Deno.serve(async (req) => {
   const totals = summary.reduce(
     (acc, s) => {
       acc.companies++;
+      if (s.skipped_reason === "no_activated_users") acc.skipped_no_activated_users++;
       acc.evaluated += s.evaluated || 0;
       acc.flagged += s.flagged || 0;
       acc.new_selections += s.new_selections || 0;
@@ -307,6 +317,7 @@ Deno.serve(async (req) => {
     },
     {
       companies: 0,
+      skipped_no_activated_users: 0,
       evaluated: 0,
       flagged: 0,
       new_selections: 0,

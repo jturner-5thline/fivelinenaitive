@@ -56,6 +56,15 @@ export interface EnqueueOpts {
   forced?: boolean;
   /** When true, also insert in-app notification_instances rows. */
   emitNotifications?: boolean;
+  /**
+   * Optional set of user_ids that have activated the Admin Agent. When
+   * provided, deal-owner assignment is only honoured if the owner is in
+   * the allowlist; otherwise we fall back to the (already-activated)
+   * attribution user. Notification fanout is likewise restricted to
+   * allowlisted recipients. This is the server-side enforcement of the
+   * per-user activation gate.
+   */
+  activatedUserIds?: Set<string>;
 }
 
 export interface EnqueueResult {
@@ -93,6 +102,7 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
     fromCron,
     forced = false,
     emitNotifications = false,
+    activatedUserIds,
   } = opts;
 
   const result: EnqueueResult = {
@@ -197,7 +207,15 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       : `Admin Agent captured this from the deal audit on ${new Date().toLocaleDateString()}. Approve to create a task in /tasks.`;
 
     // Deal-owner assignee resolution with a documented fallback chain.
-    const assignedTo = meta?.owner ?? attributionUserId;
+    // When an activation allowlist is provided, only honour the deal-owner
+    // assignment if that owner has activated the Admin Agent for themselves.
+    // Otherwise, fall back to the attribution user (which the sweep already
+    // guarantees is an activated user). This prevents the proactive sweep
+    // from creating queue items / tasks for deactivated users.
+    const ownerAllowed = meta?.owner
+      ? (activatedUserIds ? activatedUserIds.has(meta.owner) : true)
+      : false;
+    const assignedTo = ownerAllowed ? (meta!.owner as string) : attributionUserId;
     // Priority is intentionally null unless the deal is flagged at-risk —
     // the tasks.priority CHECK only accepts NULL or 'urgent'.
     const priority: "urgent" | null = meta?.isFlagged ? "urgent" : null;
@@ -230,7 +248,11 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
         field: sel.field,
         action: sel.action,
         forced,
-        assignee_resolved_from: meta?.owner ? "deal_owner" : "attribution_fallback",
+        assignee_resolved_from: ownerAllowed
+          ? "deal_owner"
+          : meta?.owner
+            ? "attribution_fallback_owner_not_activated"
+            : "attribution_fallback",
       },
     };
   });
@@ -266,6 +288,9 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       for (const row of insertedQueue ?? []) {
         const to = (row as any)?.payload?.assigned_to ?? attributionUserId;
         if (!to) continue;
+        // Never notify a deactivated user, even if we somehow assigned to
+        // them via the deal-owner path.
+        if (activatedUserIds && !activatedUserIds.has(to)) continue;
         perUser.set(to, (perUser.get(to) ?? 0) + 1);
       }
       if (perUser.size > 0) {
