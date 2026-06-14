@@ -2518,6 +2518,9 @@ async function recordAdminAgentSelection(
   if (!companyId) {
     return { error: "Admin Agent requires a workspace company context." };
   }
+  if (!(await isAgentEnabledForCompany(supabase, companyId, AGENT_KEYS.ADMIN_AGENT))) {
+    return { error: AGENT_NOT_ENABLED_FOR_COMPANY_MESSAGE, company_not_enabled: true };
+  }
   if (!(await isAdminAgentActivatedFor(supabase, userId, companyId))) {
     return { error: ADMIN_AGENT_NOT_ACTIVATED_MESSAGE, not_activated: true };
   }
