@@ -2237,6 +2237,14 @@ function selectToolsWithScopes(
 // chat tool surface and a future scheduled Friday sweep share the
 // exact same audit engine, config loader, and run logger.
 
+// Company-level entitlement gate (master). Imported lazily to keep the
+// existing import block intact.
+import {
+  AGENT_KEYS,
+  AGENT_NOT_ENABLED_FOR_COMPANY_MESSAGE,
+  isAgentEnabledForCompany,
+} from "../_shared/agentEntitlement.ts";
+
 // Per-user activation gate. The Admin Agent is opt-in: a user must
 // flip `is_activated` in admin_agent_user_overrides before the chat
 // tools (verify_deal_information / record_admin_agent_selection) will
