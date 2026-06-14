@@ -109,13 +109,18 @@ Deno.serve(async (req) => {
       // requires a non-null user_id; admin_agent_selected_actions does too.
       const { data: members } = await supabase
         .from("company_members")
-        .select("user_id, role, joined_at")
+        .select("user_id, role, created_at")
         .eq("company_id", companyId)
-        .order("joined_at", { ascending: true });
+        .order("created_at", { ascending: true });
+      const owner = (members ?? []).find((m: any) =>
+        typeof m.role === "string" && m.role.toLowerCase() === "owner"
+      );
       const admin = (members ?? []).find((m: any) =>
         typeof m.role === "string" && m.role.toLowerCase() === "admin"
       );
-      const ownerUserId = (admin?.user_id ?? members?.[0]?.user_id) as string | undefined;
+      const ownerUserId = (owner?.user_id ?? admin?.user_id ?? members?.[0]?.user_id) as
+        | string
+        | undefined;
       if (!ownerUserId) {
         perCompany.error = "no_member_to_attribute_rows";
         summary.push(perCompany);
