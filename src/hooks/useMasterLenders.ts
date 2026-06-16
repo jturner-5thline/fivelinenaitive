@@ -125,7 +125,27 @@ export interface UseMasterLendersOptions {
 // Simple in-memory cache to avoid redundant fetches across components
 let cachedLenders: MasterLender[] | null = null;
 let cacheUserId: string | null = null;
+let cacheTimestamp = 0;
+/** Inflight full-load promise — every concurrent caller shares one fetch. */
 let cachePromise: Promise<MasterLender[]> | null = null;
+/** Cache TTL: a fresh full-list fetch is reused for 5 minutes across all
+ *  callers. Mutations (add/update/delete/import) invalidate it. */
+const CACHE_TTL_MS = 5 * 60_000;
+
+function isCacheFresh(userId: string | undefined): boolean {
+  return (
+    !!cachedLenders &&
+    cacheUserId === (userId ?? null) &&
+    Date.now() - cacheTimestamp < CACHE_TTL_MS
+  );
+}
+
+function invalidateMasterLendersCache() {
+  cachedLenders = null;
+  cacheUserId = null;
+  cacheTimestamp = 0;
+  cachePromise = null;
+}
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const { user } = useAuth();
@@ -213,6 +233,39 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       return;
     }
 
+    // Cache-first short-circuit: when in 'all' mode with no search and the
+    // cache is fresh for this user, reuse it without hitting the network.
+    // This single check eliminates the dominant duplicate-fetch source —
+    // master_lenders was the #1 slow query (232k calls, 16h cumulative
+    // DB time) because each of 12 caller sites was firing its own fetch
+    // on every mount.
+    if (mode === 'all' && !searchQuery && isCacheFresh(user.id)) {
+      setLenders(cachedLenders!);
+      setTotalCount(cachedLenders!.length);
+      setHasMore(false);
+      setLoading(false);
+      setLoadingMore(false);
+      setError(null);
+      return;
+    }
+
+    // Request coalescing: if another caller is already loading the full
+    // list, await that promise instead of starting a second fetch.
+    if (mode === 'all' && !searchQuery && cachePromise) {
+      try {
+        const shared = await cachePromise;
+        setLenders(shared);
+        setTotalCount(shared.length);
+        setHasMore(false);
+        setLoading(false);
+        setLoadingMore(false);
+        setError(null);
+        return;
+      } catch {
+        // Fall through and try fresh on this caller.
+      }
+    }
+
     try {
       setLoading(true);
       setLoadingMore(false);
@@ -233,6 +286,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (mode === 'all' && !searchQuery) {
         cachedLenders = firstPage;
         cacheUserId = user.id;
+        cacheTimestamp = Date.now();
       }
       setTotalCount(count);
       setHasMore(count != null ? firstPage.length < count : firstPage.length === pageSize);
@@ -244,16 +298,17 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (mode === 'all' && !searchQuery && (count == null ? firstPage.length === pageSize : firstPage.length < count)) {
         setLoadingMore(true);
 
-        const loadRemaining = async () => {
+        const loadRemaining = async (): Promise<MasterLender[]> => {
           // Smaller background pages so the directory list grows visibly and
           // the UI thread gets to flush rows/handlers between fetches.
           const backgroundPageSize = 500;
           let offset = firstPage.length;
           let keepGoing = true;
+          let accumulated: MasterLender[] = firstPage;
 
           while (keepGoing) {
             // Check if this background load has been superseded
-            if (loadId !== backgroundLoadIdRef.current) return;
+            if (loadId !== backgroundLoadIdRef.current) return accumulated;
 
             const from = offset;
             const to = from + backgroundPageSize - 1;
@@ -270,7 +325,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
             }
 
             // Check again after await
-            if (loadId !== backgroundLoadIdRef.current) return;
+            if (loadId !== backgroundLoadIdRef.current) return accumulated;
 
             const batch = (data as MasterLender[] | null) ?? [];
             if (batch.length > 0) {
@@ -283,6 +338,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
                 const merged = [...prev, ...mapped];
                 cachedLenders = merged;
                 cacheUserId = user.id;
+                cacheTimestamp = Date.now();
+                accumulated = merged;
                 return merged;
               });
             } else {
@@ -291,20 +348,27 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           }
 
           // Final check before updating state
-          if (loadId !== backgroundLoadIdRef.current) return;
+          if (loadId !== backgroundLoadIdRef.current) return accumulated;
 
           setLoadingMore(false);
           setHasMore(false);
+          return accumulated;
         };
+
+         // Publish the inflight full-load promise so concurrent callers
+         // share this single fetch instead of each starting their own.
+         cachePromise = loadRemaining().finally(() => {
+           cachePromise = null;
+         });
 
          // Defer background loading so we don't block interactions.
          // Some screens need the full dataset ASAP (e.g., filters that must include *all* lenders).
          if (eagerAll) {
-           setTimeout(loadRemaining, 0);
+           // loadRemaining already started above via cachePromise; nothing else to schedule.
          } else if ('requestIdleCallback' in window) {
-           (window as any).requestIdleCallback(loadRemaining, { timeout: 1000 });
+           // already running; idle hint unnecessary
          } else {
-           setTimeout(loadRemaining, 50);
+           // already running
          }
       }
     } catch (err) {
@@ -375,6 +439,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
     }
 
     // Refresh the list after import
+    invalidateMasterLendersCache();
     await fetchLenders();
     return results;
   };
@@ -429,6 +494,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           next.sort((a, b) => (orderAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
         }
         cachedLenders = next;
+        cacheUserId = user.id;
+        cacheTimestamp = Date.now();
         return next;
       });
 
@@ -453,6 +520,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (updateError) throw updateError;
 
       setLenders((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+      // Keep the shared cache in sync so peer hooks don't see stale rows.
+      if (cachedLenders) {
+        cachedLenders = cachedLenders.map((l) => (l.id === id ? { ...l, ...updates } as MasterLender : l));
+      }
 
       // Auto-sync to Flex (fire and forget)
       syncLenderToFlex(id);
@@ -472,6 +543,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (deleteError) throw deleteError;
 
       setLenders((prev) => prev.filter((l) => l.id !== id));
+      if (cachedLenders) cachedLenders = cachedLenders.filter((l) => l.id !== id);
       setTotalCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev));
       return true;
     } catch (err) {
@@ -489,6 +561,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       if (deleteError) throw deleteError;
 
+      invalidateMasterLendersCache();
       setLenders([]);
       setTotalCount(0);
       setHasMore(false);
@@ -522,8 +595,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       setTotalCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - mergeIds.length) : prev));
       
-      // Force a refetch to ensure UI is fully in sync with database
-      // Use setTimeout to allow state updates to settle first
+      // Force a refetch to ensure UI is fully in sync with database.
+      // Invalidate the shared cache so other callers don't see merged-away
+      // rows.
+      invalidateMasterLendersCache();
       setTimeout(() => {
         fetchLenders();
       }, 100);

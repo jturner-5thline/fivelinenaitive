@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -37,6 +37,13 @@ interface RealtimePresenceProps {
 export function RealtimePresence({ dealId, currentView, className }: RealtimePresenceProps) {
   const [users, setUsers] = useState<PresenceUser[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // Hold the live presence channel so the view-update effect can reuse it
+  // instead of opening a duplicate channel on every `currentView` change.
+  // The duplicate channel previously had no cleanup → guaranteed leak +
+  // Realtime reconnection storms whenever the user switched diligence
+  // sub-views.
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const displayNameRef = useRef<string>('User');
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -47,10 +54,12 @@ export function RealtimePresence({ dealId, currentView, className }: RealtimePre
       setCurrentUserId(user.id);
 
       const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
+      displayNameRef.current = displayName;
 
       channel = supabase.channel(`diligence:${dealId}`, {
         config: { presence: { key: user.id } },
       });
+      channelRef.current = channel;
 
       channel
         .on('presence', { event: 'sync' }, () => {
@@ -86,25 +95,22 @@ export function RealtimePresence({ dealId, currentView, className }: RealtimePre
 
     return () => {
       if (channel) {
-        channel.unsubscribe();
+        supabase.removeChannel(channel);
       }
+      channelRef.current = null;
     };
   }, [dealId]);
 
   // Update presence when view changes
   useEffect(() => {
-    const updateView = async () => {
-      const channel = supabase.channel(`diligence:${dealId}`);
-      // Track is idempotent
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'User';
-          await channel.track({ displayName, view: currentView, online_at: new Date().toISOString() });
-        }
-      } catch { /* ignore */ }
-    };
-    updateView();
+    // Reuse the live channel from the setup effect — never open a new one.
+    const channel = channelRef.current;
+    if (!channel) return;
+    void channel.track({
+      displayName: displayNameRef.current,
+      view: currentView,
+      online_at: new Date().toISOString(),
+    });
   }, [currentView, dealId]);
 
   if (users.length === 0) return null;
