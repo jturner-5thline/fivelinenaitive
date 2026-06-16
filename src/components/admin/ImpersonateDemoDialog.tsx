@@ -55,8 +55,8 @@ export function ImpersonateDemoDialog({
         reason: 'admin/demo-metrics:open-demo-workspace',
         sourceSurface: 'admin/demo-metrics',
       });
-      if (!res.ok) {
-        toast.error(res.error);
+      if (res.ok !== true) {
+        toast.error((res as { error: string }).error);
         setBusy(false);
         return;
       }
@@ -83,7 +83,7 @@ export function ImpersonateDemoDialog({
         reason: 'admin/demo-metrics:copy-magic-link',
         sourceSurface: 'admin/demo-metrics',
       });
-      if (!res.ok) { toast.error(res.error); return; }
+      if (res.ok !== true) { toast.error((res as { error: string }).error); return; }
       await navigator.clipboard.writeText(res.actionLink);
       toast.success('Magic sign-in link copied');
     } finally {
