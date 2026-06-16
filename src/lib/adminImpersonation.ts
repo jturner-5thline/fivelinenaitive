@@ -149,7 +149,7 @@ export async function stopImpersonation(opts?: { reason?: string }): Promise<{ r
   if (snapshot) {
     try {
       // Sign out of the impersonated session, then re-attach admin tokens.
-      await supabase.auth.signOut({ scope: 'local' as never });
+      await supabase.auth.signOut({ scope: 'local' });
       const { error } = await supabase.auth.setSession({
         access_token: snapshot.access_token,
         refresh_token: snapshot.refresh_token,
