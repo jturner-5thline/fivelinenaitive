@@ -866,7 +866,7 @@ export default function Dashboard() {
             {/* Approval Queue tile — first-class quick-action sibling to
                 Calendar/Email/Deals. Click opens the queue modal so deferred
                 AI suggestions are one tap away from the dashboard hero. */}
-            <QuickActionTile
+            {approvalQueueEnabled && <QuickActionTile
               label="Approval Queue"
               icon={InboxIcon}
               category="inbox"
@@ -875,7 +875,7 @@ export default function Dashboard() {
               className={cn(isJTurner && 'order-3')}
               onClick={openActionQueue}
               onKeyDown={(e) => handleTileKeyDown(e, openActionQueue)}
-            />
+            />}
             {isJTurner && (
               <QuickActionTile
                 label="Daily Rundown"
