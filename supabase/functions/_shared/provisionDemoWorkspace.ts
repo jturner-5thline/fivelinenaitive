@@ -34,6 +34,8 @@ export interface ProvisionResult extends DemoValidation {
   seedVersion: string;
   insertedThisRun: DemoCounts;
   flagsApplied: { company: boolean; profiles: number };
+  warnings: string[];
+  canOpenWorkspace: boolean;
 }
 
 type Admin = ReturnType<typeof createClient>;
