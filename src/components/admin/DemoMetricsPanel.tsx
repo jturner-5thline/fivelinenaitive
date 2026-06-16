@@ -103,9 +103,10 @@ export const DemoMetricsPanel = () => {
     <div className="space-y-4">
       <StandardDemoPanel />
       <p className="text-xs text-muted-foreground rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-        Use <strong>Open Standard Demo</strong> above for the canonical demo experience.
-        Use user-specific demo access in the table below only for troubleshooting seeded
-        tenants/users like GRUP / info@grupapp.com.
+        Use <strong>Open TEMPLATE Demo Workspace</strong> above for the canonical demo
+        experience. The TEMPLATE workspace is the framework/source for all future demo
+        accounts. Per-user actions in the table below are diagnostics only for individual
+        seeded tenants and never feed the primary admin demo flow.
       </p>
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
