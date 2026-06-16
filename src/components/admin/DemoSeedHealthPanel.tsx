@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench, UserCog, ExternalLink } from "lucide-react";
+import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench, UserCog, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
@@ -134,17 +134,18 @@ export function DemoSeedHealthPanel() {
             eligibleMembers.length === 1 ? (
               <Button
                 size="sm"
+                variant="outline"
                 onClick={() => setImpersonateTarget(buildTarget(eligibleMembers[0].tenant, eligibleMembers[0].member))}
               >
                 <UserCog className="h-4 w-4 mr-2" />
-                Open demo workspace
+                Debug this demo user
               </Button>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm">
+                  <Button size="sm" variant="outline">
                     <UserCog className="h-4 w-4 mr-2" />
-                    Open demo workspace
+                    Debug a demo user
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72">
@@ -225,34 +226,26 @@ export function DemoSeedHealthPanel() {
                     <div className="flex items-center justify-end gap-2">
                       {(() => {
                         const eligible = (r.members ?? []).filter((m) => !!m.email);
-                        if (eligible.length > 1) {
-                          return (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm">
-                                  <UserCog className="h-3.5 w-3.5 mr-1" /> Open
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-64">
-                                <DropdownMenuLabel>Pick a demo user</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                {eligible.map((m) => (
-                                  <DropdownMenuItem key={m.userId} onSelect={() => setImpersonateTarget(buildTarget(r, m))}>
-                                    {m.email}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          );
-                        }
-                        if (eligible.length === 1) {
-                          return (
-                            <Button variant="outline" size="sm" onClick={() => openTenantWorkspace(r)}>
-                              <UserCog className="h-3.5 w-3.5 mr-1" /> Open
-                            </Button>
-                          );
-                        }
-                        return null;
+                        if (eligible.length === 0) return null;
+                        return (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-3.5 w-3.5 mr-1" /> More
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-64">
+                              <DropdownMenuLabel>User-specific demo (diagnostics)</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              {eligible.map((m) => (
+                                <DropdownMenuItem key={m.userId} onSelect={() => setImpersonateTarget(buildTarget(r, m))}>
+                                  <UserCog className="h-3.5 w-3.5 mr-2" />
+                                  Open this user's demo — {m.email}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        );
                       })()}
                       <Button
                         variant="outline" size="sm"
@@ -276,11 +269,14 @@ export function DemoSeedHealthPanel() {
         {isAdmin && rows && rows.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-              <UserCog className="h-4 w-4" /> Demo users
+              <UserCog className="h-4 w-4" /> User-specific demo access
+              <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-300">diagnostics only</Badge>
             </h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Open any demo workspace as that user. The admin session is preserved
-              when you choose &ldquo;open in new tab&rdquo;.
+              These actions open a specific seeded tenant/user (for example GRUP / info@grupapp.com)
+              for troubleshooting. They are <strong>not</strong> the standard demo — use the
+              <strong> Open Standard Demo</strong> button at the top of the page for the canonical
+              admin demo experience.
             </p>
             <div className="overflow-x-auto">
               <Table>
@@ -313,11 +309,12 @@ export function DemoSeedHealthPanel() {
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               size="sm"
+                              variant="outline"
                               disabled={!m.email}
                               onClick={() => m.email && setImpersonateTarget(buildTarget(r, m))}
                             >
                               <UserCog className="h-3.5 w-3.5 mr-1" />
-                              Open demo workspace
+                              Debug this demo user
                             </Button>
                           </div>
                         </TableCell>
