@@ -19,6 +19,19 @@ export const DEMO_TARGETS = {
 } as const;
 
 export type DemoCounts = Record<keyof typeof DEMO_TARGETS, number>;
+export const REPAIRABLE_SEED_GAP_KEYS = new Set<keyof typeof DEMO_TARGETS>([
+  "calendarEvents", "inboxEmails", "dealActivities",
+]);
+
+export function splitMissingCounts(missing: Partial<DemoCounts>) {
+  const fatalMissing: Partial<DemoCounts> = {};
+  const repairableMissing: Partial<DemoCounts> = {};
+  for (const k of Object.keys(missing) as Array<keyof typeof DEMO_TARGETS>) {
+    if (REPAIRABLE_SEED_GAP_KEYS.has(k)) repairableMissing[k] = missing[k];
+    else fatalMissing[k] = missing[k];
+  }
+  return { fatalMissing, repairableMissing };
+}
 
 export interface DemoValidation {
   ok: boolean;
@@ -403,11 +416,11 @@ export async function provisionDemoWorkspace(
   // 10) Seed calendar events + inbox emails per member user.
   const now = Date.now();
   for (const uid of memberUserIds) {
-    // calendar
+    // calendar — upsert the stable demo keys so repair can fill holes without duplicates.
     const haveCal = await countCalendarSeed(admin, uid);
     if (haveCal < DEMO_TARGETS.calendarEvents) {
       const rows = [];
-      for (let i = haveCal; i < DEMO_TARGETS.calendarEvents; i++) {
+      for (let i = 0; i < DEMO_TARGETS.calendarEvents; i++) {
         const tpl = MEETING_TEMPLATES[i % MEETING_TEMPLATES.length];
         const deal = demoDeals[i % Math.max(demoDeals.length, 1)];
         const companyName = deal?.company ?? "Demo Co";
@@ -439,21 +452,24 @@ export async function provisionDemoWorkspace(
         });
       }
       if (rows.length) {
-        const { error } = await admin.from("calendar_events").insert(rows);
+        const { error } = await admin
+          .from("calendar_events")
+          .upsert(rows, { onConflict: "user_id,provider,event_id" });
         if (error) {
           console.warn(`[provisionDemoWorkspace] calendar_events insert warning for user ${uid}: ${error.message}`);
           warnings.push(`calendar_events:${uid}:${error.message}`);
         } else {
-          insertedThisRun.calendarEvents += rows.length;
+          const afterCal = await countCalendarSeed(admin, uid);
+          insertedThisRun.calendarEvents += Math.max(0, afterCal - haveCal);
         }
       }
     }
 
-    // inbox emails (email_cache)
+    // inbox emails (email_cache) — upsert stable Gmail ids for idempotent repair.
     const haveMail = await countEmailSeed(admin, uid);
     if (haveMail < DEMO_TARGETS.inboxEmails) {
       const rows = [];
-      for (let i = haveMail; i < DEMO_TARGETS.inboxEmails; i++) {
+      for (let i = 0; i < DEMO_TARGETS.inboxEmails; i++) {
         const tpl = EMAIL_TEMPLATES[i % EMAIL_TEMPLATES.length];
         const deal = demoDeals[i % Math.max(demoDeals.length, 1)];
         const companyName = deal?.company ?? "Demo Co";
@@ -482,12 +498,15 @@ export async function provisionDemoWorkspace(
         });
       }
       if (rows.length) {
-        const { error } = await admin.from("email_cache").insert(rows);
+        const { error } = await admin
+          .from("email_cache")
+          .upsert(rows, { onConflict: "user_id,gmail_message_id" });
         if (error) {
           console.warn(`[provisionDemoWorkspace] email_cache insert warning for user ${uid}: ${error.message}`);
           warnings.push(`email_cache:${uid}:${error.message}`);
         } else {
-          insertedThisRun.inboxEmails += rows.length;
+          const afterMail = await countEmailSeed(admin, uid);
+          insertedThisRun.inboxEmails += Math.max(0, afterMail - haveMail);
         }
       }
     }
@@ -541,13 +560,7 @@ export async function provisionDemoWorkspace(
   // 12) Validate counts. Comms gaps are nonfatal (warning); core gaps + pipeline are fatal.
   const validation = await validateDemoSeed(admin, companyId);
 
-  const COMMS_KEYS = new Set<keyof typeof DEMO_TARGETS>([
-    "calendarEvents", "inboxEmails", "dealActivities",
-  ]);
-  const fatalMissing: Partial<DemoCounts> = {};
-  for (const k of Object.keys(validation.missing) as Array<keyof typeof DEMO_TARGETS>) {
-    if (!COMMS_KEYS.has(k)) fatalMissing[k] = validation.missing[k];
-  }
+  const { fatalMissing, repairableMissing } = splitMissingCounts(validation.missing);
   const hasFatalGap = Object.keys(fatalMissing).length > 0 || !validation.pipelineId;
   const canOpenWorkspace = !hasFatalGap;
 
@@ -562,6 +575,8 @@ export async function provisionDemoWorkspace(
     companyId,
     insertedThisRun,
     missing: validation.missing,
+    repairableMissing,
+    fatalMissing,
     warnings,
     canOpenWorkspace,
   });
