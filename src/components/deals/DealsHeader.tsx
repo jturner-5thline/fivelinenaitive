@@ -15,6 +15,7 @@ import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNai
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { DealsOverlay } from '@/components/deals/DealsOverlay';
