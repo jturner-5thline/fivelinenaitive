@@ -593,8 +593,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       setTotalCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - mergeIds.length) : prev));
       
-      // Force a refetch to ensure UI is fully in sync with database
-      // Use setTimeout to allow state updates to settle first
+      // Force a refetch to ensure UI is fully in sync with database.
+      // Invalidate the shared cache so other callers don't see merged-away
+      // rows.
+      invalidateMasterLendersCache();
       setTimeout(() => {
         fetchLenders();
       }, 100);
