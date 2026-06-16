@@ -34,7 +34,7 @@ export function StandardDemoPanel() {
         landingPath: '/deals',
       });
       if (!res.ok) {
-        toast.error(res.error || 'Failed to open standard demo');
+        toast.error((res as { error?: string }).error || 'Failed to open standard demo');
         return;
       }
       if (newTab) {
