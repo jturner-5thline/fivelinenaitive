@@ -12,8 +12,8 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export interface StartImpersonationArgs {
-  targetUserId: string;
-  targetEmail: string;
+  targetUserId?: string;
+  targetEmail?: string;
   reason?: string;
   sourceSurface?: string;
   landingPath?: string;

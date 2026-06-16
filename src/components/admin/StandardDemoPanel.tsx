@@ -1,0 +1,128 @@
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, ExternalLink, Wrench, RefreshCw, Loader2, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { FunctionsHttpError } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
+import { startImpersonation } from '@/lib/adminImpersonation';
+import { DEMO_COMPANY_ID, DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
+
+/**
+ * Standard Demo Workspace — the canonical admin preview/testing tenant.
+ *
+ * Resolution:
+ *   - Workspace : `companies.id = DEMO_COMPANY_ID` (the tenant that owns
+ *     `demo@5thline.co`). This is the single canonical demo workspace and
+ *     is independent of any per-user demo row in the metrics table below.
+ *   - Identity  : `DEMO_PRIMARY_EMAIL` (demo@5thline.co) — an internal-only
+ *     demo auth user that exists solely to enter the standard demo.
+ *
+ * The per-user impersonation in the table below remains available as a
+ * secondary troubleshooting tool; this panel is the primary CTA.
+ */
+export function StandardDemoPanel() {
+  const [busy, setBusy] = useState<null | 'open' | 'open_new' | 'repair' | 'reset'>(null);
+
+  async function launch(newTab: boolean) {
+    setBusy(newTab ? 'open_new' : 'open');
+    try {
+      const res = await startImpersonation({
+        targetEmail: DEMO_PRIMARY_EMAIL,
+        sourceSurface: 'admin/demo-metrics/standard-demo',
+        landingPath: '/deals',
+      });
+      if (!res.ok) {
+        toast.error((res as { error?: string }).error || 'Failed to open standard demo');
+        return;
+      }
+      if (newTab) {
+        window.open(res.actionLink, '_blank', 'noopener,noreferrer');
+        toast.success('Opened standard demo in a new tab');
+      } else {
+        window.location.href = res.actionLink;
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function repair(reset: boolean) {
+    setBusy(reset ? 'reset' : 'repair');
+    try {
+      const { data, error } = await supabase.functions.invoke('repair-demo-tenant', {
+        body: {
+          companyId: DEMO_COMPANY_ID,
+          userEmail: DEMO_PRIMARY_EMAIL,
+          ...(reset ? { mode: 'reset' } : {}),
+        },
+      });
+      let payload: any = data;
+      if (!payload && error instanceof FunctionsHttpError && error.context instanceof Response) {
+        try { payload = await error.context.clone().json(); } catch { /* ignore */ }
+      }
+      if (error && !payload?.status) {
+        toast.error(`${reset ? 'Reset' : 'Repair'} failed: ${error.message}`);
+        return;
+      }
+      const status = payload?.status ?? 'ok';
+      if (status === 'fatal') {
+        toast.error(payload?.message || `${reset ? 'Reset' : 'Repair'} could not complete.`);
+      } else if (status === 'warning') {
+        toast.warning(payload?.message || `${reset ? 'Reset' : 'Repair'} completed with warnings.`);
+      } else {
+        toast.success(`${reset ? 'Reset' : 'Repair'} completed.`);
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-transparent to-amber-500/5">
+      <CardContent className="py-4">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-base font-semibold">Open the standard demo workspace</h3>
+              <Badge variant="outline" className="text-[10px] gap-1">
+                <ShieldCheck className="h-3 w-3" /> Canonical
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter the canonical demo environment for admin preview and testing. Targets the
+              single standard demo tenant ({DEMO_PRIMARY_EMAIL}) — independent of any individual
+              demo user listed below.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => launch(false)}
+              disabled={!!busy}
+            >
+              {busy === 'open' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+              Open Standard Demo
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => launch(true)} disabled={!!busy}>
+              {busy === 'open_new' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
+              New Tab
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => repair(false)} disabled={!!busy}>
+              {busy === 'repair' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Wrench className="h-3.5 w-3.5 mr-1" />}
+              Repair
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => repair(true)} disabled={!!busy}>
+              {busy === 'reset' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+              Reset
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart3, Search, Users, Sparkles, LogIn, Briefcase, Clock, ArrowUpDown, Calendar, TrendingUp } from "lucide-react";
 import { useDemoAccounts, type DemoAccountRow } from "@/hooks/useDemoAccountMetrics";
 import { DemoAccountDetailSheet } from "./DemoAccountDetailSheet";
+import { StandardDemoPanel } from "./StandardDemoPanel";
 
 type SortKey = 'name' | 'created_at' | 'last_event_at' | 'sign_ins' | 'distinct_active_users' | 'deals' | 'trial_ends_at' | 'status';
 
@@ -74,6 +75,7 @@ export const DemoMetricsPanel = () => {
   if (isLoading) {
     return (
       <div className="space-y-3">
+        <StandardDemoPanel />
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
         </div>
@@ -85,17 +87,21 @@ export const DemoMetricsPanel = () => {
   const rows = accounts ?? [];
   if (rows.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground text-sm">
-          <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          No demo or pilot accounts yet.
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <StandardDemoPanel />
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+            <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            No per-user demo accounts yet. Use the standard demo above for admin preview.
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      <StandardDemoPanel />
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Kpi icon={Briefcase} label="Demo accounts" value={kpis.total} />
