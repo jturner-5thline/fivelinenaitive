@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
 import { ShieldAlert, LogOut, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  captureImpersonationFromHash,
-  readActiveImpersonation,
-  stopImpersonation,
-  type ImpersonationActiveState,
-} from '@/lib/adminImpersonation';
+import { toast } from 'sonner';
+import { stopImpersonation } from '@/lib/adminImpersonation';
+import { useImpersonationState } from '@/hooks/useImpersonationState';
 
 /**
  * Persistent, platform-wide banner shown while an admin is viewing the app
@@ -14,34 +11,29 @@ import {
  * accidentally under the wrong identity.
  */
 export function ImpersonationBanner() {
-  const [state, setState] = useState<ImpersonationActiveState | null>(null);
+  const { impersonation } = useImpersonationState();
   const [returning, setReturning] = useState(false);
 
   useEffect(() => {
-    // First, capture from the magic-link landing hash (only fires once).
-    const captured = captureImpersonationFromHash();
-    setState(captured ?? readActiveImpersonation());
-    if (captured) {
-      try {
-        document.title = `[Demo: ${captured.target_email}] ${document.title}`;
-      } catch { /* ignore */ }
-    }
-    const onStorage = () => setState(readActiveImpersonation());
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+    if (!impersonation) return;
+    try {
+      const original = document.title;
+      const tag = `[Demo: ${impersonation.target_demo_email}]`;
+      if (!original.startsWith(tag)) document.title = `${tag} ${original}`;
+    } catch { /* ignore */ }
+  }, [impersonation]);
 
-  if (!state) return null;
+  if (!impersonation) return null;
 
   const handleReturn = async () => {
     setReturning(true);
-    const { returnTo } = await stopImpersonation();
-    if (returnTo) {
-      window.location.href = returnTo;
-    } else {
-      // No admin snapshot in this tab — send to login so admin can sign in.
-      window.location.href = '/auth';
+    const res = await stopImpersonation({ sessionId: impersonation.id });
+    if (res.returnLink) {
+      window.location.href = res.returnLink;
+      return;
     }
+    toast.error(res.error || 'Could not return to admin — please sign in again.');
+    window.location.href = '/auth';
   };
 
   const openAdminNewTab = () => {
@@ -57,9 +49,9 @@ export function ImpersonationBanner() {
         <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
         <div className="flex-1 min-w-0">
           <span className="font-semibold text-amber-200">Viewing as demo user: </span>
-          <span className="text-amber-100">{state.target_email}</span>
-          {state.admin_email && (
-            <span className="text-amber-200/70 ml-2">(admin: {state.admin_email})</span>
+          <span className="text-amber-100">{impersonation.target_demo_email}</span>
+          {impersonation.source_admin_email && (
+            <span className="text-amber-200/70 ml-2">(started by {impersonation.source_admin_email})</span>
           )}
         </div>
         <Button
