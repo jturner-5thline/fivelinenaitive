@@ -50,6 +50,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { runDemoAiChatReset } from "@/lib/ai/resetDemoChats";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
+const ImpersonationCallback = lazy(lazyRetry(() => import("./pages/ImpersonationCallback")));
 
 /**
  * Demo-only: wipes prior naitive AI chat history once per page load
