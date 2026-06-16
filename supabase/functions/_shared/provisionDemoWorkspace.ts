@@ -561,7 +561,7 @@ export async function validateDemoSeed(
     countDemo(admin, "tasks", { company_id: companyId }),
     countDemo(admin, "master_lenders", { company_id: companyId }),
     admin.from("deal_pipelines").select("id").eq("company_id", companyId).eq("is_default", true).maybeSingle(),
-    admin.from("profiles").select("user_id").eq("company_id", companyId),
+    admin.from("company_members").select("user_id").eq("company_id", companyId),
   ]);
   const memberIds = ((members.data ?? []) as Array<{ user_id: string }>).map((m) => m.user_id).filter(Boolean);
   const { data: dealsForActivity } = await admin
