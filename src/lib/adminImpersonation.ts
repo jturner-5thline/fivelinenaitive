@@ -1,165 +1,82 @@
 /**
  * Admin → Demo impersonation client helpers.
  *
- * Flow:
- *  1. Admin clicks "Open Demo Workspace" on a demo user.
- *  2. We call edge function `admin-impersonate-demo-user` (action=start) —
- *     it validates everything server-side and mints a single-use magic link
- *     redirecting to `/pipeline#impersonating=1&...`.
- *  3. If the admin chose "Open in new tab", we open the link in a new tab
- *     and the admin's current tab is untouched. If they chose same-tab, we
- *     snapshot the admin's session in localStorage so the banner can
- *     restore it via `Return to Admin`.
+ * All trust lives server-side: `start-demo-impersonation` and
+ * `stop-demo-impersonation` edge functions create/end rows in
+ * `admin_impersonation_sessions` and mint single-use magic links. The
+ * browser only ever holds:
+ *   - the standard Supabase session (now the demo user's real session), and
+ *   - the magic-link URL it was redirected to.
+ * No service-role material, no privileged tokens, no client-side spoofing.
  */
 import { supabase } from '@/integrations/supabase/client';
 
-export const IMPERSONATION_ADMIN_SNAPSHOT_KEY = 'naitive_admin_impersonation_snapshot';
-export const IMPERSONATION_ACTIVE_KEY = 'naitive_impersonation_active';
-
-export interface AdminSessionSnapshot {
-  access_token: string;
-  refresh_token: string;
-  admin_id: string;
-  admin_email: string | null;
-  return_to: string;
-  saved_at: number;
-}
-
-export interface ImpersonationActiveState {
-  admin_id: string;
-  admin_email: string | null;
-  target_id: string;
-  target_email: string;
-  audit_id: string | null;
-  started_at: number;
-  has_snapshot: boolean; // true when same-tab return is possible
-}
-
-export function readActiveImpersonation(): ImpersonationActiveState | null {
-  try {
-    const raw = localStorage.getItem(IMPERSONATION_ACTIVE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as ImpersonationActiveState;
-  } catch {
-    return null;
-  }
-}
-
-export function clearImpersonationState() {
-  try {
-    localStorage.removeItem(IMPERSONATION_ACTIVE_KEY);
-    localStorage.removeItem(IMPERSONATION_ADMIN_SNAPSHOT_KEY);
-  } catch { /* ignore */ }
-}
-
-/** Called inside the impersonated tab when the magic link lands. */
-export function captureImpersonationFromHash(): ImpersonationActiveState | null {
-  if (typeof window === 'undefined') return null;
-  const hash = window.location.hash || '';
-  if (!hash.includes('impersonating=1')) return null;
-  const params = new URLSearchParams(hash.replace(/^#/, ''));
-  const state: ImpersonationActiveState = {
-    admin_id: params.get('admin_id') || '',
-    admin_email: params.get('admin_email'),
-    target_id: params.get('target_id') || '',
-    target_email: params.get('target_email') || '',
-    audit_id: params.get('audit_id'),
-    started_at: Date.now(),
-    has_snapshot: !!localStorage.getItem(IMPERSONATION_ADMIN_SNAPSHOT_KEY),
-  };
-  try {
-    localStorage.setItem(IMPERSONATION_ACTIVE_KEY, JSON.stringify(state));
-  } catch { /* ignore */ }
-  // Strip the marker from the URL so it doesn't leak into shared links.
-  try {
-    const clean = window.location.pathname + window.location.search;
-    window.history.replaceState({}, '', clean);
-  } catch { /* ignore */ }
-  return state;
-}
-
-/** Saves the current admin session so we can restore it after a same-tab handoff. */
-export async function snapshotAdminSession(returnTo: string): Promise<void> {
-  const { data } = await supabase.auth.getSession();
-  const s = data?.session;
-  if (!s?.access_token || !s.refresh_token || !s.user?.id) return;
-  const snap: AdminSessionSnapshot = {
-    access_token: s.access_token,
-    refresh_token: s.refresh_token,
-    admin_id: s.user.id,
-    admin_email: s.user.email ?? null,
-    return_to: returnTo,
-    saved_at: Date.now(),
-  };
-  localStorage.setItem(IMPERSONATION_ADMIN_SNAPSHOT_KEY, JSON.stringify(snap));
-}
-
-export function readAdminSnapshot(): AdminSessionSnapshot | null {
-  try {
-    const raw = localStorage.getItem(IMPERSONATION_ADMIN_SNAPSHOT_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as AdminSessionSnapshot;
-  } catch {
-    return null;
-  }
-}
-
-/** Starts impersonation by minting a magic link via the edge function. */
-export async function startImpersonation(args: {
+export interface StartImpersonationArgs {
   targetUserId: string;
   targetEmail: string;
   reason?: string;
-  redirectTo?: string;
-}): Promise<{ actionLink: string; auditId: string | null } | { error: string }> {
-  const { data, error } = await supabase.functions.invoke('admin-impersonate-demo-user', {
-    body: {
-      action: 'start',
-      targetUserId: args.targetUserId,
-      targetEmail: args.targetEmail,
-      reason: args.reason,
-      redirectTo: args.redirectTo,
-    },
-  });
-  if (error) return { error: error.message };
-  const payload = data as { actionLink?: string; auditId?: string | null; error?: string };
-  if (payload?.error || !payload?.actionLink) return { error: payload?.error || 'Failed to start impersonation' };
-  return { actionLink: payload.actionLink, auditId: payload.auditId ?? null };
+  sourceSurface?: string;
+  landingPath?: string;
 }
 
-/** Stops impersonation: restores admin session if snapshot present, audits stop. */
-export async function stopImpersonation(opts?: { reason?: string }): Promise<{ returnTo: string | null }> {
-  const active = readActiveImpersonation();
-  const snapshot = readAdminSnapshot();
+export interface StartImpersonationOk {
+  ok: true;
+  sessionId: string;
+  expiresAt: string;
+  actionLink: string;
+  callbackUrl: string;
+  target: {
+    id: string;
+    email: string;
+    demoCompanyId: string;
+    demoCompanyName: string | null;
+    seedHealthy: boolean;
+  };
+}
 
-  // Best-effort audit. Use current (impersonated) session for auth — that's
-  // fine; the edge function only needs to identify the admin from audit_id.
-  try {
-    await supabase.functions.invoke('admin-impersonate-demo-user', {
-      body: {
-        action: 'stop',
-        targetUserId: active?.target_id,
-        targetEmail: active?.target_email,
-        auditId: active?.audit_id,
-        reason: opts?.reason ?? 'return_to_admin',
-      },
-    });
-  } catch { /* non-blocking */ }
+export interface StartImpersonationErr {
+  ok: false;
+  error: string;
+  code?: string;
+}
 
-  let returnTo: string | null = null;
-  if (snapshot) {
-    try {
-      // Sign out of the impersonated session, then re-attach admin tokens.
-      await supabase.auth.signOut({ scope: 'local' });
-      const { error } = await supabase.auth.setSession({
-        access_token: snapshot.access_token,
-        refresh_token: snapshot.refresh_token,
-      });
-      if (!error) returnTo = snapshot.return_to;
-    } catch { /* fallthrough — clear state */ }
-  } else {
-    // No snapshot (admin opened in a new tab) — just sign out of demo.
-    try { await supabase.auth.signOut(); } catch { /* ignore */ }
-  }
-  clearImpersonationState();
-  return { returnTo };
+export async function startImpersonation(
+  args: StartImpersonationArgs,
+): Promise<StartImpersonationOk | StartImpersonationErr> {
+  const { data, error } = await supabase.functions.invoke('start-demo-impersonation', {
+    body: args,
+  });
+  if (error) return { ok: false, error: error.message };
+  const p = data as Partial<StartImpersonationOk> & { error?: string; code?: string };
+  if (!p?.actionLink) return { ok: false, error: p?.error || 'Failed to start impersonation', code: p?.code };
+  return p as StartImpersonationOk;
+}
+
+export interface StopImpersonationResult {
+  ok: boolean;
+  returnLink: string | null;
+  returnTo: string | null;
+  error?: string;
+}
+
+export async function stopImpersonation(opts?: {
+  sessionId?: string;
+  reason?: string;
+  returnTo?: string;
+}): Promise<StopImpersonationResult> {
+  const { data, error } = await supabase.functions.invoke('stop-demo-impersonation', {
+    body: {
+      sessionId: opts?.sessionId,
+      reason: opts?.reason ?? 'return_to_admin',
+      returnTo: opts?.returnTo ?? '/admin?section=users-permissions&page=demo-metrics',
+    },
+  });
+  if (error) return { ok: false, returnLink: null, returnTo: null, error: error.message };
+  const p = data as { ok?: boolean; returnLink?: string | null; returnTo?: string | null; error?: string };
+  return {
+    ok: !!p?.ok,
+    returnLink: p?.returnLink ?? null,
+    returnTo: p?.returnTo ?? null,
+    error: p?.error,
+  };
 }

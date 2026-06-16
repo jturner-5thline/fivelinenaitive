@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, UserCog, Wrench } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { snapshotAdminSession, startImpersonation } from '@/lib/adminImpersonation';
+import { startImpersonation } from '@/lib/adminImpersonation';
 
 export interface ImpersonateTarget {
   userId: string;
@@ -49,20 +49,14 @@ export function ImpersonateDemoDialog({
         onAfterRepair?.();
       }
 
-      // Same-tab handoff needs to snapshot the admin session first so we
-      // can restore it via "Return to Admin". New-tab path leaves the
-      // admin tab fully intact, no snapshot required.
-      if (!newTab) {
-        await snapshotAdminSession(window.location.pathname + window.location.search);
-      }
-
       const res = await startImpersonation({
         targetUserId: target.userId,
         targetEmail: target.email,
         reason: 'admin/demo-metrics:open-demo-workspace',
+        sourceSurface: 'admin/demo-metrics',
       });
-      if ('error' in res) {
-        toast.error(res.error);
+      if (res.ok !== true) {
+        toast.error((res as { error: string }).error);
         setBusy(false);
         return;
       }
@@ -87,8 +81,9 @@ export function ImpersonateDemoDialog({
         targetUserId: target.userId,
         targetEmail: target.email,
         reason: 'admin/demo-metrics:copy-magic-link',
+        sourceSurface: 'admin/demo-metrics',
       });
-      if ('error' in res) { toast.error(res.error); return; }
+      if (res.ok !== true) { toast.error((res as { error: string }).error); return; }
       await navigator.clipboard.writeText(res.actionLink);
       toast.success('Magic sign-in link copied');
     } finally {
