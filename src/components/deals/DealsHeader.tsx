@@ -88,6 +88,7 @@ export function DealsHeader() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   const isNaitivePipelineRoute = location.pathname.startsWith('/naitive-pipeline');
   // The /deals page now renders its own + New Deal button inline with the
   // page-level action row (Export / Notifications / Activity). Suppress
