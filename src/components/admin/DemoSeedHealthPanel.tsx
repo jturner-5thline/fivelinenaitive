@@ -3,9 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench } from "lucide-react";
+import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench, UserCog } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAdminRole } from "@/hooks/useAdminRole";
+import { ImpersonateDemoDialog, type ImpersonateTarget } from "./ImpersonateDemoDialog";
+
+interface TenantMember {
+  userId: string;
+  email: string | null;
+  fullName: string | null;
+  role: string;
+  addedAt: string | null;
+  lastSignInAt: string | null;
+}
 
 interface TenantRow {
   companyId: string;
@@ -18,6 +29,7 @@ interface TenantRow {
   targets: Record<string, number>;
   missing: Record<string, number>;
   pipelineId: string | null;
+  members?: TenantMember[];
 }
 
 const FIELDS: Array<{ key: keyof TenantRow["counts"]; label: string }> = [
@@ -35,6 +47,8 @@ export function DemoSeedHealthPanel() {
   const [rows, setRows] = useState<TenantRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [repairing, setRepairing] = useState<string | null>(null);
+  const { isAdmin } = useAdminRole();
+  const [impersonateTarget, setImpersonateTarget] = useState<ImpersonateTarget | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -157,6 +171,84 @@ export function DemoSeedHealthPanel() {
             </TableBody>
           </Table>
         </div>
+
+        {isAdmin && rows && rows.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <UserCog className="h-4 w-4" /> Demo users
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Open any demo workspace as that user. The admin session is preserved
+              when you choose &ldquo;open in new tab&rdquo;.
+            </p>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Demo user</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Demo account</TableHead>
+                    <TableHead>Seed</TableHead>
+                    <TableHead>Last sign-in</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.flatMap((r) =>
+                    (r.members ?? []).map((m) => (
+                      <TableRow key={`${r.companyId}-${m.userId}`}>
+                        <TableCell className="font-medium">{m.fullName || "—"}</TableCell>
+                        <TableCell className="text-muted-foreground">{m.email || "—"}</TableCell>
+                        <TableCell>{r.name}</TableCell>
+                        <TableCell>
+                          {r.ok
+                            ? <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">healthy</Badge>
+                            : <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">incomplete</Badge>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {m.lastSignInAt ? new Date(m.lastSignInAt).toLocaleString() : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!m.email}
+                            onClick={() => m.email && setImpersonateTarget({
+                              userId: m.userId,
+                              email: m.email,
+                              fullName: m.fullName,
+                              companyId: r.companyId,
+                              companyName: r.name,
+                              seededOk: r.ok,
+                              seededAt: r.seededAt,
+                            })}
+                          >
+                            <UserCog className="h-3.5 w-3.5 mr-1" />
+                            Open demo workspace
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )),
+                  )}
+                  {rows.every((r) => !(r.members?.length)) && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
+                        No demo users found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+
+        <ImpersonateDemoDialog
+          open={!!impersonateTarget}
+          onOpenChange={(v) => { if (!v) setImpersonateTarget(null); }}
+          target={impersonateTarget}
+          onAfterRepair={load}
+        />
       </CardContent>
     </Card>
   );
