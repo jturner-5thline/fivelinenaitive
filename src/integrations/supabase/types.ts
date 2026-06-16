@@ -687,6 +687,63 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_impersonation_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          ended_reason: string | null
+          expires_at: string
+          id: string
+          ip_address: string | null
+          nonce: string
+          source_admin_email: string | null
+          source_admin_user_id: string
+          source_surface: string
+          started_at: string
+          target_demo_company_id: string | null
+          target_demo_company_name: string | null
+          target_demo_email: string | null
+          target_demo_user_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          nonce: string
+          source_admin_email?: string | null
+          source_admin_user_id: string
+          source_surface?: string
+          started_at?: string
+          target_demo_company_id?: string | null
+          target_demo_company_name?: string | null
+          target_demo_email?: string | null
+          target_demo_user_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          ended_reason?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: string | null
+          nonce?: string
+          source_admin_email?: string | null
+          source_admin_user_id?: string
+          source_surface?: string
+          started_at?: string
+          target_demo_company_id?: string | null
+          target_demo_company_name?: string | null
+          target_demo_email?: string | null
+          target_demo_user_id?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       admin_one_time_links: {
         Row: {
           admin_email: string | null
@@ -27833,6 +27890,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["data_access_scope"]
       }
       hard_delete_deal: { Args: { _deal_id: string }; Returns: undefined }
+      has_active_admin_impersonation: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
