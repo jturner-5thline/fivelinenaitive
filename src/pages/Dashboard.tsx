@@ -39,6 +39,7 @@ import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenc
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { perfMark, perfMeasure } from '@/lib/perfMarks';
