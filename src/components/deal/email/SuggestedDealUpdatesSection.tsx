@@ -37,6 +37,7 @@ import {
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { DealPickerCard } from './DealPickerCard';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   dealId?: string;
