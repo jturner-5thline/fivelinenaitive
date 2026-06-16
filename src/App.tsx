@@ -358,6 +358,7 @@ const App = () => (
                           <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth/demo/callback" element={<DemoCallbackRedirect />} />
+                          <Route path="/auth/impersonation/callback" element={<ImpersonationCallback />} />
                           <Route path="/pending-approval" element={<Navigate to="/pipeline" replace />} />
                           <Route path="/pending-company-approval" element={<Navigate to="/pipeline" replace />} />
                           <Route path="/onboarding" element={
