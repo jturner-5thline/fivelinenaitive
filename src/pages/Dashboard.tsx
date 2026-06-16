@@ -527,6 +527,7 @@ export default function Dashboard() {
   const [actionQueueOpen, setActionQueueOpen] = useState(false);
   const actionQueueCount = useAiActionQueueCount();
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
 
   // Auto-refresh queue contents whenever the modal opens so the list always
   // reflects the latest pending AI actions.
