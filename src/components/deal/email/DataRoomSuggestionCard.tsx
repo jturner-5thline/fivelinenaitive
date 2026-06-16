@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { DataRoomDestinationSuggestion } from '@/hooks/useEmailToDataRoom';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   attachmentCount: number;
@@ -38,6 +39,7 @@ export function DataRoomSuggestionCard({
   onDismiss,
   onAddToQueue,
 }: Props) {
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   const targetName = suggestion?.suggested_deal_name || dealName;
   const targetLabel = targetName ? `${targetName} Data Room — Internal` : 'a deal data room';
 
