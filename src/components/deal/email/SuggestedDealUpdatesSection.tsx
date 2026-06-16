@@ -494,7 +494,7 @@ function SuggestionCard({
           Dismiss
         </Button>
         <div className="flex-1" />
-        <Button
+        {approvalQueueEnabled && <Button
           variant="outline"
           size="sm"
           className="h-7 text-[11px] gap-1 px-2"
@@ -519,7 +519,7 @@ function SuggestionCard({
           }}
         >
           <InboxIcon className="h-3 w-3" /> Queue
-        </Button>
+        </Button>}
         <Button
           size="sm"
           className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
