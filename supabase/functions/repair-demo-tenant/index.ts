@@ -84,24 +84,61 @@ serve(async (req: Request) => {
     const memberIds = (companyMembers ?? []).map((m) => m.user_id as string);
 
     // Single canonical provisioning service. Same code path as create.
-    const seeded = await provisionDemoWorkspace(admin, {
-      companyId,
-      attributingUserId: demoUserId,
-      memberUserIds: memberIds.length ? memberIds : [demoUserId],
-    });
+    try {
+      const seeded = await provisionDemoWorkspace(admin, {
+        companyId,
+        attributingUserId: demoUserId,
+        memberUserIds: memberIds.length ? memberIds : [demoUserId],
+      });
 
-    return json({
-      success: true,
-      companyId,
-      attributedUserId: demoUserId,
-      memberIds,
-      renamed: !!body.renameTo,
-      seeded,
-    }, 200);
+      const hasWarnings =
+        (seeded.warnings && seeded.warnings.length > 0) ||
+        Object.keys(seeded.missing).length > 0;
+
+      return json({
+        status: hasWarnings ? "warning" : "ok",
+        message: hasWarnings
+          ? "Demo workspace repaired with nonblocking warnings."
+          : "Demo workspace repaired successfully.",
+        repaired: true,
+        canOpenWorkspace: true,
+        companyId,
+        attributedUserId: demoUserId,
+        memberIds,
+        renamed: !!body.renameTo,
+        createdCounts: seeded.insertedThisRun,
+        missingCounts: seeded.missing,
+        warnings: seeded.warnings ?? [],
+        seeded,
+      }, 200);
+    } catch (provErr) {
+      const e = provErr as Error & { fatalMissing?: Record<string, number>; warnings?: string[] };
+      console.error("[repair-demo-tenant] fatal provisioning gap", e.message, {
+        fatalMissing: e.fatalMissing,
+        warnings: e.warnings,
+      });
+      return json({
+        status: "fatal",
+        message: e.message,
+        repaired: false,
+        canOpenWorkspace: false,
+        companyId,
+        attributedUserId: demoUserId,
+        memberIds,
+        missingCounts: e.fatalMissing ?? {},
+        warnings: e.warnings ?? [],
+      }, 200);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[repair-demo-tenant] fatal", msg);
-    return json({ error: msg }, 500);
+    return json({
+      status: "fatal",
+      message: msg,
+      repaired: false,
+      canOpenWorkspace: false,
+      error: msg,
+    }, 500);
   }
 });
 
