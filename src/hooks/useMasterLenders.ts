@@ -518,6 +518,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (updateError) throw updateError;
 
       setLenders((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
+      // Keep the shared cache in sync so peer hooks don't see stale rows.
+      if (cachedLenders) {
+        cachedLenders = cachedLenders.map((l) => (l.id === id ? { ...l, ...updates } as MasterLender : l));
+      }
 
       // Auto-sync to Flex (fire and forget)
       syncLenderToFlex(id);
@@ -537,6 +541,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (deleteError) throw deleteError;
 
       setLenders((prev) => prev.filter((l) => l.id !== id));
+      if (cachedLenders) cachedLenders = cachedLenders.filter((l) => l.id !== id);
       setTotalCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev));
       return true;
     } catch (err) {
@@ -554,6 +559,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
       if (deleteError) throw deleteError;
 
+      invalidateMasterLendersCache();
       setLenders([]);
       setTotalCount(0);
       setHasMore(false);
