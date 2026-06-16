@@ -6,8 +6,7 @@ import { Sparkles, ExternalLink, Wrench, RefreshCw, Loader2, ShieldCheck } from 
 import { toast } from 'sonner';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { startImpersonation } from '@/lib/adminImpersonation';
-import { DEMO_COMPANY_ID, DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
+import { DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
 
 /**
  * Standard Demo Workspace — the canonical admin preview/testing tenant.
@@ -28,20 +27,19 @@ export function StandardDemoPanel() {
   async function launch(newTab: boolean) {
     setBusy(newTab ? 'open_new' : 'open');
     try {
-      const res = await startImpersonation({
-        targetEmail: DEMO_PRIMARY_EMAIL,
-        sourceSurface: 'admin/demo-metrics/standard-demo',
-        landingPath: '/deals',
+      const { data, error } = await supabase.functions.invoke('open-standard-demo-workspace', {
+        body: { openInNewTab: newTab, landingPath: '/deals' },
       });
-      if (!res.ok) {
-        toast.error((res as { error?: string }).error || 'Failed to open standard demo');
+      const payload = data as { ok?: boolean; actionLink?: string; error?: string } | null;
+      if (error || !payload?.ok || !payload.actionLink) {
+        toast.error(payload?.error || error?.message || 'Failed to open standard demo');
         return;
       }
       if (newTab) {
-        window.open(res.actionLink, '_blank', 'noopener,noreferrer');
+        window.open(payload.actionLink, '_blank', 'noopener,noreferrer');
         toast.success('Opened standard demo in a new tab');
       } else {
-        window.location.href = res.actionLink;
+        window.location.href = payload.actionLink;
       }
     } finally {
       setBusy(null);
@@ -51,26 +49,25 @@ export function StandardDemoPanel() {
   async function repair(reset: boolean) {
     setBusy(reset ? 'reset' : 'repair');
     try {
-      const { data, error } = await supabase.functions.invoke('repair-demo-tenant', {
-        body: {
-          companyId: DEMO_COMPANY_ID,
-          userEmail: DEMO_PRIMARY_EMAIL,
-          ...(reset ? { mode: 'reset' } : {}),
-        },
+      const { data, error } = await supabase.functions.invoke('open-standard-demo-workspace', {
+        body: reset
+          ? { resetWorkspace: true, repairIfNeeded: true }
+          : { repairIfNeeded: true },
       });
-      let payload: any = data;
+      const payload = data as { ok?: boolean; repairResult?: { status?: string; message?: string }; error?: string } | null;
+      let errPayload: { error?: string } | null = null;
       if (!payload && error instanceof FunctionsHttpError && error.context instanceof Response) {
-        try { payload = await error.context.clone().json(); } catch { /* ignore */ }
+        try { errPayload = await error.context.clone().json(); } catch { /* ignore */ }
       }
-      if (error && !payload?.status) {
+      if (error && !payload?.ok) {
         toast.error(`${reset ? 'Reset' : 'Repair'} failed: ${error.message}`);
         return;
       }
-      const status = payload?.status ?? 'ok';
+      const status = payload?.repairResult?.status ?? 'ok';
       if (status === 'fatal') {
-        toast.error(payload?.message || `${reset ? 'Reset' : 'Repair'} could not complete.`);
+        toast.error(payload?.repairResult?.message || errPayload?.error || `${reset ? 'Reset' : 'Repair'} could not complete.`);
       } else if (status === 'warning') {
-        toast.warning(payload?.message || `${reset ? 'Reset' : 'Repair'} completed with warnings.`);
+        toast.warning(payload?.repairResult?.message || `${reset ? 'Reset' : 'Repair'} completed with warnings.`);
       } else {
         toast.success(`${reset ? 'Reset' : 'Repair'} completed.`);
       }
