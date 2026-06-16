@@ -395,6 +395,7 @@ function SuggestionCard({
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   const contactPayload = suggestion.payload as PendingDealSuggestionPayload;
   const [draft, setDraft] = useState<PendingDealSuggestionPayload>({
     ...contactPayload,
