@@ -50,18 +50,32 @@ serve(async (req: Request) => {
           .eq("company_id", c.id);
         const memberRows = await Promise.all(
           (members ?? []).map(async (m) => {
-            const { data: u } = await admin.auth.admin.getUserById(m.user_id as string);
-            const { data: p } = await admin
-              .from("profiles").select("full_name, last_sign_in_at")
-              .eq("id", m.user_id as string).maybeSingle();
-            return {
-              userId: m.user_id as string,
-              email: u?.user?.email ?? null,
-              fullName: (p as any)?.full_name ?? (u?.user?.user_metadata as any)?.full_name ?? null,
-              role: m.role,
-              addedAt: m.created_at,
-              lastSignInAt: u?.user?.last_sign_in_at ?? (p as any)?.last_sign_in_at ?? null,
-            };
+            try {
+              const { data: u } = await admin.auth.admin.getUserById(m.user_id as string);
+              const { data: p } = await admin
+                .from("profiles").select("full_name, is_demo_user")
+                .eq("user_id", m.user_id as string).maybeSingle();
+              return {
+                userId: m.user_id as string,
+                email: u?.user?.email ?? null,
+                fullName: (p as any)?.full_name ?? (u?.user?.user_metadata as any)?.full_name ?? null,
+                role: m.role,
+                addedAt: m.created_at,
+                lastSignInAt: u?.user?.last_sign_in_at ?? null,
+                isDemoUser: (p as any)?.is_demo_user ?? false,
+              };
+            } catch (err) {
+              console.error("[demo-metrics] member fetch failed", m.user_id, err);
+              return {
+                userId: m.user_id as string,
+                email: null,
+                fullName: null,
+                role: m.role,
+                addedAt: m.created_at,
+                lastSignInAt: null,
+                isDemoUser: false,
+              };
+            }
           }),
         );
         return {
