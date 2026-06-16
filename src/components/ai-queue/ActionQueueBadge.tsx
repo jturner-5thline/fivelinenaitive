@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ActionQueuePanel } from './ActionQueuePanel';
 
 /**
@@ -12,6 +13,7 @@ import { ActionQueuePanel } from './ActionQueuePanel';
  * and opens the inline review panel.
  */
 export function ActionQueueBadge() {
+  const { enabled: queueEnabled } = useApprovalQueueAccess();
   const aiCount = useAiActionQueueCount();
   const { data = [], refetch } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
@@ -29,6 +31,9 @@ export function ActionQueueBadge() {
     // sees the latest pending items.
     if (next) refetch();
   };
+
+  // Master gate — Approval Queue is off or user is not on the 5th Line account.
+  if (!queueEnabled) return null;
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
