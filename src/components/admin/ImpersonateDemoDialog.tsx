@@ -4,7 +4,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, UserCog, Wrench } from 'lucide-react';
+import { Loader2, UserCog, Wrench, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { startImpersonation } from '@/lib/adminImpersonation';
@@ -30,21 +30,48 @@ export function ImpersonateDemoDialog({
   const [newTab, setNewTab] = useState(true);
   const [repairFirst, setRepairFirst] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [inlineError, setInlineError] = useState<string | null>(null);
 
   if (!target) return null;
 
   const handleOpen = async () => {
     if (busy) return;
+    setInlineError(null);
     setBusy(true);
     try {
       if (repairFirst || !target.seededOk) {
-        const { error } = await supabase.functions.invoke('repair-demo-tenant', {
+        const { data, error } = await supabase.functions.invoke('repair-demo-tenant', {
           body: { companyId: target.companyId },
         });
-        if (error) {
-          toast.error(`Repair failed: ${error.message}`);
+        const payload = (data ?? {}) as {
+          status?: 'ok' | 'warning' | 'fatal';
+          message?: string;
+          canOpenWorkspace?: boolean;
+          warnings?: string[];
+          missingCounts?: Record<string, number>;
+          createdCounts?: Record<string, number>;
+        };
+        if (error && !payload.status) {
+          setInlineError(`Repair failed: ${error.message}`);
           setBusy(false);
           return;
+        }
+        if (payload.status === 'fatal' || payload.canOpenWorkspace === false) {
+          setInlineError(
+            payload.message ?? 'Repair could not complete. Cannot open workspace.',
+          );
+          setBusy(false);
+          return;
+        }
+        if (payload.status === 'warning') {
+          const created = payload.createdCounts
+            ? Object.entries(payload.createdCounts).filter(([, v]) => (v ?? 0) > 0)
+            : [];
+          toast.warning('Demo workspace opened with warnings', {
+            description: created.length
+              ? `Reseeded: ${created.map(([k, v]) => `${k}=${v}`).join(', ')}`
+              : payload.message,
+          });
         }
         onAfterRepair?.();
       }
@@ -56,7 +83,7 @@ export function ImpersonateDemoDialog({
         sourceSurface: 'admin/demo-metrics',
       });
       if (res.ok !== true) {
-        toast.error((res as { error: string }).error);
+        setInlineError((res as { error: string }).error);
         setBusy(false);
         return;
       }
@@ -69,7 +96,7 @@ export function ImpersonateDemoDialog({
         window.location.href = res.actionLink;
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to open demo workspace');
+      setInlineError(e instanceof Error ? e.message : 'Failed to open demo workspace');
       setBusy(false);
     }
   };
@@ -130,6 +157,19 @@ export function ImpersonateDemoDialog({
             <Wrench className="h-3.5 w-3.5" /> Repair demo data before opening
           </label>
         </div>
+
+        {inlineError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
+            <div className="space-y-1 flex-1">
+              <div className="font-medium text-destructive">Could not complete</div>
+              <div className="text-destructive/90 break-words">{inlineError}</div>
+              <div className="text-xs text-muted-foreground pt-1">
+                Try Repair again, open without repair, or copy a magic link.
+              </div>
+            </div>
+          </div>
+        )}
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
