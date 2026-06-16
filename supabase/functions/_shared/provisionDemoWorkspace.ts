@@ -214,6 +214,7 @@ export async function provisionDemoWorkspace(
     deals: 0, contacts: 0, crmCompanies: 0, tasks: 0, fundingSources: 0,
     calendarEvents: 0, inboxEmails: 0, dealActivities: 0,
   };
+  const warnings: string[] = [];
 
   // 4) Top-up CRM companies.
   const haveCrm = await countDemo(admin, "crm_companies", { org_company_id: companyId });
