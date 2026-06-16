@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench, UserCog } from "lucide-react";
+import { RefreshCcw, ShieldCheck, ShieldAlert, Wrench, UserCog, ExternalLink } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAdminRole } from "@/hooks/useAdminRole";
@@ -82,6 +85,34 @@ export function DemoSeedHealthPanel() {
     }
   };
 
+  const buildTarget = (r: TenantRow, m: TenantMember): ImpersonateTarget => ({
+    userId: m.userId,
+    email: m.email ?? "",
+    fullName: m.fullName,
+    companyId: r.companyId,
+    companyName: r.name,
+    seededOk: r.ok,
+    seededAt: r.seededAt,
+  });
+
+  const openTenantWorkspace = (r: TenantRow) => {
+    const eligible = (r.members ?? []).filter((m) => !!m.email);
+    if (eligible.length === 1) {
+      setImpersonateTarget(buildTarget(r, eligible[0]));
+    } else if (eligible.length === 0) {
+      toast.error("No demo user is linked to this tenant yet. Run Repair to provision.");
+    }
+    // multiple → handled by dropdown menu trigger directly
+  };
+
+  const allMembers = useMemo(() => {
+    return (rows ?? []).flatMap((r) =>
+      (r.members ?? []).map((m) => ({ tenant: r, member: m })),
+    );
+  }, [rows]);
+
+  const eligibleMembers = allMembers.filter(({ member }) => !!member.email);
+
   const healthy = rows?.filter((r) => r.ok).length ?? 0;
   const unhealthy = rows ? rows.length - healthy : 0;
 
@@ -98,10 +129,47 @@ export function DemoSeedHealthPanel() {
             Repair runs the same shared provisioning service (idempotent, no duplicates).
           </CardDescription>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && eligibleMembers.length > 0 && (
+            eligibleMembers.length === 1 ? (
+              <Button
+                size="sm"
+                onClick={() => setImpersonateTarget(buildTarget(eligibleMembers[0].tenant, eligibleMembers[0].member))}
+              >
+                <UserCog className="h-4 w-4 mr-2" />
+                Open demo workspace
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Open demo workspace
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  <DropdownMenuLabel>Pick a demo user</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {eligibleMembers.map(({ tenant, member }) => (
+                    <DropdownMenuItem
+                      key={`${tenant.companyId}-${member.userId}`}
+                      onSelect={() => setImpersonateTarget(buildTarget(tenant, member))}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{member.email}</span>
+                        <span className="text-xs text-muted-foreground">{tenant.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          )}
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex gap-3 mb-3 text-sm">
@@ -154,14 +222,47 @@ export function DemoSeedHealthPanel() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline" size="sm"
-                      onClick={() => repair(r.companyId)}
-                      disabled={repairing === r.companyId}
-                    >
-                      <Wrench className="h-3.5 w-3.5 mr-1" />
-                      {repairing === r.companyId ? "Repairing…" : r.ok ? "Reverify" : "Repair"}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      {(() => {
+                        const eligible = (r.members ?? []).filter((m) => !!m.email);
+                        if (eligible.length > 1) {
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <UserCog className="h-3.5 w-3.5 mr-1" /> Open
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-64">
+                                <DropdownMenuLabel>Pick a demo user</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {eligible.map((m) => (
+                                  <DropdownMenuItem key={m.userId} onSelect={() => setImpersonateTarget(buildTarget(r, m))}>
+                                    {m.email}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          );
+                        }
+                        if (eligible.length === 1) {
+                          return (
+                            <Button variant="outline" size="sm" onClick={() => openTenantWorkspace(r)}>
+                              <UserCog className="h-3.5 w-3.5 mr-1" /> Open
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <Button
+                        variant="outline" size="sm"
+                        onClick={() => repair(r.companyId)}
+                        disabled={repairing === r.companyId}
+                      >
+                        <Wrench className="h-3.5 w-3.5 mr-1" />
+                        {repairing === r.companyId ? "Repairing…" : r.ok ? "Reverify" : "Repair"}
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -209,31 +310,48 @@ export function DemoSeedHealthPanel() {
                           {m.lastSignInAt ? new Date(m.lastSignInAt).toLocaleString() : "—"}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={!m.email}
-                            onClick={() => m.email && setImpersonateTarget({
-                              userId: m.userId,
-                              email: m.email,
-                              fullName: m.fullName,
-                              companyId: r.companyId,
-                              companyName: r.name,
-                              seededOk: r.ok,
-                              seededAt: r.seededAt,
-                            })}
-                          >
-                            <UserCog className="h-3.5 w-3.5 mr-1" />
-                            Open demo workspace
-                          </Button>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              disabled={!m.email}
+                              onClick={() => m.email && setImpersonateTarget(buildTarget(r, m))}
+                            >
+                              <UserCog className="h-3.5 w-3.5 mr-1" />
+                              Open demo workspace
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     )),
                   )}
                   {rows.every((r) => !(r.members?.length)) && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-4">
-                        No demo users found.
+                      <TableCell colSpan={6} className="py-6">
+                        <div className="flex flex-col items-center gap-2 text-center">
+                          <div className="text-sm text-muted-foreground">
+                            No provisioned demo users found for current demo tenants.
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Demo tenants exist but no demo auth user is linked. Repair will
+                            provision the canonical demo user and seed data.
+                          </div>
+                          <div className="flex gap-2 mt-1">
+                            <Button size="sm" variant="outline" onClick={load} disabled={loading}>
+                              <RefreshCcw className={`h-3.5 w-3.5 mr-1 ${loading ? "animate-spin" : ""}`} /> Refresh
+                            </Button>
+                            {rows.map((r) => (
+                              <Button
+                                key={r.companyId}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => repair(r.companyId)}
+                                disabled={repairing === r.companyId}
+                              >
+                                <Wrench className="h-3.5 w-3.5 mr-1" /> Repair {r.name}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )}
