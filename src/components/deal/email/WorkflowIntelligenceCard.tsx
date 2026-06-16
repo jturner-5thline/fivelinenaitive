@@ -11,6 +11,7 @@ import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWork
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   analysis: WorkflowAnalysis;
