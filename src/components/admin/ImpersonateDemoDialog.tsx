@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, UserCog, Wrench, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { startImpersonation } from '@/lib/adminImpersonation';
 
@@ -17,6 +18,36 @@ export interface ImpersonateTarget {
   companyName: string;
   seededOk: boolean;
   seededAt: string | null;
+}
+
+type RepairPayload = {
+  status?: 'ok' | 'warning' | 'fatal';
+  message?: string;
+  canOpenWorkspace?: boolean;
+  warnings?: string[];
+  missingCounts?: Record<string, number>;
+  createdCounts?: Record<string, number>;
+  repairPerformed?: boolean;
+  error?: string;
+};
+
+async function payloadFromFunctionError(error: unknown): Promise<RepairPayload | null> {
+  if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+    try {
+      return (await error.context.clone().json()) as RepairPayload;
+    } catch {
+      return null;
+    }
+  }
+  const maybe = error as { name?: string; context?: Response } | null;
+  if (maybe?.name === 'FunctionsHttpError' && maybe.context instanceof Response) {
+    try {
+      return (await maybe.context.clone().json()) as RepairPayload;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 export function ImpersonateDemoDialog({
@@ -34,31 +65,27 @@ export function ImpersonateDemoDialog({
 
   if (!target) return null;
 
-  const handleOpen = async () => {
+  const handleOpen = async (opts?: { skipRepair?: boolean; forceRepair?: boolean }) => {
     if (busy) return;
     setInlineError(null);
     setBusy(true);
     try {
-      if (repairFirst || !target.seededOk) {
+      if (!opts?.skipRepair && (opts?.forceRepair || repairFirst || !target.seededOk)) {
         const { data, error } = await supabase.functions.invoke('repair-demo-tenant', {
           body: { companyId: target.companyId },
         });
-        const payload = (data ?? {}) as {
-          status?: 'ok' | 'warning' | 'fatal';
-          message?: string;
-          canOpenWorkspace?: boolean;
-          warnings?: string[];
-          missingCounts?: Record<string, number>;
-          createdCounts?: Record<string, number>;
-        };
-        if (error && !payload.status) {
+        const payload = ((data ?? {}) as RepairPayload) ?? (await payloadFromFunctionError(error));
+        if (error && !payload?.status) {
           setInlineError(`Repair failed: ${error.message}`);
           setBusy(false);
           return;
         }
-        if (payload.status === 'fatal' || payload.canOpenWorkspace === false) {
+        if (payload?.status === 'fatal' || payload?.canOpenWorkspace === false) {
+          const missing = payload.missingCounts && Object.keys(payload.missingCounts).length > 0
+            ? ` Missing: ${JSON.stringify(payload.missingCounts)}`
+            : '';
           setInlineError(
-            payload.message ?? 'Repair could not complete. Cannot open workspace.',
+            `${payload.message ?? 'Repair could not complete. Cannot open workspace.'}${missing}`,
           );
           setBusy(false);
           return;
@@ -96,7 +123,8 @@ export function ImpersonateDemoDialog({
         window.location.href = res.actionLink;
       }
     } catch (e) {
-      setInlineError(e instanceof Error ? e.message : 'Failed to open demo workspace');
+      const payload = await payloadFromFunctionError(e);
+      setInlineError(payload?.message ?? (e instanceof Error ? e.message : 'Failed to open demo workspace'));
       setBusy(false);
     }
   };
@@ -174,10 +202,22 @@ export function ImpersonateDemoDialog({
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <Button variant="outline" onClick={handleCopyLink} disabled={busy}>Copy magic link</Button>
-          <Button onClick={handleOpen} disabled={busy}>
-            {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-            {repairFirst || !target.seededOk ? 'Repair + Open' : 'Open demo workspace'}
-          </Button>
+          {inlineError ? (
+            <>
+              <Button variant="outline" onClick={() => handleOpen({ skipRepair: true })} disabled={busy}>
+                Open without Repair
+              </Button>
+              <Button onClick={() => handleOpen({ forceRepair: true })} disabled={busy}>
+                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Retry Repair
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => handleOpen()} disabled={busy}>
+              {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              {repairFirst || !target.seededOk ? 'Repair + Open' : 'Open demo workspace'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
