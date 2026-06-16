@@ -151,10 +151,15 @@ export function ImpersonateDemoDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserCog className="h-5 w-5" /> Open demo workspace?
+            <UserCog className="h-5 w-5" /> Open this user's demo workspace?
           </DialogTitle>
-          <DialogDescription>
-            You are about to switch into this demo user and see exactly what they see.
+          <DialogDescription className="space-y-1">
+            <span className="block">
+              You are about to open this specific demo user's workspace for troubleshooting.
+            </span>
+            <span className="block text-amber-300">
+              This is not the standard demo workspace.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -215,7 +220,7 @@ export function ImpersonateDemoDialog({
           ) : (
             <Button onClick={() => handleOpen()} disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-              {repairFirst || !target.seededOk ? 'Repair + Open' : 'Open demo workspace'}
+              {repairFirst || !target.seededOk ? 'Repair + Open this user' : "Open this user's demo"}
             </Button>
           )}
         </DialogFooter>
