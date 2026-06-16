@@ -93,8 +93,7 @@ import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAna
 import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOverview";
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
-import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
-import { DemoSeedHealthPanel } from "@/components/admin/DemoSeedHealthPanel";
+import { StandardDemoPanel } from "@/components/admin/StandardDemoPanel";
 import { PerfDiagnosticsPanel } from "@/components/admin/PerfDiagnosticsPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
@@ -439,22 +438,7 @@ const Admin = () => {
         return <UserActivityPanel />;
       case "demo-metrics":
         return (
-          <>
-            <DemoSeedHealthPanel />
-            <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Demo & Pilot Metrics
-              </CardTitle>
-              <CardDescription>
-                Engagement snapshot for every demo / pilot workspace — sign-ins, AI usage,
-                deals created, and trial countdown.
-              </CardDescription>
-            </CardHeader>
-            <CardContent><DemoMetricsPanel /></CardContent>
-            </Card>
-          </>
+          <StandardDemoPanel />
         );
       case "feedback":
         return (

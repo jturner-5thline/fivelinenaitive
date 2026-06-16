@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ExternalLink, Wrench, RefreshCw, Loader2, ShieldCheck } from 'lucide-react';
+import { Sparkles, Loader2, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
+import { DEMO_PRIMARY_EMAIL, DEMO_COMPANY_ID } from '@/lib/demoAccount';
 
 /**
  * TEMPLATE Demo Workspace — the single canonical admin preview/testing tenant
@@ -22,58 +21,50 @@ import { DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
  * Per-user impersonation in the table below is a secondary diagnostic tool
  * only; this panel is the sole primary admin entry point.
  */
+/**
+ * Single canonical entry point into the TEMPLATE demo workspace —
+ * the same workspace ({DEMO_COMPANY_ID}) used as the source/framework
+ * when "Create Demo" provisions a new demo account. Never tied to any
+ * row selection, target user id, email, or seeded account.
+ *
+ * Uses a direct fetch (not supabase.functions.invoke) so the Lovable
+ * preview fetch proxy cannot drop the Authorization header.
+ */
 export function StandardDemoPanel() {
-  const [busy, setBusy] = useState<null | 'open' | 'open_new' | 'repair' | 'reset'>(null);
+  const [busy, setBusy] = useState(false);
 
-  async function launch(newTab: boolean) {
-    setBusy(newTab ? 'open_new' : 'open');
+  async function openDemo() {
+    setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke('open-standard-demo-workspace', {
-        body: { openInNewTab: newTab, landingPath: '/deals' },
-      });
-      const payload = data as { ok?: boolean; actionLink?: string; error?: string } | null;
-      if (error || !payload?.ok || !payload.actionLink) {
-        toast.error(payload?.error || error?.message || 'Failed to open standard demo');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        toast.error('No active session. Please sign in again.');
         return;
       }
-      if (newTab) {
-        window.open(payload.actionLink, '_blank', 'noopener,noreferrer');
-        toast.success('Opened standard demo in a new tab');
-      } else {
-        window.location.href = payload.actionLink;
-      }
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function repair(reset: boolean) {
-    setBusy(reset ? 'reset' : 'repair');
-    try {
-      const { data, error } = await supabase.functions.invoke('open-standard-demo-workspace', {
-        body: reset
-          ? { resetWorkspace: true, repairIfNeeded: true }
-          : { repairIfNeeded: true },
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/open-standard-demo-workspace`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          apikey: anonKey,
+        },
+        body: JSON.stringify({ landingPath: '/deals' }),
       });
-      const payload = data as { ok?: boolean; repairResult?: { status?: string; message?: string }; error?: string } | null;
-      let errPayload: { error?: string } | null = null;
-      if (!payload && error instanceof FunctionsHttpError && error.context instanceof Response) {
-        try { errPayload = await error.context.clone().json(); } catch { /* ignore */ }
-      }
-      if (error && !payload?.ok) {
-        toast.error(`${reset ? 'Reset' : 'Repair'} failed: ${error.message}`);
+      const payload = (await resp.json().catch(() => null)) as
+        | { ok?: boolean; actionLink?: string; error?: string }
+        | null;
+      if (!resp.ok || !payload?.ok || !payload.actionLink) {
+        toast.error(payload?.error || `Failed to open demo workspace (${resp.status})`);
         return;
       }
-      const status = payload?.repairResult?.status ?? 'ok';
-      if (status === 'fatal') {
-        toast.error(payload?.repairResult?.message || errPayload?.error || `${reset ? 'Reset' : 'Repair'} could not complete.`);
-      } else if (status === 'warning') {
-        toast.warning(payload?.repairResult?.message || `${reset ? 'Reset' : 'Repair'} completed with warnings.`);
-      } else {
-        toast.success(`${reset ? 'Reset' : 'Repair'} completed.`);
-      }
+      window.location.href = payload.actionLink;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to open demo workspace');
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -86,38 +77,26 @@ export function StandardDemoPanel() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-semibold">Open the TEMPLATE demo workspace</h3>
+              <h3 className="text-base font-semibold">Demo Workspace</h3>
               <Badge variant="outline" className="text-[10px] gap-1">
                 <ShieldCheck className="h-3 w-3" /> Canonical TEMPLATE
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Enter the single canonical TEMPLATE demo environment for admin preview and
-              testing. This workspace is the framework/source for all future demo accounts.
-              Resolved server-side ({DEMO_PRIMARY_EMAIL}) — never derived from a selected
-              tenant row or seeded user.
+              Opens the single canonical TEMPLATE demo workspace ({DEMO_PRIMARY_EMAIL}).
+              This is the same workspace used as the source/framework when Create Demo
+              provisions new demo accounts. Resolved server-side — never tied to a row,
+              tenant, or seeded account.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => launch(false)}
-              disabled={!!busy}
-            >
-              {busy === 'open' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-              Open TEMPLATE Demo Workspace
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => launch(true)} disabled={!!busy}>
-              {busy === 'open_new' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}
-              New Tab
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => repair(false)} disabled={!!busy}>
-              {busy === 'repair' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Wrench className="h-3.5 w-3.5 mr-1" />}
-              Repair
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => repair(true)} disabled={!!busy}>
-              {busy === 'reset' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
-              Reset
+          <div>
+            <Button size="sm" onClick={openDemo} disabled={busy}>
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 mr-1" />
+              )}
+              Open Demo Workspace
             </Button>
           </div>
         </div>
