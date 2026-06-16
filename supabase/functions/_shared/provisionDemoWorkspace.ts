@@ -34,6 +34,8 @@ export interface ProvisionResult extends DemoValidation {
   seedVersion: string;
   insertedThisRun: DemoCounts;
   flagsApplied: { company: boolean; profiles: number };
+  warnings: string[];
+  canOpenWorkspace: boolean;
 }
 
 type Admin = ReturnType<typeof createClient>;
@@ -212,6 +214,7 @@ export async function provisionDemoWorkspace(
     deals: 0, contacts: 0, crmCompanies: 0, tasks: 0, fundingSources: 0,
     calendarEvents: 0, inboxEmails: 0, dealActivities: 0,
   };
+  const warnings: string[] = [];
 
   // 4) Top-up CRM companies.
   const haveCrm = await countDemo(admin, "crm_companies", { org_company_id: companyId });
@@ -437,8 +440,12 @@ export async function provisionDemoWorkspace(
       }
       if (rows.length) {
         const { error } = await admin.from("calendar_events").insert(rows);
-        if (error) throw new Error(`calendar_events top-up: ${error.message}`);
-        insertedThisRun.calendarEvents += rows.length;
+        if (error) {
+          console.warn(`[provisionDemoWorkspace] calendar_events insert warning for user ${uid}: ${error.message}`);
+          warnings.push(`calendar_events:${uid}:${error.message}`);
+        } else {
+          insertedThisRun.calendarEvents += rows.length;
+        }
       }
     }
 
@@ -476,8 +483,12 @@ export async function provisionDemoWorkspace(
       }
       if (rows.length) {
         const { error } = await admin.from("email_cache").insert(rows);
-        if (error) throw new Error(`email_cache top-up: ${error.message}`);
-        insertedThisRun.inboxEmails += rows.length;
+        if (error) {
+          console.warn(`[provisionDemoWorkspace] email_cache insert warning for user ${uid}: ${error.message}`);
+          warnings.push(`email_cache:${uid}:${error.message}`);
+        } else {
+          insertedThisRun.inboxEmails += rows.length;
+        }
       }
     }
   }
@@ -517,26 +528,52 @@ export async function provisionDemoWorkspace(
       }
       if (rows.length) {
         const { error } = await admin.from("activity_logs").insert(rows);
-        if (error) throw new Error(`activity_logs top-up: ${error.message}`);
-        insertedThisRun.dealActivities = rows.length;
+        if (error) {
+          console.warn(`[provisionDemoWorkspace] activity_logs insert warning: ${error.message}`);
+          warnings.push(`activity_logs:${error.message}`);
+        } else {
+          insertedThisRun.dealActivities = rows.length;
+        }
       }
     }
   }
 
-  // 12) Validate counts. If anything is short, mark provisioning failed.
+  // 12) Validate counts. Comms gaps are nonfatal (warning); core gaps + pipeline are fatal.
   const validation = await validateDemoSeed(admin, companyId);
+
+  const COMMS_KEYS = new Set<keyof typeof DEMO_TARGETS>([
+    "calendarEvents", "inboxEmails", "dealActivities",
+  ]);
+  const fatalMissing: Partial<DemoCounts> = {};
+  for (const k of Object.keys(validation.missing) as Array<keyof typeof DEMO_TARGETS>) {
+    if (!COMMS_KEYS.has(k)) fatalMissing[k] = validation.missing[k];
+  }
+  const hasFatalGap = Object.keys(fatalMissing).length > 0 || !validation.pipelineId;
+  const canOpenWorkspace = !hasFatalGap;
 
   const seededAt = new Date().toISOString();
   await admin.from("companies").update({
     is_demo: true,
-    seeded_at: validation.ok ? seededAt : null,
-    seed_version: validation.ok ? SEED_VERSION : null,
+    seeded_at: canOpenWorkspace ? seededAt : null,
+    seed_version: canOpenWorkspace ? SEED_VERSION : null,
   }).eq("id", companyId);
 
-  if (!validation.ok) {
-    throw new Error(
-      `Demo provisioning validation failed. Missing: ${JSON.stringify(validation.missing)}`,
+  console.log("[provisionDemoWorkspace] complete", {
+    companyId,
+    insertedThisRun,
+    missing: validation.missing,
+    warnings,
+    canOpenWorkspace,
+  });
+
+  if (hasFatalGap) {
+    // Surface a structured fatal so the caller can return a clean error.
+    const err = new Error(
+      `Demo provisioning fatal gap. Missing: ${JSON.stringify(fatalMissing)}${!validation.pipelineId ? " (no default pipeline)" : ""}`,
     );
+    (err as Error & { fatalMissing?: unknown; warnings?: string[] }).fatalMissing = fatalMissing;
+    (err as Error & { fatalMissing?: unknown; warnings?: string[] }).warnings = warnings;
+    throw err;
   }
 
   return {
@@ -546,6 +583,8 @@ export async function provisionDemoWorkspace(
     seedVersion: SEED_VERSION,
     insertedThisRun,
     flagsApplied: { company: true, profiles: memberUserIds.length },
+    warnings,
+    canOpenWorkspace,
   };
 }
 
