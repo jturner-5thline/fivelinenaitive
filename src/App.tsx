@@ -346,6 +346,7 @@ const App = () => (
                         <ScrollToTop />
                         <CanonicalTag />
                         <CookieConsent />
+                        <ImpersonationBanner />
                         <NewTaskViaNaitiveModal />
                         <PilotKpiTrackingMount />
                         <Suspense fallback={<PageLoader />}>
