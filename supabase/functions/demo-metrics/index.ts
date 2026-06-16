@@ -42,6 +42,28 @@ serve(async (req: Request) => {
     const tenants = await Promise.all(
       (demoCompanies ?? []).map(async (c) => {
         const v = await validateDemoSeed(admin, c.id as string);
+        // Pull demo users in this tenant. We resolve emails via auth.admin
+        // because profiles may not carry the canonical login email.
+        const { data: members } = await admin
+          .from("company_members")
+          .select("user_id, role, created_at")
+          .eq("company_id", c.id);
+        const memberRows = await Promise.all(
+          (members ?? []).map(async (m) => {
+            const { data: u } = await admin.auth.admin.getUserById(m.user_id as string);
+            const { data: p } = await admin
+              .from("profiles").select("full_name, last_sign_in_at")
+              .eq("id", m.user_id as string).maybeSingle();
+            return {
+              userId: m.user_id as string,
+              email: u?.user?.email ?? null,
+              fullName: (p as any)?.full_name ?? (u?.user?.user_metadata as any)?.full_name ?? null,
+              role: m.role,
+              addedAt: m.created_at,
+              lastSignInAt: u?.user?.last_sign_in_at ?? (p as any)?.last_sign_in_at ?? null,
+            };
+          }),
+        );
         return {
           companyId: c.id, name: c.name,
           seededAt: c.seeded_at, seedVersion: c.seed_version,
@@ -49,6 +71,7 @@ serve(async (req: Request) => {
           ok: v.ok,
           counts: v.counts, targets: v.targets, missing: v.missing,
           pipelineId: v.pipelineId,
+          members: memberRows,
         };
       }),
     );
