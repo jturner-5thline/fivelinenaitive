@@ -27524,6 +27524,7 @@ export type Database = {
       }
       can_access_task: { Args: { _task_id: string }; Returns: boolean }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
+      can_use_approval_queue: { Args: { _user_id: string }; Returns: boolean }
       can_user_use_agent: {
         Args: { p_agent_key: string; p_company_id: string; p_user_id: string }
         Returns: boolean
