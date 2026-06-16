@@ -184,6 +184,7 @@ export function WorkflowIntelligenceCard({
     stages: lenderStageOptions,
   } = useLenderStages();
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
 
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
