@@ -494,6 +494,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           next.sort((a, b) => (orderAscending ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
         }
         cachedLenders = next;
+        cacheUserId = user.id;
+        cacheTimestamp = Date.now();
         return next;
       });
 
