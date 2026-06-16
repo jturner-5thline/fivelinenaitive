@@ -13,6 +13,7 @@ import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import {
   AlertDialog,
   AlertDialogAction,
