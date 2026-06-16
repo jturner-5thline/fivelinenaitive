@@ -92,7 +92,7 @@ export function DataRoomSuggestionCard({
         >
           <FolderOpen className="h-3 w-3" /> Review &amp; upload
         </Button>
-        {onAddToQueue && (
+        {onAddToQueue && approvalQueueEnabled && (
           <Button
             size="sm"
             variant="outline"
