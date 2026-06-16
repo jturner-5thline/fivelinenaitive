@@ -9,17 +9,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { DEMO_PRIMARY_EMAIL } from '@/lib/demoAccount';
 
 /**
- * Standard Demo Workspace — the canonical admin preview/testing tenant.
+ * TEMPLATE Demo Workspace — the single canonical admin preview/testing tenant
+ * that also serves as the framework/source for all future demo accounts.
  *
  * Resolution:
- *   - Workspace : `companies.id = DEMO_COMPANY_ID` (the tenant that owns
- *     `demo@5thline.co`). This is the single canonical demo workspace and
- *     is independent of any per-user demo row in the metrics table below.
- *   - Identity  : `DEMO_PRIMARY_EMAIL` (demo@5thline.co) — an internal-only
- *     demo auth user that exists solely to enter the standard demo.
+ *   - Workspace : `companies.id = DEMO_COMPANY_ID` — the canonical TEMPLATE
+ *     workspace. Resolved server-side in `open-standard-demo-workspace` and
+ *     never derived from a selected table row, tenant, or seeded account.
+ *   - Identity  : `DEMO_PRIMARY_EMAIL` (demo@5thline.co) — the single
+ *     internal-only demo auth user that enters the TEMPLATE workspace.
  *
- * The per-user impersonation in the table below remains available as a
- * secondary troubleshooting tool; this panel is the primary CTA.
+ * Per-user impersonation in the table below is a secondary diagnostic tool
+ * only; this panel is the sole primary admin entry point.
  */
 export function StandardDemoPanel() {
   const [busy, setBusy] = useState<null | 'open' | 'open_new' | 'repair' | 'reset'>(null);
@@ -85,15 +86,16 @@ export function StandardDemoPanel() {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-base font-semibold">Open the standard demo workspace</h3>
+              <h3 className="text-base font-semibold">Open the TEMPLATE demo workspace</h3>
               <Badge variant="outline" className="text-[10px] gap-1">
-                <ShieldCheck className="h-3 w-3" /> Canonical
+                <ShieldCheck className="h-3 w-3" /> Canonical TEMPLATE
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Enter the canonical demo environment for admin preview and testing. Targets the
-              single standard demo tenant ({DEMO_PRIMARY_EMAIL}) — independent of any individual
-              demo user listed below.
+              Enter the single canonical TEMPLATE demo environment for admin preview and
+              testing. This workspace is the framework/source for all future demo accounts.
+              Resolved server-side ({DEMO_PRIMARY_EMAIL}) — never derived from a selected
+              tenant row or seeded user.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -103,7 +105,7 @@ export function StandardDemoPanel() {
               disabled={!!busy}
             >
               {busy === 'open' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-              Open Standard Demo
+              Open TEMPLATE Demo Workspace
             </Button>
             <Button size="sm" variant="outline" onClick={() => launch(true)} disabled={!!busy}>
               {busy === 'open_new' ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <ExternalLink className="h-3.5 w-3.5 mr-1" />}

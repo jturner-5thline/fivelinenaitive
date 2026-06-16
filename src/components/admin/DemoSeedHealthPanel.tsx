@@ -273,10 +273,10 @@ export function DemoSeedHealthPanel() {
               <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-300">diagnostics only</Badge>
             </h3>
             <p className="text-xs text-muted-foreground mb-3">
-              These actions open a specific seeded tenant/user (for example GRUP / info@grupapp.com)
-              for troubleshooting. They are <strong>not</strong> the standard demo — use the
-              <strong> Open Standard Demo</strong> button at the top of the page for the canonical
-              admin demo experience.
+              These actions open a specific seeded tenant/user for troubleshooting only.
+              They are <strong>not</strong> the TEMPLATE demo — use the
+              <strong> Open TEMPLATE Demo Workspace</strong> button at the top of the page
+              for the canonical admin demo experience.
             </p>
             <div className="overflow-x-auto">
               <Table>

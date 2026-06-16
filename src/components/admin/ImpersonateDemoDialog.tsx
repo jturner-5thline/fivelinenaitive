@@ -158,7 +158,7 @@ export function ImpersonateDemoDialog({
               You are about to open this specific demo user's workspace for troubleshooting.
             </span>
             <span className="block text-amber-300">
-              This is not the standard demo workspace.
+              This is not the TEMPLATE demo workspace.
             </span>
           </DialogDescription>
         </DialogHeader>
