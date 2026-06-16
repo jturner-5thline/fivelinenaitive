@@ -117,7 +117,7 @@ export function LenderPassSidebarCard({
           {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
           Confirm
         </Button>
-        {onAddToQueue && (
+        {onAddToQueue && approvalQueueEnabled && (
           <Button
             size="sm"
             variant="outline"
