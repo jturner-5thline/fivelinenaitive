@@ -490,7 +490,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                   )}
                   Create task
                 </Button>
-                <Button
+                {approvalQueueEnabled && <Button
                   size="sm"
                   variant="outline"
                   className="h-7 px-2 text-[11px] gap-1 shrink-0"
@@ -515,7 +515,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 >
                   <InboxIcon className="h-3 w-3" />
                   Add to Queue
-                </Button>
+                </Button>}
                 <Button
                   size="sm"
                   variant="ghost"
