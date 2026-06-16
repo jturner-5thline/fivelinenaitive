@@ -11,6 +11,7 @@ import type { WorkflowAnalysis, WorkflowConfidence } from '@/hooks/useThreadWork
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { SuggestedTaskCards } from './SuggestedTaskCards';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   analysis: WorkflowAnalysis;
@@ -183,6 +184,7 @@ export function WorkflowIntelligenceCard({
     stages: lenderStageOptions,
   } = useLenderStages();
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
 
   const rec = analysis.recommended_update;
   const hasUpdate = rec.kind !== 'none' && !!rec.title;
@@ -659,7 +661,7 @@ export function WorkflowIntelligenceCard({
                     {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                     Confirm
                   </Button>
-                  <Button
+                  {approvalQueueEnabled && <Button
                     size="sm"
                     variant="outline"
                     className="h-7 px-2 text-[11px] gap-1 shrink-0"
@@ -689,7 +691,7 @@ export function WorkflowIntelligenceCard({
                     }}
                   >
                     <InboxIcon className="h-3 w-3" /> Queue
-                  </Button>
+                  </Button>}
                   <Button
                     size="sm"
                     variant="ghost"

@@ -13,6 +13,7 @@ import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { useUiPreference } from '@/hooks/useUiPreference';
 import type { WorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +119,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   // Profile-level default for "Sync new tasks to Asana". Editable on the
   // Account page; per-card switches still override on a one-off basis.
   const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
@@ -488,7 +490,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                   )}
                   Create task
                 </Button>
-                <Button
+                {approvalQueueEnabled && <Button
                   size="sm"
                   variant="outline"
                   className="h-7 px-2 text-[11px] gap-1 shrink-0"
@@ -513,7 +515,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                 >
                   <InboxIcon className="h-3 w-3" />
                   Add to Queue
-                </Button>
+                </Button>}
                 <Button
                   size="sm"
                   variant="ghost"

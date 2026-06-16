@@ -39,6 +39,7 @@ import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenc
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { perfMark, perfMeasure } from '@/lib/perfMarks';
@@ -526,6 +527,7 @@ export default function Dashboard() {
   const [actionQueueOpen, setActionQueueOpen] = useState(false);
   const actionQueueCount = useAiActionQueueCount();
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
 
   // Auto-refresh queue contents whenever the modal opens so the list always
   // reflects the latest pending AI actions.
@@ -864,7 +866,7 @@ export default function Dashboard() {
             {/* Approval Queue tile — first-class quick-action sibling to
                 Calendar/Email/Deals. Click opens the queue modal so deferred
                 AI suggestions are one tap away from the dashboard hero. */}
-            <QuickActionTile
+            {approvalQueueEnabled && <QuickActionTile
               label="Approval Queue"
               icon={InboxIcon}
               category="inbox"
@@ -873,7 +875,7 @@ export default function Dashboard() {
               className={cn(isJTurner && 'order-3')}
               onClick={openActionQueue}
               onKeyDown={(e) => handleTileKeyDown(e, openActionQueue)}
-            />
+            />}
             {isJTurner && (
               <QuickActionTile
                 label="Daily Rundown"
@@ -1138,7 +1140,7 @@ export default function Dashboard() {
           />
         )}
       </Suspense>
-      <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
+      <Dialog open={approvalQueueEnabled && actionQueueOpen} onOpenChange={setActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
             <DialogTitle>Approval Queue</DialogTitle>

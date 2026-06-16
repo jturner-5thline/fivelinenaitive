@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 
 /**
@@ -12,6 +13,7 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
  * no separate page or sidebar destination.
  */
 export function ActionQueueWidget() {
+  const { enabled: queueEnabled } = useApprovalQueueAccess();
   const [open, setOpen] = useState(false);
   const aiCount = useAiActionQueueCount();
   const { data: items = [], refetch } = useAiActionQueue();
@@ -24,6 +26,8 @@ export function ActionQueueWidget() {
     // always sees the latest pending AI actions, even if the cache is warm.
     if (next) refetch();
   };
+
+  if (!queueEnabled) return null;
 
   return (
     <>

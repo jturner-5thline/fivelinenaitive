@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import type { LenderPassDetection } from '@/hooks/useLenderPassDetection';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   detection: LenderPassDetection;
@@ -41,6 +42,7 @@ export function LenderPassSidebarCard({
   const [editing, setEditing] = useState(false);
   const [reason, setReason] = useState(detection.reason_summary || '');
   const noLenderMatch = !detection.deal_lender_id;
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
 
   if (detection.status === 'confirmed') {
     return (
@@ -117,7 +119,7 @@ export function LenderPassSidebarCard({
           {committing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
           Confirm
         </Button>
-        {onAddToQueue && (
+        {onAddToQueue && approvalQueueEnabled && (
           <Button
             size="sm"
             variant="outline"

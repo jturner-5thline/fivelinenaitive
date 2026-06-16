@@ -15,6 +15,7 @@ import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNai
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { DealsOverlay } from '@/components/deals/DealsOverlay';
@@ -88,6 +89,7 @@ export function DealsHeader() {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   const isNaitivePipelineRoute = location.pathname.startsWith('/naitive-pipeline');
   // The /deals page now renders its own + New Deal button inline with the
   // page-level action row (Export / Notifications / Activity). Suppress
@@ -216,7 +218,7 @@ export function DealsHeader() {
   const overlayRegistry = [
     { label: 'Calendar' as const, isOpen: isCalendarOpen, open: () => setIsCalendarOpen(true), close: () => setIsCalendarOpen(false), available: true },
     { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
-    { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: true },
+    { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: approvalQueueEnabled },
     { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
     { label: 'Deal Rundown' as const, isOpen: isDealRundownOpen, open: () => setIsDealRundownOpen(true), close: () => setIsDealRundownOpen(false), available: true },
     { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },

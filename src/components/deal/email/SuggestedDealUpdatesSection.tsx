@@ -37,6 +37,7 @@ import {
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { DealPickerCard } from './DealPickerCard';
 import { useEnqueueAiAction } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 
 interface Props {
   dealId?: string;
@@ -394,6 +395,7 @@ function SuggestionCard({
   const [editing, setEditing] = useState(false);
   const [working, setWorking] = useState(false);
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   const contactPayload = suggestion.payload as PendingDealSuggestionPayload;
   const [draft, setDraft] = useState<PendingDealSuggestionPayload>({
     ...contactPayload,
@@ -492,7 +494,7 @@ function SuggestionCard({
           Dismiss
         </Button>
         <div className="flex-1" />
-        <Button
+        {approvalQueueEnabled && <Button
           variant="outline"
           size="sm"
           className="h-7 text-[11px] gap-1 px-2"
@@ -517,7 +519,7 @@ function SuggestionCard({
           }}
         >
           <InboxIcon className="h-3 w-3" /> Queue
-        </Button>
+        </Button>}
         <Button
           size="sm"
           className="h-7 text-[11px] gap-1.5 bg-[hsl(160,60%,40%)] hover:bg-[hsl(160,60%,35%)] text-white"
