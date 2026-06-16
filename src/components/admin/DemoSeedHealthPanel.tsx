@@ -52,6 +52,10 @@ export function DemoSeedHealthPanel() {
   const [repairing, setRepairing] = useState<string | null>(null);
   const { isAdmin } = useAdminRole();
   const [impersonateTarget, setImpersonateTarget] = useState<ImpersonateTarget | null>(null);
+  // Per-user demo-open controls are hidden by default. Admins can flip this
+  // to reveal the diagnostics drawer (header dropdown + per-user table).
+  // The TEMPLATE demo workspace remains the only primary entry point.
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -130,7 +134,17 @@ export function DemoSeedHealthPanel() {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && eligibleMembers.length > 0 && (
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs text-muted-foreground"
+              onClick={() => setShowDiagnostics((v) => !v)}
+            >
+              {showDiagnostics ? "Hide diagnostics" : "Show diagnostics"}
+            </Button>
+          )}
+          {isAdmin && showDiagnostics && eligibleMembers.length > 0 && (
             eligibleMembers.length === 1 ? (
               <Button
                 size="sm"
@@ -224,7 +238,7 @@ export function DemoSeedHealthPanel() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {(() => {
+                      {showDiagnostics && (() => {
                         const eligible = (r.members ?? []).filter((m) => !!m.email);
                         if (eligible.length === 0) return null;
                         return (
@@ -266,7 +280,7 @@ export function DemoSeedHealthPanel() {
           </Table>
         </div>
 
-        {isAdmin && rows && rows.length > 0 && (
+        {isAdmin && showDiagnostics && rows && rows.length > 0 && (
           <div className="mt-6">
             <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <UserCog className="h-4 w-4" /> User-specific demo access
