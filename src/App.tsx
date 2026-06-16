@@ -240,6 +240,14 @@ const queryClient = new QueryClient({
       staleTime: 60_000,
       gcTime: 5 * 60_000,
       refetchOnWindowFocus: false,
+      // Pause every polling query while the tab is in the background. The
+      // single biggest source of "naitive slows my whole browser after
+      // hours in the background" was per-query `refetchInterval` timers
+      // continuing to fire on hidden tabs. This default cannot be set
+      // per-query without thinking; making it the global default and
+      // letting individual queries opt-in (very few should) is the safe
+      // and high-impact move.
+      refetchIntervalInBackground: false,
       retry: 1,
     },
   },
