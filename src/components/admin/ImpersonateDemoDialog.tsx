@@ -74,7 +74,7 @@ export function ImpersonateDemoDialog({
         const { data, error } = await supabase.functions.invoke('repair-demo-tenant', {
           body: { companyId: target.companyId },
         });
-        const payload = ((data ?? {}) as RepairPayload) ?? (await payloadFromFunctionError(error));
+        const payload = data ? ((data as RepairPayload)) : (await payloadFromFunctionError(error));
         if (error && !payload?.status) {
           setInlineError(`Repair failed: ${error.message}`);
           setBusy(false);
