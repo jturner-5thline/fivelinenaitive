@@ -119,6 +119,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
   const { company } = useCompany();
   const queryClient = useQueryClient();
   const enqueueAiAction = useEnqueueAiAction();
+  const { enabled: approvalQueueEnabled } = useApprovalQueueAccess();
   // Profile-level default for "Sync new tasks to Asana". Editable on the
   // Account page; per-card switches still override on a one-off basis.
   const [defaultAsanaSync] = useUiPreference<boolean>('default_asana_sync', true);
