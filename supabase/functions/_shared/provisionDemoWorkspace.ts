@@ -678,9 +678,16 @@ export async function provisionDemoWorkspace(
         const companyName = deal?.company ?? "Demo Co";
         const lender = demoLenders[i % Math.max(demoLenders.length, 1)];
         const contact = demoContacts[i % Math.max(demoContacts.length, 1)];
-        // Spread events across -10 .. +14 days from now.
-        const offsetDays = (i - 5);
-        const start = new Date(now + offsetDays * 86_400_000 + (9 + (i % 6)) * 3_600_000);
+        // Spread events across roughly -30 .. +60 days from now so the
+        // calendar feels populated for past month + next two months.
+        const offsetDays = -30 + Math.floor((i / DEMO_TARGETS.calendarEvents) * 90);
+        const startBase = new Date(now + offsetDays * 86_400_000);
+        // Skip weekends — bump Sat/Sun forward to Monday.
+        const dow = startBase.getDay();
+        if (dow === 0) startBase.setDate(startBase.getDate() + 1);
+        if (dow === 6) startBase.setDate(startBase.getDate() + 2);
+        startBase.setHours(9 + (i % 8), (i % 2) * 30, 0, 0);
+        const start = startBase;
         const end = new Date(start.getTime() + tpl.duration * 60_000);
         const attendees: string[] = [];
         if (contact?.email) attendees.push(contact.email);
