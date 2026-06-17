@@ -33,17 +33,39 @@ import { DEMO_PRIMARY_EMAIL, DEMO_COMPANY_ID } from '@/lib/demoAccount';
 export function StandardDemoPanel() {
   const [busy, setBusy] = useState(false);
 
+  // Pick an origin DIFFERENT from the current admin tab so the demo
+  // window opens on an isolated browser origin. Same-origin would share
+  // localStorage and the magic-link session would overwrite the admin's
+  // auth token in this tab.
+  function pickDemoOrigin(): string {
+    const candidates = [
+      'https://fivelinenaitive.lovable.app',
+      'https://www.naitive.co',
+      'https://naitive.co',
+    ];
+    const current = window.location.origin.replace(/\/$/, '');
+    for (const c of candidates) {
+      if (c.replace(/\/$/, '') !== current) return c;
+    }
+    return candidates[0];
+  }
+
   async function openDemo() {
+    // Open a placeholder tab synchronously inside the click handler so
+    // popup blockers don't intercept it after the await below.
+    const demoWindow = window.open('about:blank', '_blank', 'noopener');
     setBusy(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData?.session;
       if (!session?.access_token || !session?.refresh_token) {
         toast.error('No active session. Please sign in again.');
+        demoWindow?.close();
         return;
       }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const demoOrigin = pickDemoOrigin();
       const resp = await fetch(`${supabaseUrl}/functions/v1/open-standard-demo-workspace`, {
         method: 'POST',
         headers: {
@@ -51,18 +73,34 @@ export function StandardDemoPanel() {
           Authorization: `Bearer ${session.access_token}`,
           apikey: anonKey,
         },
-        body: JSON.stringify({ landingPath: '/deals', sourceAdminRefreshToken: session.refresh_token }),
+        body: JSON.stringify({
+          landingPath: '/deals',
+          sourceAdminRefreshToken: session.refresh_token,
+          openInNewTab: true,
+          demoOrigin,
+        }),
       });
       const payload = (await resp.json().catch(() => null)) as
         | { ok?: boolean; actionLink?: string; error?: string }
         | null;
       if (!resp.ok || !payload?.ok || !payload.actionLink) {
         toast.error(payload?.error || `Failed to open demo workspace (${resp.status})`);
+        demoWindow?.close();
         return;
       }
-      window.location.href = payload.actionLink;
+      // Navigate the pre-opened tab to the magic link. Different origin
+      // from the admin tab → isolated localStorage, admin session in this
+      // tab stays untouched.
+      if (demoWindow) {
+        demoWindow.location.href = payload.actionLink;
+        toast.success('Demo workspace opened in a new tab.');
+      } else {
+        // Popup blocked — fall back to a new tab without replacing this one.
+        window.open(payload.actionLink, '_blank', 'noopener');
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to open demo workspace');
+      demoWindow?.close();
     } finally {
       setBusy(false);
     }
