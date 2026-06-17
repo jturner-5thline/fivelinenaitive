@@ -154,6 +154,10 @@ serve(async (req: Request) => {
       }, 500);
     }
 
+    const returnTo = ALLOWED_RETURNS.has(body.returnTo ?? "")
+      ? (body.returnTo as string)
+      : "/admin?section=users-permissions&page=demo-metrics";
+
     const { data: secretRow } = await admin
       .from("admin_impersonation_session_secrets")
       .select("source_admin_refresh_token")
@@ -211,9 +215,6 @@ serve(async (req: Request) => {
       cleanOrigin(req.headers.get("origin")) ||
       cleanOrigin(refererOrigin) ||
       "https://fivelinenaitive.lovable.app";
-    const returnTo = ALLOWED_RETURNS.has(body.returnTo ?? "")
-      ? (body.returnTo as string)
-      : "/admin?section=users-permissions&page=demo-metrics";
     const callback = `${origin}/auth/impersonation/callback`
       + `?return=admin&landing=${encodeURIComponent(returnTo)}`
       + `&session_id=${encodeURIComponent(session.id)}`;
