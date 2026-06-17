@@ -31,6 +31,17 @@ export function ImpersonationBanner() {
     setReturning(true);
     setReturnError(null);
     const res = await stopImpersonation({ sessionId: impersonation.id });
+    if (res.session) {
+      const { error } = await supabase.auth.setSession(res.session);
+      if (!error) {
+        window.location.replace(res.returnTo || '/admin?section=users-permissions&page=demo-metrics');
+        return;
+      }
+      setReturnError(error.message);
+      toast.error(error.message);
+      setReturning(false);
+      return;
+    }
     if (res.returnLink) {
       window.location.href = res.returnLink;
       return;
