@@ -233,7 +233,37 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
             components={{
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
               TableHead: TableHeader as any,
-              TableRow: TableRow as any,
+              TableRow: (rowProps: any) => {
+                const idx = rowProps['data-index'];
+                const row = typeof idx === 'number' ? filtered[idx] : null;
+                if (!row) return <TableRow {...rowProps} />;
+                const go = () => navigate(`/crm-companies/${row.id}`);
+                return (
+                  <TableRow
+                    {...rowProps}
+                    role="link"
+                    tabIndex={0}
+                    aria-label={`Open ${row.name}`}
+                    onClick={(e: React.MouseEvent) => {
+                      // Ignore clicks on intentionally interactive children.
+                      const t = e.target as HTMLElement;
+                      if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"],[data-radix-collection-item],[data-no-row-nav]')) {
+                        return;
+                      }
+                      go();
+                    }}
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        const t = e.target as HTMLElement;
+                        if (t.closest('a,button,input,[role="menuitem"],[role="checkbox"]')) return;
+                        e.preventDefault();
+                        go();
+                      }
+                    }}
+                    className={cn(rowProps.className, 'cursor-pointer hover:bg-muted/30 focus-visible:bg-muted/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring')}
+                  />
+                );
+              },
               TableBody: TableBody as any,
             }}
             fixedHeaderContent={() => (
@@ -265,7 +295,7 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
                 <TableCell onClick={e => e.stopPropagation()}>
                   <Checkbox checked={selectedIds.has(co.id)} onCheckedChange={() => toggleOne(co.id)} />
                 </TableCell>
-                <TableCell className="cursor-pointer" onClick={() => navigate(`/crm-companies/${co.id}`)}>
+                <TableCell>
                   <div className="flex items-center gap-2">
                     {co.logo_url ? (
                       <img src={co.logo_url} alt="" className="h-6 w-6 rounded object-contain" />
