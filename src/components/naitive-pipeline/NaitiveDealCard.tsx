@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 
 const ICP_STYLES: Record<string, string> = {
   'Debt Advisory': 'bg-blue-500/15 text-blue-300 border-blue-500/30',
@@ -273,7 +274,16 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
     return <div className="block w-full min-w-0">{wrapped}</div>;
   }
   return (
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
+    <Link
+      to={`/deal/${deal.id}`}
+      className="block w-full min-w-0"
+      onClick={(e) => {
+        if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
       {wrapped}
     </Link>
   );

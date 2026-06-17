@@ -60,7 +60,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
         await addStatusNote(statusNote.trim());
       }
       toast.success(`Moved "${dealName}" to ${selectedPipeline?.name}`);
-      onClose();
+      safeClose();
     } catch (error) {
       toast.error('Failed to move deal');
     } finally {

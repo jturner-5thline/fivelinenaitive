@@ -63,6 +63,7 @@ import {
 } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 
 const CARD_INTERACTIVE_SELECTOR = [
   '[data-milestone-toggle]',
@@ -124,10 +125,12 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
       style={style}
       className="relative w-full min-w-0 touch-none rounded-xl"
       onClick={(e) => {
+        if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) return;
         if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
         onOpenEdit(deal);
       }}
       onKeyDown={(e) => {
+        if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) return;
         if (shouldIgnoreCardOpen(e.target, e.currentTarget)) return;
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();

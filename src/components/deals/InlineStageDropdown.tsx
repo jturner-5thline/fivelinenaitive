@@ -14,6 +14,7 @@ import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { MoveToPipelineDialog } from './MoveToPipelineDialog';
+import { markOverlayJustClosed } from '@/lib/overlayClickSuppression';
 
 interface InlineStageDropdownProps {
   dealId: string;
@@ -48,7 +49,10 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
 
   return (
     <>
-    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+    <DropdownMenu open={isMenuOpen} onOpenChange={(open) => {
+      if (!open) markOverlayJustClosed(350);
+      setIsMenuOpen(open);
+    }}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

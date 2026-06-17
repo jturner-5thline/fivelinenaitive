@@ -11,6 +11,7 @@ import {
   ensureDealOpenAnimationInstalled,
   findDealTileRect,
 } from '@/lib/dealOpenAnimation';
+import { markOverlayJustClosed } from '@/lib/overlayClickSuppression';
 
 // Lazy-load the (large) deal detail page so the overlay shell can paint
 // before its chunk is parsed. Once loaded the chunk is cached for the
@@ -62,6 +63,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   // Snappier than open (220ms vs 360ms) so dismissal feels crisp.
   const animateClose = () => {
     if (isClosing) return;
+    markOverlayJustClosed(450);
     const id = deal?.id ?? null;
     closingDealIdRef.current = id;
     if (reduceMotion || !id) {
