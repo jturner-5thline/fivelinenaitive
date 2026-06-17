@@ -1120,11 +1120,10 @@ export default function DealDetail() {
         },
         { replace: true },
       );
-    } else {
-      // Embedded mode: persist the choice so prev/next deal navigation
-      // (which remounts DealDetail) lands on the same tab.
-      try { window.sessionStorage.setItem(EMBEDDED_TAB_KEY, newTab); } catch {}
     }
+    // Embedded mode: intentionally do NOT persist the tab choice — the
+    // next open of the Deal Details popup (including prev/next sibling
+    // navigation) always starts on Deal Info.
   }, [setSearchParams, isEmbedded]);
 
   // When access flags finish loading after mount, reconcile the active
