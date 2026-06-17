@@ -159,7 +159,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       ) : (
         <div className="flex-1 min-h-0 flex flex-col">
           {expiringSoon.length > 0 && (
-            <div className="mx-3 mt-2 mb-1 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/[0.08] px-2.5 py-1.5 text-[11px] text-amber-300">
+            <div className="mx-3 mt-2 mb-1 flex items-center gap-2 rounded-md border border-amber-500/30 bg-transparent px-2.5 py-1.5 text-[11px] text-amber-300">
               <Clock className="h-3 w-3 shrink-0" />
               <span>
                 {expiringSoon.length === 1
