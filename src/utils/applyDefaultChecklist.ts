@@ -37,16 +37,17 @@ export const PHASE_LABELS: Record<ChecklistPhase, string> = {
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
+  if (Array.isArray(raw)) return { version: 2, configs: [] };
   if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
   return { version: 2, configs: [] };
 }
 
-function normalizeText(t: string): string {
-  return t.toLowerCase().replace(/\s+/g, ' ').trim();
+function normalizeText(t: unknown): string {
+  return String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-function itemKey(label: string): string {
-  return label.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+function itemKey(label: unknown): string {
+  return String(label ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 }
 
 export interface ChecklistPreview {
