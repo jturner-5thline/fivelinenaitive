@@ -94,6 +94,8 @@ export interface MasterLenderInsert {
   external_last_modified?: string | null;
   tier?: string | null;
   active?: boolean | null;
+  flex_lender_id?: string | null;
+  last_synced_from_flex?: string | null;
   website?: string | null;
   linkedin_url?: string | null;
   address?: string | null;
