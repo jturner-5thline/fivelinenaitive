@@ -917,7 +917,7 @@ export async function provisionDemoWorkspace(
       uploadedBy,
       deals: allDealsForVdr ?? [],
     });
-    insertedThisRun.vdrDocuments = seededVdr;
+    console.log(`[provisionDemoWorkspace] data room seeded: ${seededVdr} document rows`);
   } catch (e) {
     const msg = (e as Error).message;
     console.error("[provisionDemoWorkspace] data room seed failed:", msg);
