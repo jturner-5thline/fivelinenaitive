@@ -1,88 +1,92 @@
-# Platform-Wide Performance Remediation
+# Demo Inbox Auto-Seeding
 
-This is a very large, cross-cutting refactor that touches routes, providers, queries, subscriptions, modals, and bundling. To keep it safe (no regressions to Asana sync, email, calendar, tasks, RBAC, demo account, workflows), I'll ship it in numbered, independently revertable phases. Each phase ends with measurable verification before moving on.
+Every account created through Create Demo (and the canonical TEMPLATE workspace) ships with a populated, internally-consistent fake inbox. No real Gmail/Microsoft connection required. Idempotent, clearly tagged as demo, and visible as "Demo Inbox Active" instead of "Connect your email."
 
-A `.lovable/plan.md` already exists with an earlier draft of this work — phases 1–3 there are partly done. I'll continue from where that left off, fill gaps, and extend coverage to **every** route/modal as you asked.
+## What gets built
 
-## Phase 0 — Baseline (1 commit)
-- Turn on the existing `perfDiagnostics` panel in Admin → Observability with: route mount time, first content paint, TTI, active React Query subscriptions, active Supabase channels, intervals/timeouts, listeners, long tasks >50ms, memory trend.
-- Capture a snapshot per top route (Deals, Pipeline, Dashboard, Mail, Calendar, Tasks, Contacts, CrmCompanies, Lenders, Admin, Analytics, Insights, FinServ, Finance) so we can show before/after numbers.
-- Add a dev-only console group on each route mount: `[perf] /route — mount Xms, queries N, channels M`.
+### 1. Schema (migration)
 
-## Phase 1 — Shell-first rendering + code splitting (everything)
-- Audit `src/App.tsx`; every route gets `React.lazy` + Suspense with a route-appropriate skeleton (extend `OverlayLoadingShell` pattern to full pages).
-- Same treatment for heavy modals/overlays: DailyBriefingModal, DealsOverlay, TasksOverlay, CalendarOverlay, MailOverlay, DashboardOverlay, AdminAgent, AgreementDrafter, VDR workspace, Deal detail tabs.
-- Inside each shell, render header + nav + empty content immediately; data hooks fire after first paint via `useDeferredValue` / `startTransition`.
-- Lazy-mount inactive tabs in deal detail, dashboard, admin, settings — only the active tab's tree mounts.
+Mark seeded mailbox rows so they can be wiped/refreshed without touching real mail:
 
-## Phase 2 — Prefetch on intent
-- Extend `routePrefetch.ts` to cover Mail, Calendar, Dashboard, Insights, Admin, DailyRundown, VDR.
-- Add `onMouseEnter` / `onFocus` prefetch on top-nav links, deal cards, task rows, email rows, and overlay-launch buttons (code chunk + minimum query payload via `queryClient.prefetchQuery`).
-- Idle-time prefetch of common chunks after first paint (already partly wired).
+- `gmail_messages`: add `is_demo_seed boolean default false`, `seed_key text` (deterministic), unique index `(user_id, seed_key) where seed_key is not null`.
+- `gmail_tokens`: add `is_demo_seed boolean default false`.
+- `email_threads`: add `is_demo_seed boolean default false`, `seed_key text`, unique index `(user_id, seed_key) where seed_key is not null`.
+- `companies.is_demo` already exists — reused as the canonical "this is a demo tenant" flag (set to `true` by `seed-demo-account`).
 
-## Phase 3 — Background work throttling
-- Route every `setInterval` through `startVisibilityAwareInterval` (already exists). Known offenders: notification poll, deal management notifications, email intelligence sync, calendar refresh, Gmail/Nylas sync status, Asana sync status, news feed, FLEx sync, briefing refresh.
-- React Query global defaults: `staleTime: 60_000`, `gcTime: 300_000`, `refetchOnWindowFocus: false`, `refetchInterval` paused when `document.hidden`.
-- Pause Realtime channels when tab hidden >2min; resume on visibility.
-- Gate animations (`MorphingBlob`, dashboard shimmer, gradients) on `visibilityState === 'visible'` and `prefers-reduced-motion`.
+### 2. New seeder module
 
-## Phase 4 — Subscription / listener / timer hygiene
-- Scan for `supabase.channel(` outside `useEffect` cleanups → fix leaks.
-- Scan for `addEventListener` without `removeEventListener` → fix.
-- Scan for `setInterval`/`setTimeout` without clear on unmount → fix.
-- Consolidate per-row Realtime subscriptions into one shared channel per table (notifications, deal updates, tasks, inbox).
+`supabase/functions/_shared/seedDemoInbox.ts` exporting `seedDemoInbox(admin, { userId, userEmail, companyId, contacts, deals, tasks, calendarEvents })`.
 
-## Phase 5 — Query / fetch de-duplication
-- Audit all `useDealsDatabase` / direct `supabase.from('deals')` callers; route everything through `DealsContext`.
-- Same for contacts, companies, lenders, tasks, inbox — one shared React Query key per dataset; widgets read from cache.
-- Request coalescing in `inboxCacheStore` (shared inflight promise).
-- Trim `.select('*')` to required columns on the heaviest queries (deals list, contacts list, tasks list, inbox list, lenders list).
-- Split expensive joins/enrichment (relationships, AI summaries, activity history) into deferred follow-up queries fired after initial paint.
+Generates ~14 threads / ~32 messages drawn from a fixed scenario library and stamped with deterministic `seed_key`s like `demo-inbox/<scenario>/<index>`:
 
-## Phase 6 — Render-cost reduction
-- `React.memo` on hot leaf rows: `DealCard`, `DealRow`, `ContactRow`, `LenderRow`, `InboxMessageRow`, `TaskRow`, `NotificationRow`.
-- Stabilize callbacks/keys in `DealsContext`, dashboard widgets, pipeline.
-- Split `DealsContext` into data vs actions providers so action-only consumers don't rerender on data changes.
-- Move per-render aggregations (dashboard analytics, pipeline summaries) to memoized selectors keyed by data version.
+- Client-side threads tied to seeded **contacts + companies** (CFO sending Q4 financials, founder confirming data-room access, lawyer sending NDA redline).
+- Lender-side threads tied to seeded **deals + lenders** (term sheet from Greenfield Capital, IOI from Apex Venture Lending, pass note from Ironclad, follow-up Q&A from Bridgeport).
+- Internal threads tied to seeded **tasks** (deal team @mentions on outstanding items, status updates).
+- Calendar threads tied to seeded **calendar_events** (meeting confirmations, reschedules, agenda follow-ups).
+- Realistic mix of read/unread/starred, INBOX/SENT/IMPORTANT labels, snippets, plain-text + HTML bodies, attachments (referenced by filename only, no storage object), and timestamps spread across the last 14 days with two pinned-fresh threads (4–7 min ago) so the inbox feels live.
 
-## Phase 7 — Virtualization & pagination
-- Standardize on `react-virtuoso` (already installed). Apply to: Deals list/grid + pipeline columns, Contacts, CrmCompanies, Lenders, Mail/Inbox, Tasks, activity logs/audit trail, admin people/companies/demo metrics tables.
-- Server-side pagination on tables with unbounded row counts.
+All rows insert with `ON CONFLICT (user_id, seed_key) DO UPDATE` → reprovision/repair never duplicates.
 
-## Phase 8 — Bundle audit
-- `vite build --report` (via rollup-plugin-visualizer if not already present) → identify large deps.
-- Replace bulk `lucide-react` and date-fns imports with per-icon / per-function imports where missed.
-- Lazy-load heavy-but-rare deps: `xlsx`, `recharts` (per-chart only on Analytics/Insights), `react-flow`, `docx`, PDF libs, `framer-motion` heavy variants, `@radix-ui` dialogs only where used.
-- Manual `rollup` `manualChunks` for vendor split (react, radix, charts, date, supabase) so route chunks stay small.
+`email_threads` rows mirror the messages with the same `seed_key` pattern so the threaded inbox view groups correctly.
 
-## Phase 9 — Cloud compute check
-- Run `supabase--db_health` + `supabase--slow_queries`. If saturation or slow queries found, add targeted indexes via migration and report whether the Cloud instance needs an upgrade. If an upgrade is warranted, I'll tell you and link Backend → Advanced settings → Upgrade instance — I won't change billing.
+### 3. "Connected" sentinel per demo user
 
-## Phase 10 — Verification & docs
-For each top route, measure:
-- Shell paint <300ms, initial render <1.5s warm cache, INP <200ms.
-- No long task >200ms idle.
-- Memory growth <10MB over 10min idle.
-- ≤1 Realtime channel per logical stream.
-- Background CPU ≈0 when tab hidden.
-- Modal-open latency <150ms for cached, <500ms cold.
+`seedDemoInbox` also upserts one `gmail_tokens` row per demo user:
 
-Recorded in `docs/perf-audit-2026-06-16.md` with a before/after table and a "bottlenecks found → fix applied" summary returned to you in chat.
+```
+user_id, email_address = <demo email>, grant_id = 'demo-seed',
+account_id = 'demo-seed', scope = 'demo-seed',
+expires_at = now() + 10 years, is_demo_seed = true
+```
 
-## Out of scope
-- Backend edge function perf (separate workstream).
-- UX, layout, business logic, RBAC changes.
-- Schema changes beyond targeted indexes uncovered in Phase 9.
+### 4. Edge function wiring
 
-## Risk & rollout
-- Each phase is one focused PR-sized commit, reverted independently if it misbehaves.
-- Phases 5/6 (context splitting, query dedup) are highest risk for stale-state bugs — mitigated by Phase 0 diagnostics + spot Playwright runs on Deals/Mail/Tasks before sign-off.
-- Virtualizing pipeline columns interacts with drag-and-drop; will use Virtuoso `customScrollParent`.
+- `supabase/functions/seed-demo-account/index.ts`: after the existing contacts/deals/tasks/calendar seeding, sets `companies.is_demo = true`, then calls `seedDemoInbox(...)`. Returns `inboxSeed: { threads, messages }` counts in the response.
+- `supabase/functions/repair-demo-tenant/index.ts`: re-runs `seedDemoInbox` (idempotent) so Repair refreshes the inbox.
+- `supabase/functions/gmail-status/index.ts`: short-circuit branch — if the loaded `gmail_tokens` row has `grant_id = 'demo-seed'` (or `is_demo_seed = true`), respond `{ connected: true, provider: 'gmail', email_address, connected_at, source: 'demo-seed' }` and skip the Nylas grant verify call.
 
-## What I need from you
-This is realistically a multi-day effort touching hundreds of files. Two options:
+### 5. Frontend
 
-1. **Full plan, phases 0→10** — best end state, larger diff, more credits.
-2. **High-impact slice: phases 0–4 only** — typically resolves "browser-wide slowdown" and "modals stall the app" symptoms in one pass, then we measure and decide whether 5–10 are still needed.
+- `src/hooks/useGmail.ts`:
+  - Replace the hardcoded `isDemoUser = email === 'demo@5thline.co'` check with `isDemoUser = gmailStatus.source === 'demo-seed'` (derived from the new `gmail-status` field) **plus** the existing email allowlist as fallback.
+  - When the demo-seed sentinel is detected, read messages from the real `gmail_messages` table (RLS already scopes to `user_id`) instead of the hardcoded `DEMO_MOCK_EMAILS` constant. The existing two pinned mock emails for `demo@5thline.co` stay only as a fallback if the table is empty.
+- `src/components/integrations/GmailIntegration.tsx` and the inbox empty-state in `src/pages/EmailIntelligencePage.tsx`: when `status.connected && status.source === 'demo-seed'`, render a "Demo Inbox Active" pill (green dot + tooltip "Seeded demo mailbox — not a real Google/Microsoft connection") and suppress the "Connect your email" CTA / empty state.
 
-Tell me **"full plan"** or **"slice 0–4"** (or pick specific phases) and I'll start executing immediately. I will not publish to production — preview only — and you publish when you're satisfied.
+### 6. Counts per demo tenant (deterministic)
+
+- 14 threads, 32 messages
+- 8 unread, 4 starred
+- ~18 messages linked to 6 seeded contacts (8 distinct sender domains)
+- ~10 messages linked to 5 seeded deals + 5 seeded lenders
+- ~4 messages linked to seeded tasks / calendar events
+- 2 pinned threads (4 min + 7 min ago) so first load feels live
+
+## Technical notes
+
+- Idempotency: every insert uses `seed_key` + `ON CONFLICT DO UPDATE`. Re-running `seed-demo-account` or `repair-demo-tenant` updates rows in place — no duplicates.
+- Safety: `is_demo_seed = true` on every seeded row means demo data can never be confused with real synced mail. Real Nylas/Microsoft sync paths ignore rows where `is_demo_seed = true`.
+- Performance: bulk-inserts in a single `.insert([...])` per table. Inbox load is a normal indexed `SELECT … FROM gmail_messages WHERE user_id = $1 ORDER BY received_at DESC LIMIT 50` — no network round-trip to Nylas.
+- Send: a follow-up `POST` to send mail will still fail (no provider). Out of scope for this change — Mail appears connected for read; send remains disabled with a small "Demo inbox is read-only" note on the composer.
+
+## Files changed
+
+- `supabase/migrations/<new>.sql` (schema)
+- `supabase/functions/_shared/seedDemoInbox.ts` (new)
+- `supabase/functions/seed-demo-account/index.ts`
+- `supabase/functions/repair-demo-tenant/index.ts`
+- `supabase/functions/gmail-status/index.ts`
+- `src/hooks/useGmail.ts`
+- `src/components/integrations/GmailIntegration.tsx`
+- `src/pages/EmailIntelligencePage.tsx`
+
+## Returned to caller
+
+After `seed-demo-account` finishes, the response includes:
+
+```json
+{
+  "inboxSeed": { "threads": 14, "messages": 32, "linkedContacts": 6,
+                 "linkedDeals": 5, "linkedLenders": 5, "linkedTasks": 3,
+                 "linkedCalendarEvents": 2 }
+}
+```
