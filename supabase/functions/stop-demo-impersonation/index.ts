@@ -154,6 +154,55 @@ serve(async (req: Request) => {
       }, 500);
     }
 
+    const { data: secretRow } = await admin
+      .from("admin_impersonation_session_secrets")
+      .select("source_admin_refresh_token")
+      .eq("session_id", session.id)
+      .maybeSingle();
+
+    if (secretRow?.source_admin_refresh_token) {
+      const tokenResp = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: ANON_KEY,
+        },
+        body: JSON.stringify({ refresh_token: secretRow.source_admin_refresh_token }),
+      });
+      const tokenJson = await tokenResp.json().catch(() => null) as {
+        access_token?: string;
+        refresh_token?: string;
+        expires_in?: number;
+        token_type?: string;
+        user?: { id?: string; email?: string };
+        error?: string;
+        error_description?: string;
+      } | null;
+      if (tokenResp.ok && tokenJson?.access_token && tokenJson?.refresh_token) {
+        await admin
+          .from("admin_impersonation_session_secrets")
+          .update({
+            source_admin_refresh_token: tokenJson.refresh_token,
+            used_at: now,
+          })
+          .eq("session_id", session.id);
+        return json({
+          ok: true,
+          restored: true,
+          session: {
+            access_token: tokenJson.access_token,
+            refresh_token: tokenJson.refresh_token,
+          },
+          expiresIn: tokenJson.expires_in ?? null,
+          tokenType: tokenJson.token_type ?? "bearer",
+          returnTo,
+          sourceAdminUserId: session.source_admin_user_id,
+          sourceAdminEmail,
+        }, 200);
+      }
+      console.error("[stop-demo-impersonation] refresh restore failed", tokenJson?.error_description ?? tokenJson?.error ?? tokenResp.status);
+    }
+
     const refererOrigin = (() => {
       try { return new URL(req.headers.get("referer") ?? "").origin; } catch { return null; }
     })();
