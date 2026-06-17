@@ -135,6 +135,7 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 const DataRoomV2 = lazy(() => import('@/components/deal/DataRoomV2').then(m => ({ default: m.DataRoomV2 })));
+import { VdrErrorBoundary } from '@/components/vdr/VdrErrorBoundary';
 const VdrShell = lazy(() => import('@/components/vdr/VdrShell').then(m => ({ default: m.VdrShell })));
 const DealActivityLogTab = lazy(() => import('@/components/deal/DealActivityLogTab').then(m => ({ default: m.DealActivityLogTab })));
 const DealCommunicationsTab = lazy(() => import('@/components/deal/DealCommunicationsTab').then(m => ({ default: m.DealCommunicationsTab })));
@@ -5220,7 +5221,9 @@ export default function DealDetail() {
                 <TabsContent value="data-room" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
                   <Card className="w-full max-w-full overflow-hidden p-0 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]" style={{ height: 'calc(100vh - 190px)' }}>
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading data room…</div>}>
-                      <VdrShell dealId={id!} embedded />
+                      <VdrErrorBoundary>
+                        <VdrShell dealId={id!} embedded />
+                      </VdrErrorBoundary>
                     </Suspense>
                   </Card>
                 </TabsContent>

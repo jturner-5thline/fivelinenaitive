@@ -202,6 +202,37 @@ export async function provisionDemoWorkspace(
     })
     .in("user_id", memberUserIds);
 
+  // 2b) Pre-seed Data Room checklist categories for this company so the
+  // Data Room tab renders folders / categories immediately on first open
+  // (the client hook seeds these lazily, but in fresh demo workspaces the
+  // first render can hit an empty state that the VDR view assumes is
+  // present — pre-seeding makes the experience consistent for every
+  // demo workspace from the very first click).
+  try {
+    const { count: catCount } = await admin
+      .from("data_room_checklist_categories")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", companyId);
+    if ((catCount ?? 0) === 0) {
+      const defaults = [
+        { name: "Materials",  icon: "folder",       color: "blue",   position: 0 },
+        { name: "Financials", icon: "dollar-sign",  color: "green",  position: 1 },
+        { name: "Agreements", icon: "file-check",   color: "purple", position: 2 },
+        { name: "Other",      icon: "files",        color: "gray",   position: 3 },
+      ];
+      const { error: catErr } = await admin
+        .from("data_room_checklist_categories")
+        .insert(defaults.map(d => ({
+          ...d,
+          company_id: companyId,
+          user_id: attributingUserId,
+        })));
+      if (catErr) console.warn("[provisionDemoWorkspace] checklist categories seed failed:", catErr.message);
+    }
+  } catch (e) {
+    console.warn("[provisionDemoWorkspace] checklist categories seed errored:", (e as Error).message);
+  }
+
   // 3) Ensure default pipeline exists.
   let { data: pipeline } = await admin
     .from("deal_pipelines")
