@@ -13,6 +13,7 @@ import { useImpersonationState } from '@/hooks/useImpersonationState';
 export function ImpersonationBanner() {
   const { impersonation } = useImpersonationState();
   const [returning, setReturning] = useState(false);
+  const [returnError, setReturnError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!impersonation) return;
@@ -27,13 +28,16 @@ export function ImpersonationBanner() {
 
   const handleReturn = async () => {
     setReturning(true);
+    setReturnError(null);
     const res = await stopImpersonation({ sessionId: impersonation.id });
     if (res.returnLink) {
       window.location.href = res.returnLink;
       return;
     }
-    toast.error(res.error || 'Could not return to admin — please sign in again.');
-    window.location.href = '/auth';
+    const msg = res.error || 'Could not restore admin session.';
+    setReturnError(msg);
+    toast.error(msg);
+    setReturning(false);
   };
 
   const openAdminNewTab = () => {
@@ -62,6 +66,11 @@ export function ImpersonationBanner() {
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open admin in new tab
         </Button>
+        {returnError && (
+          <span className="text-xs text-amber-200/90 mr-2 max-w-[20rem] truncate" title={returnError}>
+            {returnError}
+          </span>
+        )}
         <Button
           size="sm"
           className="bg-amber-500 hover:bg-amber-600 text-amber-950"
@@ -73,8 +82,21 @@ export function ImpersonationBanner() {
           ) : (
             <LogOut className="h-3.5 w-3.5 mr-1" />
           )}
-          Return to admin
+          {returnError ? 'Restore Admin Session' : 'Return to admin'}
         </Button>
+        {returnError && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-amber-100 hover:bg-amber-500/20"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = '/auth';
+            }}
+          >
+            Sign in as admin
+          </Button>
+        )}
       </div>
     </div>
   );
