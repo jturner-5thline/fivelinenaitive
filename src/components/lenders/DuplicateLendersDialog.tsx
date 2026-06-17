@@ -165,6 +165,70 @@ const SCHEMA_ORDER = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map((c, i) => [c.key, 
 const SCHEMA_TYPES = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map(c => [c.key, c.dataType]));
 const MERGE_PROTECTED_KEYS = new Set(['id', 'user_id', 'company_id', 'created_at', 'updated_at']);
 
+function humanizeKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, ch => ch.toUpperCase())
+    .replace(/\bUrl\b/g, 'URL')
+    .replace(/\bId\b/g, 'ID')
+    .replace(/\bNda\b/g, 'NDA')
+    .replace(/\bFlex\b/g, 'FLEx')
+    .replace(/\bB2b\b/g, 'B2B')
+    .replace(/\bB2c\b/g, 'B2C')
+    .replace(/\bEbitda\b/g, 'EBITDA');
+}
+
+function inferFieldType(key: string, dataType?: string): FieldType {
+  const k = key.toLowerCase();
+  if (dataType === 'ARRAY') return 'array';
+  if (dataType === 'boolean') return 'boolish';
+  if (dataType === 'numeric' || dataType === 'integer' || dataType === 'double precision') {
+    return /(deal|revenue|ebitda|fee|amount|value|price|cost)/.test(k) ? 'currency' : 'number';
+  }
+  if (dataType?.includes('timestamp') || dataType === 'date') return 'date';
+  if (dataType === 'jsonb' || dataType === 'json') return 'json';
+  if (/(url|website|linkedin|pager)/.test(k)) return 'url';
+  if (/(notes|checklist|requirements|structure|agreement|address|about)/.test(k)) return 'longtext';
+  return 'text';
+}
+
+function inferSection(key: string): SectionId {
+  const k = key.toLowerCase();
+  if (/(checklist|onboard|process|term_sheet)/.test(k)) return 'process';
+  if (/(nda|agreement|referral|pager|document|attachment|file|gift)/.test(k)) return 'documents';
+  if (/(contact|email|phone|relationship|owner)/.test(k)) return 'relationship';
+  if (/(created|updated|sync|external|flex|source|metadata|notes|about|tag|user_id|company_id|\bid\b)/.test(k)) return 'system';
+  if (/(deal|revenue|ebitda|loan|industr|b2b|b2c|debt|burn|sponsor|tier|active|type|refinancing|requirements|structure)/.test(k)) return 'commercial';
+  return 'identity';
+}
+
+function buildFieldDef(key: string): FieldDef {
+  const meta = FIELD_META[key] || {};
+  const dataType = SCHEMA_TYPES.get(key);
+  return {
+    key,
+    label: meta.label || humanizeKey(key),
+    type: meta.type || inferFieldType(key, dataType),
+    section: meta.section || inferSection(key),
+    conflictWeight: meta.conflictWeight,
+    readOnly: meta.readOnly || MERGE_PROTECTED_KEYS.has(key),
+  };
+}
+
+function getFundingSourceFields(records: Array<Record<string, any>> = []): FieldDef[] {
+  const keys = new Set<string>(MASTER_LENDER_SCHEMA_COLUMNS.map(c => c.key));
+  records.forEach(record => Object.keys(record || {}).forEach(key => keys.add(key)));
+  return [...keys]
+    .map(buildFieldDef)
+    .sort((a, b) => {
+      const sectionDelta = SECTION_ORDER.indexOf(a.section) - SECTION_ORDER.indexOf(b.section);
+      if (sectionDelta !== 0) return sectionDelta;
+      return (SCHEMA_ORDER.get(a.key) ?? 10_000) - (SCHEMA_ORDER.get(b.key) ?? 10_000) || a.label.localeCompare(b.label);
+    });
+}
+
+const FUNDING_SOURCE_FIELDS = getFundingSourceFields();
+
 const SECTION_META: Record<string, { label: string; icon: any }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
@@ -205,6 +269,7 @@ function displayValue(field: FieldDef, v: any): string {
     case 'boolish': return formatBool(v);
     case 'array': return Array.isArray(v) ? v.join(', ') : String(v);
     case 'url': return String(v);
+    case 'json': return typeof v === 'string' ? v : JSON.stringify(v, null, 2);
     default: return String(v);
   }
 }
@@ -224,7 +289,7 @@ function extractDomain(url: string | null | undefined): string | null {
 }
 function completenessScore(l: MasterLender): number {
   let s = 0;
-  for (const f of FIELDS) if (!isEmpty((l as any)[f.key])) s++;
+  for (const f of getFundingSourceFields([l as any])) if (!isEmpty((l as any)[f.key])) s++;
   return s;
 }
 function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
@@ -244,15 +309,15 @@ function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
 }
 
 interface Conflict {
-  field: keyof MasterLender;
+  field: string;
   label: string;
   severity: 'high' | 'med';
   detail: string;
 }
-function detectConflicts(lenders: MasterLender[]): Conflict[] {
+function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders as any)): Conflict[] {
   if (lenders.length < 2) return [];
   const out: Conflict[] = [];
-  for (const f of FIELDS) {
+  for (const f of fields) {
     if (!f.conflictWeight) continue;
     const vals = lenders.map(l => normalizeForCompare(f, (l as any)[f.key])).filter(Boolean);
     const uniq = new Set(vals);
