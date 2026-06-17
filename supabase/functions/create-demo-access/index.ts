@@ -203,6 +203,8 @@ const handler = async (req: Request): Promise<Response> => {
             approved_by: caller.id,
             approval_requested_at: nowIso,
             is_demo_user: true,
+            notifications_consent_shown: true,
+            notifications_opted_in: false,
           });
         } else {
           await admin
@@ -214,6 +216,8 @@ const handler = async (req: Request): Promise<Response> => {
               approved_at: existingProfile.approved_at ?? nowIso,
               approved_by: caller.id,
               is_demo_user: true,
+              notifications_consent_shown: true,
+              notifications_opted_in: false,
             })
             .eq("user_id", userId);
         }

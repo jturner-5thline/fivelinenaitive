@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useIsDemoAccount } from "@/hooks/useIsDemoAccount";
 
 const LS_KEY = "naitive-notifications-consent-shown";
 
@@ -23,6 +24,7 @@ const LS_KEY = "naitive-notifications-consent-shown";
 export function NotificationConsentModal() {
   const { user } = useAuth();
   const location = useLocation();
+  const isDemo = useIsDemoAccount();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -30,15 +32,29 @@ export function NotificationConsentModal() {
     if (!user?.id) return;
     if (location.pathname !== "/deals") return;
     if (localStorage.getItem(LS_KEY) === "1") return;
+    // Demo accounts never see the notifications opt-in prompt.
+    if (isDemo) {
+      localStorage.setItem(LS_KEY, "1");
+      return;
+    }
 
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("profiles")
-        .select("notifications_consent_shown")
+        .select("notifications_consent_shown, is_demo_user")
         .eq("user_id", user.id)
         .maybeSingle();
       if (cancelled) return;
+      if (data && (data as any).is_demo_user) {
+        // Auto-resolve for demo users so the prompt never appears.
+        await supabase
+          .from("profiles")
+          .update({ notifications_consent_shown: true, notifications_opted_in: false })
+          .eq("user_id", user.id);
+        localStorage.setItem(LS_KEY, "1");
+        return;
+      }
       if (data && data.notifications_consent_shown === false) {
         setOpen(true);
       } else {
@@ -48,7 +64,7 @@ export function NotificationConsentModal() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, location.pathname]);
+  }, [user?.id, location.pathname, isDemo]);
 
   const finish = async (optIn: boolean) => {
     if (!user?.id || busy) return;
