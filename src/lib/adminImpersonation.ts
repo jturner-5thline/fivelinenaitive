@@ -56,6 +56,10 @@ export interface StopImpersonationResult {
   ok: boolean;
   returnLink: string | null;
   returnTo: string | null;
+  session?: {
+    access_token: string;
+    refresh_token: string;
+  };
   error?: string;
   code?: string;
 }
@@ -92,7 +96,14 @@ export async function stopImpersonation(opts?: {
       }),
     });
     const p = (await resp.json().catch(() => null)) as
-      | { ok?: boolean; returnLink?: string | null; returnTo?: string | null; error?: string; code?: string }
+      | {
+          ok?: boolean;
+          returnLink?: string | null;
+          returnTo?: string | null;
+          session?: { access_token?: string; refresh_token?: string };
+          error?: string;
+          code?: string;
+        }
       | null;
     if (!resp.ok || !p?.ok) {
       return {
@@ -107,6 +118,9 @@ export async function stopImpersonation(opts?: {
       ok: true,
       returnLink: p.returnLink ?? null,
       returnTo: p.returnTo ?? null,
+      session: p.session?.access_token && p.session?.refresh_token
+        ? { access_token: p.session.access_token, refresh_token: p.session.refresh_token }
+        : undefined,
     };
   } catch (e) {
     return {
