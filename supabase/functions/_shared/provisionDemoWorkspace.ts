@@ -14,7 +14,7 @@ export const DEMO_TARGETS = {
   crmCompanies: 50,
   tasks: 20,
   fundingSources: 50,
-  calendarEvents: 12, // per member user
+  calendarEvents: 80, // per member user — spans roughly -30 .. +60 days
   inboxEmails: 15,    // per member user
   dealActivities: 24, // total across demo deals
 } as const;
