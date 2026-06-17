@@ -139,6 +139,15 @@ export default function EmailIntelligencePage() {
             <h1 className="text-xl font-semibold flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               Email Intelligence
+              {status.source === 'demo-seed' && (
+                <span
+                  className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300"
+                  title="Seeded demo mailbox — not a real Google/Microsoft connection"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Demo Inbox Active
+                </span>
+              )}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               AI-analyzed email feed with deal matching and signal detection
