@@ -498,7 +498,21 @@ function ArrayFieldRow({
     <div className="px-3 py-2 border-b border-white/5">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-medium text-foreground/90">{field.label}</span>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap justify-end">
+          {lenders.map((l, index) => (
+            <button
+              key={l.id}
+              type="button"
+              className="hover:text-foreground"
+              onClick={() => {
+                const arr = ((l as any)[field.key] as string[] | null) || [];
+                onChange(new Set(arr.map(v => v.trim().toLowerCase()).filter(Boolean)));
+              }}
+            >
+              Use {index + 1}
+            </button>
+          ))}
+          <span>·</span>
           <button type="button" className="hover:text-foreground"
             onClick={() => onChange(new Set(all.map(([k]) => k)))}>Select all</button>
           <span>·</span>
