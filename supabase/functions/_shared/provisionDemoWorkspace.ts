@@ -283,6 +283,25 @@ export async function provisionDemoWorkspace(
     console.warn("[provisionDemoWorkspace] checklist categories seed errored:", (e as Error).message);
   }
 
+  // 2c) Repair legacy demo checklist config shape. Older demo workspaces stored
+  // an array of folder sections, which lacks `dealTypeMatchString` and can break
+  // the Data Room matcher. Always force demo workspaces to the current v2 shape.
+  try {
+    const { error: settingsErr } = await admin
+      .from("company_settings")
+      .upsert(
+        { company_id: companyId, data_room_default_checklists: DEMO_DEFAULT_CHECKLIST_CONFIG },
+        { onConflict: "company_id" },
+      );
+    if (settingsErr) {
+      console.warn("[provisionDemoWorkspace] default checklist config repair failed:", settingsErr.message);
+      warnings.push(`default_checklists:${settingsErr.message}`);
+    }
+  } catch (e) {
+    console.warn("[provisionDemoWorkspace] default checklist config repair errored:", (e as Error).message);
+    warnings.push(`default_checklists:${(e as Error).message}`);
+  }
+
   // 3) Ensure default pipeline exists.
   let { data: pipeline } = await admin
     .from("deal_pipelines")
