@@ -202,6 +202,24 @@ export async function provisionDemoWorkspace(
     })
     .in("user_id", memberUserIds);
 
+  // 2a) Resolve the attributing user's display name for deal manager attribution
+  // so the manager field references a REAL demo user, not a hardcoded string.
+  let managerName = "Demo User";
+  try {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("display_name, first_name, last_name, email")
+      .eq("user_id", attributingUserId)
+      .maybeSingle();
+    if (prof) {
+      const dn = (prof as any).display_name as string | null;
+      const fn = (prof as any).first_name as string | null;
+      const ln = (prof as any).last_name as string | null;
+      const em = (prof as any).email as string | null;
+      managerName = (dn?.trim() || [fn, ln].filter(Boolean).join(" ").trim() || em || "Demo User");
+    }
+  } catch (_e) { /* fallback to default */ }
+
   // 2b) Pre-seed Data Room checklist categories for this company so the
   // Data Room tab renders folders / categories immediately on first open
   // (the client hook seeds these lazily, but in fresh demo workspaces the
@@ -328,6 +346,22 @@ export async function provisionDemoWorkspace(
     insertedThisRun.contacts = rows.length;
   }
 
+  // 5b) Pre-fetch demo contacts so tasks + contact_deals can reference them
+  // by FK. Grouped by crm_company_id for relational consistency.
+  const { data: preContactsRaw } = await admin
+    .from("contacts")
+    .select("id, crm_company_id")
+    .eq("org_company_id", companyId)
+    .contains("tags", ["demo"]);
+  const preContacts = (preContactsRaw ?? []) as Array<{ id: string; crm_company_id: string | null }>;
+  const contactsByCrm = new Map<string, string[]>();
+  for (const c of preContacts) {
+    if (!c.crm_company_id) continue;
+    const arr = contactsByCrm.get(c.crm_company_id) ?? [];
+    arr.push(c.id);
+    contactsByCrm.set(c.crm_company_id, arr);
+  }
+
   // 6) Top-up deals.
   const haveDeals = await countDemo(admin, "deals", { company_id: companyId });
   if (haveDeals < DEMO_TARGETS.deals) {
@@ -341,7 +375,7 @@ export async function provisionDemoWorkspace(
         value: DEAL_VALUES[i % DEAL_VALUES.length],
         stage: stageId(stageIdx), status,
         deal_type: pick(DEAL_TYPES, i),
-        manager: "James Turner",
+        manager: managerName,
         referred_by: pick(REFERRERS, i),
         company_id: companyId, user_id: attributingUserId,
         crm_company_id: crm?.id ?? null,
@@ -363,6 +397,16 @@ export async function provisionDemoWorkspace(
   const demoDeals = (dealList ?? []) as Array<{ id: string; company: string | null; crm_company_id: string | null }>;
   const dealIds = demoDeals.map((d) => d.id);
 
+  // 6b) Relational backfill — ensure existing demo deals reference the
+  // current demo manager/owner (idempotent; safe to re-run).
+  if (dealIds.length > 0) {
+    await admin
+      .from("deals")
+      .update({ manager: managerName, user_id: attributingUserId })
+      .in("id", dealIds)
+      .or(`manager.is.null,manager.eq.James Turner`);
+  }
+
   // 7) Top-up tasks.
   const haveTasks = await countDemo(admin, "tasks", { company_id: companyId });
   if (haveTasks < DEMO_TARGETS.tasks) {
@@ -374,13 +418,19 @@ export async function provisionDemoWorkspace(
     const rows = [];
     for (let i = haveTasks; i < DEMO_TARGETS.tasks; i++) {
       const title = TASK_TITLES[i % TASK_TITLES.length];
+      const deal = demoDeals[i % Math.max(demoDeals.length, 1)] ?? null;
+      const crmId = deal?.crm_company_id ?? null;
+      const contactPool = crmId ? (contactsByCrm.get(crmId) ?? []) : [];
+      const contactId = contactPool[i % Math.max(contactPool.length, 1)] ?? null;
       rows.push({
         title, description: `${title} — auto-seeded demo task.`,
         due_date: inDays((i % 14) - 3),
         status: pick(["pending","in_progress","pending","completed"], i),
         priority: i % 5 === 0 ? "urgent" : null,
         task_type: "task",
-        deal_id: dealIds[i % Math.max(dealIds.length, 1)] ?? null,
+        deal_id: deal?.id ?? null,
+        crm_company_id: crmId,
+        contact_id: contactId,
         assigned_to: attributingUserId, assigned_by: attributingUserId, created_by: attributingUserId,
         company_id: companyId, tags: ["demo"], position: i,
       });
@@ -388,6 +438,29 @@ export async function provisionDemoWorkspace(
     const { error } = await admin.from("tasks").insert(rows);
     if (error) throw new Error(`tasks top-up: ${error.message}`);
     insertedThisRun.tasks = rows.length;
+  }
+
+  // 7b) Link contacts <-> deals via the contact_deals join table so
+  // navigating from a deal lists its contacts and vice versa.
+  if (demoDeals.length > 0 && contactsByCrm.size > 0) {
+    const links: Array<{ deal_id: string; contact_id: string; role: string }> = [];
+    for (const d of demoDeals) {
+      if (!d.crm_company_id) continue;
+      const pool = contactsByCrm.get(d.crm_company_id) ?? [];
+      const take = pool.slice(0, 3);
+      take.forEach((cid, idx) => {
+        links.push({ deal_id: d.id, contact_id: cid, role: idx === 0 ? "primary" : "stakeholder" });
+      });
+    }
+    if (links.length > 0) {
+      const { error } = await admin
+        .from("contact_deals")
+        .upsert(links, { onConflict: "contact_id,deal_id", ignoreDuplicates: true });
+      if (error) {
+        console.warn(`[provisionDemoWorkspace] contact_deals link warning: ${error.message}`);
+        warnings.push(`contact_deals:${error.message}`);
+      }
+    }
   }
 
   // 8) Top-up funding sources (master_lenders).
