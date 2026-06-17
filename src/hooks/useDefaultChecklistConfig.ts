@@ -78,14 +78,15 @@ function migrateLegacy(legacy: DefaultChecklistConfig): DefaultChecklistConfigV2
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
+  if (Array.isArray(raw)) return { version: 2, configs: [] };
   if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
   // Legacy format
   return migrateLegacy(raw as DefaultChecklistConfig);
 }
 
 /** Normalize text for matching: lowercase, strip non-alphanumeric except spaces, collapse spaces */
-function normalizeForMatch(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+function normalizeForMatch(value: unknown): string {
+  return String(value ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Find config for a deal type by exact match (case-insensitive, punctuation-resilient) against configured Deal Types. */
@@ -95,7 +96,11 @@ export function findMatchingConfig(
 ): DealTypeChecklistConfig | null {
   if (!dealTypeText) return null;
   const normalized = normalizeForMatch(dealTypeText);
-  return configs.find(c => normalizeForMatch(c.dealTypeMatchString) === normalized) || null;
+  return configs.find(c => {
+    if (!c || typeof c.dealTypeMatchString !== 'string' || !c.dealTypeMatchString.trim()) return false;
+    if (!Array.isArray(c.rounds)) return false;
+    return normalizeForMatch(c.dealTypeMatchString) === normalized;
+  }) || null;
 }
 
 // ── Seed data ───────────────────────────────────────────────
