@@ -9,8 +9,8 @@ import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 type MasterLenderRow = Database['public']['Tables']['master_lenders']['Row'];
 type MasterLenderDbInsert = Database['public']['Tables']['master_lenders']['Insert'];
 
-export type MasterLender = MasterLenderRow & Record<string, any>;
-export type MasterLenderInsert = Omit<MasterLenderDbInsert, 'user_id'> & Record<string, any>;
+export type MasterLender = MasterLenderRow & Record<string, unknown>;
+export type MasterLenderInsert = Omit<MasterLenderDbInsert, 'user_id'> & Record<string, unknown>;
 
 export type MasterLendersMode = 'all' | 'paged';
 
