@@ -135,6 +135,7 @@ import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
 const DataRoomV2 = lazy(() => import('@/components/deal/DataRoomV2').then(m => ({ default: m.DataRoomV2 })));
+import { VdrErrorBoundary } from '@/components/vdr/VdrErrorBoundary';
 const VdrShell = lazy(() => import('@/components/vdr/VdrShell').then(m => ({ default: m.VdrShell })));
 const DealActivityLogTab = lazy(() => import('@/components/deal/DealActivityLogTab').then(m => ({ default: m.DealActivityLogTab })));
 const DealCommunicationsTab = lazy(() => import('@/components/deal/DealCommunicationsTab').then(m => ({ default: m.DealCommunicationsTab })));
