@@ -851,14 +851,16 @@ function MergeWorkspace({
               const SectionIcon = SECTION_META[section].icon;
               const fieldsInSection = fields.filter(f => f.section === section);
               return (
-                <div key={section}>
-                  <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 bg-background/60 backdrop-blur border-b border-white/8">
+                <Collapsible key={section} defaultOpen>
+                  <CollapsibleTrigger className="sticky top-0 z-[5] w-full flex items-center gap-2 px-3 py-1.5 bg-background/60 backdrop-blur border-b border-white/8 text-left">
                     <SectionIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                    <span className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground flex-1">
                       {SECTION_META[section].label}
                     </span>
-                  </div>
-                  {fieldsInSection.map(f => {
+                    <span className="text-[10px] text-muted-foreground">{fieldsInSection.length}</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {fieldsInSection.map(f => {
                     if (f.type === 'array') {
                       return (
                         <ArrayFieldRow
@@ -882,7 +884,8 @@ function MergeWorkspace({
                       />
                     );
                   })}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               );
             })}
           </ScrollArea>
