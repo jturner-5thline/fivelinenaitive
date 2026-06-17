@@ -50,7 +50,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
-import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -368,7 +368,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(nextOpen) => {
+        if (nextOpen && isOverlayClickSuppressed()) return;
+        setOpen(nextOpen);
+      }}>
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
