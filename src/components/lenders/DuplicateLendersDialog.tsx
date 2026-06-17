@@ -924,45 +924,42 @@ function MergeWorkspace({
 
               <Separator className="bg-white/10" />
 
-              {/* Key merged values */}
-              <div className="space-y-1.5 text-xs">
-                {([
-                  ['name', 'Name', User],
-                  ['website', 'Website', Globe],
-                  ['geo', 'Geography', MapPin],
-                  ['lender_type', 'Type', Tag],
-                  ['email', 'Email', Mail],
-                  ['contact_name', 'Contact', User],
-                  ['contact_phone', 'Phone', Phone],
-                ] as const).map(([k, label, Icon]) => {
-                  const v = (mergedPreview as any)[k];
+              <div className="space-y-2 text-xs">
+                {sections.map(section => {
+                  const SectionIcon = SECTION_META[section].icon;
+                  const fieldsInSection = fields.filter(f => f.section === section);
+                  const filled = fieldsInSection.filter(f => !isEmpty((mergedPreview as any)[f.key])).length;
                   return (
-                    <div key={k} className="flex items-start gap-2">
-                      <Icon className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-                        <div className="truncate">{isEmpty(v) ? <span className="text-muted-foreground/60 italic">—</span> : String(v)}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {(['loan_types', 'industries'] as const).map(k => {
-                  const v = (mergedPreview as any)[k] as string[] | null;
-                  return (
-                    <div key={k} className="pt-1">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                        {k === 'loan_types' ? 'Loan products' : 'Industries'} ({v?.length || 0})
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {(v || []).slice(0, 8).map(t => (
-                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-white/10">{t}</span>
-                        ))}
-                        {(v?.length || 0) > 8 && (
-                          <span className="text-[10px] text-muted-foreground">+{(v?.length || 0) - 8} more</span>
-                        )}
-                      </div>
-                    </div>
+                    <Collapsible key={section} defaultOpen>
+                      <CollapsibleTrigger className="w-full flex items-center gap-2 rounded border border-white/10 px-2 py-1.5 text-left hover:border-white/20">
+                        <SectionIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex-1">
+                          {SECTION_META[section].label}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{filled}/{fieldsInSection.length}</span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-1.5 space-y-1.5">
+                        {fieldsInSection.map(field => {
+                          const v = (mergedPreview as any)[field.key];
+                          return (
+                            <div key={field.key} className="rounded border border-white/8 px-2 py-1.5">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{field.label}</div>
+                              {field.type === 'array' && Array.isArray(v) && v.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {v.map((t: string) => (
+                                    <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-white/10">{t}</span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-0.5 whitespace-pre-wrap break-words">
+                                  {isEmpty(v) ? <span className="text-muted-foreground/60 italic">—</span> : displayValue(field, v)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </CollapsibleContent>
+                    </Collapsible>
                   );
                 })}
               </div>
