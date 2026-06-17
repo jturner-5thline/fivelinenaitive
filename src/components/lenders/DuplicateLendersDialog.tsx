@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import type { ComponentType } from 'react';
 import {
   Users, Merge, Check, AlertTriangle, Building2,
   User, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
@@ -52,6 +53,8 @@ interface FieldDef {
   conflictWeight?: 'high' | 'med' | 'low';
   readOnly?: boolean;
 }
+
+type UnknownRecord = Record<string, unknown>;
 
 const MASTER_LENDER_SCHEMA_COLUMNS = [
   { key: 'id', dataType: 'uuid' },
@@ -213,7 +216,7 @@ function buildFieldDef(key: string): FieldDef {
   };
 }
 
-function getFundingSourceFields(records: Array<Record<string, any>> = []): FieldDef[] {
+function getFundingSourceFields(records: UnknownRecord[] = []): FieldDef[] {
   const keys = new Set<string>(MASTER_LENDER_SCHEMA_COLUMNS.map(c => c.key));
   records.forEach(record => Object.keys(record || {}).forEach(key => keys.add(key)));
   return [...keys]
@@ -225,7 +228,7 @@ function getFundingSourceFields(records: Array<Record<string, any>> = []): Field
     });
 }
 
-const SECTION_META: Record<string, { label: string; icon: any }> = {
+const SECTION_META: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
   relationship: { label: 'Relationship & Contacts', icon: User },
@@ -235,46 +238,52 @@ const SECTION_META: Record<string, { label: string; icon: any }> = {
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-function isEmpty(v: any): boolean {
+function isEmpty(v: unknown): boolean {
   if (v == null) return true;
   if (typeof v === 'string') return v.trim() === '';
   if (Array.isArray(v)) return v.length === 0;
   return false;
 }
-function formatCurrency(v: any): string {
+function formatCurrency(v: unknown): string {
   const n = typeof v === 'number' ? v : Number(v);
   if (!Number.isFinite(n)) return '—';
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}MM`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
   return `$${n}`;
 }
-function formatDate(v: any): string {
+function formatDate(v: unknown): string {
   if (!v) return '—';
   try { return new Date(v).toLocaleDateString(); } catch { return String(v); }
 }
-function formatBool(v: any): string {
+function formatBool(v: unknown): string {
   if (v === true) return 'Yes';
   if (v === false) return 'No';
   return '—';
 }
-function displayValue(field: FieldDef, v: any): string {
+function displayValue(field: FieldDef, v: unknown): string {
   if (isEmpty(v)) return '—';
   switch (field.type) {
     case 'currency': return formatCurrency(v);
     case 'date': return formatDate(v);
     case 'boolish': return formatBool(v);
-    case 'array': return Array.isArray(v) ? v.join(', ') : String(v);
+    case 'array': return Array.isArray(v) ? v.map(item => String(item)).join(', ') : String(v);
     case 'url': return String(v);
     case 'json': return typeof v === 'string' ? v : JSON.stringify(v, null, 2);
     default: return String(v);
   }
 }
-function normalizeForCompare(field: FieldDef, v: any): string {
+function normalizeForCompare(field: FieldDef, v: unknown): string {
   if (isEmpty(v)) return '';
-  if (field.type === 'array') return [...(v as string[])].map(s => s.trim().toLowerCase()).sort().join('|');
+  if (field.type === 'array') return toStringArray(v).map(s => s.trim().toLowerCase()).sort().join('|');
   if (field.type === 'text' || field.type === 'longtext') return String(v).trim().toLowerCase();
   if (field.type === 'boolish') return v ? 'true' : 'false';
   return String(v);
+}
+function getFieldValue(record: UnknownRecord, key: string): unknown {
+  return record[key];
+}
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(v => String(v)).filter(Boolean) : [];
 }
 function extractDomain(url: string | null | undefined): string | null {
   if (!url) return null;
