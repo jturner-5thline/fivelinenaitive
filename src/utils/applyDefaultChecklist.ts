@@ -81,7 +81,7 @@ export async function getChecklistPreview(
       // Use the first round (Initial Items) for the preview, mirroring
       // autoPopulateOutstandingItems' default round.
       const round = matched.rounds.find(
-        (r) => r.title.toLowerCase().replace(/\s+/g, '') === 'initialitems',
+        (r) => normalizeText(r.title).replace(/\s+/g, '') === 'initialitems',
       ) ?? matched.rounds[0];
       if (round && round.items.length > 0) {
         return {
