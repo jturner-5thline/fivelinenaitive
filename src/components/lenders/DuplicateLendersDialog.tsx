@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import {
   Users, Merge, Check, AlertTriangle, Globe, MapPin, Building2, Phone,
   Mail, User, Tag, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
-  CircleDot, Layers, ArrowRight, Filter as FilterIcon,
+  CircleDot, Layers, ArrowRight, Filter as FilterIcon, FileText, ClipboardList,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,12 +42,12 @@ interface DupGroup {
 }
 
 // ── Field schema ────────────────────────────────────────────────────────────
-type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date';
+type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date' | 'url';
 interface FieldDef {
   key: keyof MasterLender;
   label: string;
   type: FieldType;
-  section: 'identity' | 'commercial' | 'relationship';
+  section: 'identity' | 'commercial' | 'relationship' | 'process' | 'documents' | 'system';
   conflictWeight?: 'high' | 'med' | 'low';
 }
 const FIELDS: FieldDef[] = [
@@ -60,12 +61,11 @@ const FIELDS: FieldDef[] = [
   { key: 'external_created_by', label: 'External Created By', type: 'text', section: 'identity' },
   { key: 'created_at', label: 'Created', type: 'date', section: 'identity' },
   { key: 'updated_at', label: 'Last Updated', type: 'date', section: 'identity' },
+  { key: 'external_last_modified', label: 'External Last Modified', type: 'date', section: 'identity' },
   // Commercial
-  { key: 'lender_type', label: 'Funding Source Type', type: 'text', section: 'commercial', conflictWeight: 'med' },
+  { key: 'lender_type', label: 'Funding Source', type: 'text', section: 'commercial', conflictWeight: 'med' },
   { key: 'tier', label: 'Tier', type: 'text', section: 'commercial', conflictWeight: 'med' },
   { key: 'active', label: 'Active', type: 'boolish', section: 'commercial' },
-  { key: 'nda', label: 'NDA', type: 'text', section: 'commercial' },
-  { key: 'onboarded_to_flex', label: 'Onboarded to FLEx', type: 'text', section: 'commercial' },
   { key: 'min_deal', label: 'Min Deal Size', type: 'currency', section: 'commercial' },
   { key: 'max_deal', label: 'Max Deal Size', type: 'currency', section: 'commercial' },
   { key: 'min_revenue', label: 'Min Revenue', type: 'currency', section: 'commercial' },
@@ -78,28 +78,41 @@ const FIELDS: FieldDef[] = [
   { key: 'sub_debt', label: 'Sub Debt', type: 'text', section: 'commercial' },
   { key: 'cash_burn', label: 'Cash Burn', type: 'text', section: 'commercial' },
   { key: 'sponsorship', label: 'Sponsorship', type: 'text', section: 'commercial' },
-  { key: 'company_requirements', label: 'Company Requirements', type: 'longtext', section: 'commercial' },
-  { key: 'deal_structure_notes', label: 'Deal Structure Notes', type: 'longtext', section: 'commercial' },
+  { key: 'company_requirements', label: 'Company Requirements', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  { key: 'deal_structure_notes', label: 'Deal Structure(s)', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  { key: 'tags', label: 'Tags', type: 'array', section: 'commercial' },
+  { key: 'funding_source_notes', label: 'Funding Source Notes', type: 'longtext', section: 'commercial' },
+  { key: 'about_notes', label: 'About / Notes', type: 'longtext', section: 'commercial' },
   // Relationship
   { key: 'contact_name', label: 'Primary Contact', type: 'text', section: 'relationship', conflictWeight: 'med' },
   { key: 'contact_title', label: 'Contact Title', type: 'text', section: 'relationship' },
   { key: 'email', label: 'Email', type: 'text', section: 'relationship', conflictWeight: 'high' },
   { key: 'contact_phone', label: 'Contact Phone', type: 'text', section: 'relationship' },
   { key: 'phone', label: 'Org Phone', type: 'text', section: 'relationship' },
-  { key: 'relationship_owners', label: 'Internal Owner(s)', type: 'text', section: 'relationship' },
+  { key: 'relationship_owners', label: 'Relationship Owner(s)', type: 'text', section: 'relationship', conflictWeight: 'med' },
   { key: 'referral_lender', label: 'Referral Source', type: 'text', section: 'relationship' },
-  { key: 'referral_fee_offered', label: 'Referral Fee', type: 'text', section: 'relationship' },
-  { key: 'referral_agreement', label: 'Referral Agreement', type: 'text', section: 'relationship' },
-  { key: 'lender_one_pager_url', label: 'One-Pager URL', type: 'text', section: 'relationship' },
+  { key: 'referral_fee_offered', label: 'Referral Fee', type: 'text', section: 'relationship', conflictWeight: 'med' },
+  { key: 'nda', label: 'NDA', type: 'text', section: 'relationship', conflictWeight: 'med' },
   { key: 'gift_address', label: 'Gift Address', type: 'text', section: 'relationship' },
-  { key: 'upfront_checklist', label: 'Upfront Checklist', type: 'longtext', section: 'relationship' },
-  { key: 'post_term_sheet_checklist', label: 'Post Term Sheet Checklist', type: 'longtext', section: 'relationship' },
+  // Process / checklists
+  { key: 'upfront_checklist', label: 'BU / Upfront Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  { key: 'post_term_sheet_checklist', label: 'Post-Term Sheet Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  { key: 'onboarded_to_flex', label: 'Onboarded to FLEx', type: 'text', section: 'process', conflictWeight: 'med' },
+  // Documents / attachments (URL-backed)
+  { key: 'lender_one_pager_url', label: 'Lender One-Pager', type: 'url', section: 'documents' },
+  { key: 'referral_agreement', label: 'Referral Agreement / NDA', type: 'url', section: 'documents', conflictWeight: 'med' },
+  // System / sync
+  { key: 'sync_source', label: 'Sync Source', type: 'text', section: 'system' },
+  { key: 'last_synced_from_flex', label: 'Last FLEx Sync', type: 'date', section: 'system' },
 ];
 
 const SECTION_META: Record<string, { label: string; icon: any }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
   relationship: { label: 'Relationship & Operations', icon: User },
+  process: { label: 'Checklists & Process', icon: ClipboardList },
+  documents: { label: 'Documents & Attachments', icon: FileText },
+  system: { label: 'System / Sync', icon: Clock },
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -132,6 +145,7 @@ function displayValue(field: FieldDef, v: any): string {
     case 'date': return formatDate(v);
     case 'boolish': return formatBool(v);
     case 'array': return Array.isArray(v) ? v.join(', ') : String(v);
+    case 'url': return String(v);
     default: return String(v);
   }
 }
@@ -545,7 +559,9 @@ function MergeWorkspace({
     await onMerge(primaryId, mergeIds, payload);
   };
 
-  const sections: ('identity' | 'commercial' | 'relationship')[] = ['identity', 'commercial', 'relationship'];
+  const sections: Array<keyof typeof SECTION_META> = [
+    'identity', 'commercial', 'relationship', 'process', 'documents', 'system',
+  ];
   const primary = activeCandidates.find(l => l.id === primaryId) || activeCandidates[0];
 
   return (
