@@ -47,7 +47,7 @@ serve(async (req: Request): Promise<Response> => {
     // Check gmail_tokens for a Nylas grant (shared connection for email + calendar)
     const { data: tokenRecord, error: fetchError } = await supabase
       .from("gmail_tokens")
-      .select("id, grant_id, email_address, created_at")
+      .select("id, grant_id, email_address, created_at, is_demo_seed")
       .eq("user_id", userId)
       .single();
 
@@ -55,6 +55,18 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({ connected: false, message: "Calendar not connected. Connect your Google account first." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Demo-seed tenant: synthetic grant, never call Nylas.
+    if (tokenRecord.is_demo_seed || tokenRecord.grant_id === "demo-seed") {
+      return new Response(JSON.stringify({
+        connected: true,
+        is_expired: false,
+        scope: "calendar",
+        source: "demo-seed",
+        connected_at: tokenRecord.created_at,
+        email: tokenRecord.email_address,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Verify grant is still valid with Nylas

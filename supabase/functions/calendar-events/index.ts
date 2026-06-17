@@ -166,6 +166,115 @@ async function getGrantId(supabase: any, userId: string): Promise<string | null>
   return data.grant_id;
 }
 
+/**
+ * Demo-seed short-circuit: when gmail_tokens.grant_id === "demo-seed"
+ * (set by provisionDemoWorkspace / seedDemoInbox), serve calendar reads
+ * directly from the seeded `calendar_events` rows (`provider = 'demo'`)
+ * instead of calling Nylas — the demo tenant has no real Nylas grant.
+ */
+async function handleDemoCalendar(
+  supabase: any,
+  userId: string,
+  body: EventsRequest,
+): Promise<Response> {
+  const json = (payload: any, status = 200) =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  const mapRow = (e: any) => ({
+    id: e.event_id,
+    calendar_id: "primary",
+    title: e.title || "(No title)",
+    summary: e.title || "(No title)",
+    description: null,
+    location: e.location || null,
+    start: e.start_time,
+    end: e.end_time,
+    all_day: !!e.is_all_day,
+    status: e.is_cancelled ? "cancelled" : "confirmed",
+    htmlLink: null,
+    hangoutLink: e.meeting_url || null,
+    attendees: Array.isArray(e.attendees)
+      ? e.attendees.map((a: any) =>
+          typeof a === "string"
+            ? { email: a, display_name: null, response_status: "needsAction", organizer: false, self: false }
+            : a,
+        )
+      : null,
+    organizer: e.organizer_email ? { email: e.organizer_email } : null,
+    color: null,
+    provider: "demo",
+  });
+
+  if (body.action === "list_calendars") {
+    return json({
+      calendars: [{
+        id: "primary",
+        summary: "Demo Calendar",
+        description: "Seeded demo calendar (read-only)",
+        primary: true,
+        background_color: null,
+        foreground_color: null,
+        access_role: "reader",
+        time_zone: body.timezone || "UTC",
+      }],
+    });
+  }
+
+  if (body.action === "list" || body.action === "sync_all") {
+    const now = new Date();
+    const defaultEnd = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+    const timeMin = body.time_min || now.toISOString();
+    const timeMax = body.time_max || defaultEnd.toISOString();
+    const max = Math.min(body.max_results || 200, 500);
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("event_id, title, start_time, end_time, organizer_email, attendees, location, meeting_url, is_all_day, is_cancelled")
+      .eq("user_id", userId)
+      .eq("provider", "demo")
+      .gte("start_time", timeMin)
+      .lte("start_time", timeMax)
+      .order("start_time", { ascending: true })
+      .limit(max);
+    if (error) {
+      console.error(`[calendar-events][demo] read error user=${userId}: ${error.message}`);
+      return json({ error: error.message, error_code: "demo_read_failed", provider: "demo" }, 500);
+    }
+    const events = (data || []).filter((e: any) => !e.is_cancelled).map(mapRow);
+    if (body.action === "sync_all") {
+      return json({
+        calendars: [{ id: "primary", summary: "Demo Calendar", primary: true, access_role: "reader", time_zone: body.timezone || "UTC" }],
+        events,
+        synced_at: new Date().toISOString(),
+      });
+    }
+    return json({ events, next_page_token: null, provider: "demo" });
+  }
+
+  if (body.action === "get") {
+    if (!body.event_id) return json({ error: "event_id required" }, 400);
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("event_id, title, start_time, end_time, organizer_email, attendees, location, meeting_url, is_all_day, is_cancelled")
+      .eq("user_id", userId)
+      .eq("provider", "demo")
+      .eq("event_id", body.event_id)
+      .maybeSingle();
+    if (error) return json({ error: error.message }, 500);
+    if (!data) return json({ error: "Event not found" }, 404);
+    return json({ event: mapRow(data) });
+  }
+
+  // create / update / delete / create_calendar — demo inbox is read-only.
+  return json({
+    error: "Demo calendar is read-only.",
+    error_code: "demo_read_only",
+    provider: "demo",
+  }, 400);
+}
+
 async function hasMicrosoftConnection(supabase: any, userId: string): Promise<boolean> {
   const { data } = await supabase
     .from("microsoft_tokens")
@@ -271,6 +380,9 @@ serve(async (req: Request): Promise<Response> => {
     console.log("Calendar events action:", body.action, "for user:", user.id);
 
     const grantId = await getGrantId(supabase, user.id);
+    if (grantId === "demo-seed") {
+      return await handleDemoCalendar(supabase, user.id, body);
+    }
     if (!grantId) {
       const msConnected = await hasMicrosoftConnection(supabase, user.id);
       console.log(`[calendar-events] no Nylas grant user=${user.id} ms_connected=${msConnected} action=${body.action}`);
