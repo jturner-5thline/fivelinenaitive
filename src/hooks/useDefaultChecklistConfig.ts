@@ -58,7 +58,7 @@ export function genId(): string {
 function migrateLegacy(legacy: DefaultChecklistConfig): DefaultChecklistConfigV2 {
   const configs: DealTypeChecklistConfig[] = Object.entries(legacy).map(([, val]) => ({
     id: genId(),
-    dealTypeMatchString: val.label,
+    dealTypeMatchString: String(val?.label ?? ''),
     rounds: [{
       id: genId(),
       title: 'Initial Items',
@@ -75,11 +75,42 @@ function migrateLegacy(legacy: DefaultChecklistConfig): DefaultChecklistConfigV2
   return { version: 2, configs };
 }
 
+function sanitizeV2Config(rawConfigs: unknown): DefaultChecklistConfigV2 {
+  const configs = Array.isArray(rawConfigs) ? rawConfigs : [];
+  return {
+    version: 2,
+    configs: configs
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .filter((c) => typeof c.dealTypeMatchString === 'string' && c.dealTypeMatchString.trim().length > 0)
+      .map((c) => ({
+        id: typeof c.id === 'string' ? c.id : genId(),
+        dealTypeMatchString: c.dealTypeMatchString as string,
+        rounds: (Array.isArray(c.rounds) ? c.rounds : [])
+          .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+          .map((r, roundIdx) => ({
+            id: typeof r.id === 'string' ? r.id : genId(),
+            title: String(r.title ?? `Round ${roundIdx + 1}`),
+            order: typeof r.order === 'number' ? r.order : roundIdx,
+            items: (Array.isArray(r.items) ? r.items : [])
+              .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+              .map((item, itemIdx) => ({
+                id: typeof item.id === 'string' ? item.id : genId(),
+                label: String(item.label ?? item.name ?? ''),
+                description: typeof item.description === 'string' ? item.description : undefined,
+                order: typeof item.order === 'number' ? item.order : itemIdx,
+                required: Boolean(item.required ?? item.is_required),
+              }))
+              .filter((item) => item.label.trim().length > 0),
+          })),
+      })),
+  };
+}
+
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
   if (Array.isArray(raw)) return { version: 2, configs: [] };
-  if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
+  if (obj.version === 2 || Array.isArray(obj.configs)) return sanitizeV2Config(obj.configs);
   // Legacy format
   return migrateLegacy(raw as DefaultChecklistConfig);
 }
