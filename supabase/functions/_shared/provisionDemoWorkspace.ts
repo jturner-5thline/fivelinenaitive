@@ -904,6 +904,26 @@ export async function provisionDemoWorkspace(
     warnings.push(`inbox seed failed: ${(e as Error).message}`);
   }
 
+  // Seed a realistic Data Room per demo deal so the Data Room tab is not empty.
+  // Non-fatal: any failure is logged and surfaced as a warning, never thrown.
+  try {
+    const { data: allDealsForVdr } = await admin
+      .from("deals")
+      .select("id, company")
+      .eq("company_id", companyId);
+    const uploadedBy = memberUserIds[0] ?? null;
+    const seededVdr = await seedDemoDataRoom(admin, {
+      companyId,
+      uploadedBy,
+      deals: allDealsForVdr ?? [],
+    });
+    insertedThisRun.vdrDocuments = seededVdr;
+  } catch (e) {
+    const msg = (e as Error).message;
+    console.error("[provisionDemoWorkspace] data room seed failed:", msg);
+    warnings.push(`vdr seed failed: ${msg}`);
+  }
+
   return {
     ...validation,
     companyId,
