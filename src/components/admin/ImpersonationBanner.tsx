@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { stopImpersonation } from '@/lib/adminImpersonation';
 import { useImpersonationState } from '@/hooks/useImpersonationState';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Persistent, platform-wide banner shown while an admin is viewing the app
