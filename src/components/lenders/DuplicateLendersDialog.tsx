@@ -432,7 +432,7 @@ function ScalarFieldRow({
               Custom
             </label>
             {customValue != null && (
-              {expanded ? (
+              expanded ? (
                 <Textarea
                   value={customValue}
                   onChange={e => onCustom(e.target.value)}
@@ -446,7 +446,7 @@ function ScalarFieldRow({
                   placeholder="Override value"
                   className="h-7 text-xs bg-white/[0.03] border-white/10"
                 />
-              )}
+              )
             )}
           </div>
         </div>
