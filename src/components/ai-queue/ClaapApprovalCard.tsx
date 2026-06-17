@@ -164,7 +164,7 @@ function MatchingCard({
   };
 
   return (
-    <div className="rounded-md border border-fuchsia-500/30 bg-fuchsia-500/[0.04] p-3 space-y-3">
+    <div className="rounded-md border border-fuchsia-500/30 bg-transparent p-3 space-y-3">
       <div className="flex items-start gap-2">
         <Video className="h-4 w-4 text-fuchsia-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
@@ -208,7 +208,7 @@ function MatchingCard({
         ) : (
           <div className="space-y-1">
             {deals.map(d => (
-              <label key={d.id} className={`flex items-center gap-2 rounded border px-2 py-1.5 cursor-pointer text-xs ${selectedDealId === d.id ? 'border-fuchsia-500/60 bg-fuchsia-500/10' : 'border-border bg-background/50'}`}>
+              <label key={d.id} className={`flex items-center gap-2 rounded border px-2 py-1.5 cursor-pointer text-xs ${selectedDealId === d.id ? 'border-fuchsia-500/60 bg-transparent' : 'border-border bg-transparent'}`}>
                 <input type="radio" name={`deal-${item.id}`}
                   checked={selectedDealId === d.id}
                   onChange={() => setSelectedDealId(d.id)}
@@ -224,7 +224,7 @@ function MatchingCard({
 
       {/* Why this match */}
       {why && (
-        <div className="rounded border border-border/50 bg-muted/30 px-2 py-1.5 text-[11px] text-muted-foreground">
+        <div className="rounded border border-border/50 bg-transparent px-2 py-1.5 text-[11px] text-muted-foreground">
           <span className="font-medium text-foreground">Why this match?</span> {why}
         </div>
       )}
@@ -365,7 +365,7 @@ function ActionItemsCard({
   };
 
   return (
-    <div className="rounded-md border border-cyan-500/30 bg-cyan-500/[0.04] p-3 space-y-2">
+    <div className="rounded-md border border-cyan-500/30 bg-transparent p-3 space-y-2">
       <div className="flex items-start gap-2">
         <ListChecks className="h-4 w-4 text-cyan-500 mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
@@ -382,7 +382,7 @@ function ActionItemsCard({
       ) : (
         <ul className="space-y-2">
           {visible.map(({ it, i }) => (
-            <li key={i} className="rounded border border-border/60 bg-background/50 p-2 space-y-1.5">
+            <li key={i} className="rounded border border-border/60 bg-transparent p-2 space-y-1.5">
               {editingIdx === i ? (
                 <>
                   <Input value={it.title}
