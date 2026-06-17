@@ -52,6 +52,29 @@ function json(p: unknown, s: number) {
   });
 }
 
+function getProductionDemoOrigin(requestedOrigin?: string | null): string {
+  const fallback = "https://www.naitive.co";
+  if (!requestedOrigin) return fallback;
+  try {
+    const u = new URL(requestedOrigin);
+    if (u.protocol !== "https:") return fallback;
+    if (u.hostname === "www.naitive.co" || u.hostname === "naitive.co") {
+      return u.origin.replace(/\/$/, "");
+    }
+  } catch { /* fall through */ }
+  return fallback;
+}
+
+function isAbsoluteHttpUrl(value: string | null | undefined): value is string {
+  if (!value) return false;
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 function randomNonce() {
   return crypto.randomUUID().replace(/-/g, "");
 }
@@ -213,28 +236,10 @@ serve(async (req: Request) => {
     }
 
     // 5. Mint magic link → existing impersonation callback ------------
-    // Prefer an explicit client-provided demoOrigin so the demo window
-    // opens on a different browser origin from the admin tab (isolated
-    // localStorage). Validate against a strict allowlist.
-    const ALLOWED_HOST_SUFFIXES = [".lovable.app", "naitive.co"];
-    function isAllowedOrigin(o: string | null | undefined): o is string {
-      if (!o) return false;
-      try {
-        const u = new URL(o);
-        if (u.protocol !== "https:" && u.protocol !== "http:") return false;
-        return ALLOWED_HOST_SUFFIXES.some(
-          (s) => u.hostname === s.replace(/^\./, "") || u.hostname.endsWith(s),
-        );
-      } catch {
-        return false;
-      }
-    }
-    const requestOrigin =
-      req.headers.get("origin") ||
-      (req.headers.get("referer") ?? "").replace(/\/$/, "");
-    const origin = isAllowedOrigin(body.demoOrigin)
-      ? body.demoOrigin!.replace(/\/$/, "")
-      : requestOrigin;
+    // Always build production-valid callbacks for the public naitive.co
+    // domains. Lovable preview origins are intentionally not used in the
+    // magic-link redirectTo for this standard demo flow.
+    const origin = getProductionDemoOrigin(body.demoOrigin);
     const landing = ALLOWED_LANDINGS.has(body.landingPath ?? "")
       ? (body.landingPath as string) : "/deals";
     const callback = `${origin}/auth/impersonation/callback`
@@ -251,6 +256,10 @@ serve(async (req: Request) => {
     if (linkErr || !link?.properties?.action_link) {
       return json({ error: linkErr?.message ?? "Failed to mint magic link" }, 500);
     }
+    const redirectUrl = link.properties.action_link;
+    if (!isAbsoluteHttpUrl(redirectUrl)) {
+      return json({ error: "Generated demo handoff URL was invalid", code: "invalid_demo_url" }, 500);
+    }
 
     await audit(caller.id, "open_standard_demo", {
       companyId,
@@ -264,7 +273,8 @@ serve(async (req: Request) => {
       ok: true,
       sessionId: session.id,
       expiresAt: session.expires_at,
-      actionLink: link.properties.action_link,
+      url: redirectUrl,
+      actionLink: redirectUrl,
       callbackUrl: callback,
       workspace: { id: companyId, name: companyName, email: STANDARD_DEMO_EMAIL },
       repairResult,
