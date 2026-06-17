@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -41,78 +43,135 @@ interface DupGroup {
   lenders: MasterLender[];
 }
 
-// ── Field schema ────────────────────────────────────────────────────────────
-type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date' | 'url';
+// ── Schema-driven funding source fields ─────────────────────────────────────
+type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date' | 'url' | 'json';
+type SectionId = 'identity' | 'commercial' | 'relationship' | 'process' | 'documents' | 'system';
 interface FieldDef {
-  key: keyof MasterLender;
+  key: string;
   label: string;
   type: FieldType;
-  section: 'identity' | 'commercial' | 'relationship' | 'process' | 'documents' | 'system';
+  section: SectionId;
   conflictWeight?: 'high' | 'med' | 'low';
+  readOnly?: boolean;
 }
-const FIELDS: FieldDef[] = [
-  // Identity
-  { key: 'name', label: 'Legal / Display Name', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'website', label: 'Website', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'linkedin_url', label: 'LinkedIn URL', type: 'text', section: 'identity' },
-  { key: 'address', label: 'Address', type: 'text', section: 'identity' },
-  { key: 'geo', label: 'HQ / Geography', type: 'text', section: 'identity', conflictWeight: 'med' },
-  { key: 'flex_lender_id', label: 'External ID (FLEx)', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'external_created_by', label: 'External Created By', type: 'text', section: 'identity' },
-  { key: 'created_at', label: 'Created', type: 'date', section: 'identity' },
-  { key: 'updated_at', label: 'Last Updated', type: 'date', section: 'identity' },
-  { key: 'external_last_modified', label: 'External Last Modified', type: 'date', section: 'identity' },
-  // Commercial
-  { key: 'lender_type', label: 'Funding Source', type: 'text', section: 'commercial', conflictWeight: 'med' },
-  { key: 'tier', label: 'Tier', type: 'text', section: 'commercial', conflictWeight: 'med' },
-  { key: 'active', label: 'Active', type: 'boolish', section: 'commercial' },
-  { key: 'min_deal', label: 'Min Deal Size', type: 'currency', section: 'commercial' },
-  { key: 'max_deal', label: 'Max Deal Size', type: 'currency', section: 'commercial' },
-  { key: 'min_revenue', label: 'Min Revenue', type: 'currency', section: 'commercial' },
-  { key: 'ebitda_min', label: 'Min EBITDA', type: 'currency', section: 'commercial' },
-  { key: 'loan_types', label: 'Loan Products', type: 'array', section: 'commercial' },
-  { key: 'industries', label: 'Industries Covered', type: 'array', section: 'commercial' },
-  { key: 'industries_to_avoid', label: 'Industries To Avoid', type: 'array', section: 'commercial' },
-  { key: 'b2b_b2c', label: 'B2B / B2C', type: 'text', section: 'commercial' },
-  { key: 'refinancing', label: 'Refinancing', type: 'text', section: 'commercial' },
-  { key: 'sub_debt', label: 'Sub Debt', type: 'text', section: 'commercial' },
-  { key: 'cash_burn', label: 'Cash Burn', type: 'text', section: 'commercial' },
-  { key: 'sponsorship', label: 'Sponsorship', type: 'text', section: 'commercial' },
-  { key: 'company_requirements', label: 'Company Requirements', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
-  { key: 'deal_structure_notes', label: 'Deal Structure(s)', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
-  { key: 'tags', label: 'Tags', type: 'array', section: 'commercial' },
-  { key: 'funding_source_notes', label: 'Funding Source Notes', type: 'longtext', section: 'commercial' },
-  { key: 'about_notes', label: 'About / Notes', type: 'longtext', section: 'commercial' },
-  // Relationship
-  { key: 'contact_name', label: 'Primary Contact', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'contact_title', label: 'Contact Title', type: 'text', section: 'relationship' },
-  { key: 'email', label: 'Email', type: 'text', section: 'relationship', conflictWeight: 'high' },
-  { key: 'contact_phone', label: 'Contact Phone', type: 'text', section: 'relationship' },
-  { key: 'phone', label: 'Org Phone', type: 'text', section: 'relationship' },
-  { key: 'relationship_owners', label: 'Relationship Owner(s)', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'referral_lender', label: 'Referral Source', type: 'text', section: 'relationship' },
-  { key: 'referral_fee_offered', label: 'Referral Fee', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'nda', label: 'NDA', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'gift_address', label: 'Gift Address', type: 'text', section: 'relationship' },
-  // Process / checklists
-  { key: 'upfront_checklist', label: 'BU / Upfront Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
-  { key: 'post_term_sheet_checklist', label: 'Post-Term Sheet Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
-  { key: 'onboarded_to_flex', label: 'Onboarded to FLEx', type: 'text', section: 'process', conflictWeight: 'med' },
-  // Documents / attachments (URL-backed)
-  { key: 'lender_one_pager_url', label: 'Lender One-Pager', type: 'url', section: 'documents' },
-  { key: 'referral_agreement', label: 'Referral Agreement / NDA', type: 'url', section: 'documents', conflictWeight: 'med' },
-  // System / sync
-  { key: 'sync_source', label: 'Sync Source', type: 'text', section: 'system' },
-  { key: 'last_synced_from_flex', label: 'Last FLEx Sync', type: 'date', section: 'system' },
-];
+
+const MASTER_LENDER_SCHEMA_COLUMNS = [
+  { key: 'id', dataType: 'uuid' },
+  { key: 'user_id', dataType: 'uuid' },
+  { key: 'company_id', dataType: 'uuid' },
+  { key: 'email', dataType: 'text' },
+  { key: 'name', dataType: 'text' },
+  { key: 'lender_type', dataType: 'text' },
+  { key: 'loan_types', dataType: 'ARRAY' },
+  { key: 'sub_debt', dataType: 'text' },
+  { key: 'cash_burn', dataType: 'text' },
+  { key: 'sponsorship', dataType: 'text' },
+  { key: 'min_revenue', dataType: 'numeric' },
+  { key: 'ebitda_min', dataType: 'numeric' },
+  { key: 'min_deal', dataType: 'numeric' },
+  { key: 'max_deal', dataType: 'numeric' },
+  { key: 'industries', dataType: 'ARRAY' },
+  { key: 'industries_to_avoid', dataType: 'ARRAY' },
+  { key: 'b2b_b2c', dataType: 'text' },
+  { key: 'refinancing', dataType: 'text' },
+  { key: 'company_requirements', dataType: 'text' },
+  { key: 'deal_structure_notes', dataType: 'text' },
+  { key: 'geo', dataType: 'text' },
+  { key: 'contact_name', dataType: 'text' },
+  { key: 'contact_title', dataType: 'text' },
+  { key: 'relationship_owners', dataType: 'text' },
+  { key: 'lender_one_pager_url', dataType: 'text' },
+  { key: 'referral_lender', dataType: 'text' },
+  { key: 'referral_fee_offered', dataType: 'text' },
+  { key: 'referral_agreement', dataType: 'text' },
+  { key: 'nda', dataType: 'text' },
+  { key: 'onboarded_to_flex', dataType: 'text' },
+  { key: 'upfront_checklist', dataType: 'text' },
+  { key: 'post_term_sheet_checklist', dataType: 'text' },
+  { key: 'gift_address', dataType: 'text' },
+  { key: 'external_created_by', dataType: 'text' },
+  { key: 'external_last_modified', dataType: 'timestamp with time zone' },
+  { key: 'created_at', dataType: 'timestamp with time zone' },
+  { key: 'updated_at', dataType: 'timestamp with time zone' },
+  { key: 'tier', dataType: 'text' },
+  { key: 'active', dataType: 'boolean' },
+  { key: 'sync_source', dataType: 'text' },
+  { key: 'flex_lender_id', dataType: 'text' },
+  { key: 'last_synced_from_flex', dataType: 'timestamp with time zone' },
+  { key: 'contact_phone', dataType: 'text' },
+  { key: 'tags', dataType: 'ARRAY' },
+  { key: 'website', dataType: 'text' },
+  { key: 'linkedin_url', dataType: 'text' },
+  { key: 'address', dataType: 'text' },
+  { key: 'phone', dataType: 'text' },
+  { key: 'funding_source_notes', dataType: 'text' },
+  { key: 'about_notes', dataType: 'text' },
+] as const;
+
+const FIELD_META: Record<string, Partial<FieldDef>> = {
+  id: { label: 'Record ID', section: 'system', readOnly: true },
+  user_id: { label: 'Owner User ID', section: 'system', readOnly: true },
+  company_id: { label: 'Workspace ID', section: 'system', readOnly: true },
+  name: { label: 'Funding Source Name', section: 'identity', conflictWeight: 'high' },
+  website: { label: 'Website', type: 'url', section: 'identity', conflictWeight: 'high' },
+  linkedin_url: { label: 'LinkedIn URL', type: 'url', section: 'identity' },
+  address: { label: 'Address', type: 'longtext', section: 'identity' },
+  geo: { label: 'Geography', section: 'identity', conflictWeight: 'med' },
+  lender_type: { label: 'Funding Source Type', section: 'commercial', conflictWeight: 'med' },
+  tier: { label: 'Tier', section: 'commercial', conflictWeight: 'med' },
+  active: { label: 'Active', type: 'boolish', section: 'commercial' },
+  min_deal: { label: 'Min Deal Size', type: 'currency', section: 'commercial' },
+  max_deal: { label: 'Max Deal Size', type: 'currency', section: 'commercial' },
+  min_revenue: { label: 'Min Revenue', type: 'currency', section: 'commercial' },
+  ebitda_min: { label: 'Min EBITDA', type: 'currency', section: 'commercial' },
+  loan_types: { label: 'Loan Types', type: 'array', section: 'commercial' },
+  industries: { label: 'Industries', type: 'array', section: 'commercial' },
+  industries_to_avoid: { label: 'Industries To Avoid', type: 'array', section: 'commercial' },
+  b2b_b2c: { label: 'B2B / B2C', section: 'commercial' },
+  sub_debt: { label: 'Sub Debt', section: 'commercial' },
+  cash_burn: { label: 'Cash Burn', section: 'commercial' },
+  sponsorship: { label: 'Sponsorship', section: 'commercial' },
+  company_requirements: { label: 'Company Requirements', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  deal_structure_notes: { label: 'Deal Structure Notes', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  contact_name: { label: 'Contact Name', section: 'relationship', conflictWeight: 'med' },
+  contact_title: { label: 'Contact Title', section: 'relationship' },
+  email: { label: 'Email', section: 'relationship', conflictWeight: 'high' },
+  contact_phone: { label: 'Contact Phone', section: 'relationship' },
+  phone: { label: 'Phone', section: 'relationship' },
+  relationship_owners: { label: 'Relationship Owners', section: 'relationship', conflictWeight: 'med' },
+  upfront_checklist: { label: 'Upfront Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  post_term_sheet_checklist: { label: 'Post-Term Sheet Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  onboarded_to_flex: { label: 'Onboarded to FLEx', section: 'process', conflictWeight: 'med' },
+  lender_one_pager_url: { label: 'One Pager', type: 'url', section: 'documents' },
+  referral_lender: { label: 'Referral Lender', section: 'documents' },
+  referral_fee_offered: { label: 'Referral Fee', section: 'documents', conflictWeight: 'med' },
+  referral_agreement: { label: 'Referral Agreement / NDA', type: 'longtext', section: 'documents', conflictWeight: 'med' },
+  nda: { label: 'NDA', section: 'documents', conflictWeight: 'med' },
+  gift_address: { label: 'Gift Address', type: 'longtext', section: 'documents' },
+  tags: { label: 'Tags', type: 'array', section: 'system' },
+  funding_source_notes: { label: 'Funding Source Notes', type: 'longtext', section: 'system' },
+  about_notes: { label: 'About / Notes', type: 'longtext', section: 'system' },
+  flex_lender_id: { label: 'FLEx Lender ID', section: 'system', conflictWeight: 'high' },
+  sync_source: { label: 'Sync Source', section: 'system' },
+  external_created_by: { label: 'External Created By', section: 'system' },
+  external_last_modified: { label: 'External Last Modified', type: 'date', section: 'system' },
+  last_synced_from_flex: { label: 'Last Synced from FLEx', type: 'date', section: 'system' },
+  created_at: { label: 'Created', type: 'date', section: 'system', readOnly: true },
+  updated_at: { label: 'Updated', type: 'date', section: 'system', readOnly: true },
+};
+
+const SECTION_ORDER: SectionId[] = ['identity', 'commercial', 'relationship', 'process', 'documents', 'system'];
+const SCHEMA_ORDER = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map((c, i) => [c.key, i]));
+const SCHEMA_TYPES = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map(c => [c.key, c.dataType]));
+const MERGE_PROTECTED_KEYS = new Set(['id', 'user_id', 'company_id', 'created_at', 'updated_at']);
 
 const SECTION_META: Record<string, { label: string; icon: any }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
-  relationship: { label: 'Relationship & Operations', icon: User },
+  relationship: { label: 'Relationship & Contacts', icon: User },
   process: { label: 'Checklists & Process', icon: ClipboardList },
-  documents: { label: 'Documents & Attachments', icon: FileText },
-  system: { label: 'System / Sync', icon: Clock },
+  documents: { label: 'Documents / Legal / Referral', icon: FileText },
+  system: { label: 'System / Notes / Metadata', icon: Clock },
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
