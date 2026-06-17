@@ -348,6 +348,53 @@ export async function provisionDemoWorkspace(
 
   // 5b) Pre-fetch demo contacts so tasks + contact_deals can reference them
   // by FK. Grouped by crm_company_id for relational consistency.
+  // First, ensure every demo CRM company has at least one contact so the
+  // Companies page never shows orphan rows. This is a top-up that only
+  // inserts contacts for companies currently missing them.
+  try {
+    const { data: emptyCos } = await admin
+      .from("crm_companies")
+      .select("id, name, domain")
+      .eq("org_company_id", companyId)
+      .contains("tags", ["demo"]);
+    const { data: usedCrm } = await admin
+      .from("contacts")
+      .select("crm_company_id")
+      .eq("org_company_id", companyId)
+      .contains("tags", ["demo"])
+      .not("crm_company_id", "is", null);
+    const used = new Set((usedCrm ?? []).map((r: any) => r.crm_company_id));
+    const needsContacts = (emptyCos ?? []).filter((c: any) => !used.has(c.id));
+    if (needsContacts.length > 0) {
+      const titlePool = ["CFO","CEO","COO","VP Finance","Treasurer","Controller","Head of Strategy","Director of Finance"];
+      const rows: Array<Record<string, unknown>> = [];
+      needsContacts.forEach((co: any, idx: number) => {
+        for (let k = 0; k < 2; k++) {
+          const first = pick(FIRST_NAMES, idx * 2 + k);
+          const last = pick(LAST_NAMES, idx * 2 + k + 5);
+          rows.push({
+            first_name: first, last_name: last,
+            email: `${first.toLowerCase()}.${last.toLowerCase()}${idx * 2 + k}@${co.domain ?? "example.com"}`,
+            phone_work: `+1 (${200 + rand(idx + k, 700)}) ${100 + rand(idx + 1, 900)}-${1000 + rand(idx + k + 2, 9000)}`,
+            job_title: pick(titlePool, idx + k),
+            seniority: k === 0 ? "c_level" : "vp",
+            lifecycle_stage: "lead", status: "active",
+            owner_user_id: attributingUserId,
+            crm_company_id: co.id,
+            company_id: companyId, org_company_id: companyId,
+            created_by: attributingUserId, tags: ["demo"],
+            description: `Finance contact at ${co.name ?? "client"}.`,
+            linkedin_url: `https://linkedin.com/in/demo-${idx}-${k}`,
+          });
+        }
+      });
+      const { error: fillErr } = await admin.from("contacts").insert(rows);
+      if (fillErr) console.warn(`[provisionDemoWorkspace] empty-company contact fill warning: ${fillErr.message}`);
+    }
+  } catch (e) {
+    console.warn(`[provisionDemoWorkspace] empty-company contact fill errored: ${(e as Error).message}`);
+  }
+
   const { data: preContactsRaw } = await admin
     .from("contacts")
     .select("id, crm_company_id")
