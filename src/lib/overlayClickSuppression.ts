@@ -1,3 +1,5 @@
+import type React from 'react';
+
 const DEFAULT_SUPPRESSION_MS = 400;
 
 let suppressUntil = 0;
