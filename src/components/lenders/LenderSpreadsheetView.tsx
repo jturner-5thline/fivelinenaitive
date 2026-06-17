@@ -269,7 +269,7 @@ export function LenderSpreadsheetView({
   };
 
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
+    <div className="rounded-lg border border-white/10 bg-transparent overflow-hidden">
       {/*
         Bug fix (scroll glitch): previously this view nested a Virtuoso
         virtualized list inside a Radix `ScrollArea`. The outer ScrollArea
@@ -283,10 +283,10 @@ export function LenderSpreadsheetView({
       <div className="w-full overflow-x-auto" style={{ height: 'calc(100vh - 280px)' }}>
         <div style={{ minWidth: TOTAL_WIDTH, height: '100%' }} className="flex flex-col">
           {/* Header Row */}
-          <div className="flex sticky top-0 z-10 bg-[hsl(var(--background))] border-b border-white/10">
+          <div className="flex sticky top-0 z-10 bg-transparent backdrop-blur-sm border-b border-white/10">
             {/* Checkbox header */}
             {onToggleSelect && (
-              <div className="flex-shrink-0 w-[40px] px-2 py-2.5 border-r border-white/5 bg-white/[0.04] sticky left-0 z-20 flex items-center justify-center">
+              <div className="flex-shrink-0 w-[40px] px-2 py-2.5 border-r border-white/5 bg-transparent sticky left-0 z-20 flex items-center justify-center">
                 <Checkbox
                   checked={selectedIds && selectedIds.size === lenders.length && lenders.length > 0}
                   onCheckedChange={(checked) => {
@@ -300,13 +300,13 @@ export function LenderSpreadsheetView({
               </div>
             )}
             {/* Row number header */}
-            <div className={`flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 border-r border-white/5 bg-white/[0.04] ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
+            <div className={`flex-shrink-0 w-[50px] px-2 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/70 border-r border-white/5 bg-transparent ${onToggleSelect ? '' : 'sticky left-0'} z-20`}>
               #
             </div>
             {COLUMNS.map((col) => (
               <div
                 key={col.key}
-                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium tracking-normal text-muted-foreground border-r border-white/5 bg-white/[0.04] flex items-center transition-colors ${
+                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium tracking-normal text-muted-foreground border-r border-white/5 bg-transparent flex items-center transition-colors ${
                   CURRENCY_COLUMNS.has(col.key) ? 'justify-center' : ''
                 } ${
                   col.sortable ? 'cursor-pointer hover:text-foreground hover:bg-white/[0.06] select-none' : ''
@@ -342,8 +342,8 @@ export function LenderSpreadsheetView({
                 >
                   {/* Checkbox */}
                   {onToggleSelect && (
-                    <div 
-                      className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-[hsl(var(--background))] sticky left-0 z-10 flex items-center justify-center"
+                  <div 
+                    className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-transparent sticky left-0 z-10 flex items-center justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
@@ -353,7 +353,7 @@ export function LenderSpreadsheetView({
                     </div>
                   )}
                   {/* Row number */}
-                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-[hsl(var(--background))] flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-transparent flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {index + 1}
                   </div>
                   {COLUMNS.map((col) => (
@@ -364,7 +364,7 @@ export function LenderSpreadsheetView({
             }}
             components={{
               Footer: () => (
-                <div className="py-4 px-4 text-center text-xs text-muted-foreground/70 border-t border-white/[0.05] bg-white/[0.02]">
+                <div className="py-4 px-4 text-center text-xs text-muted-foreground/70 border-t border-white/[0.05] bg-transparent">
                   {loadingMore ? (
                     <span className="inline-flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />

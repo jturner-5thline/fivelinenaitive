@@ -339,7 +339,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   }, [filters]);
 
   return (
-    <div className="border rounded-lg bg-card">
+    <div className="border border-white/10 rounded-lg bg-transparent">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex items-center justify-between p-2 pl-3 gap-2">
           <CollapsibleTrigger asChild>
