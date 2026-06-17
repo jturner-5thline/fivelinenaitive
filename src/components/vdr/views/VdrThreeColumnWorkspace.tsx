@@ -50,7 +50,8 @@ interface Props {
 }
 
 function getFileIcon(name: string, className = 'h-3.5 w-3.5') {
-  const ext = name.split('.').pop()?.toLowerCase();
+  const safeName = typeof name === 'string' ? name : '';
+  const ext = safeName.includes('.') ? safeName.split('.').pop()?.toLowerCase() : '';
   if (ext === 'pdf') return <FileText className={cn(className, 'text-red-400')} />;
   if (['xls', 'xlsx', 'csv'].includes(ext || '')) return <FileSpreadsheet className={cn(className, 'text-green-400')} />;
   if (['doc', 'docx'].includes(ext || '')) return <FileText className={cn(className, 'text-blue-400')} />;
@@ -233,7 +234,7 @@ export function VdrThreeColumnWorkspace({
   const filterDocs = useCallback((docs: VdrDocument[]) => {
     const q = searchQuery.trim().toLowerCase();
     return docs.filter(d => {
-      if (q && !d.filename.toLowerCase().includes(q)) return false;
+      if (q && !(d.filename ?? '').toLowerCase().includes(q)) return false;
       return true;
     });
   }, [searchQuery]);
