@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { buildDemoCalendarEvents, DEMO_PRIMARY_CALENDAR } from '@/lib/demoSeed';
 
 const isDemoUserEmail = (email?: string | null) =>
@@ -67,7 +68,16 @@ const calendarCache: Record<
 
 export function useGoogleCalendar() {
   const { user } = useAuth();
-  const isDemo = isDemoUserEmail(user?.email);
+  const { profile } = useProfile();
+  const isDemoProfile = Boolean(
+    (profile as { is_demo_user?: boolean } | null)?.is_demo_user,
+  );
+  const isDemo = isDemoUserEmail(user?.email) || isDemoProfile;
+  const selfEmail = user?.email ?? 'demo@5thline.co';
+  const selfName =
+    (profile as { display_name?: string | null } | null)?.display_name ||
+    user?.email ||
+    'Demo User';
   const cacheKey = user?.id || 'anon';
   const cached = calendarCache[cacheKey];
   const [status, setStatus] = useState<CalendarStatus>(cached?.status || { connected: false });
@@ -212,7 +222,7 @@ export function useGoogleCalendar() {
   }) => {
     if (!user) return null;
     if (isDemo) {
-      const evts = buildDemoCalendarEvents();
+      const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setEvents(evts);
       calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: evts };
       return { events: evts };
@@ -266,7 +276,7 @@ export function useGoogleCalendar() {
     if (!user) return null;
     if (isDemo) {
       const cals = [DEMO_PRIMARY_CALENDAR];
-      const evts = buildDemoCalendarEvents();
+      const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setCalendars(cals);
       setEvents(evts);
       calendarCache[cacheKey] = { events: evts, calendars: cals, status: { connected: true } };
