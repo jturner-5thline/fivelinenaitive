@@ -8,7 +8,13 @@ const corsHeaders = {
 };
 
 type CompanyRole = "admin" | "member";
-const DEMO_PASSWORD = "User1234";
+
+function generateDemoPassword(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  const randomPart = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("");
+  return `Naitive-${Date.now().toString(36)}-${randomPart}!A7`;
+}
 
 interface DemoUserInput {
   name: string;
@@ -138,6 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
       const companyRole: CompanyRole = mapRole(u.role);
       const platformRole = u.role; // store original UI label as note for now
+      const demoPassword = generateDemoPassword();
 
       try {
         // 2a. Find existing auth user
@@ -170,7 +177,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (existing) {
           userId = existing.id;
           const { error: updateUserErr } = await admin.auth.admin.updateUserById(existing.id, {
-            password: DEMO_PASSWORD,
+            password: demoPassword,
             email_confirm: true,
             user_metadata: {
               ...(existing.user_metadata ?? {}),
@@ -187,7 +194,7 @@ const handler = async (req: Request): Promise<Response> => {
         } else {
           const { data: created, error: createErr } = await admin.auth.admin.createUser({
             email,
-            password: DEMO_PASSWORD,
+            password: demoPassword,
             email_confirm: true,
             user_metadata: { full_name: name, invited_via: "demo-access", demo_access: true },
           });
@@ -257,7 +264,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         provisionedUserIds.push(userId!);
 
-        const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(DEMO_PASSWORD)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
+        const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(demoPassword)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
         console.log("[create-demo-access] provisioned user", { email, userId, hasLoginUrl: !!loginUrl });
 
         if (body.sendWelcomeEmail === false) {
