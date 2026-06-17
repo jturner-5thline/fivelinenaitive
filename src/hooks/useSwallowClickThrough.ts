@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { markOverlayJustClosed } from '@/lib/overlayClickSuppression';
 
 /**
  * Returns a function that installs document-level capture-phase event
@@ -28,6 +29,8 @@ export function useSwallowClickThrough(defaultDuration = 250) {
         typeof durationOrCallback === 'number' ? durationOrCallback : defaultDuration;
       const callback =
         typeof durationOrCallback === 'function' ? durationOrCallback : maybeCallback;
+
+      markOverlayJustClosed(duration + 150);
 
       const swallow = (e: Event) => {
         e.stopPropagation();
