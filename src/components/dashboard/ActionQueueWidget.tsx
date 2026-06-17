@@ -86,7 +86,7 @@ export function ActionQueueWidget() {
       </div>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+        <DialogContent className="popup-shell-surface sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh] border-transparent rounded-2xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Approval Queue</DialogTitle>
           </DialogHeader>

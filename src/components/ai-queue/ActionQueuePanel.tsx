@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import {
   Check,
@@ -120,8 +119,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   };
 
   return (
-    <>
-      <div className="px-3 py-2.5 border-b flex items-center justify-between">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="px-3 py-2.5 border-b border-white/10 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <InboxIcon className="h-4 w-4 text-muted-foreground" />
           <p className="font-medium text-sm">Approval Queue</p>
@@ -134,7 +133,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         {items.length > 0 && (
           <Button
             size="sm"
-            variant="default"
+            variant="liquid-glass"
             className="h-7 gap-1 text-[11px]"
             disabled={bulkBusy}
             onClick={async () => {
@@ -150,7 +149,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       </div>
 
       {items.length === 0 && accessRequests.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
           <InboxIcon className="h-6 w-6 opacity-50" />
           <p className="text-sm">Your queue is empty.</p>
           <p className="text-xs">
@@ -158,7 +157,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </p>
         </div>
       ) : (
-        <>
+        <div className="flex-1 min-h-0 flex flex-col">
           {expiringSoon.length > 0 && (
             <div className="mx-3 mt-2 mb-1 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/[0.08] px-2.5 py-1.5 text-[11px] text-amber-300">
               <Clock className="h-3 w-3 shrink-0" />
@@ -170,11 +169,11 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               </span>
             </div>
           )}
-          <ScrollArea className="flex-1 max-h-[60vh]">
+          <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-2 space-y-3">
             {accessRequests.length > 0 && (
-              <div className="rounded-md border border-border/60 bg-muted/20 overflow-hidden">
-                <div className="px-3 py-2 flex items-center justify-between border-b border-border/50 bg-muted/40">
+              <div className="rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="px-3 py-2 flex items-center justify-between border-b border-white/10 bg-white/[0.04]">
                   <div className="flex items-center gap-2 min-w-0">
                     <KeyRound className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                     <span className="text-xs font-semibold text-foreground truncate">
@@ -275,8 +274,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 .join(' · ');
               const isGroupBusy = groupBusy === groupKey;
               return (
-              <div key={groupKey} className="rounded-md border border-border/60 bg-muted/20 overflow-hidden">
-                <div className="px-3 py-2 flex items-center justify-between border-b border-border/50 bg-muted/40">
+              <div key={groupKey} className="rounded-md border border-white/10 bg-white/[0.03] overflow-hidden">
+                <div className="px-3 py-2 flex items-center justify-between border-b border-white/10 bg-white/[0.04]">
                   <div className="flex items-center gap-2 min-w-0">
                     <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-xs font-semibold text-foreground truncate">
@@ -307,7 +306,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                     </Button>
                     <Button
                       size="sm"
-                      variant="default"
+                      variant="liquid-glass"
                       className="h-6 px-2 text-[10px] gap-1"
                       onClick={async () => {
                         setGroupBusy(groupKey);
@@ -406,7 +405,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                               </Button>
                               <Button
                                 size="sm"
-                                variant="default"
+                                variant="liquid-glass"
                                 className="h-6 px-2 text-[10px] gap-1"
                                 disabled={busyId === item.id}
                                 onClick={async () => {
@@ -429,9 +428,9 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               );
             })}
           </div>
-        </ScrollArea>
-        </>
+        </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
