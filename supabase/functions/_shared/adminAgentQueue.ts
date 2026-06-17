@@ -194,6 +194,12 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
     .toISOString()
     .slice(0, 10);
 
+  // Approval Queue TTL for admin-agent items. The table default is 48h,
+  // which is too short for a weekly sweep (Friday-created items aged out
+  // before users could triage them on Monday). Stamp an explicit 14-day
+  // expiry so a full week of inbox time is always available.
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
   const queueRows = enqueueable.map((sel: any) => {
     const meta = sel.deal_id ? dealMeta[sel.deal_id] : null;
     const dealName = meta?.name ?? "Untitled Deal";
@@ -254,6 +260,7 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
             ? "attribution_fallback_owner_not_activated"
             : "attribution_fallback",
       },
+      expires_at: expiresAt,
     };
   });
 
