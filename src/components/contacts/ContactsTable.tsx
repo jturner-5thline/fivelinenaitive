@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +119,35 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
 
     return result;
   }, [contacts, search, lifecycleFilter, statusFilter, contactTypeFilter, ownerFilter, sortField, sortDir]);
+
+  // Stable ref so the virtualized row component can navigate without forcing remounts.
+  const filteredRef = useRef(filtered);
+  filteredRef.current = filtered;
+
+  const ClickableTableRow = useMemo(() => {
+    const Row = (props: any) => {
+      const idx = props['data-item-index'];
+      const contact = typeof idx === 'number' ? filteredRef.current[idx] : undefined;
+      const activate = () => { if (contact) navigate(`/contacts/${contact.id}`); };
+      return (
+        <TableRow
+          {...props}
+          role="button"
+          tabIndex={0}
+          className={cn(props.className, 'cursor-pointer')}
+          onClick={activate}
+          onKeyDown={(e: React.KeyboardEvent) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              activate();
+            }
+          }}
+        />
+      );
+    };
+    Row.displayName = 'ClickableContactRow';
+    return Row;
+  }, [navigate]);
 
   const toggleAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -253,7 +282,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
             components={{
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
               TableHead: TableHeader as any,
-              TableRow: TableRow as any,
+              TableRow: ClickableTableRow as any,
               TableBody: TableBody as any,
             }}
             fixedHeaderContent={() => (
@@ -285,16 +314,24 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                   <TableCell onClick={e => e.stopPropagation()}>
                     <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
                   </TableCell>
-                  <TableCell onClick={() => navigate(`/contacts/${contact.id}`)} className="cursor-pointer">
+                  <TableCell>
                     <div className="font-medium text-sm">{contact.full_name || '—'}</div>
                   </TableCell>
-                  <TableCell onClick={() => navigate(`/contacts/${contact.id}`)} className="cursor-pointer text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
                   <TableCell className="text-sm">
                     {(contact as any).contact_type ? (
                       <Badge variant="outline" className="text-[10px]">{(contact as any).contact_type}</Badge>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {contact.email ? (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        onClick={e => e.stopPropagation()}
+                        className="hover:underline"
+                      >{contact.email}</a>
+                    ) : '—'}
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {companyName ? (
                       <span
