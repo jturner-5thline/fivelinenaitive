@@ -904,6 +904,26 @@ export async function provisionDemoWorkspace(
     warnings.push(`inbox seed failed: ${(e as Error).message}`);
   }
 
+  // Seed a realistic Data Room per demo deal so the Data Room tab is not empty.
+  // Non-fatal: any failure is logged and surfaced as a warning, never thrown.
+  try {
+    const { data: allDealsForVdr } = await admin
+      .from("deals")
+      .select("id, company")
+      .eq("company_id", companyId);
+    const uploadedBy = memberUserIds[0] ?? null;
+    const seededVdr = await seedDemoDataRoom(admin, {
+      companyId,
+      uploadedBy,
+      deals: allDealsForVdr ?? [],
+    });
+    console.log(`[provisionDemoWorkspace] data room seeded: ${seededVdr} document rows`);
+  } catch (e) {
+    const msg = (e as Error).message;
+    console.error("[provisionDemoWorkspace] data room seed failed:", msg);
+    warnings.push(`vdr seed failed: ${msg}`);
+  }
+
   return {
     ...validation,
     companyId,
@@ -975,4 +995,140 @@ export async function validateDemoSeed(
     targets: DEMO_TARGETS, counts, missing,
     pipelineId: (pipe.data?.id as string | undefined) ?? null,
   };
+}
+// ---------- Data Room seeding ----------
+interface VdrSeedDeal { id: string; company?: string | null }
+
+const DEMO_VDR_FOLDERS = [
+  { name: "Financials",  icon: "financials" },
+  { name: "Legal",       icon: "legal" },
+  { name: "Corporate",   icon: "corporate" },
+  { name: "Commercial",  icon: "commercial" },
+] as const;
+
+// Per-deal document template. ~12 docs across 4 folders.
+const DEMO_VDR_TEMPLATE: Array<{
+  filename: string;
+  folder: typeof DEMO_VDR_FOLDERS[number]["name"];
+  file_type: string;
+  mime: string;
+  size: number;
+}> = [
+  { filename: "Pitch Deck.pdf",                     folder: "Corporate",  file_type: "pdf",  mime: "application/pdf",                                                         size: 2_400_000 },
+  { filename: "Articles of Incorporation.pdf",      folder: "Corporate",  file_type: "pdf",  mime: "application/pdf",                                                         size:   480_000 },
+  { filename: "Cap Table.xlsx",                     folder: "Corporate",  file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size:    96_000 },
+  { filename: "Financial Model.xlsx",               folder: "Financials", file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size: 1_200_000 },
+  { filename: "Income Statement FY2025.xlsx",       folder: "Financials", file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size:   210_000 },
+  { filename: "Balance Sheet FY2025.xlsx",          folder: "Financials", file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size:   188_000 },
+  { filename: "Cash Flow Statement.xlsx",           folder: "Financials", file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size:   174_000 },
+  { filename: "Audited Financials 2024.pdf",        folder: "Financials", file_type: "pdf",  mime: "application/pdf",                                                         size: 3_100_000 },
+  { filename: "AR Aging Report.xlsx",               folder: "Financials", file_type: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",       size:    72_000 },
+  { filename: "Bank Statements.pdf",                folder: "Financials", file_type: "pdf",  mime: "application/pdf",                                                         size: 1_500_000 },
+  { filename: "Term Sheet.pdf",                     folder: "Legal",      file_type: "pdf",  mime: "application/pdf",                                                         size:   320_000 },
+  { filename: "Customer Contracts.pdf",             folder: "Commercial", file_type: "pdf",  mime: "application/pdf",                                                         size:   910_000 },
+];
+
+/**
+ * Idempotent: tags every seeded row with `metadata.demo_seed = true` and a
+ * stable `metadata.seed_key` of "demo-vdr-{deal_id}-{filename}". A row is
+ * skipped if a matching seed_key already exists for the deal.
+ */
+async function seedDemoDataRoom(
+  admin: Admin,
+  args: { companyId: string; uploadedBy: string | null; deals: VdrSeedDeal[] },
+): Promise<number> {
+  const { companyId, uploadedBy, deals } = args;
+  if (deals.length === 0) return 0;
+
+  let inserted = 0;
+  for (const deal of deals) {
+    // What's already seeded for this deal?
+    const { data: existing, error: existErr } = await admin
+      .from("vdr_documents")
+      .select("id, metadata")
+      .eq("deal_id", deal.id)
+      .eq("source", "dataroom");
+    if (existErr) {
+      console.warn(`[seedDemoDataRoom] read failed deal=${deal.id}: ${existErr.message}`);
+      continue;
+    }
+    const existingKeys = new Set<string>(
+      (existing ?? [])
+        .map((r: any) => (r?.metadata && typeof r.metadata === "object" ? r.metadata.seed_key : null))
+        .filter((k: any): k is string => typeof k === "string"),
+    );
+
+    // 1) Folder rows (one per top-level category) — idempotent.
+    const folderRows = DEMO_VDR_FOLDERS.map((f, idx) => ({
+      deal_id: deal.id,
+      company_id: companyId,
+      filename: f.name,
+      file_path: null,
+      file_size: 0,
+      file_type: null,
+      folder_path: "/",
+      is_folder: true,
+      source: "dataroom",
+      uploaded_by: uploadedBy,
+      sort_order: idx,
+      ingestion_status: "complete",
+      chunk_count: 0,
+      entity_count: 0,
+      shared_to_dataroom: true,
+      dataroom_folder_path: `/${f.name}/`,
+      metadata: { demo_seed: true, seed_key: `demo-vdr-folder-${deal.id}-${f.name}` },
+    }));
+    const newFolders = folderRows.filter(r => !existingKeys.has((r.metadata as any).seed_key));
+    if (newFolders.length) {
+      const { error } = await admin.from("vdr_documents").insert(newFolders);
+      if (error) {
+        console.warn(`[seedDemoDataRoom] folder insert failed deal=${deal.id}: ${error.message}`);
+      } else {
+        inserted += newFolders.length;
+      }
+    }
+
+    // 2) Document rows from template.
+    const nowIso = new Date().toISOString();
+    const fileRows = DEMO_VDR_TEMPLATE.map((tpl, idx) => {
+      const seedKey = `demo-vdr-${deal.id}-${tpl.filename}`;
+      return {
+        deal_id: deal.id,
+        company_id: companyId,
+        filename: tpl.filename,
+        file_path: null, // no storage object — preview will degrade gracefully
+        file_size: tpl.size,
+        file_type: tpl.file_type,
+        folder_path: `/${tpl.folder}/`,
+        is_folder: false,
+        source: "dataroom",
+        uploaded_by: uploadedBy,
+        sort_order: idx + 10,
+        ingestion_status: "complete",
+        chunk_count: 0,
+        entity_count: 0,
+        shared_to_dataroom: true,
+        dataroom_folder_path: `/${tpl.folder}/`,
+        created_at: nowIso,
+        updated_at: nowIso,
+        metadata: {
+          demo_seed: true,
+          seed_key: seedKey,
+          mime_type: tpl.mime,
+          provider: "demo",
+          category: tpl.folder,
+        },
+      };
+    });
+    const newFiles = fileRows.filter(r => !existingKeys.has((r.metadata as any).seed_key));
+    if (newFiles.length) {
+      const { error } = await admin.from("vdr_documents").insert(newFiles);
+      if (error) {
+        console.warn(`[seedDemoDataRoom] file insert failed deal=${deal.id}: ${error.message}`);
+      } else {
+        inserted += newFiles.length;
+      }
+    }
+  }
+  return inserted;
 }

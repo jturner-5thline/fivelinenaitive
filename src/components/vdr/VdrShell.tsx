@@ -38,7 +38,8 @@ interface FileAssignment {
 }
 
 function getFileIcon(name: string) {
-  const ext = name.split('.').pop()?.toLowerCase();
+  const safeName = typeof name === 'string' ? name : '';
+  const ext = safeName.includes('.') ? safeName.split('.').pop()?.toLowerCase() : '';
   if (ext === 'pdf') return <FileText className="h-3.5 w-3.5 text-red-400" />;
   if (['xls', 'xlsx', 'csv'].includes(ext || '')) return <FileText className="h-3.5 w-3.5 text-green-400" />;
   if (['doc', 'docx'].includes(ext || '')) return <FileText className="h-3.5 w-3.5 text-blue-400" />;

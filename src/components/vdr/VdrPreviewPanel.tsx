@@ -22,7 +22,8 @@ export function VdrPreviewPanel({ document: doc, onClose, getDownloadUrl }: VdrP
     });
   }, [doc.file_path, getDownloadUrl]);
 
-  const ext = doc.filename.split('.').pop()?.toLowerCase();
+  const safeName = typeof doc.filename === 'string' ? doc.filename : '';
+  const ext = safeName.includes('.') ? safeName.split('.').pop()?.toLowerCase() : '';
   const isPdf = ext === 'pdf';
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '');
   const isText = ['txt', 'csv', 'md', 'json', 'xml'].includes(ext || '');

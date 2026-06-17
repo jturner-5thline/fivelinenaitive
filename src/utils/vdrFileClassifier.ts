@@ -66,7 +66,7 @@ export function classifyFileToFolder(
   const folders = documents.filter(d => d.is_folder && d.folder_path === '/');
   if (folders.length === 0) return '/';
 
-  const nameLower = filename.toLowerCase();
+  const nameLower = (filename ?? '').toLowerCase();
   // Strip extension for matching
   const nameNoExt = nameLower.replace(/\.[^.]+$/, '');
 
@@ -84,7 +84,7 @@ export function classifyFileToFolder(
       // Find a folder whose name matches this category
       const searchTerms = CATEGORY_FOLDER_TERMS[rule.category] || [rule.category];
       const folder = folders.find(f => {
-        const folderLower = f.filename.toLowerCase();
+        const folderLower = (f.filename ?? '').toLowerCase();
         return searchTerms.some(term => folderLower.includes(term));
       });
       if (folder) {
