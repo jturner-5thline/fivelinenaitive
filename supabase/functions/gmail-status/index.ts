@@ -48,7 +48,7 @@ serve(async (req: Request): Promise<Response> => {
     // Check if user has a Nylas grant
     const { data: tokenData, error: tokenError } = await supabase
       .from("gmail_tokens")
-      .select("id, account_id, grant_id, email_address, scope, created_at")
+      .select("id, account_id, grant_id, email_address, scope, created_at, is_demo_seed")
       .eq("user_id", userId)
       .single();
 
@@ -58,6 +58,22 @@ serve(async (req: Request): Promise<Response> => {
       return new Response(JSON.stringify({
         connected: false,
         message: "Gmail not connected",
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Demo-seed sentinel — short-circuit, skip Nylas verification entirely.
+    if (tokenData.is_demo_seed || grantId === "demo-seed") {
+      return new Response(JSON.stringify({
+        connected: true,
+        is_expired: false,
+        provider: "gmail",
+        source: "demo-seed",
+        scope: tokenData.scope,
+        connected_at: tokenData.created_at,
+        email_address: tokenData.email_address,
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
