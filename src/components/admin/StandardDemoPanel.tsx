@@ -37,8 +37,8 @@ export function StandardDemoPanel() {
     setBusy(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
+      const session = sessionData?.session;
+      if (!session?.access_token || !session?.refresh_token) {
         toast.error('No active session. Please sign in again.');
         return;
       }
@@ -48,10 +48,10 @@ export function StandardDemoPanel() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${session.access_token}`,
           apikey: anonKey,
         },
-        body: JSON.stringify({ landingPath: '/deals' }),
+        body: JSON.stringify({ landingPath: '/deals', sourceAdminRefreshToken: session.refresh_token }),
       });
       const payload = (await resp.json().catch(() => null)) as
         | { ok?: boolean; actionLink?: string; error?: string }
