@@ -687,6 +687,35 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_impersonation_session_secrets: {
+        Row: {
+          created_at: string
+          session_id: string
+          source_admin_refresh_token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          session_id: string
+          source_admin_refresh_token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          session_id?: string
+          source_admin_refresh_token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_impersonation_session_secrets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "admin_impersonation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_impersonation_sessions: {
         Row: {
           created_at: string
