@@ -33,6 +33,7 @@ import {
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
 import { Separator } from '@/components/ui/separator';
+import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 
 interface DealCardProps {
   deal: Deal;
@@ -210,6 +211,11 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
     __location.pathname.startsWith('/finserv');
   const __handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isEditingStatus) { e.preventDefault(); return; }
+    if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Allow new-tab / open-in-new-window via modifier keys.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e as any).button === 1) return;
     if (!__isOverlayRoute) return;
