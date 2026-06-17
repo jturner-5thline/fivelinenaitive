@@ -560,7 +560,7 @@ Deno.serve(async (req) => {
       });
     }
     {
-      const { data: contactsData, error: contactsErr } = await admin.from("contacts").insert(contactsToInsert).select("id");
+      const { data: contactsData, error: contactsErr } = await admin.from("contacts").insert(contactsToInsert).select("id, first_name, last_name, email, job_title");
       if (contactsErr) console.error("Error inserting contacts:", contactsErr);
       else {
         insertedContacts = contactsData || [];
