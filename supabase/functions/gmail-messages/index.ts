@@ -611,6 +611,9 @@ serve(async (req: Request): Promise<Response> => {
     const { action } = requestData;
 
     const grantId = await getGrantId(supabase, user.id);
+    if (grantId === "demo-seed") {
+      return await handleDemoSeedAction(supabase, user.id, requestData);
+    }
     if (!grantId) {
       const msConnected = await hasMicrosoftConnection(supabase, user.id);
       console.log(`[gmail-messages] no Nylas grant for user=${user.id} ms_connected=${msConnected} action=${action}`);
