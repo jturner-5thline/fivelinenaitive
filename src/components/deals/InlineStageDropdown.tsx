@@ -29,6 +29,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
   const { pipelines } = usePipelineContext();
   const { stages: globalStages } = useDealStages();
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const currentConfig = getStageConfigForDeal(stage, pipelineId);
 
@@ -47,7 +48,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
 
   return (
     <>
-    <DropdownMenu>
+    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -96,6 +97,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                setIsMenuOpen(false);
                 setIsPipelineDialogOpen(true);
               }}
             >
