@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { seedDemoInbox, type SeedDemoInboxResult } from "../_shared/seedDemoInbox.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
