@@ -48,6 +48,8 @@ interface GmailStatus {
   read_failed?: boolean;
   /** Last error surfaced from the data-fetch pipeline, for UI diagnostics. */
   last_error?: string | null;
+  /** When set to 'demo-seed', the inbox is a seeded demo mailbox. */
+  source?: 'demo-seed' | 'live';
 }
 
 // Demo mock emails for demo@5thline.co.
@@ -158,7 +160,8 @@ const DEMO_MOCK_EMAILS: GmailMessage[] = [
   },
 ];
 
-const isDemoUser = (email?: string) => email === 'demo@5thline.co' || email === 'demo@example.com';
+const isLegacyDemoEmail = (email?: string) =>
+  email === 'demo@5thline.co' || email === 'demo@example.com';
 
 // Module-level cache for stale-while-revalidate pattern
 let cachedMessages: GmailMessage[] = [];
@@ -190,10 +193,12 @@ function clearPersistedStatus() {
 
 export function useGmail() {
   const { user } = useAuth();
-  const isDemo = isDemoUser(user?.email ?? undefined);
   const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
   const hasInitialStatus = !!(cachedStatus || loadPersistedStatus());
   const [status, setStatus] = useState<GmailStatus>(() => initialStatus);
+  const isDemo =
+    isLegacyDemoEmail(user?.email ?? undefined) ||
+    status?.source === 'demo-seed';
   const [isStatusLoading, setIsStatusLoading] = useState(!hasInitialStatus);
   const [messages, setMessages] = useState<GmailMessage[]>(() => cachedMessages);
   const [isLoading, setIsLoading] = useState(false);
@@ -386,17 +391,50 @@ export function useGmail() {
   }) => {
     if (!user) return null;
 
-    // Demo user returns mock data
+    // Demo user: read seeded messages directly from gmail_messages (RLS
+    // scopes to the current user). Falls back to the bundled mock set if
+    // the table is empty.
     if (isDemo) {
       setIsLoading(true);
-      // Simulate brief loading
-      await new Promise(r => setTimeout(r, 300));
-      const max = options?.maxResults || 50;
-      const demoMsgs = DEMO_MOCK_EMAILS.slice(0, max);
-      setMessages(demoMsgs);
-      cachedMessages = demoMsgs;
-      setIsLoading(false);
-      return { messages: demoMsgs };
+      try {
+        const max = options?.maxResults || 50;
+        const { data, error } = await supabase
+          .from('gmail_messages')
+          .select('id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, body_text, body_html, is_read, is_starred, labels, received_at')
+          .eq('user_id', user.id)
+          .order('received_at', { ascending: false })
+          .limit(max);
+        if (error) throw error;
+        const rows = (data ?? []).map((r) => ({
+          id: r.gmail_message_id ?? r.id,
+          thread_id: r.thread_id ?? '',
+          subject: r.subject ?? '',
+          from_email: r.from_email ?? '',
+          from_name: r.from_name ?? '',
+          to_emails: r.to_emails ?? undefined,
+          cc_emails: r.cc_emails ?? undefined,
+          snippet: r.snippet ?? '',
+          body_text: r.body_text ?? undefined,
+          body_html: r.body_html ?? undefined,
+          is_read: !!r.is_read,
+          is_starred: !!r.is_starred,
+          labels: r.labels ?? [],
+          received_at: r.received_at ?? new Date().toISOString(),
+        })) as GmailMessage[];
+        const final = rows.length > 0 ? rows : DEMO_MOCK_EMAILS.slice(0, max);
+        setMessages(final);
+        cachedMessages = final;
+        return { messages: final };
+      } catch (e) {
+        console.warn('[useGmail] demo list fallback to mock:', e);
+        const max = options?.maxResults || 50;
+        const demoMsgs = DEMO_MOCK_EMAILS.slice(0, max);
+        setMessages(demoMsgs);
+        cachedMessages = demoMsgs;
+        return { messages: demoMsgs };
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     setIsLoading(true);
@@ -446,6 +484,35 @@ export function useGmail() {
     if (!user) return null;
 
     if (isDemo) {
+      // Try cache first, then DB, then mock fallback.
+      const cached = cachedMessages.find((m) => m.id === messageId);
+      if (cached) return cached;
+      try {
+        const { data } = await supabase
+          .from('gmail_messages')
+          .select('id, gmail_message_id, thread_id, subject, from_email, from_name, to_emails, cc_emails, snippet, body_text, body_html, is_read, is_starred, labels, received_at')
+          .eq('user_id', user.id)
+          .eq('gmail_message_id', messageId)
+          .maybeSingle();
+        if (data) {
+          return {
+            id: data.gmail_message_id ?? data.id,
+            thread_id: data.thread_id ?? '',
+            subject: data.subject ?? '',
+            from_email: data.from_email ?? '',
+            from_name: data.from_name ?? '',
+            to_emails: data.to_emails ?? undefined,
+            cc_emails: data.cc_emails ?? undefined,
+            snippet: data.snippet ?? '',
+            body_text: data.body_text ?? undefined,
+            body_html: data.body_html ?? undefined,
+            is_read: !!data.is_read,
+            is_starred: !!data.is_starred,
+            labels: data.labels ?? [],
+            received_at: data.received_at ?? new Date().toISOString(),
+          } as GmailMessage;
+        }
+      } catch { /* fall through to mock */ }
       return DEMO_MOCK_EMAILS.find(m => m.id === messageId) || null;
     }
 

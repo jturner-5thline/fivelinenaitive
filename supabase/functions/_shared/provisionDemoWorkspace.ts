@@ -4,6 +4,7 @@
 // template, one validator, one set of targets. Top-up based so reruns
 // repair missing data without ever creating duplicates.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { seedDemoInbox } from "./seedDemoInbox.ts";
 
 export const SEED_VERSION = "1.2.0";
 
@@ -589,6 +590,60 @@ export async function provisionDemoWorkspace(
     (err as Error & { fatalMissing?: unknown; warnings?: string[] }).fatalMissing = fatalMissing;
     (err as Error & { fatalMissing?: unknown; warnings?: string[] }).warnings = warnings;
     throw err;
+  }
+
+  // Seed a fake inbox for every member of this demo workspace so the Mail
+  // experience is usable immediately, without any real OAuth connection.
+  try {
+    const { data: contactRows } = await admin
+      .from("contacts")
+      .select("id, first_name, last_name, email, job_title")
+      .eq("org_company_id", companyId)
+      .limit(8);
+    const { data: dealRows } = await admin
+      .from("deals")
+      .select("id, company, stage")
+      .eq("company_id", companyId)
+      .limit(5);
+    const dealIds = (dealRows ?? []).map((d) => d.id);
+    const { data: lenderRows } = dealIds.length
+      ? await admin
+          .from("deal_lenders")
+          .select("id, deal_id, name")
+          .in("deal_id", dealIds)
+          .limit(5)
+      : { data: [] as Array<{ id: string; deal_id: string; name: string }> };
+    const { data: taskRows } = await admin
+      .from("tasks")
+      .select("id, title, deal_id")
+      .eq("company_id", companyId)
+      .limit(3);
+
+    for (const memberId of memberUserIds) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("email, first_name, last_name, display_name")
+        .eq("user_id", memberId)
+        .maybeSingle();
+      const email = prof?.email;
+      if (!email) continue;
+      const display = prof?.display_name || [prof?.first_name, prof?.last_name].filter(Boolean).join(" ") || "Demo User";
+      await seedDemoInbox({
+        admin,
+        userId: memberId,
+        userEmail: email,
+        userDisplayName: display,
+        companyId,
+        contacts: contactRows ?? [],
+        deals: dealRows ?? [],
+        lenders: lenderRows ?? [],
+        tasks: taskRows ?? [],
+        calendarEvents: [],
+      });
+    }
+  } catch (e) {
+    console.error("[provisionDemoWorkspace] inbox seed failed:", e);
+    warnings.push(`inbox seed failed: ${(e as Error).message}`);
   }
 
   return {

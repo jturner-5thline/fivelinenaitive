@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { seedDemoInbox, type SeedDemoInboxResult } from "../_shared/seedDemoInbox.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -308,7 +309,7 @@ Deno.serve(async (req) => {
     let insertedLenders: { id: string; name: string }[] = [];
     let insertedDeals: { id: string; company: string; stage: string }[] = [];
     let insertedCrmCompanies: { id: string; name: string }[] = [];
-    let insertedContacts: { id: string }[] = [];
+    let insertedContacts: Array<{ id: string; first_name?: string | null; last_name?: string | null; email?: string | null; job_title?: string | null }> = [];
     let dealLendersInsertedCount = 0;
     let tasksInsertedCount = 0;
     let milestonesToInsert: any[] = [];
@@ -560,7 +561,7 @@ Deno.serve(async (req) => {
       });
     }
     {
-      const { data: contactsData, error: contactsErr } = await admin.from("contacts").insert(contactsToInsert).select("id");
+      const { data: contactsData, error: contactsErr } = await admin.from("contacts").insert(contactsToInsert).select("id, first_name, last_name, email, job_title");
       if (contactsErr) console.error("Error inserting contacts:", contactsErr);
       else {
         insertedContacts = contactsData || [];
@@ -704,6 +705,26 @@ Deno.serve(async (req) => {
       await admin.from("companies").update({ is_seeding: false }).eq("id", companyId);
     }
 
+    // ---- 9. Seed fake inbox so demo Mail page works out-of-the-box ----
+    let inboxSeed: SeedDemoInboxResult | null = null;
+    try {
+      inboxSeed = await seedDemoInbox({
+        admin,
+        userId,
+        userEmail: DEMO_EMAIL,
+        userDisplayName: fullName,
+        companyId,
+        contacts: insertedContacts,
+        deals: insertedDeals,
+        lenders: insertedDealLenders.map((dl) => ({ id: dl.id, deal_id: dl.deal_id, name: dl.name })),
+        tasks: [],
+        calendarEvents: [],
+      });
+      console.log(`[seed-demo-account] inbox seeded:`, inboxSeed);
+    } catch (e) {
+      console.error("[seed-demo-account] inbox seed failed:", e);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: "Demo account created successfully",
@@ -717,7 +738,9 @@ Deno.serve(async (req) => {
         tasks: tasksInsertedCount,
         milestones: milestonesToInsert.length,
         activities: activitiesToInsert.length,
+        inbox: inboxSeed,
       },
+      inboxSeed,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
