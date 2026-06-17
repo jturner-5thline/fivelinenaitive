@@ -12692,12 +12692,14 @@ export type Database = {
           created_at: string
           id: string
           is_clients_deals: boolean
+          is_demo_seed: boolean
           last_classified_at: string | null
           latest_message_at: string | null
           match_confidence: number
           match_signals: Json
           matched_deal_id: string | null
           needs_reclassify: boolean
+          seed_key: string | null
           subject: string | null
           thread_id: string
           updated_at: string
@@ -12708,12 +12710,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_clients_deals?: boolean
+          is_demo_seed?: boolean
           last_classified_at?: string | null
           latest_message_at?: string | null
           match_confidence?: number
           match_signals?: Json
           matched_deal_id?: string | null
           needs_reclassify?: boolean
+          seed_key?: string | null
           subject?: string | null
           thread_id: string
           updated_at?: string
@@ -12724,12 +12728,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_clients_deals?: boolean
+          is_demo_seed?: boolean
           last_classified_at?: string | null
           latest_message_at?: string | null
           match_confidence?: number
           match_signals?: Json
           matched_deal_id?: string | null
           needs_reclassify?: boolean
+          seed_key?: string | null
           subject?: string | null
           thread_id?: string
           updated_at?: string
@@ -14925,10 +14931,12 @@ export type Database = {
           from_name: string | null
           gmail_message_id: string
           id: string
+          is_demo_seed: boolean
           is_read: boolean | null
           is_starred: boolean | null
           labels: string[] | null
           received_at: string | null
+          seed_key: string | null
           snippet: string | null
           subject: string | null
           thread_id: string | null
@@ -14945,10 +14953,12 @@ export type Database = {
           from_name?: string | null
           gmail_message_id: string
           id?: string
+          is_demo_seed?: boolean
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
           received_at?: string | null
+          seed_key?: string | null
           snippet?: string | null
           subject?: string | null
           thread_id?: string | null
@@ -14965,10 +14975,12 @@ export type Database = {
           from_name?: string | null
           gmail_message_id?: string
           id?: string
+          is_demo_seed?: boolean
           is_read?: boolean | null
           is_starred?: boolean | null
           labels?: string[] | null
           received_at?: string | null
+          seed_key?: string | null
           snippet?: string | null
           subject?: string | null
           thread_id?: string | null
@@ -15034,6 +15046,7 @@ export type Database = {
           expires_at: string | null
           grant_id: string | null
           id: string
+          is_demo_seed: boolean
           refresh_token: string | null
           scope: string | null
           token_type: string | null
@@ -15048,6 +15061,7 @@ export type Database = {
           expires_at?: string | null
           grant_id?: string | null
           id?: string
+          is_demo_seed?: boolean
           refresh_token?: string | null
           scope?: string | null
           token_type?: string | null
@@ -15062,6 +15076,7 @@ export type Database = {
           expires_at?: string | null
           grant_id?: string | null
           id?: string
+          is_demo_seed?: boolean
           refresh_token?: string | null
           scope?: string | null
           token_type?: string | null
