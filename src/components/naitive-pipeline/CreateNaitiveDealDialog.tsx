@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { isOverlayClickSuppressed } from '@/lib/overlayClickSuppression';
+import { ADVANCE_REASON_LABELS, AdvanceReasonCategory } from '@/types/deal';
 
 const ICP_OPTIONS = ['Debt Advisory', 'M&A', 'Equity', 'Placement Agent', 'Broker', 'Other'];
 const PROSPECT_TYPE_OPTIONS = ['Decision Maker', 'Gatekeeper', 'Connector', 'Market Intelligence'];
@@ -26,8 +28,6 @@ const WHY_NOT_OPTIONS = [
   'Wrong persona', 'Wrong segment', 'Built own solution', 'Entrenched stack',
   'Product gap', 'Timing', 'No close attempt made',
 ];
-import { ADVANCE_REASON_LABELS, AdvanceReasonCategory } from '@/types/deal';
-import { isOverlayClickSuppressed } from '@/lib/overlayClickSuppression';
 const ADVANCE_OPTIONS = Object.keys(ADVANCE_REASON_LABELS) as AdvanceReasonCategory[];
 const ADVANCING_OUTCOMES = new Set(['Moved forward']);
 const NEEDS_REASON = new Set(['Not a fit', 'Tabled', 'Disqualified']);
