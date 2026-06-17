@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -58,7 +59,7 @@ export function genId(): string {
 function migrateLegacy(legacy: DefaultChecklistConfig): DefaultChecklistConfigV2 {
   const configs: DealTypeChecklistConfig[] = Object.entries(legacy).map(([, val]) => ({
     id: genId(),
-    dealTypeMatchString: val.label,
+    dealTypeMatchString: String(val?.label ?? ''),
     rounds: [{
       id: genId(),
       title: 'Initial Items',
@@ -75,17 +76,49 @@ function migrateLegacy(legacy: DefaultChecklistConfig): DefaultChecklistConfigV2
   return { version: 2, configs };
 }
 
+function sanitizeV2Config(rawConfigs: unknown): DefaultChecklistConfigV2 {
+  const configs = Array.isArray(rawConfigs) ? rawConfigs : [];
+  return {
+    version: 2,
+    configs: configs
+      .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object')
+      .filter((c) => typeof c.dealTypeMatchString === 'string' && c.dealTypeMatchString.trim().length > 0)
+      .map((c) => ({
+        id: typeof c.id === 'string' ? c.id : genId(),
+        dealTypeMatchString: c.dealTypeMatchString as string,
+        rounds: (Array.isArray(c.rounds) ? c.rounds : [])
+          .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+          .map((r, roundIdx) => ({
+            id: typeof r.id === 'string' ? r.id : genId(),
+            title: String(r.title ?? `Round ${roundIdx + 1}`),
+            order: typeof r.order === 'number' ? r.order : roundIdx,
+            items: (Array.isArray(r.items) ? r.items : [])
+              .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+              .map((item, itemIdx) => ({
+                id: typeof item.id === 'string' ? item.id : genId(),
+                label: String(item.label ?? item.name ?? ''),
+                description: typeof item.description === 'string' ? item.description : undefined,
+                order: typeof item.order === 'number' ? item.order : itemIdx,
+                required: Boolean(item.required ?? item.is_required),
+              }))
+              .filter((item) => item.label.trim().length > 0),
+          })),
+      })),
+  };
+}
+
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
-  if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
+  if (Array.isArray(raw)) return { version: 2, configs: [] };
+  if (obj.version === 2 || Array.isArray(obj.configs)) return sanitizeV2Config(obj.configs);
   // Legacy format
   return migrateLegacy(raw as DefaultChecklistConfig);
 }
 
 /** Normalize text for matching: lowercase, strip non-alphanumeric except spaces, collapse spaces */
-function normalizeForMatch(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+function normalizeForMatch(value: unknown): string {
+  return String(value ?? '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Find config for a deal type by exact match (case-insensitive, punctuation-resilient) against configured Deal Types. */
@@ -95,7 +128,11 @@ export function findMatchingConfig(
 ): DealTypeChecklistConfig | null {
   if (!dealTypeText) return null;
   const normalized = normalizeForMatch(dealTypeText);
-  return configs.find(c => normalizeForMatch(c.dealTypeMatchString) === normalized) || null;
+  return configs.find(c => {
+    if (!c || typeof c.dealTypeMatchString !== 'string' || !c.dealTypeMatchString.trim()) return false;
+    if (!Array.isArray(c.rounds)) return false;
+    return normalizeForMatch(c.dealTypeMatchString) === normalized;
+  }) || null;
 }
 
 // ── Seed data ───────────────────────────────────────────────
@@ -239,7 +276,7 @@ export function useDefaultChecklistConfig(companyId: string | undefined) {
     try {
       const { error } = await supabase
         .from('company_settings')
-        .update({ data_room_default_checklists: newConfig as any })
+        .update({ data_room_default_checklists: newConfig as unknown as Json })
         .eq('company_id', companyId);
 
       if (error) throw error;

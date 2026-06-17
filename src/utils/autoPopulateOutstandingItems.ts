@@ -7,24 +7,25 @@ import { findMatchingConfig, type DefaultChecklistConfigV2 } from '@/hooks/useDe
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
+  if (Array.isArray(raw)) return { version: 2, configs: [] };
   if (obj.version === 2) return obj as unknown as DefaultChecklistConfigV2;
   if (!obj.version && Object.keys(obj).length === 0) return { version: 2, configs: [] };
   return { version: 2, configs: [] };
 }
 
 /** Normalize text for comparison: lowercase, collapse whitespace, trim */
-function normalizeText(t: string): string {
-  return t.toLowerCase().replace(/\s+/g, ' ').trim();
+function normalizeText(t: unknown): string {
+  return String(t ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 /** Normalize for round/key matching: lowercase + strip ALL spaces */
-function normalizeKey(t: string): string {
-  return t.toLowerCase().replace(/\s+/g, '');
+function normalizeKey(t: unknown): string {
+  return String(t ?? '').toLowerCase().replace(/\s+/g, '');
 }
 
 /** Generate a stable item key from its label for dedup */
-function itemKey(label: string): string {
-  return label.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+function itemKey(label: unknown): string {
+  return String(label ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 }
 
 interface AutoPopulateResult {
