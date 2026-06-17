@@ -48,6 +48,8 @@ interface GmailStatus {
   read_failed?: boolean;
   /** Last error surfaced from the data-fetch pipeline, for UI diagnostics. */
   last_error?: string | null;
+  /** When set to 'demo-seed', the inbox is a seeded demo mailbox. */
+  source?: 'demo-seed' | 'live';
 }
 
 // Demo mock emails for demo@5thline.co.
@@ -158,7 +160,8 @@ const DEMO_MOCK_EMAILS: GmailMessage[] = [
   },
 ];
 
-const isDemoUser = (email?: string) => email === 'demo@5thline.co' || email === 'demo@example.com';
+const isLegacyDemoEmail = (email?: string) =>
+  email === 'demo@5thline.co' || email === 'demo@example.com';
 
 // Module-level cache for stale-while-revalidate pattern
 let cachedMessages: GmailMessage[] = [];
