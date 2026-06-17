@@ -705,6 +705,26 @@ Deno.serve(async (req) => {
       await admin.from("companies").update({ is_seeding: false }).eq("id", companyId);
     }
 
+    // ---- 9. Seed fake inbox so demo Mail page works out-of-the-box ----
+    let inboxSeed: SeedDemoInboxResult | null = null;
+    try {
+      inboxSeed = await seedDemoInbox({
+        admin,
+        userId,
+        userEmail: DEMO_EMAIL,
+        userDisplayName: fullName,
+        companyId,
+        contacts: insertedContacts,
+        deals: insertedDeals,
+        lenders: insertedDealLenders.map((dl) => ({ id: dl.id, deal_id: dl.deal_id, name: dl.name })),
+        tasks: [],
+        calendarEvents: [],
+      });
+      console.log(`[seed-demo-account] inbox seeded:`, inboxSeed);
+    } catch (e) {
+      console.error("[seed-demo-account] inbox seed failed:", e);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: "Demo account created successfully",
@@ -718,7 +738,9 @@ Deno.serve(async (req) => {
         tasks: tasksInsertedCount,
         milestones: milestonesToInsert.length,
         activities: activitiesToInsert.length,
+        inbox: inboxSeed,
       },
+      inboxSeed,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
