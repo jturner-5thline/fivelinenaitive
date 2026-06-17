@@ -414,6 +414,106 @@ export async function provisionDemoWorkspace(
   const demoContacts = (contactList ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null; crm_company_id: string | null }>;
   const demoLenders = (lenderList ?? []) as Array<{ id: string; name: string | null; contact_name: string | null; email: string | null }>;
 
+  // 8b) Top-up per-deal funding source associations (deal_lenders).
+  // Every demo deal must have a spread of funding sources across stages and
+  // tracking statuses so the deal view + funding-source view both look real.
+  if (dealIds.length > 0 && demoLenders.length > 0) {
+    const { data: existingDl } = await admin
+      .from("deal_lenders")
+      .select("deal_id")
+      .in("deal_id", dealIds)
+      .contains("tags", ["demo"]);
+    const seededDealIds = new Set((existingDl ?? []).map((r: { deal_id: string }) => r.deal_id));
+    const dealsNeedingLenders = demoDeals.filter((d) => !seededDealIds.has(d.id));
+
+    // Per-deal lender plan: a variety of stages + statuses with internally
+    // consistent amounts (quote_amount only on Terms Issued / Approved / Funded).
+    const LENDER_PLAN: Array<{
+      stage: string;
+      tracking_status: "active" | "on-hold" | "on-deck" | "passed" | "excluded";
+      hasQuote: boolean;
+      hasSubmitted: boolean;
+      hasApproved?: boolean;
+      hasDeclined?: boolean;
+    }> = [
+      { stage: "Initial Outreach", tracking_status: "active",   hasQuote: false, hasSubmitted: false },
+      { stage: "Sent DRL",         tracking_status: "on-deck",  hasQuote: false, hasSubmitted: true  },
+      { stage: "In Review",        tracking_status: "active",   hasQuote: false, hasSubmitted: true  },
+      { stage: "Terms Issued",     tracking_status: "active",   hasQuote: true,  hasSubmitted: true  },
+      { stage: "Approved",         tracking_status: "active",   hasQuote: true,  hasSubmitted: true, hasApproved: true },
+      { stage: "Funded",           tracking_status: "active",   hasQuote: true,  hasSubmitted: true, hasApproved: true },
+      { stage: "Passed",           tracking_status: "passed",   hasQuote: false, hasSubmitted: true, hasDeclined: true },
+      { stage: "On Hold",          tracking_status: "on-hold",  hasQuote: false, hasSubmitted: false },
+    ];
+    const PASS_REASONS = [
+      "Outside credit box","Industry not a fit","Leverage too high","Customer concentration",
+      "Sponsor required","Not enough EBITDA","Pricing too tight","Wrong geo",
+    ];
+
+    const rows: Array<Record<string, unknown>> = [];
+    let lenderCursor = 0;
+    const nowMs = Date.now();
+
+    dealsNeedingLenders.forEach((deal, dIdx) => {
+      // 6 lenders per deal spanning the pipeline; offset start so different
+      // deals show different mixes (e.g. one deal heavy on Passed, one
+      // heavy on Terms Issued / Funded).
+      const start = dIdx % LENDER_PLAN.length;
+      const count = 6;
+      for (let j = 0; j < count; j++) {
+        const plan = LENDER_PLAN[(start + j) % LENDER_PLAN.length];
+        const lender = demoLenders[lenderCursor % demoLenders.length];
+        lenderCursor++;
+        const seed = dIdx * 17 + j * 5;
+        const quoteAmount = plan.hasQuote
+          ? 2_000_000 + rand(seed, 18_000_000)
+          : null;
+        const quoteRate = plan.hasQuote
+          ? Number((7 + rand(seed + 1, 600) / 100).toFixed(2))
+          : null;
+        const quoteTerm = plan.hasQuote
+          ? pick(["3 yr","5 yr","7 yr","5 yr (amort)"], seed)
+          : null;
+        const daysAgo = (n: number) => new Date(nowMs - n * 86_400_000).toISOString();
+        const submittedAt = plan.hasSubmitted ? daysAgo(20 + (seed % 30)) : null;
+        const approvedAt  = plan.hasApproved  ? daysAgo(5 + (seed % 10))  : null;
+        const declinedAt  = plan.hasDeclined  ? daysAgo(3 + (seed % 14))  : null;
+        const onHoldAt    = plan.tracking_status === "on-hold" ? daysAgo(7 + (seed % 10)) : null;
+        const onDeckAt    = plan.tracking_status === "on-deck" ? daysAgo(2 + (seed % 6))  : null;
+        const lastContactAt = daysAgo(1 + (seed % 12));
+        rows.push({
+          deal_id: deal.id,
+          name: lender?.name ?? `Demo Funding Source ${j + 1}`,
+          master_lender_id: lender?.id ?? null,
+          stage: plan.stage,
+          tracking_status: plan.tracking_status,
+          quote_amount: quoteAmount,
+          quote_rate: quoteRate,
+          quote_term: quoteTerm,
+          score: 50 + rand(seed + 3, 50),
+          tags: ["demo"],
+          notes: plan.tracking_status === "passed"
+            ? `Pass — ${pick(PASS_REASONS, seed)}.`
+            : `${plan.stage} — seeded demo lender activity.`,
+          pass_reason: plan.tracking_status === "passed" ? pick(PASS_REASONS, seed) : null,
+          submitted_at: submittedAt,
+          approved_at: approvedAt,
+          declined_at: declinedAt,
+          passed_at: plan.tracking_status === "passed" ? declinedAt : null,
+          on_hold_at: onHoldAt,
+          on_deck_at: onDeckAt,
+          last_contact_at: lastContactAt,
+          last_status_change_at: lastContactAt,
+        });
+      }
+    });
+
+    if (rows.length > 0) {
+      const { error } = await admin.from("deal_lenders").insert(rows);
+      if (error) throw new Error(`deal_lenders top-up: ${error.message}`);
+    }
+  }
+
   // 10) Seed calendar events + inbox emails per member user.
   const now = Date.now();
   for (const uid of memberUserIds) {
