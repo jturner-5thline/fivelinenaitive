@@ -1,16 +1,17 @@
 import { useState, useMemo, useEffect } from 'react';
+import type { ComponentType } from 'react';
 import {
-  Users, Merge, Check, AlertTriangle, Globe, MapPin, Building2, Phone,
-  Mail, User, Tag, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
-  CircleDot, Layers, ArrowRight, Filter as FilterIcon, FileText, ClipboardList,
-  ExternalLink,
+  Users, Merge, Check, AlertTriangle, Building2,
+  User, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
+  CircleDot, Layers, Filter as FilterIcon, FileText, ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -41,120 +42,248 @@ interface DupGroup {
   lenders: MasterLender[];
 }
 
-// ── Field schema ────────────────────────────────────────────────────────────
-type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date' | 'url';
+// ── Schema-driven funding source fields ─────────────────────────────────────
+type FieldType = 'text' | 'number' | 'currency' | 'longtext' | 'boolish' | 'array' | 'date' | 'url' | 'json';
+type SectionId = 'identity' | 'commercial' | 'relationship' | 'process' | 'documents' | 'system';
 interface FieldDef {
-  key: keyof MasterLender;
+  key: string;
   label: string;
   type: FieldType;
-  section: 'identity' | 'commercial' | 'relationship' | 'process' | 'documents' | 'system';
+  section: SectionId;
   conflictWeight?: 'high' | 'med' | 'low';
+  readOnly?: boolean;
 }
-const FIELDS: FieldDef[] = [
-  // Identity
-  { key: 'name', label: 'Legal / Display Name', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'website', label: 'Website', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'linkedin_url', label: 'LinkedIn URL', type: 'text', section: 'identity' },
-  { key: 'address', label: 'Address', type: 'text', section: 'identity' },
-  { key: 'geo', label: 'HQ / Geography', type: 'text', section: 'identity', conflictWeight: 'med' },
-  { key: 'flex_lender_id', label: 'External ID (FLEx)', type: 'text', section: 'identity', conflictWeight: 'high' },
-  { key: 'external_created_by', label: 'External Created By', type: 'text', section: 'identity' },
-  { key: 'created_at', label: 'Created', type: 'date', section: 'identity' },
-  { key: 'updated_at', label: 'Last Updated', type: 'date', section: 'identity' },
-  { key: 'external_last_modified', label: 'External Last Modified', type: 'date', section: 'identity' },
-  // Commercial
-  { key: 'lender_type', label: 'Funding Source', type: 'text', section: 'commercial', conflictWeight: 'med' },
-  { key: 'tier', label: 'Tier', type: 'text', section: 'commercial', conflictWeight: 'med' },
-  { key: 'active', label: 'Active', type: 'boolish', section: 'commercial' },
-  { key: 'min_deal', label: 'Min Deal Size', type: 'currency', section: 'commercial' },
-  { key: 'max_deal', label: 'Max Deal Size', type: 'currency', section: 'commercial' },
-  { key: 'min_revenue', label: 'Min Revenue', type: 'currency', section: 'commercial' },
-  { key: 'ebitda_min', label: 'Min EBITDA', type: 'currency', section: 'commercial' },
-  { key: 'loan_types', label: 'Loan Products', type: 'array', section: 'commercial' },
-  { key: 'industries', label: 'Industries Covered', type: 'array', section: 'commercial' },
-  { key: 'industries_to_avoid', label: 'Industries To Avoid', type: 'array', section: 'commercial' },
-  { key: 'b2b_b2c', label: 'B2B / B2C', type: 'text', section: 'commercial' },
-  { key: 'refinancing', label: 'Refinancing', type: 'text', section: 'commercial' },
-  { key: 'sub_debt', label: 'Sub Debt', type: 'text', section: 'commercial' },
-  { key: 'cash_burn', label: 'Cash Burn', type: 'text', section: 'commercial' },
-  { key: 'sponsorship', label: 'Sponsorship', type: 'text', section: 'commercial' },
-  { key: 'company_requirements', label: 'Company Requirements', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
-  { key: 'deal_structure_notes', label: 'Deal Structure(s)', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
-  { key: 'tags', label: 'Tags', type: 'array', section: 'commercial' },
-  { key: 'funding_source_notes', label: 'Funding Source Notes', type: 'longtext', section: 'commercial' },
-  { key: 'about_notes', label: 'About / Notes', type: 'longtext', section: 'commercial' },
-  // Relationship
-  { key: 'contact_name', label: 'Primary Contact', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'contact_title', label: 'Contact Title', type: 'text', section: 'relationship' },
-  { key: 'email', label: 'Email', type: 'text', section: 'relationship', conflictWeight: 'high' },
-  { key: 'contact_phone', label: 'Contact Phone', type: 'text', section: 'relationship' },
-  { key: 'phone', label: 'Org Phone', type: 'text', section: 'relationship' },
-  { key: 'relationship_owners', label: 'Relationship Owner(s)', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'referral_lender', label: 'Referral Source', type: 'text', section: 'relationship' },
-  { key: 'referral_fee_offered', label: 'Referral Fee', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'nda', label: 'NDA', type: 'text', section: 'relationship', conflictWeight: 'med' },
-  { key: 'gift_address', label: 'Gift Address', type: 'text', section: 'relationship' },
-  // Process / checklists
-  { key: 'upfront_checklist', label: 'BU / Upfront Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
-  { key: 'post_term_sheet_checklist', label: 'Post-Term Sheet Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
-  { key: 'onboarded_to_flex', label: 'Onboarded to FLEx', type: 'text', section: 'process', conflictWeight: 'med' },
-  // Documents / attachments (URL-backed)
-  { key: 'lender_one_pager_url', label: 'Lender One-Pager', type: 'url', section: 'documents' },
-  { key: 'referral_agreement', label: 'Referral Agreement / NDA', type: 'url', section: 'documents', conflictWeight: 'med' },
-  // System / sync
-  { key: 'sync_source', label: 'Sync Source', type: 'text', section: 'system' },
-  { key: 'last_synced_from_flex', label: 'Last FLEx Sync', type: 'date', section: 'system' },
-];
 
-const SECTION_META: Record<string, { label: string; icon: any }> = {
+type UnknownRecord = Record<string, unknown>;
+
+const MASTER_LENDER_SCHEMA_COLUMNS = [
+  { key: 'id', dataType: 'uuid' },
+  { key: 'user_id', dataType: 'uuid' },
+  { key: 'company_id', dataType: 'uuid' },
+  { key: 'email', dataType: 'text' },
+  { key: 'name', dataType: 'text' },
+  { key: 'lender_type', dataType: 'text' },
+  { key: 'loan_types', dataType: 'ARRAY' },
+  { key: 'sub_debt', dataType: 'text' },
+  { key: 'cash_burn', dataType: 'text' },
+  { key: 'sponsorship', dataType: 'text' },
+  { key: 'min_revenue', dataType: 'numeric' },
+  { key: 'ebitda_min', dataType: 'numeric' },
+  { key: 'min_deal', dataType: 'numeric' },
+  { key: 'max_deal', dataType: 'numeric' },
+  { key: 'industries', dataType: 'ARRAY' },
+  { key: 'industries_to_avoid', dataType: 'ARRAY' },
+  { key: 'b2b_b2c', dataType: 'text' },
+  { key: 'refinancing', dataType: 'text' },
+  { key: 'company_requirements', dataType: 'text' },
+  { key: 'deal_structure_notes', dataType: 'text' },
+  { key: 'geo', dataType: 'text' },
+  { key: 'contact_name', dataType: 'text' },
+  { key: 'contact_title', dataType: 'text' },
+  { key: 'relationship_owners', dataType: 'text' },
+  { key: 'lender_one_pager_url', dataType: 'text' },
+  { key: 'referral_lender', dataType: 'text' },
+  { key: 'referral_fee_offered', dataType: 'text' },
+  { key: 'referral_agreement', dataType: 'text' },
+  { key: 'nda', dataType: 'text' },
+  { key: 'onboarded_to_flex', dataType: 'text' },
+  { key: 'upfront_checklist', dataType: 'text' },
+  { key: 'post_term_sheet_checklist', dataType: 'text' },
+  { key: 'gift_address', dataType: 'text' },
+  { key: 'external_created_by', dataType: 'text' },
+  { key: 'external_last_modified', dataType: 'timestamp with time zone' },
+  { key: 'created_at', dataType: 'timestamp with time zone' },
+  { key: 'updated_at', dataType: 'timestamp with time zone' },
+  { key: 'tier', dataType: 'text' },
+  { key: 'active', dataType: 'boolean' },
+  { key: 'sync_source', dataType: 'text' },
+  { key: 'flex_lender_id', dataType: 'text' },
+  { key: 'last_synced_from_flex', dataType: 'timestamp with time zone' },
+  { key: 'contact_phone', dataType: 'text' },
+  { key: 'tags', dataType: 'ARRAY' },
+  { key: 'website', dataType: 'text' },
+  { key: 'linkedin_url', dataType: 'text' },
+  { key: 'address', dataType: 'text' },
+  { key: 'phone', dataType: 'text' },
+  { key: 'funding_source_notes', dataType: 'text' },
+  { key: 'about_notes', dataType: 'text' },
+] as const;
+
+const FIELD_META: Record<string, Partial<FieldDef>> = {
+  id: { label: 'Record ID', section: 'system', readOnly: true },
+  user_id: { label: 'Owner User ID', section: 'system', readOnly: true },
+  company_id: { label: 'Workspace ID', section: 'system', readOnly: true },
+  name: { label: 'Funding Source Name', section: 'identity', conflictWeight: 'high' },
+  website: { label: 'Website', type: 'url', section: 'identity', conflictWeight: 'high' },
+  linkedin_url: { label: 'LinkedIn URL', type: 'url', section: 'identity' },
+  address: { label: 'Address', type: 'longtext', section: 'identity' },
+  geo: { label: 'Geography', section: 'identity', conflictWeight: 'med' },
+  lender_type: { label: 'Funding Source Type', section: 'commercial', conflictWeight: 'med' },
+  tier: { label: 'Tier', section: 'commercial', conflictWeight: 'med' },
+  active: { label: 'Active', type: 'boolish', section: 'commercial' },
+  min_deal: { label: 'Min Deal Size', type: 'currency', section: 'commercial' },
+  max_deal: { label: 'Max Deal Size', type: 'currency', section: 'commercial' },
+  min_revenue: { label: 'Min Revenue', type: 'currency', section: 'commercial' },
+  ebitda_min: { label: 'Min EBITDA', type: 'currency', section: 'commercial' },
+  loan_types: { label: 'Loan Types', type: 'array', section: 'commercial' },
+  industries: { label: 'Industries', type: 'array', section: 'commercial' },
+  industries_to_avoid: { label: 'Industries To Avoid', type: 'array', section: 'commercial' },
+  b2b_b2c: { label: 'B2B / B2C', section: 'commercial' },
+  sub_debt: { label: 'Sub Debt', section: 'commercial' },
+  cash_burn: { label: 'Cash Burn', section: 'commercial' },
+  sponsorship: { label: 'Sponsorship', section: 'commercial' },
+  company_requirements: { label: 'Company Requirements', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  deal_structure_notes: { label: 'Deal Structure Notes', type: 'longtext', section: 'commercial', conflictWeight: 'med' },
+  contact_name: { label: 'Contact Name', section: 'relationship', conflictWeight: 'med' },
+  contact_title: { label: 'Contact Title', section: 'relationship' },
+  email: { label: 'Email', section: 'relationship', conflictWeight: 'high' },
+  contact_phone: { label: 'Contact Phone', section: 'relationship' },
+  phone: { label: 'Phone', section: 'relationship' },
+  relationship_owners: { label: 'Relationship Owners', section: 'relationship', conflictWeight: 'med' },
+  upfront_checklist: { label: 'Upfront Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  post_term_sheet_checklist: { label: 'Post-Term Sheet Checklist', type: 'longtext', section: 'process', conflictWeight: 'med' },
+  onboarded_to_flex: { label: 'Onboarded to FLEx', section: 'process', conflictWeight: 'med' },
+  lender_one_pager_url: { label: 'One Pager', type: 'url', section: 'documents' },
+  referral_lender: { label: 'Referral Lender', section: 'documents' },
+  referral_fee_offered: { label: 'Referral Fee', section: 'documents', conflictWeight: 'med' },
+  referral_agreement: { label: 'Referral Agreement / NDA', type: 'longtext', section: 'documents', conflictWeight: 'med' },
+  nda: { label: 'NDA', section: 'documents', conflictWeight: 'med' },
+  gift_address: { label: 'Gift Address', type: 'longtext', section: 'documents' },
+  tags: { label: 'Tags', type: 'array', section: 'system' },
+  funding_source_notes: { label: 'Funding Source Notes', type: 'longtext', section: 'system' },
+  about_notes: { label: 'About / Notes', type: 'longtext', section: 'system' },
+  flex_lender_id: { label: 'FLEx Lender ID', section: 'system', conflictWeight: 'high' },
+  sync_source: { label: 'Sync Source', section: 'system' },
+  external_created_by: { label: 'External Created By', section: 'system' },
+  external_last_modified: { label: 'External Last Modified', type: 'date', section: 'system' },
+  last_synced_from_flex: { label: 'Last Synced from FLEx', type: 'date', section: 'system' },
+  created_at: { label: 'Created', type: 'date', section: 'system', readOnly: true },
+  updated_at: { label: 'Updated', type: 'date', section: 'system', readOnly: true },
+};
+
+const SECTION_ORDER: SectionId[] = ['identity', 'commercial', 'relationship', 'process', 'documents', 'system'];
+const SCHEMA_ORDER: Map<string, number> = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map((c, i) => [c.key, i]));
+const SCHEMA_TYPES: Map<string, string> = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map(c => [c.key, c.dataType]));
+const MERGE_PROTECTED_KEYS = new Set(['id', 'user_id', 'company_id', 'created_at', 'updated_at']);
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, ch => ch.toUpperCase())
+    .replace(/\bUrl\b/g, 'URL')
+    .replace(/\bId\b/g, 'ID')
+    .replace(/\bNda\b/g, 'NDA')
+    .replace(/\bFlex\b/g, 'FLEx')
+    .replace(/\bB2b\b/g, 'B2B')
+    .replace(/\bB2c\b/g, 'B2C')
+    .replace(/\bEbitda\b/g, 'EBITDA');
+}
+
+function inferFieldType(key: string, dataType?: string): FieldType {
+  const k = key.toLowerCase();
+  if (dataType === 'ARRAY') return 'array';
+  if (dataType === 'boolean') return 'boolish';
+  if (dataType === 'numeric' || dataType === 'integer' || dataType === 'double precision') {
+    return /(deal|revenue|ebitda|fee|amount|value|price|cost)/.test(k) ? 'currency' : 'number';
+  }
+  if (dataType?.includes('timestamp') || dataType === 'date') return 'date';
+  if (dataType === 'jsonb' || dataType === 'json') return 'json';
+  if (/(url|website|linkedin|pager)/.test(k)) return 'url';
+  if (/(notes|checklist|requirements|structure|agreement|address|about)/.test(k)) return 'longtext';
+  return 'text';
+}
+
+function inferSection(key: string): SectionId {
+  const k = key.toLowerCase();
+  if (/(checklist|onboard|process|term_sheet)/.test(k)) return 'process';
+  if (/(nda|agreement|referral|pager|document|attachment|file|gift)/.test(k)) return 'documents';
+  if (/(contact|email|phone|relationship|owner)/.test(k)) return 'relationship';
+  if (/(created|updated|sync|external|flex|source|metadata|notes|about|tag|user_id|company_id|\bid\b)/.test(k)) return 'system';
+  if (/(deal|revenue|ebitda|loan|industr|b2b|b2c|debt|burn|sponsor|tier|active|type|refinancing|requirements|structure)/.test(k)) return 'commercial';
+  return 'identity';
+}
+
+function buildFieldDef(key: string): FieldDef {
+  const meta = FIELD_META[key] || {};
+  const dataType = SCHEMA_TYPES.get(key);
+  return {
+    key,
+    label: meta.label || humanizeKey(key),
+    type: meta.type || inferFieldType(key, dataType),
+    section: meta.section || inferSection(key),
+    conflictWeight: meta.conflictWeight,
+    readOnly: meta.readOnly || MERGE_PROTECTED_KEYS.has(key),
+  };
+}
+
+function getFundingSourceFields(records: UnknownRecord[] = []): FieldDef[] {
+  const keys = new Set<string>(MASTER_LENDER_SCHEMA_COLUMNS.map(c => c.key));
+  records.forEach(record => Object.keys(record || {}).forEach(key => keys.add(key)));
+  return [...keys]
+    .map(buildFieldDef)
+    .sort((a, b) => {
+      const sectionDelta = SECTION_ORDER.indexOf(a.section) - SECTION_ORDER.indexOf(b.section);
+      if (sectionDelta !== 0) return sectionDelta;
+      return (SCHEMA_ORDER.get(a.key) ?? 10_000) - (SCHEMA_ORDER.get(b.key) ?? 10_000) || a.label.localeCompare(b.label);
+    });
+}
+
+const SECTION_META: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
-  relationship: { label: 'Relationship & Operations', icon: User },
+  relationship: { label: 'Relationship & Contacts', icon: User },
   process: { label: 'Checklists & Process', icon: ClipboardList },
-  documents: { label: 'Documents & Attachments', icon: FileText },
-  system: { label: 'System / Sync', icon: Clock },
+  documents: { label: 'Documents / Legal / Referral', icon: FileText },
+  system: { label: 'System / Notes / Metadata', icon: Clock },
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-function isEmpty(v: any): boolean {
+function isEmpty(v: unknown): boolean {
   if (v == null) return true;
   if (typeof v === 'string') return v.trim() === '';
   if (Array.isArray(v)) return v.length === 0;
   return false;
 }
-function formatCurrency(v: any): string {
+function formatCurrency(v: unknown): string {
   const n = typeof v === 'number' ? v : Number(v);
   if (!Number.isFinite(n)) return '—';
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}MM`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
   return `$${n}`;
 }
-function formatDate(v: any): string {
+function formatDate(v: unknown): string {
   if (!v) return '—';
-  try { return new Date(v).toLocaleDateString(); } catch { return String(v); }
+  try { return new Date(String(v)).toLocaleDateString(); } catch { return String(v); }
 }
-function formatBool(v: any): string {
+function formatBool(v: unknown): string {
   if (v === true) return 'Yes';
   if (v === false) return 'No';
   return '—';
 }
-function displayValue(field: FieldDef, v: any): string {
+function displayValue(field: FieldDef, v: unknown): string {
   if (isEmpty(v)) return '—';
   switch (field.type) {
     case 'currency': return formatCurrency(v);
     case 'date': return formatDate(v);
     case 'boolish': return formatBool(v);
-    case 'array': return Array.isArray(v) ? v.join(', ') : String(v);
+    case 'array': return Array.isArray(v) ? v.map(item => String(item)).join(', ') : String(v);
     case 'url': return String(v);
+    case 'json': return typeof v === 'string' ? v : JSON.stringify(v, null, 2);
     default: return String(v);
   }
 }
-function normalizeForCompare(field: FieldDef, v: any): string {
+function normalizeForCompare(field: FieldDef, v: unknown): string {
   if (isEmpty(v)) return '';
-  if (field.type === 'array') return [...(v as string[])].map(s => s.trim().toLowerCase()).sort().join('|');
+  if (field.type === 'array') return toStringArray(v).map(s => s.trim().toLowerCase()).sort().join('|');
   if (field.type === 'text' || field.type === 'longtext') return String(v).trim().toLowerCase();
   if (field.type === 'boolish') return v ? 'true' : 'false';
   return String(v);
+}
+function getFieldValue(record: UnknownRecord, key: string): unknown {
+  return record[key];
+}
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(v => String(v)).filter(Boolean) : [];
 }
 function extractDomain(url: string | null | undefined): string | null {
   if (!url) return null;
@@ -165,12 +294,12 @@ function extractDomain(url: string | null | undefined): string | null {
 }
 function completenessScore(l: MasterLender): number {
   let s = 0;
-  for (const f of FIELDS) if (!isEmpty((l as any)[f.key])) s++;
+  for (const f of getFundingSourceFields([l])) if (!isEmpty(getFieldValue(l, f.key))) s++;
   return s;
 }
 function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
   // Prefer non-empty, then by completeness, then by most-recent updated_at.
-  const nonEmpty = lenders.filter(l => !isEmpty((l as any)[field.key]));
+  const nonEmpty = lenders.filter(l => !isEmpty(getFieldValue(l, field.key)));
   const pool = nonEmpty.length ? nonEmpty : lenders;
   let best = pool[0];
   let bestScore = -Infinity;
@@ -185,17 +314,17 @@ function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
 }
 
 interface Conflict {
-  field: keyof MasterLender;
+  field: string;
   label: string;
   severity: 'high' | 'med';
   detail: string;
 }
-function detectConflicts(lenders: MasterLender[]): Conflict[] {
+function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders)): Conflict[] {
   if (lenders.length < 2) return [];
   const out: Conflict[] = [];
-  for (const f of FIELDS) {
+  for (const f of fields) {
     if (!f.conflictWeight) continue;
-    const vals = lenders.map(l => normalizeForCompare(f, (l as any)[f.key])).filter(Boolean);
+    const vals = lenders.map(l => normalizeForCompare(f, getFieldValue(l, f.key))).filter(Boolean);
     const uniq = new Set(vals);
     if (uniq.size > 1) {
       out.push({
@@ -240,13 +369,13 @@ function ScalarFieldRow({
   onSelect: (id: string) => void;
   onCustom: (v: string | null) => void;
 }) {
-  const values = lenders.map(l => (l as any)[field.key]);
+  const values = lenders.map(l => getFieldValue(l, field.key));
   const allEmpty = values.every(isEmpty);
   const normalized = values.map(v => normalizeForCompare(field, v));
   const uniq = new Set(normalized.filter(Boolean));
   const isConflict = uniq.size > 1;
-  const isMatch = !isConflict && !allEmpty;
-  const editable = field.type === 'text' || field.type === 'longtext';
+  const editable = !field.readOnly && (field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'json');
+  const expanded = field.type === 'longtext' || field.type === 'json';
 
   return (
     <div className={cn(
@@ -267,7 +396,7 @@ function ScalarFieldRow({
         )}
       </div>
       {lenders.map(l => {
-        const v = (l as any)[field.key];
+        const v = getFieldValue(l, field.key);
         const empty = isEmpty(v);
         const selected = selectedId === l.id && customValue == null;
         return (
@@ -289,7 +418,9 @@ function ScalarFieldRow({
           >
             <div className="flex items-center gap-1.5">
               {selected && <Check className="h-3 w-3 text-primary shrink-0" />}
-              <span className={cn('truncate', empty && 'italic')}>{displayValue(field, v)}</span>
+              <span className={cn(expanded ? 'whitespace-pre-wrap break-words' : 'truncate', empty && 'italic')}>
+                {displayValue(field, v)}
+              </span>
             </div>
           </button>
         );
@@ -307,12 +438,21 @@ function ScalarFieldRow({
               Custom
             </label>
             {customValue != null && (
-              <Input
-                value={customValue}
-                onChange={e => onCustom(e.target.value)}
-                placeholder="Override value"
-                className="h-7 text-xs bg-white/[0.03] border-white/10"
-              />
+              expanded ? (
+                <Textarea
+                  value={customValue}
+                  onChange={e => onCustom(e.target.value)}
+                  placeholder="Override value"
+                  className="min-h-20 text-xs bg-white/[0.03] border-white/10"
+                />
+              ) : (
+                <Input
+                  value={customValue}
+                  onChange={e => onCustom(e.target.value)}
+                  placeholder="Override value"
+                  className="h-7 text-xs bg-white/[0.03] border-white/10"
+                />
+              )
             )}
           </div>
         </div>
@@ -333,7 +473,7 @@ function ArrayFieldRow({
   const all = useMemo(() => {
     const map = new Map<string, { value: string; sources: number[] }>();
     lenders.forEach((l, i) => {
-      const arr = ((l as any)[field.key] as string[] | null) || [];
+      const arr = toStringArray(getFieldValue(l, field.key));
       for (const raw of arr) {
         const k = raw.trim();
         if (!k) continue;
@@ -364,7 +504,21 @@ function ArrayFieldRow({
     <div className="px-3 py-2 border-b border-white/5">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-medium text-foreground/90">{field.label}</span>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap justify-end">
+          {lenders.map((l, index) => (
+            <button
+              key={l.id}
+              type="button"
+              className="hover:text-foreground"
+              onClick={() => {
+                const arr = toStringArray(getFieldValue(l, field.key));
+                onChange(new Set(arr.map(v => v.trim().toLowerCase()).filter(Boolean)));
+              }}
+            >
+              Use {index + 1}
+            </button>
+          ))}
+          <span>·</span>
           <button type="button" className="hover:text-foreground"
             onClick={() => onChange(new Set(all.map(([k]) => k)))}>Select all</button>
           <span>·</span>
@@ -427,7 +581,7 @@ function MergeWorkspace({
     setScalarSel({});
     setCustomVals({});
     setArraySel({});
-  }, [group.id]);
+  }, [group.id, group.lenders]);
 
   const orderedCandidates = useMemo(() => {
     const arr = [...group.lenders];
@@ -454,6 +608,7 @@ function MergeWorkspace({
 
   const activeCandidates = visibleCandidates.filter(l => !excluded.has(l.id));
   const showCols = activeCandidates.length >= 2 ? activeCandidates : visibleCandidates.slice(0, Math.max(2, visibleCandidates.length));
+  const fields = useMemo(() => getFundingSourceFields(group.lenders), [group.lenders]);
 
   // Selections
   const [scalarSel, setScalarSel] = useState<Record<string, string>>({});
@@ -465,7 +620,7 @@ function MergeWorkspace({
     if (activeCandidates.length === 0) return;
     setScalarSel(prev => {
       const next = { ...prev };
-      for (const f of FIELDS) {
+      for (const f of fields) {
         if (f.type === 'array') continue;
         if (!next[f.key as string] || !activeCandidates.find(l => l.id === next[f.key as string])) {
           next[f.key as string] = autoWinner(f, activeCandidates);
@@ -475,13 +630,13 @@ function MergeWorkspace({
     });
     setArraySel(prev => {
       const next = { ...prev };
-      for (const f of FIELDS) {
+      for (const f of fields) {
         if (f.type !== 'array') continue;
         const k = f.key as string;
         if (!next[k]) {
           const union = new Set<string>();
           activeCandidates.forEach(l => {
-            const arr = ((l as any)[f.key] as string[] | null) || [];
+            const arr = toStringArray(getFieldValue(l, f.key));
             arr.forEach(v => { const t = v.trim(); if (t) union.add(t.toLowerCase()); });
           });
           next[k] = union;
@@ -489,9 +644,9 @@ function MergeWorkspace({
       }
       return next;
     });
-  }, [activeCandidates.map(l => l.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeCandidates.map(l => l.id).join(','), fields]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const conflicts = useMemo(() => detectConflicts(activeCandidates), [activeCandidates]);
+  const conflicts = useMemo(() => detectConflicts(activeCandidates, fields), [activeCandidates, fields]);
   const unresolvedConflicts = conflicts.filter(c => {
     const sel = scalarSel[c.field as string];
     return !sel; // any conflict where no explicit selection has been made is treated as unresolved when severity=high
@@ -500,8 +655,8 @@ function MergeWorkspace({
 
   // Build merged record preview
   const mergedPreview = useMemo(() => {
-    const out: Partial<MasterLenderInsert> & Record<string, any> = {};
-    for (const f of FIELDS) {
+    const out: Partial<MasterLenderInsert> & UnknownRecord = {};
+    for (const f of fields) {
       const k = f.key as string;
       if (f.type === 'array') {
         const sel = arraySel[k];
@@ -509,37 +664,37 @@ function MergeWorkspace({
         // reconstruct original-cased values from candidate arrays
         const caseMap = new Map<string, string>();
         activeCandidates.forEach(l => {
-          const arr = ((l as any)[f.key] as string[] | null) || [];
+          const arr = toStringArray(getFieldValue(l, f.key));
           for (const v of arr) {
             const t = v.trim();
             if (t) caseMap.set(t.toLowerCase(), t);
           }
         });
         const arr = [...sel].map(key => caseMap.get(key) || key);
-        (out as any)[k] = arr.length ? arr : null;
+        out[k] = arr.length ? arr : null;
       } else {
         const custom = customVals[k];
         if (custom != null && custom !== '') {
-          (out as any)[k] = custom;
+          out[k] = custom;
           continue;
         }
         const id = scalarSel[k];
         const src = activeCandidates.find(l => l.id === id);
-        if (src) (out as any)[k] = (src as any)[f.key] ?? null;
+        if (src) out[k] = getFieldValue(src, f.key) ?? null;
       }
     }
     return out;
-  }, [scalarSel, customVals, arraySel, activeCandidates]);
+  }, [scalarSel, customVals, arraySel, activeCandidates, fields]);
 
   const resolvedFieldCount = useMemo(() => {
     let n = 0;
-    for (const f of FIELDS) {
+    for (const f of fields) {
       const k = f.key as string;
-      const v = (mergedPreview as any)[k];
+      const v = getFieldValue(mergedPreview, k);
       if (!isEmpty(v)) n++;
     }
     return n;
-  }, [mergedPreview]);
+  }, [mergedPreview, fields]);
 
   const handleMerge = async () => {
     if (activeCandidates.length < 2) {
@@ -551,11 +706,9 @@ function MergeWorkspace({
       return;
     }
     const mergeIds = activeCandidates.filter(l => l.id !== primaryId).map(l => l.id);
-    // Strip server-only keys not in MasterLenderInsert
-    const payload: any = { ...mergedPreview };
-    delete payload.id; delete payload.user_id; delete payload.company_id;
-    delete payload.created_at; delete payload.updated_at;
-    delete payload.flex_lender_id; delete payload.last_synced_from_flex;
+    // Strip immutable keys only. Every mergeable database-backed field remains in the payload.
+    const payload: Partial<MasterLenderInsert> & UnknownRecord = { ...mergedPreview };
+    MERGE_PROTECTED_KEYS.forEach(key => delete payload[key]);
     await onMerge(primaryId, mergeIds, payload);
   };
 
@@ -633,7 +786,7 @@ function MergeWorkspace({
                 className="pl-7 h-7 text-xs bg-white/[0.03] border-white/10"
               />
             </div>
-            <Select value={candidateSort} onValueChange={v => setCandidateSort(v as any)}>
+            <Select value={candidateSort} onValueChange={v => setCandidateSort(v as typeof candidateSort)}>
               <SelectTrigger className="h-7 w-[170px] text-xs bg-white/[0.03] border-white/10">
                 <FilterIcon className="h-3 w-3 mr-1" />
                 <SelectValue />
@@ -671,7 +824,7 @@ function MergeWorkspace({
                     {l.id === primaryId && <Badge variant="outline" className="h-4 text-[9px] border-primary/40 text-primary">Primary</Badge>}
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                    <span title="Completeness">{completenessScore(l)}/{FIELDS.length}</span>
+                    <span title="Completeness">{completenessScore(l)}/{fields.length}</span>
                     <span>·</span>
                     <span>{formatDate(l.updated_at)}</span>
                   </div>
@@ -705,16 +858,18 @@ function MergeWorkspace({
           <ScrollArea className="flex-1 min-h-0">
             {sections.map(section => {
               const SectionIcon = SECTION_META[section].icon;
-              const fieldsInSection = FIELDS.filter(f => f.section === section);
+              const fieldsInSection = fields.filter(f => f.section === section);
               return (
-                <div key={section}>
-                  <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 bg-background/60 backdrop-blur border-b border-white/8">
+                <Collapsible key={section} defaultOpen>
+                  <CollapsibleTrigger className="sticky top-0 z-[5] w-full flex items-center gap-2 px-3 py-1.5 bg-background/60 backdrop-blur border-b border-white/8 text-left">
                     <SectionIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+                    <span className="text-[11px] uppercase tracking-wide font-semibold text-muted-foreground flex-1">
                       {SECTION_META[section].label}
                     </span>
-                  </div>
-                  {fieldsInSection.map(f => {
+                    <span className="text-[10px] text-muted-foreground">{fieldsInSection.length}</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {fieldsInSection.map(f => {
                     if (f.type === 'array') {
                       return (
                         <ArrayFieldRow
@@ -738,7 +893,8 @@ function MergeWorkspace({
                       />
                     );
                   })}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               );
             })}
           </ScrollArea>
@@ -777,45 +933,42 @@ function MergeWorkspace({
 
               <Separator className="bg-white/10" />
 
-              {/* Key merged values */}
-              <div className="space-y-1.5 text-xs">
-                {([
-                  ['name', 'Name', User],
-                  ['website', 'Website', Globe],
-                  ['geo', 'Geography', MapPin],
-                  ['lender_type', 'Type', Tag],
-                  ['email', 'Email', Mail],
-                  ['contact_name', 'Contact', User],
-                  ['contact_phone', 'Phone', Phone],
-                ] as const).map(([k, label, Icon]) => {
-                  const v = (mergedPreview as any)[k];
+              <div className="space-y-2 text-xs">
+                {sections.map(section => {
+                  const SectionIcon = SECTION_META[section].icon;
+                  const fieldsInSection = fields.filter(f => f.section === section);
+                  const filled = fieldsInSection.filter(f => !isEmpty(getFieldValue(mergedPreview, f.key))).length;
                   return (
-                    <div key={k} className="flex items-start gap-2">
-                      <Icon className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-                        <div className="truncate">{isEmpty(v) ? <span className="text-muted-foreground/60 italic">—</span> : String(v)}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {(['loan_types', 'industries'] as const).map(k => {
-                  const v = (mergedPreview as any)[k] as string[] | null;
-                  return (
-                    <div key={k} className="pt-1">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-                        {k === 'loan_types' ? 'Loan products' : 'Industries'} ({v?.length || 0})
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {(v || []).slice(0, 8).map(t => (
-                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-white/10">{t}</span>
-                        ))}
-                        {(v?.length || 0) > 8 && (
-                          <span className="text-[10px] text-muted-foreground">+{(v?.length || 0) - 8} more</span>
-                        )}
-                      </div>
-                    </div>
+                    <Collapsible key={section} defaultOpen>
+                      <CollapsibleTrigger className="w-full flex items-center gap-2 rounded border border-white/10 px-2 py-1.5 text-left hover:border-white/20">
+                        <SectionIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground flex-1">
+                          {SECTION_META[section].label}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{filled}/{fieldsInSection.length}</span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-1.5 space-y-1.5">
+                        {fieldsInSection.map(field => {
+                          const v = getFieldValue(mergedPreview, field.key);
+                          return (
+                            <div key={field.key} className="rounded border border-white/8 px-2 py-1.5">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{field.label}</div>
+                              {field.type === 'array' && Array.isArray(v) && v.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {v.map((t: string) => (
+                                    <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-white/10">{t}</span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="mt-0.5 whitespace-pre-wrap break-words">
+                                  {isEmpty(v) ? <span className="text-muted-foreground/60 italic">—</span> : displayValue(field, v)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </CollapsibleContent>
+                    </Collapsible>
                   );
                 })}
               </div>
