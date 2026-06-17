@@ -265,11 +265,12 @@ function nylasHeaders() {
 async function getGrantId(supabase: any, userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("gmail_tokens")
-    .select("grant_id, account_id")
+    .select("grant_id, account_id, is_demo_seed")
     .eq("user_id", userId)
     .single();
 
   if (error || !data) return null;
+  if (data.is_demo_seed || data.grant_id === "demo-seed") return "demo-seed";
   return data.grant_id || data.account_id || null;
 }
 
