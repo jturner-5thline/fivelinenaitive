@@ -1,15 +1,19 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { DealStage } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ArrowRightLeft } from 'lucide-react';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { MoveToPipelineDialog } from './MoveToPipelineDialog';
 
 interface InlineStageDropdownProps {
   dealId: string;
@@ -17,12 +21,14 @@ interface InlineStageDropdownProps {
   pipelineId?: string | null;
   onStageChange: (dealId: string, newStage: DealStage) => void;
   className?: string;
+  dealName?: string;
 }
 
-export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, className = '' }: InlineStageDropdownProps) {
+export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, className = '', dealName = '' }: InlineStageDropdownProps) {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { stages: globalStages } = useDealStages();
+  const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
 
   const currentConfig = getStageConfigForDeal(stage, pipelineId);
 
@@ -79,7 +85,33 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
             {s.label}
           </DropdownMenuItem>
         ))}
+        {pipelines.length > 1 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+              Pipeline
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setIsPipelineDialogOpen(true);
+              }}
+            >
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              Move to Pipeline
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
+      <MoveToPipelineDialog
+        dealId={dealId}
+        dealName={dealName}
+        currentPipelineId={pipelineId}
+        isOpen={isPipelineDialogOpen}
+        onClose={() => setIsPipelineDialogOpen(false)}
+      />
+    </>
   );
 }
