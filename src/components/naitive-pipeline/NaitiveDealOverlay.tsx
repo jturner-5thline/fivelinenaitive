@@ -92,7 +92,33 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     }
     setContentVisible(false);
     setIsClosing(true);
-    window.setTimeout(() => onClose(), 240);
+
+    // Hard belt-and-suspenders against click-through: while the close
+    // animation plays AND for a short buffer after the overlay unmounts,
+    // swallow every pointerdown / mousedown / click at the document
+    // capture phase. This guarantees the click on the X cannot reach the
+    // page's "+ New Deal" button (or any other underlying control) even
+    // if stacking contexts or portals would otherwise let it through.
+    const swallow = (e: Event) => {
+      e.stopPropagation();
+      // Do NOT preventDefault on the originating click target chain
+      // beyond stopping propagation — the X's own React handler has
+      // already fired. Stopping propagation here only blocks *other*
+      // listeners (Radix DialogTrigger uses pointerdown at capture).
+      if ((e as PointerEvent).type !== 'click') {
+        e.preventDefault();
+      }
+    };
+    const opts: AddEventListenerOptions = { capture: true };
+    document.addEventListener('pointerdown', swallow, opts);
+    document.addEventListener('mousedown', swallow, opts);
+    document.addEventListener('click', swallow, opts);
+    window.setTimeout(() => {
+      document.removeEventListener('pointerdown', swallow, opts);
+      document.removeEventListener('mousedown', swallow, opts);
+      document.removeEventListener('click', swallow, opts);
+      onClose();
+    }, 240);
   };
 
   // Install the global click-rect capture once. Cheap: a single window
@@ -303,6 +329,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
+      style={{ pointerEvents: 'auto' }}
       onPointerDownCapture={(e) => {
         // While the overlay is animating closed, swallow every pointer
         // event so a stray click can't reach background controls (e.g.
