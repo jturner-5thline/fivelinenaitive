@@ -369,7 +369,7 @@ function ScalarFieldRow({
   onSelect: (id: string) => void;
   onCustom: (v: string | null) => void;
 }) {
-  const values = lenders.map(l => (l as any)[field.key]);
+  const values = lenders.map(l => getFieldValue(l, field.key));
   const allEmpty = values.every(isEmpty);
   const normalized = values.map(v => normalizeForCompare(field, v));
   const uniq = new Set(normalized.filter(Boolean));
@@ -396,7 +396,7 @@ function ScalarFieldRow({
         )}
       </div>
       {lenders.map(l => {
-        const v = (l as any)[field.key];
+        const v = getFieldValue(l, field.key);
         const empty = isEmpty(v);
         const selected = selectedId === l.id && customValue == null;
         return (
@@ -473,7 +473,7 @@ function ArrayFieldRow({
   const all = useMemo(() => {
     const map = new Map<string, { value: string; sources: number[] }>();
     lenders.forEach((l, i) => {
-      const arr = ((l as any)[field.key] as string[] | null) || [];
+      const arr = toStringArray(getFieldValue(l, field.key));
       for (const raw of arr) {
         const k = raw.trim();
         if (!k) continue;
@@ -511,7 +511,7 @@ function ArrayFieldRow({
               type="button"
               className="hover:text-foreground"
               onClick={() => {
-                const arr = ((l as any)[field.key] as string[] | null) || [];
+                const arr = toStringArray(getFieldValue(l, field.key));
                 onChange(new Set(arr.map(v => v.trim().toLowerCase()).filter(Boolean)));
               }}
             >
