@@ -608,7 +608,7 @@ function MergeWorkspace({
 
   const activeCandidates = visibleCandidates.filter(l => !excluded.has(l.id));
   const showCols = activeCandidates.length >= 2 ? activeCandidates : visibleCandidates.slice(0, Math.max(2, visibleCandidates.length));
-  const fields = useMemo(() => getFundingSourceFields(group.lenders as any), [group.id, group.lenders]);
+  const fields = useMemo(() => getFundingSourceFields(group.lenders), [group.lenders]);
 
   // Selections
   const [scalarSel, setScalarSel] = useState<Record<string, string>>({});
@@ -636,7 +636,7 @@ function MergeWorkspace({
         if (!next[k]) {
           const union = new Set<string>();
           activeCandidates.forEach(l => {
-            const arr = ((l as any)[f.key] as string[] | null) || [];
+            const arr = toStringArray(getFieldValue(l, f.key));
             arr.forEach(v => { const t = v.trim(); if (t) union.add(t.toLowerCase()); });
           });
           next[k] = union;
@@ -655,7 +655,7 @@ function MergeWorkspace({
 
   // Build merged record preview
   const mergedPreview = useMemo(() => {
-    const out: Partial<MasterLenderInsert> & Record<string, any> = {};
+    const out: Partial<MasterLenderInsert> & UnknownRecord = {};
     for (const f of fields) {
       const k = f.key as string;
       if (f.type === 'array') {
@@ -664,23 +664,23 @@ function MergeWorkspace({
         // reconstruct original-cased values from candidate arrays
         const caseMap = new Map<string, string>();
         activeCandidates.forEach(l => {
-          const arr = ((l as any)[f.key] as string[] | null) || [];
+          const arr = toStringArray(getFieldValue(l, f.key));
           for (const v of arr) {
             const t = v.trim();
             if (t) caseMap.set(t.toLowerCase(), t);
           }
         });
         const arr = [...sel].map(key => caseMap.get(key) || key);
-        (out as any)[k] = arr.length ? arr : null;
+        out[k] = arr.length ? arr : null;
       } else {
         const custom = customVals[k];
         if (custom != null && custom !== '') {
-          (out as any)[k] = custom;
+          out[k] = custom;
           continue;
         }
         const id = scalarSel[k];
         const src = activeCandidates.find(l => l.id === id);
-        if (src) (out as any)[k] = (src as any)[f.key] ?? null;
+        if (src) out[k] = getFieldValue(src, f.key) ?? null;
       }
     }
     return out;
@@ -690,7 +690,7 @@ function MergeWorkspace({
     let n = 0;
     for (const f of fields) {
       const k = f.key as string;
-      const v = (mergedPreview as any)[k];
+      const v = getFieldValue(mergedPreview, k);
       if (!isEmpty(v)) n++;
     }
     return n;
@@ -707,7 +707,7 @@ function MergeWorkspace({
     }
     const mergeIds = activeCandidates.filter(l => l.id !== primaryId).map(l => l.id);
     // Strip immutable keys only. Every mergeable database-backed field remains in the payload.
-    const payload: any = { ...mergedPreview };
+    const payload: Partial<MasterLenderInsert> & UnknownRecord = { ...mergedPreview };
     MERGE_PROTECTED_KEYS.forEach(key => delete payload[key]);
     await onMerge(primaryId, mergeIds, payload);
   };
@@ -786,7 +786,7 @@ function MergeWorkspace({
                 className="pl-7 h-7 text-xs bg-white/[0.03] border-white/10"
               />
             </div>
-            <Select value={candidateSort} onValueChange={v => setCandidateSort(v as any)}>
+            <Select value={candidateSort} onValueChange={v => setCandidateSort(v as typeof candidateSort)}>
               <SelectTrigger className="h-7 w-[170px] text-xs bg-white/[0.03] border-white/10">
                 <FilterIcon className="h-3 w-3 mr-1" />
                 <SelectValue />
@@ -937,7 +937,7 @@ function MergeWorkspace({
                 {sections.map(section => {
                   const SectionIcon = SECTION_META[section].icon;
                   const fieldsInSection = fields.filter(f => f.section === section);
-                  const filled = fieldsInSection.filter(f => !isEmpty((mergedPreview as any)[f.key])).length;
+                  const filled = fieldsInSection.filter(f => !isEmpty(getFieldValue(mergedPreview, f.key))).length;
                   return (
                     <Collapsible key={section} defaultOpen>
                       <CollapsibleTrigger className="w-full flex items-center gap-2 rounded border border-white/10 px-2 py-1.5 text-left hover:border-white/20">
@@ -949,7 +949,7 @@ function MergeWorkspace({
                       </CollapsibleTrigger>
                       <CollapsibleContent className="pt-1.5 space-y-1.5">
                         {fieldsInSection.map(field => {
-                          const v = (mergedPreview as any)[field.key];
+                          const v = getFieldValue(mergedPreview, field.key);
                           return (
                             <div key={field.key} className="rounded border border-white/8 px-2 py-1.5">
                               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{field.label}</div>
