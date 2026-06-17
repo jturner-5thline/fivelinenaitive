@@ -1,16 +1,14 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-  Users, Merge, Check, AlertTriangle, Globe, MapPin, Building2, Phone,
-  Mail, User, Tag, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
-  CircleDot, Layers, ArrowRight, Filter as FilterIcon, FileText, ClipboardList,
-  ExternalLink,
+  Users, Merge, Check, AlertTriangle, Building2,
+  User, Search, ChevronRight, X, Clock, Sparkles, ShieldAlert,
+  CircleDot, Layers, Filter as FilterIcon, FileText, ClipboardList,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -367,8 +365,7 @@ function ScalarFieldRow({
   const normalized = values.map(v => normalizeForCompare(field, v));
   const uniq = new Set(normalized.filter(Boolean));
   const isConflict = uniq.size > 1;
-  const isMatch = !isConflict && !allEmpty;
-  const editable = field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'json';
+  const editable = !field.readOnly && (field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'json');
   const expanded = field.type === 'longtext' || field.type === 'json';
 
   return (
