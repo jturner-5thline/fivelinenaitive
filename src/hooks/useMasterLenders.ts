@@ -103,7 +103,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       // When there's a search query, use simple ilike filters
       if (query) {
         const pattern = `%${query}%`;
-        let builder = supabase
+        const builder = supabase
           .from('master_lenders')
           .select('*', withCount ? { count: 'exact' } : { count: 'exact' })
           .or(`name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern},website.ilike.${pattern},linkedin_url.ilike.${pattern},phone.ilike.${pattern},address.ilike.${pattern}`)
