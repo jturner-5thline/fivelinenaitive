@@ -4,6 +4,7 @@
 // template, one validator, one set of targets. Top-up based so reruns
 // repair missing data without ever creating duplicates.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { seedDemoInbox } from "./seedDemoInbox.ts";
 
 export const SEED_VERSION = "1.2.0";
 
