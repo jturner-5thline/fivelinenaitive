@@ -193,13 +193,12 @@ function clearPersistedStatus() {
 
 export function useGmail() {
   const { user } = useAuth();
-  const initialIsDemo =
-    isLegacyDemoEmail(user?.email ?? undefined) ||
-    (cachedStatus?.source === 'demo-seed') ||
-    (loadPersistedStatus()?.source === 'demo-seed');
   const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
   const hasInitialStatus = !!(cachedStatus || loadPersistedStatus());
   const [status, setStatus] = useState<GmailStatus>(() => initialStatus);
+  const isDemo =
+    isLegacyDemoEmail(user?.email ?? undefined) ||
+    status?.source === 'demo-seed';
   const [isStatusLoading, setIsStatusLoading] = useState(!hasInitialStatus);
   const [messages, setMessages] = useState<GmailMessage[]>(() => cachedMessages);
   const [isLoading, setIsLoading] = useState(false);
