@@ -581,7 +581,7 @@ function MergeWorkspace({
     setScalarSel({});
     setCustomVals({});
     setArraySel({});
-  }, [group.id]);
+  }, [group.id, group.lenders]);
 
   const orderedCandidates = useMemo(() => {
     const arr = [...group.lenders];
