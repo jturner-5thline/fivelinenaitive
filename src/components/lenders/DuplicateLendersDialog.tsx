@@ -161,8 +161,8 @@ const FIELD_META: Record<string, Partial<FieldDef>> = {
 };
 
 const SECTION_ORDER: SectionId[] = ['identity', 'commercial', 'relationship', 'process', 'documents', 'system'];
-const SCHEMA_ORDER = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map((c, i) => [c.key, i]));
-const SCHEMA_TYPES = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map(c => [c.key, c.dataType]));
+const SCHEMA_ORDER: Map<string, number> = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map((c, i) => [c.key, i]));
+const SCHEMA_TYPES: Map<string, string> = new Map(MASTER_LENDER_SCHEMA_COLUMNS.map(c => [c.key, c.dataType]));
 const MERGE_PROTECTED_KEYS = new Set(['id', 'user_id', 'company_id', 'created_at', 'updated_at']);
 
 function humanizeKey(key: string): string {
@@ -578,6 +578,7 @@ function MergeWorkspace({
 
   const activeCandidates = visibleCandidates.filter(l => !excluded.has(l.id));
   const showCols = activeCandidates.length >= 2 ? activeCandidates : visibleCandidates.slice(0, Math.max(2, visibleCandidates.length));
+  const fields = useMemo(() => getFundingSourceFields(group.lenders as any), [group.id, group.lenders]);
 
   // Selections
   const [scalarSel, setScalarSel] = useState<Record<string, string>>({});
@@ -589,7 +590,7 @@ function MergeWorkspace({
     if (activeCandidates.length === 0) return;
     setScalarSel(prev => {
       const next = { ...prev };
-      for (const f of FIELDS) {
+      for (const f of fields) {
         if (f.type === 'array') continue;
         if (!next[f.key as string] || !activeCandidates.find(l => l.id === next[f.key as string])) {
           next[f.key as string] = autoWinner(f, activeCandidates);
@@ -599,7 +600,7 @@ function MergeWorkspace({
     });
     setArraySel(prev => {
       const next = { ...prev };
-      for (const f of FIELDS) {
+      for (const f of fields) {
         if (f.type !== 'array') continue;
         const k = f.key as string;
         if (!next[k]) {
@@ -613,9 +614,9 @@ function MergeWorkspace({
       }
       return next;
     });
-  }, [activeCandidates.map(l => l.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeCandidates.map(l => l.id).join(','), fields]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const conflicts = useMemo(() => detectConflicts(activeCandidates), [activeCandidates]);
+  const conflicts = useMemo(() => detectConflicts(activeCandidates, fields), [activeCandidates, fields]);
   const unresolvedConflicts = conflicts.filter(c => {
     const sel = scalarSel[c.field as string];
     return !sel; // any conflict where no explicit selection has been made is treated as unresolved when severity=high
@@ -625,7 +626,7 @@ function MergeWorkspace({
   // Build merged record preview
   const mergedPreview = useMemo(() => {
     const out: Partial<MasterLenderInsert> & Record<string, any> = {};
-    for (const f of FIELDS) {
+    for (const f of fields) {
       const k = f.key as string;
       if (f.type === 'array') {
         const sel = arraySel[k];
@@ -653,17 +654,17 @@ function MergeWorkspace({
       }
     }
     return out;
-  }, [scalarSel, customVals, arraySel, activeCandidates]);
+  }, [scalarSel, customVals, arraySel, activeCandidates, fields]);
 
   const resolvedFieldCount = useMemo(() => {
     let n = 0;
-    for (const f of FIELDS) {
+    for (const f of fields) {
       const k = f.key as string;
       const v = (mergedPreview as any)[k];
       if (!isEmpty(v)) n++;
     }
     return n;
-  }, [mergedPreview]);
+  }, [mergedPreview, fields]);
 
   const handleMerge = async () => {
     if (activeCandidates.length < 2) {
@@ -675,11 +676,9 @@ function MergeWorkspace({
       return;
     }
     const mergeIds = activeCandidates.filter(l => l.id !== primaryId).map(l => l.id);
-    // Strip server-only keys not in MasterLenderInsert
+    // Strip immutable keys only. Every mergeable database-backed field remains in the payload.
     const payload: any = { ...mergedPreview };
-    delete payload.id; delete payload.user_id; delete payload.company_id;
-    delete payload.created_at; delete payload.updated_at;
-    delete payload.flex_lender_id; delete payload.last_synced_from_flex;
+    MERGE_PROTECTED_KEYS.forEach(key => delete payload[key]);
     await onMerge(primaryId, mergeIds, payload);
   };
 
@@ -795,7 +794,7 @@ function MergeWorkspace({
                     {l.id === primaryId && <Badge variant="outline" className="h-4 text-[9px] border-primary/40 text-primary">Primary</Badge>}
                   </div>
                   <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                    <span title="Completeness">{completenessScore(l)}/{FIELDS.length}</span>
+                    <span title="Completeness">{completenessScore(l)}/{fields.length}</span>
                     <span>·</span>
                     <span>{formatDate(l.updated_at)}</span>
                   </div>
@@ -829,7 +828,7 @@ function MergeWorkspace({
           <ScrollArea className="flex-1 min-h-0">
             {sections.map(section => {
               const SectionIcon = SECTION_META[section].icon;
-              const fieldsInSection = FIELDS.filter(f => f.section === section);
+              const fieldsInSection = fields.filter(f => f.section === section);
               return (
                 <div key={section}>
                   <div className="sticky top-0 z-[5] flex items-center gap-2 px-3 py-1.5 bg-background/60 backdrop-blur border-b border-white/8">
