@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
+import { useSwallowClickThrough } from '@/hooks/useSwallowClickThrough';
 import { toast } from 'sonner';
 
 interface MoveToPipelineDialogProps {
@@ -33,6 +34,16 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
   const [selectedStageId, setSelectedStageId] = useState<string>('');
   const [statusNote, setStatusNote] = useState<string>('');
   const [isMoving, setIsMoving] = useState(false);
+  const swallowClicks = useSwallowClickThrough();
+
+  // Close the modal while installing capture-phase swallowers so the
+  // click that dismissed the dialog (X / Cancel / backdrop / Esc) cannot
+  // fall through to the deal card underneath and open the deal pop-up.
+  const safeClose = () => {
+    swallowClicks(250, () => {
+      onClose();
+    });
+  };
 
   const availablePipelines = pipelines;
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
@@ -59,7 +70,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      onClose();
+      safeClose();
       setSelectedPipelineId('');
       setSelectedStageId('');
       setStatusNote('');
@@ -68,7 +79,13 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md border-purple-500/40 shadow-2xl shadow-purple-500/20" style={{ background: 'linear-gradient(135deg, hsl(240, 20%, 22%), hsl(260, 25%, 18%))' }}>
+      <DialogContent
+        className="sm:max-w-md border-purple-500/40 shadow-2xl shadow-purple-500/20"
+        style={{ background: 'linear-gradient(135deg, hsl(240, 20%, 22%), hsl(260, 25%, 18%))' }}
+        onPointerDownOutside={(e) => { e.preventDefault(); safeClose(); }}
+        onInteractOutside={(e) => { e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { e.preventDefault(); safeClose(); }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
@@ -129,7 +146,7 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={(e) => { e.stopPropagation(); e.preventDefault(); safeClose(); }}>Cancel</Button>
           <Button onClick={handleMove} disabled={!selectedPipelineId || !selectedStageId || isMoving}>
             {isMoving ? 'Moving...' : 'Move Deal'}
           </Button>
