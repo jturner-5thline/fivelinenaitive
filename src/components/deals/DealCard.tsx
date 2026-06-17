@@ -439,6 +439,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   dealId={deal.id}
                   stage={deal.stage}
                   pipelineId={deal.pipelineId}
+                  dealName={deal.company}
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
               </div>
