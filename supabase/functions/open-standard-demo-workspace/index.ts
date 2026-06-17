@@ -36,6 +36,9 @@ interface Body {
   landingPath?: string;
   repairIfNeeded?: boolean;
   resetWorkspace?: boolean;
+  // Current admin refresh token, stored backend-only so Return to Admin can
+  // re-establish the exact admin session after demo handoff.
+  sourceAdminRefreshToken?: string;
 }
 
 function json(p: unknown, s: number) {
@@ -191,6 +194,18 @@ serve(async (req: Request) => {
       .select("id, expires_at").single();
     if (sessionErr || !session) {
       return json({ error: "Could not persist standard-demo session" }, 500);
+    }
+
+    if (typeof body.sourceAdminRefreshToken === "string" && body.sourceAdminRefreshToken.length > 20) {
+      const { error: secretErr } = await admin
+        .from("admin_impersonation_session_secrets")
+        .upsert({
+          session_id: session.id,
+          source_admin_refresh_token: body.sourceAdminRefreshToken,
+        }, { onConflict: "session_id" });
+      if (secretErr) {
+        return json({ error: "Could not preserve admin restore session", code: "restore_session_store_failed" }, 500);
+      }
     }
 
     // 5. Mint magic link → existing impersonation callback ------------

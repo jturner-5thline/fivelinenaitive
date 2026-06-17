@@ -26,6 +26,19 @@ export default function ImpersonationCallback() {
     const isReturn = params.get('return') === 'admin';
 
     async function waitForSession() {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const accessToken = hash.get('access_token');
+      const refreshToken = hash.get('refresh_token');
+      if (accessToken && refreshToken) {
+        const { error: setErrorResult } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (setErrorResult) {
+          setError(setErrorResult.message);
+          return;
+        }
+      }
       // Up to ~8s for supabase-js to finish processing the URL hash.
       for (let i = 0; i < 40; i++) {
         if (cancelled) return;
