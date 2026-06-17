@@ -142,11 +142,30 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         // 2a. Find existing auth user
         let userId: string | null = null;
-        const { data: existingList } = await admin.auth.admin.listUsers({
-          page: 1,
-          perPage: 200,
-        });
-        const existing = existingList?.users?.find((x) => x.email?.toLowerCase() === email);
+        let existing: { id: string; email?: string | null; user_metadata?: Record<string, unknown> } | null = null;
+        try {
+          // Use SQL lookup instead of paginated listUsers (capped at 200/page)
+          const { data: prof } = await admin
+            .from("profiles")
+            .select("user_id")
+            .ilike("email", email)
+            .maybeSingle();
+          if (prof?.user_id) {
+            const { data: got } = await admin.auth.admin.getUserById(prof.user_id);
+            if (got?.user) existing = got.user as typeof existing;
+          }
+          if (!existing) {
+            // Fall back to listUsers scan (first 1000)
+            for (let page = 1; page <= 5 && !existing; page++) {
+              const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+              const hit = list?.users?.find((x) => x.email?.toLowerCase() === email);
+              if (hit) existing = hit as typeof existing;
+              if (!list?.users?.length || list.users.length < 200) break;
+            }
+          }
+        } catch (lookupErr) {
+          console.warn("[create-demo-access] existing-user lookup failed", email, lookupErr);
+        }
 
         if (existing) {
           userId = existing.id;
@@ -161,6 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
             },
           });
           if (updateUserErr) {
+            console.error("[create-demo-access] updateUserById failed", email, updateUserErr);
             results.push({ email, ok: false, reason: updateUserErr.message ?? "Failed to update demo user" });
             continue;
           }
@@ -172,6 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
             user_metadata: { full_name: name, invited_via: "demo-access", demo_access: true },
           });
           if (createErr || !created.user) {
+            console.error("[create-demo-access] createUser failed", email, createErr);
             results.push({ email, ok: false, reason: createErr?.message ?? "Failed to create user" });
             continue;
           }
