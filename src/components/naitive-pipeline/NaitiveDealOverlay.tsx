@@ -329,6 +329,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
+      style={{ pointerEvents: 'auto' }}
       onPointerDownCapture={(e) => {
         // While the overlay is animating closed, swallow every pointer
         // event so a stray click can't reach background controls (e.g.
