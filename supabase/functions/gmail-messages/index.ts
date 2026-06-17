@@ -265,11 +265,12 @@ function nylasHeaders() {
 async function getGrantId(supabase: any, userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("gmail_tokens")
-    .select("grant_id, account_id")
+    .select("grant_id, account_id, is_demo_seed")
     .eq("user_id", userId)
     .single();
 
   if (error || !data) return null;
+  if (data.is_demo_seed || data.grant_id === "demo-seed") return "demo-seed";
   return data.grant_id || data.account_id || null;
 }
 
@@ -280,6 +281,157 @@ async function hasMicrosoftConnection(supabase: any, userId: string): Promise<bo
     .eq("user_id", userId)
     .maybeSingle();
   return !!data && data.status !== "disconnected";
+}
+
+/**
+ * Demo-seed handler: when gmail_tokens.is_demo_seed=true, serve directly from
+ * the seeded gmail_messages table instead of calling Nylas. Supports read
+ * actions; write actions are no-ops returning ok so the UI doesn't blow up.
+ */
+async function handleDemoSeedAction(
+  supabase: any,
+  userId: string,
+  requestData: MessageRequest,
+): Promise<Response> {
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+  const action = requestData.action;
+
+  if (action === "list") {
+    const max = Math.min((requestData as any).max_results || 50, 500);
+    const labelIds = (requestData as any).label_ids as string[] | undefined;
+    const folder = (requestData as any).folder as string | undefined;
+    const wanted = (labelIds?.[0] || folder || "INBOX").toUpperCase();
+    const pageToken = (requestData as any).page_token as string | undefined;
+    let q = supabase
+      .from("gmail_messages")
+      .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, received_at, is_read, is_starred, labels")
+      .eq("user_id", userId)
+      .eq("is_demo_seed", true)
+      .order("received_at", { ascending: false })
+      .limit(max);
+    if (pageToken) q = q.lt("received_at", pageToken);
+    const { data, error } = await q;
+    if (error) return json({ error: error.message, error_code: "demo_seed_read_failed" }, 500);
+    const filtered = (data || []).filter((m: any) => {
+      const labels = (m.labels || []).map((l: string) => String(l).toUpperCase());
+      if (wanted === "SENT") return labels.includes("SENT");
+      if (wanted === "STARRED") return !!m.is_starred;
+      if (wanted === "TRASH" || wanted === "SPAM" || wanted === "DRAFTS" || wanted === "ARCHIVE") return labels.includes(wanted);
+      return labels.includes("INBOX") || labels.length === 0;
+    });
+    const messages = filtered.map((m: any) => ({
+      id: m.gmail_message_id,
+      thread_id: m.thread_id,
+      subject: m.subject,
+      from_email: m.from_email,
+      from_name: m.from_name,
+      to_emails: m.to_emails ?? [],
+      snippet: m.snippet ?? "",
+      received_at: m.received_at,
+      is_read: !!m.is_read,
+      is_starred: !!m.is_starred,
+      labels: m.labels ?? ["INBOX"],
+      has_attachments: false,
+      provider: "demo-seed",
+    }));
+    const nextPageToken = messages.length === max && messages.length > 0
+      ? messages[messages.length - 1].received_at ?? null
+      : null;
+    return json({ messages, next_page_token: nextPageToken, provider: "demo-seed" });
+  }
+
+  if (action === "get") {
+    const id = requestData.message_id;
+    if (!id) return json({ error: "message_id required" }, 400);
+    const { data, error } = await supabase
+      .from("gmail_messages")
+      .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, body_html, received_at, is_read, is_starred, labels")
+      .eq("user_id", userId)
+      .eq("gmail_message_id", id)
+      .maybeSingle();
+    if (error || !data) return json({ error: error?.message || "Message not found", error_code: "demo_seed_read_failed" }, error ? 500 : 404);
+    return json({
+      message: {
+        id: data.gmail_message_id,
+        thread_id: data.thread_id,
+        subject: data.subject,
+        from_email: data.from_email,
+        from_name: data.from_name,
+        to_emails: data.to_emails ?? [],
+        snippet: data.snippet ?? "",
+        body_text: data.body_text ?? "",
+        body_html: data.body_html ?? "",
+        is_read: !!data.is_read,
+        is_starred: !!data.is_starred,
+        labels: data.labels ?? ["INBOX"],
+        received_at: data.received_at,
+        has_attachments: false,
+        provider: "demo-seed",
+      },
+      provider: "demo-seed",
+    });
+  }
+
+  if (action === "get_thread") {
+    const tid = requestData.thread_id;
+    if (!tid) return json({ error: "thread_id required" }, 400);
+    const { data, error } = await supabase
+      .from("gmail_messages")
+      .select("gmail_message_id, thread_id, subject, from_email, from_name, to_emails, snippet, body_text, body_html, received_at, is_read, is_starred, labels")
+      .eq("user_id", userId)
+      .eq("thread_id", tid)
+      .order("received_at", { ascending: true });
+    if (error) return json({ error: error.message, error_code: "demo_seed_read_failed" }, 500);
+    const messages = (data || []).map((m: any) => ({
+      id: m.gmail_message_id,
+      thread_id: m.thread_id,
+      subject: m.subject,
+      from_email: m.from_email,
+      from_name: m.from_name,
+      to_emails: m.to_emails ?? [],
+      snippet: m.snippet ?? "",
+      body_text: m.body_text ?? "",
+      body_html: m.body_html ?? "",
+      is_read: !!m.is_read,
+      is_starred: !!m.is_starred,
+      labels: m.labels ?? ["INBOX"],
+      received_at: m.received_at,
+      has_attachments: false,
+      provider: "demo-seed",
+    }));
+    return json({ thread_id: tid, messages, provider: "demo-seed" });
+  }
+
+  if (action === "mark_read" || action === "mark_unread" || action === "star" || action === "unstar") {
+    const ids = requestData.message_ids?.length ? requestData.message_ids : (requestData.message_id ? [requestData.message_id] : []);
+    if (ids.length === 0) return json({ ok: true, updated: 0, provider: "demo-seed" });
+    const patch: Record<string, unknown> = {};
+    if (action === "mark_read") patch.is_read = true;
+    if (action === "mark_unread") patch.is_read = false;
+    if (action === "star") patch.is_starred = true;
+    if (action === "unstar") patch.is_starred = false;
+    const { error } = await supabase
+      .from("gmail_messages")
+      .update(patch)
+      .eq("user_id", userId)
+      .in("gmail_message_id", ids);
+    if (error) return json({ error: error.message, error_code: "demo_seed_write_failed" }, 500);
+    return json({ ok: true, updated: ids.length, provider: "demo-seed" });
+  }
+
+  if (action === "sync_state") {
+    return json({ ok: true, provider: "demo-seed", state_fetched_at: new Date().toISOString(), changes: [] });
+  }
+
+  // send / save_draft / archive / move / trash / delete — no-op for demo
+  return json({
+    ok: true,
+    provider: "demo-seed",
+    note: "Demo inbox is read-only; action accepted with no effect.",
+  });
 }
 
 /**
@@ -459,6 +611,9 @@ serve(async (req: Request): Promise<Response> => {
     const { action } = requestData;
 
     const grantId = await getGrantId(supabase, user.id);
+    if (grantId === "demo-seed") {
+      return await handleDemoSeedAction(supabase, user.id, requestData);
+    }
     if (!grantId) {
       const msConnected = await hasMicrosoftConnection(supabase, user.id);
       console.log(`[gmail-messages] no Nylas grant for user=${user.id} ms_connected=${msConnected} action=${action}`);
