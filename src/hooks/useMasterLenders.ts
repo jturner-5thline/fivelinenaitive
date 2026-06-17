@@ -50,6 +50,10 @@ export interface MasterLender {
   linkedin_url?: string | null;
   address?: string | null;
   phone?: string | null;
+  tags?: string[] | null;
+  funding_source_notes?: string | null;
+  about_notes?: string | null;
+  sync_source?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,6 +98,10 @@ export interface MasterLenderInsert {
   linkedin_url?: string | null;
   address?: string | null;
   phone?: string | null;
+  tags?: string[] | null;
+  funding_source_notes?: string | null;
+  about_notes?: string | null;
+  sync_source?: string | null;
 }
 
 export type MasterLendersMode = 'all' | 'paged';
