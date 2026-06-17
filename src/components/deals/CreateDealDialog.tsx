@@ -50,6 +50,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
+import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -342,7 +343,24 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   };
 
   const defaultTrigger = (
-    <Button type="button" variant="liquid-glass" size="sm" className="gap-2">
+    <Button
+      type="button"
+      variant="liquid-glass"
+      size="sm"
+      className="gap-2"
+      onPointerDownCapture={(e) => {
+        if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      onClickCapture={(e) => {
+        if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
       <Plus className="h-4 w-4" />
       New Deal
     </Button>
