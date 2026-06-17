@@ -46,6 +46,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
   };
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
