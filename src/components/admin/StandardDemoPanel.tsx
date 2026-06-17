@@ -33,34 +33,36 @@ import { DEMO_PRIMARY_EMAIL, DEMO_COMPANY_ID } from '@/lib/demoAccount';
 export function StandardDemoPanel() {
   const [busy, setBusy] = useState(false);
 
-  // Pick an origin DIFFERENT from the current admin tab so the demo
-  // window opens on an isolated browser origin. Same-origin would share
-  // localStorage and the magic-link session would overwrite the admin's
-  // auth token in this tab.
+  // Use a production naitive.co origin for the callback. If the admin is on
+  // one custom domain, use the other custom domain so a successful new-tab
+  // demo handoff does not share the admin tab's localStorage session.
   function pickDemoOrigin(): string {
-    const candidates = [
-      'https://fivelinenaitive.lovable.app',
-      'https://www.naitive.co',
-      'https://naitive.co',
-    ];
-    const current = window.location.origin.replace(/\/$/, '');
-    for (const c of candidates) {
-      if (c.replace(/\/$/, '') !== current) return c;
+    const current = window.location.origin.replace(/\/$/, '').toLowerCase();
+    if (current === 'https://www.naitive.co') {
+      return 'https://naitive.co';
     }
-    return candidates[0];
+    return 'https://www.naitive.co';
+  }
+
+  function getVerifiedUrl(payload: { url?: string; actionLink?: string } | null): string | null {
+    const candidate = payload?.url || payload?.actionLink;
+    if (!candidate) return null;
+    try {
+      const parsed = new URL(candidate);
+      if (!['https:', 'http:'].includes(parsed.protocol)) return null;
+      return parsed.toString();
+    } catch {
+      return null;
+    }
   }
 
   async function openDemo() {
-    // Open a placeholder tab synchronously inside the click handler so
-    // popup blockers don't intercept it after the await below.
-    const demoWindow = window.open('about:blank', '_blank', 'noopener');
     setBusy(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData?.session;
       if (!session?.access_token || !session?.refresh_token) {
         toast.error('No active session. Please sign in again.');
-        demoWindow?.close();
         return;
       }
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
@@ -81,26 +83,28 @@ export function StandardDemoPanel() {
         }),
       });
       const payload = (await resp.json().catch(() => null)) as
-        | { ok?: boolean; actionLink?: string; error?: string }
+        | { ok?: boolean; url?: string; actionLink?: string; callbackUrl?: string; error?: string; code?: string }
         | null;
-      if (!resp.ok || !payload?.ok || !payload.actionLink) {
-        toast.error(payload?.error || `Failed to open demo workspace (${resp.status})`);
-        demoWindow?.close();
+      const url = getVerifiedUrl(payload);
+      if (!resp.ok || !payload?.ok || !url) {
+        toast.error(payload?.error || `Demo workspace did not return a valid URL (${resp.status})`, {
+          description: payload?.code || 'No browser tab was opened.',
+        });
         return;
       }
-      // Navigate the pre-opened tab to the magic link. Different origin
-      // from the admin tab → isolated localStorage, admin session in this
-      // tab stays untouched.
+      // Only open/navigate after a verified absolute URL exists. Never open
+      // an about:blank placeholder; if the async new-tab open is blocked,
+      // fall back to same-tab navigation instead of leaving a blank tab.
+      const demoWindow = window.open(url, '_blank');
       if (demoWindow) {
-        demoWindow.location.href = payload.actionLink;
+        demoWindow.opener = null;
         toast.success('Demo workspace opened in a new tab.');
       } else {
-        // Popup blocked — fall back to a new tab without replacing this one.
-        window.open(payload.actionLink, '_blank', 'noopener');
+        toast.message('Opening demo workspace in this tab…');
+        window.location.assign(url);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to open demo workspace');
-      demoWindow?.close();
     } finally {
       setBusy(false);
     }
