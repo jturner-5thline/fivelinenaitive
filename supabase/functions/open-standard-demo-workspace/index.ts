@@ -39,6 +39,10 @@ interface Body {
   // Current admin refresh token, stored backend-only so Return to Admin can
   // re-establish the exact admin session after demo handoff.
   sourceAdminRefreshToken?: string;
+  // Origin to use for the magic-link callback. The client picks an origin
+  // DIFFERENT from the admin tab so the demo window lands on a separate
+  // browser origin and cannot overwrite the admin's localStorage session.
+  demoOrigin?: string;
 }
 
 function json(p: unknown, s: number) {
@@ -209,9 +213,28 @@ serve(async (req: Request) => {
     }
 
     // 5. Mint magic link → existing impersonation callback ------------
-    const origin =
+    // Prefer an explicit client-provided demoOrigin so the demo window
+    // opens on a different browser origin from the admin tab (isolated
+    // localStorage). Validate against a strict allowlist.
+    const ALLOWED_HOST_SUFFIXES = [".lovable.app", "naitive.co"];
+    function isAllowedOrigin(o: string | null | undefined): o is string {
+      if (!o) return false;
+      try {
+        const u = new URL(o);
+        if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+        return ALLOWED_HOST_SUFFIXES.some(
+          (s) => u.hostname === s.replace(/^\./, "") || u.hostname.endsWith(s),
+        );
+      } catch {
+        return false;
+      }
+    }
+    const requestOrigin =
       req.headers.get("origin") ||
       (req.headers.get("referer") ?? "").replace(/\/$/, "");
+    const origin = isAllowedOrigin(body.demoOrigin)
+      ? body.demoOrigin!.replace(/\/$/, "")
+      : requestOrigin;
     const landing = ALLOWED_LANDINGS.has(body.landingPath ?? "")
       ? (body.landingPath as string) : "/deals";
     const callback = `${origin}/auth/impersonation/callback`
