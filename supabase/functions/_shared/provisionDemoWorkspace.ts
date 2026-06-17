@@ -127,6 +127,38 @@ const EMAIL_TEMPLATES = [
   { subject: "Pass — {company}", body: "Unfortunately {lender} is going to pass on {company} — wrong industry fit. Will keep them in mind for the next one.", from: "lender" },
 ];
 
+const DEMO_DEFAULT_CHECKLIST_CONFIG = {
+  version: 2,
+  configs: ["Growth Capital", "ABL", "CapEx", "Refinancing", "Acquisition", "Working Capital", "Recapitalization", "Bridge Loan", "Senior Debt"].map((dealType, idx) => ({
+    id: `demo-${dealType.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    dealTypeMatchString: dealType,
+    rounds: [
+      {
+        id: `demo-${idx}-initial`,
+        title: "Initial Items",
+        order: 0,
+        items: [
+          { id: `demo-${idx}-initial-1`, label: "Pitch Deck", order: 0, required: true },
+          { id: `demo-${idx}-initial-2`, label: "Financial Model", order: 1, required: true },
+          { id: `demo-${idx}-initial-3`, label: "Monthly YTD P&L, BS & Cash Flow", order: 2, required: true },
+          { id: `demo-${idx}-initial-4`, label: "Audited Financials 2024", order: 3, required: false },
+        ],
+      },
+      {
+        id: `demo-${idx}-kickoff`,
+        title: "Kick Off",
+        order: 1,
+        items: [
+          { id: `demo-${idx}-kickoff-1`, label: "Detailed Cap Table", order: 0, required: false },
+          { id: `demo-${idx}-kickoff-2`, label: "Customer Contracts", order: 1, required: false },
+          { id: `demo-${idx}-kickoff-3`, label: "AR Aging Report", order: 2, required: false },
+          { id: `demo-${idx}-kickoff-4`, label: "Bank Statements", order: 3, required: false },
+        ],
+      },
+    ],
+  })),
+};
+
 function pick<T>(arr: readonly T[], i: number): T { return arr[i % arr.length]; }
 function rand(seed: number, max: number) {
   const x = Math.sin(seed * 9301 + 49297) * 233280;
