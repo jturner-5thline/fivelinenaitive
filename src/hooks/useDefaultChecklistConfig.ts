@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -275,7 +276,7 @@ export function useDefaultChecklistConfig(companyId: string | undefined) {
     try {
       const { error } = await supabase
         .from('company_settings')
-        .update({ data_room_default_checklists: newConfig as any })
+        .update({ data_room_default_checklists: newConfig as unknown as Json })
         .eq('company_id', companyId);
 
       if (error) throw error;
