@@ -64,19 +64,53 @@ export async function stopImpersonation(opts?: {
   reason?: string;
   returnTo?: string;
 }): Promise<StopImpersonationResult> {
-  const { data, error } = await supabase.functions.invoke('stop-demo-impersonation', {
-    body: {
-      sessionId: opts?.sessionId,
-      reason: opts?.reason ?? 'return_to_admin',
-      returnTo: opts?.returnTo ?? '/admin?section=users-permissions&page=demo-metrics',
-    },
-  });
-  if (error) return { ok: false, returnLink: null, returnTo: null, error: error.message };
-  const p = data as { ok?: boolean; returnLink?: string | null; returnTo?: string | null; error?: string };
-  return {
-    ok: !!p?.ok,
-    returnLink: p?.returnLink ?? null,
-    returnTo: p?.returnTo ?? null,
-    error: p?.error,
-  };
+  // Use a direct fetch instead of `supabase.functions.invoke` so the Lovable
+  // preview fetch proxy can't drop the Authorization header (same fix used
+  // by Open Demo Workspace). Without an explicit Bearer token the function
+  // returns 401 and Return-to-Admin silently does nothing.
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      return { ok: false, returnLink: null, returnTo: null, error: 'No active session' };
+    }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+    const resp = await fetch(`${supabaseUrl}/functions/v1/stop-demo-impersonation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify({
+        sessionId: opts?.sessionId,
+        reason: opts?.reason ?? 'return_to_admin',
+        returnTo: opts?.returnTo ?? '/admin?section=users-permissions&page=demo-metrics',
+      }),
+    });
+    const p = (await resp.json().catch(() => null)) as
+      | { ok?: boolean; returnLink?: string | null; returnTo?: string | null; error?: string }
+      | null;
+    if (!resp.ok || !p?.ok) {
+      return {
+        ok: false,
+        returnLink: null,
+        returnTo: null,
+        error: p?.error || `Failed to end demo session (${resp.status})`,
+      };
+    }
+    return {
+      ok: true,
+      returnLink: p.returnLink ?? null,
+      returnTo: p.returnTo ?? null,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      returnLink: null,
+      returnTo: null,
+      error: e instanceof Error ? e.message : 'Failed to end demo session',
+    };
+  }
 }
