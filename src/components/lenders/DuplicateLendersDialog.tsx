@@ -227,8 +227,6 @@ function getFundingSourceFields(records: Array<Record<string, any>> = []): Field
     });
 }
 
-const FUNDING_SOURCE_FIELDS = getFundingSourceFields();
-
 const SECTION_META: Record<string, { label: string; icon: any }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
@@ -370,7 +368,8 @@ function ScalarFieldRow({
   const uniq = new Set(normalized.filter(Boolean));
   const isConflict = uniq.size > 1;
   const isMatch = !isConflict && !allEmpty;
-  const editable = field.type === 'text' || field.type === 'longtext';
+  const editable = field.type === 'text' || field.type === 'longtext' || field.type === 'url' || field.type === 'json';
+  const expanded = field.type === 'longtext' || field.type === 'json';
 
   return (
     <div className={cn(
@@ -413,7 +412,9 @@ function ScalarFieldRow({
           >
             <div className="flex items-center gap-1.5">
               {selected && <Check className="h-3 w-3 text-primary shrink-0" />}
-              <span className={cn('truncate', empty && 'italic')}>{displayValue(field, v)}</span>
+              <span className={cn(expanded ? 'whitespace-pre-wrap break-words' : 'truncate', empty && 'italic')}>
+                {displayValue(field, v)}
+              </span>
             </div>
           </button>
         );
@@ -431,12 +432,21 @@ function ScalarFieldRow({
               Custom
             </label>
             {customValue != null && (
-              <Input
-                value={customValue}
-                onChange={e => onCustom(e.target.value)}
-                placeholder="Override value"
-                className="h-7 text-xs bg-white/[0.03] border-white/10"
-              />
+              {expanded ? (
+                <Textarea
+                  value={customValue}
+                  onChange={e => onCustom(e.target.value)}
+                  placeholder="Override value"
+                  className="min-h-20 text-xs bg-white/[0.03] border-white/10"
+                />
+              ) : (
+                <Input
+                  value={customValue}
+                  onChange={e => onCustom(e.target.value)}
+                  placeholder="Override value"
+                  className="h-7 text-xs bg-white/[0.03] border-white/10"
+                />
+              )}
             )}
           </div>
         </div>
