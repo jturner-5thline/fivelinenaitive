@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function generateDemoPassword(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  const randomPart = Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("");
+  return `Naitive-${Date.now().toString(36)}-${randomPart}!A7`;
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -78,7 +85,6 @@ serve(async (req: Request): Promise<Response> => {
       (caller.email?.split("@")[0] ?? "An admin");
 
     const PLATFORM_URL = Deno.env.get("APP_URL") ?? "https://naitive.co";
-    const DEMO_PASSWORD = "User1234";
 
     const targets = (profiles ?? []).filter((p) =>
       singleEmail ? (p.email ?? "").toLowerCase() === String(singleEmail).toLowerCase() : true
@@ -88,19 +94,20 @@ serve(async (req: Request): Promise<Response> => {
     for (const p of targets) {
       const email = (p.email ?? "").toLowerCase();
       const name = (p.full_name as string) || (p.display_name as string) || email;
+      const demoPassword = generateDemoPassword();
       if (!email) continue;
 
       // Ensure password is current so the prefilled login works.
       try {
         await admin.auth.admin.updateUserById(p.user_id as string, {
-          password: DEMO_PASSWORD,
+          password: demoPassword,
           email_confirm: true,
         });
       } catch (e) {
         console.warn("[resend-demo-invite] password reset failed", email, e);
       }
 
-      const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(DEMO_PASSWORD)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
+      const loginUrl = `${PLATFORM_URL}/login?email=${encodeURIComponent(email)}&password=${encodeURIComponent(demoPassword)}&demo=1&redirect=${encodeURIComponent("/deals")}`;
 
       try {
         const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
