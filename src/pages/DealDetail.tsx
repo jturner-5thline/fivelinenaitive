@@ -587,17 +587,17 @@ export default function DealDetail() {
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
   const isEmbeddedEarly = searchParams.get('embedded') === '1';
-  // When embedded in the deal-popup overlay, the synthetic location does
-  // not carry a `?tab=` param, so navigating between sibling deals via
-  // the prev/next arrows would always land back on Deal Info. Persist
-  // the last active tab to sessionStorage so the popup re-opens on the
-  // tab the user was just viewing.
+  // Every fresh open of the Deal Details popup must land on Deal Info by
+  // default. Only an explicit `?tab=` deep-link in the URL may override
+  // that. We intentionally do NOT persist the previously-selected tab
+  // across popup opens or across sibling-deal navigation — each open is
+  // a clean start on Deal Info.
   const EMBEDDED_TAB_KEY = 'naitive:deal-overlay-active-tab';
-  const embeddedRememberedTab = (() => {
-    if (!isEmbeddedEarly || typeof window === 'undefined') return null;
-    try { return window.sessionStorage.getItem(EMBEDDED_TAB_KEY); } catch { return null; }
-  })();
-  const initialTab = (embeddedRememberedTab ?? searchParams.get('tab')) as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
+  if (typeof window !== 'undefined') {
+    try { window.sessionStorage.removeItem(EMBEDDED_TAB_KEY); } catch {}
+  }
+  const initialTab = (isEmbeddedEarly ? null : searchParams.get('tab')) as
+    | 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
