@@ -253,7 +253,7 @@ function formatCurrency(v: unknown): string {
 }
 function formatDate(v: unknown): string {
   if (!v) return '—';
-  try { return new Date(v).toLocaleDateString(); } catch { return String(v); }
+  try { return new Date(String(v)).toLocaleDateString(); } catch { return String(v); }
 }
 function formatBool(v: unknown): string {
   if (v === true) return 'Yes';
@@ -294,12 +294,12 @@ function extractDomain(url: string | null | undefined): string | null {
 }
 function completenessScore(l: MasterLender): number {
   let s = 0;
-  for (const f of getFundingSourceFields([l as any])) if (!isEmpty((l as any)[f.key])) s++;
+  for (const f of getFundingSourceFields([l])) if (!isEmpty(getFieldValue(l, f.key))) s++;
   return s;
 }
 function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
   // Prefer non-empty, then by completeness, then by most-recent updated_at.
-  const nonEmpty = lenders.filter(l => !isEmpty((l as any)[field.key]));
+  const nonEmpty = lenders.filter(l => !isEmpty(getFieldValue(l, field.key)));
   const pool = nonEmpty.length ? nonEmpty : lenders;
   let best = pool[0];
   let bestScore = -Infinity;
@@ -319,12 +319,12 @@ interface Conflict {
   severity: 'high' | 'med';
   detail: string;
 }
-function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders as any)): Conflict[] {
+function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders)): Conflict[] {
   if (lenders.length < 2) return [];
   const out: Conflict[] = [];
   for (const f of fields) {
     if (!f.conflictWeight) continue;
-    const vals = lenders.map(l => normalizeForCompare(f, (l as any)[f.key])).filter(Boolean);
+    const vals = lenders.map(l => normalizeForCompare(f, getFieldValue(l, f.key))).filter(Boolean);
     const uniq = new Set(vals);
     if (uniq.size > 1) {
       out.push({
