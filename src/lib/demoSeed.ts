@@ -120,7 +120,9 @@ function dayAt(weekStart: Date, dayOffset: number, hour: number, minute = 0): Da
 
 /** Dense, realistic schedule for the current week, pre-tied to the
  *  storyline emails so the dashboard / morning briefing references them. */
-export function buildDemoCalendarEvents() {
+export function buildDemoCalendarEvents(opts?: { selfEmail?: string; selfName?: string }) {
+  const selfEmail = opts?.selfEmail || 'demo@5thline.co';
+  const selfName = opts?.selfName || 'Demo (5th Line)';
   const week = startOfWeek();
 
   type E = {
@@ -193,7 +195,130 @@ export function buildDemoCalendarEvents() {
       start: dayAt(week, 4, 15, 30), end: dayAt(week, 4, 16, 0) },
   ];
 
-  return raw.map((e) => ({
+  // ------------------------------------------------------------------
+  // Procedurally generated long-range schedule (-30 .. +60 days)
+  // ------------------------------------------------------------------
+  const TEMPLATES: Array<{
+    title: string; durationMin: number; type: string; location: string;
+    description: string; attendees: { email: string; display_name?: string }[];
+  }> = [
+    { title: 'Internal pipeline standup', durationMin: 30, type: 'standup', location: 'Zoom',
+      description: 'Weekly internal pipeline standup — review active deals and blockers.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { title: 'Product & roadmap sync', durationMin: 45, type: 'internal', location: 'naitive HQ',
+      description: 'Roadmap review with the product team.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { title: 'Intro call — Harbor Foods', durationMin: 30, type: 'intro', location: 'Google Meet',
+      description: 'Initial intro with Harbor Foods CFO; assess fit for senior debt facility.',
+      attendees: [{ email: 'cfo@harborfoods.com', display_name: 'Harbor Foods (CFO)' }] },
+    { title: 'Lender call — Greenfield Capital x Vertex Cloud', durationMin: 45, type: 'lender', location: 'Zoom',
+      description: 'Walk Greenfield Capital through the latest Vertex Cloud financials.',
+      attendees: [
+        { email: 'mike.rodriguez@greenfieldcap.com', display_name: 'Mike Rodriguez (Greenfield)' },
+        { email: 'lisa.thompson@vertexcloud.io', display_name: 'Lisa Thompson (Vertex Cloud)' },
+      ] },
+    { title: 'Lender call — Meridian Bank x Pinnacle Data', durationMin: 45, type: 'lender', location: 'Zoom',
+      description: 'Meridian Bank DD follow-up on Pinnacle Data Systems.',
+      attendees: [{ email: 'jennifer.wu@meridianbank.com', display_name: 'Jennifer Wu (Meridian)' }] },
+    { title: 'Diligence call — Coastal Brands', durationMin: 60, type: 'diligence', location: 'Google Meet',
+      description: 'Detailed financial diligence walkthrough.',
+      attendees: [{ email: 'rachel.patel@coastalbrands.com', display_name: 'Rachel Patel (Coastal Brands)' }] },
+    { title: 'Borrower follow-up — Summit Hospitality', durationMin: 30, type: 'borrower', location: 'Phone',
+      description: 'Follow-up on outstanding diligence items.',
+      attendees: [{ email: 'cfo@summithospitality.com', display_name: 'Summit Hospitality (CFO)' }] },
+    { title: 'IC prep — Vertex Cloud Solutions', durationMin: 60, type: 'ic', location: 'naitive HQ',
+      description: 'Final investment committee preparation for Vertex Cloud.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { title: 'Investment Committee — weekly', durationMin: 60, type: 'ic', location: 'naitive HQ',
+      description: 'Weekly IC — review pipeline and pending term sheets.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { title: 'Document review — Coastal Brands data room', durationMin: 45, type: 'docs', location: 'naitive HQ',
+      description: 'Review uploaded financials and AR aging package.',
+      attendees: [] },
+    { title: 'Post-term-sheet check-in — Vertex Cloud', durationMin: 30, type: 'check-in', location: 'Zoom',
+      description: 'Confirm next steps following Greenfield term sheet.',
+      attendees: [{ email: 'lisa.thompson@vertexcloud.io', display_name: 'Lisa Thompson (Vertex Cloud)' }] },
+    { title: 'Team standup', durationMin: 15, type: 'standup', location: 'Zoom',
+      description: 'Daily team standup.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+    { title: 'Borrower follow-up — Redwood Manufacturing', durationMin: 30, type: 'borrower', location: 'Phone',
+      description: 'Covenant waiver discussion.',
+      attendees: [{ email: 'robert.james@unioncreditgroup.com', display_name: 'Robert James (Union Credit)' }] },
+    { title: 'Pipeline review — leadership', durationMin: 45, type: 'internal', location: 'naitive HQ',
+      description: 'Leadership pipeline review and prioritization.',
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }] },
+  ];
+
+  const generated: E[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Recurring weekly Monday 9:00 internal standup, -4 .. +8 weeks
+  for (let w = -4; w <= 8; w++) {
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() - monday.getDay() + 1 + w * 7);
+    monday.setHours(9, 0, 0, 0);
+    const end = new Date(monday.getTime() + 30 * 60_000);
+    generated.push({
+      id: `demo-evt-gen-standup-${w}`,
+      summary: 'Internal pipeline standup',
+      description: 'Recurring weekly pipeline standup.',
+      location: 'Zoom',
+      start: monday,
+      end,
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }],
+    });
+  }
+
+  // Recurring weekly Thursday 14:00 Investment Committee
+  for (let w = -4; w <= 8; w++) {
+    const thu = new Date(today);
+    thu.setDate(thu.getDate() - thu.getDay() + 4 + w * 7);
+    thu.setHours(14, 0, 0, 0);
+    const end = new Date(thu.getTime() + 60 * 60_000);
+    generated.push({
+      id: `demo-evt-gen-ic-${w}`,
+      summary: 'Investment Committee — weekly',
+      description: 'Weekly IC — review pipeline and pending term sheets.',
+      location: 'naitive HQ',
+      start: thu,
+      end,
+      attendees: [{ email: 'team@5thline.co', display_name: '5th Line Team' }],
+    });
+  }
+
+  // Scatter 3-5 meetings per business day from -30 to +60 days
+  for (let offset = -30; offset <= 60; offset++) {
+    const day = new Date(today);
+    day.setDate(day.getDate() + offset);
+    const dow = day.getDay();
+    if (dow === 0 || dow === 6) continue; // skip weekends
+    // Deterministic count 2..4 per day based on offset
+    const count = 2 + Math.abs((offset * 7) % 3);
+    for (let i = 0; i < count; i++) {
+      const tplIdx = Math.abs((offset * 31 + i * 13)) % TEMPLATES.length;
+      const tpl = TEMPLATES[tplIdx];
+      if (tpl.title === 'Internal pipeline standup' && dow === 1) continue; // dedupe Mon standup
+      if (tpl.title === 'Investment Committee — weekly' && dow === 4) continue; // dedupe Thu IC
+      const hour = 9 + ((offset + i * 2) % 8); // 9..16
+      const start = new Date(day);
+      start.setHours(hour, ((offset + i) % 2) * 30, 0, 0);
+      const end = new Date(start.getTime() + tpl.durationMin * 60_000);
+      generated.push({
+        id: `demo-evt-gen-${offset}-${i}`,
+        summary: tpl.title,
+        description: tpl.description,
+        location: tpl.location,
+        start,
+        end,
+        attendees: tpl.attendees,
+      });
+    }
+  }
+
+  const all = [...raw, ...generated];
+
+  return all.map((e) => ({
     id: e.id,
     calendar_id: 'primary',
     summary: e.summary,
@@ -211,10 +336,10 @@ export function buildDemoCalendarEvents() {
       email: a.email,
       display_name: a.display_name ?? null,
       response_status: 'accepted',
-      organizer: a.email === 'demo@5thline.co',
-      self: a.email === 'demo@5thline.co',
+      organizer: a.email === selfEmail,
+      self: a.email === selfEmail,
     })),
-    organizer: { email: 'demo@5thline.co', displayName: 'Demo (5th Line)' },
+    organizer: { email: selfEmail, displayName: selfName },
     color_id: null,
   }));
 }
