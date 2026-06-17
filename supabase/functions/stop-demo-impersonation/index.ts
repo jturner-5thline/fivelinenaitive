@@ -12,6 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 interface Body {
@@ -19,6 +20,8 @@ interface Body {
   reason?: string;
   // Admin landing after returning. Defaults to Demo Users & Metrics.
   returnTo?: string;
+  // Browser origin to use when minting the auth callback link.
+  returnOrigin?: string;
 }
 
 const ALLOWED_RETURNS = new Set([
@@ -34,6 +37,24 @@ function json(p: unknown, s: number) {
   });
 }
 
+function cleanOrigin(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    const allowed =
+      parsed.protocol === "https:" &&
+      (host.endsWith(".lovable.app") ||
+        host.endsWith(".lovableproject.com") ||
+        host === "fivelinenaitive.lovable.app" ||
+        host === "naitive.co" ||
+        host === "www.naitive.co");
+    return allowed ? parsed.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -44,32 +65,45 @@ serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "No authorization header" }, 401);
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ ok: false, error: "No authorization header", code: "missing_authorization" }, 401);
+    }
 
     const userClient = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: authData, error: authError } = await userClient.auth.getUser();
-    if (authError || !authData?.user) return json({ error: "Unauthorized" }, 401);
+    if (authError || !authData?.user) {
+      return json({ ok: false, error: "Unauthorized", code: "invalid_demo_session" }, 401);
+    }
     const impersonated = authData.user;
     const body = (await req.json().catch(() => ({}))) as Body;
     const ip = req.headers.get("x-forwarded-for") ?? null;
 
-    // Find the active session for THIS user (target). Optionally filtered
-    // by sessionId for an extra integrity check.
-    let query = admin
-      .from("admin_impersonation_sessions")
-      .select("*")
-      .eq("target_demo_user_id", impersonated.id)
-      .is("ended_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .order("started_at", { ascending: false })
-      .limit(1);
-    if (body.sessionId) query = query.eq("id", body.sessionId);
-    const { data: rows } = await query;
+    // Find the session for THIS demo user. If the client supplies a session id,
+    // make the restore idempotent: an already-ended row can still mint the
+    // return link until expiry, avoiding dead-ends after retries or diagnostics.
+    const now = new Date().toISOString();
+    const query = body.sessionId
+      ? admin
+          .from("admin_impersonation_sessions")
+          .select("*")
+          .eq("id", body.sessionId)
+          .eq("target_demo_user_id", impersonated.id)
+          .gt("expires_at", now)
+          .limit(1)
+      : admin
+          .from("admin_impersonation_sessions")
+          .select("*")
+          .eq("target_demo_user_id", impersonated.id)
+          .is("ended_at", null)
+          .gt("expires_at", now)
+          .order("started_at", { ascending: false })
+          .limit(1);
+    const { data: rows, error: sessionLookupError } = await query;
     const session = rows?.[0];
 
-    if (!session) {
+    if (sessionLookupError || !session) {
       await admin.from("admin_audit_logs").insert({
         admin_user_id: impersonated.id,
         action_type: "impersonation_failed_stop",
@@ -79,14 +113,21 @@ serve(async (req: Request) => {
         details: { reason: "no_active_session" },
         ip_address: ip,
       });
-      return json({ error: "No active impersonation session", code: "no_active_session" }, 404);
+      return json({
+        ok: false,
+        error: sessionLookupError?.message ?? "No active impersonation session",
+        code: "no_active_session",
+      }, 404);
     }
 
-    // End the session row first so failures below still close it.
-    await admin
-      .from("admin_impersonation_sessions")
-      .update({ ended_at: new Date().toISOString(), ended_reason: body.reason ?? "return_to_admin" })
-      .eq("id", session.id);
+    // End the demo session row first so failures below still close it. This is
+    // safe to retry because already-ended rows still restore by session id.
+    if (!session.ended_at) {
+      await admin
+        .from("admin_impersonation_sessions")
+        .update({ ended_at: now, ended_reason: body.reason ?? "return_to_admin" })
+        .eq("id", session.id);
+    }
 
     // Audit stop ----------------------------------------------------------
     await admin.from("admin_audit_logs").insert({
@@ -103,13 +144,24 @@ serve(async (req: Request) => {
       ip_address: ip,
     });
 
-    if (!session.source_admin_email) {
-      return json({ ok: true, returnLink: null, note: "Admin email unavailable; sign in manually." }, 200);
+    const { data: sourceAdmin, error: sourceAdminErr } = await admin.auth.admin.getUserById(session.source_admin_user_id);
+    const sourceAdminEmail = sourceAdmin?.user?.email ?? session.source_admin_email ?? null;
+    if (sourceAdminErr || !sourceAdmin?.user || !sourceAdminEmail) {
+      return json({
+        ok: false,
+        error: sourceAdminErr?.message ?? "Original admin account unavailable",
+        code: "source_admin_unavailable",
+      }, 500);
     }
 
+    const refererOrigin = (() => {
+      try { return new URL(req.headers.get("referer") ?? "").origin; } catch { return null; }
+    })();
     const origin =
-      req.headers.get("origin") ||
-      (req.headers.get("referer") ?? "").replace(/\/$/, "");
+      cleanOrigin(body.returnOrigin ?? null) ||
+      cleanOrigin(req.headers.get("origin")) ||
+      cleanOrigin(refererOrigin) ||
+      "https://fivelinenaitive.lovable.app";
     const returnTo = ALLOWED_RETURNS.has(body.returnTo ?? "")
       ? (body.returnTo as string)
       : "/admin?section=users-permissions&page=demo-metrics";
@@ -119,22 +171,24 @@ serve(async (req: Request) => {
 
     const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
       type: "magiclink",
-      email: session.source_admin_email,
+      email: sourceAdminEmail,
       options: { redirectTo: callback },
     });
     if (linkErr || !link?.properties?.action_link) {
-      return json({ error: linkErr?.message ?? "Failed to mint return link" }, 500);
+      return json({ ok: false, error: linkErr?.message ?? "Failed to mint return link", code: "return_link_failed" }, 500);
     }
 
     return json({
       ok: true,
       returnLink: link.properties.action_link,
       returnTo,
-      sourceAdminEmail: session.source_admin_email,
+      callbackUrl: callback,
+      sourceAdminUserId: session.source_admin_user_id,
+      sourceAdminEmail,
     }, 200);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[stop-demo-impersonation] fatal", msg);
-    return json({ error: msg }, 500);
+    return json({ ok: false, error: msg, code: "runtime_error" }, 500);
   }
 });
