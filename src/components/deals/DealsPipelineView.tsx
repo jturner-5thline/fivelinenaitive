@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
   DndContext,
