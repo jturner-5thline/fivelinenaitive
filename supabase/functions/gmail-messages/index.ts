@@ -267,6 +267,7 @@ function getMailLabels(msg: any): string[] {
 function isReadFromProvider(msg: any): boolean {
   const labels = getMailLabels(msg).map((label) => label.toUpperCase());
   if (labels.includes("UNREAD")) return false;
+  if (labels.length > 0) return true;
   if (typeof msg?.unread === "boolean") return !msg.unread;
   if (typeof msg?.read === "boolean") return msg.read;
   return true;
