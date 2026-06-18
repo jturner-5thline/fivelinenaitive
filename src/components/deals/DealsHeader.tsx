@@ -17,8 +17,6 @@ import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
-import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
-import { DealsOverlay } from '@/components/deals/DealsOverlay';
 import { usePipelineData } from '@/hooks/useDailyBriefingData';
 import { useDailyDismissedIds } from '@/hooks/useDailyDismissals';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
@@ -39,17 +37,28 @@ const loadCalendar = () =>
   import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
 const loadMail = () =>
   import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }));
+const loadDailyBriefing = () =>
+  import('@/components/dashboard/DailyBriefingModal').then((m) => ({ default: m.DailyBriefingModal }));
+const loadDealsOverlay = () =>
+  import('@/components/deals/DealsOverlay').then((m) => ({ default: m.DealsOverlay }));
 
 const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
 const FullCalendarView = lazy(loadCalendar);
 const InboxDialog = lazy(loadMail);
+const DailyBriefingModal = lazy(loadDailyBriefing);
+const DealsOverlay = lazy(loadDealsOverlay);
 
 const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Dashboard: loadDashboard,
   Calendar: loadCalendar,
   Mail: loadMail,
   'Approval Queue': loadTasks,
+  'Daily Rundown': loadDailyBriefing,
+  "Niki's Daily Rundown": loadDailyBriefing,
+  "Moffitt's Daily Rundown": loadDailyBriefing,
+  "My Daily Rundown": loadDailyBriefing,
+  'Deal Rundown': loadDealsOverlay,
 };
 import {
   canSeeNikiBriefing,
@@ -471,7 +480,9 @@ export function DealsHeader() {
         </Suspense>
       )}
       {isDealRundownOpen && (
-        <DealsOverlay open={isDealRundownOpen} onOpenChange={setIsDealRundownOpen} />
+        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDealRundownOpen(false)} />}>
+          <DealsOverlay open={isDealRundownOpen} onOpenChange={setIsDealRundownOpen} />
+        </Suspense>
       )}
       {isCalendarOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="calendar" onClose={() => setIsCalendarOpen(false)} />}>
@@ -489,38 +500,46 @@ export function DealsHeader() {
       <Suspense fallback={isMailOpen ? <OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} /> : null}>
         <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
       </Suspense>
-      {canSeeBriefingHeaderItems && (
-        <DailyBriefingModal
-          open={isBriefingOpen}
-          onOpenChange={setIsBriefingOpen}
-          {...(isNikiMirror
-            ? {
-                title: "Daily Rundown",
-                targetUserId: NIKI_USER_ID,
-                targetAssigneeName: NIKI_ASSIGNEE_NAME,
-                excludeTabs: ['financial'] as const as any,
-              }
-            : {})}
-        />
+      {/* DailyBriefingModal is now lazy — only mount once the user opens it.
+          Eager mount used to load the 86KB chunk on every /deals visit. */}
+      {canSeeBriefingHeaderItems && isBriefingOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsBriefingOpen(false)} />}>
+          <DailyBriefingModal
+            open={isBriefingOpen}
+            onOpenChange={setIsBriefingOpen}
+            {...(isNikiMirror
+              ? {
+                  title: "Daily Rundown",
+                  targetUserId: NIKI_USER_ID,
+                  targetAssigneeName: NIKI_ASSIGNEE_NAME,
+                  excludeTabs: ['financial'] as const as any,
+                }
+              : {})}
+          />
+        </Suspense>
       )}
-      {canSeeNiki && (
-        <DailyBriefingModal
-          open={isNikiBriefingOpen}
-          onOpenChange={setIsNikiBriefingOpen}
-          title={isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown"}
-          targetUserId={NIKI_USER_ID}
-          targetAssigneeName={NIKI_ASSIGNEE_NAME}
-          excludeTabs={['financial']}
-        />
+      {canSeeNiki && isNikiBriefingOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsNikiBriefingOpen(false)} />}>
+          <DailyBriefingModal
+            open={isNikiBriefingOpen}
+            onOpenChange={setIsNikiBriefingOpen}
+            title={isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown"}
+            targetUserId={NIKI_USER_ID}
+            targetAssigneeName={NIKI_ASSIGNEE_NAME}
+            excludeTabs={['financial']}
+          />
+        </Suspense>
       )}
-      {canSeeMoffitt && (
-        <DailyBriefingModal
-          open={isMoffittBriefingOpen}
-          onOpenChange={setIsMoffittBriefingOpen}
-          title={isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"}
-          targetUserId={MOFFITT_USER_ID}
-          targetAssigneeName={MOFFITT_ASSIGNEE_NAME}
-        />
+      {canSeeMoffitt && isMoffittBriefingOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsMoffittBriefingOpen(false)} />}>
+          <DailyBriefingModal
+            open={isMoffittBriefingOpen}
+            onOpenChange={setIsMoffittBriefingOpen}
+            title={isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"}
+            targetUserId={MOFFITT_USER_ID}
+            targetAssigneeName={MOFFITT_ASSIGNEE_NAME}
+          />
+        </Suspense>
       )}
       <Dialog open={isActionQueueOpen} onOpenChange={setIsActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">

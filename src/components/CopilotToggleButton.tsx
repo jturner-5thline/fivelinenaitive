@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -20,7 +20,13 @@ import { toast } from 'sonner';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import naitiveBrandIcon from '@/assets/naitive-icon-light.png';
 import { cn } from '@/lib/utils';
-import { AICopilotPanel } from '@/components/AICopilotPanel';
+// Lazy-load the (~109KB) AI copilot panel chunk so it doesn't block
+// initial render on every page. The panel returns null until isOpen, so
+// gating mount on isOpen|isMinimized|hovered keeps behavior identical
+// while removing the chunk parse from the critical path.
+const loadAICopilotPanel = () =>
+  import('@/components/AICopilotPanel').then((m) => ({ default: m.AICopilotPanel }));
+const AICopilotPanel = lazy(loadAICopilotPanel);
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
@@ -274,6 +280,8 @@ export function CopilotToggleButton() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'j' || e.key === 'k')) {
         e.preventDefault();
+        // Warm the lazy panel chunk before the open animation runs.
+        void loadAICopilotPanel();
         if (e.key === 'j' && isOpen) {
           togglePanel();
         } else {
@@ -288,6 +296,19 @@ export function CopilotToggleButton() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel, isOpen]);
+
+  // Idle-time preload of the AI copilot panel chunk so first-ever open
+  // (via ⌘J, click, or programmatic) doesn't pay the chunk parse cost.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 800));
+    const handle = schedule(() => { void loadAICopilotPanel(); });
+    return () => {
+      const cancel = (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback
+        ?? ((h: number) => window.clearTimeout(h));
+      cancel(handle as number);
+    };
+  }, []);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const q = value.trim().toLowerCase();
@@ -423,6 +444,9 @@ export function CopilotToggleButton() {
             collapseTimerRef.current = null;
           }
           setHovered(true);
+          // Warm the lazy AICopilotPanel chunk on first hover so the
+          // first ⌘J / click → open path doesn't pay the chunk parse.
+          void loadAICopilotPanel();
         }}
         onMouseLeave={() => {
           if (collapseTimerRef.current) window.clearTimeout(collapseTimerRef.current);
@@ -431,10 +455,15 @@ export function CopilotToggleButton() {
           }, 250);
         }}
       >
-        {/* AI transcript panel — rendered inside the same width-defining
-            wrapper as the Ask bar so it inherits identical horizontal
-            bounds (no independent width math). */}
-        <AICopilotPanel />
+        {/* AI transcript panel — lazy. Only mount once the user has
+            opened the panel (or is hovering the Ask bar, which warms the
+            chunk so the first ⌘J / click is instant). Pre-mount, the
+            panel rendered null anyway, so this is behavior-preserving. */}
+        {(isOpen || isMinimized || hovered) && (
+          <Suspense fallback={null}>
+            <AICopilotPanel />
+          </Suspense>
+        )}
         {collapsed && (
             <button
               type="button"
