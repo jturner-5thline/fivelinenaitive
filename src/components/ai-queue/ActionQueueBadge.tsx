@@ -57,7 +57,7 @@ export function ActionQueueBadge() {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[420px] p-0 max-h-[80vh] overflow-hidden flex flex-col"
+        className="popup-shell-surface w-[420px] p-0 max-h-[80vh] overflow-hidden flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl"
         align="end"
       >
         <ActionQueuePanel items={data} onClose={() => setOpen(false)} />
