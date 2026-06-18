@@ -1,102 +1,82 @@
+# Daily Rundown — Capability Audit (read-only)
 
-# Daily Deal Rundown — Bug Analysis
-
-The Rundown surface is rendered by `PipelineTab` (in `src/components/dashboard/DailyBriefingModal.tsx`) which mounts `PipelineMemoView` (`src/pages/pipeline/PipelineMemoView.tsx`). Each deal card is `PipelineMemoCard` (`src/components/pipeline/memo/PipelineMemoCard.tsx`) composed of `MemoHeader`, `TasksMilestonesBand`, `ActivityPanel`, `LendersPanel`, `CalendarPanel`.
-
----
-
-## Bug 1 — Only a few deals show, mostly On Hold
-
-**Pipeline of filters**
-
-1. `useDealsContext()` → `useDealsDatabase.fetchDeals` returns all deals (paginated).
-2. `PipelineTab.syncScopedDeals` runs `filterRundownEligibleDeals(base, activePipelineId, isAdmin)` from `src/hooks/useDailyBriefingData.ts` (lines 97–115):
-   ```ts
-   if (!activePipelineId) return [];
-   return deals.filter(d => {
-     if (d.pipelineId !== activePipelineId) return false;   // ← hard gate
-     if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
-     if (/^test/i.test(name)) return false;
-     return true;
-   });
-   ```
-3. For non-admins it also strips `archived` / `closed-lost`.
-4. `PipelineTab.filteredDeals` further narrows to owner-name match OR an open assigned task when `targetDealOwnerName`/`targetUserId` is passed (rundown scope only).
-
-**Root cause**
-The hard `d.pipelineId !== activePipelineId` gate is the dominant filter. `activePipelineId` resolves to the `is_default = true` row in `deal_pipelines` ("Active Pipeline"). Any deal whose `pipeline_id` is null or pointing at a different pipeline (e.g. legacy "In Development", FinServ, naitive, secondary boards) is silently dropped — even if it is otherwise a healthy live deal. On-hold deals that happen to be on the default pipeline pass, so the surviving population skews to "mostly on hold."
-
-The diagnostic `console.warn('[PipelineTab] empty deals result', …)` already exists for the zero-deals case but won't fire for "few deals," so the filter has been invisible.
-
-**Proposed fix**
-- Loosen the rundown eligibility filter: keep `pipelineId === activePipelineId` *or* `pipelineId == null` (treat unassigned as default), and also include any deal whose stage maps to a known stage of the active pipeline. The cleanest version: only drop deals on a *different non-default* pipeline, and keep `pipelineId == null` + `pipelineId === activePipelineId`.
-- Additionally exclude `'on-hold'` (and `'archived'`/`'closed-lost'` already covered) from the universal rundown set unless the admin filter chip explicitly selects it, so a healthy rundown isn't dominated by on-hold deals.
-- Keep `UNIVERSAL_SUPPRESSED_STATUSES` and test-name exclusions as-is.
-- Add a one-line `console.debug` summary (pre/post filter counts) for ongoing diagnosis.
-
-**Files to touch**
-- `src/hooks/useDailyBriefingData.ts` (`filterRundownEligibleDeals`)
-- `src/components/dashboard/DailyBriefingModal.tsx` (the secondary suppressed-status list in `syncScopedDeals`)
+No code was changed. Findings below cite the files/functions backing each capability.
 
 ---
 
-## Bug 2 — Cannot change deal stage (e.g. "Initial Feedback") inside the Rundown
+### 1) Add items to the deal calendar directly from the rundown — **Partial**
 
-**Where stage is rendered**
-- Left tile (`DealTile` in `PipelineMemoView.tsx` line 689+): renders a read-only `<Badge variant="outline">{stageLabel}</Badge>`.
-- Right card header (`MemoHeader.tsx`): renders only `EditableDealStatusTag` (which edits *canonical status*: on-track / at-risk / off-track / on-hold / archived) plus an editable free-text "Status notes" field that writes to `deal.notes`.
+- The EOD Rundown mounts `HighlightCalendarMenu` around meeting note/title surfaces, which calls `useAddToDealCalendar().openFromSelection(...)` → opens `AddToDealCalendarDialog` → `AddToDealCalendarForm` (writes to `deal_calendar_items`).
+  - `src/components/dashboard/EndOfDayTab.tsx:55, 1471, 1635` (two `<HighlightCalendarMenu>` wrappers)
+  - `src/components/calendar/HighlightCalendarMenu.tsx`, `AddToDealCalendarProvider.tsx`, `AddToDealCalendarForm.tsx`
+  - DB layer: `src/hooks/useDealCalendarItems.ts` (`addItem`)
+- A dedicated, always-visible "Add to deal calendar" button on each rundown tile is **not** wired in `EndOfDayTab`. The reusable inline button exists (`src/components/dashboard/AddToDealCalendarInlineAction.tsx`) and is used elsewhere (rundown items in `DailyBriefingModal`/agenda surfaces), but **not** in the EOD tile actions row — users must text-highlight content first.
 
-**Root cause**
-There is no UI control wired to change `deal.stage` anywhere in the Rundown. `EditableDealStatusTag` only mutates `deal.status` via `updateDealStatus`. The stage badge is a `<Badge>`, not an interactive component. So the user's request to set stage to "Initial Feedback" has no entry point at all — it's not a broken handler, it's a missing component.
-
-**Proposed fix**
-- Add an `EditableDealStageTag` (sibling to `EditableDealStatusTag`) that:
-  - Reads pipeline-aware stages via the existing `usePipelineStageConfig().getStagesForDeal(deal.pipelineId)` (already used to *display* the stage label).
-  - Opens a popover with stage options.
-  - On select, calls `updateDeal(deal.id, { stage: nextStageId })` from `useDealsContext()`.
-  - Optimistic update + toast + revert on failure (mirror the pattern in `EditableDealStatusTag`).
-- Mount it in two places:
-  - `MemoHeader.tsx` — next to the status pill.
-  - `DealTile` in `PipelineMemoView.tsx` — replace the read-only stage `<Badge>`.
-- Reuse pipeline-aware stage resolution from memory rule "Pipeline Stage IDs" so labels like "Initial Feedback" / "Indication of Interest" stay correct in the In Development pipeline.
-
-**Files to touch**
-- New: `src/components/deal/EditableDealStageTag.tsx`
-- `src/components/pipeline/memo/MemoHeader.tsx`
-- `src/pages/pipeline/PipelineMemoView.tsx` (DealTile)
+Verdict: **partial** — capability exists via text-highlight; no explicit one-click "Add to deal calendar" button on the rundown tile itself.
 
 ---
 
-## Bug 3 — Milestones tab shows "No milestones for this deal" even when the deal page has milestones
+### 2) Newly created tasks auto-identify the linked deal (not random) — **Yes**
 
-**Where the Milestones pill is**
-`TasksMilestonesBand.tsx` (lines ~605–655) renders a three-pill filter (Tasks / Milestones / Outstanding). When "Milestones" is active, it filters `deal.milestones` (`allIncompleteMilestones` from `deal.milestones || []`). If that array is empty it prints "No milestones for this deal."
+- `EndOfDayTab.tsx:1057–1093` renders `QuickCreateTaskDialog` with `initialDealId={prefill.dealId}` and the critical `lockInitialDeal` flag.
+- `src/components/tasks/QuickCreateTaskDialog.tsx:44–52, 199, 213–216` documents and enforces lock-mode: the title-based fuzzy auto-match is suppressed so the explicit meeting→deal link is authoritative and can never be overwritten (or fall back to a random deal when none is linked).
+- On save, `deal_id: input.deal_id || undefined` and `source.module = 'rundown_item'` are persisted (`EndOfDayTab.tsx:1077–1085`).
 
-**Root cause**
-`mapDbDealToDeal` in `src/hooks/useDealsDatabase.ts` (lines 264–389) maps a row from `deals` straight into the `Deal` type — but it **never reads `deal_milestones`** and never sets the `milestones` field. So `deal.milestones` is `undefined` for every deal in `DealsContext`. The deal detail page works because it uses a separate hook (`useDealMilestones`) that queries `deal_milestones` directly, while the Rundown card reads only the in-memory `Deal`.
-
-`TasksMilestonesBand` also uses `deal.milestones` to compute `nextMilestone` for the default (unfiltered) row, and `PipelineMemoView.sorted` uses it for tier-2 priority — both currently always evaluate empty for the same reason.
-
-**Proposed fix (pick one — preferred is A)**
-
-**A. Batch-load milestones for the rundown set (no schema churn).**
-- Add `usePipelineDealMilestones(dealIds, enabled)` (parallel to `usePipelineDealTasks`) that queries `deal_milestones` for the visible deal IDs in one round trip and returns `Map<dealId, DealMilestone[]>`.
-- Wire it in `PipelineMemoView` and pass `milestones={milestonesByDeal.get(deal.id)}` into `PipelineMemoCard` → `TasksMilestonesBand`.
-- In `TasksMilestonesBand`, prefer the prop, fall back to `deal.milestones`.
-- Invalidate the new query on `copilot-action-completed` for `add_milestone` / `toggle_milestone`, and after the local `completeMilestone` mutation.
-
-**B. Hydrate `deal.milestones` globally.**
-Add a `deal_milestones` join inside `fetchDeals` and populate `milestones` in `mapDbDealToDeal`. Lower-risk for the rundown but increases the cold-start payload for every page that reads `DealsContext`, so A is preferred.
-
-**Files to touch (option A)**
-- New: `src/hooks/usePipelineDealMilestones.ts`
-- `src/pages/pipeline/PipelineMemoView.tsx` (call hook, pass map)
-- `src/components/pipeline/memo/PipelineMemoCard.tsx` (forward `milestones` prop)
-- `src/components/pipeline/memo/TasksMilestonesBand.tsx` (consume prop, fallback to `deal.milestones`)
+Verdict: **yes** — implemented and guarded by `lockInitialDeal`.
 
 ---
 
-## Cross-check
-- Memory "Pipeline Stage IDs" and "Stage Resolution" both apply to Bug 2: use `getStageConfigForDeal(stageId, pipelineId)` so the editable stage tag respects per-pipeline labels (esp. In Development overloads).
-- Memory "Active Pipeline" applies to Bug 1: the rundown is deliberately scoped to the default pipeline, so the fix should preserve "default OR null" while keeping non-default pipelines out.
-- No DB schema change required for any fix.
+### 3) Reassign tasks that auto-assigned themselves to an external party — **N/A → Yes (for reassignment generally)**
+
+- The system explicitly **never** auto-assigns to externals: `src/hooks/useMeetingTaskSuggestions.ts:208` ("external contact names are never auto-assigned"); external `@mentions` are kept as `external_mention` metadata only, and the task assignee defaults to the meeting attendee or the current user (`useMeetingTaskSuggestions.ts:431` "missing assignee here means a stale/external row. Default to the…").
+- Regardless, the assignee is editable in the create dialog (`QuickCreateTaskDialog.tsx:110, 186–188`, "Assign to" picker over `teamMembers`) and reassigning persisted tasks is supported in `src/hooks/useTasks.ts:664, 681` ("Fire Zapier webhook when task is assigned/reassigned" / "Send task assigned email notification on reassignment").
+
+Verdict: the "auto-assigned to external party" scenario should not occur by design; **reassignment itself is fully supported** on both create and edit.
+
+---
+
+### 4) Two notification icons clearing logic (persistent notification that never clears) — **No (bug confirmed)**
+
+- Two surfaces render in the header:
+  - `src/components/notifications/HeaderNotificationPreview.tsx` — toast-style banner; auto-dismisses after 5s and has a manual `✕` (`dismiss()` at lines 24–31, 39–41).
+  - `src/components/notifications/DealManagementNotificationBell.tsx` — count badge driven by `useMyDealNotifications` (`src/hooks/useMyDealNotifications.ts`).
+- `useMyDealNotifications` counts `flex_info_notifications` with `status IN ('pending','read')` (lines 57–61). There is **no UI affordance to mark these resolved/cleared** — clicking the bell only navigates to `/` (line 24 of the bell). The count drops only when the underlying row's status moves outside `pending|read` server-side, which the rundown does not do.
+- Net effect matches the reported bug: the bell badge can stay populated indefinitely with no user-facing "clear" / "mark read" action.
+
+Verdict: **no** — persistent badge has no clearing path from the UI.
+
+---
+
+### 5) Convert Claap action items into an "outstanding item" — **No**
+
+- Claap action items are surfaced via `useMeetingClaapContext().actionItems` and consumed in:
+  - `MeetingTasksInlineAction.tsx` → routes a single item into `onOpenTask(suggestions[0])` (creates a **task**, not an outstanding item).
+  - `MeetingFollowupInlineAction.tsx` → drafts a follow-up **email** body.
+  - `MeetingCreateFollowUpAction.tsx` → opens the Add-to-Deal-Calendar form (creates a calendar event/task).
+- "Outstanding items" in the rundown are derived from calendar events (`EndOfDayTab.tsx:491` `const outstanding = useMemo<TileEvent[]>...`), not user-created entries. There is no code path that promotes a Claap `action_items[i]` into a new outstanding rundown row.
+
+Verdict: **no** — Claap action items can become tasks, emails, or calendar entries, but not a standalone outstanding rundown item.
+
+---
+
+### 6) Assign a task to a user other than the creator — **Yes**
+
+- `QuickCreateTaskDialog.tsx` exposes a full "Assign to" picker over `teamMembers` with open-task counts (`useAssigneeOpenTaskCounts`), remembers the last assignee in localStorage (`LAST_ASSIGNEE_KEY`), and passes `assigned_to: input.assigned_to` to `createTask` (`EndOfDayTab.tsx:1074`).
+- Backend: `src/hooks/useTasks.ts` honors `assigned_to`, fires assignment/reassignment Zapier webhook and email notifications (lines 664, 681). A live in-app banner is shown to assignees by `src/components/TaskAssignmentBanner.tsx`.
+
+Verdict: **yes** — fully implemented.
+
+---
+
+## Summary
+
+| # | Capability | Status |
+|---|---|---|
+| 1 | Add to deal calendar from rundown | Partial (highlight-only; no per-tile button) |
+| 2 | Tasks auto-identify linked deal | Yes (`lockInitialDeal`) |
+| 3 | Reassign auto-assigned-to-external tasks | Auto-assign-to-external prevented by design; reassign itself works |
+| 4 | Two notification icons clearing logic | No — bell badge has no clear/mark-read UI |
+| 5 | Claap action items → outstanding item | No (only → task / email / calendar) |
+| 6 | Assign task to non-creator | Yes |
+
+No files were modified. Awaiting your direction on which gaps (#1, #4, #5 in particular) you'd like a fix plan for.
