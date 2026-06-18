@@ -19,16 +19,13 @@
  */
 import { useCallback, useState } from 'react';
 import { ChevronDown, Check, Loader2, CircleDashed } from 'lucide-react';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
 import { DealStatusTag } from './DealStatusTag';
-import { useDealsContext } from '@/contexts/DealsContext';
-import { useInvalidateDealFreshness } from '@/hooks/useDealFreshness';
+import { useRequestStatusChange } from './StatusChangeGate';
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 const NONE_VALUE = '__none__' as const;
@@ -50,9 +47,7 @@ export function EditableDealStatusTag({
   hideDot,
   hideChevron,
 }: EditableDealStatusTagProps) {
-  const { updateDealStatus } = useDealsContext();
-  const invalidateFreshness = useInvalidateDealFreshness();
-  const queryClient = useQueryClient();
+  const requestStatusChange = useRequestStatusChange();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -71,37 +66,16 @@ export function EditableDealStatusTag({
     const next: DealStatus | null = choice === NONE_VALUE ? null : choice;
     if (next === current) return;
     setPending(true);
-    const previous = current;
     try {
-      await updateDealStatus(dealId, next);
-      // Recompute the left-column tile glow immediately — if the deal is
-      // now fresh, the stale ring drops off on the next render tick.
-      invalidateFreshness();
-      // Cross-surface sync: the Deal Rundown / Daily Briefing surfaces read
-      // deals from independent React Query caches (briefing-pipeline,
-      // briefing-catchup, naitive-pipeline-data, etc.) — invalidating them
-      // here ensures the pill, the tile list, and any rundown drill-down
-      // all reflect the new status without a page refresh.
-      queryClient.invalidateQueries({ queryKey: ['briefing-pipeline'] });
-      queryClient.invalidateQueries({ queryKey: ['briefing-catchup'] });
-      queryClient.invalidateQueries({ queryKey: ['briefing'] });
-      queryClient.invalidateQueries({ queryKey: ['naitive-pipeline-data'] });
-      queryClient.invalidateQueries({ queryKey: ['finserv-pipeline-data'] });
-      toast.success(
-        next ? `Status updated to ${STATUS_CONFIG[next].label}` : 'Status cleared',
-      );
-    } catch (err: any) {
-      console.error('[EditableDealStatusTag] update failed', err);
-      toast.error('Failed to update status', { description: err?.message });
-      // Best-effort rollback so other consumers stay in sync.
-      try {
-        await updateDealStatus(dealId, previous);
-        invalidateFreshness();
-      } catch { /* swallow */ }
+      // All writes flow through the global StatusChangeGate, which forces
+      // the user to type a fresh status note and persists status+notes
+      // together (bumping notes_updated_at). Toasts + cross-surface query
+      // invalidations are handled inside the gate.
+      await requestStatusChange({ dealId, currentStatus: current, nextStatus: next });
     } finally {
       setPending(false);
     }
-  }, [current, dealId, updateDealStatus, invalidateFreshness, queryClient]);
+  }, [current, dealId, requestStatusChange]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

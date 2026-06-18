@@ -8,6 +8,7 @@ import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealB
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
+import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderNoteTimestamp } from '@/components/deal/LenderNoteTimestamp';
@@ -633,6 +634,7 @@ export default function DealDetail() {
   const { user } = useAuth();
   const { company, members } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
+  const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
@@ -2925,7 +2927,15 @@ export default function DealDetail() {
                   mirrored_from: 'status',
                 });
               } else {
-                updateDeal('status', 'on-hold');
+                // Mirror path: route through the gate so the note
+                // requirement still applies when status is changed
+                // programmatically from a stage mirror confirmation.
+                void requestStatusChange({
+                  dealId: deal.id,
+                  dealName: deal.company,
+                  currentStatus: deal.status,
+                  nextStatus: 'on-hold',
+                });
                 logActivity('deal_updated', 'Deal Status mirrored to On Hold (user confirmed)', {
                   field: 'status',
                   newValue: 'on-hold',
@@ -3145,10 +3155,24 @@ export default function DealDetail() {
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => {
-                    updateDeal('status', value);
-                    if (is5thLineUser && value === 'on-hold' && deal.stage !== 'on-hold') {
-                      setPendingMirror({ direction: 'status->stage' });
-                    }
+                    // Route through the global StatusChangeGate so the
+                    // user is forced to enter a fresh status note before
+                    // the status (and notes_updated_at) are persisted.
+                    void requestStatusChange({
+                      dealId: deal.id,
+                      dealName: deal.company,
+                      currentStatus: deal.status,
+                      nextStatus: value,
+                    }).then((committed) => {
+                      if (
+                        committed &&
+                        is5thLineUser &&
+                        value === 'on-hold' &&
+                        deal.stage !== 'on-hold'
+                      ) {
+                        setPendingMirror({ direction: 'status->stage' });
+                      }
+                    });
                   }}
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>

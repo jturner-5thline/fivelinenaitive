@@ -7,16 +7,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 
 interface InlineStatusDropdownProps {
   dealId: string;
   status: DealStatus | null;
-  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
+  /**
+   * Optional. Status changes are routed through the global
+   * StatusChangeGate (which requires a fresh status note before saving),
+   * so this callback is no longer required and is kept only for
+   * backwards compatibility with existing call sites.
+   */
+  onStatusChange?: (dealId: string, newStatus: DealStatus | null) => void;
   className?: string;
 }
 
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
+  const requestStatusChange = useRequestStatusChange();
   const statusConfig = status ? STATUS_CONFIG[status] : null;
+
+  const handlePick = (next: DealStatus | null) => {
+    if (next === status) return;
+    // Gate enforces the new-note requirement and writes status+notes
+    // together in a single update. We ignore onStatusChange so external
+    // call paths can't bypass the gate.
+    void requestStatusChange({ dealId, currentStatus: status, nextStatus: next });
+  };
 
   const onTrackStyle: React.CSSProperties | undefined =
     status === 'on-track'
@@ -74,7 +90,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-            onStatusChange(dealId, null);
+            handlePick(null);
           }}
           className={`flex items-center gap-2 ${status === null ? 'bg-muted' : ''}`}
         >
@@ -87,7 +103,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              onStatusChange(dealId, key as DealStatus);
+              handlePick(key as DealStatus);
             }}
             className={`flex items-center gap-2 ${status === key ? 'bg-muted' : ''}`}
           >
