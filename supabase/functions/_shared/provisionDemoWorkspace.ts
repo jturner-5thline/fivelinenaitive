@@ -537,10 +537,15 @@ export async function provisionDemoWorkspace(
       const crm = crmCompanies[i % Math.max(crmCompanies.length, 1)];
       const status = STATUS_CYCLE[i % STATUS_CYCLE.length];
       const stageIdx = i === 9 ? 8 : i === 10 ? 9 : status === "on-hold" ? 10 : i % 8;
+      const stageKey = stageId(stageIdx);
+      // Stagger the "last updated" timestamp so the deal card "X hours ago"
+      // line shows a realistic spread (a few hours to a few days ago).
+      const noteAgeHours = 2 + ((i * 7) % 70);
+      const notesUpdatedAt = new Date(Date.now() - noteAgeHours * 3_600_000).toISOString();
       rows.push({
         company: crm?.name ?? `Demo Deal ${i + 1}`,
         value: DEAL_VALUES[i % DEAL_VALUES.length],
-        stage: stageId(stageIdx), status,
+        stage: stageKey, status,
         deal_type: pick(DEAL_TYPES, i),
         manager: managerName,
         referred_by: pick(REFERRERS, i),
@@ -548,7 +553,8 @@ export async function provisionDemoWorkspace(
         crm_company_id: crm?.id ?? null,
         pipeline_id: pipelineId,
         deal_class: "standard", tags: ["demo"],
-        notes: `Seeded demo deal #${i + 1}.`,
+        notes: pickStatusNote(stageKey, i),
+        notes_updated_at: notesUpdatedAt,
         on_hold: status === "on-hold",
       });
     }
@@ -559,9 +565,9 @@ export async function provisionDemoWorkspace(
 
   // Re-fetch deals for task FKs.
   const { data: dealList } = await admin
-    .from("deals").select("id, company, crm_company_id").eq("company_id", companyId)
+    .from("deals").select("id, company, crm_company_id, stage, notes").eq("company_id", companyId)
     .contains("tags", ["demo"]).order("created_at", { ascending: true });
-  const demoDeals = (dealList ?? []) as Array<{ id: string; company: string | null; crm_company_id: string | null }>;
+  const demoDeals = (dealList ?? []) as Array<{ id: string; company: string | null; crm_company_id: string | null; stage: string | null; notes: string | null }>;
   const dealIds = demoDeals.map((d) => d.id);
 
   // 6b) Relational backfill — ensure existing demo deals reference the
@@ -572,6 +578,31 @@ export async function provisionDemoWorkspace(
       .update({ manager: managerName, user_id: attributingUserId })
       .in("id", dealIds)
       .or(`manager.is.null,manager.eq.James Turner`);
+  }
+
+  // 6c) Backfill any legacy "Seeded demo deal #N." placeholders to realistic,
+  // stage-aware status notes. Idempotent — only touches rows that still carry
+  // the placeholder so re-runs and human edits are preserved.
+  if (demoDeals.length > 0) {
+    const placeholders = demoDeals.filter(
+      (d) => typeof d.notes === "string" && /^Seeded demo deal #\d+\.?$/.test(d.notes.trim()),
+    );
+    for (let i = 0; i < placeholders.length; i++) {
+      const d = placeholders[i];
+      const noteAgeHours = 2 + ((i * 7) % 70);
+      const notesUpdatedAt = new Date(Date.now() - noteAgeHours * 3_600_000).toISOString();
+      const { error: noteErr } = await admin
+        .from("deals")
+        .update({
+          notes: pickStatusNote(d.stage, i),
+          notes_updated_at: notesUpdatedAt,
+        })
+        .eq("id", d.id);
+      if (noteErr) {
+        console.warn(`[provisionDemoWorkspace] status note backfill warning for ${d.id}: ${noteErr.message}`);
+        warnings.push(`status_notes:${d.id}:${noteErr.message}`);
+      }
+    }
   }
 
   // 7) Top-up tasks.
