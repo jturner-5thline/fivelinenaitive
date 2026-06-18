@@ -491,13 +491,23 @@ export function PlatformTour() {
     setCurrentStep((s) => Math.min(s + 1, steps.length - 1));
   }, [steps.length]);
 
-  const handleNext = () => {
+  const handleNext = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (!step) return;
     if (currentStep >= steps.length - 1) completeTour();
     else advance();
   };
-  const handlePrev = () => setCurrentStep((s) => Math.max(0, s - 1));
-  const handleSkip = () => completeTour();
+  const handlePrev = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setCurrentStep((s) => Math.max(0, s - 1));
+  };
+  const handleSkip = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    completeTour();
+  };
 
   // Click-to-advance: listen on the document for clicks within the target.
   useEffect(() => {
@@ -646,7 +656,7 @@ export function PlatformTour() {
                 Naitive guide · {currentStep + 1} of {steps.length}
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={handleSkip} aria-label="Skip tour">
+            <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={handleSkip} aria-label="Skip tour">
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -678,16 +688,16 @@ export function PlatformTour() {
 
         {/* Footer */}
         <div className="px-4 py-2.5 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2">
-          <Button variant="ghost" size="sm" onClick={handlePrev} disabled={isFirstStep} className="text-muted-foreground h-8">
+          <Button type="button" variant="ghost" size="sm" onClick={handlePrev} disabled={isFirstStep} className="text-muted-foreground h-8">
             <ChevronLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <div className="flex items-center gap-2">
             {isLastStep && (
-              <Button variant="outline" size="sm" onClick={() => { completeTour(); navigate('/dashboard'); }} className="h-8">
+              <Button type="button" variant="outline" size="sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); completeTour(); navigate('/dashboard'); }} className="h-8">
                 Go to Dashboard
               </Button>
             )}
-            <Button variant="gradient" size="sm" onClick={handleNext} className="h-8">
+            <Button type="button" variant="gradient" size="sm" onClick={handleNext} className="h-8">
               {isLastStep ? (<>Finish <ArrowRight className="h-4 w-4 ml-1" /></>)
                 : step.clickToAdvance ? (<>Skip step <ChevronRight className="h-4 w-4 ml-1" /></>)
                 : (<>Next <ChevronRight className="h-4 w-4 ml-1" /></>)}
