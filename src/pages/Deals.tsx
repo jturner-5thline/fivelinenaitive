@@ -1056,7 +1056,7 @@ export default function Dashboard() {
                 )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              <div className={cn(showInlineDetail ? 'flex-1 min-w-0' : 'contents')}>
+              <div className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}>
               {/*
                 Flagged-filter context banner — renders ONLY when the
                 flag filter is on. Computed from the unfiltered deal set
