@@ -45,53 +45,50 @@ export interface LenderStatusTheme {
 export const LENDER_STATUS_THEME: Record<LenderStatusKey, LenderStatusTheme> = {
   active: {
     tag: 'bg-green-500/15 text-green-400 border-green-500/20',
-    tabIdle: 'bg-green-500/5 text-green-300/90 border-green-500/15',
-    tabHover: 'hover:bg-green-500/10 hover:text-green-300 hover:border-green-500/25',
+    tabIdle: 'bg-transparent text-muted-foreground border-transparent',
+    tabHover: 'hover:bg-white/[0.04] hover:text-foreground',
     tabActive:
-      'bg-green-500/20 text-green-300 border-green-500/40 font-semibold shadow-[inset_0_0_0_1px_hsl(var(--background)/0.0)]',
+      'bg-green-500/20 text-green-300 border-green-500/40 font-semibold ring-1 ring-green-500/40',
     countIdle: 'bg-green-500/15 text-green-300/90',
     countActive: 'bg-green-500/30 text-green-200',
     dot: 'bg-green-500',
   },
   'on-deck': {
     tag: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-    tabIdle: 'bg-blue-500/5 text-blue-300/90 border-blue-500/15',
-    tabHover: 'hover:bg-blue-500/10 hover:text-blue-300 hover:border-blue-500/25',
+    tabIdle: 'bg-transparent text-muted-foreground border-transparent',
+    tabHover: 'hover:bg-white/[0.04] hover:text-foreground',
     tabActive:
-      'bg-blue-500/20 text-blue-300 border-blue-500/40 font-semibold',
+      'bg-blue-500/20 text-blue-300 border-blue-500/40 font-semibold ring-1 ring-blue-500/40',
     countIdle: 'bg-blue-500/15 text-blue-300/90',
     countActive: 'bg-blue-500/30 text-blue-200',
     dot: 'bg-blue-500',
   },
   'on-hold': {
     tag: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-    tabIdle: 'bg-yellow-500/5 text-yellow-300/90 border-yellow-500/15',
-    tabHover:
-      'hover:bg-yellow-500/10 hover:text-yellow-300 hover:border-yellow-500/25',
+    tabIdle: 'bg-transparent text-muted-foreground border-transparent',
+    tabHover: 'hover:bg-white/[0.04] hover:text-foreground',
     tabActive:
-      'bg-yellow-500/20 text-yellow-300 border-yellow-500/40 font-semibold',
+      'bg-yellow-500/20 text-yellow-300 border-yellow-500/40 font-semibold ring-1 ring-yellow-500/40',
     countIdle: 'bg-yellow-500/15 text-yellow-300/90',
     countActive: 'bg-yellow-500/30 text-yellow-200',
     dot: 'bg-yellow-500',
   },
   passed: {
     tag: 'bg-destructive/15 text-destructive border-destructive/20',
-    tabIdle: 'bg-destructive/5 text-destructive/80 border-destructive/15',
-    tabHover:
-      'hover:bg-destructive/10 hover:text-destructive hover:border-destructive/25',
+    tabIdle: 'bg-transparent text-muted-foreground border-transparent',
+    tabHover: 'hover:bg-white/[0.04] hover:text-foreground',
     tabActive:
-      'bg-destructive/20 text-destructive border-destructive/40 font-semibold',
+      'bg-destructive/20 text-destructive border-destructive/40 font-semibold ring-1 ring-destructive/40',
     countIdle: 'bg-destructive/15 text-destructive/80',
     countActive: 'bg-destructive/30 text-destructive',
     dot: 'bg-destructive',
   },
   excluded: {
     tag: 'bg-muted text-muted-foreground border-border/60',
-    tabIdle: 'bg-muted/40 text-muted-foreground border-border/40',
-    tabHover:
-      'hover:bg-muted/60 hover:text-foreground hover:border-border/60',
+    tabIdle: 'bg-transparent text-muted-foreground border-transparent',
+    tabHover: 'hover:bg-white/[0.04] hover:text-foreground',
     tabActive:
-      'bg-muted text-foreground border-border font-semibold',
+      'bg-muted text-foreground border-border font-semibold ring-1 ring-border',
     countIdle: 'bg-muted-foreground/15 text-muted-foreground',
     countActive: 'bg-foreground/15 text-foreground',
     dot: 'bg-muted-foreground',
