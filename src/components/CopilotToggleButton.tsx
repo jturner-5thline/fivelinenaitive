@@ -437,10 +437,15 @@ export function CopilotToggleButton() {
           }, 250);
         }}
       >
-        {/* AI transcript panel — rendered inside the same width-defining
-            wrapper as the Ask bar so it inherits identical horizontal
-            bounds (no independent width math). */}
-        <AICopilotPanel />
+        {/* AI transcript panel — lazy. Only mount once the user has
+            opened the panel (or is hovering the Ask bar, which warms the
+            chunk so the first ⌘J / click is instant). Pre-mount, the
+            panel rendered null anyway, so this is behavior-preserving. */}
+        {(isOpen || isMinimized || hovered) && (
+          <Suspense fallback={null}>
+            <AICopilotPanel />
+          </Suspense>
+        )}
         {collapsed && (
             <button
               type="button"
