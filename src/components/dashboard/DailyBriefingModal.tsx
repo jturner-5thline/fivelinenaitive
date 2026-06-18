@@ -1706,22 +1706,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [, startTabTransition] = useTransition();
 
-  // Defer the heavy tab body one paint frame so the Dialog open
-  // animation (shell expand + backdrop fade) commits cleanly before
-  // React reconciles the active tab's data-heavy subtree. Without this
-  // the first frame after `open` does the shell transform AND the full
-  // CatchUp / Pipeline / Email tree at once, which shudders the open
-  // animation. The shell + sidebar + header still paint instantly; only
-  // the inner panel waits ~16ms.
-  const [contentReady, setContentReady] = useState(false);
-  useEffect(() => {
-    if (!open) {
-      setContentReady(false);
-      return;
-    }
-    const raf = requestAnimationFrame(() => setContentReady(true));
-    return () => cancelAnimationFrame(raf);
-  }, [open]);
+  // Render tab bodies immediately on open — the shell + sidebar + header
+  // and the active tab's first paint must all happen on the same frame
+  // so the Daily Rundown feels instant. Reconciliation of the heavy
+  // subtree is wrapped in `startTabTransition` on tab change so it never
+  // blocks user interaction, and the modal-wide Dialog animation has been
+  // shortened (see DialogContent className overrides below).
+  const contentReady = open;
 
   // When the modal (re)opens, honor `initialTab` so callers can deep-link
   // into a specific tab (e.g., "Pipeline & Clients" from the Deal Rundown
@@ -1814,8 +1805,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
         className={cn(
           useCarouselSwipeClass(),
           'popup-shell-surface w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl border-transparent',
+          // Fast, no-shudder open: skip zoom/slide and run a brief fade only.
+          // The base Dialog applies zoom-in-95 + slide-in + duration-200; we
+          // override with explicit identity transforms and a shorter duration
+          // so the modal feels instant on click.
+          '!duration-100 data-[state=open]:!zoom-in-100 data-[state=open]:!slide-in-from-top-0 data-[state=open]:!slide-in-from-left-0',
         )}
-        overlayClassName="bg-black/80"
+        overlayClassName="bg-black/80 !duration-100"
       >
         <div className="flex flex-col h-full min-h-0 min-w-0 relative max-w-full overflow-hidden">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 min-w-0 flex flex-row overflow-hidden">
