@@ -1081,6 +1081,8 @@ export default function Dashboard() {
                   viewMode={viewMode}
                   expandAllSignal={expandAllSignal}
                   collapseAllSignal={collapseAllSignal}
+                  collapsedGroups={collapsedGroups}
+                  onCollapsedGroupsChange={setCollapsedGroups}
                 />
               )}
             </div>
