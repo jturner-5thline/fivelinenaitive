@@ -1,92 +1,73 @@
-# Demo Inbox Auto-Seeding
+## Goal
 
-Every account created through Create Demo (and the canonical TEMPLATE workspace) ships with a populated, internally-consistent fake inbox. No real Gmail/Microsoft connection required. Idempotent, clearly tagged as demo, and visible as "Demo Inbox Active" instead of "Connect your email."
+Add click-to-sort and per-column filtering directly on the Deals list (table) header, so users don't need to leave the table for the toolbar Sort/Filter dropdowns.
 
-## What gets built
+## Scope
 
-### 1. Schema (migration)
+Only the **list view** of `/deals` (`DealsList` → `viewMode === 'list'`). Grid and pipeline views are untouched.
 
-Mark seeded mailbox rows so they can be wiped/refreshed without touching real mail:
+## Behavior
 
-- `gmail_messages`: add `is_demo_seed boolean default false`, `seed_key text` (deterministic), unique index `(user_id, seed_key) where seed_key is not null`.
-- `gmail_tokens`: add `is_demo_seed boolean default false`.
-- `email_threads`: add `is_demo_seed boolean default false`, `seed_key text`, unique index `(user_id, seed_key) where seed_key is not null`.
-- `companies.is_demo` already exists — reused as the canonical "this is a demo tenant" flag (set to `true` by `seed-demo-account`).
+### Sorting
+- Click a sortable header → cycles `asc → desc → cleared` (cleared resets to default `updatedAt desc`).
+- Active sort field shows an arrow (`↑`/`↓`) in the header; inactive headers show a faint neutral indicator on hover.
+- Reuses existing `sortField` / `sortDirection` from `useDeals` (and the existing `toggleSort` helper). The page already plumbs both into `DealsList`.
+- Sortable columns: Company, Value, Status, Stage, Manager, Type, Total Fee, Total Hours, Revenue/Hour, Late Milestones, Updated. (Adds `manager`, `engagementType`, `totalFee`, `totalHours`, `revenuePerHour`, `lateMilestones` to the `SortField` union and to the `useDeals` switch.)
 
-### 2. New seeder module
+### Filtering
+- Each filterable header gets a small funnel icon next to the label; clicking it opens a popover.
+- Popover content depends on column type:
+  - **Status / Stage / Type / Manager** — multi-select checklist sourced from the unfiltered deal set.
+  - **Company** — text contains.
+  - **Value / Total Fee / Total Hours / Revenue/Hour** — min/max numeric.
+  - **Updated** — relative range (Last 7d / 30d / 90d / All).
+- Active filter pills render in a thin sub-row under the headers with a “Clear all” button.
+- Header filter state lives in the existing `DealFilters` shape on `useDeals`. Where the field doesn't yet exist (e.g. `valueMin/Max`, `totalFeeMin/Max`, `updatedWithinDays`), it is added to `DealFilters` and applied in `useDeals` `useMemo`.
+- Filters compose with the existing toolbar filters (AND), and persist into Saved Views via the existing `useDealSavedViews` config (no schema change — `filters` is JSON).
 
-`supabase/functions/_shared/seedDemoInbox.ts` exporting `seedDemoInbox(admin, { userId, userEmail, companyId, contacts, deals, tasks, calendarEvents })`.
+### Interaction notes
+- The drag-handle on `SortableTableHead` (column reorder) stays. Sort is triggered by clicking the label area; the grip icon keeps drag activation. Filter funnel is its own click target and uses `stopPropagation` so it doesn't trigger sort or drag.
+- Group-by remains independent — sorting applies inside each group.
 
-Generates ~14 threads / ~32 messages drawn from a fixed scenario library and stamped with deterministic `seed_key`s like `demo-inbox/<scenario>/<index>`:
+## Technical changes
 
-- Client-side threads tied to seeded **contacts + companies** (CFO sending Q4 financials, founder confirming data-room access, lawyer sending NDA redline).
-- Lender-side threads tied to seeded **deals + lenders** (term sheet from Greenfield Capital, IOI from Apex Venture Lending, pass note from Ironclad, follow-up Q&A from Bridgeport).
-- Internal threads tied to seeded **tasks** (deal team @mentions on outstanding items, status updates).
-- Calendar threads tied to seeded **calendar_events** (meeting confirmations, reschedules, agenda follow-ups).
-- Realistic mix of read/unread/starred, INBOX/SENT/IMPORTANT labels, snippets, plain-text + HTML bodies, attachments (referenced by filename only, no storage object), and timestamps spread across the last 14 days with two pinned-fresh threads (4–7 min ago) so the inbox feels live.
+```text
+src/hooks/useDeals.ts
+  - Extend SortField union with manager | engagementType | totalFee | totalHours | revenuePerHour | lateMilestones
+  - Add comparators in the sort switch
+  - Extend DealFilters with: companyContains, valueMin/Max, totalFeeMin/Max,
+    totalHoursMin/Max, revenuePerHourMin/Max, updatedWithinDays, plus
+    multi-select arrays where currently single-value
+  - Apply new filters in the filter useMemo
+  - toggleSort: add 3rd state (cleared → default)
 
-All rows insert with `ON CONFLICT (user_id, seed_key) DO UPDATE` → reprovision/repair never duplicates.
+src/components/deals/DealsList.tsx
+  - Replace SortableTableHead with a new SortableFilterableHead that renders:
+      [grip] [label + sort arrow button] [filter funnel popover]
+  - Pass sortField, sortDirection, toggleSort, filters, setFilters down
+  - Render active-filter chip row above TableBody
+  - Remove the local FLEx sort fallback once toggleSort handles it (keep
+    flexEngagement comparator inside useDeals)
 
-`email_threads` rows mirror the messages with the same `seed_key` pattern so the threaded inbox view groups correctly.
-
-### 3. "Connected" sentinel per demo user
-
-`seedDemoInbox` also upserts one `gmail_tokens` row per demo user:
-
+src/pages/Deals.tsx
+  - Pass toggleSort, filters, setFilters into <DealsList />
+  - Saved Views already serialize filters/sort; verify new fields round-trip
 ```
-user_id, email_address = <demo email>, grant_id = 'demo-seed',
-account_id = 'demo-seed', scope = 'demo-seed',
-expires_at = now() + 10 years, is_demo_seed = true
-```
 
-### 4. Edge function wiring
+New small components:
+- `DealsHeaderFilterPopover` (handles per-column popover variants).
+- `DealsActiveFilterChips` (renders chip row + clear).
 
-- `supabase/functions/seed-demo-account/index.ts`: after the existing contacts/deals/tasks/calendar seeding, sets `companies.is_demo = true`, then calls `seedDemoInbox(...)`. Returns `inboxSeed: { threads, messages }` counts in the response.
-- `supabase/functions/repair-demo-tenant/index.ts`: re-runs `seedDemoInbox` (idempotent) so Repair refreshes the inbox.
-- `supabase/functions/gmail-status/index.ts`: short-circuit branch — if the loaded `gmail_tokens` row has `grant_id = 'demo-seed'` (or `is_demo_seed = true`), respond `{ connected: true, provider: 'gmail', email_address, connected_at, source: 'demo-seed' }` and skip the Nylas grant verify call.
+## Out of scope
 
-### 5. Frontend
+- Grid and pipeline views.
+- Server-side sort/filter (current implementation is client-side; behavior unchanged).
+- Saved-view migrations (schema is JSONB, new keys are additive).
 
-- `src/hooks/useGmail.ts`:
-  - Replace the hardcoded `isDemoUser = email === 'demo@5thline.co'` check with `isDemoUser = gmailStatus.source === 'demo-seed'` (derived from the new `gmail-status` field) **plus** the existing email allowlist as fallback.
-  - When the demo-seed sentinel is detected, read messages from the real `gmail_messages` table (RLS already scopes to `user_id`) instead of the hardcoded `DEMO_MOCK_EMAILS` constant. The existing two pinned mock emails for `demo@5thline.co` stay only as a fallback if the table is empty.
-- `src/components/integrations/GmailIntegration.tsx` and the inbox empty-state in `src/pages/EmailIntelligencePage.tsx`: when `status.connected && status.source === 'demo-seed'`, render a "Demo Inbox Active" pill (green dot + tooltip "Seeded demo mailbox — not a real Google/Microsoft connection") and suppress the "Connect your email" CTA / empty state.
+## Acceptance
 
-### 6. Counts per demo tenant (deterministic)
-
-- 14 threads, 32 messages
-- 8 unread, 4 starred
-- ~18 messages linked to 6 seeded contacts (8 distinct sender domains)
-- ~10 messages linked to 5 seeded deals + 5 seeded lenders
-- ~4 messages linked to seeded tasks / calendar events
-- 2 pinned threads (4 min + 7 min ago) so first load feels live
-
-## Technical notes
-
-- Idempotency: every insert uses `seed_key` + `ON CONFLICT DO UPDATE`. Re-running `seed-demo-account` or `repair-demo-tenant` updates rows in place — no duplicates.
-- Safety: `is_demo_seed = true` on every seeded row means demo data can never be confused with real synced mail. Real Nylas/Microsoft sync paths ignore rows where `is_demo_seed = true`.
-- Performance: bulk-inserts in a single `.insert([...])` per table. Inbox load is a normal indexed `SELECT … FROM gmail_messages WHERE user_id = $1 ORDER BY received_at DESC LIMIT 50` — no network round-trip to Nylas.
-- Send: a follow-up `POST` to send mail will still fail (no provider). Out of scope for this change — Mail appears connected for read; send remains disabled with a small "Demo inbox is read-only" note on the composer.
-
-## Files changed
-
-- `supabase/migrations/<new>.sql` (schema)
-- `supabase/functions/_shared/seedDemoInbox.ts` (new)
-- `supabase/functions/seed-demo-account/index.ts`
-- `supabase/functions/repair-demo-tenant/index.ts`
-- `supabase/functions/gmail-status/index.ts`
-- `src/hooks/useGmail.ts`
-- `src/components/integrations/GmailIntegration.tsx`
-- `src/pages/EmailIntelligencePage.tsx`
-
-## Returned to caller
-
-After `seed-demo-account` finishes, the response includes:
-
-```json
-{
-  "inboxSeed": { "threads": 14, "messages": 32, "linkedContacts": 6,
-                 "linkedDeals": 5, "linkedLenders": 5, "linkedTasks": 3,
-                 "linkedCalendarEvents": 2 }
-}
-```
+- Clicking Value / Status / Stage / Manager / Type / Total Fee / Updated headers sorts the table and toggles direction.
+- Funnel icon on each filterable header opens a contextual filter popover; selecting values narrows the visible rows.
+- Active filters render as removable chips above the rows; “Clear all” removes them.
+- Toolbar Sort dropdown and Filter dialog still work and stay in sync with header state.
+- Selections persist into Saved Views and reload correctly after a refresh.
