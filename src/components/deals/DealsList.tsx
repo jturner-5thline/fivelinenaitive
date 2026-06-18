@@ -322,8 +322,36 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // List view rendering
   if (viewMode === 'list') {
+    const activeChips = filters ? buildActiveFilterChips(filters) : [];
     return (
       <div>
+        {activeChips.length > 0 && onFiltersChange && (
+          <div className="flex flex-wrap items-center gap-1.5 px-1 pb-2">
+            {activeChips.map((c) => (
+              <span
+                key={c.key}
+                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full bg-primary/10 text-primary text-[11px]"
+              >
+                {c.label}
+                <button
+                  type="button"
+                  onClick={() => onFiltersChange(c.clear)}
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-primary/20"
+                  aria-label={`Remove filter ${c.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => onFiltersChange(clearAllColumnFilters())}
+              className="ml-1 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
         <div className="overflow-visible px-0 py-1">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-1.5">
