@@ -497,7 +497,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
             </div>
           ) : (
             <>
-              {isUnread && (
+              {isUnread && latest.folder !== 'inbox' && (
                 <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-[hsl(var(--outlook-blue))] z-10" />
               )}
               <EmailAvatar
