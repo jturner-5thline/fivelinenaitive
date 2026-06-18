@@ -78,9 +78,18 @@ import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
-import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { lazy, Suspense } from 'react';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
+
+// Reuse the EXACT same memo view that backs the Deal Rundown sidebar (the
+// detail pane inside <PipelineMemoView /> is the "Deal Rundown" summary —
+// MemoHeader + NextBestAction + Tasks/Milestones + Activity + Calendar +
+// LendersPanel). Importing it lazily keeps the Deals page bundle lean.
+const DealRundownMemoView = lazy(() =>
+  import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
+);
 
 export default function Dashboard() {
   const { user } = useAuth();
