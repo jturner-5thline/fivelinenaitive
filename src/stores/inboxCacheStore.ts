@@ -358,8 +358,22 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
     }
   },
 
-  setInboxMessages: (msgs) => set({ inboxMessages: msgs }),
-  setSentMessages: (msgs) => set({ sentMessages: msgs }),
+  setInboxMessages: (msgs) => {
+    set({ inboxMessages: msgs });
+    persistCache({
+      inboxMessages: msgs,
+      sentMessages: get().sentMessages,
+      lastFetchedAt: get().lastFetchedAt,
+    });
+  },
+  setSentMessages: (msgs) => {
+    set({ sentMessages: msgs });
+    persistCache({
+      inboxMessages: get().inboxMessages,
+      sentMessages: msgs,
+      lastFetchedAt: get().lastFetchedAt,
+    });
+  },
 
   applyStateDeltas: (states) => {
     if (!states.length) return;
@@ -387,17 +401,27 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
         });
       return changed ? { inboxMessages: next } : {};
     });
+    persistCache({
+      inboxMessages: get().inboxMessages,
+      sentMessages: get().sentMessages,
+      lastFetchedAt: get().lastFetchedAt,
+    });
   },
 
-  reset: () => set({
-    inboxMessages: [],
-    sentMessages: [],
-    inboxNextToken: null,
-    sentNextToken: null,
-    hasInitial: false,
-    lastFetchedAt: null,
-    isRefreshing: false,
-  }),
+  reset: () => {
+    set({
+      inboxMessages: [],
+      sentMessages: [],
+      inboxNextToken: null,
+      sentNextToken: null,
+      hasInitial: false,
+      lastFetchedAt: null,
+      isRefreshing: false,
+    });
+    if (typeof window !== 'undefined') {
+      try { window.localStorage.removeItem(LS_KEY); } catch { /* noop */ }
+    }
+  },
 }));
 
 /** Selector: unread inbox count derived from cached messages. */
