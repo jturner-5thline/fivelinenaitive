@@ -347,7 +347,7 @@ export function useDealsDatabase() {
       flagNotes: dbDeal.flag_notes || undefined,
       referredBy: toReferrer(dbDeal.referred_by),
       referralSourceContactId: (dbDeal as any).referral_source_contact_id || null,
-      lender: dealLenders[0]?.name || '',
+      lender: dedupedDealLenders[0]?.name || '',
       value: Number(dbDeal.value),
       totalFee: Number(dbDeal.total_fee || 0),
       retainerFee: Number(dbDeal.retainer_fee || 0),
