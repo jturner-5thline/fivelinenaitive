@@ -288,6 +288,12 @@ interface ThreadListItemProps {
   onBulkDelete?: () => void;
 }
 
+function providerLabelsIndicateRead(email: MockEmail): boolean {
+  const labels = Array.isArray(email.labels) ? email.labels : [];
+  if (!labels.length) return false;
+  return !labels.some((label) => String(label).toUpperCase() === 'UNREAD');
+}
+
 function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, selectedCount, isInBulkSelection, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -304,7 +310,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
     latest.body_text ||
     '';
   const threadCount = thread.emails.length;
-  const isUnread = thread.hasUnread;
+  const isUnread = thread.hasUnread && !providerLabelsIndicateRead(latest);
   const showCheckbox = hovered || isChecked;
 
   // Notification-type emails (Asana, Google Calendar invites, naitive system,
@@ -497,7 +503,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
             </div>
           ) : (
             <>
-              {isUnread && latest.folder !== 'inbox' && (
+              {isUnread && (
                 <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-[6px] h-[6px] rounded-full bg-[hsl(var(--outlook-blue))] z-10" />
               )}
               <EmailAvatar
