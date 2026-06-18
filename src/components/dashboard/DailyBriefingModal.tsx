@@ -1986,7 +1986,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
                   >
-                  {activeTab === 'agenda' && (
+                  {contentReady && activeTab === 'agenda' && (
                     <div className="h-[70vh] min-h-[500px] flex flex-col min-h-0">
                       {targetUserId === MOFFITT_USER_ID && (
                         <MoffittDealRundown enabled={open} />
@@ -1994,8 +1994,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       <div className="flex-1 min-h-0"><AgendaIntel /></div>
                     </div>
                   )}
-                  {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'email' && (
+                  {contentReady && activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'email' && (
                     <EmailTab
                       enabled={open}
                       onNavigate={handleNavigate}
@@ -2004,10 +2004,10 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       unreadOnly={emailUnreadOnly}
                     />
                   )}
-                  {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
-                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
-                  {activeTab === 'end_of_day' && (
+                  {contentReady && activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
+                  {contentReady && activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
+                  {contentReady && activeTab === 'end_of_day' && (
                     <EndOfDayTab
                       enabled={open}
                       onNavigate={handleNavigate}
