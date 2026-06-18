@@ -105,7 +105,15 @@ export function filterRundownEligibleDeals<T extends { status?: string | null; p
   // the result — otherwise we'd return [] during the brief loading window.
   if (!activePipelineId) return [];
   return deals.filter(d => {
-    if ((d as any).pipelineId !== activePipelineId) return false;
+    // Pipeline gate: keep deals on the Active Pipeline OR deals with no
+    // pipeline assignment (legacy / freshly-created). Previously we hard-
+    // dropped any deal whose `pipelineId` did not exactly match the
+    // default pipeline id — that silently hid every unassigned deal,
+    // which is why the rundown was surfacing only a handful of (mostly
+    // on-hold) deals. We still exclude deals explicitly assigned to a
+    // different non-default pipeline (FinServ / naitive / secondary).
+    const pid = (d as any).pipelineId;
+    if (pid && pid !== activePipelineId) return false;
     const status = (d.status || '').toString().toLowerCase().trim();
     if (UNIVERSAL_SUPPRESSED_STATUSES.has(status)) return false;
     const nameStr = ((d as any).name || (d as any).title || '').toString();
