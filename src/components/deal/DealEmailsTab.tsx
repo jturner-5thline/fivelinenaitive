@@ -2370,6 +2370,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
               {(onLoadMore || hasMore || isLoadingMore || isAutoPaginating) && (
                 <PaginationFooter
                   onLoadMore={onLoadMore}
+                  unreadOnly={viewFilter === 'unread'}
                   hasMore={!!hasMore}
                   isLoadingMore={!!isLoadingMore}
                   isAutoPaginating={!!isAutoPaginating}
