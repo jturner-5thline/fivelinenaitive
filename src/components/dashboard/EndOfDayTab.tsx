@@ -895,8 +895,23 @@ export function EndOfDayTab({
               </button>
             );
           })}
-          <div className="ml-auto text-[10px] text-muted-foreground/70">
-            {filtered.length} of {outstanding.length}
+          <div className="ml-auto flex items-center gap-2">
+            {unreadVisibleIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  markManyRead(unreadVisibleIds);
+                  toast.success(`Marked ${unreadVisibleIds.length} as read`);
+                }}
+                className="h-6 px-2 rounded-full text-[10px] font-medium border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                title="Clear the unread dot on every visible item"
+              >
+                Mark all as read ({unreadVisibleIds.length})
+              </button>
+            )}
+            <div className="text-[10px] text-muted-foreground/70">
+              {filtered.length} of {outstanding.length}
+            </div>
           </div>
         </div>
       </div>
