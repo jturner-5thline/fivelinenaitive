@@ -6494,6 +6494,18 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `Deleted "${params.item_description}"`, actionType: "delete_outstanding_item", params: { deal_id: params.deal_id } };
     }
     case "update_deal_fields": {
+      // Soft-forward merged_into tombstones to the survivor row.
+      {
+        const { data: tombstone } = await supabase
+          .from("deals")
+          .select("id, merged_into")
+          .eq("id", params.deal_id)
+          .maybeSingle();
+        if ((tombstone as any)?.merged_into) {
+          console.log("[copilot-chat] merged_into forward (execute): %s -> %s", tombstone!.id, (tombstone as any).merged_into);
+          params.deal_id = (tombstone as any).merged_into;
+        }
+      }
       const updateFields: any = {};
       if (params.value !== undefined) updateFields.value = params.value;
       if (params.closing_date !== undefined) updateFields.closing_date = params.closing_date || null;
