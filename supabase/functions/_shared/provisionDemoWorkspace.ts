@@ -670,7 +670,13 @@ export async function provisionDemoWorkspace(
       const lastName = pick(LAST_NAMES, i + 11);
       const orgPrefix = pick(COMPANY_PREFIXES, i + 7);
       const orgSuffix = pick(["Capital","Credit","Partners","Bank","Finance","Fund"], i);
-      const name = `${orgPrefix} ${orgSuffix}`;
+      // Keep generated demo funding-source names globally unique within the
+      // workspace. The prefix/suffix cycles repeat after 30 rows while the
+      // seed target is 50, so include a deterministic suffix once the cycle
+      // repeats; otherwise repair/top-up runs can recreate visible duplicates.
+      const name = i >= COMPANY_PREFIXES.length
+        ? `${orgPrefix} ${orgSuffix} ${i + 1}`
+        : `${orgPrefix} ${orgSuffix}`;
       const [city, state] = pick(CITIES, i + 3);
       rows.push({
         user_id: attributingUserId, company_id: companyId, name,
