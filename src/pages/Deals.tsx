@@ -882,27 +882,34 @@ export default function Dashboard() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
-                        None
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('status')} className={groupBy === 'status' ? 'bg-accent' : ''}>
-                        Status
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('stage')} className={groupBy === 'stage' ? 'bg-accent' : ''}>
-                        Stage
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('engagementType')} className={groupBy === 'engagementType' ? 'bg-accent' : ''}>
-                        Engagement Type
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('manager')} className={groupBy === 'manager' ? 'bg-accent' : ''}>
-                        Manager
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('lender')} className={groupBy === 'lender' ? 'bg-accent' : ''}>
-                        Lender
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setGroupBy('referredBy')} className={groupBy === 'referredBy' ? 'bg-accent' : ''}>
-                        Referred By
-                      </DropdownMenuItem>
+                      {(() => {
+                        // Clicking the currently-active option toggles grouping off.
+                        const toggle = (value: string) => setGroupBy(prev => (prev === value ? null : value));
+                        const options: Array<{ value: string; label: string }> = [
+                          { value: 'status', label: 'Status' },
+                          { value: 'stage', label: 'Stage' },
+                          { value: 'engagementType', label: 'Engagement Type' },
+                          { value: 'manager', label: 'Manager' },
+                          { value: 'lender', label: 'Lender' },
+                          { value: 'referredBy', label: 'Referred By' },
+                        ];
+                        return (
+                          <>
+                            <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
+                              None
+                            </DropdownMenuItem>
+                            {options.map(opt => (
+                              <DropdownMenuItem
+                                key={opt.value}
+                                onClick={() => toggle(opt.value)}
+                                className={groupBy === opt.value ? 'bg-accent' : ''}
+                              >
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </>
+                        );
+                      })()}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
