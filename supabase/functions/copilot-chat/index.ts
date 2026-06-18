@@ -7562,6 +7562,7 @@ serve(async (req) => {
           const { data: matches } = await supabaseUser
             .from("deals")
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
+            .is("merged_into", null)
             .or(orFilter)
             .limit(40);
           // NOTE: The global "Example Deal / Test-Niki's Store / test ..."
