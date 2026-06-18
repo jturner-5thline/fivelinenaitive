@@ -494,6 +494,7 @@ const App = () => (
                   </DealStagesProvider>
                 </LenderStagesProvider>
               </LendersProvider>
+              </StatusChangeGateProvider>
             </DealsProvider>
           </PreferencesProvider>
         </AuthProvider>
