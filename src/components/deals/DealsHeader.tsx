@@ -412,11 +412,15 @@ export function DealsHeader() {
                 'Daily Rundown': dailyRundownHasBadge,
                 "Niki's Daily Rundown": nikiRundownHasBadge,
               };
+              const COUNT_BADGES: Record<string, number> = {
+                'Approval Queue': approvalQueueCount,
+              };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
                 Icon: ICONS[label],
                 isOpen,
                 hasBadge: !!BADGES[label],
+                badgeCount: COUNT_BADGES[label] || 0,
                 // When some overlay is already open, route the click
                 // through goToOverlay so the swap animates directionally
                 // (and never double-mounts two overlays).
