@@ -48,15 +48,18 @@ interface Props {
   compact?: boolean;
   /** Hydration nonce — bump to re-seed fields when the popover re-opens with new prefill. */
   resetKey?: string | number;
+  /** Initial item type. Defaults to 'task'. Set to 'event' for an
+   *  "Add to deal calendar" entry point so the form opens in event mode. */
+  initialKind?: ItemKind;
 }
 
-export function AddToDealCalendarForm({ prefill, onClose, compact = false, resetKey }: Props) {
+export function AddToDealCalendarForm({ prefill, onClose, compact = false, resetKey, initialKind = 'task' }: Props) {
   const { user } = useAuth();
   const { deals } = useDealsContext();
   const teamMembers = useTeamMembers();
   const queryClient = useQueryClient();
 
-  const [kind, setKind] = useState<ItemKind>('task');
+  const [kind, setKind] = useState<ItemKind>(initialKind);
   const [title, setTitle] = useState(prefill.title);
   const [date, setDate] = useState<Date | undefined>(prefill.parsed.date ?? undefined);
   const [time, setTime] = useState<string>('');
@@ -75,7 +78,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
 
   // Re-seed fields when the host re-opens with a new prefill (resetKey change).
   useEffect(() => {
-    setKind('task');
+    setKind(initialKind);
     setTitle(prefill.title);
     setDate(prefill.parsed.date ?? undefined);
     setTime('');
