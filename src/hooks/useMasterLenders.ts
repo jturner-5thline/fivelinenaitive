@@ -191,7 +191,40 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       // Cancel any in-flight background load from a previous fetch
       const loadId = ++backgroundLoadIdRef.current;
 
-      const { data: initialData, error: initialError, count } = await fetchPage(0, true, searchQuery);
+      // Coalesce first-page fetches across simultaneous mounts. Without this,
+      // N components mounting in the same tick each fire their own
+      // `ORDER BY name LIMIT 100` against master_lenders — the #1 slow query
+      // in pg_stat_statements (232k calls, 15.8h cumulative). We only need
+      // one in-flight first-page request per (user, search) tuple.
+      const canCoalesce = mode === 'all' && !searchQuery;
+      let initialPromise: ReturnType<typeof fetchPage>;
+      if (canCoalesce && cachePromise) {
+        // Reuse the existing full-load promise; map it back to a first-page shape.
+        initialPromise = cachePromise.then((all) => ({
+          data: all,
+          error: null,
+          count: all.length,
+        })) as ReturnType<typeof fetchPage>;
+      } else {
+        initialPromise = fetchPage(0, true, searchQuery);
+        if (canCoalesce) {
+          // Publish a placeholder promise immediately so peers mounting in
+          // this same tick await it instead of starting their own fetch.
+          const placeholder = initialPromise.then(
+            (res) => {
+              if (res.error) throw res.error;
+              return (res.data ?? []) as MasterLender[];
+            },
+          );
+          cachePromise = placeholder;
+          // Clear on rejection so a failed first-page fetch doesn't poison
+          // future mounts. Success case is overwritten below by loadRemaining.
+          placeholder.catch(() => {
+            if (cachePromise === placeholder) cachePromise = null;
+          });
+        }
+      }
+      const { data: initialData, error: initialError, count } = await initialPromise;
       if (initialError) throw initialError;
 
       // If another fetchLenders was triggered while we were awaiting, bail out
