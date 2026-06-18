@@ -146,10 +146,7 @@ const Sidebar = React.forwardRef<
 
   const handleMouseEnter = React.useCallback(() => {
     if (state === "collapsed") {
-      // Small delay to prevent accidental triggers
-      hoverTimeoutRef.current = setTimeout(() => {
-        setIsHovering(true);
-      }, 100);
+      setIsHovering(true);
     }
   }, [state, setIsHovering]);
 
@@ -220,7 +217,7 @@ const Sidebar = React.forwardRef<
       {/* Spacer div - expands on hover OR click so content shifts over */}
       <div
         className={cn(
-          "relative h-svh bg-transparent transition-[width] duration-200 ease-linear",
+          "relative h-svh bg-transparent transition-[width] duration-150 ease-out",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           // Use effectiveState to determine width (includes hover)
@@ -232,7 +229,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-linear md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
