@@ -2744,6 +2744,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
       // can find near-misses like "censys technology" -> "Censys Technologies".
       let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at");
+      q = q.is("merged_into", null);
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
@@ -2758,6 +2759,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           let eq: any = supabase
             .from("deals")
             .select("id, company, value, stage, status, deal_type, updated_at")
+            .is("merged_into", null)
             .ilike("company", queryText.replace(/\s+/g, " ").trim())
             .limit(5);
           if (args.status) eq = eq.eq("status", args.status);
@@ -4028,8 +4030,23 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── MIXED RISK: Deal field updates ──
     case "update_deal_fields": {
-      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours").eq("id", args.deal_id).single();
+      let { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours, merged_into").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
+      // Soft-forward merged_into tombstones to the survivor row so AI updates
+      // never land on a merge loser (and never silently fail verify).
+      if ((deal as any).merged_into) {
+        const survivorId = (deal as any).merged_into as string;
+        console.log("[copilot-chat] merged_into forward (confirm): %s -> %s", deal.id, survivorId);
+        const { data: survivor } = await supabase
+          .from("deals")
+          .select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours, merged_into")
+          .eq("id", survivorId)
+          .single();
+        if (survivor) {
+          deal = survivor;
+          args.deal_id = survivor.id;
+        }
+      }
 
       // Validate that the model actually included a writable field. Without
       // this, the model can emit `{ deal_id, deal_name }` with no payload and
@@ -6477,6 +6494,18 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `Deleted "${params.item_description}"`, actionType: "delete_outstanding_item", params: { deal_id: params.deal_id } };
     }
     case "update_deal_fields": {
+      // Soft-forward merged_into tombstones to the survivor row.
+      {
+        const { data: tombstone } = await supabase
+          .from("deals")
+          .select("id, merged_into")
+          .eq("id", params.deal_id)
+          .maybeSingle();
+        if ((tombstone as any)?.merged_into) {
+          console.log("[copilot-chat] merged_into forward (execute): %s -> %s", tombstone!.id, (tombstone as any).merged_into);
+          params.deal_id = (tombstone as any).merged_into;
+        }
+      }
       const updateFields: any = {};
       if (params.value !== undefined) updateFields.value = params.value;
       if (params.closing_date !== undefined) updateFields.closing_date = params.closing_date || null;
@@ -7560,6 +7589,7 @@ serve(async (req) => {
           const { data: matches } = await supabaseUser
             .from("deals")
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
+            .is("merged_into", null)
             .or(orFilter)
             .limit(40);
           // NOTE: The global "Example Deal / Test-Niki's Store / test ..."
@@ -7605,7 +7635,7 @@ serve(async (req) => {
             dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
           } else if (filtered.length > 1) {
             const top3 = filtered.slice(0, 3);
-            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these top candidates by name with confidence, then proceed once they pick):\n${top3.map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — similarity ${(d._score || 0).toFixed(2)} — deal_id: ${d.id}`).join("\n")}`;
+            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT — the user's message could refer to more than one deal.\n\nHARD RULES:\n1. You MUST NOT call ANY write tool (update_deal_fields, update_deal_stage, update_deal_status, move_deal_pipeline, add_deal_note, update_lender_status, create_task, draft_email, delete_outstanding_item, etc.) until the user picks. This explicitly includes "add hours" / pre_signing_hours_delta / post_signing_hours_delta.\n2. Reply with EXACTLY the format below — a short question line, then one markdown link per candidate, nothing else. The frontend renders the link list as a clickable deal picker card.\n3. When the user picks (the next turn will reference one deal by id), re-issue the ORIGINAL request against that deal_id without asking them to repeat it.\n\nFORMAT (copy verbatim, substituting candidates):\nWhich deal did you mean?\n${top3.map((d: any) => `- [${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"})](entity://deal/${d.id})`).join("\n")}`;
           }
         }
       }

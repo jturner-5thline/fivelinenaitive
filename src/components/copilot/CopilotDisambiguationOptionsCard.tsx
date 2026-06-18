@@ -109,7 +109,7 @@ export function parseCopilotDisambiguationMessage(
 
 function buildDisambiguationPrompt(option: CopilotDisambiguationOption) {
   const safeLabel = option.label.replace(/"/g, '\\"');
-  return `Use the ${option.kind} "${safeLabel}" (id: ${option.id}). Resolve the disambiguation with this choice and continue.`;
+  return `I meant the ${option.kind} "${safeLabel}" (id: ${option.id}). Proceed with my previous request against this ${option.kind} — if it was a write action (add hours, update fields, change stage, create task, draft email, etc.), re-issue that same action now with deal_id="${option.id}" and surface the confirmation card. Do not ask me to repeat the request.`;
 }
 
 export function CopilotDisambiguationOptionsCard({
