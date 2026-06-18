@@ -426,7 +426,7 @@ export function DealsHeader() {
                 // (and never double-mounts two overlays).
                 onClick: () => goToOverlay(label),
               }));
-            })().map(({ label, Icon, isOpen, onClick, hasBadge }) => (
+            })().map(({ label, Icon, isOpen, onClick, hasBadge, badgeCount }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
                   <button
@@ -442,7 +442,14 @@ export function DealsHeader() {
                     }`}
                   >
                     <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
-                    {hasBadge && (
+                    {badgeCount > 0 ? (
+                      <span
+                        aria-label={`${label} has ${badgeCount} pending`}
+                        className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-[rgba(14,24,42,0.85)] tabular-nums pointer-events-none"
+                      >
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                      </span>
+                    ) : hasBadge && (
                       <span
                         aria-label={`${label} has 1 incomplete item`}
                         className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-[rgba(14,24,42,0.85)] tabular-nums pointer-events-none"
