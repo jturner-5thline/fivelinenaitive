@@ -3147,10 +3147,24 @@ export default function DealDetail() {
                 <Select
                   value={deal.status}
                   onValueChange={(value: DealStatus) => {
-                    updateDeal('status', value);
-                    if (is5thLineUser && value === 'on-hold' && deal.stage !== 'on-hold') {
-                      setPendingMirror({ direction: 'status->stage' });
-                    }
+                    // Route through the global StatusChangeGate so the
+                    // user is forced to enter a fresh status note before
+                    // the status (and notes_updated_at) are persisted.
+                    void requestStatusChange({
+                      dealId: deal.id,
+                      dealName: deal.company,
+                      currentStatus: deal.status,
+                      nextStatus: value,
+                    }).then((committed) => {
+                      if (
+                        committed &&
+                        is5thLineUser &&
+                        value === 'on-hold' &&
+                        deal.stage !== 'on-hold'
+                      ) {
+                        setPendingMirror({ direction: 'status->stage' });
+                      }
+                    });
                   }}
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
