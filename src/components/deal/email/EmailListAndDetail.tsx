@@ -291,7 +291,10 @@ interface ThreadListItemProps {
 function providerLabelsIndicateRead(email: MockEmail): boolean {
   const labels = Array.isArray(email.labels) ? email.labels : [];
   if (!labels.length) return false;
-  return !labels.some((label) => String(label).toUpperCase() === 'UNREAD');
+  return !labels.some((label: any) => {
+    const v = String(label?.id ?? label?.name ?? label?.display_name ?? label?.label ?? label).toUpperCase();
+    return v === 'UNREAD';
+  });
 }
 
 function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, selectedCount, isInBulkSelection, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: ThreadListItemProps) {
