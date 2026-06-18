@@ -110,6 +110,7 @@ export default function Dashboard() {
 
   const {
     views: savedViews,
+    isLoaded: savedViewsLoaded,
     saveView,
     deleteView,
     setDefault,
@@ -119,14 +120,13 @@ export default function Dashboard() {
   } = useDealSavedViews();
   const defaultView = getDefaultView();
 
-  const [groupBy, setGroupBy] = useState<string | null>(defaultView?.config.groupBy ?? 'status');
+  // Grouping is optional and starts unset; we hydrate from the org default view
+  // (or leave it null = ungrouped) once saved views finish loading. NEVER coerce
+  // an empty/null grouping back to 'status' — that round-trips the user's choice.
+  const [groupBy, setGroupBy] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
-    if (defaultView) {
-      const m = defaultView.config.viewMode;
-      if (m === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
-      return m;
-    }
     const stored = localStorage.getItem('deals-view-mode');
     if (stored === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
@@ -218,7 +218,9 @@ export default function Dashboard() {
     setFilters(DEFAULT_DEAL_FILTERS);
     setSortField('updatedAt');
     setSortDirection('desc');
-    setGroupBy('status');
+    // Reset means "no grouping" — do not coerce to 'status'.
+    setGroupBy(null);
+    setCollapsedGroups([]);
     setSavedViewWarningDismissed(false);
 
     if (options?.clearSavedViews) {
@@ -235,15 +237,21 @@ export default function Dashboard() {
   // Apply default saved view on mount (belt-and-suspenders with initial state)
   const defaultViewAppliedRef = useRef(false);
   useEffect(() => {
-    if (defaultView && !defaultViewAppliedRef.current) {
+    if (!savedViewsLoaded || defaultViewAppliedRef.current) return;
+    if (defaultView) {
       defaultViewAppliedRef.current = true;
       setFilters(defaultView.config.filters);
       setSortField(sanitizeSortField(defaultView.config.sortField));
       setSortDirection(defaultView.config.sortDirection);
-      setViewMode(defaultView.config.viewMode);
-      setGroupBy(defaultView.config.groupBy);
+      const m = defaultView.config.viewMode;
+      setViewMode(m === 'timeline' && !companyFeatures.timeline_view_enabled ? 'grid' : m);
+      // Preserve null/undefined exactly — null means "ungrouped" by design.
+      setGroupBy(defaultView.config.groupBy ?? null);
+      setCollapsedGroups(defaultView.config.collapsedGroups ?? []);
+    } else {
+      defaultViewAppliedRef.current = true;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [savedViewsLoaded, defaultView, companyFeatures.timeline_view_enabled, setFilters, setSortField, setSortDirection]);
 
   const previousPipelineIdRef = useRef<string | null>(activePipelineId);
   useEffect(() => {
@@ -263,6 +271,7 @@ export default function Dashboard() {
       sortDirection,
       viewMode,
       groupBy,
+      collapsedGroups,
     };
     saveView(name, config);
   };
@@ -272,7 +281,8 @@ export default function Dashboard() {
     setSortField(sanitizeSortField(view.config.sortField));
     setSortDirection(view.config.sortDirection);
     setViewMode(view.config.viewMode);
-    setGroupBy(view.config.groupBy);
+    setGroupBy(view.config.groupBy ?? null);
+    setCollapsedGroups(view.config.collapsedGroups ?? []);
     setSavedViewWarningDismissed(false);
   };
 
