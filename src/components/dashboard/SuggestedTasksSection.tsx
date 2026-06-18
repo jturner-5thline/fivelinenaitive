@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, User as UserIcon, ExternalLink, UserPlus, Search } from 'lucide-react';
+import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, User as UserIcon, ExternalLink, UserPlus, Search, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,8 @@ import {
   type SuggestionSource,
   type InternalMember,
 } from '@/hooks/useMeetingTaskSuggestions';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   eventId: string;
@@ -22,6 +24,8 @@ interface Props {
   recordingRowId: string | null;
   source: SuggestionSource | 'none';
   fallbackActionItems?: string[];
+  /** Linked deal for this meeting (when known). Enables "Make outstanding item". */
+  linkedDealId?: string | null;
 }
 
 /**
@@ -29,7 +33,8 @@ interface Props {
  * Lets the user approve individual or all action items into real tasks
  * (assigned to the current user — James Turner on the Daily Rundown).
  */
-export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, source, fallbackActionItems }: Props) {
+export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, source, fallbackActionItems, linkedDealId }: Props) {
+  const { user } = useAuth();
   const {
     suggestions, isLoading, pendingCount, internalMembers,
     currentViewer,
@@ -42,6 +47,49 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState<null | 'approve' | 'dismiss'>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [outstandingBusyId, setOutstandingBusyId] = useState<string | null>(null);
+
+  const handleMakeOutstanding = async (s: MeetingTaskSuggestion) => {
+    if (!linkedDealId) {
+      toast.error('Link this meeting to a deal first.');
+      return;
+    }
+    if (!user) return;
+    setOutstandingBusyId(s.suggestion_id);
+    try {
+      const { error } = await supabase.from('outstanding_items').insert({
+        deal_id: linkedDealId,
+        description: s.text,
+        status: 'open',
+        priority: 'medium',
+        user_id: user.id,
+        assigned_to: s.assignee_name || null,
+        due_date: s.due_date || null,
+        source_metadata: {
+          source: 'claap_action_item',
+          suggestion_id: s.suggestion_id,
+          meeting_external_id: eventId,
+          meeting_row_id: meetingRowId,
+          recording_row_id: recordingRowId,
+          assignee_user_id: s.assignee_user_id || null,
+          assignee_email: s.assignee_email || null,
+          external_mention: s.external_mention || null,
+        },
+      });
+      if (error) throw error;
+      toast.success('Added to outstanding items', {
+        action: {
+          label: 'Open deal',
+          onClick: () => { window.location.href = `/deals?deal=${linkedDealId}#outstanding`; },
+        },
+      });
+    } catch (err: any) {
+      console.error('[outstanding_items insert]', err);
+      toast.error(err?.message || 'Could not add outstanding item');
+    } finally {
+      setOutstandingBusyId(null);
+    }
+  };
 
   const visible = useMemo(() => suggestions, [suggestions]);
 
@@ -322,6 +370,25 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                           void handleApprove(s);
                         }}
                       />
+                      {linkedDealId && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm" variant="ghost"
+                              className="h-6 px-1.5 text-[10px] text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10"
+                              disabled={outstandingBusyId === s.suggestion_id}
+                              onClick={() => void handleMakeOutstanding(s)}
+                              aria-label="Make outstanding item"
+                              data-testid="make-outstanding"
+                            >
+                              {outstandingBusyId === s.suggestion_id
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <Flag className="h-3 w-3" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Make outstanding item</TooltipContent>
+                        </Tooltip>
+                      )}
                       <Button
                         size="sm" variant="ghost"
                         className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-white"
