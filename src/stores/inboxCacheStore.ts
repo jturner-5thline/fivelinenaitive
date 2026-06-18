@@ -157,7 +157,8 @@ export interface InboxCacheState {
  */
 function mergeUniqueById(existing: any[], incoming: any[]): any[] {
   const incomingById = new Map<string, any>();
-  for (const m of incoming) {
+  for (const raw of incoming) {
+    const m = normalizeReadState(raw);
     const key = getMessageKey(m);
     if (key) incomingById.set(key, m);
   }
@@ -188,7 +189,8 @@ function mergeUniqueById(existing: any[], incoming: any[]): any[] {
     };
   });
   const additions: any[] = [];
-  for (const m of incoming) {
+  for (const raw of incoming) {
+    const m = normalizeReadState(raw);
     const key = getMessageKey(m);
     if (!key || seen.has(key)) continue;
     seen.add(key);
