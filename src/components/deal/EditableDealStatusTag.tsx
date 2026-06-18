@@ -19,16 +19,13 @@
  */
 import { useCallback, useState } from 'react';
 import { ChevronDown, Check, Loader2, CircleDashed } from 'lucide-react';
-import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
 import { DealStatusTag } from './DealStatusTag';
-import { useDealsContext } from '@/contexts/DealsContext';
-import { useInvalidateDealFreshness } from '@/hooks/useDealFreshness';
+import { useRequestStatusChange } from './StatusChangeGate';
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 const NONE_VALUE = '__none__' as const;
