@@ -622,10 +622,15 @@ export async function provisionDemoWorkspace(
   if (dealIds.length > 0 && demoLenders.length > 0) {
     const { data: existingDl } = await admin
       .from("deal_lenders")
-      .select("deal_id")
+      .select("deal_id, master_lender_id")
       .in("deal_id", dealIds)
       .contains("tags", ["demo"]);
     const seededDealIds = new Set((existingDl ?? []).map((r: { deal_id: string }) => r.deal_id));
+    const existingPairs = new Set(
+      (existingDl ?? [])
+        .filter((r: { master_lender_id: string | null }) => !!r.master_lender_id)
+        .map((r: { deal_id: string; master_lender_id: string | null }) => `${r.deal_id}:${r.master_lender_id}`),
+    );
     const dealsNeedingLenders = demoDeals.filter((d) => !seededDealIds.has(d.id));
 
     // Per-deal lender plan: a variety of stages + statuses with internally
@@ -664,8 +669,21 @@ export async function provisionDemoWorkspace(
       const count = 6;
       for (let j = 0; j < count; j++) {
         const plan = LENDER_PLAN[(start + j) % LENDER_PLAN.length];
-        const lender = demoLenders[lenderCursor % demoLenders.length];
+        // Pick the next demo lender that isn't already attached to this deal,
+        // so the new (deal_id, master_lender_id) unique index never trips.
+        let lender = demoLenders[lenderCursor % demoLenders.length];
+        let safety = 0;
+        while (
+          lender?.id &&
+          existingPairs.has(`${deal.id}:${lender.id}`) &&
+          safety < demoLenders.length
+        ) {
+          lenderCursor++;
+          lender = demoLenders[lenderCursor % demoLenders.length];
+          safety++;
+        }
         lenderCursor++;
+        if (lender?.id) existingPairs.add(`${deal.id}:${lender.id}`);
         const seed = dIdx * 17 + j * 5;
         const quoteAmount = plan.hasQuote
           ? 2_000_000 + rand(seed, 18_000_000)
@@ -711,8 +729,15 @@ export async function provisionDemoWorkspace(
     });
 
     if (rows.length > 0) {
-      const { error } = await admin.from("deal_lenders").insert(rows);
-      if (error) throw new Error(`deal_lenders top-up: ${error.message}`);
+      // Use upsert on the new (deal_id, master_lender_id) unique index so
+      // re-running provisioning is always idempotent for demo funding sources.
+      const { error } = await admin
+        .from("deal_lenders")
+        .upsert(rows, { onConflict: "deal_id,master_lender_id", ignoreDuplicates: true });
+      if (error) {
+        console.warn(`[provisionDemoWorkspace] deal_lenders top-up warning: ${error.message}`);
+        warnings.push(`deal_lenders:${error.message}`);
+      }
     }
   }
 
