@@ -272,21 +272,27 @@ export function useAiActionQueueCount(): number {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<number> => {
-      const { data, error } = await supabase
-        .from('ai_action_queue')
-        .select('id, status, expires_at, action_type, deal_id, title, payload')
-        .eq('status', 'pending')
-        .limit(500);
+      const [{ data, error }, viewer] = await Promise.all([
+        supabase
+          .from('ai_action_queue')
+          .select('id, status, expires_at, action_type, deal_id, title, payload')
+          .eq('status', 'pending')
+          .limit(500),
+        loadViewerContext(user!.id),
+      ]);
       if (error) throw error;
       const now = Date.now();
       const live = (data || []).filter(
         (r: any) =>
           r.status === 'pending' && new Date(r.expires_at).getTime() >= now,
       );
+      // Apply the same manager-scope filter as the panel so the badge
+      // count matches what non-admins actually see.
+      const scoped = await filterToManagedDeals(live as any[], viewer);
       // Mirror dedupe logic from useAiActionQueue so the badge count
       // matches what the user sees in the panel.
       const seen = new Set<string>();
-      for (const r of live as any[]) {
+      for (const r of scoped as any[]) {
         const key = [
           r.action_type,
           r.deal_id ?? '',
