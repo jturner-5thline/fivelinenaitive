@@ -128,6 +128,10 @@ export function DealsHeader() {
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
   const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
+  const { data: dealAccessRequests = [] } = useDealAccessRequests();
+  const approvalQueueCount = approvalQueueEnabled
+    ? (actionQueueItems?.length || 0) + (dealAccessRequests?.length || 0)
+    : 0;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
