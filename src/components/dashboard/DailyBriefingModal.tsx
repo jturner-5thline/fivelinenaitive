@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, useTransition, lazy, Suspense } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -1704,6 +1704,24 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
   };
   const [activeTab, setActiveTab] = useState<string>(resolveInitialTab());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+  const [, startTabTransition] = useTransition();
+
+  // Defer the heavy tab body one paint frame so the Dialog open
+  // animation (shell expand + backdrop fade) commits cleanly before
+  // React reconciles the active tab's data-heavy subtree. Without this
+  // the first frame after `open` does the shell transform AND the full
+  // CatchUp / Pipeline / Email tree at once, which shudders the open
+  // animation. The shell + sidebar + header still paint instantly; only
+  // the inner panel waits ~16ms.
+  const [contentReady, setContentReady] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setContentReady(false);
+      return;
+    }
+    const raf = requestAnimationFrame(() => setContentReady(true));
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
 
   // When the modal (re)opens, honor `initialTab` so callers can deep-link
   // into a specific tab (e.g., "Pipeline & Clients" from the Deal Rundown
@@ -1767,7 +1785,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
     const next = direction === 'right' ? currentIndex + 1 : currentIndex - 1;
     if (next < 0 || next >= TABS.length) return;
     setSlideDirection(direction === 'right' ? 'left' : 'right');
-    setActiveTab(TABS[next].value);
+    startTabTransition(() => setActiveTab(TABS[next].value));
     // Clear animation class after transition
     setTimeout(() => setSlideDirection(null), 300);
   }, [currentIndex]);
@@ -1775,7 +1793,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
   const handleTabChange = useCallback((value: string) => {
     const newIdx = TABS.findIndex(t => t.value === value);
     setSlideDirection(newIdx > currentIndex ? 'left' : 'right');
-    setActiveTab(value);
+    startTabTransition(() => setActiveTab(value));
     setTimeout(() => setSlideDirection(null), 300);
   }, [currentIndex]);
 
@@ -1968,7 +1986,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
                   >
-                  {activeTab === 'agenda' && (
+                  {contentReady && activeTab === 'agenda' && (
                     <div className="h-[70vh] min-h-[500px] flex flex-col min-h-0">
                       {targetUserId === MOFFITT_USER_ID && (
                         <MoffittDealRundown enabled={open} />
@@ -1976,8 +1994,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       <div className="flex-1 min-h-0"><AgendaIntel /></div>
                     </div>
                   )}
-                  {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'email' && (
+                  {contentReady && activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'email' && (
                     <EmailTab
                       enabled={open}
                       onNavigate={handleNavigate}
@@ -1986,10 +2004,10 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       unreadOnly={emailUnreadOnly}
                     />
                   )}
-                  {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
-                  {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
-                  {activeTab === 'end_of_day' && (
+                  {contentReady && activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
+                  {contentReady && activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
+                  {contentReady && activeTab === 'end_of_day' && (
                     <EndOfDayTab
                       enabled={open}
                       onNavigate={handleNavigate}
