@@ -407,6 +407,23 @@ export function EndOfDayTab({
     });
   }, [userId]);
 
+  // Bulk "Mark all as read" — clears the blue unread dot on every currently
+  // visible outstanding tile in one click (subtask #4: stop forcing users to
+  // open every meeting to clear notifications).
+  const markManyRead = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setReadSet(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (!next.has(id)) { next.add(id); changed = true; }
+      }
+      if (!changed) return prev;
+      writeLS(`eod:read:${userId}`, Array.from(next));
+      return next;
+    });
+  }, [userId]);
+
   // Selection (single) + bulk
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
