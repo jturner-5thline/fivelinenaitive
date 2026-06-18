@@ -23,6 +23,7 @@ import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 
