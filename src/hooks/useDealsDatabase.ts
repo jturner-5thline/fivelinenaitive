@@ -291,6 +291,26 @@ export function useDealsDatabase() {
         notesHistory: notesHistoryMap[l.id] || [],
       }));
 
+    // Defensive dedupe: never render the same funding source twice on a deal.
+    // A unique DB index now enforces this on (deal_id, master_lender_id) and
+    // (deal_id, lower(name)), but stale realtime payloads or optimistic
+    // inserts could still surface a duplicate before reconciliation — collapse
+    // by id first, then by master_lender_id || lower(name).
+    const seenIds = new Set<string>();
+    const seenKeys = new Set<string>();
+    const dedupedDealLenders = dealLenders.filter((l) => {
+      if (seenIds.has(l.id)) return false;
+      seenIds.add(l.id);
+      const naturalKey =
+        (dbLenders.find((r) => r.id === l.id) as any)?.master_lender_id ||
+        (l.name ? `name:${l.name.trim().toLowerCase()}` : null);
+      if (naturalKey) {
+        if (seenKeys.has(naturalKey)) return false;
+        seenKeys.add(naturalKey);
+      }
+      return true;
+    });
+
     const toReferrer = (name: string | null): Referrer | undefined => {
       if (!name) return undefined;
       return {
