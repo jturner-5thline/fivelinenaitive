@@ -95,6 +95,75 @@ const LOAN_TYPES_POOL = ["Senior Debt","Unitranche","Mezzanine","Revolver","Term
 const TIERS = ["T1","T2","T3"];
 const DEAL_VALUES = [1_200_000, 2_500_000, 3_800_000, 5_000_000, 6_500_000, 8_000_000, 9_750_000, 11_250_000, 13_500_000, 15_000_000, 17_500_000, 19_800_000];
 const STATUS_CYCLE = ["on-track","on-track","on-track","on-track","at-risk","at-risk","off-track","on-track","on-hold","archived","archived","on-track"];
+// Realistic per-stage status notes for demo deals. The seeder picks a varied
+// note keyed off the deal's stage so the "X hours ago" line on the deal card
+// and deal header reads like a real workflow update, not a placeholder.
+const DEMO_STATUS_NOTES: Record<string, string[]> = {
+  "final-credit-items": [
+    "Client gathering remaining diligence docs — chasing AR aging today.",
+    "Compiling final credit package; expect to circulate internally tomorrow.",
+    "Working through last open items on the credit memo before submission.",
+  ],
+  "client-strategy-review": [
+    "Strategy call set for Thursday to align on lender targeting.",
+    "Reviewing positioning with the client before going to market.",
+    "Refining the lender shortlist with the client this week.",
+  ],
+  "write-up-pending": [
+    "Investment memo in draft — analyst circulating v1 internally.",
+    "Finalizing the write-up; CEO bio + financial summary still outstanding.",
+    "Memo nearly done, expect to send to lenders by end of week.",
+  ],
+  "submitted-to-lenders": [
+    "Package went out to 12 lenders Monday; tracking opens and replies.",
+    "Followed up on the proposal — expecting responses by Friday.",
+    "Intro calls scheduled with two new funding sources this week.",
+  ],
+  "lenders-in-review": [
+    "Three lenders deep in review; fielding follow-up questions daily.",
+    "Lender requested updated financial model — sending today.",
+    "In due diligence — legal reviewing the data room with lead lender.",
+  ],
+  "terms-issued": [
+    "Term sheet issued — awaiting client signature.",
+    "Negotiating final pricing and covenants with the lead lender.",
+    "Aiming to countersign this week and move into closing.",
+  ],
+  "in-due-diligence": [
+    "Confirmatory diligence underway; QofE kickoff Monday.",
+    "Legal reviewing the credit agreement red-line; comments back midweek.",
+    "Coordinating site visit and management meeting with the lender.",
+  ],
+  "funded-invoiced": [
+    "Funding wired this morning — invoicing the success fee today.",
+    "Closed and funded last week; sending the close announcement.",
+    "Final closing docs executed — invoice sent to client.",
+  ],
+  "closed-won": [
+    "Deal closed — collecting testimonial and refining the case study.",
+    "Wrapped up post-close items; relationship handed to ongoing coverage.",
+    "Closed won — follow-up call scheduled to debrief with client.",
+  ],
+  "closed-lost": [
+    "Client paused the process — revisiting in Q3.",
+    "Lost to in-house option; staying close for the next round.",
+    "Passed by remaining lenders on leverage; archiving the file.",
+  ],
+  "on-hold": [
+    "On hold pending the client's board meeting next week.",
+    "Waiting on board feedback before moving forward.",
+    "Paused — client wants to revisit after Q2 earnings.",
+  ],
+};
+const DEMO_STATUS_NOTES_FALLBACK = [
+  "Pending credit committee approval.",
+  "Negotiating final terms with the lead lender.",
+  "Aiming to close next week — finalizing the term sheet.",
+];
+const pickStatusNote = (stage: string | null | undefined, i: number): string => {
+  const pool = (stage && DEMO_STATUS_NOTES[stage]) || DEMO_STATUS_NOTES_FALLBACK;
+  return pool[i % pool.length];
+};
 const TASK_TITLES = [
   "Review term sheet","Send diligence checklist","Schedule intro call","Update investment memo",
   "Confirm data room access","Follow up on financials","Coordinate lender call","Draft NDA",
