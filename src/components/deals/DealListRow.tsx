@@ -1,7 +1,7 @@
 import { useState, ReactNode, useCallback, memo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell, ArrowRightLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { InlineStatusDropdown } from './InlineStatusDropdown';
@@ -59,6 +59,16 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
   const displayFlagCount = effectiveFlagCount;
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Open the canonical deal summary used by the Deal Rundown widget —
+  // /deals?deal=<id> renders <NaitiveDealOverlay /> from the Deals page.
+  // Routing to /deal/<id> would land on the standalone detail variant, which
+  // is intentionally avoided so both surfaces share one summary experience.
+  const openDealSummary = (dealId: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('deal', dealId);
+    setSearchParams(next, { replace: false });
+  };
   const { formatCurrencyValue, preferences } = usePreferences();
   const { updateDeal } = useDealsContext();
   const { dealTypes } = useDealTypes();
@@ -286,7 +296,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       data-deal-open-id={deal.id}
       onClick={(e) => {
         if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) return;
-        navigate(`/deal/${deal.id}`);
+        openDealSummary(deal.id);
       }}
     >
       {onToggleSelect && (
