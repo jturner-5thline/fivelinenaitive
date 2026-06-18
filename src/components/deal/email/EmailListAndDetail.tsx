@@ -967,7 +967,11 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
         emails: convoEmails,
         latestEmail: msg,
         participants: Array.from(participantSet),
-        hasUnread: !msg.is_read,
+        // Gmail labels are authoritative: if the provider says this message
+        // has been read (no UNREAD label present), never show it as unread —
+        // even if a stale `is_read=false` is still cached locally. This is
+        // what hides the blue dot for emails the user already read in Gmail.
+        hasUnread: !msg.is_read && !providerLabelsIndicateRead(msg),
         isStarred: !!msg.is_starred,
         isLinked: !!msg.is_linked_to_deal,
         hasAttachments: !!msg.has_attachments,
