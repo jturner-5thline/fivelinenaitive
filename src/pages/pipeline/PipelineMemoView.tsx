@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -702,11 +703,7 @@ function DealTile({
   onClick: () => void;
   onDismiss: () => void;
 }) {
-  const { getStageConfigForDeal } = usePipelineStageConfig();
   const rawStage = (deal.stage as string | undefined) || '';
-  const stageLabel =
-    (rawStage ? getStageConfigForDeal(rawStage, deal.pipelineId)?.label : null) ||
-    (rawStage ? titleCase(rawStage) : null);
   const engagement = deal.engagementType ? titleCase(deal.engagementType) : null;
   const statusText = (() => {
     const raw = (deal.notes || '').toString();
@@ -755,10 +752,15 @@ function DealTile({
             {engagement}
           </Badge>
         )}
-        {stageLabel && (
-          <Badge variant="outline" className="rounded-full text-[9px] px-1.5 py-0 border-white/15 text-white/80">
-            {stageLabel}
-          </Badge>
+        {/* Inline-editable stage chip — clicking opens the pipeline stage
+            picker without navigating away from the rundown. */}
+        {rawStage && (
+          <EditableDealStageTag
+            dealId={deal.id}
+            stage={rawStage}
+            pipelineId={deal.pipelineId}
+            hideChevron
+          />
         )}
       </div>
       {statusText && (
