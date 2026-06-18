@@ -15,6 +15,18 @@ function PilotKpiTrackingMount() {
   usePilotKpiTracking();
   return null;
 }
+import { useInboxPrefetch } from "@/hooks/useInboxPrefetch";
+
+/**
+ * Keeps the inbox cache warm across the entire authenticated app so the
+ * InboxDialog opens instantly with the 25 most-recent messages already
+ * loaded. Polls every 5 minutes in the background regardless of whether
+ * the inbox is open.
+ */
+function InboxPrefetchMount() {
+  useInboxPrefetch();
+  return null;
+}
 import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
 import { DealStagesProvider } from "@/contexts/DealStagesContext";
@@ -356,6 +368,7 @@ const App = () => (
                         <ImpersonationBanner />
                         <NewTaskViaNaitiveModal />
                         <PilotKpiTrackingMount />
+                        <InboxPrefetchMount />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />

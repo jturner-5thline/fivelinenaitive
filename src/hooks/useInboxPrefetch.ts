@@ -11,7 +11,7 @@ import { useGmail } from '@/hooks/useGmail';
  * Gmail/Nylas quota in the background. Re-fires immediately on tab focus to
  * close the gap users notice when returning to the dashboard.
  */
-const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 export function useInboxPrefetch() {
   const { status } = useGmail();

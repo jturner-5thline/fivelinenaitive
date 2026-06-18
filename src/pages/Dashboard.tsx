@@ -436,7 +436,6 @@ import {
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
 import { useDashboardCarouselWidgets } from '@/hooks/useDashboardCarouselWidgets';
-import { useInboxPrefetch } from '@/hooks/useInboxPrefetch';
 import { useInboxCacheStore, selectUnreadCount } from '@/stores/inboxCacheStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchNewsFeed } from '@/hooks/useNews';
@@ -444,10 +443,6 @@ import { prefetchNewsFeed } from '@/hooks/useNews';
 export default function Dashboard() {
   const { user } = useAuth();
   const { profile } = useProfile();
-  // Eagerly warm the inbox cache on dashboard mount so the Email widget
-  // opens instantly with cached messages instead of a spinner. Polls
-  // every 2 minutes (and on tab focus) to keep new messages flowing in.
-  useInboxPrefetch();
   // Background prefetch the news feed so the News section opens instantly.
   const queryClient = useQueryClient();
   useEffect(() => {
