@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDealType } from '@/utils/dealTypeLabels';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
 import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
@@ -166,6 +167,14 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderP
           {/* Editable status tag — reuses the shared status surface and
               writes back to deal.status so every other consumer updates. */}
           <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+          {/* Editable stage tag — same UX pattern, mutates deal.stage so
+              the rundown surfaces (memo card, master tile, briefing
+              boards) re-render in lockstep with the canonical pipeline. */}
+          <EditableDealStageTag
+            dealId={deal.id}
+            stage={deal.stage}
+            pipelineId={deal.pipelineId}
+          />
           <Badge variant="green" className="rounded-full font-semibold">{amountLabel}</Badge>
           {/* Email — launches the existing thread-aware Draft Email to
               Client Contact dialog. Reuses the same composer + thread
