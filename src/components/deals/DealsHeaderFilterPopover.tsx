@@ -113,7 +113,10 @@ function useFilterBody(
     );
   }
   if (column === 'status') {
-    const options = Object.entries(STATUS_CONFIG).map(([id, c]) => ({ id, label: c.label }));
+    const options = [
+      ...Object.entries(STATUS_CONFIG).map(([id, c]) => ({ id, label: c.label })),
+      { id: '__no_status__', label: 'No status' },
+    ];
     return (
       <MultiSelectFilter
         label="Status"
