@@ -143,14 +143,48 @@ export function useAiActionQueue() {
       const rows = (data || []) as QueuedAiAction[];
       // Lazy-mark expired rows
       const expiredIds = rows.filter(isStale).map(r => r.id);
+      let live = rows;
       if (expiredIds.length > 0) {
         await supabase
           .from('ai_action_queue')
           .update({ status: 'expired' })
           .in('id', expiredIds);
-        return rows.filter(r => !expiredIds.includes(r.id));
+        live = rows.filter(r => !expiredIds.includes(r.id));
       }
-      return rows;
+      // De-duplicate: the same recommendation can be enqueued multiple
+      // times (e.g. by repeated AI runs across 5th Line teammates on the
+      // shared queue). Collapse to one card per logical action, keeping
+      // the most recent row. Auto-dismiss the older duplicates so they
+      // also disappear from other surfaces / counts.
+      const seen = new Map<string, QueuedAiAction>();
+      const dupeIds: string[] = [];
+      // rows are already ordered created_at DESC — first occurrence wins.
+      for (const r of live) {
+        const key = [
+          r.action_type,
+          r.deal_id ?? '',
+          (r.title || '').trim().toLowerCase(),
+          // For non-task actions, payload identity matters (e.g.
+          // different lender ids). Hash a stable subset.
+          r.action_type === 'create_task'
+            ? ''
+            : JSON.stringify(r.payload ?? {}),
+        ].join('|');
+        if (seen.has(key)) {
+          dupeIds.push(r.id);
+        } else {
+          seen.set(key, r);
+        }
+      }
+      if (dupeIds.length > 0) {
+        // Fire-and-forget; don't block the UI on the cleanup write.
+        supabase
+          .from('ai_action_queue')
+          .update({ status: 'dismissed', dismissed_at: new Date().toISOString() })
+          .in('id', dupeIds)
+          .then(() => { /* noop */ });
+      }
+      return Array.from(seen.values());
     },
   });
 }
