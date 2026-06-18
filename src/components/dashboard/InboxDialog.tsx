@@ -892,7 +892,10 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         const page = await fetchPage({
           labelIds: ['INBOX', 'UNREAD'],
           pageToken: unreadNextTokenRef.current,
-          maxResults: 100,
+          // Gmail allows up to 500 per page. Fetching the max in one
+          // round-trip is dramatically faster than chaining smaller
+          // pages — one network call instead of 5.
+          maxResults: 500,
         });
         if (!isMountedRef.current) return;
         if (page.rateLimited) return;
@@ -924,40 +927,42 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     if (!inboxHasUpstreamMore && !sentHasUpstreamMore && !canCacheFallback) return;
     setIsLoadingMore(true);
     try {
-      if (inboxHasUpstreamMore) {
-        const page = await fetchPage({ labelIds: ['INBOX'], pageToken: inboxNextToken });
-        if (!isMountedRef.current) return;
-        if (!page.rateLimited) {
-          setInboxMessages(prev => mergeUniqueById(prev, page.messages));
-          setInboxNextToken(page.nextPageToken);
-          setHasMoreInbox(!!page.nextPageToken);
+      // Fire inbox + sent in parallel (no artificial delay) and bump
+      // page size to the Gmail max so each "Load more" returns far more
+      // history in a single round-trip.
+      const inboxPromise = inboxHasUpstreamMore
+        ? fetchPage({ labelIds: ['INBOX'], pageToken: inboxNextToken, maxResults: 500 })
+        : Promise.resolve(null);
+      const sentPromise = sentHasUpstreamMore
+        ? fetchPage({ labelIds: ['SENT'], pageToken: sentNextToken, maxResults: 500 })
+        : Promise.resolve(null);
+      const [inboxPage, sentPage] = await Promise.all([inboxPromise, sentPromise]);
+      if (!isMountedRef.current) return;
+
+      if (inboxPage) {
+        if (!inboxPage.rateLimited) {
+          setInboxMessages(prev => mergeUniqueById(prev, inboxPage.messages));
+          setInboxNextToken(inboxPage.nextPageToken);
+          setHasMoreInbox(!!inboxPage.nextPageToken);
         } else if (canCacheFallback) {
-          // Upstream rate-limited — fall back to cursor-anchored cache read
-          // so the user still gets older messages instead of a hard stop.
-          const older = await loadOlderFromCache(oldestReceivedAt, 100);
+          const older = await loadOlderFromCache(oldestReceivedAt, 200);
           if (isMountedRef.current) {
             if (older.length) setInboxMessages(prev => mergeUniqueById(prev, older));
             else setHasMoreCache(false);
           }
         }
       } else if (canCacheFallback) {
-        // Upstream exhausted but the local cache still has older rows
-        // anchored before our oldest loaded `received_at`.
-        const older = await loadOlderFromCache(oldestReceivedAt, 100);
+        const older = await loadOlderFromCache(oldestReceivedAt, 200);
         if (isMountedRef.current) {
           if (older.length) setInboxMessages(prev => mergeUniqueById(prev, older));
           else setHasMoreCache(false);
         }
       }
-      if (sentHasUpstreamMore) {
-        await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
-        const page = await fetchPage({ labelIds: ['SENT'], pageToken: sentNextToken });
-        if (!isMountedRef.current) return;
-        if (!page.rateLimited) {
-          setSentMessages(prev => mergeUniqueById(prev, page.messages));
-          setSentNextToken(page.nextPageToken);
-          setHasMoreSent(!!page.nextPageToken);
-        }
+
+      if (sentPage && !sentPage.rateLimited) {
+        setSentMessages(prev => mergeUniqueById(prev, sentPage.messages));
+        setSentNextToken(sentPage.nextPageToken);
+        setHasMoreSent(!!sentPage.nextPageToken);
       }
     } finally {
       if (isMountedRef.current) setIsLoadingMore(false);
