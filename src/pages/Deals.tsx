@@ -87,9 +87,9 @@ import { cn } from '@/lib/utils';
 // Render only the canonical Deal Rundown detail card (MemoHeader +
 // NextBestAction + Tasks/Milestones + Activity + Calendar + LendersPanel)
 // inline — no nested master list / filter chips from PipelineMemoView.
-const DealRundownMemoView = lazy(() =>
-  import('@/components/deals/DealInlineSummary').then(m => ({ default: m.DealInlineSummary })),
-);
+// Imported eagerly so opening the inline detail pane is instant — the
+// previous `lazy()` chunk fetch added a visible delay on first open.
+import { DealInlineSummary as DealRundownMemoView } from '@/components/deals/DealInlineSummary';
 
 export default function Dashboard() {
   const { user } = useAuth();
