@@ -1120,7 +1120,7 @@ export default function Dashboard() {
               </div>
               {showInlineDetail && selectedDeal && (
                 <aside
-                  className="hidden lg:flex flex-col w-[clamp(420px,38vw,640px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden"
+                  className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
