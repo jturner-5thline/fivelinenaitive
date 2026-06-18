@@ -1,6 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useVisibilityAwareInterval } from "@/hooks/useVisibilityAwareInterval";
-import { Loader2 } from 'lucide-react';
 import {
   subscribeEmailPrefetchStatus,
   getEmailPrefetchStatus,
@@ -42,7 +41,12 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   useVisibilityAwareInterval(() => setNow(Date.now()), 60_000);
 
   const { pending, lastFetchAt, ok } = status;
-  const syncing = pending > 0;
+  // Background body prefetches are intentionally hidden from the user:
+  // the message list itself is already loaded from the inbox cache, and
+  // surfacing a "Syncing N messages…" banner on every cold open felt
+  // like the inbox was still loading when it wasn't. We still expose
+  // sync issues + the relative last-synced timestamp below.
+  const syncing = false;
   const ageMs = lastFetchAt ? now - lastFetchAt : null;
 
   // Nothing useful to display.
@@ -51,9 +55,7 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   }
 
   let label = '';
-  if (syncing) {
-    label = pending === 1 ? 'Syncing 1 message…' : `Syncing ${pending} messages…`;
-  } else if (!ok) {
+  if (!ok) {
     label = lastFetchAt
       ? `Sync issue · last synced ${formatRelative(lastFetchAt, now)}`
       : 'Unable to sync';
@@ -69,7 +71,6 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
       role="status"
       aria-live="polite"
     >
-      {syncing && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
       <span className="truncate">{label}</span>
     </div>
   );
