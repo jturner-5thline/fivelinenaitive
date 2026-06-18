@@ -21,6 +21,7 @@ import { FlagNoteDialog } from './FlagNoteDialog';
 import { DealEditDrawer } from './DealEditDrawer';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from './CreateTaskForMentionDialog';
 import { stripHtml } from '@/lib/stripHtml';
+import { preloadDealDetail } from '@/lib/lazyDealDetail';
 import {
   Tooltip,
   TooltipContent,
