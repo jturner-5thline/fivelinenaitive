@@ -121,7 +121,10 @@ const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
 const Deals = lazy(lazyRetry(() => import("./pages/Deals")));
 // /dashboard route removed — global popup overlays now live in the floating
 // header so dashboard widgets are reachable from every page.
-const DealDetail = lazy(lazyRetry(() => import("./pages/DealDetail")));
+// Shared DealDetail loader — the kanban deal overlay and hover/idle
+// preloaders all dedupe through `loadDealDetail()` so we emit and parse
+// exactly one chunk for the (~6k LOC) DealDetail page.
+const DealDetail = lazy(lazyRetry(() => import("./lib/lazyDealDetail").then((m) => m.loadDealDetail())));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Account = lazy(lazyRetry(() => import("./pages/Account")));
 const Lenders = lazy(lazyRetry(() => import("./pages/Lenders")));
