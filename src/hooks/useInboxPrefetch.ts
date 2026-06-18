@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 import { useGmail } from '@/hooks/useGmail';
+import { prefetchFullEmailMessage } from '@/components/deal/email/useFullEmailMessage';
 
 /**
  * Eagerly populate the inbox cache as soon as the Dashboard mounts and keep
@@ -12,6 +13,18 @@ import { useGmail } from '@/hooks/useGmail';
  * close the gap users notice when returning to the dashboard.
  */
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// How many top messages to warm full bodies for. Matches the inbox cache
+// PAGE_SIZE so the inbox dialog opens with bodies already cached and
+// the "Syncing N messages…" indicator never appears for cold opens.
+const BODY_PREWARM_COUNT = 25;
+
+function prewarmBodies(messages: any[]) {
+  if (!messages?.length) return;
+  for (const m of messages.slice(0, BODY_PREWARM_COUNT)) {
+    const id = m?.id || m?.gmail_message_id;
+    if (id) prefetchFullEmailMessage(id);
+  }
+}
 
 export function useInboxPrefetch() {
   const { status } = useGmail();
@@ -21,24 +34,37 @@ export function useInboxPrefetch() {
   useEffect(() => {
     if (!status.connected) return;
 
-    // Kick off the initial prefetch right away.
-    prefetch();
+    // Kick off the initial prefetch right away, then prewarm bodies.
+    void prefetch().then(() => {
+      prewarmBodies(useInboxCacheStore.getState().inboxMessages);
+    });
 
     const tick = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-      refresh();
+      void refresh().then(() => {
+        prewarmBodies(useInboxCacheStore.getState().inboxMessages);
+      });
     };
     const interval = setInterval(tick, POLL_INTERVAL_MS);
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') {
+        void refresh().then(() => {
+          prewarmBodies(useInboxCacheStore.getState().inboxMessages);
+        });
+      }
+    };
+    const onFocus = () => {
+      void refresh().then(() => {
+        prewarmBodies(useInboxCacheStore.getState().inboxMessages);
+      });
     };
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('focus', refresh);
+    window.addEventListener('focus', onFocus);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('focus', refresh);
+      window.removeEventListener('focus', onFocus);
     };
   }, [status.connected, prefetch, refresh]);
 }
