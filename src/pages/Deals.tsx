@@ -1096,32 +1096,51 @@ export default function Dashboard() {
               )}
             </div>
       </WorkspacePage>
-      <NaitiveDealOverlay
-        deal={(() => {
-          const id = overlaySearchParams.get('deal');
-          if (!id) return null;
-          const found = allDeals.find(d => d.id === id);
-          if (found) return found;
-          // Deep-link fallback: open the overlay even when the deal isn't
-          // present in the current filtered set or hasn't loaded yet. The
-          // embedded /deal/:id route fetches its own data, so a minimal stub
-          // is enough to render the iframe reliably.
-          return { id, company: 'Deal' } as unknown as Deal;
-        })()}
-        orderedDeals={deals}
-        stages={overlayStages}
-        onClose={() => {
+      {(() => {
+        // Drive the sidebar from the same `?deal=<id>` URL the rest of the
+        // app uses, but render the EXACT Deal Rundown summary container
+        // (<PipelineMemoView />) instead of the generic NaitiveDealOverlay
+        // modal. We pass a single-deal array so the memo view auto-selects
+        // it and renders the canonical right-pane summary inside the sheet.
+        const id = overlaySearchParams.get('deal');
+        const dealForSidebar = id
+          ? (allDeals.find(d => d.id === id)
+              ?? ({ id, company: 'Deal' } as unknown as Deal))
+          : null;
+        const close = () => {
           const next = new URLSearchParams(overlaySearchParams);
           next.delete('deal');
           setOverlaySearchParams(next, { replace: false });
-        }}
-        onNavigate={(d) => {
-          const next = new URLSearchParams(overlaySearchParams);
-          next.set('deal', d.id);
-          setOverlaySearchParams(next, { replace: true });
-        }}
-        onStageChange={handleStageChange}
-      />
+        };
+        return (
+          <Sheet open={!!dealForSidebar} onOpenChange={(o) => { if (!o) close(); }}>
+            <SheetContent
+              side="right"
+              className="w-[min(95vw,1280px)] sm:max-w-none p-0 overflow-hidden flex flex-col"
+            >
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-3">
+                <Suspense
+                  fallback={
+                    <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                      Loading deal summary…
+                    </div>
+                  }
+                >
+                  {dealForSidebar && (
+                    <DealRundownMemoView
+                      // Single-deal array → memo view auto-selects it and
+                      // renders the same MemoHeader + bands + panels stack
+                      // shown in the Daily Briefing Deal Rundown.
+                      deals={[dealForSidebar] as any}
+                      dismissalScope={`deals-page-sidebar:${dealForSidebar.id}`}
+                    />
+                  )}
+                </Suspense>
+              </div>
+            </SheetContent>
+          </Sheet>
+        );
+      })()}
       </div>
     </>
   );
