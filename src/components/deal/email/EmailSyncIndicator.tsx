@@ -40,7 +40,7 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useVisibilityAwareInterval(() => setNow(Date.now()), 60_000);
 
-  const { pending, lastFetchAt, ok } = status;
+  const { lastFetchAt, ok } = status;
   // Background body prefetches are intentionally hidden from the user:
   // the message list itself is already loaded from the inbox cache, and
   // surfacing a "Syncing N messages…" banner on every cold open felt
@@ -48,6 +48,11 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   // sync issues + the relative last-synced timestamp below.
   const syncing = false;
   const ageMs = lastFetchAt ? now - lastFetchAt : null;
+
+  // Body prefetch failures are best-effort and should never surface as an
+  // inbox-level "sync issue" on first open. The message list/read state has
+  // its own refresh path, so hide prefetch errors completely.
+  if (!ok) return null;
 
   // Nothing useful to display.
   if (!syncing && (!lastFetchAt || (ok && (ageMs ?? 0) < 60_000))) {

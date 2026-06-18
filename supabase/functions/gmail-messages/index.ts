@@ -254,6 +254,25 @@ function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string }
   return { body_html: html, body_text: text };
 }
 
+function getMailLabels(msg: any): string[] {
+  const values = [
+    ...(Array.isArray(msg?.folders) ? msg.folders : []),
+    ...(Array.isArray(msg?.labels) ? msg.labels : []),
+    ...(Array.isArray(msg?.label_ids) ? msg.label_ids : []),
+    ...(Array.isArray(msg?.labelIds) ? msg.labelIds : []),
+  ];
+  return Array.from(new Set(values.map((v: any) => String(v)).filter(Boolean)));
+}
+
+function isReadFromProvider(msg: any): boolean {
+  const labels = getMailLabels(msg).map((label) => label.toUpperCase());
+  if (labels.includes("UNREAD")) return false;
+  if (labels.length > 0) return true;
+  if (typeof msg?.unread === "boolean") return !msg.unread;
+  if (typeof msg?.read === "boolean") return msg.read;
+  return true;
+}
+
 function nylasHeaders() {
   return {
     "Authorization": `Bearer ${NYLAS_API_KEY}`,
@@ -796,9 +815,9 @@ serve(async (req: Request): Promise<Response> => {
             from_name: msg.from?.[0]?.name || "",
             to_emails: (msg.to || []).map((t: any) => t.email || ""),
             snippet: msg.snippet || "",
-            is_read: !msg.unread,
+            is_read: isReadFromProvider(msg),
             is_starred: msg.starred || false,
-            labels: msg.folders || msg.labels || [],
+            labels: getMailLabels(msg),
             received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
             state_fetched_at: stateFetchedAt,
             has_attachments: visibleAtts.length > 0,
@@ -897,9 +916,9 @@ serve(async (req: Request): Promise<Response> => {
                             body_text,
                             attachments: all.filter((a: any) => !a.is_inline),
                             inline_attachments: all.filter((a: any) => a.is_inline),
-                            is_read: !m.unread,
+                            is_read: isReadFromProvider(m),
                             is_starred: m.starred || false,
-                            labels: m.folders || m.labels || [],
+                            labels: getMailLabels(m),
                             body_fetched_at: new Date().toISOString(),
                           })
                           .eq("user_id", user.id)
@@ -1026,9 +1045,9 @@ serve(async (req: Request): Promise<Response> => {
           snippet: msg.snippet || "",
           body_text,
           body_html,
-          is_read: !msg.unread,
+          is_read: isReadFromProvider(msg),
           is_starred: msg.starred || false,
-          labels: msg.folders || msg.labels || [],
+          labels: getMailLabels(msg),
           received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
           attachments: visibleAtts,
           inline_attachments: inlineAtts,
@@ -1174,9 +1193,9 @@ serve(async (req: Request): Promise<Response> => {
             snippet: msg.snippet || "",
             body_text,
             body_html,
-            is_read: !msg.unread,
+            is_read: isReadFromProvider(msg),
             is_starred: msg.starred || false,
-            labels: msg.folders || msg.labels || [],
+            labels: getMailLabels(msg),
             received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
             attachments: visibleAtts,
             inline_attachments: inlineAtts,
@@ -1620,9 +1639,9 @@ serve(async (req: Request): Promise<Response> => {
             const m = body.data || body;
             states.push({
               id,
-              is_read: !m.unread,
+              is_read: isReadFromProvider(m),
               is_starred: !!m.starred,
-              folders: m.folders || m.labels || [],
+              folders: getMailLabels(m),
               state_fetched_at: stateFetchedAt,
             });
           } catch {

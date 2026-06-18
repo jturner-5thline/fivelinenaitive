@@ -39,11 +39,17 @@ function shouldApplyProviderState(current: any, incoming: any): boolean {
   return getStateFreshness(incoming) >= getStateFreshness(current);
 }
 
+function normalizeReadState(message: any): any {
+  const labels = Array.isArray(message?.labels) ? message.labels : [];
+  const hasUnreadLabel = labels.some((label: any) => String(label).toUpperCase() === 'UNREAD');
+  return hasUnreadLabel && message?.is_read !== false ? { ...message, is_read: false } : message;
+}
+
 function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_message_id?: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>): any[] {
   if (!states.length) return messages;
   const stateMap = new Map(states.map((s) => [getMessageKey(s), s]));
   let changed = false;
-  const next = messages
+  const next = messages.map(normalizeReadState)
     .filter((m) => {
       const s = stateMap.get(getMessageKey(m));
       if (s?.missing) { changed = true; return false; }
@@ -56,11 +62,11 @@ function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_m
       changed = true;
       return { ...m, is_read: s.is_read, is_starred: s.is_starred, state_fetched_at: s.state_fetched_at ?? m.state_fetched_at };
     });
-  return changed ? next : messages;
+  return changed ? next : messages.map(normalizeReadState);
 }
 
 async function syncMessageStates(messages: any[], limit = PAGE_SIZE) {
-  const ids = messages.slice(0, limit).map(getMessageKey).filter(Boolean);
+  const ids = messages.map(normalizeReadState).slice(0, limit).map(getMessageKey).filter(Boolean);
   if (!ids.length) return [];
   try {
     const { data } = await supabase.functions.invoke('gmail-messages', {
@@ -151,7 +157,8 @@ export interface InboxCacheState {
  */
 function mergeUniqueById(existing: any[], incoming: any[]): any[] {
   const incomingById = new Map<string, any>();
-  for (const m of incoming) {
+  for (const raw of incoming) {
+    const m = normalizeReadState(raw);
     const key = getMessageKey(m);
     if (key) incomingById.set(key, m);
   }
@@ -182,7 +189,8 @@ function mergeUniqueById(existing: any[], incoming: any[]): any[] {
     };
   });
   const additions: any[] = [];
-  for (const m of incoming) {
+  for (const raw of incoming) {
+    const m = normalizeReadState(raw);
     const key = getMessageKey(m);
     if (!key || seen.has(key)) continue;
     seen.add(key);
@@ -209,7 +217,7 @@ async function fetchPage(args: {
     });
     if (error || data?.fallback) return { messages: [], nextPageToken: null, ok: false };
     return {
-      messages: data?.messages || [],
+      messages: (data?.messages || []).map(normalizeReadState),
       nextPageToken: data?.next_page_token || null,
       ok: true,
     };
