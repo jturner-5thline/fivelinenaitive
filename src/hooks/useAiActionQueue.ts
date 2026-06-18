@@ -5,6 +5,66 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
+function normName(s: unknown): string {
+  return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Non-admin users should only see approval items for deals they manage.
+ * `deals.manager` is a free-text display name, so we match on full name
+ * (with a loose contains fallback) or email local-part.
+ */
+function userManagesDeal(
+  managerField: unknown,
+  userFullName: string,
+  userEmailLocal: string,
+): boolean {
+  const manager = normName(managerField);
+  if (!manager) return false;
+  const name = normName(userFullName);
+  if (name && (manager === name || manager.includes(name))) return true;
+  if (userEmailLocal && manager.includes(userEmailLocal)) return true;
+  return false;
+}
+
+async function loadViewerContext(userId: string): Promise<{
+  isAdmin: boolean;
+  fullName: string;
+  emailLocal: string;
+}> {
+  const [{ data: profile }, { data: roleRow }] = await Promise.all([
+    supabase.from('profiles').select('full_name, email').eq('id', userId).maybeSingle(),
+    supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
+  ]);
+  const email = normName((profile as any)?.email);
+  return {
+    isAdmin: !!roleRow,
+    fullName: normName((profile as any)?.full_name),
+    emailLocal: email.split('@')[0] || '',
+  };
+}
+
+async function filterToManagedDeals<T extends { deal_id: string | null }>(
+  rows: T[],
+  viewer: { isAdmin: boolean; fullName: string; emailLocal: string },
+): Promise<T[]> {
+  if (viewer.isAdmin) return rows;
+  // Non-admins: drop anything without a deal, then keep only deals they manage.
+  const withDeal = rows.filter(r => !!r.deal_id);
+  const dealIds = Array.from(new Set(withDeal.map(r => r.deal_id as string)));
+  if (dealIds.length === 0) return [];
+  const { data: deals } = await supabase
+    .from('deals')
+    .select('id, manager')
+    .in('id', dealIds);
+  const managerById = new Map<string, string | null>(
+    (deals || []).map((d: any) => [d.id, d.manager ?? null]),
+  );
+  return withDeal.filter(r =>
+    userManagesDeal(managerById.get(r.deal_id as string), viewer.fullName, viewer.emailLocal),
+  );
+}
+
 /**
  * AI Approval Queue — deferred AI suggestions awaiting user approval.
  *
