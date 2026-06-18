@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
   DndContext,
@@ -155,20 +156,135 @@ function DroppableStageColumnImpl({
         </div>
       </div>
 
-      {/* Stage Deals */}
-      <ScrollArea className={cn("min-h-[400px] [&>[data-radix-scroll-area-viewport]]:!overflow-x-hidden", fullscreen ? "h-[calc(92vh-120px)]" : "h-[calc(100vh-380px)]")}>
-        <div className="p-3 space-y-3 max-w-[calc(300px-2px)]">
-          {deals.length === 0 ? (
-            <div className={cn(
-              "text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed transition-colors",
-              isOver ? "border-primary bg-primary/5" : "border-transparent"
-            )}>
-              {isOver ? "Drop here" : "No deals"}
-            </div>
-          ) : (
-            deals.map((deal) => (
+      {/* Stage Deals — virtualized so a column with 1,000+ cards only mounts
+          the rows currently in view. This is the single biggest perf win on
+          the deals board: opening the Pipeline dropdown no longer competes
+          with mounting 1,200+ DealCards on the main thread. */}
+      <VirtualizedStageDeals
+        deals={deals}
+        isOver={isOver}
+        fullscreen={!!fullscreen}
+        onStatusChange={onStatusChange}
+        onStageChange={onStageChange}
+        onMarkReviewed={onMarkReviewed}
+        onToggleFlag={onToggleFlag}
+        flexEngagementScores={flexEngagementScores}
+        flexNotificationCounts={flexNotificationCounts}
+        activeDealId={activeDealId}
+      />
+    </div>
+  );
+}
+
+const DroppableStageColumn = memo(DroppableStageColumnImpl);
+
+/**
+ * Virtualized stage column body. Uses @tanstack/react-virtual with a native
+ * scroll container so only visible cards (+ a small overscan buffer) are
+ * mounted. Variable card heights are measured via `measureElement`.
+ *
+ * We render a native div instead of Radix ScrollArea here because the
+ * virtualizer needs a real, observable scroll element — Radix's nested
+ * viewport adds an extra layer that complicates ref wiring without
+ * giving us a meaningful visual benefit at this density.
+ */
+interface VirtualizedStageDealsProps {
+  deals: Deal[];
+  isOver: boolean;
+  fullscreen: boolean;
+  onStatusChange: (dealId: string, newStatus: DealStatus | null) => void;
+  onStageChange?: (dealId: string, newStage: string) => void;
+  onMarkReviewed?: (dealId: string) => void;
+  onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
+  flexEngagementScores?: Map<string, any>;
+  flexNotificationCounts?: Record<string, number>;
+  activeDealId: string | null;
+}
+
+function VirtualizedStageDealsImpl({
+  deals,
+  isOver,
+  fullscreen,
+  onStatusChange,
+  onStageChange,
+  onMarkReviewed,
+  onToggleFlag,
+  flexEngagementScores,
+  flexNotificationCounts,
+  activeDealId,
+}: VirtualizedStageDealsProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Compact DealCard rests around 140-200px depending on badges / flags /
+  // status notes. 168 is a reasonable midpoint that keeps the scrollbar
+  // accurate before measureElement corrects each row.
+  const virtualizer = useVirtualizer({
+    count: deals.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 168,
+    overscan: 6,
+    measureElement: (el) => el.getBoundingClientRect().height,
+    getItemKey: (index) => deals[index]?.id ?? index,
+  });
+
+  if (deals.length === 0) {
+    return (
+      <div
+        className={cn(
+          'min-h-[400px] p-3',
+          fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-380px)]',
+        )}
+      >
+        <div
+          className={cn(
+            'text-center py-8 text-sm text-muted-foreground rounded-lg border-2 border-dashed transition-colors',
+            isOver ? 'border-primary bg-primary/5' : 'border-transparent',
+          )}
+        >
+          {isOver ? 'Drop here' : 'No deals'}
+        </div>
+      </div>
+    );
+  }
+
+  const items = virtualizer.getVirtualItems();
+
+  return (
+    <div
+      ref={scrollRef}
+      className={cn(
+        'min-h-[400px] overflow-y-auto overflow-x-hidden',
+        fullscreen ? 'h-[calc(92vh-120px)]' : 'h-[calc(100vh-380px)]',
+      )}
+    >
+      <div
+        style={{
+          height: virtualizer.getTotalSize(),
+          position: 'relative',
+          width: '100%',
+        }}
+        className="p-3"
+      >
+        {items.map((vItem) => {
+          const deal = deals[vItem.index];
+          if (!deal) return null;
+          return (
+            <div
+              key={vItem.key}
+              data-index={vItem.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vItem.start}px)`,
+                paddingLeft: 12,
+                paddingRight: 12,
+                paddingBottom: 12,
+              }}
+            >
               <DraggableDealCard
-                key={deal.id}
                 deal={deal}
                 onStatusChange={onStatusChange}
                 onStageChange={onStageChange}
@@ -178,15 +294,15 @@ function DroppableStageColumnImpl({
                 flexNotificationCount={flexNotificationCounts?.[deal.id] || 0}
                 isDragging={activeDealId === deal.id}
               />
-            ))
-          )}
-        </div>
-      </ScrollArea>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-const DroppableStageColumn = memo(DroppableStageColumnImpl);
+const VirtualizedStageDeals = memo(VirtualizedStageDealsImpl);
 
 export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag }: DealsPipelineViewProps) {
   const { stages: globalStages } = useDealStages();
