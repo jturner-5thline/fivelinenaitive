@@ -406,7 +406,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             ? undefined
             : isClosing
               ? 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease-out'
-              : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+              : 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 240ms cubic-bezier(0.22, 1, 0.36, 1)',
           opacity: isClosing ? 0.92 : 1,
           willChange: 'transform',
           animation: 'none',
@@ -504,7 +504,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             transform: reduceMotion || contentVisible ? undefined : 'translateY(6px)',
             transition: reduceMotion
               ? undefined
-              : 'opacity 220ms ease-out 60ms, transform 260ms cubic-bezier(0.22, 1, 0.36, 1) 60ms',
+              : 'opacity 160ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
           <div
