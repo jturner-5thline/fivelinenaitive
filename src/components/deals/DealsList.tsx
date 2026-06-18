@@ -43,6 +43,9 @@ interface DealsListProps {
   viewMode?: 'grid' | 'list';
   expandAllSignal?: number;
   collapseAllSignal?: number;
+  /** Optional controlled set of collapsed group keys (so the page can persist them in a saved view). */
+  collapsedGroups?: string[];
+  onCollapsedGroupsChange?: (next: string[]) => void;
 }
 
 function SortableTableHead({ id }: { id: DealListColumnId }) {
@@ -74,9 +77,23 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const isControlled = collapsedGroupsProp !== undefined;
+  const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
+  const collapsedGroups = isControlled
+    ? new Set<string>(collapsedGroupsProp)
+    : internalCollapsed;
+  const setCollapsedGroups = (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    const next = typeof updater === 'function'
+      ? (updater as (prev: Set<string>) => Set<string>)(collapsedGroups)
+      : updater;
+    if (isControlled) {
+      onCollapsedGroupsChange?.(Array.from(next));
+    } else {
+      setInternalCollapsed(next);
+    }
+  };
 
   useEffect(() => {
     if (expandAllSignal && expandAllSignal > 0) {
