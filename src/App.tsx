@@ -30,6 +30,7 @@ import { DashboardFoldersProvider } from "@/contexts/DashboardFoldersContext";
 import { DashboardWidgetsProvider } from "@/contexts/DashboardWidgetsContext";
 import { DashboardLayoutProvider } from "@/contexts/DashboardLayoutContext";
 import { DealsProvider } from "@/contexts/DealsContext";
+import { StatusChangeGateProvider } from "@/components/deal/StatusChangeGate";
 import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
