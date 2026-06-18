@@ -21,6 +21,7 @@ import { FlagNoteDialog } from './FlagNoteDialog';
 import { DealEditDrawer } from './DealEditDrawer';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from './CreateTaskForMentionDialog';
 import { stripHtml } from '@/lib/stripHtml';
+import { preloadDealDetail } from '@/lib/lazyDealDetail';
 import {
   Tooltip,
   TooltipContent,
@@ -227,7 +228,15 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
 
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={__handleCardClick}>
+    <Link
+      to={`/deal/${deal.id}`}
+      className="block w-full min-w-0 h-full"
+      onClick={__handleCardClick}
+      // Warm the DealDetail chunk on first hover so the click-to-open
+      // latency drops by the chunk-parse cost. Idempotent — shared loader
+      // dedupes across cards.
+      onPointerEnter={preloadDealDetail}
+    >
       <Card
         className={`deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
