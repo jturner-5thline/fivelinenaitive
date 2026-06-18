@@ -232,18 +232,19 @@ async function fetchPage(args: {
 }
 
 async function applyAuthoritativeReadState(messages: any[], limit = PAGE_SIZE): Promise<any[]> {
-  const ids = messages.slice(0, limit).map(getMessageKey).filter(Boolean);
-  if (!ids.length) return messages;
+  const normalizedMessages = messages.map(normalizeReadState);
+  const ids = normalizedMessages.slice(0, limit).map(getMessageKey).filter(Boolean);
+  if (!ids.length) return normalizedMessages;
   try {
     const { data, error } = await supabase.functions.invoke('gmail-messages', {
       body: { action: 'sync_state', message_ids: ids },
     });
     const states = !error && Array.isArray(data?.states) ? data.states : [];
-    if (!states.length) return messages;
+    if (!states.length) return normalizedMessages;
     useInboxCacheStore.getState().applyStateDeltas(states);
     const stateMap = new Map(states.map((s: any) => [getMessageKey(s), s]));
     let changed = false;
-    const next = messages
+    const next = normalizedMessages
       .filter((m) => {
         const s: any = stateMap.get(getMessageKey(m));
         if (s?.missing) { changed = true; return false; }
@@ -256,9 +257,9 @@ async function applyAuthoritativeReadState(messages: any[], limit = PAGE_SIZE): 
         changed = true;
         return { ...m, is_read: s.is_read, is_starred: s.is_starred, labels: s.folders ?? m.labels, state_fetched_at: s.state_fetched_at ?? m.state_fetched_at };
       });
-    return changed ? next : messages;
+    return changed ? next : normalizedMessages;
   } catch {
-    return messages;
+    return normalizedMessages;
   }
 }
 
