@@ -159,6 +159,7 @@ function SortableFilterableHead({
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
 export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange }: DealsListProps) {
+
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
