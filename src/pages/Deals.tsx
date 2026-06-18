@@ -159,6 +159,21 @@ export default function Dashboard() {
     localStorage.setItem('deals-view-mode', viewMode);
   }, [viewMode]);
 
+  // Preload the (large) DealDetail chunk during idle time so the very
+  // first deal click opens the overlay without paying the chunk-parse
+  // cost on the critical path. Shared loader dedupes with the route's
+  // own lazy import.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200));
+    const handle = schedule(() => preloadDealDetail());
+    return () => {
+      const cancel = (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback
+        ?? ((h: number) => window.clearTimeout(h));
+      cancel(handle as number);
+    };
+  }, []);
+
   // End mount/firstPaint timers once deals have actually loaded.
   useEffect(() => {
     if ((globalThis as any).__dealsMountMarked && !(globalThis as any).__dealsMountEnded) {
