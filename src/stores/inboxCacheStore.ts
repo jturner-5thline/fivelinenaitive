@@ -226,6 +226,27 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
         }));
       }
       set({ hasInitial: true, lastFetchedAt: Date.now() });
+      // Reconcile read/starred state for the top of the inbox via the
+      // authoritative per-message endpoint. Nylas's `list` cache can lag
+      // behind Gmail by minutes after a user reads/replies in the Gmail
+      // web client, so the list returns `unread: true` even though Gmail
+      // says the message is read. Calling `sync_state` hits
+      // `/messages/{id}?fields=standard` which reflects the true state
+      // and lets us correct stale unread badges in the background.
+      try {
+        const ids = get().inboxMessages.slice(0, 25)
+          .map((m: any) => m.id || m.gmail_message_id)
+          .filter(Boolean);
+        if (ids.length) {
+          const { data } = await supabase.functions.invoke('gmail-messages', {
+            body: { action: 'sync_state', message_ids: ids },
+          });
+          const states = (data?.states || []) as Array<{
+            id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string;
+          }>;
+          if (states.length) get().applyStateDeltas(states);
+        }
+      } catch { /* swallow — best-effort reconciliation */ }
     } finally {
       set({ isRefreshing: false });
     }
