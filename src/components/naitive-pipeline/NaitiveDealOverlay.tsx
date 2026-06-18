@@ -219,11 +219,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     if (!rect) {
       setOriginTransform(null);
       setOriginBorderRadius(null);
-      // Still defer the content fade slightly so the scale-in shell reads
-      // as "container first, then content".
-      setContentVisible(false);
-      const t = window.setTimeout(() => setContentVisible(true), 120);
-      return () => window.clearTimeout(t);
+      // No tile origin → no expand animation to wait on. Mount the
+      // content immediately so the click → content paint feels instant.
+      setContentVisible(true);
+      return;
     }
 
     // Final panel frame mirrors the className: full screen below `sm`,
@@ -255,11 +254,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         setOriginTransform(null);
         setOriginBorderRadius(null);
       });
-      // Wait for the shell expansion (360ms) to finish before mounting /
-      // revealing the heavy deal content. This keeps the expand motion
-      // perfectly smooth — no layout/render jitter from DealDetail
-      // hydrating mid-flight.
-      revealTimeout = window.setTimeout(() => setContentVisible(true), 380);
+      // Reveal the content well before the shell expansion finishes.
+      // The DealDetail chunk is preloaded on hover / idle (see
+      // lazyDealDetail.ts), so mounting it ~120ms in is smooth and the
+      // user sees real deal content ~250ms sooner than the previous
+      // 380ms shell-first delay.
+      revealTimeout = window.setTimeout(() => setContentVisible(true), 120);
     });
     return () => {
       cancelAnimationFrame(raf1);
@@ -406,7 +406,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             ? undefined
             : isClosing
               ? 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease-out'
-              : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+              : 'transform 240ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 240ms cubic-bezier(0.22, 1, 0.36, 1)',
           opacity: isClosing ? 0.92 : 1,
           willChange: 'transform',
           animation: 'none',
@@ -504,7 +504,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             transform: reduceMotion || contentVisible ? undefined : 'translateY(6px)',
             transition: reduceMotion
               ? undefined
-              : 'opacity 220ms ease-out 60ms, transform 260ms cubic-bezier(0.22, 1, 0.36, 1) 60ms',
+              : 'opacity 160ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
           <div
