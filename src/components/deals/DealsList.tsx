@@ -158,6 +158,39 @@ function SortableFilterableHead({
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
+/** Which DealFilters keys belong to which column's funnel. Used to
+ *  highlight active funnels and to render per-column removable chips. */
+const COLUMN_FILTER_KEYS: Partial<Record<DealListColumnId, (keyof DealFilters)[]>> = {
+  company: ['companyContains'],
+  value: ['valueMin', 'valueMax'],
+  status: ['status'],
+  stage: ['stage'],
+  manager: ['manager'],
+  type: ['engagementType'],
+  dealType: ['dealType'],
+  totalFee: ['totalFeeMin', 'totalFeeMax'],
+  totalHours: ['totalHoursMin', 'totalHoursMax'],
+  revenuePerHour: ['revenuePerHourMin', 'revenuePerHourMax'],
+  lateMilestones: ['hasLateMilestonesOnly'],
+  updated: ['updatedWithinDays'],
+};
+
+function isFilterValueActive(v: unknown): boolean {
+  if (v == null) return false;
+  if (typeof v === 'string') return v.trim().length > 0;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return true;
+  return false;
+}
+
+function isColumnFilterActive(col: DealListColumnId, filters?: DealFilters): boolean {
+  if (!filters) return false;
+  const keys = COLUMN_FILTER_KEYS[col];
+  if (!keys) return false;
+  return keys.some((k) => isFilterValueActive(filters[k]));
+}
+
 export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
