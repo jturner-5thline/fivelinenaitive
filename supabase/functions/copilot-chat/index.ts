@@ -2744,6 +2744,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
       // can find near-misses like "censys technology" -> "Censys Technologies".
       let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at");
+      q = q.is("merged_into", null);
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
@@ -2758,6 +2759,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           let eq: any = supabase
             .from("deals")
             .select("id, company, value, stage, status, deal_type, updated_at")
+            .is("merged_into", null)
             .ilike("company", queryText.replace(/\s+/g, " ").trim())
             .limit(5);
           if (args.status) eq = eq.eq("status", args.status);
