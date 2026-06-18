@@ -338,6 +338,35 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
             )}
           </div>
 
+          {/* Assignee (tasks only) */}
+          {kind === 'task' && (
+            <div>
+              <Label className={labelCls}>Assignee</Label>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
+                <SelectTrigger className="mt-1 h-8 text-xs">
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  {teamMembers.map((m) => {
+                    const initials = (m.display_name || '')
+                      .split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase() || '?';
+                    return (
+                      <SelectItem key={m.id} value={m.id}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage src={m.avatar_url || undefined} />
+                            <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs">{m.display_name}{m.id === user?.id ? ' (you)' : ''}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Also-on-calendar toggle */}
           {kind === 'task' && !!effectiveDealId && (
             <label className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 cursor-pointer">
@@ -525,6 +554,35 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
           </div>
         )}
       </div>
+
+      {/* Assignee (tasks only) */}
+      {kind === 'task' && (
+        <div>
+          <Label className={labelCls}>Assignee</Label>
+          <Select value={assigneeId} onValueChange={setAssigneeId}>
+            <SelectTrigger className="mt-1 h-8 text-xs">
+              <SelectValue placeholder="Select assignee" />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {teamMembers.map((m) => {
+                const initials = (m.display_name || '')
+                  .split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase() || '?';
+                return (
+                  <SelectItem key={m.id} value={m.id}>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={m.avatar_url || undefined} />
+                        <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs">{m.display_name}{m.id === user?.id ? ' (you)' : ''}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Also-on-calendar toggle */}
       {kind === 'task' && !!effectiveDealId && (
