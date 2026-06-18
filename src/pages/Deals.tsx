@@ -79,7 +79,6 @@ import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { lazy, Suspense } from 'react';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { cn } from '@/lib/utils';
