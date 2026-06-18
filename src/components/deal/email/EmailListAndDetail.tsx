@@ -291,7 +291,10 @@ interface ThreadListItemProps {
 function providerLabelsIndicateRead(email: MockEmail): boolean {
   const labels = Array.isArray(email.labels) ? email.labels : [];
   if (!labels.length) return false;
-  return !labels.some((label) => String(label).toUpperCase() === 'UNREAD');
+  return !labels.some((label: any) => {
+    const v = String(label?.id ?? label?.name ?? label?.display_name ?? label?.label ?? label).toUpperCase();
+    return v === 'UNREAD';
+  });
 }
 
 function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, selectedCount, isInBulkSelection, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: ThreadListItemProps) {
@@ -964,7 +967,11 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
         emails: convoEmails,
         latestEmail: msg,
         participants: Array.from(participantSet),
-        hasUnread: !msg.is_read,
+        // Gmail labels are authoritative: if the provider says this message
+        // has been read (no UNREAD label present), never show it as unread —
+        // even if a stale `is_read=false` is still cached locally. This is
+        // what hides the blue dot for emails the user already read in Gmail.
+        hasUnread: !msg.is_read && !providerLabelsIndicateRead(msg),
         isStarred: !!msg.is_starred,
         isLinked: !!msg.is_linked_to_deal,
         hasAttachments: !!msg.has_attachments,
