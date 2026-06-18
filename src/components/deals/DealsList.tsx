@@ -4,15 +4,17 @@ import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { DealListRow } from './DealListRow';
-import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { FileX, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
-import { SortField, SortDirection } from '@/hooks/useDeals';
+import { SortField, SortDirection, DealFilters } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import { DealsHeaderFilterPopover } from './DealsHeaderFilterPopover';
+import { cn } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -46,9 +48,46 @@ interface DealsListProps {
   /** Optional controlled set of collapsed group keys (so the page can persist them in a saved view). */
   collapsedGroups?: string[];
   onCollapsedGroupsChange?: (next: string[]) => void;
+  /** Per-column header sort + filter (list view only). */
+  onToggleSort?: (field: SortField) => void;
+  filters?: DealFilters;
+  onFiltersChange?: (next: Partial<DealFilters>) => void;
 }
 
-function SortableTableHead({ id }: { id: DealListColumnId }) {
+/** Map a column id to the SortField it should drive (or null if not sortable). */
+const COLUMN_SORT_FIELD: Partial<Record<DealListColumnId, SortField>> = {
+  company: 'company',
+  value: 'value',
+  status: 'status',
+  stage: 'stage',
+  manager: 'manager',
+  type: 'engagementType',
+  totalFee: 'totalFee',
+  totalHours: 'totalHours',
+  revenuePerHour: 'revenuePerHour',
+  lateMilestones: 'lateMilestones',
+  updated: 'updatedAt',
+};
+
+function SortableFilterableHead({
+  id,
+  sortField,
+  sortDirection,
+  onToggleSort,
+  filterActive,
+  filters,
+  setFilters,
+  unfilteredDeals,
+}: {
+  id: DealListColumnId;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  onToggleSort?: (field: SortField) => void;
+  filterActive: boolean;
+  filters?: DealFilters;
+  setFilters?: (next: Partial<DealFilters>) => void;
+  unfilteredDeals: Deal[];
+}) {
   const {
     attributes,
     listeners,
@@ -62,14 +101,56 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab',
   };
 
+  const sortField_ = COLUMN_SORT_FIELD[id];
+  const isActiveSort = !!sortField_ && sortField === sortField_;
+
   return (
-    <TableHead ref={setNodeRef} style={style} {...attributes} {...listeners} className="text-foreground text-center">
-      <div className="flex items-center gap-1 whitespace-nowrap">
-        <GripVertical className="h-3 w-3 text-muted-foreground/50" />
-        <span>{COLUMN_LABELS[id]}</span>
+    <TableHead ref={setNodeRef} style={style} className="text-foreground text-center">
+      <div className="inline-flex items-center gap-1 whitespace-nowrap">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab p-0.5 text-muted-foreground/50 hover:text-muted-foreground"
+          aria-label="Reorder column"
+        >
+          <GripVertical className="h-3 w-3" />
+        </span>
+        <button
+          type="button"
+          disabled={!sortField_ || !onToggleSort}
+          onClick={() => sortField_ && onToggleSort?.(sortField_)}
+          className={cn(
+            'inline-flex items-center gap-0.5 px-1 py-0.5 rounded transition-colors',
+            sortField_ && onToggleSort
+              ? 'hover:bg-muted/60 cursor-pointer'
+              : 'cursor-default',
+            isActiveSort && 'text-foreground',
+          )}
+        >
+          <span>{COLUMN_LABELS[id]}</span>
+          {sortField_ && (
+            isActiveSort ? (
+              sortDirection === 'asc' ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )
+            ) : (
+              <ArrowUpDown className="h-3 w-3 opacity-30" />
+            )
+          )}
+        </button>
+        {filters && setFilters && (
+          <DealsHeaderFilterPopover
+            column={id}
+            deals={unfilteredDeals}
+            filters={filters}
+            setFilters={setFilters}
+            active={filterActive}
+          />
+        )}
       </div>
     </TableHead>
   );
