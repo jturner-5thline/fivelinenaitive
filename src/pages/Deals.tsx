@@ -1029,11 +1029,34 @@ export default function Dashboard() {
               )}
 
               {/* Deals Grid/List/Pipeline or Milestones */}
+              {(() => {
+                // Inline split layout: when a deal is selected via `?deal=<id>`,
+                // keep the list visible on the left and render the Deal Rundown
+                // summary content (PipelineMemoView, single-deal) on the right.
+                // We deliberately do NOT use a Sheet/overlay here — the list
+                // must remain interactive while the detail updates in place.
+                const selectedId = overlaySearchParams.get('deal');
+                const selectedDeal = selectedId
+                  ? (allDeals.find(d => d.id === selectedId)
+                      ?? ({ id: selectedId, company: 'Deal' } as unknown as Deal))
+                  : null;
+                const closeDetail = () => {
+                  const next = new URLSearchParams(overlaySearchParams);
+                  next.delete('deal');
+                  setOverlaySearchParams(next, { replace: false });
+                };
+                const showInlineDetail =
+                  !!selectedDeal && viewMode !== 'pipeline' && viewMode !== 'timeline' && !showMilestones && !showDuplicates;
+                return (
               <div
                 ref={boardScrollContainerRef}
-                className="opacity-0"
+                className={cn(
+                  'opacity-0',
+                  showInlineDetail && 'flex gap-4 items-start',
+                )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
+              <div className={cn(showInlineDetail ? 'flex-1 min-w-0' : 'contents')}>
               {/*
                 Flagged-filter context banner — renders ONLY when the
                 flag filter is on. Computed from the unfiltered deal set
@@ -1094,53 +1117,40 @@ export default function Dashboard() {
                   onCollapsedGroupsChange={setCollapsedGroups}
                 />
               )}
-            </div>
-      </WorkspacePage>
-      {(() => {
-        // Drive the sidebar from the same `?deal=<id>` URL the rest of the
-        // app uses, but render the EXACT Deal Rundown summary container
-        // (<PipelineMemoView />) instead of the generic NaitiveDealOverlay
-        // modal. We pass a single-deal array so the memo view auto-selects
-        // it and renders the canonical right-pane summary inside the sheet.
-        const id = overlaySearchParams.get('deal');
-        const dealForSidebar = id
-          ? (allDeals.find(d => d.id === id)
-              ?? ({ id, company: 'Deal' } as unknown as Deal))
-          : null;
-        const close = () => {
-          const next = new URLSearchParams(overlaySearchParams);
-          next.delete('deal');
-          setOverlaySearchParams(next, { replace: false });
-        };
-        return (
-          <Sheet open={!!dealForSidebar} onOpenChange={(o) => { if (!o) close(); }}>
-            <SheetContent
-              side="right"
-              className="w-[min(95vw,1280px)] sm:max-w-none p-0 overflow-hidden flex flex-col"
-            >
-              <div className="flex-1 min-h-0 min-w-0 overflow-hidden p-3">
-                <Suspense
-                  fallback={
-                    <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                      Loading deal summary…
-                    </div>
-                  }
-                >
-                  {dealForSidebar && (
-                    <DealRundownMemoView
-                      // Single-deal array → memo view auto-selects it and
-                      // renders the same MemoHeader + bands + panels stack
-                      // shown in the Daily Briefing Deal Rundown.
-                      deals={[dealForSidebar] as any}
-                      dismissalScope={`deals-page-sidebar:${dealForSidebar.id}`}
-                    />
-                  )}
-                </Suspense>
               </div>
-            </SheetContent>
-          </Sheet>
-        );
-      })()}
+              {showInlineDetail && selectedDeal && (
+                <aside
+                  className="hidden lg:flex flex-col w-[clamp(420px,38vw,640px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden"
+                  aria-label="Selected deal summary"
+                >
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
+                    <div className="text-xs uppercase tracking-wider text-muted-foreground truncate">
+                      {selectedDeal.company || 'Deal summary'}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={closeDetail} aria-label="Close deal summary">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
+                          Loading deal summary…
+                        </div>
+                      }
+                    >
+                      <DealRundownMemoView
+                        deals={[selectedDeal] as any}
+                        dismissalScope={`deals-page-inline:${selectedDeal.id}`}
+                      />
+                    </Suspense>
+                  </div>
+                </aside>
+              )}
+              </div>
+                );
+              })()}
+      </WorkspacePage>
       </div>
     </>
   );
