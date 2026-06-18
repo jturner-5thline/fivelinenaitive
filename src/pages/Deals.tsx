@@ -1115,6 +1115,9 @@ export default function Dashboard() {
                   collapseAllSignal={collapseAllSignal}
                   collapsedGroups={collapsedGroups}
                   onCollapsedGroupsChange={setCollapsedGroups}
+                  onToggleSort={toggleSort}
+                  filters={filters}
+                  onFiltersChange={updateFilters}
                 />
               )}
               </div>
