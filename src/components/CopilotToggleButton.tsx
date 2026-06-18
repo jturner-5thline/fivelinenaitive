@@ -429,6 +429,9 @@ export function CopilotToggleButton() {
             collapseTimerRef.current = null;
           }
           setHovered(true);
+          // Warm the lazy AICopilotPanel chunk on first hover so the
+          // first ⌘J / click → open path doesn't pay the chunk parse.
+          void loadAICopilotPanel();
         }}
         onMouseLeave={() => {
           if (collapseTimerRef.current) window.clearTimeout(collapseTimerRef.current);
