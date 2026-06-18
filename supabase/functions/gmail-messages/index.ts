@@ -254,6 +254,24 @@ function pickBodyHtmlAndText(msg: any): { body_html: string; body_text: string }
   return { body_html: html, body_text: text };
 }
 
+function getMailLabels(msg: any): string[] {
+  const values = [
+    ...(Array.isArray(msg?.folders) ? msg.folders : []),
+    ...(Array.isArray(msg?.labels) ? msg.labels : []),
+    ...(Array.isArray(msg?.label_ids) ? msg.label_ids : []),
+    ...(Array.isArray(msg?.labelIds) ? msg.labelIds : []),
+  ];
+  return Array.from(new Set(values.map((v: any) => String(v)).filter(Boolean)));
+}
+
+function isReadFromProvider(msg: any): boolean {
+  const labels = getMailLabels(msg).map((label) => label.toUpperCase());
+  if (labels.includes("UNREAD")) return false;
+  if (typeof msg?.unread === "boolean") return !msg.unread;
+  if (typeof msg?.read === "boolean") return msg.read;
+  return true;
+}
+
 function nylasHeaders() {
   return {
     "Authorization": `Bearer ${NYLAS_API_KEY}`,
