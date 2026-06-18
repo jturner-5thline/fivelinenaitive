@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactNode } from 'react';
+import { useState, ReactNode } from 'react';
 import { Filter, Check, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
@@ -146,11 +146,9 @@ function useFilterBody(
     );
   }
   if (column === 'manager') {
-    const options = useMemo(() => {
-      const set = new Set<string>();
-      deals.forEach((d) => { if (d.manager) set.add(d.manager); });
-      return Array.from(set).sort().map((m) => ({ id: m, label: m }));
-    }, [deals]);
+    const set = new Set<string>();
+    deals.forEach((d) => { if (d.manager) set.add(d.manager); });
+    const options = Array.from(set).sort().map((m) => ({ id: m, label: m }));
     return (
       <MultiSelectFilter
         label="Manager"
