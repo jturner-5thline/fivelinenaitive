@@ -4,15 +4,17 @@ import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { DealListRow } from './DealListRow';
-import { FileX, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { FileX, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
-import { SortField, SortDirection } from '@/hooks/useDeals';
+import { SortField, SortDirection, DealFilters } from '@/hooks/useDeals';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDealListColumnOrder, COLUMN_LABELS, DealListColumnId } from '@/hooks/useDealListColumnOrder';
+import { DealsHeaderFilterPopover } from './DealsHeaderFilterPopover';
+import { cn } from '@/lib/utils';
 import {
   DndContext,
   closestCenter,
@@ -46,9 +48,46 @@ interface DealsListProps {
   /** Optional controlled set of collapsed group keys (so the page can persist them in a saved view). */
   collapsedGroups?: string[];
   onCollapsedGroupsChange?: (next: string[]) => void;
+  /** Per-column header sort + filter (list view only). */
+  onToggleSort?: (field: SortField) => void;
+  filters?: DealFilters;
+  onFiltersChange?: (next: Partial<DealFilters>) => void;
 }
 
-function SortableTableHead({ id }: { id: DealListColumnId }) {
+/** Map a column id to the SortField it should drive (or null if not sortable). */
+const COLUMN_SORT_FIELD: Partial<Record<DealListColumnId, SortField>> = {
+  company: 'company',
+  value: 'value',
+  status: 'status',
+  stage: 'stage',
+  manager: 'manager',
+  type: 'engagementType',
+  totalFee: 'totalFee',
+  totalHours: 'totalHours',
+  revenuePerHour: 'revenuePerHour',
+  lateMilestones: 'lateMilestones',
+  updated: 'updatedAt',
+};
+
+function SortableFilterableHead({
+  id,
+  sortField,
+  sortDirection,
+  onToggleSort,
+  filterActive,
+  filters,
+  setFilters,
+  unfilteredDeals,
+}: {
+  id: DealListColumnId;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  onToggleSort?: (field: SortField) => void;
+  filterActive: boolean;
+  filters?: DealFilters;
+  setFilters?: (next: Partial<DealFilters>) => void;
+  unfilteredDeals: Deal[];
+}) {
   const {
     attributes,
     listeners,
@@ -62,14 +101,56 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
     transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab',
   };
 
+  const sortField_ = COLUMN_SORT_FIELD[id];
+  const isActiveSort = !!sortField_ && sortField === sortField_;
+
   return (
-    <TableHead ref={setNodeRef} style={style} {...attributes} {...listeners} className="text-foreground text-center">
-      <div className="flex items-center gap-1 whitespace-nowrap">
-        <GripVertical className="h-3 w-3 text-muted-foreground/50" />
-        <span>{COLUMN_LABELS[id]}</span>
+    <TableHead ref={setNodeRef} style={style} className="text-foreground text-center">
+      <div className="inline-flex items-center gap-1 whitespace-nowrap">
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab p-0.5 text-muted-foreground/50 hover:text-muted-foreground"
+          aria-label="Reorder column"
+        >
+          <GripVertical className="h-3 w-3" />
+        </span>
+        <button
+          type="button"
+          disabled={!sortField_ || !onToggleSort}
+          onClick={() => sortField_ && onToggleSort?.(sortField_)}
+          className={cn(
+            'inline-flex items-center gap-0.5 px-1 py-0.5 rounded transition-colors',
+            sortField_ && onToggleSort
+              ? 'hover:bg-muted/60 cursor-pointer'
+              : 'cursor-default',
+            isActiveSort && 'text-foreground',
+          )}
+        >
+          <span>{COLUMN_LABELS[id]}</span>
+          {sortField_ && (
+            isActiveSort ? (
+              sortDirection === 'asc' ? (
+                <ArrowUp className="h-3 w-3" />
+              ) : (
+                <ArrowDown className="h-3 w-3" />
+              )
+            ) : (
+              <ArrowUpDown className="h-3 w-3 opacity-30" />
+            )
+          )}
+        </button>
+        {filters && setFilters && (
+          <DealsHeaderFilterPopover
+            column={id}
+            deals={unfilteredDeals}
+            filters={filters}
+            setFilters={setFilters}
+            active={filterActive}
+          />
+        )}
       </div>
     </TableHead>
   );
@@ -77,7 +158,106 @@ function SortableTableHead({ id }: { id: DealListColumnId }) {
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange }: DealsListProps) {
+/** Which DealFilters keys belong to which column's funnel. Used to
+ *  highlight active funnels and to render per-column removable chips. */
+const COLUMN_FILTER_KEYS: Partial<Record<DealListColumnId, (keyof DealFilters)[]>> = {
+  company: ['companyContains'],
+  value: ['valueMin', 'valueMax'],
+  status: ['status'],
+  stage: ['stage'],
+  manager: ['manager'],
+  type: ['engagementType'],
+  dealType: ['dealType'],
+  totalFee: ['totalFeeMin', 'totalFeeMax'],
+  totalHours: ['totalHoursMin', 'totalHoursMax'],
+  revenuePerHour: ['revenuePerHourMin', 'revenuePerHourMax'],
+  lateMilestones: ['hasLateMilestonesOnly'],
+  updated: ['updatedWithinDays'],
+};
+
+function isFilterValueActive(v: unknown): boolean {
+  if (v == null) return false;
+  if (typeof v === 'string') return v.trim().length > 0;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return true;
+  return false;
+}
+
+function isColumnFilterActive(col: DealListColumnId, filters?: DealFilters): boolean {
+  if (!filters) return false;
+  const keys = COLUMN_FILTER_KEYS[col];
+  if (!keys) return false;
+  return keys.some((k) => isFilterValueActive(filters[k]));
+}
+
+function fmtNum(n: number | null | undefined): string {
+  if (n == null) return '';
+  return n.toLocaleString();
+}
+
+function rangeLabel(prefix: string, min?: number | null, max?: number | null): string {
+  if (min != null && max != null) return `${prefix}: ${fmtNum(min)}–${fmtNum(max)}`;
+  if (min != null) return `${prefix} ≥ ${fmtNum(min)}`;
+  if (max != null) return `${prefix} ≤ ${fmtNum(max)}`;
+  return prefix;
+}
+
+function buildActiveFilterChips(filters: DealFilters): { key: string; label: string; clear: Partial<DealFilters> }[] {
+  const chips: { key: string; label: string; clear: Partial<DealFilters> }[] = [];
+  if (isFilterValueActive(filters.companyContains)) {
+    chips.push({ key: 'companyContains', label: `Company: "${filters.companyContains}"`, clear: { companyContains: '' } });
+  }
+  if (filters.valueMin != null || filters.valueMax != null) {
+    chips.push({ key: 'value', label: rangeLabel('Value', filters.valueMin, filters.valueMax), clear: { valueMin: null, valueMax: null } });
+  }
+  if (filters.totalFeeMin != null || filters.totalFeeMax != null) {
+    chips.push({ key: 'totalFee', label: rangeLabel('Fee', filters.totalFeeMin, filters.totalFeeMax), clear: { totalFeeMin: null, totalFeeMax: null } });
+  }
+  if (filters.totalHoursMin != null || filters.totalHoursMax != null) {
+    chips.push({ key: 'totalHours', label: rangeLabel('Hours', filters.totalHoursMin, filters.totalHoursMax), clear: { totalHoursMin: null, totalHoursMax: null } });
+  }
+  if (filters.revenuePerHourMin != null || filters.revenuePerHourMax != null) {
+    chips.push({ key: 'revenuePerHour', label: rangeLabel('Rev/hr', filters.revenuePerHourMin, filters.revenuePerHourMax), clear: { revenuePerHourMin: null, revenuePerHourMax: null } });
+  }
+  if (filters.status.length) {
+    chips.push({ key: 'status', label: `Status: ${filters.status.length}`, clear: { status: [] } });
+  }
+  if (filters.stage.length) {
+    chips.push({ key: 'stage', label: `Stage: ${filters.stage.length}`, clear: { stage: [] } });
+  }
+  if (filters.manager.length) {
+    chips.push({ key: 'manager', label: `Manager: ${filters.manager.length}`, clear: { manager: [] } });
+  }
+  if (filters.engagementType.length) {
+    chips.push({ key: 'engagementType', label: `Engagement: ${filters.engagementType.length}`, clear: { engagementType: [] as any } });
+  }
+  if (filters.dealType.length) {
+    chips.push({ key: 'dealType', label: `Deal type: ${filters.dealType.length}`, clear: { dealType: [] } });
+  }
+  if (filters.updatedWithinDays != null) {
+    chips.push({ key: 'updatedWithinDays', label: `Updated ≤ ${filters.updatedWithinDays}d`, clear: { updatedWithinDays: null } });
+  }
+  if (filters.hasLateMilestonesOnly) {
+    chips.push({ key: 'hasLateMilestonesOnly', label: 'Has late milestones', clear: { hasLateMilestonesOnly: false } });
+  }
+  return chips;
+}
+
+function clearAllColumnFilters(): Partial<DealFilters> {
+  return {
+    companyContains: '',
+    valueMin: null, valueMax: null,
+    totalFeeMin: null, totalFeeMax: null,
+    totalHoursMin: null, totalHoursMax: null,
+    revenuePerHourMin: null, revenuePerHourMax: null,
+    status: [], stage: [], manager: [], engagementType: [] as any, dealType: [],
+    updatedWithinDays: null,
+    hasLateMilestonesOnly: false,
+  };
+}
+
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
@@ -208,8 +388,36 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
 
   // List view rendering
   if (viewMode === 'list') {
+    const activeChips = filters ? buildActiveFilterChips(filters) : [];
     return (
       <div>
+        {activeChips.length > 0 && onFiltersChange && (
+          <div className="flex flex-wrap items-center gap-1.5 px-1 pb-2">
+            {activeChips.map((c) => (
+              <span
+                key={c.key}
+                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full bg-primary/10 text-primary text-[11px]"
+              >
+                {c.label}
+                <button
+                  type="button"
+                  onClick={() => onFiltersChange(c.clear)}
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-primary/20"
+                  aria-label={`Remove filter ${c.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => onFiltersChange(clearAllColumnFilters())}
+              className="ml-1 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
         <div className="overflow-visible px-0 py-1">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-1.5">
@@ -223,7 +431,17 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                   </TableHead>
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
                     {activeColumns.map((colId) => (
-                      <SortableTableHead key={colId} id={colId} />
+                      <SortableFilterableHead
+                        key={colId}
+                        id={colId}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onToggleSort={onToggleSort}
+                        filterActive={isColumnFilterActive(colId, filters)}
+                        filters={filters}
+                        setFilters={onFiltersChange}
+                        unfilteredDeals={deals}
+                      />
                     ))}
                   </SortableContext>
                   <TableHead className="w-[100px]">Actions</TableHead>
