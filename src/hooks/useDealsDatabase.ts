@@ -291,6 +291,26 @@ export function useDealsDatabase() {
         notesHistory: notesHistoryMap[l.id] || [],
       }));
 
+    // Defensive dedupe: never render the same funding source twice on a deal.
+    // A unique DB index now enforces this on (deal_id, master_lender_id) and
+    // (deal_id, lower(name)), but stale realtime payloads or optimistic
+    // inserts could still surface a duplicate before reconciliation — collapse
+    // by id first, then by master_lender_id || lower(name).
+    const seenIds = new Set<string>();
+    const seenKeys = new Set<string>();
+    const dedupedDealLenders = dealLenders.filter((l) => {
+      if (seenIds.has(l.id)) return false;
+      seenIds.add(l.id);
+      const naturalKey =
+        (dbLenders.find((r) => r.id === l.id) as any)?.master_lender_id ||
+        (l.name ? `name:${l.name.trim().toLowerCase()}` : null);
+      if (naturalKey) {
+        if (seenKeys.has(naturalKey)) return false;
+        seenKeys.add(naturalKey);
+      }
+      return true;
+    });
+
     const toReferrer = (name: string | null): Referrer | undefined => {
       if (!name) return undefined;
       return {
@@ -327,7 +347,7 @@ export function useDealsDatabase() {
       flagNotes: dbDeal.flag_notes || undefined,
       referredBy: toReferrer(dbDeal.referred_by),
       referralSourceContactId: (dbDeal as any).referral_source_contact_id || null,
-      lender: dealLenders[0]?.name || '',
+      lender: dedupedDealLenders[0]?.name || '',
       value: Number(dbDeal.value),
       totalFee: Number(dbDeal.total_fee || 0),
       retainerFee: Number(dbDeal.retainer_fee || 0),
@@ -345,7 +365,7 @@ export function useDealsDatabase() {
       sourcedVia: (dbDeal as any).sourced_via || undefined,
       createdAt: dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
-      lenders: dealLenders,
+      lenders: dedupedDealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
       pipelineId: dbDeal.pipeline_id || undefined,
       closingDate: (dbDeal as any).closing_date || null,
