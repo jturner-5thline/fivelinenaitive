@@ -207,6 +207,32 @@ export function DealsHeader() {
   const prefetchOverlay = useCallback((label: string) => {
     const load = OVERLAY_PREFETCHERS[label];
     if (load) load().catch(() => {});
+    if (label === 'Mail') {
+      // Warm the inbox-specific data path too: pull the freshest message
+      // list into the shared cache and prefetch the top bodies so the
+      // popup paints instantly with fully-rendered messages on first
+      // click. Also nudge InboxDialog to flip into its warm-mounted
+      // state immediately rather than waiting for the idle pass.
+      void (async () => {
+        try {
+          const [{ useInboxCacheStore }, { prefetchFullEmailMessage }] = await Promise.all([
+            import('@/stores/inboxCacheStore'),
+            import('@/components/deal/email/useFullEmailMessage'),
+          ]);
+          await useInboxCacheStore.getState().refresh();
+          const top = useInboxCacheStore.getState().inboxMessages.slice(0, 25);
+          for (const m of top) {
+            const id = (m as any)?.id || (m as any)?.gmail_message_id;
+            if (id) prefetchFullEmailMessage(id);
+          }
+        } catch {
+          // best-effort prefetch — never block UI
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('inbox:prewarm'));
+        } catch { /* noop */ }
+      })();
+    }
   }, []);
 
   // When ANY header-launched overlay is open, hide the floating header
