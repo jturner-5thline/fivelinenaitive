@@ -79,7 +79,6 @@ import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { lazy, Suspense } from 'react';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { cn } from '@/lib/utils';
@@ -87,9 +86,9 @@ import { cn } from '@/lib/utils';
 // Render only the canonical Deal Rundown detail card (MemoHeader +
 // NextBestAction + Tasks/Milestones + Activity + Calendar + LendersPanel)
 // inline — no nested master list / filter chips from PipelineMemoView.
-const DealRundownMemoView = lazy(() =>
-  import('@/components/deals/DealInlineSummary').then(m => ({ default: m.DealInlineSummary })),
-);
+// Imported eagerly so opening the inline detail pane is instant — the
+// previous `lazy()` chunk fetch added a visible delay on first open.
+import { DealInlineSummary as DealRundownMemoView } from '@/components/deals/DealInlineSummary';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -1123,7 +1122,7 @@ export default function Dashboard() {
               </div>
               {showInlineDetail && selectedDeal && (
                 <aside
-                  className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden"
+                  className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
@@ -1135,15 +1134,7 @@ export default function Dashboard() {
                     </Button>
                   </div>
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
-                    <Suspense
-                      fallback={
-                        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-                          Loading deal summary…
-                        </div>
-                      }
-                    >
-                      <DealRundownMemoView deal={selectedDeal as any} />
-                    </Suspense>
+                    <DealRundownMemoView deal={selectedDeal as any} />
                   </div>
                 </aside>
               )}
