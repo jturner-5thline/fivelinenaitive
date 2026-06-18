@@ -17,8 +17,6 @@ import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
-import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
-import { DealsOverlay } from '@/components/deals/DealsOverlay';
 import { usePipelineData } from '@/hooks/useDailyBriefingData';
 import { useDailyDismissedIds } from '@/hooks/useDailyDismissals';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
@@ -39,11 +37,17 @@ const loadCalendar = () =>
   import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
 const loadMail = () =>
   import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }));
+const loadDailyBriefing = () =>
+  import('@/components/dashboard/DailyBriefingModal').then((m) => ({ default: m.DailyBriefingModal }));
+const loadDealsOverlay = () =>
+  import('@/components/deals/DealsOverlay').then((m) => ({ default: m.DealsOverlay }));
 
 const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
 const FullCalendarView = lazy(loadCalendar);
 const InboxDialog = lazy(loadMail);
+const DailyBriefingModal = lazy(loadDailyBriefing);
+const DealsOverlay = lazy(loadDealsOverlay);
 
 const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Dashboard: loadDashboard,
