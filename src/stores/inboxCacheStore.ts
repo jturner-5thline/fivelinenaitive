@@ -49,7 +49,7 @@ function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_m
   if (!states.length) return messages;
   const stateMap = new Map(states.map((s) => [getMessageKey(s), s]));
   let changed = false;
-  const next = messages
+  const next = messages.map(normalizeReadState)
     .filter((m) => {
       const s = stateMap.get(getMessageKey(m));
       if (s?.missing) { changed = true; return false; }
@@ -62,7 +62,7 @@ function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_m
       changed = true;
       return { ...m, is_read: s.is_read, is_starred: s.is_starred, state_fetched_at: s.state_fetched_at ?? m.state_fetched_at };
     });
-  return changed ? next : messages;
+  return changed ? next : messages.map(normalizeReadState);
 }
 
 async function syncMessageStates(messages: any[], limit = PAGE_SIZE) {
