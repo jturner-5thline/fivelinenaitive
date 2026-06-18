@@ -371,23 +371,25 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                         }}
                       />
                       {linkedDealId && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
                               size="sm" variant="ghost"
                               className="h-6 px-1.5 text-[10px] text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10"
                               disabled={outstandingBusyId === s.suggestion_id}
                               onClick={() => void handleMakeOutstanding(s)}
                               aria-label="Make outstanding item"
                               data-testid="make-outstanding"
-                            >
-                              {outstandingBusyId === s.suggestion_id
-                                ? <Loader2 className="h-3 w-3 animate-spin" />
-                                : <Flag className="h-3 w-3" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Make outstanding item</TooltipContent>
-                        </Tooltip>
+                              >
+                                {outstandingBusyId === s.suggestion_id
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <Flag className="h-3 w-3" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">Make outstanding item</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       <Button
                         size="sm" variant="ghost"
