@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DealStatus, STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { CircleDashed } from 'lucide-react';
