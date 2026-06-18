@@ -84,12 +84,11 @@ import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersisten
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { cn } from '@/lib/utils';
 
-// Reuse the EXACT same memo view that backs the Deal Rundown sidebar (the
-// detail pane inside <PipelineMemoView /> is the "Deal Rundown" summary —
-// MemoHeader + NextBestAction + Tasks/Milestones + Activity + Calendar +
-// LendersPanel). Importing it lazily keeps the Deals page bundle lean.
+// Render only the canonical Deal Rundown detail card (MemoHeader +
+// NextBestAction + Tasks/Milestones + Activity + Calendar + LendersPanel)
+// inline — no nested master list / filter chips from PipelineMemoView.
 const DealRundownMemoView = lazy(() =>
-  import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
+  import('@/components/deals/DealInlineSummary').then(m => ({ default: m.DealInlineSummary })),
 );
 
 export default function Dashboard() {
@@ -1140,10 +1139,7 @@ export default function Dashboard() {
                         </div>
                       }
                     >
-                      <DealRundownMemoView
-                        deals={[selectedDeal] as any}
-                        dismissalScope={`deals-page-inline:${selectedDeal.id}`}
-                      />
+                      <DealRundownMemoView deal={selectedDeal as any} />
                     </Suspense>
                   </div>
                 </aside>
