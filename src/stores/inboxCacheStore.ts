@@ -20,9 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
  */
 
 // Initial page size for inbox prefetch + first Gmail/Nylas page.
-// Bumped from 50 → 100 so the dialog opens deep enough that
-// "Load more" rarely fires during normal scrolling.
-const PAGE_SIZE = 100;
+// 25 keeps the background prefetch fast so the inbox dialog opens
+// instantly; older pages are fetched lazily on scroll via "Load more".
+const PAGE_SIZE = 25;
 
 function getStateFreshness(value: any): number {
   const raw = value?.state_fetched_at || value?.received_at || null;
