@@ -31,15 +31,29 @@ type SidebarContext = {
   setIsHovering: (hovering: boolean) => void;
 };
 
-const SidebarContext = React.createContext<SidebarContext | null>(null);
+type SidebarStaticContextValue = Omit<SidebarContext, "isHovering" | "setIsHovering">;
+type SidebarHoverContextValue = Pick<SidebarContext, "isHovering" | "setIsHovering">;
+
+const SidebarStaticContext = React.createContext<SidebarStaticContextValue | null>(null);
+const SidebarHoverContext = React.createContext<SidebarHoverContextValue>({
+  isHovering: false,
+  setIsHovering: () => {},
+});
 
 function useSidebar() {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
+  const staticCtx = React.useContext(SidebarStaticContext);
+  const hoverCtx = React.useContext(SidebarHoverContext);
+  if (!staticCtx) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
+  return { ...staticCtx, ...hoverCtx };
+}
 
-  return context;
+/** Subscribes only to stable sidebar state — does NOT re-render on hover. */
+function useSidebarStatic() {
+  const ctx = React.useContext(SidebarStaticContext);
+  if (!ctx) throw new Error("useSidebarStatic must be used within a SidebarProvider.");
+  return ctx;
 }
 
 const SidebarProvider = React.forwardRef<
