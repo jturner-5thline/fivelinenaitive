@@ -47,9 +47,7 @@ export function EditableDealStatusTag({
   hideDot,
   hideChevron,
 }: EditableDealStatusTagProps) {
-  const { updateDealStatus } = useDealsContext();
-  const invalidateFreshness = useInvalidateDealFreshness();
-  const queryClient = useQueryClient();
+  const requestStatusChange = useRequestStatusChange();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
