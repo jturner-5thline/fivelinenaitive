@@ -158,8 +158,7 @@ function SortableFilterableHead({
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange }: DealsListProps) {
-
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
@@ -305,7 +304,17 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                   </TableHead>
                   <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
                     {activeColumns.map((colId) => (
-                      <SortableTableHead key={colId} id={colId} />
+                      <SortableFilterableHead
+                        key={colId}
+                        id={colId}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        onToggleSort={onToggleSort}
+                        filterActive={isColumnFilterActive(colId, filters)}
+                        filters={filters}
+                        setFilters={onFiltersChange}
+                        unfilteredDeals={deals}
+                      />
                     ))}
                   </SortableContext>
                   <TableHead className="w-[100px]">Actions</TableHead>
