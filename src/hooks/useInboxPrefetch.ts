@@ -12,7 +12,10 @@ import { prefetchFullEmailMessage } from '@/components/deal/email/useFullEmailMe
  * Gmail/Nylas quota in the background. Re-fires immediately on tab focus to
  * close the gap users notice when returning to the dashboard.
  */
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// Poll cadence for new mail. 5 minutes left users staring at a stale inbox;
+// 45s keeps the badge + dialog tight against the provider while still being
+// gentle on Gmail/Nylas quota (visibility-aware below).
+const POLL_INTERVAL_MS = 45 * 1000;
 // How many top messages to warm full bodies for. Matches the inbox cache
 // PAGE_SIZE so the inbox dialog opens with bodies already cached and
 // the "Syncing N messages…" indicator never appears for cold opens.
