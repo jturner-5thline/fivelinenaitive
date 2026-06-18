@@ -1,4 +1,4 @@
-import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, memo, startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
@@ -259,7 +259,14 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       // lazyDealDetail.ts), so mounting it ~120ms in is smooth and the
       // user sees real deal content ~250ms sooner than the previous
       // 380ms shell-first delay.
-      revealTimeout = window.setTimeout(() => setContentVisible(true), 120);
+      // Mount DealDetail just as the shell expansion is settling so
+      // React's reconciliation of the heavy subtree doesn't compete with
+      // the in-flight transform animation. `startTransition` keeps the
+      // mount work non-urgent so the compositor can keep the shell at
+      // 60fps even if reconciliation slips a frame.
+      revealTimeout = window.setTimeout(() => {
+        startTransition(() => setContentVisible(true));
+      }, 200);
     });
     return () => {
       cancelAnimationFrame(raf1);
@@ -505,6 +512,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             transition: reduceMotion
               ? undefined
               : 'opacity 160ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+            // Isolate DealDetail's layout/paint from the animated shell
+            // so reconciliation inside the deal page can't invalidate the
+            // outer transform animation (eliminates open-time shudder).
+            contain: 'layout paint style',
           }}
         >
           <div
