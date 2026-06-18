@@ -193,12 +193,15 @@ export function useAiActionQueue() {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<QueuedAiAction[]> => {
-      const { data, error } = await supabase
-        .from('ai_action_queue')
-        .select('*')
-        .in('status', ['pending'])
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const [{ data, error }, viewer] = await Promise.all([
+        supabase
+          .from('ai_action_queue')
+          .select('*')
+          .in('status', ['pending'])
+          .order('created_at', { ascending: false })
+          .limit(500),
+        loadViewerContext(user!.id),
+      ]);
       if (error) throw error;
       const rows = (data || []) as QueuedAiAction[];
       // Lazy-mark expired rows
@@ -244,7 +247,9 @@ export function useAiActionQueue() {
           .in('id', dupeIds)
           .then(() => { /* noop */ });
       }
-      return Array.from(seen.values());
+      const deduped = Array.from(seen.values());
+      // Non-admins only see items for deals they manage.
+      return filterToManagedDeals(deduped, viewer);
     },
   });
 }
