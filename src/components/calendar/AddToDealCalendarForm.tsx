@@ -5,11 +5,14 @@ import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, CheckCheck, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { CalendarSourceCtx } from './AddToDealCalendarProvider';
@@ -50,6 +53,7 @@ interface Props {
 export function AddToDealCalendarForm({ prefill, onClose, compact = false, resetKey }: Props) {
   const { user } = useAuth();
   const { deals } = useDealsContext();
+  const teamMembers = useTeamMembers();
   const queryClient = useQueryClient();
 
   const [kind, setKind] = useState<ItemKind>('task');
@@ -58,6 +62,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
   const [time, setTime] = useState<string>('');
   const [dealId, setDealId] = useState<string | null>(prefill.ctx.dealId ?? null);
   const [dealQuery, setDealQuery] = useState('');
+  const [assigneeId, setAssigneeId] = useState<string>(user?.id ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [alsoOnDealCalendar, setAlsoOnDealCalendar] = useState(false);
   const debouncedDealQuery = useDebouncedValue(dealQuery, 180);
@@ -76,10 +81,17 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
     setTime('');
     setDealId(prefill.ctx.dealId ?? null);
     setDealQuery('');
+    setAssigneeId(user?.id ?? '');
     setSubmitting(false);
     setAlsoOnDealCalendar(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
+
+  // Hydrate default assignee once the auth user becomes available.
+  useEffect(() => {
+    if (user?.id && !assigneeId) setAssigneeId(user.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const filteredDeals = useMemo(() => {
     const q = debouncedDealQuery.trim().toLowerCase();
@@ -122,6 +134,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
         time: kind === 'event' && time ? time : null,
         notes,
         userId: user.id,
+        assignedTo: kind === 'task' ? (assigneeId || user.id) : undefined,
         source,
       });
 
