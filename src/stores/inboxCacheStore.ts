@@ -39,6 +39,12 @@ function shouldApplyProviderState(current: any, incoming: any): boolean {
   return getStateFreshness(incoming) >= getStateFreshness(current);
 }
 
+function normalizeReadState(message: any): any {
+  const labels = Array.isArray(message?.labels) ? message.labels : [];
+  const hasUnreadLabel = labels.some((label: any) => String(label).toUpperCase() === 'UNREAD');
+  return hasUnreadLabel && message?.is_read !== false ? { ...message, is_read: false } : message;
+}
+
 function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_message_id?: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>): any[] {
   if (!states.length) return messages;
   const stateMap = new Map(states.map((s) => [getMessageKey(s), s]));
@@ -60,7 +66,7 @@ function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_m
 }
 
 async function syncMessageStates(messages: any[], limit = PAGE_SIZE) {
-  const ids = messages.slice(0, limit).map(getMessageKey).filter(Boolean);
+  const ids = messages.map(normalizeReadState).slice(0, limit).map(getMessageKey).filter(Boolean);
   if (!ids.length) return [];
   try {
     const { data } = await supabase.functions.invoke('gmail-messages', {
@@ -209,7 +215,7 @@ async function fetchPage(args: {
     });
     if (error || data?.fallback) return { messages: [], nextPageToken: null, ok: false };
     return {
-      messages: data?.messages || [],
+      messages: (data?.messages || []).map(normalizeReadState),
       nextPageToken: data?.next_page_token || null,
       ok: true,
     };
