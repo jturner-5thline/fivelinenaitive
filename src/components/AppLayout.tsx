@@ -211,7 +211,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   }
 
   return (
-    <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
+    <SidebarProvider defaultOpen={false} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
       <BodyScrollLock />
       {/* App background — diagonal gradient */}
       <div
