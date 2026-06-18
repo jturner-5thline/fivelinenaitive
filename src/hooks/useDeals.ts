@@ -7,7 +7,21 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAiDealFilterStore } from '@/stores/aiDealFilterStore';
 import { applyDealFilterRules } from '@/lib/dealFilterEngine';
 
-export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage' | 'flexEngagement';
+export type SortField =
+  | 'name'
+  | 'company'
+  | 'value'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'status'
+  | 'stage'
+  | 'flexEngagement'
+  | 'manager'
+  | 'engagementType'
+  | 'totalFee'
+  | 'totalHours'
+  | 'revenuePerHour'
+  | 'lateMilestones';
 export type SortDirection = 'asc' | 'desc';
 
 export interface DealFilters {
@@ -28,6 +42,20 @@ export interface DealFilters {
   tasksFilter: 'all' | 'has' | 'none';
   /** 3-state segmented control: 'all' (no filter), 'has' (only deals with active notifications), 'none' (only deals with no notifications). */
   notificationsFilter: 'all' | 'has' | 'none';
+  /** Per-column header filters (added for in-table filter popovers). */
+  companyContains?: string;
+  valueMin?: number | null;
+  valueMax?: number | null;
+  totalFeeMin?: number | null;
+  totalFeeMax?: number | null;
+  totalHoursMin?: number | null;
+  totalHoursMax?: number | null;
+  revenuePerHourMin?: number | null;
+  revenuePerHourMax?: number | null;
+  /** Show only deals updated within the last N days (column header filter). */
+  updatedWithinDays?: number | null;
+  /** Show only deals with at least one late milestone. */
+  hasLateMilestonesOnly?: boolean;
 }
 
 export const DEFAULT_DEAL_FILTERS: DealFilters = {
@@ -46,6 +74,17 @@ export const DEFAULT_DEAL_FILTERS: DealFilters = {
   hasNotificationsOnly: false,
   tasksFilter: 'all',
   notificationsFilter: 'all',
+  companyContains: '',
+  valueMin: null,
+  valueMax: null,
+  totalFeeMin: null,
+  totalFeeMax: null,
+  totalHoursMin: null,
+  totalHoursMax: null,
+  revenuePerHourMin: null,
+  revenuePerHourMax: null,
+  updatedWithinDays: null,
+  hasLateMilestonesOnly: false,
 };
 
 export interface UseDealsOptions {
@@ -141,6 +180,44 @@ export function useDeals(options?: UseDealsOptions) {
       result = result.filter((deal) => deal.isFlagged === true);
     }
 
+    // ── Per-column header filters ─────────────────────────────
+    if (filters.companyContains && filters.companyContains.trim()) {
+      const q = filters.companyContains.trim().toLowerCase();
+      result = result.filter((d) => (d.company || '').toLowerCase().includes(q));
+    }
+    if (filters.valueMin != null) result = result.filter((d) => (d.value ?? 0) >= filters.valueMin!);
+    if (filters.valueMax != null) result = result.filter((d) => (d.value ?? 0) <= filters.valueMax!);
+    if (filters.totalFeeMin != null) result = result.filter((d) => (d.totalFee ?? 0) >= filters.totalFeeMin!);
+    if (filters.totalFeeMax != null) result = result.filter((d) => (d.totalFee ?? 0) <= filters.totalFeeMax!);
+    if (filters.totalHoursMin != null) {
+      result = result.filter((d) => ((d.preSigningHours || 0) + (d.postSigningHours || 0)) >= filters.totalHoursMin!);
+    }
+    if (filters.totalHoursMax != null) {
+      result = result.filter((d) => ((d.preSigningHours || 0) + (d.postSigningHours || 0)) <= filters.totalHoursMax!);
+    }
+    if (filters.revenuePerHourMin != null || filters.revenuePerHourMax != null) {
+      result = result.filter((d) => {
+        const hours = (d.preSigningHours || 0) + (d.postSigningHours || 0);
+        if (hours <= 0 || !d.totalFee) return false;
+        const rph = d.totalFee / hours;
+        if (filters.revenuePerHourMin != null && rph < filters.revenuePerHourMin) return false;
+        if (filters.revenuePerHourMax != null && rph > filters.revenuePerHourMax) return false;
+        return true;
+      });
+    }
+    if (filters.updatedWithinDays != null && filters.updatedWithinDays > 0) {
+      const now = new Date();
+      result = result.filter((d) => differenceInDays(now, new Date(d.updatedAt)) <= filters.updatedWithinDays!);
+    }
+    if (filters.hasLateMilestonesOnly) {
+      const now = Date.now();
+      result = result.filter((d) =>
+        (d.milestones || []).some(
+          (m) => !m.completed && m.dueDate && new Date(m.dueDate).getTime() < now,
+        ),
+      );
+    }
+
     // ── AI-driven natural-language filters ──────────────────
     // Applied on top of the standard filters as an AND layer so the AI
     // assistant cooperates with whatever the user already set via the
@@ -169,6 +246,9 @@ export function useDeals(options?: UseDealsOptions) {
         case 'name':
           comparison = a.name.localeCompare(b.name);
           break;
+        case 'company':
+          comparison = (a.company || '').localeCompare(b.company || '');
+          break;
         case 'value':
           comparison = a.value - b.value;
           break;
@@ -192,6 +272,36 @@ export function useDeals(options?: UseDealsOptions) {
           const aIdx = stageOrder.get(a.stage) ?? 999;
           const bIdx = stageOrder.get(b.stage) ?? 999;
           comparison = aIdx - bIdx;
+          break;
+        }
+        case 'manager':
+          comparison = (a.manager || '').localeCompare(b.manager || '');
+          break;
+        case 'engagementType':
+          comparison = (a.engagementType || '').localeCompare(b.engagementType || '');
+          break;
+        case 'totalFee':
+          comparison = (a.totalFee || 0) - (b.totalFee || 0);
+          break;
+        case 'totalHours':
+          comparison =
+            ((a.preSigningHours || 0) + (a.postSigningHours || 0)) -
+            ((b.preSigningHours || 0) + (b.postSigningHours || 0));
+          break;
+        case 'revenuePerHour': {
+          const rate = (d: typeof a) => {
+            const h = (d.preSigningHours || 0) + (d.postSigningHours || 0);
+            return h > 0 && d.totalFee ? d.totalFee / h : -1;
+          };
+          comparison = rate(a) - rate(b);
+          break;
+        }
+        case 'lateMilestones': {
+          const late = (d: typeof a) =>
+            (d.milestones || []).filter(
+              (m) => !m.completed && m.dueDate && new Date(m.dueDate).getTime() < Date.now(),
+            ).length;
+          comparison = late(a) - late(b);
           break;
         }
       }
