@@ -40,7 +40,7 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   const [now, setNow] = useState(() => Date.now());
   useVisibilityAwareInterval(() => setNow(Date.now()), 60_000);
 
-  const { pending, lastFetchAt, ok } = status;
+  const { lastFetchAt, ok } = status;
   // Background body prefetches are intentionally hidden from the user:
   // the message list itself is already loaded from the inbox cache, and
   // surfacing a "Syncing N messages…" banner on every cold open felt
