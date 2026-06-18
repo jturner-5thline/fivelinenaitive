@@ -261,7 +261,9 @@ function getMailLabels(msg: any): string[] {
     ...(Array.isArray(msg?.label_ids) ? msg.label_ids : []),
     ...(Array.isArray(msg?.labelIds) ? msg.labelIds : []),
   ];
-  return Array.from(new Set(values.map((v: any) => String(v)).filter(Boolean)));
+  return Array.from(new Set(values.map((v: any) => String(
+    v?.id ?? v?.name ?? v?.display_name ?? v?.label ?? v,
+  )).filter(Boolean)));
 }
 
 function isReadFromProvider(msg: any): boolean {
