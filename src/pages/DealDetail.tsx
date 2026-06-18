@@ -761,7 +761,26 @@ export default function DealDetail() {
 
         const dbDeal = dealRes.data;
         const dbLenders = (lendersRes.data || []) as any[];
-        const dealLenders: DealLender[] = dbLenders.map((l: any) => ({
+        // Defensive dedupe: collapse rows that share the same id or the same
+        // natural key (master_lender_id || lower(name)) so a single funding
+        // source can never render twice on a deal.
+        const seenIds = new Set<string>();
+        const seenKeys = new Set<string>();
+        const uniqueRows = dbLenders.filter((r: any) => {
+          if (seenIds.has(r.id)) return false;
+          seenIds.add(r.id);
+          const key = r.master_lender_id
+            ? `ml:${r.master_lender_id}`
+            : r.name
+              ? `name:${String(r.name).trim().toLowerCase()}`
+              : null;
+          if (key) {
+            if (seenKeys.has(key)) return false;
+            seenKeys.add(key);
+          }
+          return true;
+        });
+        const dealLenders: DealLender[] = uniqueRows.map((l: any) => ({
           id: l.id,
           name: l.name,
           status: 'in-review' as const,
