@@ -33,7 +33,7 @@ async function loadViewerContext(userId: string): Promise<{
   emailLocal: string;
 }> {
   const [{ data: profile }, { data: roleRow }] = await Promise.all([
-    supabase.from('profiles').select('full_name, email').eq('id', userId).maybeSingle(),
+    supabase.from('profiles').select('full_name, email').eq('user_id', userId).maybeSingle(),
     supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
   ]);
   const email = normName((profile as any)?.email);
