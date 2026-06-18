@@ -98,8 +98,13 @@ function getMessageKey(value: any): string {
 
 function normalizeReadState(message: any): any {
   const labels = Array.isArray(message?.labels) ? message.labels : [];
-  const hasUnreadLabel = labels.some((label: any) => String(label).toUpperCase() === 'UNREAD');
-  return hasUnreadLabel && message?.is_read !== false ? { ...message, is_read: false } : message;
+  const normalizedLabels = labels.map((label: any) => String(
+    label?.id ?? label?.name ?? label?.display_name ?? label?.label ?? label,
+  ).toUpperCase());
+  const hasUnreadLabel = normalizedLabels.includes('UNREAD');
+  if (hasUnreadLabel) return message?.is_read === false ? message : { ...message, is_read: false };
+  if (labels.length > 0 && message?.is_read !== true) return { ...message, is_read: true };
+  return message;
 }
 
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility.
