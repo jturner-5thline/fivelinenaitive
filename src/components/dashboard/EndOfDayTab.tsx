@@ -699,6 +699,25 @@ export function EndOfDayTab({
     if (selectedId) markRead(selectedId);
   }, [selectedId, markRead]);
 
+  // One-time baseline (subtask #4): on the first time a user lands in EOD
+  // after this feature ships, mark every currently-outstanding item as
+  // read so they "start fresh" instead of seeing months of blue dots.
+  useEffect(() => {
+    if (!userId || outstanding.length === 0) return;
+    const baselineKey = `eod:read-baselined:${userId}`;
+    try {
+      if (typeof window !== 'undefined' && !window.localStorage.getItem(baselineKey)) {
+        markManyRead(outstanding.map(e => e.id));
+        window.localStorage.setItem(baselineKey, new Date().toISOString());
+      }
+    } catch { /* ignore storage failures */ }
+  }, [userId, outstanding, markManyRead]);
+
+  const unreadVisibleIds = useMemo(
+    () => filtered.filter(e => !readSet.has(e.id) && e.id !== selectedId).map(e => e.id),
+    [filtered, readSet, selectedId],
+  );
+
   // Undo-aware actions ────────────────────────────────────────
   const undoToast = useCallback((id: string, kind: 'resolved' | 'dismissed', label: string) => {
     toast(label, {
