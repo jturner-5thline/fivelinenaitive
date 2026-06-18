@@ -8480,6 +8480,25 @@ ADMIN AGENT — DUTY 1 (VERIFY DEAL INFORMATION):
 - STAGE 2 SCOPE: DO NOT emit create_task, update_deal_*, or any other write confirmation cards yet — Stage 2 only captures intent. After record_admin_agent_selection returns ok=true, reply briefly using its 'guidance' field; the actual task/reminder/approval workflows land in Duties 2–4.
 ${orgPreferencesSection}
 
+EMAIL-BODY HOURS EXTRACTION (when the user pastes or forwards an email and the body logs time):
+- Trigger: the user message contains pasted/forwarded email text (headers like "From:", "Subject:", "Sent:", "----- Forwarded message -----", quoted ">" prefixes, or a signature block) AND any phrasing that logs time — examples:
+  • "Spent 1.5 hrs on Acme post-signing"
+  • "0.5h pre-sign — Worthy diligence call"
+  • "Time: 2h Post-Signing (Upflex Q3 review)"
+  • "Logging 45 min pre-signing on Censys"
+  • Tabular rows like "Acme | Post | 1.5" or "Worthy — pre — 0.75"
+- Unit normalization: convert minutes to hours (45 min → 0.75; 30 min → 0.5; "an hour" → 1; "half an hour" → 0.5). Round to 2 decimals.
+- Phase mapping (case-insensitive, match whole-word):
+  • PRE-SIGNING → pre_signing_hours_delta. Synonyms: pre, pre-sign, presign, pre signing, pre-close, before signing, due diligence (DD), diligence, term sheet phase, "before close".
+  • POST-SIGNING → post_signing_hours_delta. Synonyms: post, post-sign, postsign, post signing, post-close, after signing, funding, integration, "after close".
+  • If the phase is genuinely ambiguous for an entry, DO NOT guess — ask one short clarifying question listing the ambiguous lines.
+- Deal name resolution: each entry must reference a deal. If the email body names deals explicitly, resolve each via search_deals (the merged_into filter is already applied). If a single email logs hours for multiple deals, emit ONE update_deal_fields tool call per deal. If a deal name is missing or ambiguous (POSSIBLE DEAL MATCHES block fires), follow the picker rules above — do NOT call the write tool until the user picks.
+- AGGREGATION rule: if the same email body has multiple lines for the same (deal, phase), SUM them and emit ONE delta — never multiple deltas against the same field in the same turn.
+- Confirmation is MANDATORY: every extracted entry goes through update_deal_fields, which renders the standard confirm card showing "Pre-Signing hours: <current> → <new>" / "Post-Signing hours: <current> → <new>". Never auto-execute hour writes from email extraction even if the email phrasing sounds like a directive.
+- BEFORE emitting the tool calls, write ONE concise summary line back to the user listing what you extracted in this format, then emit the update_deal_fields calls so the confirm cards render directly below it:
+  "Extracted from email: <Deal A> +0.5h pre-signing; <Deal B> +1.5h post-signing. Confirm each below."
+- If you cannot find any hours/phase signal in the email, DO NOT call update_deal_fields. Reply: "I didn't spot any hour entries in that email — paste the line(s) that mention time spent and I'll log them."
+
 FUZZY DEAL NAME INTERPRETATION (STRICT):
 - NEVER reply "I couldn't find a deal called X" / "no deal found" / "not in our system" based on a strict string match alone. The deal name the user typed may be a typo, missing a suffix (Inc, LLC, Technologies), reordered, singular/plural, or phonetically off.
 - When the user references a deal by name and no RESOLVED DEAL FROM PROMPT is present, ALWAYS call search_deals({ query: "<the name they used>" }) FIRST. That tool does fuzzy + phonetic + token-set ranking across ALL deals (active, archived, closed_won, closed_lost).
