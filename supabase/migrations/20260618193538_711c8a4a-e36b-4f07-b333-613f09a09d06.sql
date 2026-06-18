@@ -1,0 +1,1 @@
+UPDATE auth.users SET email = 'Polly@blountcapital.com', updated_at = now() WHERE id = '89633b95-435b-4afa-a0ba-21d5866e9dfc';
