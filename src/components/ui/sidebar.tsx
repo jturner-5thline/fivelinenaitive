@@ -230,7 +230,7 @@ const Sidebar = React.forwardRef<
       {/* Spacer div - expands on hover OR click so content shifts over */}
       <div
         className={cn(
-          "relative h-svh bg-transparent transition-[width] duration-150 ease-out",
+          "relative h-svh bg-transparent transition-[width] duration-100 ease-out",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           // Use effectiveState to determine width (includes hover)
@@ -243,7 +243,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-100 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -271,7 +271,7 @@ const Sidebar = React.forwardRef<
           data-sidebar="sidebar"
           data-effective-state={effectiveState}
           className={cn(
-            "flex h-full w-full flex-col rounded-xl transition-all duration-200 relative",
+            "flex h-full w-full flex-col rounded-xl transition-colors duration-100 relative",
             "border border-[rgba(255,255,255,0.07)]",
             "shadow-[inset_-1px_0_0_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.04)]",
             "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(315deg,rgba(126,184,247,0.03)_0%,transparent_50%)]",
