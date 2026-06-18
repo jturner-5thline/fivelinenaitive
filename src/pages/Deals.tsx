@@ -82,6 +82,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { lazy, Suspense } from 'react';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { cn } from '@/lib/utils';
 
 // Reuse the EXACT same memo view that backs the Deal Rundown sidebar (the
 // detail pane inside <PipelineMemoView /> is the "Deal Rundown" summary —
