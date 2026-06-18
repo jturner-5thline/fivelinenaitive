@@ -407,6 +407,23 @@ export function EndOfDayTab({
     });
   }, [userId]);
 
+  // Bulk "Mark all as read" — clears the blue unread dot on every currently
+  // visible outstanding tile in one click (subtask #4: stop forcing users to
+  // open every meeting to clear notifications).
+  const markManyRead = useCallback((ids: string[]) => {
+    if (!ids.length) return;
+    setReadSet(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (!next.has(id)) { next.add(id); changed = true; }
+      }
+      if (!changed) return prev;
+      writeLS(`eod:read:${userId}`, Array.from(next));
+      return next;
+    });
+  }, [userId]);
+
   // Selection (single) + bulk
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -682,6 +699,25 @@ export function EndOfDayTab({
     if (selectedId) markRead(selectedId);
   }, [selectedId, markRead]);
 
+  // One-time baseline (subtask #4): on the first time a user lands in EOD
+  // after this feature ships, mark every currently-outstanding item as
+  // read so they "start fresh" instead of seeing months of blue dots.
+  useEffect(() => {
+    if (!userId || outstanding.length === 0) return;
+    const baselineKey = `eod:read-baselined:${userId}`;
+    try {
+      if (typeof window !== 'undefined' && !window.localStorage.getItem(baselineKey)) {
+        markManyRead(outstanding.map(e => e.id));
+        window.localStorage.setItem(baselineKey, new Date().toISOString());
+      }
+    } catch { /* ignore storage failures */ }
+  }, [userId, outstanding, markManyRead]);
+
+  const unreadVisibleIds = useMemo(
+    () => filtered.filter(e => !readSet.has(e.id) && e.id !== selectedId).map(e => e.id),
+    [filtered, readSet, selectedId],
+  );
+
   // Undo-aware actions ────────────────────────────────────────
   const undoToast = useCallback((id: string, kind: 'resolved' | 'dismissed', label: string) => {
     toast(label, {
@@ -859,8 +895,23 @@ export function EndOfDayTab({
               </button>
             );
           })}
-          <div className="ml-auto text-[10px] text-muted-foreground/70">
-            {filtered.length} of {outstanding.length}
+          <div className="ml-auto flex items-center gap-2">
+            {unreadVisibleIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  markManyRead(unreadVisibleIds);
+                  toast.success(`Marked ${unreadVisibleIds.length} as read`);
+                }}
+                className="h-6 px-2 rounded-full text-[10px] font-medium border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
+                title="Clear the unread dot on every visible item"
+              >
+                Mark all as read ({unreadVisibleIds.length})
+              </button>
+            )}
+            <div className="text-[10px] text-muted-foreground/70">
+              {filtered.length} of {outstanding.length}
+            </div>
           </div>
         </div>
       </div>
