@@ -4030,8 +4030,23 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── MIXED RISK: Deal field updates ──
     case "update_deal_fields": {
-      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours").eq("id", args.deal_id).single();
+      let { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours, merged_into").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
+      // Soft-forward merged_into tombstones to the survivor row so AI updates
+      // never land on a merge loser (and never silently fail verify).
+      if ((deal as any).merged_into) {
+        const survivorId = (deal as any).merged_into as string;
+        console.log("[copilot-chat] merged_into forward (confirm): %s -> %s", deal.id, survivorId);
+        const { data: survivor } = await supabase
+          .from("deals")
+          .select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours, merged_into")
+          .eq("id", survivorId)
+          .single();
+        if (survivor) {
+          deal = survivor;
+          args.deal_id = survivor.id;
+        }
+      }
 
       // Validate that the model actually included a writable field. Without
       // this, the model can emit `{ deal_id, deal_name }` with no payload and
