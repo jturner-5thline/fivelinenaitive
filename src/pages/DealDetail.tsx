@@ -634,6 +634,7 @@ export default function DealDetail() {
   const { user } = useAuth();
   const { company, members } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
+  const requestStatusChange = useRequestStatusChange();
   const { scoreConfig } = useLenderScoreConfig();
   const teamMembers = useTeamMembers();
   const mentionUsers = useMemo(() => teamMembers, [teamMembers]);
