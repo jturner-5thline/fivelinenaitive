@@ -23,6 +23,7 @@ import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 
@@ -127,6 +128,10 @@ export function DealsHeader() {
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
   const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
+  const { data: dealAccessRequests = [] } = useDealAccessRequests();
+  const approvalQueueCount = approvalQueueEnabled
+    ? (actionQueueItems?.length || 0) + (dealAccessRequests?.length || 0)
+    : 0;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
@@ -407,17 +412,21 @@ export function DealsHeader() {
                 'Daily Rundown': dailyRundownHasBadge,
                 "Niki's Daily Rundown": nikiRundownHasBadge,
               };
+              const COUNT_BADGES: Record<string, number> = {
+                'Approval Queue': approvalQueueCount,
+              };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
                 Icon: ICONS[label],
                 isOpen,
                 hasBadge: !!BADGES[label],
+                badgeCount: COUNT_BADGES[label] || 0,
                 // When some overlay is already open, route the click
                 // through goToOverlay so the swap animates directionally
                 // (and never double-mounts two overlays).
                 onClick: () => goToOverlay(label),
               }));
-            })().map(({ label, Icon, isOpen, onClick, hasBadge }) => (
+            })().map(({ label, Icon, isOpen, onClick, hasBadge, badgeCount }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
                   <button
@@ -433,7 +442,14 @@ export function DealsHeader() {
                     }`}
                   >
                     <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
-                    {hasBadge && (
+                    {badgeCount > 0 ? (
+                      <span
+                        aria-label={`${label} has ${badgeCount} pending`}
+                        className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-[rgba(14,24,42,0.85)] tabular-nums pointer-events-none"
+                      >
+                        {badgeCount > 99 ? '99+' : badgeCount}
+                      </span>
+                    ) : hasBadge && (
                       <span
                         aria-label={`${label} has 1 incomplete item`}
                         className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-[rgba(14,24,42,0.85)] tabular-nums pointer-events-none"
