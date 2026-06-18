@@ -323,6 +323,7 @@ const App = () => (
         <AuthProvider>
           <PreferencesProvider>
             <DealsProvider>
+              <StatusChangeGateProvider>
               <LendersProvider>
                 <LenderStagesProvider>
                   <DealStagesProvider>
