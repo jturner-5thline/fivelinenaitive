@@ -512,6 +512,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             transition: reduceMotion
               ? undefined
               : 'opacity 160ms ease-out, transform 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+            // Isolate DealDetail's layout/paint from the animated shell
+            // so reconciliation inside the deal page can't invalidate the
+            // outer transform animation (eliminates open-time shudder).
+            contain: 'layout paint style',
           }}
         >
           <div
