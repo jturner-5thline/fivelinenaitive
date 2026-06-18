@@ -605,13 +605,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
       if (!isMountedRef.current) return;
 
-      const firstInboxMessages = await applyAuthoritativeReadState(firstInbox.messages);
-      if (!isMountedRef.current) return;
-
+      const firstInboxMessages = firstInbox.messages;
       if (firstInboxMessages.length === 0 && !firstInbox.nextPageToken) {
         // Empty / rate-limited — try DB cache only on cold open.
         if (!cacheHasData) await hydrateFromCache();
       } else {
+        // Paint the freshly-fetched list IMMEDIATELY — don't await
+        // sync_state. The authoritative read/starred reconcile runs in
+        // the background a moment later via `applyAuthoritativeReadState`
+        // and patches deltas in-place without blocking first paint.
         setInboxMessages((prev) => {
           const next = mergeUniqueById(prev, firstInboxMessages);
           // Mirror into the shared cache so the unread badge & next open
@@ -621,6 +623,18 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         });
         setInboxNextToken(firstInbox.nextPageToken);
         setHasMoreInbox(!!firstInbox.nextPageToken);
+
+        // Background reconcile — fire-and-forget so the UI is never
+        // blocked waiting on per-message metadata.
+        void applyAuthoritativeReadState(firstInboxMessages).then((reconciled) => {
+          if (!isMountedRef.current) return;
+          if (reconciled === firstInboxMessages) return;
+          setInboxMessages((prev) => {
+            const next = mergeUniqueById(prev, reconciled);
+            useInboxCacheStore.setState({ inboxMessages: next });
+            return next;
+          });
+        }).catch(() => { /* best-effort */ });
       }
       if (!cacheHasData) setIsInitialLoading(false);
 
