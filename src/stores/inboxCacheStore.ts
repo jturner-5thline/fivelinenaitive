@@ -336,4 +336,18 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
 
 /** Selector: unread inbox count derived from cached messages. */
 export const selectUnreadCount = (s: InboxCacheState): number =>
-  s.inboxMessages.reduce((n, m) => (m && m.is_read === false ? n + 1 : n), 0);
+  s.inboxMessages.reduce((n, m) => {
+    if (!m || m.is_read !== false) return n;
+    // Respect Gmail labels: if the provider says it's read (labels exist
+    // and don't contain UNREAD), don't count it — keeps the badge in sync
+    // with what the user sees in Gmail.
+    const labels = Array.isArray(m.labels) ? m.labels : [];
+    if (labels.length > 0) {
+      const hasUnreadLabel = labels.some((label: any) => {
+        const v = String(label?.id ?? label?.name ?? label?.display_name ?? label?.label ?? label).toUpperCase();
+        return v === 'UNREAD';
+      });
+      if (!hasUnreadLabel) return n;
+    }
+    return n + 1;
+  }, 0);
