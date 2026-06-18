@@ -341,6 +341,27 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // query returns 0 rows so the "End of inbox" sentinel can render.
   const [hasMoreCache, setHasMoreCache] = useState(true);
 
+  // Warm-mount: once the dialog component is alive, schedule an idle pass
+  // that pre-renders the (closed) DialogContent + DealEmailsTab subtree.
+  // The Radix portal mounts in the background, virtualizers warm up, and
+  // hooks settle BEFORE the user clicks the mail icon. When they do click,
+  // open flips true and the existing nodes simply become visible — no
+  // multi-hundred-millisecond mount on the click frame.
+  const [warmMounted, setWarmMounted] = useState(false);
+  useEffect(() => {
+    if (warmMounted) return;
+    if (!status.connected) return;
+    const w = typeof window !== 'undefined' ? (window as any) : null;
+    const schedule = w?.requestIdleCallback
+      ? (cb: () => void) => w.requestIdleCallback(cb, { timeout: 2000 })
+      : (cb: () => void) => setTimeout(cb, 800);
+    const cancel = w?.cancelIdleCallback
+      ? (h: any) => w.cancelIdleCallback(h)
+      : (h: any) => clearTimeout(h);
+    const handle = schedule(() => setWarmMounted(true));
+    return () => cancel(handle);
+  }, [warmMounted, status.connected]);
+
   // Loading flags
   // Only show the initial spinner when we have nothing cached to render.
   // Otherwise the open is instant and the refresh happens silently below.
@@ -1129,10 +1150,16 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // `received_at` cursor still resolves to older cached rows — so the
   // user can keep scrolling past upstream rate limits / end-of-token.
   const hasMore = hasMoreInbox || hasMoreSent || (hasMoreCache && !!oldestReceivedAt);
+  // Once the warm pass has happened (or the user has opened once), keep
+  // DialogContent in the DOM via `forceMount` so subsequent opens are
+  // instant. We hide it with `data-[state=closed]:hidden` so the closed
+  // state has zero visual impact.
+  const persistMount = warmMounted || open;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         id="email-popup-modal-root"
+        {...(persistMount ? { forceMount: true } : {})}
         className={cn(
           swipeClass,
           // Near-fullscreen workspace: scales proportionally with the viewport
@@ -1140,7 +1167,10 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           "popup-shell-surface p-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20",
           "h-[92vh] sm:h-[92vh]",
           "w-[min(1400px,calc(100vw-2rem))] max-w-[min(1400px,calc(100vw-2rem))] sm:max-w-[min(1400px,calc(100vw-2rem))] max-h-none",
-          "overflow-hidden"
+          "overflow-hidden",
+          // When force-mounted but closed, fully hide so the pre-warmed
+          // tree doesn't paint or capture pointer events.
+          persistMount ? "data-[state=closed]:hidden" : "",
         )}
         style={{
           width: 'min(1400px, calc(100vw - 2rem))',
