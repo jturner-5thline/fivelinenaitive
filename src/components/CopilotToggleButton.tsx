@@ -200,15 +200,42 @@ export function CopilotToggleButton() {
 
     const ro = new ResizeObserver(update);
     ro.observe(document.body);
-    const mo = new MutationObserver(update);
+    // Throttled body-mutation observer. The previous implementation
+    // fired `update` on every childList mutation in the whole subtree
+    // (tooltips opening, dropdowns mounting, virtual list scroll), which
+    // showed up as continuous getBoundingClientRect churn in long
+    // sessions. Coalesce to a single rAF and skip while the tab is
+    // hidden — `update` only matters when the user is actually looking.
+    let moScheduled = false;
+    const scheduleUpdate = () => {
+      if (moScheduled) return;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      moScheduled = true;
+      requestAnimationFrame(() => {
+        moScheduled = false;
+        update();
+      });
+    };
+    const mo = new MutationObserver(scheduleUpdate);
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', update);
-    const interval = window.setInterval(update, 400);
+    // Backup poll catches transitions the observers miss (sidebar
+    // collapse animation, etc.). Pause while the tab is hidden so a
+    // backgrounded tab stays at 0% CPU.
+    const interval = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      update();
+    }, 400);
+    const onVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') update();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       ro.disconnect();
       mo.disconnect();
       window.removeEventListener('resize', update);
       window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
 
