@@ -871,9 +871,45 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     }
   }, [open]);
 
+  // Dedicated cursor for the UNREAD-only stream. When the user has the
+  // "Unread" view filter selected, paginating the full INBOX is wasteful
+  // (most pages contain zero unread rows) and was the cause of the
+  // ~60s wait Niki reported. We instead ask Gmail for INBOX+UNREAD
+  // directly so each page is dense with unread messages.
+  const unreadNextTokenRef = useRef<string | null>(null);
+  const unreadExhaustedRef = useRef(false);
+
   // Manual "Load more" — drains one page each from inbox & sent (whichever still has more)
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(async (opts?: { unreadOnly?: boolean }) => {
     if (isLoadingMore) return;
+    // Fast path: only fetch unread messages from Gmail directly. Bypasses
+    // the full-INBOX cursor so older unread mail surfaces in a single
+    // round-trip instead of dozens of "Load more" pages.
+    if (opts?.unreadOnly) {
+      if (unreadExhaustedRef.current) return;
+      setIsLoadingMore(true);
+      try {
+        const page = await fetchPage({
+          labelIds: ['INBOX', 'UNREAD'],
+          pageToken: unreadNextTokenRef.current,
+          maxResults: 100,
+        });
+        if (!isMountedRef.current) return;
+        if (page.rateLimited) return;
+        if (page.messages.length) {
+          setInboxMessages((prev) => {
+            const next = mergeUniqueById(prev, page.messages);
+            useInboxCacheStore.setState({ inboxMessages: next });
+            return next;
+          });
+        }
+        unreadNextTokenRef.current = page.nextPageToken;
+        if (!page.nextPageToken) unreadExhaustedRef.current = true;
+      } finally {
+        if (isMountedRef.current) setIsLoadingMore(false);
+      }
+      return;
+    }
     // Cursor-based fallback: even when upstream token is gone, we may
     // still have older messages cached locally — keep going if so.
     const canCacheFallback = !!oldestReceivedAt && hasMoreCache;
