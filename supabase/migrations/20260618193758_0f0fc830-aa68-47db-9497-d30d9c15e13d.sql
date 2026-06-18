@@ -1,0 +1,2 @@
+UPDATE auth.users SET email = 'mahder@blountcapital.com', updated_at = now() WHERE id = 'b65b9698-eb29-40d6-806b-46e85324bde3';
+UPDATE auth.identities SET identity_data = jsonb_set(jsonb_set(identity_data, '{email}', '"mahder@blountcapital.com"'), '{email_verified}', 'true'), updated_at = now() WHERE user_id = 'b65b9698-eb29-40d6-806b-46e85324bde3' AND provider = 'email';
