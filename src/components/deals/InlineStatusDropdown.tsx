@@ -24,9 +24,14 @@ interface InlineStatusDropdownProps {
 
 export function InlineStatusDropdown({ dealId, status, onStatusChange, className = '' }: InlineStatusDropdownProps) {
   const requestStatusChange = useRequestStatusChange();
+  const [open, setOpen] = useState(false);
   const statusConfig = status ? STATUS_CONFIG[status] : null;
 
   const handlePick = (next: DealStatus | null) => {
+    // Close the status menu immediately so the "Add a status note"
+    // dialog (opened by the gate) is the only surface visible after
+    // selection — never overlapping/layered behind the dropdown.
+    setOpen(false);
     if (next === status) return;
     // Gate enforces the new-note requirement and writes status+notes
     // together in a single update. We ignore onStatusChange so external
@@ -50,7 +55,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -89,7 +94,6 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
           key="__no_status__"
           onClick={(e) => {
             e.stopPropagation();
-            e.preventDefault();
             handlePick(null);
           }}
           className={`flex items-center gap-2 ${status === null ? 'bg-muted' : ''}`}
@@ -102,7 +106,6 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
             key={key}
             onClick={(e) => {
               e.stopPropagation();
-              e.preventDefault();
               handlePick(key as DealStatus);
             }}
             className={`flex items-center gap-2 ${status === key ? 'bg-muted' : ''}`}
