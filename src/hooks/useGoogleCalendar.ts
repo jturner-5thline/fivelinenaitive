@@ -132,12 +132,11 @@ export function useGoogleCalendar() {
     if (!user) return;
     setIsConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/integrations?calendar_callback=true`;
+      // redirect_uri is hardcoded server-side (must match Nylas allowlist).
       const { data, error } = await supabase.functions.invoke('calendar-auth', {
-        body: { action: 'get_auth_url', redirect_uri: redirectUri },
+        body: { action: 'get_auth_url' },
       });
       if (error) throw error;
-      sessionStorage.setItem('calendar_redirect_uri', redirectUri);
       window.location.href = data.auth_url;
     } catch (err: any) {
       console.error('Calendar connect error:', err);
@@ -150,10 +149,9 @@ export function useGoogleCalendar() {
     if (!user) return false;
     setIsConnecting(true);
     try {
-      const redirectUri = sessionStorage.getItem('calendar_redirect_uri') ||
-        `${window.location.origin}/integrations?calendar_callback=true`;
+      // redirect_uri is hardcoded server-side (must match Nylas allowlist).
       const { error } = await supabase.functions.invoke('calendar-auth', {
-        body: { action: 'exchange_code', code, redirect_uri: redirectUri },
+        body: { action: 'exchange_code', code },
       });
       if (error) throw error;
       sessionStorage.removeItem('calendar_redirect_uri');

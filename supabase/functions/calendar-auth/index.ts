@@ -9,6 +9,11 @@ const corsHeaders = {
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_CLIENT_ID = Deno.env.get("NYLAS_CLIENT_ID");
 const NYLAS_API_URI = "https://api.us.nylas.com";
+// SECURITY/CORRECTNESS: redirect_uri MUST exactly match the URI registered
+// in the Nylas application allowlist. We hardcode it server-side so that
+// origin variance (naitive.co, www.naitive.co, preview/lovable.app, localhost)
+// can never cause `invalid_query_params` from Nylas. Mirrors gmail-auth.
+const NYLAS_REDIRECT_URI = "https://naitive.co/integrations?calendar_callback=true";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -55,17 +60,10 @@ serve(async (req: Request): Promise<Response> => {
 
     switch (body.action) {
       case "get_auth_url": {
-        if (!body.redirect_uri) {
-          return new Response(JSON.stringify({ error: "redirect_uri required" }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-
         // Use Nylas Hosted OAuth — same as Gmail auth but for calendar access
         const params = new URLSearchParams({
           client_id: NYLAS_CLIENT_ID,
-          redirect_uri: body.redirect_uri,
+          redirect_uri: NYLAS_REDIRECT_URI,
           response_type: "code",
           provider: "google",
           state: user.id,
@@ -79,8 +77,8 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "exchange_code": {
-        if (!body.code || !body.redirect_uri) {
-          return new Response(JSON.stringify({ error: "code and redirect_uri required" }), {
+        if (!body.code) {
+          return new Response(JSON.stringify({ error: "code required" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -94,7 +92,7 @@ serve(async (req: Request): Promise<Response> => {
             client_id: NYLAS_CLIENT_ID,
             client_secret: NYLAS_API_KEY,
             code: body.code,
-            redirect_uri: body.redirect_uri,
+            redirect_uri: NYLAS_REDIRECT_URI,
             grant_type: "authorization_code",
           }),
         });
