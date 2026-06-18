@@ -202,13 +202,15 @@ function PaginationFooter({
   isAutoPaginating,
   totalLoaded,
   scrollRoot,
+  unreadOnly,
 }: {
-  onLoadMore?: () => void | Promise<void>;
+  onLoadMore?: (opts?: { unreadOnly?: boolean }) => void | Promise<void>;
   hasMore: boolean;
   isLoadingMore: boolean;
   isAutoPaginating: boolean;
   totalLoaded: number;
   scrollRoot?: Element | null;
+  unreadOnly?: boolean;
 }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -224,7 +226,7 @@ function PaginationFooter({
       (entries) => {
         const first = entries[0];
         if (first?.isIntersecting) {
-          onLoadMore();
+          onLoadMore({ unreadOnly });
         }
       },
       // Late-trigger: only fire onLoadMore when the sentinel is essentially
@@ -235,7 +237,7 @@ function PaginationFooter({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore, scrollRoot]);
+  }, [hasMore, isLoadingMore, isAutoPaginating, onLoadMore, scrollRoot, unreadOnly]);
 
   if (isAutoPaginating || isLoadingMore) {
     return (
@@ -255,7 +257,7 @@ function PaginationFooter({
             variant="ghost"
             size="sm"
             className="text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => onLoadMore()}
+            onClick={() => onLoadMore({ unreadOnly })}
           >
             Load more older messages
           </Button>
