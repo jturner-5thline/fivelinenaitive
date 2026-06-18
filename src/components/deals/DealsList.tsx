@@ -191,6 +191,72 @@ function isColumnFilterActive(col: DealListColumnId, filters?: DealFilters): boo
   return keys.some((k) => isFilterValueActive(filters[k]));
 }
 
+function fmtNum(n: number | null | undefined): string {
+  if (n == null) return '';
+  return n.toLocaleString();
+}
+
+function rangeLabel(prefix: string, min?: number | null, max?: number | null): string {
+  if (min != null && max != null) return `${prefix}: ${fmtNum(min)}–${fmtNum(max)}`;
+  if (min != null) return `${prefix} ≥ ${fmtNum(min)}`;
+  if (max != null) return `${prefix} ≤ ${fmtNum(max)}`;
+  return prefix;
+}
+
+function buildActiveFilterChips(filters: DealFilters): { key: string; label: string; clear: Partial<DealFilters> }[] {
+  const chips: { key: string; label: string; clear: Partial<DealFilters> }[] = [];
+  if (isFilterValueActive(filters.companyContains)) {
+    chips.push({ key: 'companyContains', label: `Company: "${filters.companyContains}"`, clear: { companyContains: '' } });
+  }
+  if (filters.valueMin != null || filters.valueMax != null) {
+    chips.push({ key: 'value', label: rangeLabel('Value', filters.valueMin, filters.valueMax), clear: { valueMin: null, valueMax: null } });
+  }
+  if (filters.totalFeeMin != null || filters.totalFeeMax != null) {
+    chips.push({ key: 'totalFee', label: rangeLabel('Fee', filters.totalFeeMin, filters.totalFeeMax), clear: { totalFeeMin: null, totalFeeMax: null } });
+  }
+  if (filters.totalHoursMin != null || filters.totalHoursMax != null) {
+    chips.push({ key: 'totalHours', label: rangeLabel('Hours', filters.totalHoursMin, filters.totalHoursMax), clear: { totalHoursMin: null, totalHoursMax: null } });
+  }
+  if (filters.revenuePerHourMin != null || filters.revenuePerHourMax != null) {
+    chips.push({ key: 'revenuePerHour', label: rangeLabel('Rev/hr', filters.revenuePerHourMin, filters.revenuePerHourMax), clear: { revenuePerHourMin: null, revenuePerHourMax: null } });
+  }
+  if (filters.status.length) {
+    chips.push({ key: 'status', label: `Status: ${filters.status.length}`, clear: { status: [] } });
+  }
+  if (filters.stage.length) {
+    chips.push({ key: 'stage', label: `Stage: ${filters.stage.length}`, clear: { stage: [] } });
+  }
+  if (filters.manager.length) {
+    chips.push({ key: 'manager', label: `Manager: ${filters.manager.length}`, clear: { manager: [] } });
+  }
+  if (filters.engagementType.length) {
+    chips.push({ key: 'engagementType', label: `Engagement: ${filters.engagementType.length}`, clear: { engagementType: [] as any } });
+  }
+  if (filters.dealType.length) {
+    chips.push({ key: 'dealType', label: `Deal type: ${filters.dealType.length}`, clear: { dealType: [] } });
+  }
+  if (filters.updatedWithinDays != null) {
+    chips.push({ key: 'updatedWithinDays', label: `Updated ≤ ${filters.updatedWithinDays}d`, clear: { updatedWithinDays: null } });
+  }
+  if (filters.hasLateMilestonesOnly) {
+    chips.push({ key: 'hasLateMilestonesOnly', label: 'Has late milestones', clear: { hasLateMilestonesOnly: false } });
+  }
+  return chips;
+}
+
+function clearAllColumnFilters(): Partial<DealFilters> {
+  return {
+    companyContains: '',
+    valueMin: null, valueMax: null,
+    totalFeeMin: null, totalFeeMax: null,
+    totalHoursMin: null, totalHoursMax: null,
+    revenuePerHourMin: null, revenuePerHourMax: null,
+    status: [], stage: [], manager: [], engagementType: [] as any, dealType: [],
+    updatedWithinDays: null,
+    hasLateMilestonesOnly: false,
+  };
+}
+
 export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
