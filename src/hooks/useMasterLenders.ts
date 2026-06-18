@@ -210,7 +210,18 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         if (canCoalesce) {
           // Publish a placeholder promise immediately so peers mounting in
           // this same tick await it instead of starting their own fetch.
-          cachePromise = initialPromise.then((res) => (res.data ?? []) as MasterLender[]);
+          const placeholder = initialPromise.then(
+            (res) => {
+              if (res.error) throw res.error;
+              return (res.data ?? []) as MasterLender[];
+            },
+          );
+          cachePromise = placeholder;
+          // Clear on rejection so a failed first-page fetch doesn't poison
+          // future mounts. Success case is overwritten below by loadRemaining.
+          placeholder.catch(() => {
+            if (cachePromise === placeholder) cachePromise = null;
+          });
         }
       }
       const { data: initialData, error: initialError, count } = await initialPromise;
