@@ -159,10 +159,14 @@ function useAiActionQueueRealtime() {
     };
 
     const channel = supabase
-      .channel(`ai-action-queue-${user.id}`)
+      // Shared queue: subscribe to ALL row changes (not just this
+      // user's). RLS still gates what the client actually receives, so
+      // teammates who can see the same shared items get notified the
+      // instant anyone approves / dismisses / edits them.
+      .channel(`ai-action-queue-shared-${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
+        { event: '*', schema: 'public', table: 'ai_action_queue' },
         () => {
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = setTimeout(flush, REALTIME_DEBOUNCE_MS);
