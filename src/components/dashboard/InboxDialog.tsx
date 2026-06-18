@@ -312,6 +312,38 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const isMountedRef = useRef(true);
   const isPaginatingRef = useRef(false);
 
+  // Live-subscribe to the shared inbox cache so that if the global
+  // 5-min prefetch hydrates AFTER this dialog mounted (cold open before
+  // the first prefetch finished), the list fills in immediately instead
+  // of waiting for the dialog's own foreground fetch.
+  useEffect(() => {
+    const unsub = useInboxCacheStore.subscribe((state, prev) => {
+      if (!isMountedRef.current) return;
+      if (state.inboxMessages !== prev.inboxMessages && state.inboxMessages.length) {
+        setInboxMessages((local) => {
+          if (local === state.inboxMessages) return local;
+          // If local is empty, adopt the cache wholesale; otherwise merge.
+          return local.length === 0 ? state.inboxMessages : mergeUniqueById(local, state.inboxMessages);
+        });
+        if (state.inboxNextToken && !inboxNextToken) {
+          setInboxNextToken(state.inboxNextToken);
+          setHasMoreInbox(true);
+        }
+        // Cache filled — treat as already-seeded so the open-effect
+        // skips its spinner-bound foreground fetch.
+        hasLoadedRef.current = true;
+        setIsInitialLoading(false);
+      }
+      if (state.sentMessages !== prev.sentMessages && state.sentMessages.length) {
+        setSentMessages((local) =>
+          local.length === 0 ? state.sentMessages : mergeUniqueById(local, state.sentMessages),
+        );
+      }
+    });
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Helper to dedupe by id.
   //
   // Bug fix (Niki): when a message already existed in `existing`, fresh
