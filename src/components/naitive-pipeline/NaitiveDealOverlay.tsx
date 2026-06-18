@@ -12,11 +12,13 @@ import {
   findDealTileRect,
 } from '@/lib/dealOpenAnimation';
 import { markOverlayJustClosed } from '@/lib/overlayClickSuppression';
+import { loadDealDetail } from '@/lib/lazyDealDetail';
 
 // Lazy-load the (large) deal detail page so the overlay shell can paint
-// before its chunk is parsed. Once loaded the chunk is cached for the
-// session, so subsequent opens skip this cost entirely.
-const DealDetail = lazy(() => import('@/pages/DealDetail'));
+// before its chunk is parsed. Shared loader (see lazyDealDetail.ts) so
+// hover/idle preloaders, the /deal/:id route, and this overlay all share
+// one in-flight promise and one emitted chunk.
+const DealDetail = lazy(() => loadDealDetail());
 
 interface Props {
   /** Currently open deal. Null when overlay is closed. */
