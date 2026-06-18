@@ -215,7 +215,7 @@ async function fetchPage(args: {
       };
     }
     return {
-      messages: data?.messages || [],
+      messages: (data?.messages || []).map(normalizeReadState),
       nextPageToken: data?.next_page_token || null,
       rateLimited: false,
     };
@@ -396,7 +396,8 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // row, while keeping any locally enriched fields the UI added.
   const mergeUniqueById = useCallback((existing: any[], incoming: any[]) => {
     const incomingById = new Map<string, any>();
-    for (const m of incoming) {
+    for (const raw of incoming) {
+      const m = normalizeReadState(raw);
       const key = getMessageKey(m);
       if (key) incomingById.set(key, m);
     }
@@ -429,7 +430,8 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       };
     });
     const additions: any[] = [];
-    for (const m of incoming) {
+    for (const raw of incoming) {
+      const m = normalizeReadState(raw);
       const key = getMessageKey(m);
       if (!key || seen.has(key)) continue;
       seen.add(key);
