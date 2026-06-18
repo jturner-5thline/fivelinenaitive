@@ -24,6 +24,56 @@ import { supabase } from '@/integrations/supabase/client';
 // instantly; older pages are fetched lazily on scroll via "Load more".
 const PAGE_SIZE = 25;
 
+// localStorage hydration: persist the top of the inbox so that on a fresh
+// page load (or hard refresh) the dialog can paint previously-loaded emails
+// instantly while a background `refresh()` reconciles with the server.
+const LS_KEY = 'naitive.inboxCache.v1';
+const LS_MAX_MESSAGES = 50;
+
+function loadPersistedCache(): {
+  inboxMessages: any[];
+  sentMessages: any[];
+  lastFetchedAt: number | null;
+} {
+  if (typeof window === 'undefined') {
+    return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+  }
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+    const parsed = JSON.parse(raw);
+    return {
+      inboxMessages: Array.isArray(parsed?.inboxMessages) ? parsed.inboxMessages.map(normalizeReadState) : [],
+      sentMessages: Array.isArray(parsed?.sentMessages) ? parsed.sentMessages : [],
+      lastFetchedAt: typeof parsed?.lastFetchedAt === 'number' ? parsed.lastFetchedAt : null,
+    };
+  } catch {
+    return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+  }
+}
+
+function persistCache(state: { inboxMessages: any[]; sentMessages: any[]; lastFetchedAt: number | null }) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Strip heavy fields (bodies/attachments) — we only need enough to
+    // paint the list rows. Bodies are re-fetched on row click via the
+    // existing prefetcher.
+    const trim = (m: any) => {
+      if (!m) return m;
+      const { body_html, body_text, attachments, inline_attachments, ...rest } = m;
+      return rest;
+    };
+    const payload = {
+      inboxMessages: state.inboxMessages.slice(0, LS_MAX_MESSAGES).map(trim),
+      sentMessages: state.sentMessages.slice(0, LS_MAX_MESSAGES).map(trim),
+      lastFetchedAt: state.lastFetchedAt,
+    };
+    window.localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  } catch {
+    // Quota / serialization errors are non-fatal — cache is best-effort.
+  }
+}
+
 function getMessageKey(value: any): string {
   return String(value?.gmail_message_id || value?.message_id || value?.id || '');
 }
@@ -231,13 +281,19 @@ async function fetchPage(args: {
   }
 }
 
+const __persisted = loadPersistedCache();
+
 export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
-  inboxMessages: [],
-  sentMessages: [],
+  // Hydrate from localStorage so the inbox dialog can render instantly on
+  // first open after a page reload — no spinner, no blank state.
+  inboxMessages: __persisted.inboxMessages,
+  sentMessages: __persisted.sentMessages,
   inboxNextToken: null,
   sentNextToken: null,
+  // We deliberately leave `hasInitial=false` so the background `prefetch()`
+  // still runs to merge in anything newer.
   hasInitial: false,
-  lastFetchedAt: null,
+  lastFetchedAt: __persisted.lastFetchedAt,
   isRefreshing: false,
 
   prefetch: async () => {
@@ -255,18 +311,33 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
       const msInbox = await fetchMicrosoftEmails('INBOX');
       const inboxMerged = [...(inboxPage.ok ? inboxPage.messages : []), ...msInbox]
         .sort((a, b) => new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime());
-      const inboxStates = inboxMerged.length ? await syncMessageStates(inboxMerged, PAGE_SIZE) : [];
-      const inboxAuthoritative = inboxStates.length ? overlayStateDeltas(inboxMerged, inboxStates) : inboxMerged;
+      // Optimistically commit the freshly-fetched list BEFORE running
+      // `sync_state` so the UI can paint immediately. The per-message
+      // sync_state call below corrects read/starred state in the
+      // background a moment later.
       if (inboxPage.ok || msInbox.length) {
         set((prev) => ({
           // Merge so previously loaded older pages aren't dropped on poll.
-          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxAuthoritative),
+          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxMerged),
           // Only overwrite the next-token when we re-fetched page 1 — it
           // represents the cursor *after* the freshest page.
           inboxNextToken: prev.inboxMessages.length === 0
             ? inboxPage.nextPageToken
             : prev.inboxNextToken,
         }));
+      }
+      // Mark as initial-loaded as soon as the list is in memory so the
+      // dialog can render without waiting for sync_state.
+      set({ hasInitial: true, lastFetchedAt: Date.now() });
+      persistCache({
+        inboxMessages: get().inboxMessages,
+        sentMessages: get().sentMessages,
+        lastFetchedAt: get().lastFetchedAt,
+      });
+      // Authoritative read/starred reconcile happens in the background.
+      if (inboxMerged.length) {
+        const inboxStates = await syncMessageStates(inboxMerged, PAGE_SIZE);
+        if (inboxStates.length) get().applyStateDeltas(inboxStates);
       }
       const sentPage = await fetchPage({ labelIds: ['SENT'] });
       if (sentPage.ok) {
@@ -276,24 +347,33 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
             ? sentPage.nextPageToken
             : prev.sentNextToken,
         }));
+        persistCache({
+          inboxMessages: get().inboxMessages,
+          sentMessages: get().sentMessages,
+          lastFetchedAt: get().lastFetchedAt,
+        });
       }
-      set({ hasInitial: true, lastFetchedAt: Date.now() });
-      // Reconcile read/starred state for the top of the inbox via the
-      // authoritative per-message endpoint. Nylas's `list` cache can lag
-      // behind Gmail by minutes after a user reads/replies in the Gmail
-      // web client, so the list returns `unread: true` even though Gmail
-      // says the message is read. Calling `sync_state` hits
-      // `/messages/{id}?fields=standard` which reflects the true state
-      // and lets us correct stale unread badges in the background.
-      const states = inboxStates.length ? [] : await syncMessageStates(get().inboxMessages, PAGE_SIZE);
-      if (states.length) get().applyStateDeltas(states);
     } finally {
       set({ isRefreshing: false });
     }
   },
 
-  setInboxMessages: (msgs) => set({ inboxMessages: msgs }),
-  setSentMessages: (msgs) => set({ sentMessages: msgs }),
+  setInboxMessages: (msgs) => {
+    set({ inboxMessages: msgs });
+    persistCache({
+      inboxMessages: msgs,
+      sentMessages: get().sentMessages,
+      lastFetchedAt: get().lastFetchedAt,
+    });
+  },
+  setSentMessages: (msgs) => {
+    set({ sentMessages: msgs });
+    persistCache({
+      inboxMessages: get().inboxMessages,
+      sentMessages: msgs,
+      lastFetchedAt: get().lastFetchedAt,
+    });
+  },
 
   applyStateDeltas: (states) => {
     if (!states.length) return;
@@ -321,17 +401,27 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
         });
       return changed ? { inboxMessages: next } : {};
     });
+    persistCache({
+      inboxMessages: get().inboxMessages,
+      sentMessages: get().sentMessages,
+      lastFetchedAt: get().lastFetchedAt,
+    });
   },
 
-  reset: () => set({
-    inboxMessages: [],
-    sentMessages: [],
-    inboxNextToken: null,
-    sentNextToken: null,
-    hasInitial: false,
-    lastFetchedAt: null,
-    isRefreshing: false,
-  }),
+  reset: () => {
+    set({
+      inboxMessages: [],
+      sentMessages: [],
+      inboxNextToken: null,
+      sentNextToken: null,
+      hasInitial: false,
+      lastFetchedAt: null,
+      isRefreshing: false,
+    });
+    if (typeof window !== 'undefined') {
+      try { window.localStorage.removeItem(LS_KEY); } catch { /* noop */ }
+    }
+  },
 }));
 
 /** Selector: unread inbox count derived from cached messages. */
