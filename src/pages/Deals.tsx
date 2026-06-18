@@ -44,6 +44,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { preloadDealDetail } from '@/lib/lazyDealDetail';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
