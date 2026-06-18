@@ -220,7 +220,7 @@ export function DealsHeader() {
             import('@/components/deal/email/useFullEmailMessage'),
           ]);
           await useInboxCacheStore.getState().refresh();
-          const top = useInboxCacheStore.getState().inboxMessages.slice(0, 25);
+          const top = useInboxCacheStore.getState().inboxMessages.slice(0, 50);
           for (const m of top) {
             const id = (m as any)?.id || (m as any)?.gmail_message_id;
             if (id) prefetchFullEmailMessage(id);
