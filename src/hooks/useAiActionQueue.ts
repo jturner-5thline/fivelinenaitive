@@ -209,15 +209,28 @@ export function useAiActionQueueCount(): number {
     queryFn: async (): Promise<number> => {
       const { data, error } = await supabase
         .from('ai_action_queue')
-        .select('id, status, expires_at')
+        .select('id, status, expires_at, action_type, deal_id, title, payload')
         .eq('status', 'pending')
         .limit(500);
       if (error) throw error;
       const now = Date.now();
-      return (data || []).filter(
-        (r: { status: string; expires_at: string }) =>
+      const live = (data || []).filter(
+        (r: any) =>
           r.status === 'pending' && new Date(r.expires_at).getTime() >= now,
-      ).length;
+      );
+      // Mirror dedupe logic from useAiActionQueue so the badge count
+      // matches what the user sees in the panel.
+      const seen = new Set<string>();
+      for (const r of live as any[]) {
+        const key = [
+          r.action_type,
+          r.deal_id ?? '',
+          (r.title || '').trim().toLowerCase(),
+          r.action_type === 'create_task' ? '' : JSON.stringify(r.payload ?? {}),
+        ].join('|');
+        seen.add(key);
+      }
+      return seen.size;
     },
   });
   return data;
