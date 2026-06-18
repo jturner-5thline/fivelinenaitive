@@ -49,6 +49,11 @@ export function EmailSyncIndicator({ className }: { className?: string }) {
   const syncing = false;
   const ageMs = lastFetchAt ? now - lastFetchAt : null;
 
+  // Body prefetch failures are best-effort and should never surface as an
+  // inbox-level "sync issue" on first open. The message list/read state has
+  // its own refresh path, so hide prefetch errors completely.
+  if (!ok) return null;
+
   // Nothing useful to display.
   if (!syncing && (!lastFetchAt || (ok && (ageMs ?? 0) < 60_000))) {
     return null;
