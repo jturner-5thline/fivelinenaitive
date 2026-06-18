@@ -245,33 +245,24 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     // next frame so the CSS transition interpolates back to identity.
     setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
     setOriginBorderRadius(16);
-    setContentVisible(false);
+    // Mount the deal content IMMEDIATELY so the user sees real data the
+    // moment the shell starts expanding. The shell's transform runs on
+    // the compositor; `contain: layout paint style` on the content
+    // wrapper plus `startTransition` keep React reconciliation from
+    // invalidating that animation. Net: zero perceptual click→content
+    // delay; the shell still grows from the tile around the content.
+    startTransition(() => setContentVisible(true));
 
     let raf2 = 0;
-    let revealTimeout = 0;
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
         setOriginTransform(null);
         setOriginBorderRadius(null);
       });
-      // Reveal the content well before the shell expansion finishes.
-      // The DealDetail chunk is preloaded on hover / idle (see
-      // lazyDealDetail.ts), so mounting it ~120ms in is smooth and the
-      // user sees real deal content ~250ms sooner than the previous
-      // 380ms shell-first delay.
-      // Mount DealDetail just as the shell expansion is settling so
-      // React's reconciliation of the heavy subtree doesn't compete with
-      // the in-flight transform animation. `startTransition` keeps the
-      // mount work non-urgent so the compositor can keep the shell at
-      // 60fps even if reconciliation slips a frame.
-      revealTimeout = window.setTimeout(() => {
-        startTransition(() => setContentVisible(true));
-      }, 200);
     });
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
-      if (revealTimeout) window.clearTimeout(revealTimeout);
     };
   }, [deal?.id, reduceMotion]);
 
