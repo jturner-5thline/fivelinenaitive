@@ -31,15 +31,29 @@ type SidebarContext = {
   setIsHovering: (hovering: boolean) => void;
 };
 
-const SidebarContext = React.createContext<SidebarContext | null>(null);
+type SidebarStaticContextValue = Omit<SidebarContext, "isHovering" | "setIsHovering">;
+type SidebarHoverContextValue = Pick<SidebarContext, "isHovering" | "setIsHovering">;
+
+const SidebarStaticContext = React.createContext<SidebarStaticContextValue | null>(null);
+const SidebarHoverContext = React.createContext<SidebarHoverContextValue>({
+  isHovering: false,
+  setIsHovering: () => {},
+});
 
 function useSidebar() {
-  const context = React.useContext(SidebarContext);
-  if (!context) {
+  const staticCtx = React.useContext(SidebarStaticContext);
+  const hoverCtx = React.useContext(SidebarHoverContext);
+  if (!staticCtx) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
   }
+  return { ...staticCtx, ...hoverCtx };
+}
 
-  return context;
+/** Subscribes only to stable sidebar state — does NOT re-render on hover. */
+function useSidebarStatic() {
+  const ctx = React.useContext(SidebarStaticContext);
+  if (!ctx) throw new Error("useSidebarStatic must be used within a SidebarProvider.");
+  return ctx;
 }
 
 const SidebarProvider = React.forwardRef<
@@ -95,40 +109,36 @@ const SidebarProvider = React.forwardRef<
   // This makes it easier to style the sidebar with Tailwind classes.
   const state = open ? "expanded" : "collapsed";
 
-  const contextValue = React.useMemo<SidebarContext>(
-    () => ({
-      state,
-      open,
-      setOpen,
-      isMobile,
-      openMobile,
-      setOpenMobile,
-      toggleSidebar,
-      isHovering,
-      setIsHovering,
-    }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, isHovering],
+  const staticValue = React.useMemo<SidebarStaticContextValue>(
+    () => ({ state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar }),
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar],
+  );
+  const hoverValue = React.useMemo<SidebarHoverContextValue>(
+    () => ({ isHovering, setIsHovering }),
+    [isHovering],
   );
 
   return (
-    <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
-        <div
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
-          className={cn("group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar", className)}
-          ref={ref}
-          {...props}
-        >
-          {children}
-        </div>
-      </TooltipProvider>
-    </SidebarContext.Provider>
+    <SidebarStaticContext.Provider value={staticValue}>
+      <SidebarHoverContext.Provider value={hoverValue}>
+        <TooltipProvider delayDuration={0}>
+          <div
+            style={
+              {
+                "--sidebar-width": SIDEBAR_WIDTH,
+                "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+                ...style,
+              } as React.CSSProperties
+            }
+            className={cn("group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar", className)}
+            ref={ref}
+            {...props}
+          >
+            {children}
+          </div>
+        </TooltipProvider>
+      </SidebarHoverContext.Provider>
+    </SidebarStaticContext.Provider>
   );
 });
 SidebarProvider.displayName = "SidebarProvider";
@@ -141,30 +151,33 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile, isHovering, setIsHovering } = useSidebar();
-  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebarStatic();
+  const { isHovering, setIsHovering } = React.useContext(SidebarHoverContext);
+  const rafRef = React.useRef<number | null>(null);
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
 
-  const handleMouseEnter = React.useCallback(() => {
-    if (state === "collapsed") {
-      setIsHovering(true);
-    }
-  }, [state, setIsHovering]);
+  const scheduleHover = React.useCallback(
+    (next: boolean) => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (next && stateRef.current !== "collapsed") return;
+        setIsHovering(next);
+      });
+    },
+    [setIsHovering],
+  );
 
-  const handleMouseLeave = React.useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setIsHovering(false);
-  }, [setIsHovering]);
+  const handleMouseEnter = React.useCallback(() => scheduleHover(true), [scheduleHover]);
+  const handleMouseLeave = React.useCallback(() => scheduleHover(false), [scheduleHover]);
 
-  // Clean up timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
+  React.useEffect(
+    () => () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    },
+    [],
+  );
 
   // Determine effective state - expanded if hovering over collapsed sidebar
   const effectiveState = state === "collapsed" && isHovering ? "expanded" : state;
@@ -225,6 +238,7 @@ const Sidebar = React.forwardRef<
             ? "w-[--sidebar-width]"
             : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
         )}
+        style={{ willChange: "width" }}
       />
       {/* Actual sidebar container - expands on hover */}
       <div
@@ -247,6 +261,9 @@ const Sidebar = React.forwardRef<
           backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
           WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
           borderRadius: '12px',
+            willChange: 'width',
+            transform: 'translateZ(0)',
+            contain: 'layout paint',
         }}
         {...props}
       >
@@ -467,7 +484,7 @@ const SidebarMenuItem = React.forwardRef<HTMLLIElement, React.ComponentProps<"li
 SidebarMenuItem.displayName = "SidebarMenuItem";
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-md p-2.5 px-4 text-left text-sm outline-none ring-sidebar-ring transition-all duration-[150ms] ease-out disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground [&>span:last-child]:truncate hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground hover:[&>svg]:text-foreground focus-visible:ring-2 focus-visible:bg-[rgba(255,255,255,0.04)] focus-visible:text-foreground data-[active=true]:bg-[rgba(126,184,247,0.08)] data-[active=true]:text-primary data-[active=true]:font-medium data-[active=true]:[&>svg]:text-primary data-[state=open]:hover:bg-[rgba(255,255,255,0.04)] data-[state=open]:hover:text-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0 before:rounded-full before:bg-primary before:shadow-[0_0_12px_rgba(126,184,247,0.4)] before:opacity-0 before:transition-all before:duration-[150ms] before:ease-out hover:before:w-[3px] hover:before:opacity-60 data-[active=true]:before:w-[3px] data-[active=true]:before:opacity-100",
+  "peer/menu-button relative flex w-full items-center gap-2 overflow-hidden rounded-md p-2.5 px-4 text-left text-sm outline-none ring-sidebar-ring transition-all duration-[150ms] ease-out disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 text-foreground [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground [&>span:last-child]:truncate hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground hover:[&>svg]:text-foreground focus-visible:ring-2 focus-visible:bg-[rgba(255,255,255,0.04)] focus-visible:text-foreground data-[active=true]:bg-[rgba(126,184,247,0.08)] data-[active=true]:text-primary data-[active=true]:font-medium data-[active=true]:[&>svg]:text-primary data-[state=open]:hover:bg-[rgba(255,255,255,0.04)] data-[state=open]:hover:text-foreground before:content-[''] before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0 before:rounded-full before:bg-primary before:shadow-[0_0_12px_rgba(126,184,247,0.4)] before:opacity-0 before:transition-all before:duration-[150ms] before:ease-out hover:before:w-[3px] hover:before:opacity-60 data-[active=true]:before:w-[3px] data-[active=true]:before:opacity-100 group-data-[effective-state=collapsed]:!size-8 group-data-[effective-state=collapsed]:!p-2",
   {
     variants: {
       variant: {
@@ -480,15 +497,10 @@ const sidebarMenuButtonVariants = cva(
         sm: "h-7 text-xs",
         lg: "h-12 text-sm",
       },
-      collapsed: {
-        true: "!size-8 !p-2",
-        false: "",
-      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
-      collapsed: false,
     },
   },
 );
@@ -502,10 +514,11 @@ const SidebarMenuButton = React.forwardRef<
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state, isHovering } = useSidebar();
-  
-  // Only apply collapsed styling when truly collapsed (not hovering)
-  const isCollapsed = state === "collapsed" && !isHovering;
+  const { isMobile, state } = useSidebarStatic();
+  // Tooltip mounts only while sidebar is pinned-collapsed; styling for the
+  // hover-expanded state is handled purely via CSS (data-effective-state)
+  // so this component does NOT re-render on hover.
+  const isCollapsed = state === "collapsed";
 
   const button = (
     <Comp
@@ -513,7 +526,7 @@ const SidebarMenuButton = React.forwardRef<
       data-sidebar="menu-button"
       data-size={size}
       data-active={isActive}
-      className={cn(sidebarMenuButtonVariants({ variant, size, collapsed: isCollapsed }), className)}
+      className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       {...props}
     />
   );
