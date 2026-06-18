@@ -24,6 +24,56 @@ import { supabase } from '@/integrations/supabase/client';
 // instantly; older pages are fetched lazily on scroll via "Load more".
 const PAGE_SIZE = 25;
 
+// localStorage hydration: persist the top of the inbox so that on a fresh
+// page load (or hard refresh) the dialog can paint previously-loaded emails
+// instantly while a background `refresh()` reconciles with the server.
+const LS_KEY = 'naitive.inboxCache.v1';
+const LS_MAX_MESSAGES = 50;
+
+function loadPersistedCache(): {
+  inboxMessages: any[];
+  sentMessages: any[];
+  lastFetchedAt: number | null;
+} {
+  if (typeof window === 'undefined') {
+    return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+  }
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    if (!raw) return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+    const parsed = JSON.parse(raw);
+    return {
+      inboxMessages: Array.isArray(parsed?.inboxMessages) ? parsed.inboxMessages.map(normalizeReadState) : [],
+      sentMessages: Array.isArray(parsed?.sentMessages) ? parsed.sentMessages : [],
+      lastFetchedAt: typeof parsed?.lastFetchedAt === 'number' ? parsed.lastFetchedAt : null,
+    };
+  } catch {
+    return { inboxMessages: [], sentMessages: [], lastFetchedAt: null };
+  }
+}
+
+function persistCache(state: { inboxMessages: any[]; sentMessages: any[]; lastFetchedAt: number | null }) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Strip heavy fields (bodies/attachments) — we only need enough to
+    // paint the list rows. Bodies are re-fetched on row click via the
+    // existing prefetcher.
+    const trim = (m: any) => {
+      if (!m) return m;
+      const { body_html, body_text, attachments, inline_attachments, ...rest } = m;
+      return rest;
+    };
+    const payload = {
+      inboxMessages: state.inboxMessages.slice(0, LS_MAX_MESSAGES).map(trim),
+      sentMessages: state.sentMessages.slice(0, LS_MAX_MESSAGES).map(trim),
+      lastFetchedAt: state.lastFetchedAt,
+    };
+    window.localStorage.setItem(LS_KEY, JSON.stringify(payload));
+  } catch {
+    // Quota / serialization errors are non-fatal — cache is best-effort.
+  }
+}
+
 function getMessageKey(value: any): string {
   return String(value?.gmail_message_id || value?.message_id || value?.id || '');
 }
