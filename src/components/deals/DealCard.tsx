@@ -174,7 +174,12 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
     return { text, highlightClass, isStale, days };
   };
 
-  const timeAgoData = getTimeAgoData(deal.updatedAt);
+  // Use the status-note timestamp so the tile's "X Min. Ago" reflects when
+  // the note text was last edited, not the deal's generic updated_at (which
+  // bumps on every field change — status, stage, lenders, etc.). Falls back
+  // to updated_at only for legacy deals that never had a note edited.
+  const timeAgoSource = deal.notesUpdatedAt || deal.updatedAt;
+  const timeAgoData = getTimeAgoData(timeAgoSource);
 
   const isClosedOrArchived = deal.status === 'archived' || deal.stage === 'closed-lost';
 

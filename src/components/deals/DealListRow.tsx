@@ -124,7 +124,9 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     return { text, highlightClass, isStale, days };
   };
 
-  const timeAgoData = getTimeAgoData(deal.updatedAt);
+  // Prefer the status-note timestamp so the row's "X Min. Ago" reflects when
+  // the note was last edited, not the deal's generic updated_at.
+  const timeAgoData = getTimeAgoData(deal.notesUpdatedAt || deal.updatedAt);
 
   // Column cell renderers
   const columnCells: Record<DealListColumnId, ReactNode> = {

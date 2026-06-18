@@ -2548,7 +2548,11 @@ export default function DealDetail() {
     return { text, highlightClass };
   };
 
-  const timeAgoData = deal ? getTimeAgoData(deal.updatedAt) : { text: '', highlightClass: '' };
+  // Prefer the status-note timestamp so the header's "X Min. Ago" reflects
+  // when the note was last edited, not the deal's generic updated_at.
+  const timeAgoData = deal
+    ? getTimeAgoData(deal.notesUpdatedAt || deal.updatedAt)
+    : { text: '', highlightClass: '' };
 
   // Calculate stale lenders for notification banner
   const staleLendersInfo = useMemo(() => {
