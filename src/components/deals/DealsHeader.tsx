@@ -54,6 +54,11 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   'Approval Queue': loadTasks,
+  'Daily Rundown': loadDailyBriefing,
+  "Niki's Daily Rundown": loadDailyBriefing,
+  "Moffitt's Daily Rundown": loadDailyBriefing,
+  "My Daily Rundown": loadDailyBriefing,
+  'Deal Rundown': loadDealsOverlay,
 };
 import {
   canSeeNikiBriefing,
