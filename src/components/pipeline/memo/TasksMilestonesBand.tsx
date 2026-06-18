@@ -78,6 +78,13 @@ async function syncTaskFieldToAsana(
 interface TasksMilestonesBandProps {
   deal: Deal;
   tasks: DealTaskItem[];
+  /**
+   * Optional batched milestones from usePipelineDealMilestones().
+   * When provided, takes precedence over `deal.milestones` (which is
+   * usually empty on rundown cards because the global Deal mapper does
+   * not join `deal_milestones`).
+   */
+  milestones?: DealMilestone[];
   /** Used to compute a smarter "+ Add Follow-up" pre-fill title. */
   rawDigest?: PipelineDigestRaw;
 }
@@ -129,7 +136,7 @@ function parseStoredDate(dateValue?: string | null): Date | null {
  * 3-column insights row. Lists open tasks/outstanding items (capped) and
  * highlights the next upcoming milestone, if any.
  */
-export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesBandProps) {
+export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: TasksMilestonesBandProps) {
   const queryClient = useQueryClient();
   const { company } = useCompany();
   const [activeFilter, setActiveFilter] = useState<'task' | 'milestone' | 'outstanding' | null>(null);
@@ -137,8 +144,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [completingMilestoneIds, setCompletingMilestoneIds] = useState<Set<string>>(new Set());
 
-  const nextMilestone = nextUpcomingMilestone(deal.milestones);
-  const allIncompleteMilestones = (deal.milestones || [])
+  const effectiveMilestones = milestones ?? deal.milestones;
+  const nextMilestone = nextUpcomingMilestone(effectiveMilestones);
+  const allIncompleteMilestones = (effectiveMilestones || [])
     .filter((m) => !m.completed)
     .sort((a, b) => {
       const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;

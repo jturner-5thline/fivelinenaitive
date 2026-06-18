@@ -5,6 +5,7 @@ import type { Deal } from '@/types/deal';
 import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { usePipelineDealMilestones } from '@/hooks/usePipelineDealMilestones';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
 import { Check, Inbox, ChevronLeft, ChevronDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { EditableDealStageTag } from '@/components/deal/EditableDealStageTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -344,6 +346,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
+  const { data: milestonesByDeal } = usePipelineDealMilestones(dealIds, dealIds.length > 0);
   const { dismiss, isDismissed } = useDailyDismissals(dismissalScope);
 
   // Soft attention glow: ≥2 business days since the last status / stage change.
@@ -637,6 +640,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
                 digest={digestMap.get(selectedDeal.id)}
                 rawDigest={rawByDeal.get(selectedDeal.id)}
                 tasks={tasksByDeal?.get(selectedDeal.id) || []}
+                milestones={milestonesByDeal?.get(selectedDeal.id)}
                 isDigestLoading={digestsLoading}
                 showLiveDot
                 onOpenDeal={onOpenDeal}
@@ -699,11 +703,7 @@ function DealTile({
   onClick: () => void;
   onDismiss: () => void;
 }) {
-  const { getStageConfigForDeal } = usePipelineStageConfig();
   const rawStage = (deal.stage as string | undefined) || '';
-  const stageLabel =
-    (rawStage ? getStageConfigForDeal(rawStage, deal.pipelineId)?.label : null) ||
-    (rawStage ? titleCase(rawStage) : null);
   const engagement = deal.engagementType ? titleCase(deal.engagementType) : null;
   const statusText = (() => {
     const raw = (deal.notes || '').toString();
@@ -752,10 +752,15 @@ function DealTile({
             {engagement}
           </Badge>
         )}
-        {stageLabel && (
-          <Badge variant="outline" className="rounded-full text-[9px] px-1.5 py-0 border-white/15 text-white/80">
-            {stageLabel}
-          </Badge>
+        {/* Inline-editable stage chip — clicking opens the pipeline stage
+            picker without navigating away from the rundown. */}
+        {rawStage && (
+          <EditableDealStageTag
+            dealId={deal.id}
+            stage={rawStage}
+            pipelineId={deal.pipelineId}
+            hideChevron
+          />
         )}
       </div>
       {statusText && (

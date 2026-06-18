@@ -2,6 +2,7 @@ import type { Deal } from '@/types/deal';
 import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { usePipelineDealMilestones } from '@/hooks/usePipelineDealMilestones';
 
 interface DealInlineSummaryProps {
   deal: Deal;
@@ -17,6 +18,7 @@ export function DealInlineSummary({ deal, onOpenDeal }: DealInlineSummaryProps) 
   const deals = [deal];
   const { digestMap, rawByDeal, isLoading } = usePipelineDigests(deals, true);
   const { data: tasksByDeal } = usePipelineDealTasks([deal.id], true);
+  const { data: milestonesByDeal } = usePipelineDealMilestones([deal.id], true);
 
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0 [&>*]:flex-1 [&>*]:min-h-0 [&>*]:h-full">
@@ -25,6 +27,7 @@ export function DealInlineSummary({ deal, onOpenDeal }: DealInlineSummaryProps) 
         digest={digestMap.get(deal.id)}
         rawDigest={rawByDeal.get(deal.id)}
         tasks={tasksByDeal?.get(deal.id) || []}
+        milestones={milestonesByDeal?.get(deal.id)}
         isDigestLoading={isLoading}
         showLiveDot
         onOpenDeal={onOpenDeal}
