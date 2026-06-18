@@ -105,7 +105,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         const pattern = `%${query}%`;
         const builder = supabase
           .from('master_lenders')
-          .select('*', withCount ? { count: 'exact' } : { count: 'exact' })
+          // Use 'estimated' (planner-only) instead of 'exact' — exact doubles
+          // query time because Postgres must full-scan to count matching rows.
+          // The lenders directory only needs an approximate "X of ~N" footer.
+          .select('*', withCount ? { count: 'estimated' } : undefined)
           .or(`name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern},website.ilike.${pattern},linkedin_url.ilike.${pattern},phone.ilike.${pattern},address.ilike.${pattern}`)
           .order(orderColumn, { ascending: orderAscending })
           .range(from, to);
@@ -122,7 +125,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       // No search query: standard paginated fetch
       let builder = supabase
         .from('master_lenders')
-        .select('*', withCount ? { count: 'exact' } : undefined);
+        .select('*', withCount ? { count: 'estimated' } : undefined);
 
       builder = builder.order(orderColumn, { ascending: orderAscending }).range(from, to);
 
