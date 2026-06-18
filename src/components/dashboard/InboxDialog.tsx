@@ -96,6 +96,12 @@ function getMessageKey(value: any): string {
   return String(value?.gmail_message_id || value?.message_id || value?.id || '');
 }
 
+function normalizeReadState(message: any): any {
+  const labels = Array.isArray(message?.labels) ? message.labels : [];
+  const hasUnreadLabel = labels.some((label: any) => String(label).toUpperCase() === 'UNREAD');
+  return hasUnreadLabel && message?.is_read !== false ? { ...message, is_read: false } : message;
+}
+
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility.
 // Defensive: per-message try/catch + drop messages without an id so a single
 // malformed payload can't crash the inbox list mid-render.
@@ -108,36 +114,37 @@ function mapGmailToMockEmails(
   for (const msg of gmailMessages) {
     try {
       if (!msg || typeof msg !== 'object') continue;
-      const id = getMessageKey(msg);
+      const normalized = normalizeReadState(msg);
+      const id = getMessageKey(normalized);
       if (!id) continue; // can't render a row without a stable id
       out.push({
         id,
-        threadId: msg.thread_id || id,
+        threadId: normalized.thread_id || id,
         // Canonical provider thread id — never falls back to a message id,
         // so label assignments persisted against this key remain stable.
-        provider_thread_id: msg.thread_id || null,
-        subject: msg.subject || '(No subject)',
-        from_name: msg.from_name || msg.from_email || 'Unknown',
-        from_email: msg.from_email || '',
-        to_name: (msg.to_names || msg.to_emails || [])[0] || 'You',
-        to_email: (msg.to_emails || [])[0] || '',
-        snippet: msg.snippet || '',
-        body_preview: msg.body_text || msg.body_html || msg.snippet || '',
-        body_html: msg.body_html || undefined,
-        body_text: msg.body_text || undefined,
-        body_loaded: !!(msg.body_html || msg.body_text),
-        received_at: msg.received_at || new Date().toISOString(),
-        is_read: msg.is_read ?? true,
-        is_starred: msg.is_starred ?? false,
+        provider_thread_id: normalized.thread_id || null,
+        subject: normalized.subject || '(No subject)',
+        from_name: normalized.from_name || normalized.from_email || 'Unknown',
+        from_email: normalized.from_email || '',
+        to_name: (normalized.to_names || normalized.to_emails || [])[0] || 'You',
+        to_email: (normalized.to_emails || [])[0] || '',
+        snippet: normalized.snippet || '',
+        body_preview: normalized.body_text || normalized.body_html || normalized.snippet || '',
+        body_html: normalized.body_html || undefined,
+        body_text: normalized.body_text || undefined,
+        body_loaded: !!(normalized.body_html || normalized.body_text),
+        received_at: normalized.received_at || new Date().toISOString(),
+        is_read: normalized.is_read ?? true,
+        is_starred: normalized.is_starred ?? false,
         folder: folderOverride,
-        labels: Array.isArray(msg.labels) ? msg.labels : [],
-        has_attachments: !!msg.has_attachments,
-        attachments: Array.isArray(msg.attachments) ? msg.attachments : undefined,
+        labels: Array.isArray(normalized.labels) ? normalized.labels : [],
+        has_attachments: !!normalized.has_attachments,
+        attachments: Array.isArray(normalized.attachments) ? normalized.attachments : undefined,
         is_linked_to_deal: false,
         is_follow_up: false,
-        needs_response: folderOverride === 'inbox' ? !msg.is_read : false,
+        needs_response: folderOverride === 'inbox' ? !normalized.is_read : false,
         category: 'deal' as const,
-        provider: msg.provider || 'gmail',
+        provider: normalized.provider || 'gmail',
       });
     } catch (err) {
       console.error('[InboxDialog] failed to map gmail message', {
