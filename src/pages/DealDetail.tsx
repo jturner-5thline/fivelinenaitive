@@ -8,6 +8,7 @@ import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealB
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
+import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderNoteTimestamp } from '@/components/deal/LenderNoteTimestamp';
