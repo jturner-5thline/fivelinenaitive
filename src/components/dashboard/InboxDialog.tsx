@@ -892,7 +892,10 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         const page = await fetchPage({
           labelIds: ['INBOX', 'UNREAD'],
           pageToken: unreadNextTokenRef.current,
-          maxResults: 100,
+          // Gmail allows up to 500 per page. Fetching the max in one
+          // round-trip is dramatically faster than chaining smaller
+          // pages — one network call instead of 5.
+          maxResults: 500,
         });
         if (!isMountedRef.current) return;
         if (page.rateLimited) return;
