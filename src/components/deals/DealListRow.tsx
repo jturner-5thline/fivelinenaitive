@@ -179,14 +179,14 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     value: (
-      <TableCell key="value">
+      <TableCell key="value" className="text-center tabular-nums">
         <span className="font-semibold text-foreground">
           {formatCurrencyValue(deal.value)}
         </span>
       </TableCell>
     ),
     status: (
-      <TableCell key="status">
+      <TableCell key="status" className="text-center">
         <InlineStatusDropdown
           dealId={deal.id}
           status={deal.status}
@@ -196,7 +196,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     stage: (
-      <TableCell key="stage">
+      <TableCell key="stage" className="text-center">
         <InlineStageDropdown
           dealId={deal.id}
           stage={deal.stage}
@@ -214,7 +214,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     type: (
-      <TableCell key="type">
+      <TableCell key="type" className="text-center">
         <Badge variant="secondary" className="text-xs rounded-lg whitespace-nowrap">
           {ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || '—')}
         </Badge>
@@ -243,7 +243,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     totalFee: (
-      <TableCell key="totalFee">
+      <TableCell key="totalFee" className="text-center tabular-nums">
         <span className="text-sm font-medium text-foreground">
           {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
         </span>
