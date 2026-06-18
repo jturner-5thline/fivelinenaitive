@@ -165,8 +165,20 @@ function valuesMatch(field: string, expected: unknown, actual: unknown): boolean
     return a === b;
   }
   if (a === b) return true;
-  if (typeof a === "number" && typeof b === "number") {
-    return Math.abs(a - b) < 1e-6;
+  // Numeric comparison: PostgREST serializes `numeric`/`decimal` columns
+  // (e.g. pre_signing_hours, post_signing_hours, value) as JSON STRINGS
+  // like "4.5", while callers pass real JS numbers. Without coercion the
+  // verifier reports a false-positive mismatch ("tried 4.5, still \"4.5\"")
+  // even though the write landed. Coerce whenever either side is a number
+  // or a numeric-looking string and both parse cleanly.
+  const aNum = typeof a === "number" ? a : (typeof a === "string" && a.trim() !== "" ? Number(a) : NaN);
+  const bNum = typeof b === "number" ? b : (typeof b === "string" && b.trim() !== "" ? Number(b) : NaN);
+  if (
+    (typeof a === "number" || typeof b === "number") &&
+    Number.isFinite(aNum) &&
+    Number.isFinite(bNum)
+  ) {
+    return Math.abs(aNum - bNum) < 1e-6;
   }
   // Treat empty-string and null as equivalent (Postgrest coerces sometimes).
   if ((a === null || a === "") && (b === null || b === "")) return true;
