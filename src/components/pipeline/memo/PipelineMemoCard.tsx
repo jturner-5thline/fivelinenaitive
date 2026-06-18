@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { Deal } from '@/types/deal';
+import type { DealMilestone } from '@/types/deal';
 import type { Deal24hDigest } from '@/hooks/useDeal24hDigest';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
@@ -17,6 +18,13 @@ interface PipelineMemoCardProps {
   digest?: Deal24hDigest;
   rawDigest?: PipelineDigestRaw;
   tasks?: DealTaskItem[];
+  /**
+   * Batched milestones from usePipelineDealMilestones(). Optional — when
+   * absent the band falls back to `deal.milestones`, which is usually
+   * empty for cards mounted from DealsContext (mapper does not hydrate
+   * milestones for perf reasons).
+   */
+  milestones?: DealMilestone[];
   isDigestLoading?: boolean;
   /** Show the pulsing live-deal dot. Disabled for off-screen / bulk renders. */
   showLiveDot?: boolean;
@@ -39,6 +47,7 @@ function PipelineMemoCardImpl({
   digest,
   rawDigest,
   tasks,
+  milestones,
   isDigestLoading,
   showLiveDot = true,
   onOpenDeal,
@@ -79,7 +88,12 @@ function PipelineMemoCardImpl({
         "
       >
         <div className="min-w-0 flex flex-col min-h-0 overflow-y-auto">
-          <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
+          <TasksMilestonesBand
+            deal={deal}
+            tasks={tasks || []}
+            milestones={milestones}
+            rawDigest={rawDigest}
+          />
           <ActivityPanel
             deal={deal}
             rawDigest={rawDigest}
@@ -106,6 +120,7 @@ export const PipelineMemoCard = memo(PipelineMemoCardImpl, (prev, next) => {
     prev.digest === next.digest &&
     prev.rawDigest === next.rawDigest &&
     prev.tasks === next.tasks &&
+    prev.milestones === next.milestones &&
     prev.isDigestLoading === next.isDigestLoading &&
     prev.showLiveDot === next.showLiveDot &&
     prev.onOpenDeal === next.onOpenDeal
