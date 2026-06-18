@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -20,7 +20,13 @@ import { toast } from 'sonner';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import naitiveBrandIcon from '@/assets/naitive-icon-light.png';
 import { cn } from '@/lib/utils';
-import { AICopilotPanel } from '@/components/AICopilotPanel';
+// Lazy-load the (~109KB) AI copilot panel chunk so it doesn't block
+// initial render on every page. The panel returns null until isOpen, so
+// gating mount on isOpen|isMinimized|hovered keeps behavior identical
+// while removing the chunk parse from the critical path.
+const loadAICopilotPanel = () =>
+  import('@/components/AICopilotPanel').then((m) => ({ default: m.AICopilotPanel }));
+const AICopilotPanel = lazy(loadAICopilotPanel);
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
