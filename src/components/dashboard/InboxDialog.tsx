@@ -359,7 +359,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       ? (h: any) => w.cancelIdleCallback(h)
       : (h: any) => clearTimeout(h);
     const handle = schedule(() => setWarmMounted(true));
-    return () => cancel(handle);
+    // Hover/focus on the mail icon dispatches `inbox:prewarm` — flip the
+    // warm-mount switch immediately so the heavy subtree is in the DOM
+    // before the click even fires.
+    const onPrewarm = () => setWarmMounted(true);
+    if (typeof window !== 'undefined') window.addEventListener('inbox:prewarm', onPrewarm);
+    return () => {
+      cancel(handle);
+      if (typeof window !== 'undefined') window.removeEventListener('inbox:prewarm', onPrewarm);
+    };
   }, [warmMounted, status.connected]);
 
   // Loading flags
