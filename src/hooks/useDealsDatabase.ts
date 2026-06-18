@@ -774,10 +774,20 @@ export function useDealsDatabase() {
     updates = syncFinServValuePatch(updates, previousDeal);
 
     // Optimistically update UI immediately
+    const nowIso = new Date().toISOString();
     setDeals(prev =>
       prev.map(deal =>
         deal.id === dealId
-          ? { ...deal, ...updates, updatedAt: new Date().toISOString() }
+          ? {
+              ...deal,
+              ...updates,
+              updatedAt: nowIso,
+              // Mirror the server-side `notes_updated_at = now()` write below
+              // so surfaces that read `notesUpdatedAt` (deal tile / list row /
+              // detail "X Min. Ago") reflect the fresh status-note update
+              // immediately, without waiting for a refetch.
+              ...(updates.notes !== undefined ? { notesUpdatedAt: nowIso } : {}),
+            }
           : deal
       )
     );
