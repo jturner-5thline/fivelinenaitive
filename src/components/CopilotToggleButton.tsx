@@ -297,6 +297,19 @@ export function CopilotToggleButton() {
     return () => window.removeEventListener('keydown', handler);
   }, [togglePanel, isOpen]);
 
+  // Idle-time preload of the AI copilot panel chunk so first-ever open
+  // (via ⌘J, click, or programmatic) doesn't pay the chunk parse cost.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const schedule = w.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 800));
+    const handle = schedule(() => { void loadAICopilotPanel(); });
+    return () => {
+      const cancel = (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback
+        ?? ((h: number) => window.clearTimeout(h));
+      cancel(handle as number);
+    };
+  }, []);
+
   const suggestions = useMemo<Suggestion[]>(() => {
     const q = value.trim().toLowerCase();
     if (!q) return [];
