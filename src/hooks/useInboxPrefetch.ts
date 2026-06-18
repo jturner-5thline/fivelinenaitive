@@ -19,7 +19,7 @@ const POLL_INTERVAL_MS = 45 * 1000;
 // How many top messages to warm full bodies for. Matches the inbox cache
 // PAGE_SIZE so the inbox dialog opens with bodies already cached and
 // the "Syncing N messages…" indicator never appears for cold opens.
-const BODY_PREWARM_COUNT = 25;
+const BODY_PREWARM_COUNT = 50;
 
 function prewarmBodies(messages: any[]) {
   if (!messages?.length) return;
