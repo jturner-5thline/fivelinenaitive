@@ -151,30 +151,33 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile, isHovering, setIsHovering } = useSidebar();
-  const hoverTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebarStatic();
+  const { isHovering, setIsHovering } = React.useContext(SidebarHoverContext);
+  const rafRef = React.useRef<number | null>(null);
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
 
-  const handleMouseEnter = React.useCallback(() => {
-    if (state === "collapsed") {
-      setIsHovering(true);
-    }
-  }, [state, setIsHovering]);
+  const scheduleHover = React.useCallback(
+    (next: boolean) => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (next && stateRef.current !== "collapsed") return;
+        setIsHovering(next);
+      });
+    },
+    [setIsHovering],
+  );
 
-  const handleMouseLeave = React.useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setIsHovering(false);
-  }, [setIsHovering]);
+  const handleMouseEnter = React.useCallback(() => scheduleHover(true), [scheduleHover]);
+  const handleMouseLeave = React.useCallback(() => scheduleHover(false), [scheduleHover]);
 
-  // Clean up timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
+  React.useEffect(
+    () => () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    },
+    [],
+  );
 
   // Determine effective state - expanded if hovering over collapsed sidebar
   const effectiveState = state === "collapsed" && isHovering ? "expanded" : state;
@@ -235,6 +238,7 @@ const Sidebar = React.forwardRef<
             ? "w-[--sidebar-width]"
             : "w-[calc(var(--sidebar-width-icon)_+_theme(spacing.4))]",
         )}
+        style={{ willChange: "width" }}
       />
       {/* Actual sidebar container - expands on hover */}
       <div
@@ -257,6 +261,9 @@ const Sidebar = React.forwardRef<
           backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
           WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
           borderRadius: '12px',
+            willChange: 'width',
+            transform: 'translateZ(0)',
+            contain: 'layout paint',
         }}
         {...props}
       >
