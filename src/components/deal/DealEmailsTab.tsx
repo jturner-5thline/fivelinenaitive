@@ -132,8 +132,11 @@ interface DealEmailsTabProps {
     /** Provider message id to thread the outbound reply under (Nylas). */
     replyToMessageId?: string;
   }) => Promise<any>;
-  /** Pagination — invoked when user clicks "Load more" or hits the auto-load sentinel */
-  onLoadMore?: () => void | Promise<void>;
+  /** Pagination — invoked when user clicks "Load more" or hits the auto-load sentinel.
+   *  `unreadOnly` is set when the active view filter is "Unread" so the
+   *  parent can ask the provider for INBOX+UNREAD directly instead of
+   *  paginating the full inbox. */
+  onLoadMore?: (opts?: { unreadOnly?: boolean }) => void | Promise<void>;
   /** True if there are more older messages available to load */
   hasMore?: boolean;
   /** True while a load-more request is in flight */
