@@ -365,7 +365,7 @@ export function useDealsDatabase() {
       sourcedVia: (dbDeal as any).sourced_via || undefined,
       createdAt: dbDeal.created_at,
       updatedAt: dbDeal.updated_at,
-      lenders: dealLenders,
+      lenders: dedupedDealLenders,
       migratedFromPersonal: dbDeal.migrated_from_personal || false,
       pipelineId: dbDeal.pipeline_id || undefined,
       closingDate: (dbDeal as any).closing_date || null,
