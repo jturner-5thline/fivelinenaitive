@@ -92,6 +92,10 @@ function shouldApplyProviderState(current: any, incoming: any): boolean {
   return getStateFreshness(incoming) >= getStateFreshness(current);
 }
 
+function getMessageKey(value: any): string {
+  return String(value?.gmail_message_id || value?.message_id || value?.id || '');
+}
+
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility.
 // Defensive: per-message try/catch + drop messages without an id so a single
 // malformed payload can't crash the inbox list mid-render.
@@ -104,7 +108,7 @@ function mapGmailToMockEmails(
   for (const msg of gmailMessages) {
     try {
       if (!msg || typeof msg !== 'object') continue;
-      const id = msg.id || msg.gmail_message_id;
+      const id = getMessageKey(msg);
       if (!id) continue; // can't render a row without a stable id
       out.push({
         id,
@@ -217,6 +221,37 @@ async function fetchPage(args: {
       errorCode: 'threw',
       errorMessage: e?.message || 'Unknown error',
     };
+  }
+}
+
+async function applyAuthoritativeReadState(messages: any[], limit = PAGE_SIZE): Promise<any[]> {
+  const ids = messages.slice(0, limit).map(getMessageKey).filter(Boolean);
+  if (!ids.length) return messages;
+  try {
+    const { data, error } = await supabase.functions.invoke('gmail-messages', {
+      body: { action: 'sync_state', message_ids: ids },
+    });
+    const states = !error && Array.isArray(data?.states) ? data.states : [];
+    if (!states.length) return messages;
+    useInboxCacheStore.getState().applyStateDeltas(states);
+    const stateMap = new Map(states.map((s: any) => [getMessageKey(s), s]));
+    let changed = false;
+    const next = messages
+      .filter((m) => {
+        const s: any = stateMap.get(getMessageKey(m));
+        if (s?.missing) { changed = true; return false; }
+        return true;
+      })
+      .map((m) => {
+        const s: any = stateMap.get(getMessageKey(m));
+        if (!s || !shouldApplyProviderState(m, s)) return m;
+        if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
+        changed = true;
+        return { ...m, is_read: s.is_read, is_starred: s.is_starred, labels: s.folders ?? m.labels, state_fetched_at: s.state_fetched_at ?? m.state_fetched_at };
+      });
+    return changed ? next : messages;
+  } catch {
+    return messages;
   }
 }
 
@@ -355,12 +390,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const mergeUniqueById = useCallback((existing: any[], incoming: any[]) => {
     const incomingById = new Map<string, any>();
     for (const m of incoming) {
-      const key = m?.id || m?.gmail_message_id;
+      const key = getMessageKey(m);
       if (key) incomingById.set(key, m);
     }
     const seen = new Set<string>();
     const merged = existing.map((m) => {
-      const key = m?.id || m?.gmail_message_id;
+      const key = getMessageKey(m);
       if (!key) return m;
       seen.add(key);
       const fresh = incomingById.get(key);
@@ -388,7 +423,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     });
     const additions: any[] = [];
     for (const m of incoming) {
-      const key = m?.id || m?.gmail_message_id;
+      const key = getMessageKey(m);
       if (!key || seen.has(key)) continue;
       seen.add(key);
       additions.push(m);
@@ -445,7 +480,13 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const hydrateFromCache = useCallback(async () => {
     const cached = await loadOlderFromCache(null, 200);
     if (cached.length && isMountedRef.current) {
-      setCachedInboxEmails(cached);
+      const authoritative = await applyAuthoritativeReadState(cached);
+      setCachedInboxEmails(authoritative);
+      setInboxMessages((prev) => {
+        if (prev.length) return prev;
+        useInboxCacheStore.setState({ inboxMessages: authoritative });
+        return authoritative;
+      });
     }
   }, [loadOlderFromCache]);
 
@@ -549,12 +590,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
       if (!isMountedRef.current) return;
 
-      if (firstInbox.messages.length === 0 && !firstInbox.nextPageToken) {
+      const firstInboxMessages = await applyAuthoritativeReadState(firstInbox.messages);
+      if (!isMountedRef.current) return;
+
+      if (firstInboxMessages.length === 0 && !firstInbox.nextPageToken) {
         // Empty / rate-limited — try DB cache only on cold open.
         if (!cacheHasData) await hydrateFromCache();
       } else {
         setInboxMessages((prev) => {
-          const next = mergeUniqueById(prev, firstInbox.messages);
+          const next = mergeUniqueById(prev, firstInboxMessages);
           // Mirror into the shared cache so the unread badge & next open
           // see the freshest data even after this dialog unmounts.
           useInboxCacheStore.setState({ inboxMessages: next });
@@ -666,11 +710,13 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         });
         return;
       }
+      const inboxMessagesAuthoritative = await applyAuthoritativeReadState(inbox.messages);
+      if (!isMountedRef.current) return;
       // Prepend new messages above the cached list; mergeUniqueById
       // preserves the already-loaded tail so scroll position and the
       // currently-open thread stay put.
       setInboxMessages((prev) => {
-        const next = mergeUniqueById(inbox.messages, prev);
+        const next = mergeUniqueById(inboxMessagesAuthoritative, prev);
         useInboxCacheStore.setState({ inboxMessages: next });
         return next;
       });
@@ -682,8 +728,8 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       setRefreshError(false);
       setLastRefreshAt(Date.now());
       if (opts.manual) {
-        const newCount = inbox.messages.filter(
-          (m: any) => !inboxMessages.some((p) => (p.id || p.gmail_message_id) === (m.id || m.gmail_message_id))
+        const newCount = inboxMessagesAuthoritative.filter(
+          (m: any) => !inboxMessages.some((p) => getMessageKey(p) === getMessageKey(m))
         ).length;
         if (newCount > 0) {
           toast.success(`${newCount} new ${newCount === 1 ? 'email' : 'emails'}`);
@@ -851,7 +897,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
 
   const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>) => {
     if (!states.length || !isMountedRef.current) return;
-    const stateMap = new Map(states.map(s => [s.id, s]));
+    const stateMap = new Map(states.map(s => [getMessageKey(s), s]));
     // Push deltas into the shared cache too so the unread badge updates
     // even when the dialog is closed on the next render.
     useInboxCacheStore.getState().applyStateDeltas(states);
@@ -859,12 +905,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       let changed = false;
       const next = prev
         .filter(m => {
-          const s = stateMap.get(m.id);
+          const s = stateMap.get(getMessageKey(m));
           if (s?.missing) { changed = true; return false; }
           return true;
         })
         .map(m => {
-          const s = stateMap.get(m.id);
+          const s = stateMap.get(getMessageKey(m));
           if (!s) return m;
           if (!shouldApplyProviderState(m, s)) return m;
           if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
@@ -891,7 +937,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       // Snapshot most-recent inbox message IDs for delta sync.
       const ids = inboxMessagesRef.current
         .slice(0, SYNC_BATCH_LIMIT)
-        .map(m => m.id || m.gmail_message_id)
+        .map(getMessageKey)
         .filter(Boolean);
       if (ids.length === 0) return;
       syncInFlightRef.current = true;

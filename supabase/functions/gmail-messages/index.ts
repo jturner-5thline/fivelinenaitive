@@ -1606,7 +1606,7 @@ serve(async (req: Request): Promise<Response> => {
         // Fetch each message's metadata in parallel with a small concurrency
         // limit so we don't overwhelm Nylas.
         const CONCURRENCY = 8;
-        const states: Array<{ id: string; is_read: boolean; is_starred: boolean; folders: string[]; missing?: boolean }> = [];
+        const states: Array<{ id: string; is_read: boolean; is_starred: boolean; folders: string[]; missing?: boolean; state_fetched_at?: string }> = [];
 
         async function fetchOne(id: string) {
           try {
@@ -1639,6 +1639,25 @@ serve(async (req: Request): Promise<Response> => {
           }
         });
         await Promise.all(workers);
+
+        // Persist authoritative Gmail/Nylas read state into the local cache so
+        // first-login / cold-open rows do not resurrect stale UNREAD labels
+        // just because the message was read outside the platform.
+        await Promise.allSettled(
+          states
+            .filter((s) => !s.missing)
+            .map((s) => supabase
+              .from("email_cache")
+              .update({
+                is_read: s.is_read,
+                is_starred: s.is_starred,
+                labels: s.folders || [],
+                fetched_at: s.state_fetched_at || stateFetchedAt,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("user_id", user.id)
+              .eq("gmail_message_id", s.id)),
+        );
 
         return new Response(JSON.stringify({ states }), {
           status: 200,

@@ -24,6 +24,10 @@ import { supabase } from '@/integrations/supabase/client';
 // instantly; older pages are fetched lazily on scroll via "Load more".
 const PAGE_SIZE = 25;
 
+function getMessageKey(value: any): string {
+  return String(value?.gmail_message_id || value?.message_id || value?.id || '');
+}
+
 function getStateFreshness(value: any): number {
   const raw = value?.state_fetched_at || value?.received_at || null;
   if (!raw) return 0;
@@ -33,6 +37,39 @@ function getStateFreshness(value: any): number {
 
 function shouldApplyProviderState(current: any, incoming: any): boolean {
   return getStateFreshness(incoming) >= getStateFreshness(current);
+}
+
+function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_message_id?: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>): any[] {
+  if (!states.length) return messages;
+  const stateMap = new Map(states.map((s) => [getMessageKey(s), s]));
+  let changed = false;
+  const next = messages
+    .filter((m) => {
+      const s = stateMap.get(getMessageKey(m));
+      if (s?.missing) { changed = true; return false; }
+      return true;
+    })
+    .map((m) => {
+      const s = stateMap.get(getMessageKey(m));
+      if (!s || !shouldApplyProviderState(m, s)) return m;
+      if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
+      changed = true;
+      return { ...m, is_read: s.is_read, is_starred: s.is_starred, state_fetched_at: s.state_fetched_at ?? m.state_fetched_at };
+    });
+  return changed ? next : messages;
+}
+
+async function syncMessageStates(messages: any[], limit = PAGE_SIZE) {
+  const ids = messages.slice(0, limit).map(getMessageKey).filter(Boolean);
+  if (!ids.length) return [];
+  try {
+    const { data } = await supabase.functions.invoke('gmail-messages', {
+      body: { action: 'sync_state', message_ids: ids },
+    });
+    return (data?.states || []) as Array<{ id: string; gmail_message_id?: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>;
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -115,12 +152,12 @@ export interface InboxCacheState {
 function mergeUniqueById(existing: any[], incoming: any[]): any[] {
   const incomingById = new Map<string, any>();
   for (const m of incoming) {
-    const key = m?.id || m?.gmail_message_id;
+    const key = getMessageKey(m);
     if (key) incomingById.set(key, m);
   }
   const seen = new Set<string>();
   const patched = existing.map((m) => {
-    const key = m?.id || m?.gmail_message_id;
+    const key = getMessageKey(m);
     if (!key) return m;
     seen.add(key);
     const fresh = incomingById.get(key);
@@ -146,7 +183,7 @@ function mergeUniqueById(existing: any[], incoming: any[]): any[] {
   });
   const additions: any[] = [];
   for (const m of incoming) {
-    const key = m?.id || m?.gmail_message_id;
+    const key = getMessageKey(m);
     if (!key || seen.has(key)) continue;
     seen.add(key);
     additions.push(m);
@@ -205,10 +242,12 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
       const msInbox = await fetchMicrosoftEmails('INBOX');
       const inboxMerged = [...(inboxPage.ok ? inboxPage.messages : []), ...msInbox]
         .sort((a, b) => new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime());
+      const inboxStates = inboxMerged.length ? await syncMessageStates(inboxMerged, PAGE_SIZE) : [];
+      const inboxAuthoritative = inboxStates.length ? overlayStateDeltas(inboxMerged, inboxStates) : inboxMerged;
       if (inboxPage.ok || msInbox.length) {
         set((prev) => ({
           // Merge so previously loaded older pages aren't dropped on poll.
-          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxMerged),
+          inboxMessages: mergeUniqueById(prev.inboxMessages, inboxAuthoritative),
           // Only overwrite the next-token when we re-fetched page 1 — it
           // represents the cursor *after* the freshest page.
           inboxNextToken: prev.inboxMessages.length === 0
@@ -233,20 +272,8 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
       // says the message is read. Calling `sync_state` hits
       // `/messages/{id}?fields=standard` which reflects the true state
       // and lets us correct stale unread badges in the background.
-      try {
-        const ids = get().inboxMessages.slice(0, 25)
-          .map((m: any) => m.id || m.gmail_message_id)
-          .filter(Boolean);
-        if (ids.length) {
-          const { data } = await supabase.functions.invoke('gmail-messages', {
-            body: { action: 'sync_state', message_ids: ids },
-          });
-          const states = (data?.states || []) as Array<{
-            id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string;
-          }>;
-          if (states.length) get().applyStateDeltas(states);
-        }
-      } catch { /* swallow — best-effort reconciliation */ }
+      const states = inboxStates.length ? [] : await syncMessageStates(get().inboxMessages, PAGE_SIZE);
+      if (states.length) get().applyStateDeltas(states);
     } finally {
       set({ isRefreshing: false });
     }
@@ -257,17 +284,17 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
 
   applyStateDeltas: (states) => {
     if (!states.length) return;
-    const stateMap = new Map(states.map((s) => [s.id, s]));
+    const stateMap = new Map(states.map((s) => [getMessageKey(s), s]));
     set((prev) => {
       let changed = false;
       const next = prev.inboxMessages
         .filter((m) => {
-          const s = stateMap.get(m.id);
+          const s = stateMap.get(getMessageKey(m));
           if (s?.missing) { changed = true; return false; }
           return true;
         })
         .map((m) => {
-          const s = stateMap.get(m.id);
+          const s = stateMap.get(getMessageKey(m));
           if (!s) return m;
           if (!shouldApplyProviderState(m, s)) return m;
           if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
