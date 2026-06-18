@@ -2927,7 +2927,15 @@ export default function DealDetail() {
                   mirrored_from: 'status',
                 });
               } else {
-                updateDeal('status', 'on-hold');
+                // Mirror path: route through the gate so the note
+                // requirement still applies when status is changed
+                // programmatically from a stage mirror confirmation.
+                void requestStatusChange({
+                  dealId: deal.id,
+                  dealName: deal.company,
+                  currentStatus: deal.status,
+                  nextStatus: 'on-hold',
+                });
                 logActivity('deal_updated', 'Deal Status mirrored to On Hold (user confirmed)', {
                   field: 'status',
                   newValue: 'on-hold',
