@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 // Initial page size for inbox prefetch + first Gmail/Nylas page.
 // 25 keeps the background prefetch fast so the inbox dialog opens
 // instantly; older pages are fetched lazily on scroll via "Load more".
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 // localStorage hydration: persist the top of the inbox so that on a fresh
 // page load (or hard refresh) the dialog can paint previously-loaded emails
