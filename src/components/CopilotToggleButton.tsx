@@ -280,6 +280,8 @@ export function CopilotToggleButton() {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'j' || e.key === 'k')) {
         e.preventDefault();
+        // Warm the lazy panel chunk before the open animation runs.
+        void loadAICopilotPanel();
         if (e.key === 'j' && isOpen) {
           togglePanel();
         } else {
