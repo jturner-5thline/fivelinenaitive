@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 interface EmailForAnalysis {
   cache_id: string;
@@ -47,7 +47,7 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    if (!ANTHROPIC_API_KEY) {
+    if (!LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -163,19 +163,19 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 50_000);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 4096,
+        model: "google/gemini-2.5-flash",
         temperature: 0.3,
-        system: systemPrompt,
-        messages: [{ role: "user", content: `Analyze these emails:\n\n${emailList}` }],
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Analyze these emails:\n\n${emailList}` },
+        ],
       }),
       signal: controller.signal,
     });
@@ -184,28 +184,27 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Anthropic error:", response.status, errText);
+      console.error("AI gateway error:", response.status, errText);
       return new Response(JSON.stringify({
         error: response.status === 429 ? "Rate limited, retry later" : "AI analysis failed",
         partial: true,
         results: [],
       }), {
-        status: response.status === 429 ? 429 : 502,
+        status: response.status === 429 ? 429 : (response.status === 402 ? 402 : 502),
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const aiData = await response.json();
-    const responseText = aiData.content
-      ?.filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("") || "";
+    const responseText: string = aiData?.choices?.[0]?.message?.content || "";
 
     // Parse JSON response - handle potential markdown wrapping
     let parsed: AnalysisResult[];
     try {
-      const cleaned = responseText.replace(/^```json\s*/, "").replace(/\s*```$/, "").trim();
-      parsed = JSON.parse(cleaned);
+      const cleaned = responseText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      // Tolerate models that wrap the array in an object or add prose: pull first JSON array.
+      const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+      parsed = JSON.parse(arrayMatch ? arrayMatch[0] : cleaned);
     } catch (parseErr) {
       console.error("Failed to parse AI response:", responseText.slice(0, 500));
       return new Response(JSON.stringify({
