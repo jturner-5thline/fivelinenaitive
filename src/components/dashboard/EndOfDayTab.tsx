@@ -1564,6 +1564,7 @@ function EventDetailPane({
               recordingRowId={claapCtx.recording?.rowId ?? null}
               source={claapCtx.source}
               fallbackActionItems={claapCtx.actionItems}
+              linkedDealId={linkedDealId ?? null}
             />
             <div className="flex items-center gap-1.5 mb-1.5">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
