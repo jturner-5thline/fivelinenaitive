@@ -842,8 +842,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const { ids, error } = await insertCandidates(supabase, opts, bundle, slice);
       if (error) {
         result.errors.push(`deal ${d.id}: ${error}`);
+        console.log(`[deal-admin-agent] INSERT_ERR deal=${d.id} err=${error}`);
         continue;
       }
+      console.log(`[deal-admin-agent] INSERTED deal=${d.id} count=${ids.length} valid=${valid.length} kept=${kept.length}`);
       // Track inserted keys so subsequent deals don't re-propose the same target.
       for (const c of slice) {
         existingKeys.add(
