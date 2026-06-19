@@ -554,21 +554,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           {/* Right sticky sidebar */}
           <aside className="col-span-12 lg:col-span-4 space-y-4">
             <div className="lg:sticky lg:top-12 space-y-4">
-              {/* 1. Workflow */}
-              <Card className="border-border/70">
-                <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-sm flex items-center gap-1.5"><Target className="h-4 w-4 text-muted-foreground" /> Workflow</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-3 text-sm space-y-2">
-                  <KV label="Stage" value={lifecycleLabel} />
-                  <KV label="Next step" value={lastActivity?.subject ?? 'Define next action'} />
-                  <KV label="Owner" value={owner?.display_name ?? 'Unassigned'} />
-                  <KV label="Priority" value={company.lifecycle_stage === 'churn_risk' ? 'High' : 'Normal'} />
-                  <KV label="Expected close" value={company.renewal_date} />
-                </CardContent>
-              </Card>
-
-              {/* 2. Tasks */}
+              {/* Tasks */}
               <CrmCompanyTasksCard
                 companyId={company.id}
                 companyName={company.name}
