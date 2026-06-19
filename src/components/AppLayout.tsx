@@ -12,6 +12,7 @@ import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLogger";
 import { useDailyRundownNotification } from "@/hooks/useDailyRundownNotification";
+import { useEndOfDayRundownNotification } from "@/hooks/useEndOfDayRundownNotification";
 
 interface AppLayoutProps {
   /**
@@ -122,6 +123,9 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   // Push the "Your Daily Rundown is Ready" chat notification at most once
   // per business day (eligibility is enforced inside the hook).
   useDailyRundownNotification();
+  // Push the "Your End of Day Briefing is Ready" chat notification at most
+  // once per local business day (eligibility enforced inside the hook).
+  useEndOfDayRundownNotification();
   const content = children ?? <Outlet />;
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
   // When the route is loaded inside the Naitive deal overlay iframe
