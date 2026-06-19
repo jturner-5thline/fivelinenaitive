@@ -35,13 +35,10 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const initialLenderId = useMemo(() => {
     if (!lenders.length) return '';
     if (preselectLenderName) {
-      const norm = preselectLenderName.toLowerCase().trim();
-      const exact = lenders.find((l) => (l.name || '').toLowerCase().trim() === norm);
+      const norm = normalizeLenderName(preselectLenderName);
+      const exact = lenders.find((l) => normalizeLenderName(l.name || '') === norm);
       if (exact) return exact.id;
-      const partial = lenders.find((l) => {
-        const n = (l.name || '').toLowerCase();
-        return n.includes(norm) || norm.includes(n);
-      });
+      const partial = lenders.find((l) => lenderNamesMatch(l.name || '', preselectLenderName));
       if (partial) return partial.id;
     }
     return lenders[0].id;
@@ -67,11 +64,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const proposedLenderName = (preselectLenderName || '').trim();
   const proposedAlreadyTracked = useMemo(() => {
     if (!proposedLenderName) return false;
-    const norm = proposedLenderName.toLowerCase();
-    return lenders.some((l) => {
-      const n = (l.name || '').toLowerCase();
-      return n === norm || n.includes(norm) || norm.includes(n);
-    });
+    return lenders.some((l) => lenderNamesMatch(l.name || '', proposedLenderName));
   }, [lenders, proposedLenderName]);
 
   if (!dealId || !deal) {
