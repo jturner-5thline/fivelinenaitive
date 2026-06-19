@@ -253,7 +253,7 @@ export default function Lenders() {
   const { deals, addLenderToDeal } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
-  const { company } = useCompany();
+  const { company, members: companyMembers } = useCompany();
   const quickUploadRef = useRef<HTMLInputElement>(null);
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
