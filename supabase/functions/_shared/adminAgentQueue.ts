@@ -90,6 +90,41 @@ const VERB: Record<string, string> = {
   follow_up: "Follow up on",
 };
 
+/**
+ * Map (field, action) from the admin-agent audit to the executable
+ * Approval Queue action_type. Fields without an obvious one-click executor
+ * fall back to 'create_followup_task' (the legacy behavior).
+ */
+function resolveActionType(field: string, action: string): {
+  type: string;
+  target_object_type: string | null;
+  risk: 'low' | 'medium' | 'high';
+} {
+  if (action === 'follow_up') {
+    return { type: 'create_followup_task', target_object_type: 'task', risk: 'low' };
+  }
+  if (field === 'stage' && action === 'update') {
+    return { type: 'update_deal_stage', target_object_type: 'deal', risk: 'high' };
+  }
+  if (field === 'status' && action === 'update') {
+    return { type: 'update_deal_status', target_object_type: 'deal', risk: 'medium' };
+  }
+  if (field === 'status_notes') {
+    return { type: 'add_status_note', target_object_type: 'deal', risk: 'low' };
+  }
+  if (field === 'funding_sources' && action === 'update') {
+    return { type: 'update_funding_source', target_object_type: 'deal_lender', risk: 'medium' };
+  }
+  if (field === 'milestones') {
+    return {
+      type: action === 'create' ? 'create_milestone' : 'update_milestone',
+      target_object_type: 'deal_milestone',
+      risk: 'low',
+    };
+  }
+  return { type: 'create_followup_task', target_object_type: 'task', risk: 'low' };
+}
+
 export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<EnqueueResult> {
   const {
     supabase,
@@ -205,12 +240,14 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
     const dealName = meta?.name ?? "Untitled Deal";
     const fieldLabel = FIELD_LABEL[sel.field] ?? sel.field;
     const verb = VERB[sel.action] ?? "Review";
+    const resolved = resolveActionType(sel.field, sel.action);
+    // Execution-style imperative title.
     const title = sel.deal_id
-      ? `${verb} ${fieldLabel} for ${dealName}`
+      ? `${verb} ${fieldLabel} on ${dealName}`
       : `${verb} ${fieldLabel}`;
     const description = fromCron
-      ? `Admin Agent (proactive sweep) flagged this on ${new Date().toLocaleDateString()}. Approve to create a task in /tasks.`
-      : `Admin Agent captured this from the deal audit on ${new Date().toLocaleDateString()}. Approve to create a task in /tasks.`;
+      ? `Admin Agent (proactive sweep) flagged this on ${new Date().toLocaleDateString()}.`
+      : `Admin Agent captured this from the deal audit on ${new Date().toLocaleDateString()}.`;
 
     // Deal-owner assignee resolution with a documented fallback chain.
     // When an activation allowlist is provided, only honour the deal-owner
@@ -230,9 +267,22 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       // user_id on ai_action_queue is the row owner (approver inbox), kept
       // as the attribution user so RLS continues to surface it correctly.
       user_id: attributionUserId,
+      assigned_to: assignedTo,
+      priority: priority === 'urgent' ? 'urgent' : 'normal',
+      risk_level: resolved.risk,
+      target_object_type: resolved.target_object_type,
+      target_object_id: resolved.type === 'update_funding_source'
+        ? (sel.lender_id ?? null)
+        : (sel.deal_id ?? null),
+      old_values: {},
+      new_values: resolved.type === 'create_followup_task'
+        ? { title, description, due_date: dueDate, priority, assigned_to: assignedTo }
+        : {},
+      rationale: `Admin Agent detected this ${fieldLabel} needs ${sel.action} on ${dealName}.`,
+      evidence: [],
       deal_id: sel.deal_id,
       deal_name: dealName,
-      action_type: "create_task",
+      action_type: resolved.type,
       title,
       description,
       payload: {
@@ -241,6 +291,7 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
         due_date: dueDate,
         priority,
         assigned_to: assignedTo,
+        deal_lender_id: sel.lender_id ?? null,
         admin_agent_selection_id: sel.id,
         admin_agent_field: sel.field,
         admin_agent_action: sel.action,
