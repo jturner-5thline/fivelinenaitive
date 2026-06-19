@@ -7,6 +7,8 @@ export function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<\/p>/gi, ' ')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<\/li>/gi, '\n')
     .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
@@ -14,6 +16,7 @@ export function stripHtml(html: string): string {
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{2,}/g, '\n')
     .trim();
 }
