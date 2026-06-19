@@ -77,7 +77,6 @@ import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { StagedDraftsPanel } from './StagedDraftsPanel';
 import {
-  buildOutcomeSentence,
   buildOnApproveSentence,
   approveButtonLabel,
   targetSummary,
@@ -589,7 +588,6 @@ function ApprovalRow({
   const Icon = meta?.icon ?? CheckSquare;
   const isEditing = editingId === item.id;
   const isExpanded = expandedId === item.id;
-  const outcome = buildOutcomeSentence(item);
   const onApprove = buildOnApproveSentence(item);
   const targetLabel = targetSummary(item);
   const ctaLabel = approveButtonLabel(item);
