@@ -311,18 +311,25 @@ export function useDealMemoApproval(
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Create approval task
+      // Title format: "Review {Company} Memo" — task title and email subject
+      // both derive from this so 5th Line review notifications are easy to spot.
+      const reviewTitle = `Review ${companyName} Memo`;
+      const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
+
+      // Create approval task. NOTE: tasks.priority has a CHECK constraint that
+      // only allows NULL or 'urgent' — using 'high' here silently failed the
+      // insert and prevented the James review task + email from being created.
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .insert({
-          title: `Review deal memo – ${companyName}`,
+          title: reviewTitle,
           assigned_to: nextApprover.userId,
           assigned_by: user.id,
           deal_id: dealId,
           company_id: membership?.company_id || deal?.company_id || null,
           due_date: today,
           status: 'not_started',
-          priority: 'high',
+          priority: 'urgent',
           task_type: 'deal_memo_approval',
           description: `Please review and approve the Deal Memo for ${companyName}. Open the Deal Memo from the deal page to approve or reject.`,
         } as any)
@@ -339,9 +346,6 @@ export function useDealMemoApproval(
       const orgCompanyId = membership?.company_id || deal?.company_id || null;
       let jamesTaskCreated = false;
       if (orgCompanyId === FIFTH_LINE_COMPANY_ID) {
-        const reviewTitle = `Review deal memo – ${companyName}`;
-        const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
-
         // Duplicate check: skip if an open task with same title already exists for this deal
         const { data: existingTasks } = await supabase
           .from('tasks')
@@ -367,7 +371,7 @@ export function useDealMemoApproval(
               company_id: orgCompanyId,
               due_date: dueToday,
               status: 'not_started',
-              priority: 'high',
+              priority: 'urgent',
               task_type: 'deal_memo_approval',
               description,
             } as any)
@@ -408,7 +412,7 @@ export function useDealMemoApproval(
                   changed_by: submittedBy,
                   metadata: {
                     task_title: reviewTitle,
-                    priority: 'high',
+                    priority: 'urgent',
                     action_url: dealUrl,
                     deal_name: companyName,
                     description: `${submittedBy} submitted the Deal Memo for ${companyName} and it's ready for your review.`,
