@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { type DealLender } from '@/types/deal';
+import { type Deal, type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
@@ -50,6 +50,9 @@ function lenderNamesMatch(a: string, b: string): boolean {
   return short.every((t) => long.includes(t));
 }
 
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
+
 interface Props {
   dealId?: string | null;
   preselectLenderName?: string | null;
@@ -82,7 +85,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     );
     if (!proposed) return isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal);
 
-    const hasProposedLender = (d: typeof initialDeal) =>
+    const hasProposedLender = (d: Deal) =>
       (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed));
     const onInitial = hasProposedLender(initialDeal);
     if (onInitial && isActiveDeal(initialDeal)) return initialDeal;
@@ -96,7 +99,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   }, [deals, initialDeal, preselectLenderName]);
 
   const deal = effectiveDeal;
-  const lenders: DealLender[] = deal?.lenders || [];
+  const lenders: DealLender[] = useMemo(() => deal?.lenders || [], [deal?.lenders]);
 
   const initialLenderId = useMemo(() => {
     if (!lenders.length) return '';
