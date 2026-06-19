@@ -182,7 +182,7 @@ serve(async (req) => {
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
     if (!ANTHROPIC_API_KEY) {
       if (companyId) {
-        await logUsage(supabase, companyId, userId, "claude-sonnet-4-20250514", 0, 0, "error", "ANTHROPIC_API_KEY not configured");
+        await logUsage(supabase, companyId, userId, "claude-sonnet-4-5-20250929", 0, 0, "error", "ANTHROPIC_API_KEY not configured");
       }
       return new Response(
         JSON.stringify({ error: "AI service is not configured" }),
@@ -190,7 +190,7 @@ serve(async (req) => {
       );
     }
 
-    const model = "claude-sonnet-4-20250514";
+    const model = "claude-sonnet-4-5-20250929";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 55_000);
 

@@ -28,7 +28,7 @@ type Category = (typeof ALLOWED_CATEGORIES)[number];
 
 const ALLOWED_SENSITIVITY = ["low", "medium", "high"] as const;
 
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-4-5-20250929";
 
 /** Map AI category → user-visible category name in `data_room_checklist_categories` */
 function categoryDisplayName(cat: Category | null | undefined): string {
