@@ -81,6 +81,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import { cn } from '@/lib/utils';
 
 // Render only the canonical Deal Rundown detail card (MemoHeader +
