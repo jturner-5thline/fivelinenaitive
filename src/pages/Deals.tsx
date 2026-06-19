@@ -688,7 +688,7 @@ export default function Dashboard() {
                     onChange={(manager) => updateFilters({ manager })}
                   />
                 ) : (
-                  <div className="flex-1 min-w-[200px]">
+                  <div className="min-w-[200px]">
                     <DealFilters
                       filters={filters}
                       onFilterChange={updateFilters}
@@ -698,6 +698,102 @@ export default function Dashboard() {
                       <AIFilterChips />
                     </div>
                   </div>
+                )}
+
+                {/* Sort + Group — placed next to the Filter button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Sort deals"
+                      title="Sort deals"
+                      className="relative h-9 w-9 shrink-0 rounded-md"
+                    >
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(() => {
+                      const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
+                      return (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (isDefaultSort) return;
+                              setSortField('updatedAt');
+                              setSortDirection('desc');
+                            }}
+                            disabled={isDefaultSort}
+                            className="gap-2"
+                            title={isDefaultSort ? 'No active sort to clear' : undefined}
+                            aria-disabled={isDefaultSort}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Clear sort
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      );
+                    })()}
+                    <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
+                      Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('createdAt')} className={sortField === 'createdAt' ? 'bg-accent' : ''}>
+                      Created Date {sortField === 'createdAt' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('value')} className={sortField === 'value' ? 'bg-accent' : ''}>
+                      Deal Value {sortField === 'value' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('name')} className={sortField === 'name' ? 'bg-accent' : ''}>
+                      Name {sortField === 'name' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('status')} className={sortField === 'status' ? 'bg-accent' : ''}>
+                      Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
+                      Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {viewMode === 'grid' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md">
+                        <Layers className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {(() => {
+                        const toggle = (value: string) => setGroupBy(prev => (prev === value ? null : value));
+                        const options: Array<{ value: string; label: string }> = [
+                          { value: 'status', label: 'Status' },
+                          { value: 'stage', label: 'Stage' },
+                          { value: 'engagementType', label: 'Engagement Type' },
+                          { value: 'manager', label: 'Manager' },
+                          { value: 'lender', label: 'Lender' },
+                          { value: 'referredBy', label: 'Referred By' },
+                        ];
+                        return (
+                          <>
+                            <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
+                              None
+                            </DropdownMenuItem>
+                            {options.map(opt => (
+                              <DropdownMenuItem
+                                key={opt.value}
+                                onClick={() => toggle(opt.value)}
+                                className={groupBy === opt.value ? 'bg-accent' : ''}
+                              >
+                                {opt.label}
+                              </DropdownMenuItem>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
 
                 {/* Stale / Flag / Notification toggles */}
@@ -831,102 +927,6 @@ export default function Dashboard() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                )}
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Sort deals"
-                      title="Sort deals"
-                      className="relative h-9 w-9 shrink-0 rounded-md"
-                    >
-                      <ArrowUpDown className="h-3.5 w-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {(() => {
-                      const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
-                      return (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (isDefaultSort) return;
-                              setSortField('updatedAt');
-                              setSortDirection('desc');
-                            }}
-                            disabled={isDefaultSort}
-                            className="gap-2"
-                            title={isDefaultSort ? 'No active sort to clear' : undefined}
-                            aria-disabled={isDefaultSort}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                            Clear sort
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      );
-                    })()}
-                    <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
-                      Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('createdAt')} className={sortField === 'createdAt' ? 'bg-accent' : ''}>
-                      Created Date {sortField === 'createdAt' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('value')} className={sortField === 'value' ? 'bg-accent' : ''}>
-                      Deal Value {sortField === 'value' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('name')} className={sortField === 'name' ? 'bg-accent' : ''}>
-                      Name {sortField === 'name' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('status')} className={sortField === 'status' ? 'bg-accent' : ''}>
-                      Status {sortField === 'status' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
-                      Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                {viewMode === 'grid' && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md">
-                        <Layers className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(() => {
-                        // Clicking the currently-active option toggles grouping off.
-                        const toggle = (value: string) => setGroupBy(prev => (prev === value ? null : value));
-                        const options: Array<{ value: string; label: string }> = [
-                          { value: 'status', label: 'Status' },
-                          { value: 'stage', label: 'Stage' },
-                          { value: 'engagementType', label: 'Engagement Type' },
-                          { value: 'manager', label: 'Manager' },
-                          { value: 'lender', label: 'Lender' },
-                          { value: 'referredBy', label: 'Referred By' },
-                        ];
-                        return (
-                          <>
-                            <DropdownMenuItem onClick={() => setGroupBy(null)} className={!groupBy ? 'bg-accent' : ''}>
-                              None
-                            </DropdownMenuItem>
-                            {options.map(opt => (
-                              <DropdownMenuItem
-                                key={opt.value}
-                                onClick={() => toggle(opt.value)}
-                                className={groupBy === opt.value ? 'bg-accent' : ''}
-                              >
-                                {opt.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </>
-                        );
-                      })()}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 )}
 
                 {/* View Mode Dropdown */}
