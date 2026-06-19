@@ -32,6 +32,10 @@ Deno.serve(async (req) => {
   }
   const onlyCompanyId: string | null =
     typeof body?.company_id === "string" && body.company_id ? body.company_id : null;
+  const dealIds: string[] | undefined =
+    typeof body?.deal_id === "string" ? [body.deal_id] :
+    Array.isArray(body?.deal_ids) && body.deal_ids.length > 0 ? body.deal_ids :
+    undefined;
   const maxDeals: number = typeof body?.max_deals === "number" ? body.max_deals : 25;
   const maxQueueRows: number = typeof body?.max_queue_rows === "number" ? body.max_queue_rows : 40;
   const minConfidence: number =
@@ -112,6 +116,7 @@ Deno.serve(async (req) => {
         maxDeals,
         maxQueueRows,
         minConfidence,
+        dealIds,
       });
       perCompany.evaluated = intel.evaluated_deals;
       perCompany.proposed = intel.candidates_proposed;
