@@ -35,6 +35,7 @@ import { CSS } from '@dnd-kit/utilities';
 import confetti from 'canvas-confetti';
 import { addDays, format, nextMonday } from 'date-fns';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
+import { TaskCompletionCheckbox } from '@/components/tasks/TaskCompletionCheckbox';
 import {
   bucketDueDate,
   daysFromToday,
@@ -803,8 +804,12 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
 
       {/* Complete checkbox */}
       <div className="flex items-center justify-center">
-        <Checkbox checked={isComplete} onCheckedChange={() => onToggleComplete()} onClick={e => e.stopPropagation()}
-          className={cn('h-4 w-4 rounded-full transition-all', isComplete && 'bg-[#7fc89a] border-[#7fc89a]')} />
+        <TaskCompletionCheckbox
+          checked={isComplete}
+          taskTitle={task.title}
+          onChange={onToggleComplete}
+          className="w-6 h-6 -m-1"
+        />
       </div>
 
       {/* Star */}
