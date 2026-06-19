@@ -73,10 +73,10 @@ export function TaskCompletionCheckbox({
   );
 
   const ariaLabel = taskTitle
-    ? checked
+    ? effectiveChecked
       ? `Mark '${taskTitle}' incomplete`
       : `Mark '${taskTitle}' complete`
-    : checked
+    : effectiveChecked
       ? "Mark as incomplete"
       : "Mark as complete";
 
@@ -150,10 +150,9 @@ export function TaskCompletionCheckbox({
           backgroundColor: `hsl(var(--primary) / ${fillOpacity})`,
           transform: `scale(${scale})`,
           transition: `background-color ${transitionDuration} ${transitionEase}, transform ${transitionDuration} ${transitionEase}, border-color ${transitionDuration} ${transitionEase}, box-shadow ${transitionDuration} ${transitionEase}`,
-          boxShadow:
-            isAnimating && !effectiveChecked
-              ? "0 0 0 4px hsl(var(--primary) / 0.2)"
-              : "none",
+          boxShadow: isAnimating
+            ? "0 0 0 4px hsl(var(--primary) / 0.24)"
+            : "none",
         }}
       >
         <svg
