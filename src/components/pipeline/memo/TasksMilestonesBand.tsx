@@ -154,7 +154,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       return ta - tb;
     });
 
-  const visibleTaskPool = tasks.filter((t) => !completingIds.has(t.id));
+  const visibleTaskPool = tasks;
   const taskOnlyItems = visibleTaskPool.filter((t) => t.kind === 'task');
   const outstandingOnlyItems = visibleTaskPool.filter((t) => {
     if (t.kind === 'outstanding') return true;
@@ -688,6 +688,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                   : null)
               : task.requestedByName;
             const isSavingField = task.kind === 'task' && savingFieldIds.has(task.id);
+            const isCompleting = completingIds.has(task.id);
             const showPlusHere = !addFormOpen && idx === plusOnTaskIndex;
 
             const rowEl = (
@@ -700,17 +701,27 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                 <button
                   type="button"
                   role="checkbox"
-                  aria-checked={false}
-                  aria-label={`Mark "${task.title}" complete`}
+                  aria-checked={isCompleting}
+                  aria-label={isCompleting ? `Completing "${task.title}"` : `Mark "${task.title}" complete`}
+                  disabled={isCompleting}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (isCompleting) return;
                     void completeTaskItem(task);
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="group/complete shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full border border-muted-foreground/50 bg-transparent transition-all duration-150 hover:scale-110 hover:border-primary hover:bg-primary/20 active:scale-95 active:bg-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className={cn(
+                    "group/complete shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    isCompleting
+                      ? "scale-110 border-primary bg-primary/25 cursor-default"
+                      : "border-muted-foreground/50 bg-transparent hover:scale-110 hover:border-primary hover:bg-primary/20 active:scale-95 active:bg-primary/35"
+                  )}
                 >
-                  <Check className="h-3.5 w-3.5 text-primary opacity-0 transition-opacity duration-150 group-hover/complete:opacity-100 group-active/complete:opacity-100" strokeWidth={3} />
+                  <Check className={cn(
+                    "h-3.5 w-3.5 text-primary transition-opacity duration-150 group-hover/complete:opacity-100 group-active/complete:opacity-100",
+                    isCompleting ? "opacity-100" : "opacity-0"
+                  )} strokeWidth={3} />
                 </button>
 
                 {editingTitleId === task.id && task.kind === 'task' ? (
