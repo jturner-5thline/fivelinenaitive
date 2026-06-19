@@ -19,7 +19,19 @@ export type AiActionType =
   | 'log_note'
   | 'deal_update'
   | 'claap_recording_review'
-  | 'claap_action_items';
+  | 'claap_action_items'
+  | 'update_deal_stage'
+  | 'update_deal_status'
+  | 'add_status_note'
+  | 'update_funding_source'
+  | 'create_milestone'
+  | 'update_milestone'
+  | 'create_followup_task'
+  | 'update_contact'
+  | 'update_company'
+  | 'draft_email'
+  | 'escalate'
+  | 'reassign_deal';
 
 export type AiActionStatus =
   | 'pending'
@@ -47,6 +59,20 @@ export interface QueuedAiAction {
   expires_at: string;
   created_at: string;
   updated_at: string;
+  assigned_to?: string | null;
+  priority?: 'low' | 'normal' | 'high' | 'urgent' | null;
+  risk_level?: 'low' | 'medium' | 'high' | null;
+  target_object_type?: string | null;
+  target_object_id?: string | null;
+  old_values?: Record<string, any> | null;
+  new_values?: Record<string, any> | null;
+  evidence?: Array<{ kind: string; label: string; ref_id?: string; snippet?: string; url?: string }>;
+  rationale?: string | null;
+  edited_before_approval?: boolean | null;
+  rejection_reason?: string | null;
+  reassigned_from?: string | null;
+  more_context_requested_at?: string | null;
+  more_context_notes?: string | null;
 }
 
 export interface EnqueueArgs {
@@ -479,8 +505,38 @@ export function useApproveAiAction() {
   const qc = useQueryClient();
 
   return useCallback(
-    async (item: QueuedAiAction) => {
+    async (item: QueuedAiAction, opts?: { editedValues?: Record<string, any> }) => {
       if (!user) return { ok: false };
+      // New execution-checkpoint action types are routed through the
+      // approval-queue-execute edge function so the write is audited and
+      // server-side. Legacy types still use the inline client executor.
+      const newTypes: AiActionType[] = [
+        'update_deal_stage','update_deal_status','add_status_note',
+        'update_funding_source','create_milestone','update_milestone',
+        'create_followup_task','update_contact','update_company',
+        'draft_email','escalate','reassign_deal',
+      ];
+      if (newTypes.includes(item.action_type) || opts?.editedValues) {
+        const { data, error } = await supabase.functions.invoke('approval-queue-execute', {
+          body: {
+            action_id: item.id,
+            decision: 'approve',
+            edited_values: opts?.editedValues,
+          },
+        });
+        invalidateQueueAll(qc);
+        if (error || !data?.ok) {
+          toast.error('Action failed', { description: data?.error || error?.message });
+          return { ok: false, error: data?.error || error?.message };
+        }
+        if (data.decision === 'email_staged') {
+          toast.success('Draft staged for send', { description: item.title });
+        } else {
+          toast.success('Action approved & applied', { description: item.title });
+        }
+        invalidateAllTaskCaches(qc);
+        return { ok: true };
+      }
       const result = await executeQueuedAction(item, user.id);
       const now = new Date().toISOString();
       await supabase
@@ -547,4 +603,126 @@ export function useApproveAllAiActions() {
     },
     [approve, qc],
   );
+}
+
+/**
+ * Reject (dismiss with a reason) a queued action via the audited edge function.
+ */
+export function useRejectAiAction() {
+  const qc = useQueryClient();
+  return useCallback(async (id: string, reason?: string) => {
+    const { data, error } = await supabase.functions.invoke('approval-queue-execute', {
+      body: { action_id: id, decision: 'reject', rejection_reason: reason },
+    });
+    invalidateQueueAll(qc);
+    if (error || !data?.ok) {
+      toast.error('Could not reject', { description: data?.error || error?.message });
+      return { ok: false };
+    }
+    toast.success('Rejected');
+    return { ok: true };
+  }, [qc]);
+}
+
+/** Reassign a queued action to another user (must be in same company). */
+export function useReassignAiAction() {
+  const qc = useQueryClient();
+  return useCallback(async (id: string, userId: string) => {
+    const { data, error } = await supabase.functions.invoke('approval-queue-execute', {
+      body: { action_id: id, decision: 'reassign', reassign_to_user_id: userId },
+    });
+    invalidateQueueAll(qc);
+    if (error || !data?.ok) {
+      toast.error('Could not reassign', { description: data?.error || error?.message });
+      return { ok: false };
+    }
+    toast.success('Reassigned');
+    return { ok: true };
+  }, [qc]);
+}
+
+/** Mark a queued action as needing more context (notifies the agent). */
+export function useRequestMoreContext() {
+  const qc = useQueryClient();
+  return useCallback(async (id: string, notes: string) => {
+    const { data, error } = await supabase.functions.invoke('approval-queue-execute', {
+      body: { action_id: id, decision: 'more_context', more_context_notes: notes },
+    });
+    invalidateQueueAll(qc);
+    if (error || !data?.ok) {
+      toast.error('Could not request context', { description: data?.error || error?.message });
+      return { ok: false };
+    }
+    toast.success('More context requested');
+    return { ok: true };
+  }, [qc]);
+}
+
+/** List the current user's staged email drafts awaiting manual send. */
+export interface StagedEmailDraft {
+  id: string;
+  source_action_id: string | null;
+  user_id: string;
+  deal_id: string | null;
+  thread_id: string | null;
+  to_recipients: any[];
+  cc_recipients: any[];
+  bcc_recipients: any[];
+  subject: string | null;
+  body_html: string | null;
+  body_text: string | null;
+  status: 'staged' | 'sent' | 'cancelled';
+  staged_at: string;
+  sent_at: string | null;
+  created_at: string;
+}
+
+export function useStagedEmailDrafts() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['staged-email-drafts', user?.id ?? 'anon'],
+    enabled: !!user,
+    staleTime: 15_000,
+    queryFn: async (): Promise<StagedEmailDraft[]> => {
+      const { data, error } = await supabase
+        .from('staged_email_drafts')
+        .select('*')
+        .eq('status', 'staged')
+        .order('staged_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as StagedEmailDraft[];
+    },
+  });
+}
+
+export function useSendStagedDraft() {
+  const qc = useQueryClient();
+  return useCallback(async (draftId: string) => {
+    const { data, error } = await supabase.functions.invoke('approval-queue-send-staged', {
+      body: { draft_id: draftId, action: 'send' },
+    });
+    qc.invalidateQueries({ queryKey: ['staged-email-drafts'] });
+    if (error || !data?.ok) {
+      toast.error('Could not send', { description: data?.error || error?.message });
+      return { ok: false };
+    }
+    toast.success('Email sent');
+    return { ok: true };
+  }, [qc]);
+}
+
+export function useCancelStagedDraft() {
+  const qc = useQueryClient();
+  return useCallback(async (draftId: string) => {
+    const { data, error } = await supabase.functions.invoke('approval-queue-send-staged', {
+      body: { draft_id: draftId, action: 'cancel' },
+    });
+    qc.invalidateQueries({ queryKey: ['staged-email-drafts'] });
+    if (error || !data?.ok) {
+      toast.error('Could not cancel', { description: data?.error || error?.message });
+      return { ok: false };
+    }
+    toast.success('Draft cancelled');
+    return { ok: true };
+  }, [qc]);
 }

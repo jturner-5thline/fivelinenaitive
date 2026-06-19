@@ -1747,19 +1747,33 @@ export type Database = {
         Row: {
           action_type: string
           approved_at: string | null
+          assigned_to: string | null
           created_at: string
           deal_id: string | null
           deal_name: string | null
           description: string | null
           dismissed_at: string | null
+          edited_before_approval: boolean | null
+          evidence: Json | null
           executed_at: string | null
           execution_error: string | null
           expires_at: string
           id: string
+          more_context_notes: string | null
+          more_context_requested_at: string | null
+          new_values: Json | null
+          old_values: Json | null
           payload: Json
+          priority: string | null
+          rationale: string | null
+          reassigned_from: string | null
+          rejection_reason: string | null
           reminder_sent_at: string | null
+          risk_level: string | null
           source: Json
           status: string
+          target_object_id: string | null
+          target_object_type: string | null
           title: string
           updated_at: string
           user_id: string
@@ -1767,19 +1781,33 @@ export type Database = {
         Insert: {
           action_type: string
           approved_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           deal_id?: string | null
           deal_name?: string | null
           description?: string | null
           dismissed_at?: string | null
+          edited_before_approval?: boolean | null
+          evidence?: Json | null
           executed_at?: string | null
           execution_error?: string | null
           expires_at?: string
           id?: string
+          more_context_notes?: string | null
+          more_context_requested_at?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
           payload?: Json
+          priority?: string | null
+          rationale?: string | null
+          reassigned_from?: string | null
+          rejection_reason?: string | null
           reminder_sent_at?: string | null
+          risk_level?: string | null
           source?: Json
           status?: string
+          target_object_id?: string | null
+          target_object_type?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -1787,19 +1815,33 @@ export type Database = {
         Update: {
           action_type?: string
           approved_at?: string | null
+          assigned_to?: string | null
           created_at?: string
           deal_id?: string | null
           deal_name?: string | null
           description?: string | null
           dismissed_at?: string | null
+          edited_before_approval?: boolean | null
+          evidence?: Json | null
           executed_at?: string | null
           execution_error?: string | null
           expires_at?: string
           id?: string
+          more_context_notes?: string | null
+          more_context_requested_at?: string | null
+          new_values?: Json | null
+          old_values?: Json | null
           payload?: Json
+          priority?: string | null
+          rationale?: string | null
+          reassigned_from?: string | null
+          rejection_reason?: string | null
           reminder_sent_at?: string | null
+          risk_level?: string | null
           source?: Json
           status?: string
+          target_object_id?: string | null
+          target_object_type?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -2215,6 +2257,65 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      approval_queue_audit: {
+        Row: {
+          action_queue_id: string
+          action_type: string
+          approver_user_id: string | null
+          created_at: string
+          decision: string
+          execution_status: string
+          failure_reason: string | null
+          id: string
+          new_values: Json | null
+          old_values: Json | null
+          rejection_reason: string | null
+          target_object_id: string | null
+          target_object_type: string | null
+          was_edited: boolean | null
+        }
+        Insert: {
+          action_queue_id: string
+          action_type: string
+          approver_user_id?: string | null
+          created_at?: string
+          decision: string
+          execution_status: string
+          failure_reason?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          rejection_reason?: string | null
+          target_object_id?: string | null
+          target_object_type?: string | null
+          was_edited?: boolean | null
+        }
+        Update: {
+          action_queue_id?: string
+          action_type?: string
+          approver_user_id?: string | null
+          created_at?: string
+          decision?: string
+          execution_status?: string
+          failure_reason?: string | null
+          id?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          rejection_reason?: string | null
+          target_object_id?: string | null
+          target_object_type?: string | null
+          was_edited?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "approval_queue_audit_action_queue_id_fkey"
+            columns: ["action_queue_id"]
+            isOneToOne: false
+            referencedRelation: "ai_action_queue"
             referencedColumns: ["id"]
           },
         ]
@@ -22974,6 +23075,77 @@ export type Database = {
         }
         Relationships: []
       }
+      staged_email_drafts: {
+        Row: {
+          attachments: Json | null
+          bcc_recipients: Json
+          body_html: string | null
+          body_text: string | null
+          cancelled_at: string | null
+          cc_recipients: Json
+          created_at: string
+          deal_id: string | null
+          id: string
+          sent_at: string | null
+          source_action_id: string | null
+          staged_at: string
+          status: string
+          subject: string | null
+          thread_id: string | null
+          to_recipients: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          bcc_recipients?: Json
+          body_html?: string | null
+          body_text?: string | null
+          cancelled_at?: string | null
+          cc_recipients?: Json
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          sent_at?: string | null
+          source_action_id?: string | null
+          staged_at?: string
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          bcc_recipients?: Json
+          body_html?: string | null
+          body_text?: string | null
+          cancelled_at?: string | null
+          cc_recipients?: Json
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          sent_at?: string | null
+          source_action_id?: string | null
+          staged_at?: string
+          status?: string
+          subject?: string | null
+          thread_id?: string | null
+          to_recipients?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staged_email_drafts_source_action_id_fkey"
+            columns: ["source_action_id"]
+            isOneToOne: false
+            referencedRelation: "ai_action_queue"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subtask_checklist_items: {
         Row: {
           created_at: string
@@ -28029,19 +28201,33 @@ export type Database = {
         Returns: {
           action_type: string
           approved_at: string | null
+          assigned_to: string | null
           created_at: string
           deal_id: string | null
           deal_name: string | null
           description: string | null
           dismissed_at: string | null
+          edited_before_approval: boolean | null
+          evidence: Json | null
           executed_at: string | null
           execution_error: string | null
           expires_at: string
           id: string
+          more_context_notes: string | null
+          more_context_requested_at: string | null
+          new_values: Json | null
+          old_values: Json | null
           payload: Json
+          priority: string | null
+          rationale: string | null
+          reassigned_from: string | null
+          rejection_reason: string | null
           reminder_sent_at: string | null
+          risk_level: string | null
           source: Json
           status: string
+          target_object_id: string | null
+          target_object_type: string | null
           title: string
           updated_at: string
           user_id: string

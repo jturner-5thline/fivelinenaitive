@@ -31,6 +31,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
+import { StagedDraftsPanel } from './StagedDraftsPanel';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
@@ -49,7 +53,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }> = {
+const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }>> = {
   create_task: { label: 'Create Task', icon: CheckSquare, color: 'text-sky-500' },
   update_lender_status: { label: 'Update Lender', icon: Building2, color: 'text-emerald-500' },
   save_to_data_room: { label: 'Save to Data Room', icon: Save, color: 'text-violet-500' },
@@ -57,6 +61,18 @@ const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare;
   deal_update: { label: 'Update Deal', icon: Briefcase, color: 'text-blue-500' },
   claap_recording_review: { label: 'Claap Recording', icon: Video, color: 'text-fuchsia-500' },
   claap_action_items: { label: 'Meeting Action Items', icon: ListChecks, color: 'text-cyan-500' },
+  update_deal_stage: { label: 'Update Deal Stage', icon: Briefcase, color: 'text-blue-500' },
+  update_deal_status: { label: 'Update Deal Status', icon: Briefcase, color: 'text-blue-500' },
+  add_status_note: { label: 'Add Status Note', icon: FileText, color: 'text-amber-500' },
+  update_funding_source: { label: 'Update Funding Source', icon: Building2, color: 'text-emerald-500' },
+  create_milestone: { label: 'Create Milestone', icon: CheckSquare, color: 'text-sky-500' },
+  update_milestone: { label: 'Update Milestone', icon: CheckSquare, color: 'text-sky-500' },
+  create_followup_task: { label: 'Create Follow-up Task', icon: CheckSquare, color: 'text-sky-500' },
+  update_contact: { label: 'Update Contact', icon: FileText, color: 'text-amber-500' },
+  update_company: { label: 'Update Company', icon: Building2, color: 'text-emerald-500' },
+  draft_email: { label: 'Draft Email', icon: FileText, color: 'text-violet-500' },
+  escalate: { label: 'Escalate', icon: CheckSquare, color: 'text-red-500' },
+  reassign_deal: { label: 'Reassign Deal', icon: Briefcase, color: 'text-blue-500' },
 };
 
 function expiryLabel(item: QueuedAiAction): string {
@@ -89,6 +105,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
   const [confirmApproveAllOpen, setConfirmApproveAllOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'queue' | 'staged'>('queue');
 
   // Group by deal (or "Unassigned")
   const grouped = useMemo(() => {
@@ -179,6 +197,15 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         )}
       </div>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex flex-col flex-1 min-h-0">
+        <TabsList className="mx-3 mt-2 h-7 bg-white/5">
+          <TabsTrigger value="queue" className="h-6 text-[11px]">Queue</TabsTrigger>
+          <TabsTrigger value="staged" className="h-6 text-[11px]">Staged Drafts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="staged" className="flex-1 min-h-0 overflow-y-auto mt-0">
+          <StagedDraftsPanel />
+        </TabsContent>
+        <TabsContent value="queue" className="flex-1 min-h-0 flex flex-col mt-0">
       {items.length === 0 && accessRequests.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
           <InboxIcon className="h-6 w-6 opacity-50" />
@@ -393,6 +420,16 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             )}
                             <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
                               <span className="uppercase tracking-wide">{meta?.label}</span>
+                              {item.risk_level && (
+                                <>
+                                  <span>·</span>
+                                  <Badge variant="outline" className={`h-3.5 px-1 text-[9px] ${
+                                    item.risk_level === 'high' ? 'border-red-500/40 text-red-400' :
+                                    item.risk_level === 'medium' ? 'border-amber-500/40 text-amber-400' :
+                                    'border-emerald-500/40 text-emerald-400'
+                                  }`}>{item.risk_level} risk</Badge>
+                                </>
+                              )}
                               {item.source?.origin === 'admin_agent' && (
                                 <>
                                   <span>·</span>
@@ -423,6 +460,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             </>
                           ) : (
                             <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+                                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                              >
+                                {expandedId === item.id
+                                  ? <ChevronDown className="h-3 w-3" />
+                                  : <ChevronRight className="h-3 w-3" />}
+                                Review
+                              </Button>
                               <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] gap-1 text-muted-foreground" onClick={() => startEdit(item)}>
                                 <Pencil className="h-3 w-3" /> Edit
                               </Button>
@@ -451,6 +499,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             </>
                           )}
                         </div>
+                        {expandedId === item.id && (
+                          <ApprovalReviewExpanded
+                            item={item}
+                            onDone={() => setExpandedId(null)}
+                          />
+                        )}
                       </li>
                     );
                   })}
@@ -462,6 +516,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         </div>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
