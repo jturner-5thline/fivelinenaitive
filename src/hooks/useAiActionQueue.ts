@@ -260,6 +260,23 @@ export function useDismissAiAction() {
         return;
       }
       invalidateQueueAll(qc);
+      toast.success('Item dismissed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const { error: undoError } = await supabase
+              .from('ai_action_queue')
+              .update({ status: 'pending', dismissed_at: null })
+              .eq('id', id);
+            if (undoError) {
+              toast.error('Could not undo');
+              return;
+            }
+            invalidateQueueAll(qc);
+            toast.success('Dismissal undone');
+          },
+        },
+      });
     },
     [qc],
   );
@@ -280,7 +297,23 @@ export function useDismissManyAiActions() {
         return;
       }
       invalidateQueueAll(qc);
-      toast.success(`Dismissed ${ids.length} item${ids.length !== 1 ? 's' : ''}`);
+      toast.success(`Dismissed ${ids.length} item${ids.length !== 1 ? 's' : ''}`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const { error: undoError } = await supabase
+              .from('ai_action_queue')
+              .update({ status: 'pending', dismissed_at: null })
+              .in('id', ids);
+            if (undoError) {
+              toast.error('Could not undo');
+              return;
+            }
+            invalidateQueueAll(qc);
+            toast.success(`Restored ${ids.length} item${ids.length !== 1 ? 's' : ''}`);
+          },
+        },
+      });
     },
     [qc],
   );
@@ -308,8 +341,12 @@ export function useUpdateAiAction() {
  * Execute a queued action against the appropriate backend table and log the
  * result to the deal activity timeline.
  */
-async function executeQueuedAction(item: QueuedAiAction, userId: string): Promise<{ ok: boolean; error?: string }> {
+async function executeQueuedAction(
+  item: QueuedAiAction,
+  userId: string,
+): Promise<{ ok: boolean; error?: string; createdTaskId?: string }> {
   try {
+    let createdTaskId: string | undefined;
     switch (item.action_type) {
       case 'create_task': {
         const p = item.payload || {};
@@ -338,6 +375,7 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
         } as any).select('id').single();
         if (error) return { ok: false, error: error.message };
         if (created?.id) {
+          createdTaskId = created.id;
           // Unified deal follow-up backlink (idempotent).
           if (item.deal_id) {
             try {
@@ -430,7 +468,7 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
         user_id: userId,
       });
     }
-    return { ok: true };
+    return { ok: true, createdTaskId };
   } catch (err: any) {
     return { ok: false, error: err?.message || 'Unknown error' };
   }
@@ -456,6 +494,36 @@ export function useApproveAiAction() {
         .eq('id', item.id);
       invalidateQueueAll(qc);
       if (result.ok) invalidateAllTaskCaches(qc);
+      if (result.ok) {
+        const createdTaskId = result.createdTaskId;
+        toast.success('Action approved', {
+          description: item.title,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              const { error: undoError } = await supabase
+                .from('ai_action_queue')
+                .update({
+                  status: 'pending',
+                  approved_at: null,
+                  executed_at: null,
+                  execution_error: null,
+                })
+                .eq('id', item.id);
+              if (undoError) {
+                toast.error('Could not undo');
+                return;
+              }
+              if (createdTaskId) {
+                await supabase.from('tasks').delete().eq('id', createdTaskId);
+                invalidateAllTaskCaches(qc);
+              }
+              invalidateQueueAll(qc);
+              toast.success('Approval undone');
+            },
+          },
+        });
+      }
       return result;
     },
     [user, qc],
