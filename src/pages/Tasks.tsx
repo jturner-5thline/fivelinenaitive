@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useUndoStack } from '@/hooks/useUndoStack';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
@@ -70,6 +70,7 @@ import {
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
 import { bucketDueDate, isOverdue as isOverdueFn } from '@/lib/taskDateGrouping';
+import { invalidateAllTaskCaches } from '@/lib/taskCache';
 import { cn } from '@/lib/utils';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -96,6 +97,30 @@ const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-ho
 // Deals are restricted to these stages by default in the Tasks deal picker;
 // the "Show all deals (incl. closed/on-hold)" checkbox lifts the restriction.
 const ACTIVE_DEAL_STAGES = new Set(['pipeline', 'development_pipeline']);
+
+function buildTaskUndoPatch(task: Task, updates: Partial<Task>): Partial<Task> {
+  const prev: Record<string, unknown> = {};
+  const taskRecord = task as unknown as Record<string, unknown>;
+  for (const key of Object.keys(updates)) prev[key] = taskRecord[key] ?? null;
+  if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
+    prev.completed_at = task.completed_at ?? null;
+    prev.completed_by = task.completed_by ?? null;
+  }
+  return prev as Partial<Task>;
+}
+
+function toRestorableTaskRow(task: Task): Record<string, unknown> {
+  const row: Record<string, unknown> = { ...(task as unknown as Record<string, unknown>) };
+  delete row.assignee_profile;
+  delete row.creator_profile;
+  delete row.deal;
+  delete row.contact;
+  delete row.crm_company;
+  delete row.project;
+  delete row.subtasks;
+  row.updated_at = new Date().toISOString();
+  return row;
+}
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
@@ -280,6 +305,7 @@ function InlineFilterSelect<T extends string>({
 }
 
 export default function Tasks() {
+  const queryClient = useQueryClient();
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
@@ -298,6 +324,24 @@ export default function Tasks() {
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useLocalStorageState<ViewMode>(`${_prefsNs}:viewMode`, 'list');
+
+  const updateTaskWithUndo = useCallback((taskId: string, updates: Partial<Task>, label = 'Task change') => {
+    const snapshot = tasks.find(t => t.id === taskId);
+    if (snapshot) {
+      const undoPatch = buildTaskUndoPatch(snapshot, updates);
+      undoStack.push({
+        label,
+        undo: () => updateTask.mutate({ id: taskId, ...undoPatch }),
+      });
+    }
+    updateTask.mutate({ id: taskId, ...updates } as Partial<Task> & { id: string });
+  }, [tasks, undoStack, updateTask]);
+
+  const restoreDeletedTask = useCallback(async (task: Task) => {
+    const { error } = await supabase.from('tasks').upsert(toRestorableTaskRow(task) as never);
+    if (error) throw error;
+    invalidateAllTaskCaches(queryClient);
+  }, [queryClient]);
 
   // Auto-open task from ?task= query parameter (e.g. from email deep link)
   useEffect(() => {
@@ -654,15 +698,26 @@ export default function Tasks() {
     });
   }, []);
 
-  const handleBulkUpdate = useCallback((updates: Record<string, any>) => {
+  const handleBulkUpdate = useCallback((updates: Partial<Task>) => {
+    const snapshots = Array.from(selectedTaskIds)
+      .map(id => tasks.find(t => t.id === id))
+      .filter(Boolean) as Task[];
+    if (snapshots.length > 0) {
+      undoStack.push({
+        label: `Bulk update ${snapshots.length} task${snapshots.length === 1 ? '' : 's'}`,
+        undo: () => Promise.all(snapshots.map(task => (
+          updateTask.mutateAsync({ id: task.id, ...buildTaskUndoPatch(task, updates) } as Partial<Task> & { id: string })
+        ))).then(() => undefined),
+      });
+    }
     const promises = Array.from(selectedTaskIds).map(id =>
-      updateTask.mutateAsync({ id, ...updates })
+      updateTask.mutateAsync({ id, ...updates } as Partial<Task> & { id: string })
     );
     Promise.all(promises).then(() => {
       toast.success(`Updated ${selectedTaskIds.size} task(s)`);
       setSelectedTaskIds(new Set());
     });
-  }, [selectedTaskIds, updateTask]);
+  }, [selectedTaskIds, tasks, undoStack, updateTask]);
 
   const handleBulkDelete = useCallback(() => {
     setShowDeleteConfirm(true);
@@ -671,28 +726,39 @@ export default function Tasks() {
   const confirmBulkDelete = useCallback(() => {
     const count = selectedTaskIds.size;
     const ids = Array.from(selectedTaskIds);
+    const snapshots = ids.map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[];
     const promises = ids.map(id => deleteTask.mutateAsync(id));
     Promise.all(promises).then(() => {
       setSelectedTaskIds(new Set());
       setShowDeleteConfirm(false);
+      if (snapshots.length > 0) {
+        undoStack.push({
+          label: `Delete ${snapshots.length} task${snapshots.length === 1 ? '' : 's'}`,
+          undo: () => Promise.all(snapshots.map(restoreDeletedTask)).then(() => undefined),
+        });
+      }
       toast.success(`Deleted ${count} task(s)`);
     });
-  }, [selectedTaskIds, deleteTask]);
+  }, [selectedTaskIds, tasks, deleteTask, undoStack, restoreDeletedTask]);
 
   const handleCompleteWithUndo = useCallback((taskId: string, currentStatus: string) => {
+    const snapshot = tasks.find(t => t.id === taskId);
     const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
-    updateTask.mutate({ id: taskId, status: newStatus } as any);
-    if (newStatus === 'complete') {
+    updateTask.mutate({ id: taskId, status: newStatus });
+    if (snapshot) {
+      const undoPatch = buildTaskUndoPatch(snapshot, { status: newStatus });
       undoStack.push({
-        label: 'Complete task',
-        undo: () => updateTask.mutate({ id: taskId, status: currentStatus } as any),
+        label: newStatus === 'complete' ? 'Complete task' : 'Reopen task',
+        undo: () => updateTask.mutate({ id: taskId, ...undoPatch }),
       });
+    }
+    if (newStatus === 'complete') {
       toast.success('Task completed! 🎉', {
-        action: { label: 'Undo', onClick: () => updateTask.mutate({ id: taskId, status: currentStatus } as any) },
+        action: { label: 'Undo', onClick: () => updateTask.mutate({ id: taskId, status: currentStatus }) },
         duration: 5000,
       });
     }
-  }, [updateTask, undoStack]);
+  }, [tasks, updateTask, undoStack]);
 
   const handleDeleteWithUndo = useCallback((taskId: string) => {
     const snapshot = tasks.find(t => t.id === taskId);
@@ -700,21 +766,15 @@ export default function Tasks() {
     if (snapshot) {
       undoStack.push({
         label: 'Delete task',
-        undo: () => createTask.mutate({
-          title: snapshot.title,
-          status: snapshot.status as any,
-          priority: snapshot.priority as any,
-          due_date: snapshot.due_date ?? undefined,
-          deal_id: snapshot.deal_id ?? undefined,
-        } as any),
+        undo: () => restoreDeletedTask(snapshot),
       });
     }
     toast.success('Task deleted');
-  }, [deleteTask, createTask, tasks, undoStack]);
+  }, [deleteTask, tasks, undoStack, restoreDeletedTask]);
 
   const handleToggleStar = useCallback((taskId: string, currentlyStarred: boolean) => {
-    updateTask.mutate({ id: taskId, is_starred: !currentlyStarred } as any);
-  }, [updateTask]);
+    updateTaskWithUndo(taskId, { is_starred: !currentlyStarred }, currentlyStarred ? 'Unstar task' : 'Star task');
+  }, [updateTaskWithUndo]);
 
   const handleSelectAll = useCallback(() => {
     if (selectedTaskIds.size === filtered.length) {
@@ -729,6 +789,7 @@ export default function Tasks() {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (selectedTaskId) return;
       // Cmd/Ctrl+Z — pop the most recent reversible action.
       if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
         if (undoStack.canUndo) {
@@ -740,7 +801,6 @@ export default function Tasks() {
         }
         return;
       }
-      if (selectedTaskId) return;
 
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
@@ -1009,7 +1069,7 @@ export default function Tasks() {
         <TaskFocusMode
           tasks={filtered}
           onExit={() => setShowFocusMode(false)}
-          onUpdate={(id, updates) => updateTask.mutate({ id, ...updates })}
+          onUpdate={(id, updates) => updateTaskWithUndo(id, updates)}
         />
       </Suspense>
     );
@@ -1544,7 +1604,7 @@ export default function Tasks() {
                 onCancelCreate={() => { setIsCreating(false); setNewTaskTitle(''); setTaskNameWarning(''); setTaskNameConfirmed(false); }}
                 taskNameWarning={taskNameWarning}
                 onSelectTask={setSelectedTaskId}
-                onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                 onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
                 groupBy={viewMode === 'focus' ? 'focus' : 'none'}
@@ -1561,7 +1621,7 @@ export default function Tasks() {
                 tasks={filtered}
                 statusGroups={allBoardColumns}
                 onSelectTask={setSelectedTaskId}
-                onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                 onCreateTask={(title, status) => createTask.mutate({ title, status })}
                 selectedTaskId={selectedTaskId}
                 onAddSection={handleAddSection}
@@ -1574,7 +1634,7 @@ export default function Tasks() {
                 <TaskCalendarView
                   tasks={filtered}
                   onSelectTask={setSelectedTaskId}
-                  onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
+                  onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                   selectedTaskId={selectedTaskId}
                 />
               </Suspense>
@@ -1595,7 +1655,7 @@ export default function Tasks() {
               task={selectedTask}
               onClose={() => setSelectedTaskId(null)}
               onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
-              onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
+              onDelete={() => { handleDeleteWithUndo(selectedTask.id); setSelectedTaskId(null); }}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16">
