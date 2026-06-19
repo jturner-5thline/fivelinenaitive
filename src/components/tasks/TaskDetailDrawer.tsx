@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useUndoStack } from '@/hooks/useUndoStack';
 import { TaskDuplicatePanel } from '@/components/tasks/TaskDuplicatePanel';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
@@ -37,7 +38,7 @@ import {
   X, Calendar, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
-  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw,
+  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw, Undo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -110,6 +111,39 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [asanaSyncing, setAsanaSyncing] = useState(false);
+
+  // Local undo stack for this drawer. Each entry captures the inverse of a
+  // single onUpdate call so the user can roll back recent field changes
+  // (title, status, due date, assignee, etc.) without leaving the panel.
+  const { push: pushUndo, pop: popUndo, canUndo } = useUndoStack(20);
+
+  // Wraps the parent-provided onUpdate so every drawer mutation records
+  // its inverse on the undo stack. We snapshot the prior values from the
+  // current `task` BEFORE applying the change.
+  const onUpdateWithUndo = useCallback(
+    (updates: Partial<Task>) => {
+      try {
+        const prev: Record<string, any> = {};
+        for (const k of Object.keys(updates)) {
+          prev[k] = (task as any)[k] ?? null;
+        }
+        pushUndo({
+          label: 'Task change',
+          undo: () => onUpdate(prev as Partial<Task>),
+        });
+      } catch {
+        // Never let undo bookkeeping block the underlying update.
+      }
+      onUpdate(updates);
+    },
+    [task, onUpdate, pushUndo],
+  );
+
+  const handleUndoClick = useCallback(() => {
+    const a = popUndo();
+    if (!a) return;
+    Promise.resolve(a.undo()).then(() => toast.success('Undone')).catch(() => {});
+  }, [popUndo]);
 
   const handleManualAsanaSync = useCallback(async () => {
     if (asanaSyncing) return;
