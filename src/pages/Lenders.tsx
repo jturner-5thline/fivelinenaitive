@@ -1976,11 +1976,11 @@ export default function Lenders() {
               {/* Relationship Owner(s) */}
               <div className="space-y-2">
                 <Label htmlFor="relationshipOwners">Relationship Owner(s)</Label>
-                <Input
-                  id="relationshipOwners"
+                <RelationshipOwnersPicker
                   value={form.relationshipOwners}
-                  onChange={(e) => setForm({ ...form, relationshipOwners: e.target.value })}
-                  placeholder="Comma-separated names"
+                  onChange={(next) => setForm({ ...form, relationshipOwners: next })}
+                  members={companyMembers}
+                  currentUserEmail={user?.email ?? null}
                 />
               </div>
 
