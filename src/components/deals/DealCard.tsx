@@ -217,7 +217,14 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
     __location.pathname.startsWith('/finserv');
   const __handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isEditingStatus) { e.preventDefault(); return; }
-    if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
+    // The fullscreen Pipeline grid lives inside a Radix Dialog, which
+    // normally triggers the overlay-origin suppression and swallows the
+    // click. The dialog opts out via `data-pipeline-fullscreen` so deal
+    // tiles in the expanded grid still open the deal overlay on top.
+    const inPipelineFullscreen = !!(e.target as Element | null)?.closest?.(
+      '[data-pipeline-fullscreen]',
+    );
+    if (!inPipelineFullscreen && shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) {
       e.preventDefault();
       e.stopPropagation();
       return;
