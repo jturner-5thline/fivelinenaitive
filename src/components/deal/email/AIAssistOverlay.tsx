@@ -67,17 +67,11 @@ export function AIAssistOverlay({ open, onClose, title, children, hideClose }: O
     return () => window.removeEventListener('keydown', onKey);
   }, [open, handleClose]);
 
-  // Track whether this overlay has ever been opened. We eagerly mount the
-  // children on first open and KEEP them mounted thereafter (hidden via
-  // CSS) so re-opening is instant — heavy data fetches inside each panel
-  // (deal lookups, AI suggestions, free/busy, etc.) only pay their cost
-  // once per sidebar session instead of on every click.
-  const [hasOpened, setHasOpened] = useState(open);
-  useEffect(() => {
-    if (open) setHasOpened(true);
-  }, [open]);
-
-  if (!host || !hasOpened) return null;
+  // Eagerly mount overlay content in the background as soon as the host
+  // is available — even before the user clicks the action button. Heavy
+  // children (deal lookups, AI suggestions, free/busy, etc.) finish their
+  // initial data fetches off-screen, so clicking the action feels instant.
+  if (!host) return null;
 
   return createPortal(
     <div
