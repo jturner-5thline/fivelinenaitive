@@ -67,12 +67,20 @@ export function AIAssistOverlay({ open, onClose, title, children, hideClose }: O
     return () => window.removeEventListener('keydown', onKey);
   }, [open, handleClose]);
 
-  if (!open || !host) return null;
+  // Eagerly mount overlay content in the background as soon as the host
+  // is available — even before the user clicks the action button. Heavy
+  // children (deal lookups, AI suggestions, free/busy, etc.) finish their
+  // initial data fetches off-screen, so clicking the action feels instant.
+  if (!host) return null;
 
   return createPortal(
     <div
-      className="pointer-events-auto absolute inset-0 flex flex-col rounded-xl border border-border bg-card shadow-xl overflow-hidden"
+      className={cn(
+        'pointer-events-auto absolute inset-0 flex-col rounded-xl border border-border bg-card shadow-xl overflow-hidden',
+        open ? 'flex' : 'hidden',
+      )}
       role="dialog"
+      aria-hidden={!open}
       aria-label={title || 'AI Assist panel'}
     >
       {!hideClose && (
