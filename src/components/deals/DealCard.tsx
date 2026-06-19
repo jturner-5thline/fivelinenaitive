@@ -488,7 +488,28 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           )}
 
-          {/* ── MIDDLE: Notes snippet ── */}
+          {/* ── Deal type / engagement pills (moved above notes panel) ── */}
+          {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
+                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                </Badge>
+              )}
+              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25">
+                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+                </Badge>
+              )}
+              {dealTypeLabels.map((label, index) => (
+                <Badge key={index} variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* ── MIDDLE: Notes snippet (inset panel with leading dot) ── */}
           {!compact && (
             <div className="flex-1">
               {isEditingStatus ? (
@@ -528,15 +549,34 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </div>
                 </div>
               ) : notesPlainText ? (
-                <div className="relative group/status">
+                <div className="relative group/status rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6 whitespace-pre-line" style={{ color: 'rgba(232, 240, 252, 0.95)' }}>
-                        {notesPlainText}
-                      </p>
+                      <div className="cursor-pointer pr-6">
+                        {(() => {
+                          const lines = notesPlainText.split('\n').filter(l => l.trim());
+                          const headline = lines[0] || notesPlainText;
+                          const rest = lines.slice(1).join(' ').trim();
+                          return (
+                            <>
+                              <div className="flex items-start gap-2">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                <p className="text-[13px] font-semibold leading-snug line-clamp-1" style={{ color: 'rgba(240, 246, 255, 0.98)' }}>
+                                  {headline}
+                                </p>
+                              </div>
+                              {rest && (
+                                <p className="text-[12px] leading-snug mt-1 pl-3.5 line-clamp-1" style={{ color: 'rgba(200, 215, 238, 0.75)' }}>
+                                  {rest}
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
-                      <div 
+                      <div
                         className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
                         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes!, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
                       />
@@ -544,21 +584,21 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </HoverCard>
                   <button
                     onClick={handleStatusEdit}
-                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+                    className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-white/10"
                   >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                    <Pencil className="h-3 w-3" style={{ color: 'rgba(200, 215, 238, 0.7)' }} />
                   </button>
                 </div>
               ) : (
-                <div className="relative group/status">
-                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(215, 228, 248, 0.78)' }}>
-                    No Status
+                <div className="relative group/status rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-2.5">
+                  <p className="text-[12px] leading-snug italic pr-6" style={{ color: 'rgba(200, 215, 238, 0.65)' }}>
+                    No status update yet
                   </p>
                   <button
                     onClick={handleStatusEdit}
-                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+                    className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-white/10"
                   >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                    <Pencil className="h-3 w-3" style={{ color: 'rgba(200, 215, 238, 0.7)' }} />
                   </button>
                 </div>
               )}
@@ -568,38 +608,25 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── DIVIDER ── */}
           {!compact && <Separator className="opacity-30" />}
 
-          {/* ── ROW: Manager (left) | Time ago (right) ── */}
+          {/* ── FOOTER: Avatar + manager | Time ago ── */}
           {!compact && (
-            <div className="flex items-center justify-between gap-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(220, 232, 250, 0.88)' }}>
-                <User className="h-3.5 w-3.5" />
-                <span className="truncate">{deal.manager || 'No manager'}</span>
+            <div className="flex items-center justify-between gap-3 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold shrink-0"
+                  style={{ background: 'rgba(99, 102, 241, 0.25)', color: '#dde4ff', border: '1px solid rgba(255,255,255,0.08)' }}
+                  aria-hidden
+                >
+                  {(deal.manager || 'NA').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'NA'}
+                </div>
+                <span className="truncate text-[12px] font-medium" style={{ color: 'rgba(220, 232, 250, 0.92)' }}>
+                  {deal.manager || 'No manager'}
+                </span>
               </div>
-              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(210, 224, 246, 0.82)' }}>
+              <div className={`flex items-center gap-1 text-[11px] shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(190, 206, 232, 0.78)' }}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
-            </div>
-          )}
-
-          {/* ── ROW: Engagement + Deal Type pills ── */}
-          {!compact && (
-            <div className="flex items-center gap-3 flex-wrap min-w-0">
-              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
-                <span className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
-                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                </span>
-              )}
-              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-                <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
-                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-                </Badge>
-              )}
-              {dealTypeLabels.map((label, index) => (
-                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
-                  {label}
-                </span>
-              ))}
             </div>
           )}
         {children}
