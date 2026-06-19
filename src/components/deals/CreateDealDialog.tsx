@@ -51,6 +51,7 @@ import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFor
 import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -90,6 +91,17 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const { dealTypes: availableDealTypes, isLoading: isLoadingDealTypes } = useDealTypes();
   const { defaultMilestones } = useDefaultMilestones();
   const { pipelines, activePipelineId, activePipeline, isLoading: isLoadingPipelines } = usePipelineContext();
+  const { isFieldVisible } = useDealInfoFieldOrder();
+  // Field-visibility helpers — admins can hide deal-info fields from the
+  // settings page; when hidden, they must not appear here either, and
+  // their validation must be skipped.
+  const showType = isFieldVisible('type');
+  const showClientContact = isFieldVisible('clientContact');
+  const showSourcedVia = isFieldVisible('sourcedVia');
+  const showReferral = isFieldVisible('referralSource');
+  const showNarrative = isFieldVisible('narrative');
+  const showManager = isFieldVisible('dealManager');
+  const showOwner = isFieldVisible('dealOwner');
   
   // Use active pipeline's stages if available, otherwise use global stages
   const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
@@ -191,10 +203,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
 
   const getBlankOptionalFields = () => {
     const blank: string[] = [];
-    if (!dealManager) blank.push('Deal Manager');
-    if (!dealOwner) blank.push('Deal Owner');
-    if (!referralName.trim()) blank.push('Referral Source Name');
-    if (!referralEmail.trim()) blank.push('Referral Source Email');
+    if (showManager && !dealManager) blank.push('Deal Manager');
+    if (showOwner && !dealOwner) blank.push('Deal Owner');
+    if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
+    if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
     return blank;
   };
 
@@ -212,12 +224,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
 
-    if (selectedDealTypes.length === 0) {
+    if (showType && selectedDealTypes.length === 0) {
       toast.error('Please select at least one Deal Type');
       return;
     }
     
-    if (!contactName.trim() || !contactInfo.trim()) {
+    if (showClientContact && (!contactName.trim() || !contactInfo.trim())) {
       toast.error('Please fill in contact name and contact info');
       return;
     }
@@ -227,7 +239,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
 
-    if (!sourcedVia || sourcedVia === '__none__') {
+    if (showSourcedVia && (!sourcedVia || sourcedVia === '__none__')) {
       toast.error('Please select a source for this deal');
       return;
     }
