@@ -406,54 +406,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </CardContent>
             </Card>
 
-            {/* 4. Contacts */}
-            <Card id="contacts" className="border-border/70 scroll-mt-24">
-              <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-muted-foreground" /> Contacts
-                  <Badge variant="secondary" className="text-[10px] font-normal ml-1">{contacts.length}</Badge>
-                </CardTitle>
-                <div className="flex items-center gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowLinkContact(true)}>
-                    <LinkIcon className="h-3.5 w-3.5 mr-1" /> Link
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCreateContact(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> New contact
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-3">
-                {contacts.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-muted-foreground">
-                    No contacts yet — link existing contacts or create one.
-                    <div className="mt-3"><InlineQuickAddContact companyId={company.id} companyName={company.name} /></div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {contacts.slice(0, 6).map((c: any) => (
-                      <div key={c.id} className="flex items-center justify-between rounded-md border px-2.5 py-2 hover:bg-muted/30">
-                        <button className="text-left min-w-0" onClick={() => navigate(`/contacts/${c.id}`)}>
-                          <p className="text-sm font-medium text-primary hover:underline truncate">{c.full_name || '—'}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{c.job_title || c.email || '—'}</p>
-                        </button>
-                        <div className="flex items-center gap-1 shrink-0">
-                          {c.email && (
-                            <a href={`mailto:${c.email}`} className="text-muted-foreground hover:text-foreground"><Mail className="h-3.5 w-3.5" /></a>
-                          )}
-                          <Button
-                            variant="ghost" size="icon" className="h-6 w-6"
-                            onClick={() => unlinkContact.mutate({ contactId: c.id, companyId: company.id })}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
             {/* 6. Attachments — dedicated module */}
             <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
 
