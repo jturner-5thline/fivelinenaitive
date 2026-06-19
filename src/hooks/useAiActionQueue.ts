@@ -85,10 +85,12 @@ async function fetchManagedDealIdSet(userId: string): Promise<Set<string> | null
   if (adminRow) return null;
 
   // Resolve the user's display name(s) for legacy text-column matching.
+  // NOTE: in this schema `profiles.id` is the row PK and `profiles.user_id`
+  // is the auth.uid foreign key — we must look up by `user_id`.
   const { data: profile } = await supabase
     .from('profiles')
     .select('display_name, full_name')
-    .eq('id', userId)
+    .eq('user_id', userId)
     .maybeSingle();
   const nameCandidates = [profile?.display_name, profile?.full_name]
     .filter((s): s is string => !!s && s.trim().length > 0)
