@@ -613,45 +613,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </CardContent>
               </Card>
 
-              {/* 5. Attachment Summary */}
-              <Card className="border-border/70">
-                <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-1.5"><Paperclip className="h-4 w-4 text-muted-foreground" /> Attachment Summary</CardTitle>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => goAnchor('attachments')}>Open</Button>
-                </CardHeader>
-                <CardContent className="pt-3 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Total files</span>
-                    <span className="font-medium">{attachments.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Missing required</span>
-                    <span className={cn('font-medium', missingFields.length ? 'text-amber-600' : '')}>
-                      {missingFields.length ? '1+' : '0'}
-                    </span>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-[10px] uppercase text-muted-foreground mb-1">Most recent</p>
-                    {attachments[0] ? (
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0">
-                          <p className="truncate">{attachments[0].name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {format(new Date(attachments[0].created_at), 'MMM d, yyyy')}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">No uploads yet.</p>
-                    )}
-                  </div>
-                  <Button size="sm" className="w-full h-8 text-xs mt-1" onClick={handleUploadClick}>
-                    <Upload className="h-3.5 w-3.5 mr-1" /> Upload Attachment
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
           </aside>
         </div>
