@@ -294,21 +294,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           </div>
         </div>
 
-        {/* Slim anchor nav */}
-        <div className="sticky top-0 z-10 -mx-1 px-1 py-1.5 bg-background/95 backdrop-blur border-b">
-          <nav className="flex items-center gap-1 overflow-x-auto">
-            {ANCHORS.map(a => (
-              <button
-                key={a.id}
-                onClick={() => goAnchor(a.id)}
-                className="text-xs px-2.5 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors whitespace-nowrap"
-              >
-                {a.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-
         {headerExtra}
 
         {editOpen && (
