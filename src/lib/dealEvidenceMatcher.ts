@@ -17,6 +17,7 @@ import {
   normalizeDomain,
 } from '@/lib/detectDraftEmails';
 import type { Deal } from '@/types/deal';
+import { rankActiveDuplicateFirst } from '@/lib/effectiveDealSelection';
 
 /** Domains we never treat as primary borrower evidence (advisor/internal). */
 const ADVISORY_DOMAINS = new Set<string>([
@@ -306,10 +307,10 @@ export function rankDealsForThread(deals: Deal[], input: EvidenceInput): RankRes
     const r = scoreDealAgainstThread(d, input);
     if (r) scored.push(r);
   }
-  scored.sort((a, b) => b.score - a.score);
-  const best = scored[0] || null;
+  const ranked = rankActiveDuplicateFirst(scored);
+  const best = ranked[0] || null;
   const closeRunnersUp = best
-    ? scored.slice(1).filter(s => best.score - s.score < 15).slice(0, 3)
+    ? ranked.slice(1).filter(s => best.score - s.score < 15).slice(0, 3)
     : [];
 
   const isTie = closeRunnersUp.length > 0;

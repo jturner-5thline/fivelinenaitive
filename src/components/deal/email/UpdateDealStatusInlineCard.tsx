@@ -14,6 +14,7 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { findActiveSameCompanyDeal } from '@/lib/effectiveDealSelection';
 
 interface Props {
   dealId?: string | null;
@@ -28,7 +29,8 @@ interface Props {
 export function UpdateDealStatusInlineCard({ dealId, onClose }: Props) {
   const { deals, updateDeal } = useDealsContext();
   const { stages } = useDealStages();
-  const deal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
+  const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
+  const deal = useMemo(() => findActiveSameCompanyDeal(deals, initialDeal), [deals, initialDeal]);
 
   const [stage, setStage] = useState<string>(deal?.stage || stages[0]?.id || '');
   const [status, setStatus] = useState<DealStatus | ''>((deal?.status as DealStatus) || '');
@@ -61,12 +63,12 @@ export function UpdateDealStatusInlineCard({ dealId, onClose }: Props) {
       if (stage !== deal.stage) updates.stage = stage;
       if (status !== (deal.status || '')) updates.status = status || null;
       if (Object.keys(updates).length > 0) {
-        await updateDeal(dealId, updates);
+        await updateDeal(deal.id, updates);
       }
       if (note.trim()) {
         const { data: { user } } = await supabase.auth.getUser();
         await supabase.from('deal_status_notes').insert({
-          deal_id: dealId,
+          deal_id: deal.id,
           note: note.trim(),
           created_by: user?.id || null,
         } as any);
