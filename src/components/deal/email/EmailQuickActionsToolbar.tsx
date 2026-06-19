@@ -25,7 +25,6 @@ import {
 import { logUpdateLenderRefused } from '@/lib/aiAssistRefusalLogger';
 import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { SaveToDealCard } from './SaveToDealCard';
-import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { UpdateDealStatusInlineCard } from './UpdateDealStatusInlineCard';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
