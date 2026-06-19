@@ -335,7 +335,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── ROW 1: Name | inline notification bell + menu ── */}
           <div className="flex items-start justify-between gap-2 min-w-0">
             <h3
-              className="text-[17px] font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
+              className="text-[20px] font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
               style={{ color: '#f8fbff' }}
               title={deal.company}
             >
@@ -434,7 +434,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
               </span>
               <span
-                className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+                className="text-[20px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
                 style={{ color: '#f8fbff' }}
               >
                 {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
