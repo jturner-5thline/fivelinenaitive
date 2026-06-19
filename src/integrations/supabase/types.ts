@@ -1756,13 +1756,16 @@ export type Database = {
           edited_before_approval: boolean | null
           evidence: Json | null
           executed_at: string | null
+          executed_by: string | null
           execution_error: string | null
+          execution_result: Json | null
           expires_at: string
           id: string
           more_context_notes: string | null
           more_context_requested_at: string | null
           new_values: Json | null
           old_values: Json | null
+          on_approve_execution_type: string | null
           payload: Json
           priority: string | null
           rationale: string | null
@@ -1790,13 +1793,16 @@ export type Database = {
           edited_before_approval?: boolean | null
           evidence?: Json | null
           executed_at?: string | null
+          executed_by?: string | null
           execution_error?: string | null
+          execution_result?: Json | null
           expires_at?: string
           id?: string
           more_context_notes?: string | null
           more_context_requested_at?: string | null
           new_values?: Json | null
           old_values?: Json | null
+          on_approve_execution_type?: string | null
           payload?: Json
           priority?: string | null
           rationale?: string | null
@@ -1824,13 +1830,16 @@ export type Database = {
           edited_before_approval?: boolean | null
           evidence?: Json | null
           executed_at?: string | null
+          executed_by?: string | null
           execution_error?: string | null
+          execution_result?: Json | null
           expires_at?: string
           id?: string
           more_context_notes?: string | null
           more_context_requested_at?: string | null
           new_values?: Json | null
           old_values?: Json | null
+          on_approve_execution_type?: string | null
           payload?: Json
           priority?: string | null
           rationale?: string | null
@@ -28210,13 +28219,16 @@ export type Database = {
           edited_before_approval: boolean | null
           evidence: Json | null
           executed_at: string | null
+          executed_by: string | null
           execution_error: string | null
+          execution_result: Json | null
           expires_at: string
           id: string
           more_context_notes: string | null
           more_context_requested_at: string | null
           new_values: Json | null
           old_values: Json | null
+          on_approve_execution_type: string | null
           payload: Json
           priority: string | null
           rationale: string | null
