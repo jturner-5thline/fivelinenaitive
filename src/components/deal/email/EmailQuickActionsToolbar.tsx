@@ -346,51 +346,6 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       </AIAssistOverlay>
-      <AIAssistOverlay open={active === 'summarize'} onClose={() => setActive(null)} title="Summarize Thread">
-        <div className="rounded-xl border border-[hsl(195_85%_60%/0.35)] bg-[hsl(200_75%_55%/0.08)] p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <AlignLeft className="h-3 w-3 text-cyan-300" />
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-200/90">
-              Thread summary
-            </span>
-            {summarizing && <Loader2 className="h-3 w-3 animate-spin text-cyan-200/80 ml-1" />}
-          </div>
-          {summarizing && !summary && (
-            <div className="text-[11.5px] text-foreground/60">Reading the thread…</div>
-          )}
-          {summaryError && !summarizing && (
-            <div className="text-[11.5px] text-amber-300/90">{summaryError}</div>
-          )}
-          {summary && (
-            <ul className="space-y-1">
-              {summary.map((bullet, i) => (
-                <li key={i} className="text-[12px] leading-snug text-foreground/85 flex gap-1.5">
-                  <span className="text-cyan-300 shrink-0 leading-snug">•</span>
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {summaryDebug && (import.meta as any).env?.DEV && (
-            <div className="mt-2 text-[10px] text-foreground/40 font-mono break-all">
-              id={summaryDebug.threadId} · subject="{summaryDebug.subject}" · msgs={summaryDebug.messageCount} · first={summaryDebug.firstTimestamp || 'n/a'} · last={summaryDebug.lastTimestamp || 'n/a'} · src={summaryDebug.source} · chars={summaryDebug.cleanedCharCount}
-            </div>
-          )}
-          {summary && (
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => { setSummary(null); setSummaryError(null); void runSummarize(); }}
-                disabled={summarizing}
-                className="text-[10.5px] text-cyan-200/80 hover:text-cyan-100 transition-colors disabled:opacity-50"
-              >
-                Regenerate
-              </button>
-            </div>
-          )}
-        </div>
-      </AIAssistOverlay>
-
     </div>
   );
 }
