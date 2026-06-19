@@ -243,11 +243,15 @@ export function DealsHeader() {
     const load = OVERLAY_PREFETCHERS[label];
     if (load) load().catch(() => {});
     if (label === 'Mail') {
-      // Warm the inbox-specific data path too: pull the freshest message
-      // list into the shared cache and prefetch the top bodies so the
-      // popup paints instantly with fully-rendered messages on first
-      // click. Also nudge InboxDialog to flip into its warm-mounted
-      // state immediately rather than waiting for the idle pass.
+      // Fire the warm-mount nudge IMMEDIATELY (synchronously) so the
+      // heavy InboxDialog subtree starts mounting during the hover /
+      // pointerdown window — not after a network round-trip. This is
+      // the single biggest win for click → first paint latency.
+      try {
+        window.dispatchEvent(new CustomEvent('inbox:prewarm'));
+      } catch { /* noop */ }
+      // Then, in the background, refresh the cache and prefetch the
+      // top message bodies so the popup paints with fresh content.
       void (async () => {
         try {
           const [{ useInboxCacheStore }, { prefetchFullEmailMessage }] = await Promise.all([
@@ -263,9 +267,6 @@ export function DealsHeader() {
         } catch {
           // best-effort prefetch — never block UI
         }
-        try {
-          window.dispatchEvent(new CustomEvent('inbox:prewarm'));
-        } catch { /* noop */ }
       })();
     }
   }, []);
