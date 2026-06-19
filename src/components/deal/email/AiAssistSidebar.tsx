@@ -1040,8 +1040,11 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               and overdue items. */}
           {(() => {
             const dealChip = dealName || workflowAnalysis?.likely_deal?.name;
+            const dealChipId = dealId || workflowAnalysis?.likely_deal?.id || null;
             const contactChip = workflowAnalysis?.likely_contact?.name
               || thread.latestEmail.from_name;
+            const contactChipEmail =
+              workflowAnalysis?.likely_contact?.email || thread.latestEmail.from_email || null;
             const rawLenderChip = workflowAnalysis?.likely_lender_firm?.name;
             // Suppress 5th Line as a funding source — it's our own firm, not a funding source.
             const normalizedLender = (rawLenderChip || '')
@@ -1057,27 +1060,51 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               normalizedLender.startsWith('fifth line ');
             const lenderChip = isInternalFirm ? null : rawLenderChip;
             if (!dealChip && !contactChip && !lenderChip) return null;
+            const chipBase =
+              'inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] max-w-[180px] transition-colors hover:border-white/30 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60';
             return (
               <div
                 className="flex flex-nowrap items-center gap-1.5 -mt-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {dealChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-primary max-w-[180px] transition-colors hover:border-white/20">
+                  <button
+                    type="button"
+                    disabled={!dealChipId}
+                    onClick={() => dealChipId && navigate(`/deals/${dealChipId}`)}
+                    title={dealChipId ? `Open ${dealChip}` : undefined}
+                    className={cn(chipBase, 'text-primary', !dealChipId && 'cursor-default hover:border-white/10 hover:bg-white/[0.03]')}
+                  >
                     <Briefcase className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Deal: {dealChip}</span>
-                  </span>
+                  </button>
                 )}
                 {contactChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-sky-300 max-w-[180px] transition-colors hover:border-white/20">
+                  <button
+                    type="button"
+                    disabled={!contactChipEmail}
+                    onClick={() =>
+                      contactChipEmail &&
+                      navigate(`/contacts?search=${encodeURIComponent(contactChipEmail)}`)
+                    }
+                    title={contactChipEmail ? `Open ${contactChip}` : undefined}
+                    className={cn(chipBase, 'text-sky-300', !contactChipEmail && 'cursor-default hover:border-white/10 hover:bg-white/[0.03]')}
+                  >
                     <UserIcon className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Contact: {contactChip}</span>
-                  </span>
+                  </button>
                 )}
                 {lenderChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-emerald-300 max-w-[180px] transition-colors hover:border-white/20">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/lenders/${encodeURIComponent(lenderChip)}/history`)
+                    }
+                    title={`Open ${lenderChip}`}
+                    className={cn(chipBase, 'text-emerald-300')}
+                  >
                     <Building2 className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Lender: {lenderChip}</span>
-                  </span>
+                  </button>
                 )}
               </div>
             );
