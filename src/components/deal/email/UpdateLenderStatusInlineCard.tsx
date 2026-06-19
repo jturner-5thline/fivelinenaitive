@@ -287,6 +287,27 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
 
       <div className="space-y-1">
         <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+          Milestone <span className="text-muted-foreground/50 normal-case">(optional)</span>
+        </label>
+        <Select value={milestone} onValueChange={setMilestone}>
+          <SelectTrigger className="h-8 text-[12px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_MILESTONE} className="text-[12px] text-muted-foreground">
+              — None —
+            </SelectItem>
+            {milestoneOptions.map((m) => (
+              <SelectItem key={m.id} value={m.id} className="text-[12px]">
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
           Note <span className="text-muted-foreground/50 normal-case">(optional)</span>
         </label>
         <Textarea
