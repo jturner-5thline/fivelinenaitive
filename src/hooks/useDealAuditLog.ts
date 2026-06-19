@@ -32,7 +32,7 @@ export function useDealAuditLog(dealId: string | undefined) {
     setLoading(true);
     try {
       const from = pageNum * PAGE_SIZE;
-      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes] = await Promise.all([
+      const [{ data, error }, { data: callData, error: callError }, stageRes, pipelinesRes, dealRes] = await Promise.all([
         (supabase as any)
           .from('deal_audit_log')
           .select('*')
@@ -57,6 +57,9 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase.from('deal_pipelines').select('id, name, stages')
           : Promise.resolve({ data: [] as any[], error: null }),
+        pageNum === 0
+          ? supabase.from('deals').select('id, created_at').eq('id', dealId).maybeSingle()
+          : Promise.resolve({ data: null as any, error: null }),
       ]);
 
       if (error) throw error;
@@ -169,7 +172,23 @@ export function useDealAuditLog(dealId: string | undefined) {
       }
       const stageRows = Array.from(stageDedupeMap.values());
 
-      const rows = [...auditRows, ...callRows, ...stageRows].sort(
+      const dealCreatedRows: DealAuditEntry[] = pageNum === 0 && dealRes?.data?.created_at
+        ? [{
+            id: `deal-created-${dealId}`,
+            deal_id: dealId,
+            user_id: null,
+            action_type: 'deal_created',
+            entity_type: 'deal',
+            entity_id: dealId,
+            entity_name: 'Deal',
+            metadata: { source: 'deals.created_at' },
+            created_at: dealRes.data.created_at,
+            user_display_name: 'System',
+            user_avatar_url: null,
+          }]
+        : [];
+
+      const rows = [...auditRows, ...callRows, ...stageRows, ...dealCreatedRows].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 

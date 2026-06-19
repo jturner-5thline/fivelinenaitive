@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import {
   Upload, Trash2, FolderInput, Pencil, Share2, FolderPlus, CheckSquare,
   Square, FileText, Clock, RotateCcw, Filter, User, Search, Undo2, Video,
-  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch, ArrowRight
+  ArrowRightFromLine, ArrowLeftFromLine, Loader2, GitBranch, ArrowRight, CheckCircle
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +45,7 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   claap_recording_linked: { icon: Video, color: 'text-primary', label: 'Call Linked' },
   stage_changed: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Changed' },
   stage_exited: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Exited' },
+  deal_created: { icon: CheckCircle, color: 'text-primary', label: 'Deal Created' },
 };
 
 const FILTER_OPTIONS = [
@@ -75,6 +76,7 @@ function describeAction(entry: DealAuditEntry): string {
     case 'checklist_item_unchecked': return `unchecked "${name}"`;
     case 'deal_status_changed': return `changed status from "${meta.old_status}" to "${meta.new_status}"`;
     case 'deal_info_updated': return `updated deal info: ${meta.field || ''}`;
+    case 'deal_created': return 'created the deal';
     case 'move_reverted': return `reverted move of "${name}" back to ${meta.old_folder || '?'}`;
     case 'rename_reverted': return `reverted rename of "${name}" back to "${meta.old_name || '?'}"`;
     case 'claap_recording_linked': return entry.metadata?.recording_url ? `linked Claap call "${name}"` : name;
@@ -307,11 +309,18 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                         <Icon className={cn("h-3 w-3", config.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs leading-relaxed">
-                          <span className="font-medium">{entry.user_display_name || 'System'}</span>
-                          {' '}
-                          <span className="text-muted-foreground">{describeAction(entry)}</span>
-                        </p>
+                        {entry.action_type === 'deal_created' ? (
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium">Deal Created</span>
+                            <span className="text-muted-foreground"> · {entry.user_display_name || 'System'}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium">{entry.user_display_name || 'System'}</span>
+                            {' '}
+                            <span className="text-muted-foreground">{describeAction(entry)}</span>
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-muted-foreground">
                             {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
