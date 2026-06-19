@@ -549,7 +549,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </div>
                 </div>
               ) : notesPlainText ? (
-                <div className="relative group/status rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
+                <div className="relative group/status rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-3 min-h-[5.5rem]">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
                       <div className="cursor-pointer pr-6">
@@ -561,12 +561,12 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                             <>
                               <div className="flex items-start gap-2">
                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                <p className="text-[13px] font-semibold leading-snug line-clamp-1" style={{ color: 'rgba(240, 246, 255, 0.98)' }}>
+                                <p className="text-[13px] font-semibold leading-snug line-clamp-2" style={{ color: 'rgba(240, 246, 255, 0.98)' }}>
                                   {headline}
                                 </p>
                               </div>
                               {rest && (
-                                <p className="text-[12px] leading-snug mt-1 pl-3.5 line-clamp-1" style={{ color: 'rgba(200, 215, 238, 0.75)' }}>
+                                <p className="text-[12px] leading-snug mt-1 pl-3.5 line-clamp-3" style={{ color: 'rgba(200, 215, 238, 0.75)' }}>
                                   {rest}
                                 </p>
                               )}
@@ -590,7 +590,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </button>
                 </div>
               ) : (
-                <div className="relative group/status rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-2.5">
+                <div className="relative group/status rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-3 min-h-[5.5rem]">
                   <p className="text-[12px] leading-snug italic pr-6" style={{ color: 'rgba(200, 215, 238, 0.65)' }}>
                     No status update yet
                   </p>
