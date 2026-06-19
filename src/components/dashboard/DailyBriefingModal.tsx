@@ -1964,6 +1964,43 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                 </button>
               )}
 
+              {activeTab === 'pipeline' ? (
+                // Pipeline tab manages its own master/detail scrolling
+                // (left deal list + right memo pane). Wrapping it in the
+                // outer ScrollArea collapses the inner scroll regions,
+                // so we render it directly inside a flex container that
+                // gives it a bounded height.
+                <div
+                  className="h-full w-full max-w-full flex flex-col min-h-0 min-w-0 overflow-hidden"
+                  style={{
+                    paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                    paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                    paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
+                    paddingBottom: 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                  }}
+                >
+                  <AddToDealCalendarProvider>
+                    <div
+                      key={activeTab}
+                      className={cn(
+                        'flex-1 min-h-0 min-w-0 max-w-full flex flex-col overflow-hidden',
+                        slideDirection === 'left' && 'animate-slide-in-from-right',
+                        slideDirection === 'right' && 'animate-slide-in-from-left',
+                      )}
+                    >
+                      {contentReady && (
+                        <PipelineTab
+                          enabled={open}
+                          onNavigate={handleNavigate}
+                          targetDealOwnerName={targetAssigneeName}
+                          targetUserId={targetUserId}
+                          briefingType={briefingType}
+                        />
+                      )}
+                    </div>
+                  </AddToDealCalendarProvider>
+                </div>
+              ) : (
               <ScrollArea
                 className="h-full w-full max-w-full"
                 style={{
@@ -2001,7 +2038,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                     />
                   )}
                   {contentReady && activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {contentReady && activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
                   {contentReady && activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                   {contentReady && activeTab === 'end_of_day' && (
                     <EndOfDayTab
@@ -2015,6 +2051,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   </div>
                 </AddToDealCalendarProvider>
               </ScrollArea>
+              )}
               </div>
             </div>
           </Tabs>
