@@ -27,8 +27,19 @@ export function TaskCompletionCheckbox({
   const [isAnimating, setIsAnimating] = useState(false);
   const [isPreview, setIsPreview] = useState(false); // hover OR focus-visible
   const [reducedMotion, setReducedMotion] = useState(false);
-  // Debounce rapid clicks on adjacent rows (~300ms)
+  // Optimistic state so the UI flips instantly while the parent mutation resolves
+  const [optimisticChecked, setOptimisticChecked] = useState<boolean | null>(null);
+  // Debounce rapid clicks on adjacent rows (~600ms — covers slow network round-trips)
   const lastClickRef = useRef<number>(0);
+
+  // Clear optimistic override once the parent prop catches up
+  useEffect(() => {
+    if (optimisticChecked !== null && optimisticChecked === checked) {
+      setOptimisticChecked(null);
+    }
+  }, [checked, optimisticChecked]);
+
+  const effectiveChecked = optimisticChecked ?? checked;
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
@@ -42,12 +53,14 @@ export function TaskCompletionCheckbox({
   const handleClick = useCallback(() => {
     if (disabled) return;
     const now = Date.now();
-    if (now - lastClickRef.current < 300) return;
+    if (now - lastClickRef.current < 600) return;
     lastClickRef.current = now;
+    const next = !effectiveChecked;
+    setOptimisticChecked(next);
     setIsAnimating(true);
-    onChange(!checked);
+    onChange(next);
     setTimeout(() => setIsAnimating(false), 280);
-  }, [checked, disabled, onChange]);
+  }, [effectiveChecked, disabled, onChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -71,18 +84,18 @@ export function TaskCompletionCheckbox({
   const easeOut = "cubic-bezier(0.16, 1, 0.3, 1)";
   const easeOutBack = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
-  // Compute target visual state
-  const showPreviewFill = !checked && isPreview && !isAnimating;
-  const showPreviewUncheck = checked && isPreview && !isAnimating;
+  // Compute target visual state (uses optimistic value for instant feedback)
+  const showPreviewFill = !effectiveChecked && isPreview && !isAnimating;
+  const showPreviewUncheck = effectiveChecked && isPreview && !isAnimating;
 
   // Background opacity for circle interior
   let fillOpacity = 0;
-  if (checked) fillOpacity = showPreviewUncheck ? 0.4 : 1;
+  if (effectiveChecked) fillOpacity = showPreviewUncheck ? 0.4 : 1;
   else if (showPreviewFill) fillOpacity = 0.55;
 
   // Checkmark glyph opacity
   let glyphOpacity = 0;
-  if (checked) glyphOpacity = showPreviewUncheck ? 0.5 : 1;
+  if (effectiveChecked) glyphOpacity = showPreviewUncheck ? 0.5 : 1;
   else if (showPreviewFill) glyphOpacity = 0.7;
 
   // Scale
@@ -105,7 +118,7 @@ export function TaskCompletionCheckbox({
   return (
     <button
       role="checkbox"
-      aria-checked={checked}
+      aria-checked={effectiveChecked}
       aria-label={ariaLabel}
       tabIndex={0}
       disabled={disabled}
@@ -129,7 +142,7 @@ export function TaskCompletionCheckbox({
         aria-hidden="true"
         className={cn(
           "relative flex items-center justify-center w-[18px] h-[18px] rounded-full border-2",
-          checked || showPreviewFill
+          effectiveChecked || showPreviewFill
             ? "border-primary"
             : "border-muted-foreground/50"
         )}
@@ -138,7 +151,7 @@ export function TaskCompletionCheckbox({
           transform: `scale(${scale})`,
           transition: `background-color ${transitionDuration} ${transitionEase}, transform ${transitionDuration} ${transitionEase}, border-color ${transitionDuration} ${transitionEase}, box-shadow ${transitionDuration} ${transitionEase}`,
           boxShadow:
-            isAnimating && !checked
+            isAnimating && !effectiveChecked
               ? "0 0 0 4px hsl(var(--primary) / 0.2)"
               : "none",
         }}
