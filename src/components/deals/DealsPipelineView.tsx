@@ -492,7 +492,10 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
       </div>
 
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[98vw] w-[98vw] h-[92vh] max-h-[92vh] p-4 flex flex-col">
+        <DialogContent
+          data-pipeline-fullscreen
+          className="max-w-[98vw] w-[98vw] h-[92vh] max-h-[92vh] p-4 flex flex-col"
+        >
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-lg font-semibold">Pipeline View</h2>
             <Button
