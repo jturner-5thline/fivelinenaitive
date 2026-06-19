@@ -40,6 +40,7 @@ import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
+import { useDealsLastViewState } from '@/hooks/useDealsLastViewState';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
@@ -129,6 +130,15 @@ export default function Dashboard() {
   } = useDealSavedViews();
   const defaultView = getDefaultView();
 
+  // Per-user last-used view state (filters/sort/view/grouping). Survives
+  // page refreshes so users land back exactly where they left off, even
+  // if they never explicitly saved a view. Loaded from localStorage
+  // synchronously, then hydrated from the DB.
+  const [lastViewState, persistLastViewState] = useDealsLastViewState(null);
+  // Last-state wins over the org default view — it reflects the user's
+  // most recent intent.
+  const initialView = lastViewState ?? (defaultView?.config ?? null);
+
   // Grouping is optional and starts unset; we hydrate from the org default view
   // (or leave it null = ungrouped) once saved views finish loading. NEVER coerce
   // an empty/null grouping back to 'status' — that round-trips the user's choice.
@@ -136,6 +146,11 @@ export default function Dashboard() {
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
   const [showMilestones, setShowMilestones] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'pipeline' | 'timeline'>(() => {
+    const fromInitial = initialView?.viewMode;
+    if (fromInitial && (fromInitial === 'grid' || fromInitial === 'list' || fromInitial === 'pipeline' || fromInitial === 'timeline')) {
+      if (fromInitial === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
+      return fromInitial;
+    }
     const stored = localStorage.getItem('deals-view-mode');
     if (stored === 'timeline' && !companyFeatures.timeline_view_enabled) return 'grid';
     return (stored === 'grid' || stored === 'list' || stored === 'pipeline' || stored === 'timeline') ? stored : 'grid';
@@ -223,10 +238,10 @@ export default function Dashboard() {
     setFilters,
     setSortField,
     setSortDirection,
-  } = useDeals(defaultView ? {
-    initialFilters: defaultView.config.filters,
-    initialSortField: sanitizeSortField(defaultView.config.sortField),
-    initialSortDirection: defaultView.config.sortDirection,
+  } = useDeals(initialView ? {
+    initialFilters: initialView.filters,
+    initialSortField: sanitizeSortField(initialView.sortField),
+    initialSortDirection: initialView.sortDirection,
   } : undefined);
 
   const resetDealViewState = useCallback((options?: { clearSavedViews?: boolean; clearDefaultOnly?: boolean; showToast?: boolean }) => {
@@ -253,20 +268,41 @@ export default function Dashboard() {
   const defaultViewAppliedRef = useRef(false);
   useEffect(() => {
     if (!savedViewsLoaded || defaultViewAppliedRef.current) return;
-    if (defaultView) {
+    // Prefer the user's last-used state over the org default view so a
+    // refresh always lands the user back where they left off.
+    const source = lastViewState ?? defaultView?.config ?? null;
+    if (source) {
       defaultViewAppliedRef.current = true;
-      setFilters(defaultView.config.filters);
-      setSortField(sanitizeSortField(defaultView.config.sortField));
-      setSortDirection(defaultView.config.sortDirection);
-      const m = defaultView.config.viewMode;
+      setFilters(source.filters);
+      setSortField(sanitizeSortField(source.sortField));
+      setSortDirection(source.sortDirection);
+      const m = source.viewMode;
       setViewMode(m === 'timeline' && !companyFeatures.timeline_view_enabled ? 'grid' : m);
       // Preserve null/undefined exactly — null means "ungrouped" by design.
-      setGroupBy(defaultView.config.groupBy ?? null);
-      setCollapsedGroups(defaultView.config.collapsedGroups ?? []);
+      setGroupBy(source.groupBy ?? null);
+      setCollapsedGroups(source.collapsedGroups ?? []);
     } else {
       defaultViewAppliedRef.current = true;
     }
-  }, [savedViewsLoaded, defaultView, companyFeatures.timeline_view_enabled, setFilters, setSortField, setSortDirection]);
+  }, [savedViewsLoaded, defaultView, lastViewState, companyFeatures.timeline_view_enabled, setFilters, setSortField, setSortDirection]);
+
+  // Persist current view state (debounced) so refresh restores it.
+  // Only starts after initial hydration so we never clobber the saved
+  // value with raw defaults during the first render pass.
+  useEffect(() => {
+    if (!defaultViewAppliedRef.current) return;
+    const handle = window.setTimeout(() => {
+      persistLastViewState({
+        filters,
+        sortField,
+        sortDirection,
+        viewMode,
+        groupBy,
+        collapsedGroups,
+      });
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [filters, sortField, sortDirection, viewMode, groupBy, collapsedGroups, persistLastViewState]);
 
   const previousPipelineIdRef = useRef<string | null>(activePipelineId);
   useEffect(() => {
