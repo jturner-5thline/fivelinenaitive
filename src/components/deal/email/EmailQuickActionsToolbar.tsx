@@ -40,6 +40,7 @@ import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 type QuickActionKey =
   | 'save_dr'
   | 'update'
+  | 'update_crm'
   | 'update_lender'
   | 'update_status'
   | 'update_fields'
@@ -47,7 +48,6 @@ type QuickActionKey =
   | 'draft'
   | 'task'
   | 'meeting'
-  | 'summarize'
   | 'outstanding';
 
 interface ActionDef {
@@ -60,12 +60,12 @@ interface ActionDef {
 
 const ALL_ACTIONS: ActionDef[] = [
   { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-4 w-4" />, iconClass: 'text-amber-300' },
-  { key: 'update', label: 'Update', icon: <Pencil className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'update', label: 'Update Deal', icon: <Pencil className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'update_crm', label: 'Update CRM', icon: <UserCog className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
   { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
-  { key: 'summarize', label: 'Summarize thread', icon: <AlignLeft className="h-4 w-4" />, iconClass: 'text-cyan-300' },
 ];
 
 interface Props {
@@ -161,14 +161,9 @@ export function EmailQuickActionsToolbar({
       setActive(null);
       return;
     }
-    if (key === 'summarize') {
-      // Toggle: collapse if already showing
-      if (active === 'summarize') {
-        setActive(null);
-        return;
-      }
-      setActive('summarize');
-      void runSummarize();
+    if (key === 'update_crm') {
+      if (!contactId) return;
+      setActive((prev) => (prev === 'update_contact' ? null : 'update_contact'));
       return;
     }
     if (key === 'meeting') {
@@ -231,8 +226,7 @@ export function EmailQuickActionsToolbar({
             const dealLabel = dealName || fallbackDealName || 'deal';
             const isUpdateActive = active === 'update_lender'
               || active === 'update_status'
-              || active === 'update_fields'
-              || active === 'update_contact';
+              || active === 'update_fields';
             return (
               <DropdownMenu key={a.key}>
                 <DropdownMenuTrigger asChild>
@@ -280,15 +274,21 @@ export function EmailQuickActionsToolbar({
                     <Banknote className="h-4 w-4 text-sky-300 mr-2" />
                     Update {dealLabel} fields
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!contactId}
-                    onSelect={() => contactId && setActive('update_contact')}
-                  >
-                    <UserCog className="h-4 w-4 text-fuchsia-300 mr-2" />
-                    Update CRM contact / company
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            );
+          }
+          if (a.key === 'update_crm') {
+            return (
+              <AIAssistActionButton
+                key={a.key}
+                label={a.label}
+                icon={a.icon}
+                iconClass={a.iconClass}
+                isActive={active === 'update_contact'}
+                disabled={!contactId}
+                onClick={() => handleClick(a.key)}
+              />
             );
           }
           if (a.key === 'meeting') {
