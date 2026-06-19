@@ -161,9 +161,9 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
         });
         toast.success(`${proposedLenderName} added to ${deal.company}`);
         // Card will re-render with the funding source now tracked; user can pick a status next.
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[UpdateLenderStatus] add failed', err);
-        toast.error(err?.message || 'Failed to add lender');
+        toast.error(getErrorMessage(err, 'Failed to add lender'));
       } finally {
         setAdding(false);
       }
@@ -240,10 +240,10 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
         : `${lender.name} → ${selectedStage?.label || stage}`;
       toast.success(summary);
       setTimeout(onClose, 900);
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
       console.error('[UpdateLenderStage] failed', err);
-      toast.error(err?.message || 'Failed to update lender');
+      toast.error(getErrorMessage(err, 'Failed to update lender'));
     } finally {
       setSaving(false);
     }
