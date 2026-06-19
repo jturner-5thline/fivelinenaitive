@@ -76,6 +76,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { StagedDraftsPanel } from './StagedDraftsPanel';
+import {
+  buildOutcomeSentence,
+  buildOnApproveSentence,
+  approveButtonLabel,
+  targetSummary,
+} from './approvalCopy';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
@@ -153,8 +159,9 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   // Group by deal (or "Unassigned")
   const grouped = useMemo(() => {
+    const reviewable = items.filter((it) => it.risk_level !== 'low');
     const map = new Map<string, { dealId: string | null; dealName: string; items: QueuedAiAction[] }>();
-    for (const it of items) {
+    for (const it of reviewable) {
       const key = it.deal_id || '__none__';
       const name = it.deal_name || (it.deal_id ? 'Untitled Deal' : 'Unassigned');
       if (!map.has(key)) map.set(key, { dealId: it.deal_id, dealName: name, items: [] });
@@ -167,6 +174,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       return a.dealName.localeCompare(b.dealName);
     });
   }, [items]);
+
+  // Low-risk auto-suggestions grouped for quick bulk approval. Still gated
+  // behind explicit approve actions per spec.
+  const lowRiskItems = useMemo(
+    () => items.filter((it) => it.risk_level === 'low' &&
+      it.action_type !== 'claap_recording_review' &&
+      it.action_type !== 'claap_action_items'),
+    [items],
+  );
+  const [lowRiskExpanded, setLowRiskExpanded] = useState(false);
+  const [lowRiskBusy, setLowRiskBusy] = useState(false);
 
   // Items within 6h of their 48h expiry — surfaces a reminder banner so the
   // user knows to act before they auto-drop.
