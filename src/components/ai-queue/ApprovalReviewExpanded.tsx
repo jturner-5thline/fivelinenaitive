@@ -3,13 +3,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Loader2, Check, X, UserPlus, MessageSquare, ExternalLink, Pencil } from 'lucide-react';
+import { Loader2, Check, X, MessageSquare, ExternalLink, Pencil, Zap } from 'lucide-react';
 import {
   QueuedAiAction,
   useApproveAiAction,
   useRejectAiAction,
   useRequestMoreContext,
 } from '@/hooks/useAiActionQueue';
+import {
+  buildOutcomeSentence,
+  buildOnApproveSentence,
+  approveButtonLabel,
+  targetSummary,
+} from './approvalCopy';
 
 /**
  * Decision-first expanded review for an Approval Queue item.
@@ -18,40 +24,6 @@ import {
  * approve". Below: old → new diff (inline editable), rationale, evidence,
  * and the reviewer action bar.
  */
-
-function buildOutcomeSentence(item: QueuedAiAction): string {
-  const target = item.deal_name || 'this record';
-  const nv = item.new_values || {};
-  switch (item.action_type) {
-    case 'update_deal_stage':
-      return `Move ${target} to stage "${nv.stage ?? '—'}".`;
-    case 'update_deal_status':
-      return `Set ${target} status to "${nv.status ?? '—'}".`;
-    case 'add_status_note':
-      return `Add status note to ${target}.`;
-    case 'update_funding_source':
-      return `Update funding source on ${target} to "${nv.substage ?? nv.new_status ?? '—'}".`;
-    case 'create_milestone':
-      return `Create milestone on ${target}.`;
-    case 'update_milestone':
-      return `Update milestone on ${target}.`;
-    case 'create_followup_task':
-    case 'create_task':
-      return `Create follow-up task on ${target}.`;
-    case 'update_contact':
-      return `Update contact record.`;
-    case 'update_company':
-      return `Update company record.`;
-    case 'draft_email':
-      return `Stage drafted email for manual send (will NOT auto-send).`;
-    case 'escalate':
-      return `Escalate ${target} with an urgent task.`;
-    case 'reassign_deal':
-      return `Reassign ${target} to a new manager.`;
-    default:
-      return item.title;
-  }
-}
 
 interface Props {
   item: QueuedAiAction;
@@ -71,6 +43,8 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
   const [edits, setEdits] = useState<Record<string, any>>({});
 
   const outcome = useMemo(() => buildOutcomeSentence(item), [item]);
+  const onApprove = useMemo(() => buildOnApproveSentence(item), [item]);
+  const target = useMemo(() => targetSummary(item), [item]);
   const oldValues = item.old_values || {};
   const newValues = item.new_values || {};
   const fieldKeys = useMemo(() => {
@@ -113,23 +87,39 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
       {/* Decision-first headline */}
       <div className="space-y-1">
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          If approved
+          Proposed action
         </p>
         <p className="font-semibold text-foreground leading-snug">{outcome}</p>
-        {item.risk_level && (
-          <Badge
-            variant="outline"
-            className={
-              item.risk_level === 'high'
-                ? 'border-red-500/40 text-red-400 text-[10px]'
-                : item.risk_level === 'medium'
-                ? 'border-amber-500/40 text-amber-400 text-[10px]'
-                : 'border-emerald-500/40 text-emerald-400 text-[10px]'
-            }
-          >
-            {item.risk_level} risk
+        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+          <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-white/15">
+            Target: {target}
           </Badge>
-        )}
+          {item.risk_level && (
+            <Badge
+              variant="outline"
+              className={
+                item.risk_level === 'high'
+                  ? 'border-red-500/40 text-red-400 text-[10px]'
+                  : item.risk_level === 'medium'
+                  ? 'border-amber-500/40 text-amber-400 text-[10px]'
+                  : 'border-emerald-500/40 text-emerald-400 text-[10px]'
+              }
+            >
+              {item.risk_level} risk
+            </Badge>
+          )}
+          {item.priority && item.priority !== 'normal' && (
+            <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-primary/40 text-primary capitalize">
+              {item.priority}
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* What happens on approve */}
+      <div className="rounded border border-primary/25 bg-primary/[0.06] px-2.5 py-1.5 flex items-start gap-2">
+        <Zap className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+        <p className="text-[11px] text-foreground/90 leading-snug">{onApprove}</p>
       </div>
 
       {/* Old → New diff */}
@@ -247,9 +237,7 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
           onClick={handleApprove}
         >
           {busy === 'approve' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-          {editedCount > 0
-            ? 'Edit & Approve'
-            : isDraftEmail ? 'Approve & Stage' : 'Approve & Apply'}
+          {approveButtonLabel(item, editedCount > 0)}
         </Button>
         {!showRejectInput ? (
           <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px]"

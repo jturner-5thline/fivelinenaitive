@@ -76,6 +76,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { StagedDraftsPanel } from './StagedDraftsPanel';
+import {
+  buildOnApproveSentence,
+  approveButtonLabel,
+  targetSummary,
+} from './approvalCopy';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
@@ -153,8 +158,9 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   // Group by deal (or "Unassigned")
   const grouped = useMemo(() => {
+    const reviewable = items.filter((it) => it.risk_level !== 'low');
     const map = new Map<string, { dealId: string | null; dealName: string; items: QueuedAiAction[] }>();
-    for (const it of items) {
+    for (const it of reviewable) {
       const key = it.deal_id || '__none__';
       const name = it.deal_name || (it.deal_id ? 'Untitled Deal' : 'Unassigned');
       if (!map.has(key)) map.set(key, { dealId: it.deal_id, dealName: name, items: [] });
@@ -167,6 +173,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       return a.dealName.localeCompare(b.dealName);
     });
   }, [items]);
+
+  // Low-risk auto-suggestions grouped for quick bulk approval. Still gated
+  // behind explicit approve actions per spec.
+  const lowRiskItems = useMemo(
+    () => items.filter((it) => it.risk_level === 'low' &&
+      it.action_type !== 'claap_recording_review' &&
+      it.action_type !== 'claap_action_items'),
+    [items],
+  );
+  const [lowRiskExpanded, setLowRiskExpanded] = useState(false);
+  const [lowRiskBusy, setLowRiskBusy] = useState(false);
 
   // Items within 6h of their 48h expiry — surfaces a reminder banner so the
   // user knows to act before they auto-drop.
@@ -363,6 +380,70 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 </ul>
               </div>
             )}
+            {lowRiskItems.length > 0 && (
+              <div className="rounded-md border border-emerald-500/25 bg-emerald-500/[0.04] overflow-hidden">
+                <div className="px-3 py-2 flex items-center justify-between border-b border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={() => setLowRiskExpanded((v) => !v)}
+                    className="flex items-center gap-2 min-w-0 text-left"
+                  >
+                    {lowRiskExpanded
+                      ? <ChevronDown className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      : <ChevronRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />}
+                    <CheckCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span className="text-xs font-semibold text-foreground truncate">
+                      Suggested bulk approval
+                    </span>
+                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] border-emerald-500/40 text-emerald-400">
+                      {lowRiskItems.length} low risk
+                    </Badge>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="liquid-glass"
+                    className="h-6 px-2 text-[10px] gap-1"
+                    disabled={lowRiskBusy}
+                    onClick={async () => {
+                      setLowRiskBusy(true);
+                      await approveAll(lowRiskItems);
+                      setLowRiskBusy(false);
+                    }}
+                  >
+                    {lowRiskBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCheck className="h-3 w-3" />}
+                    Approve all low risk
+                  </Button>
+                </div>
+                {!lowRiskExpanded ? (
+                  <p className="px-3 py-2 text-[11px] text-muted-foreground">
+                    {lowRiskItems.length} auto-suggested action{lowRiskItems.length === 1 ? '' : 's'} grouped for bulk approval. Expand to inspect each before applying.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-emerald-500/10">
+                    {lowRiskItems.map((item) => (
+                      <ApprovalRow
+                        key={item.id}
+                        item={item}
+                        busyId={busyId}
+                        editingId={editingId}
+                        expandedId={expandedId}
+                        editTitle={editTitle}
+                        editDesc={editDesc}
+                        setEditTitle={setEditTitle}
+                        setEditDesc={setEditDesc}
+                        startEdit={startEdit}
+                        saveEdit={saveEdit}
+                        setEditingId={setEditingId}
+                        setExpandedId={setExpandedId}
+                        setBusyId={setBusyId}
+                        approve={approve}
+                        dismiss={dismiss}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
             {grouped.map(group => {
               const groupKey = group.dealId || '__none__';
               const typeSummary = Array.from(
@@ -433,123 +514,25 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                         </li>
                       );
                     }
-                    const meta = TYPE_META[item.action_type];
-                    const Icon = meta?.icon ?? CheckSquare;
-                    const isEditing = editingId === item.id;
                     return (
-                      <li key={item.id} className="p-2.5 space-y-1.5">
-                        <div className="flex items-start gap-2">
-                          <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta?.color || ''}`} />
-                          <div className="flex-1 min-w-0">
-                            {isEditing ? (
-                              <div className="space-y-1.5">
-                                <Input
-                                  value={editTitle}
-                                  onChange={e => setEditTitle(e.target.value)}
-                                  className="h-7 text-xs"
-                                />
-                                <Textarea
-                                  value={editDesc}
-                                  onChange={e => setEditDesc(e.target.value)}
-                                  className="min-h-[44px] text-xs"
-                                />
-                              </div>
-                            ) : (
-                              <>
-                                <p className="text-xs font-medium text-foreground line-clamp-2 break-words" title={item.title}>{item.title}</p>
-                                {item.description && (
-                                  <p className="text-[11px] text-muted-foreground line-clamp-3 break-words" title={item.description}>{item.description}</p>
-                                )}
-                              </>
-                            )}
-                            <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                              <span className="uppercase tracking-wide">{meta?.label}</span>
-                              {item.risk_level && (
-                                <>
-                                  <span>·</span>
-                                  <Badge variant="outline" className={`h-3.5 px-1 text-[9px] ${
-                                    item.risk_level === 'high' ? 'border-red-500/40 text-red-400' :
-                                    item.risk_level === 'medium' ? 'border-amber-500/40 text-amber-400' :
-                                    'border-emerald-500/40 text-emerald-400'
-                                  }`}>{item.risk_level} risk</Badge>
-                                </>
-                              )}
-                              {item.source?.origin === 'admin_agent' && (
-                                <>
-                                  <span>·</span>
-                                  <Badge
-                                    variant="outline"
-                                    className="h-4 px-1.5 text-[9px] font-medium border-primary/40 bg-primary/10 text-primary uppercase tracking-wide"
-                                  >
-                                    Admin Agent
-                                  </Badge>
-                                </>
-                              )}
-                              <span>·</span>
-                              <span>{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</span>
-                              <span>·</span>
-                              <span className="inline-flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" />{expiryLabel(item)}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-1">
-                          {isEditing ? (
-                            <>
-                              <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => setEditingId(null)}>
-                                Cancel
-                              </Button>
-                              <Button size="sm" variant="default" className="h-6 px-2 text-[10px] gap-1" onClick={saveEdit}>
-                                <Save className="h-3 w-3" /> Save
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
-                                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                              >
-                                {expandedId === item.id
-                                  ? <ChevronDown className="h-3 w-3" />
-                                  : <ChevronRight className="h-3 w-3" />}
-                                Review
-                              </Button>
-                              <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] gap-1 text-muted-foreground" onClick={() => startEdit(item)}>
-                                <Pencil className="h-3 w-3" /> Edit
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-destructive"
-                                onClick={() => dismiss(item.id)}
-                              >
-                                <X className="h-3 w-3" /> Dismiss
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="liquid-glass"
-                                className="h-6 px-2 text-[10px] gap-1"
-                                disabled={busyId === item.id}
-                                onClick={async () => {
-                                  setBusyId(item.id);
-                                  await approve(item);
-                                  setBusyId(null);
-                                }}
-                              >
-                                {busyId === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                Approve
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                        {expandedId === item.id && (
-                          <ApprovalReviewExpanded
-                            item={item}
-                            onDone={() => setExpandedId(null)}
-                          />
-                        )}
-                      </li>
+                      <ApprovalRow
+                        key={item.id}
+                        item={item}
+                        busyId={busyId}
+                        editingId={editingId}
+                        expandedId={expandedId}
+                        editTitle={editTitle}
+                        editDesc={editDesc}
+                        setEditTitle={setEditTitle}
+                        setEditDesc={setEditDesc}
+                        startEdit={startEdit}
+                        saveEdit={saveEdit}
+                        setEditingId={setEditingId}
+                        setExpandedId={setExpandedId}
+                        setBusyId={setBusyId}
+                        approve={approve}
+                        dismiss={dismiss}
+                      />
                     );
                   })}
                 </ul>
@@ -563,5 +546,203 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+interface ApprovalRowProps {
+  item: QueuedAiAction;
+  busyId: string | null;
+  editingId: string | null;
+  expandedId: string | null;
+  editTitle: string;
+  editDesc: string;
+  setEditTitle: (v: string) => void;
+  setEditDesc: (v: string) => void;
+  startEdit: (item: QueuedAiAction) => void;
+  saveEdit: () => Promise<void> | void;
+  setEditingId: (v: string | null) => void;
+  setExpandedId: (v: string | null) => void;
+  setBusyId: (v: string | null) => void;
+  approve: ReturnType<typeof useApproveAiAction>;
+  dismiss: ReturnType<typeof useDismissAiAction>;
+}
+
+function ApprovalRow({
+  item,
+  busyId,
+  editingId,
+  expandedId,
+  editTitle,
+  editDesc,
+  setEditTitle,
+  setEditDesc,
+  startEdit,
+  saveEdit,
+  setEditingId,
+  setExpandedId,
+  setBusyId,
+  approve,
+  dismiss,
+}: ApprovalRowProps) {
+  const meta = TYPE_META[item.action_type];
+  const Icon = meta?.icon ?? CheckSquare;
+  const isEditing = editingId === item.id;
+  const isExpanded = expandedId === item.id;
+  const onApprove = buildOnApproveSentence(item);
+  const targetLabel = targetSummary(item);
+  const ctaLabel = approveButtonLabel(item);
+
+  return (
+    <li className="p-2.5 space-y-1.5">
+      <div className="flex items-start gap-2">
+        <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta?.color || ''}`} />
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="space-y-1.5">
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="h-7 text-xs"
+              />
+              <Textarea
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                className="min-h-[44px] text-xs"
+              />
+            </div>
+          ) : (
+            <>
+              <p
+                className="text-xs font-medium text-foreground line-clamp-2 break-words"
+                title={item.title}
+              >
+                {item.title}
+              </p>
+              <p
+                className="text-[11px] text-muted-foreground/90 line-clamp-2 break-words"
+                title={onApprove}
+              >
+                {onApprove}
+              </p>
+              {item.description && (
+                <p
+                  className="text-[11px] text-muted-foreground line-clamp-2 break-words mt-0.5 italic"
+                  title={item.description}
+                >
+                  {item.description}
+                </p>
+              )}
+            </>
+          )}
+          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground flex-wrap">
+            <Badge variant="outline" className="h-3.5 px-1 text-[9px] border-white/15">
+              {targetLabel}
+            </Badge>
+            {item.risk_level && (
+              <Badge
+                variant="outline"
+                className={`h-3.5 px-1 text-[9px] ${
+                  item.risk_level === 'high'
+                    ? 'border-red-500/40 text-red-400'
+                    : item.risk_level === 'medium'
+                    ? 'border-amber-500/40 text-amber-400'
+                    : 'border-emerald-500/40 text-emerald-400'
+                }`}
+              >
+                {item.risk_level} risk
+              </Badge>
+            )}
+            {item.priority && item.priority !== 'normal' && (
+              <Badge variant="outline" className="h-3.5 px-1 text-[9px] border-primary/40 text-primary capitalize">
+                {item.priority}
+              </Badge>
+            )}
+            {item.source?.origin === 'admin_agent' && (
+              <Badge
+                variant="outline"
+                className="h-4 px-1.5 text-[9px] font-medium border-primary/40 bg-primary/10 text-primary uppercase tracking-wide"
+              >
+                Admin Agent
+              </Badge>
+            )}
+            <span>·</span>
+            <span>{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</span>
+            <span>·</span>
+            <span className="inline-flex items-center gap-0.5">
+              <Clock className="h-2.5 w-2.5" />
+              {expiryLabel(item)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1">
+        {isEditing ? (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setEditingId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-6 px-2 text-[10px] gap-1"
+              onClick={() => saveEdit()}
+            >
+              <Save className="h-3 w-3" /> Save
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+              onClick={() => setExpandedId(isExpanded ? null : item.id)}
+            >
+              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Review
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+              onClick={() => startEdit(item)}
+            >
+              <Pencil className="h-3 w-3" /> Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-destructive"
+              onClick={() => dismiss(item.id)}
+            >
+              <X className="h-3 w-3" /> Reject
+            </Button>
+            <Button
+              size="sm"
+              variant="liquid-glass"
+              className="h-6 px-2 text-[10px] gap-1"
+              disabled={busyId === item.id}
+              onClick={async () => {
+                setBusyId(item.id);
+                await approve(item);
+                setBusyId(null);
+              }}
+              title={onApprove}
+            >
+              {busyId === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              {ctaLabel}
+            </Button>
+          </>
+        )}
+      </div>
+      {isExpanded && (
+        <ApprovalReviewExpanded item={item} onDone={() => setExpandedId(null)} />
+      )}
+    </li>
   );
 }
