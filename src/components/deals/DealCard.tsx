@@ -564,7 +564,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 <div className="relative group/status">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6" style={{ color: 'rgba(232, 240, 252, 0.95)' }}>
+                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6 whitespace-pre-line" style={{ color: 'rgba(232, 240, 252, 0.95)' }}>
                         {notesPlainText}
                       </p>
                     </HoverCardTrigger>
