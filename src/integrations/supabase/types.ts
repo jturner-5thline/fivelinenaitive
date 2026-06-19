@@ -7379,6 +7379,50 @@ export type Database = {
           },
         ]
       }
+      crm_company_attachments: {
+        Row: {
+          category: string
+          content_type: string | null
+          created_at: string
+          crm_company_id: string
+          file_path: string
+          id: string
+          name: string
+          size_bytes: number
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          content_type?: string | null
+          created_at?: string
+          crm_company_id: string
+          file_path: string
+          id?: string
+          name: string
+          size_bytes?: number
+          user_id: string
+        }
+        Update: {
+          category?: string
+          content_type?: string | null
+          created_at?: string
+          crm_company_id?: string
+          file_path?: string
+          id?: string
+          name?: string
+          size_bytes?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_company_attachments_crm_company_id_fkey"
+            columns: ["crm_company_id"]
+            isOneToOne: false
+            referencedRelation: "crm_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_company_team: {
         Row: {
           created_at: string
