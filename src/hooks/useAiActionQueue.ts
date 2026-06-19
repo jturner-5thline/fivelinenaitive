@@ -19,7 +19,19 @@ export type AiActionType =
   | 'log_note'
   | 'deal_update'
   | 'claap_recording_review'
-  | 'claap_action_items';
+  | 'claap_action_items'
+  | 'update_deal_stage'
+  | 'update_deal_status'
+  | 'add_status_note'
+  | 'update_funding_source'
+  | 'create_milestone'
+  | 'update_milestone'
+  | 'create_followup_task'
+  | 'update_contact'
+  | 'update_company'
+  | 'draft_email'
+  | 'escalate'
+  | 'reassign_deal';
 
 export type AiActionStatus =
   | 'pending'
@@ -47,6 +59,20 @@ export interface QueuedAiAction {
   expires_at: string;
   created_at: string;
   updated_at: string;
+  assigned_to?: string | null;
+  priority?: 'low' | 'normal' | 'high' | 'urgent' | null;
+  risk_level?: 'low' | 'medium' | 'high' | null;
+  target_object_type?: string | null;
+  target_object_id?: string | null;
+  old_values?: Record<string, any> | null;
+  new_values?: Record<string, any> | null;
+  evidence?: Array<{ kind: string; label: string; ref_id?: string; snippet?: string; url?: string }>;
+  rationale?: string | null;
+  edited_before_approval?: boolean | null;
+  rejection_reason?: string | null;
+  reassigned_from?: string | null;
+  more_context_requested_at?: string | null;
+  more_context_notes?: string | null;
 }
 
 export interface EnqueueArgs {
