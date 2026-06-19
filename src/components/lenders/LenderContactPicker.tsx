@@ -290,6 +290,13 @@ export function LenderContactPicker({ value, onChange }: Props) {
             onValueChange={setQuery}
           />
           <CommandList className="max-h-[60vh]">
+            <CommandGroup>
+              <CommandItem value="__create__" onSelect={startNew}>
+                <UserPlus className="mr-2 h-3.5 w-3.5" />
+                {query.trim() ? <>Create new contact “{query.trim()}”</> : <>Create new contact</>}
+              </CommandItem>
+            </CommandGroup>
+            <CommandSeparator />
             {loading && (
               <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
             )}
@@ -319,13 +326,6 @@ export function LenderContactPicker({ value, onChange }: Props) {
                 })}
               </CommandGroup>
             )}
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem value="__create__" onSelect={startNew}>
-                <UserPlus className="mr-2 h-3.5 w-3.5" />
-                {query.trim() ? <>Create new contact “{query.trim()}”</> : <>Create new contact</>}
-              </CommandItem>
-            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
