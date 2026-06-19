@@ -63,7 +63,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
           .from('contacts')
           .select('id, full_name, first_name, last_name, email, job_title, phone_work, phone_mobile')
           .order('full_name', { ascending: true })
-          .limit(20);
+          .limit(2000);
         if (q) {
           const safe = q.replace(/[%,]/g, ' ').trim();
           req = req.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
@@ -151,7 +151,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
                 value={query}
                 onValueChange={setQuery}
               />
-              <CommandList>
+              <CommandList className="max-h-[60vh]">
                 {loading && (
                   <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
                 )}
