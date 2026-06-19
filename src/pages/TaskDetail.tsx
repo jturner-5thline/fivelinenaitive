@@ -1,17 +1,74 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { useMyTasks } from '@/hooks/useTasks';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect } from 'react';
+import { useMyTasks, type Task } from '@/hooks/useTasks';
+import { useUndoStack } from '@/hooks/useUndoStack';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { invalidateAllTaskCaches } from '@/lib/taskCache';
+import { toast } from 'sonner';
+
+function toRestorableTaskRow(task: Task): Record<string, unknown> {
+  const row: Record<string, unknown> = { ...(task as unknown as Record<string, unknown>) };
+  delete row.assignee_profile;
+  delete row.creator_profile;
+  delete row.deal;
+  delete row.contact;
+  delete row.crm_company;
+  delete row.project;
+  delete row.subtasks;
+  row.updated_at = new Date().toISOString();
+  return row;
+}
 
 export default function TaskDetail() {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const undoStack = useUndoStack();
   const { tasks, isLoading, updateTask, deleteTask } = useMyTasks();
 
   const task = tasks.find(t => t.id === taskId);
+
+  const restoreDeletedTask = useCallback(async (snapshot: Task) => {
+    const { error } = await supabase.from('tasks').upsert(toRestorableTaskRow(snapshot) as never);
+    if (error) throw error;
+    invalidateAllTaskCaches(queryClient);
+    navigate(`/tasks/${snapshot.id}`);
+  }, [navigate, queryClient]);
+
+  const handleDeleteWithUndo = useCallback(() => {
+    if (!task) return;
+    const snapshot = task;
+    undoStack.push({
+      label: 'Delete task',
+      undo: () => restoreDeletedTask(snapshot),
+    });
+    deleteTask.mutate(task.id);
+    toast.success('Task deleted', {
+      action: { label: 'Undo', onClick: () => restoreDeletedTask(snapshot) },
+      duration: 8000,
+    });
+  }, [deleteTask, restoreDeletedTask, task, undoStack]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (task) return;
+      const action = undoStack.pop();
+      if (!action) return;
+      e.preventDefault();
+      Promise.resolve(action.undo()).then(() => toast.success(`Undone: ${action.label}`)).catch(() => toast.error('Could not undo'));
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [task, undoStack]);
 
   if (isLoading) {
     return (
@@ -48,7 +105,7 @@ export default function TaskDetail() {
               task={task}
               onClose={() => navigate('/tasks')}
               onUpdate={(updates) => updateTask.mutate({ id: task.id, ...updates })}
-              onDelete={() => { deleteTask.mutate(task.id); navigate('/tasks'); }}
+              onDelete={handleDeleteWithUndo}
               fullPage
             />
           </div>
