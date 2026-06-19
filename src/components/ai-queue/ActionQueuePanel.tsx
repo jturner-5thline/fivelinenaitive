@@ -18,6 +18,10 @@ import {
   Video,
   ListChecks,
 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
   QueuedAiAction,
@@ -195,6 +199,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             </AlertDialogContent>
           </AlertDialog>
         )}
+        <AnalyzeNowButton />
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex flex-col flex-1 min-h-0">
