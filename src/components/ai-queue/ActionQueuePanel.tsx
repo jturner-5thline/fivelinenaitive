@@ -420,6 +420,16 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             )}
                             <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
                               <span className="uppercase tracking-wide">{meta?.label}</span>
+                              {item.risk_level && (
+                                <>
+                                  <span>·</span>
+                                  <Badge variant="outline" className={`h-3.5 px-1 text-[9px] ${
+                                    item.risk_level === 'high' ? 'border-red-500/40 text-red-400' :
+                                    item.risk_level === 'medium' ? 'border-amber-500/40 text-amber-400' :
+                                    'border-emerald-500/40 text-emerald-400'
+                                  }`}>{item.risk_level} risk</Badge>
+                                </>
+                              )}
                               {item.source?.origin === 'admin_agent' && (
                                 <>
                                   <span>·</span>
@@ -450,6 +460,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             </>
                           ) : (
                             <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+                                onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                              >
+                                {expandedId === item.id
+                                  ? <ChevronDown className="h-3 w-3" />
+                                  : <ChevronRight className="h-3 w-3" />}
+                                Review
+                              </Button>
                               <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] gap-1 text-muted-foreground" onClick={() => startEdit(item)}>
                                 <Pencil className="h-3 w-3" /> Edit
                               </Button>
@@ -478,6 +499,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                             </>
                           )}
                         </div>
+                        {expandedId === item.id && (
+                          <ApprovalReviewExpanded
+                            item={item}
+                            onDone={() => setExpandedId(null)}
+                          />
+                        )}
                       </li>
                     );
                   })}
