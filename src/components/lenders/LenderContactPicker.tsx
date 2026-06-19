@@ -69,14 +69,18 @@ export function LenderContactPicker({ value, onChange }: Props) {
       setLoading(true);
       try {
         const q = debounced.trim();
+        // Empty query → show the first 50 contacts alphabetically.
+        // With a query → server-side search across ALL contacts, capped at 50 matches.
         let req = supabase
           .from('contacts')
           .select('id, full_name, first_name, last_name, email, job_title, phone_work, phone_mobile')
           .order('full_name', { ascending: true })
-          .limit(2000);
+          .limit(50);
         if (q) {
           const safe = q.replace(/[%,]/g, ' ').trim();
-          req = req.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
+          req = req.or(
+            `full_name.ilike.%${safe}%,first_name.ilike.%${safe}%,last_name.ilike.%${safe}%,email.ilike.%${safe}%`,
+          );
         }
         const { data, error } = await req;
         if (cancelled) return;
