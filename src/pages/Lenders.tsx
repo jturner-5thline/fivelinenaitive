@@ -78,6 +78,7 @@ import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useM
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
 import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtimeNotifications';
+import { RelationshipOwnersPicker } from '@/components/lenders/RelationshipOwnersPicker';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
@@ -253,7 +254,7 @@ export default function Lenders() {
   const { deals, addLenderToDeal } = useDealsContext();
   const { getLenderSummary, refetch: refetchAttachmentSummaries } = useLenderAttachmentsSummary();
   const { user } = useAuth();
-  const { company } = useCompany();
+  const { company, members: companyMembers } = useCompany();
   const quickUploadRef = useRef<HTMLInputElement>(null);
   const [quickUploadTarget, setQuickUploadTarget] = useState<{ lenderName: string; category: 'nda' | 'marketing_materials' } | null>(null);
   const [isQuickUploading, setIsQuickUploading] = useState(false);
@@ -1976,11 +1977,11 @@ export default function Lenders() {
               {/* Relationship Owner(s) */}
               <div className="space-y-2">
                 <Label htmlFor="relationshipOwners">Relationship Owner(s)</Label>
-                <Input
-                  id="relationshipOwners"
+                <RelationshipOwnersPicker
                   value={form.relationshipOwners}
-                  onChange={(e) => setForm({ ...form, relationshipOwners: e.target.value })}
-                  placeholder="Comma-separated names"
+                  onChange={(next) => setForm({ ...form, relationshipOwners: next })}
+                  members={companyMembers}
+                  currentUserEmail={user?.email ?? null}
                 />
               </div>
 
