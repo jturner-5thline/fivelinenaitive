@@ -49,7 +49,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
-const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }> = {
+const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }>> = {
   create_task: { label: 'Create Task', icon: CheckSquare, color: 'text-sky-500' },
   update_lender_status: { label: 'Update Lender', icon: Building2, color: 'text-emerald-500' },
   save_to_data_room: { label: 'Save to Data Room', icon: Save, color: 'text-violet-500' },
@@ -57,6 +57,18 @@ const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare;
   deal_update: { label: 'Update Deal', icon: Briefcase, color: 'text-blue-500' },
   claap_recording_review: { label: 'Claap Recording', icon: Video, color: 'text-fuchsia-500' },
   claap_action_items: { label: 'Meeting Action Items', icon: ListChecks, color: 'text-cyan-500' },
+  update_deal_stage: { label: 'Update Deal Stage', icon: Briefcase, color: 'text-blue-500' },
+  update_deal_status: { label: 'Update Deal Status', icon: Briefcase, color: 'text-blue-500' },
+  add_status_note: { label: 'Add Status Note', icon: FileText, color: 'text-amber-500' },
+  update_funding_source: { label: 'Update Funding Source', icon: Building2, color: 'text-emerald-500' },
+  create_milestone: { label: 'Create Milestone', icon: CheckSquare, color: 'text-sky-500' },
+  update_milestone: { label: 'Update Milestone', icon: CheckSquare, color: 'text-sky-500' },
+  create_followup_task: { label: 'Create Follow-up Task', icon: CheckSquare, color: 'text-sky-500' },
+  update_contact: { label: 'Update Contact', icon: FileText, color: 'text-amber-500' },
+  update_company: { label: 'Update Company', icon: Building2, color: 'text-emerald-500' },
+  draft_email: { label: 'Draft Email', icon: FileText, color: 'text-violet-500' },
+  escalate: { label: 'Escalate', icon: CheckSquare, color: 'text-red-500' },
+  reassign_deal: { label: 'Reassign Deal', icon: Briefcase, color: 'text-blue-500' },
 };
 
 function expiryLabel(item: QueuedAiAction): string {
