@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
-import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check } from 'lucide-react';
+import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -276,51 +276,8 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           onFlagCountChange={setActiveFlagCount}
         />
 
-        {/*
-          Notification indicator — single overlay anchored to the top-right
-          corner of the tile. Pure absolute overlay (outside content flow)
-          so its presence/absence cannot shift the title's top inset or any
-          other in-card content. Renders as a small solid dot when there is
-          no count, or a compact red pill with the count when > 1. Includes
-          a 2px ring in the page background so it pops cleanly off the tile,
-          and a soft red glow for visibility on dark surfaces.
-        */}
-        {notificationCount > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {notificationCount > 1 ? (
-                  <div
-                    aria-label={`${notificationCount} notifications`}
-                    className="absolute -top-1.5 -right-1.5 z-30 flex h-[27px] min-w-[27px] items-center justify-center rounded-full bg-destructive px-1.5 text-[15px] font-semibold leading-none text-destructive-foreground tabular-nums ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
-                    style={{
-                      // Snap to the device pixel grid + isolate into its own
-                      // compositor layer so the circle stays crisp at any DPR
-                      // (no half-pixel blur from inherited transforms/filters).
-                      transform: 'translateZ(0)',
-                      backfaceVisibility: 'hidden',
-                      WebkitFontSmoothing: 'antialiased',
-                    }}
-                  >
-                    {notificationCount > 99 ? '99+' : notificationCount}
-                  </div>
-                ) : (
-                  <div
-                    aria-label="1 notification"
-                    className="absolute -top-1.5 -right-1.5 z-30 h-[18px] w-[18px] rounded-full bg-destructive ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
-                    style={{
-                      transform: 'translateZ(0)',
-                      backfaceVisibility: 'hidden',
-                    }}
-                  />
-                )}
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        {/* Notification indicator is now rendered inline in the header row
+            (next to the menu button) to match the refreshed tile design. */}
 
         {/*
           Stale state is communicated via the card ring (warning) and the
@@ -373,30 +330,48 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             4. The right column is also self-start with a fixed visual height
                so a missing stage pill does not cause baseline drift.
         */}
-        <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3">
+        <div className="px-5 pt-4 pb-5 flex flex-col flex-1 gap-3">
 
-          {/* ── ROW 1: Name (truncates, up to 2 lines) | Status pill ── */}
+          {/* ── ROW 1: Name | inline notification bell + menu ── */}
           <div className="flex items-start justify-between gap-2 min-w-0">
             <h3
-              className="text-base font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
+              className="text-[17px] font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
               style={{ color: '#f8fbff' }}
               title={deal.company}
             >
               {deal.company}
             </h3>
             <div className="flex items-center gap-1 shrink-0">
-              {onToggleFlag && (
+              {notificationCount > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        aria-label={`${notificationCount} notifications`}
+                        className="flex h-6 items-center gap-1 rounded-full bg-destructive/15 px-2 text-[11px] font-semibold text-destructive border border-destructive/30"
+                      >
+                        <Bell className="h-3 w-3" />
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {onToggleFlag && showFlagIndicator && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-6 w-6 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                  className="h-6 w-6 relative text-destructive"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setIsFlagDialogOpen(true);
                   }}
                 >
-                  <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
+                  <Flag className="h-3.5 w-3.5 fill-current" />
                   {displayFlagCount > 1 && (
                     <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
                       {displayFlagCount}
@@ -407,23 +382,17 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 opacity-60 hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setIsEditDrawerMounted(true);
                   setIsEditDrawerOpen(true);
                 }}
+                aria-label="More options"
               >
-                <Search className="h-3.5 w-3.5" />
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
-              {!hideStatus && (
-                <InlineStatusDropdown
-                  dealId={deal.id}
-                  status={deal.status}
-                  onStatusChange={onStatusChange}
-                />
-              )}
               {isEditDrawerMounted && (
                 <DealEditDrawer
                   deal={deal}
@@ -438,30 +407,15 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           </div>
 
-          {/* ── ROW 2: Size (own row) | Stage pill (wraps below if no room) ── */}
-          <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
-            {deal.dealClass === 'finserv' ? (
-              <span className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
-                <span
-                  className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                  style={{ color: '#f8fbff' }}
-                >
-                  {formatCurrencyValue(deal.mrr ?? 0)}
-                </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
-                  MRR
-                </span>
-              </span>
-            ) : (
-              <span
-                className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                style={{ color: '#f8fbff' }}
-              >
-                {formatCurrencyValue(deal.value)}
-              </span>
-            )}
-            {!hideStatus && !compact && (
-              <div className="shrink-0 max-w-full min-w-0">
+          {/* ── ROW 2: Status pill + Stage pill (inline pills row) ── */}
+          {!hideStatus && (
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+              />
+              {!compact && (
                 <InlineStageDropdown
                   dealId={deal.id}
                   stage={deal.stage}
@@ -469,8 +423,21 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   dealName={deal.company}
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
+          {/* ── ROW 3: "Deal size" label + value ── */}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
+              {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
+            </span>
+            <span
+              className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+              style={{ color: '#f8fbff' }}
+            >
+              {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+            </span>
           </div>
 
           {/* Migrated + FLEx badges row */}
@@ -521,7 +488,28 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           )}
 
-          {/* ── MIDDLE: Notes snippet ── */}
+          {/* ── Deal type / engagement pills (moved above notes panel) ── */}
+          {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
+                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                </Badge>
+              )}
+              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25">
+                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+                </Badge>
+              )}
+              {dealTypeLabels.map((label, index) => (
+                <Badge key={index} variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                  {label}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* ── MIDDLE: Notes snippet (inset panel with leading dot) ── */}
           {!compact && (
             <div className="flex-1">
               {isEditingStatus ? (
@@ -561,15 +549,34 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </div>
                 </div>
               ) : notesPlainText ? (
-                <div className="relative group/status">
+                <div className="relative group/status rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
                   <HoverCard openDelay={300}>
                     <HoverCardTrigger asChild>
-                      <p className="text-sm leading-relaxed line-clamp-2 cursor-pointer pr-6 whitespace-pre-line" style={{ color: 'rgba(232, 240, 252, 0.95)' }}>
-                        {notesPlainText}
-                      </p>
+                      <div className="cursor-pointer pr-6">
+                        {(() => {
+                          const lines = notesPlainText.split('\n').filter(l => l.trim());
+                          const headline = lines[0] || notesPlainText;
+                          const rest = lines.slice(1).join(' ').trim();
+                          return (
+                            <>
+                              <div className="flex items-start gap-2">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                <p className="text-[13px] font-semibold leading-snug line-clamp-1" style={{ color: 'rgba(240, 246, 255, 0.98)' }}>
+                                  {headline}
+                                </p>
+                              </div>
+                              {rest && (
+                                <p className="text-[12px] leading-snug mt-1 pl-3.5 line-clamp-1" style={{ color: 'rgba(200, 215, 238, 0.75)' }}>
+                                  {rest}
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80 max-h-60 overflow-y-auto" align="start">
-                      <div 
+                      <div
                         className="prose prose-sm max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium"
                         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(deal.notes!, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
                       />
@@ -577,21 +584,21 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </HoverCard>
                   <button
                     onClick={handleStatusEdit}
-                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+                    className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-white/10"
                   >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                    <Pencil className="h-3 w-3" style={{ color: 'rgba(200, 215, 238, 0.7)' }} />
                   </button>
                 </div>
               ) : (
-                <div className="relative group/status">
-                  <p className="text-sm leading-relaxed line-clamp-2 italic pr-6" style={{ color: 'rgba(215, 228, 248, 0.78)' }}>
-                    No Status
+                <div className="relative group/status rounded-lg bg-white/[0.02] border border-dashed border-white/[0.08] px-3 py-2.5">
+                  <p className="text-[12px] leading-snug italic pr-6" style={{ color: 'rgba(200, 215, 238, 0.65)' }}>
+                    No status update yet
                   </p>
                   <button
                     onClick={handleStatusEdit}
-                    className="absolute top-0 right-0 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-muted"
+                    className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover/status:opacity-100 transition-opacity hover:bg-white/10"
                   >
-                    <Pencil className="h-3 w-3 text-muted-foreground" />
+                    <Pencil className="h-3 w-3" style={{ color: 'rgba(200, 215, 238, 0.7)' }} />
                   </button>
                 </div>
               )}
@@ -601,38 +608,25 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── DIVIDER ── */}
           {!compact && <Separator className="opacity-30" />}
 
-          {/* ── ROW: Manager (left) | Time ago (right) ── */}
+          {/* ── FOOTER: Avatar + manager | Time ago ── */}
           {!compact && (
-            <div className="flex items-center justify-between gap-4 min-w-0">
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: 'rgba(220, 232, 250, 0.88)' }}>
-                <User className="h-3.5 w-3.5" />
-                <span className="truncate">{deal.manager || 'No manager'}</span>
+            <div className="flex items-center justify-between gap-3 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold shrink-0"
+                  style={{ background: 'rgba(99, 102, 241, 0.25)', color: '#dde4ff', border: '1px solid rgba(255,255,255,0.08)' }}
+                  aria-hidden
+                >
+                  {(deal.manager || 'NA').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'NA'}
+                </div>
+                <span className="truncate text-[12px] font-medium" style={{ color: 'rgba(220, 232, 250, 0.92)' }}>
+                  {deal.manager || 'No manager'}
+                </span>
               </div>
-              <div className={`flex items-center gap-1.5 text-xs shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(210, 224, 246, 0.82)' }}>
+              <div className={`flex items-center gap-1 text-[11px] shrink-0 ${timeAgoData.highlightClass}`} style={timeAgoData.highlightClass ? undefined : { color: 'rgba(190, 206, 232, 0.78)' }}>
                 <Clock className="h-3 w-3" />
                 <span>{timeAgoData.text}</span>
               </div>
-            </div>
-          )}
-
-          {/* ── ROW: Engagement + Deal Type pills ── */}
-          {!compact && (
-            <div className="flex items-center gap-3 flex-wrap min-w-0">
-              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
-                <span className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
-                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                </span>
-              )}
-              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-                <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
-                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-                </Badge>
-              )}
-              {dealTypeLabels.map((label, index) => (
-                <span key={index} className="text-xs font-medium" style={{ color: 'rgba(222, 234, 250, 0.90)' }}>
-                  {label}
-                </span>
-              ))}
             </div>
           )}
         {children}
