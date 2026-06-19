@@ -13,7 +13,6 @@ import {
   UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -196,7 +195,6 @@ export function EmailQuickActionsToolbar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuItem
-                    disabled={!hasDeal}
                     onSelect={() => {
                       if (!hasDeal) {
                         void logUpdateLenderRefused({
@@ -204,7 +202,6 @@ export function EmailQuickActionsToolbar({
                           threadId: thread.threadId,
                           contactId: contactId ?? null,
                         });
-                        return;
                       }
                       setActive('update_lender');
                     }}
@@ -213,15 +210,13 @@ export function EmailQuickActionsToolbar({
                     Update Lender in {dealLabel}
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    disabled={!hasDeal}
-                    onSelect={() => hasDeal && setActive('update_status')}
+                    onSelect={() => setActive('update_status')}
                   >
                     <CircleDot className="h-4 w-4 text-amber-300 mr-2" />
                     Update {dealLabel} status / stage
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    disabled={!hasDeal}
-                    onSelect={() => hasDeal && setActive('update_fields')}
+                    onSelect={() => setActive('update_fields')}
                   >
                     <Banknote className="h-4 w-4 text-sky-300 mr-2" />
                     Update {dealLabel} fields
