@@ -5,8 +5,6 @@ import {
   Sparkles as SparklesIcon,
   ListPlus,
   CalendarClock,
-  AlignLeft,
-  Loader2,
   ListChecks,
   ChevronDown,
   Pencil,
@@ -33,13 +31,13 @@ import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { AIAssistOverlay } from './AIAssistOverlay';
 import type { EmailThread } from './mockEmailData';
-import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
 type QuickActionKey =
   | 'save_dr'
   | 'update'
+  | 'update_crm'
   | 'update_lender'
   | 'update_status'
   | 'update_fields'
@@ -47,7 +45,6 @@ type QuickActionKey =
   | 'draft'
   | 'task'
   | 'meeting'
-  | 'summarize'
   | 'outstanding';
 
 interface ActionDef {
@@ -60,12 +57,12 @@ interface ActionDef {
 
 const ALL_ACTIONS: ActionDef[] = [
   { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-4 w-4" />, iconClass: 'text-amber-300' },
-  { key: 'update', label: 'Update', icon: <Pencil className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'update', label: 'Update Deal', icon: <Pencil className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'update_crm', label: 'Update CRM', icon: <UserCog className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
   { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
-  { key: 'summarize', label: 'Summarize thread', icon: <AlignLeft className="h-4 w-4" />, iconClass: 'text-cyan-300' },
 ];
 
 interface Props {
@@ -110,10 +107,6 @@ export function EmailQuickActionsToolbar({
   onInsertDraft,
 }: Props) {
   const [active, setActive] = useState<QuickActionKey | null>(null);
-  const [summary, setSummary] = useState<string[] | null>(null);
-  const [summarizing, setSummarizing] = useState(false);
-  const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Pre-warm the user's freebusy cache as soon as the toolbar mounts so
   // clicking Suggest Times renders slots from cache instantly.
@@ -122,13 +115,6 @@ export function EmailQuickActionsToolbar({
   useEffect(() => {
     if (selfEmail) void prefetchFreeBusy(qc, selfEmail);
   }, [qc, selfEmail, thread?.threadId]);
-
-  // Reset summary if thread changes
-  useEffect(() => {
-    setSummary(null);
-    setSummaryDebug(null);
-    setSummaryError(null);
-  }, [thread?.threadId]);
 
   // Only show "Save to Data Room" when the currently viewed message has at
   // least one non-inline attachment with an id. Guard against null/undefined.
@@ -161,14 +147,9 @@ export function EmailQuickActionsToolbar({
       setActive(null);
       return;
     }
-    if (key === 'summarize') {
-      // Toggle: collapse if already showing
-      if (active === 'summarize') {
-        setActive(null);
-        return;
-      }
-      setActive('summarize');
-      void runSummarize();
+    if (key === 'update_crm') {
+      if (!contactId) return;
+      setActive((prev) => (prev === 'update_contact' ? null : 'update_contact'));
       return;
     }
     if (key === 'meeting') {
@@ -176,41 +157,6 @@ export function EmailQuickActionsToolbar({
       return;
     }
     setActive((prev) => (prev === key ? null : key));
-  };
-
-  const runSummarize = async () => {
-    if (summarizing) return;
-    const propEmails = thread?.emails || [];
-    if (propEmails.length === 0) {
-      setSummary(null);
-      setSummaryError("Couldn't read the selected email thread for summary");
-      return;
-    }
-    setSummarizing(true);
-    setSummaryError(null);
-    try {
-      const result = await summarizeSelectedEmailThread({
-        threadId: thread.provider_thread_id || thread.threadId,
-        subject: thread.subject,
-        emails: propEmails,
-      });
-      setSummary(result.bullets);
-      setSummaryDebug(result.debug);
-    } catch (err) {
-      console.warn('[EmailQuickActionsToolbar] summarize failed', err);
-      const debug = err instanceof Error && 'debug' in err
-        ? (err as Error & { debug?: EmailThreadSummaryDebug }).debug || null
-        : null;
-      setSummary(null);
-      setSummaryDebug(debug);
-      setSummaryError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Couldn't read the selected email thread for summary",
-      );
-    } finally {
-      setSummarizing(false);
-    }
   };
 
   return (
@@ -231,8 +177,7 @@ export function EmailQuickActionsToolbar({
             const dealLabel = dealName || fallbackDealName || 'deal';
             const isUpdateActive = active === 'update_lender'
               || active === 'update_status'
-              || active === 'update_fields'
-              || active === 'update_contact';
+              || active === 'update_fields';
             return (
               <DropdownMenu key={a.key}>
                 <DropdownMenuTrigger asChild>
@@ -280,15 +225,21 @@ export function EmailQuickActionsToolbar({
                     <Banknote className="h-4 w-4 text-sky-300 mr-2" />
                     Update {dealLabel} fields
                   </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!contactId}
-                    onSelect={() => contactId && setActive('update_contact')}
-                  >
-                    <UserCog className="h-4 w-4 text-fuchsia-300 mr-2" />
-                    Update CRM contact / company
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            );
+          }
+          if (a.key === 'update_crm') {
+            return (
+              <AIAssistActionButton
+                key={a.key}
+                label={a.label}
+                icon={a.icon}
+                iconClass={a.iconClass}
+                isActive={active === 'update_contact'}
+                disabled={!contactId}
+                onClick={() => handleClick(a.key)}
+              />
             );
           }
           if (a.key === 'meeting') {
@@ -395,51 +346,6 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       </AIAssistOverlay>
-      <AIAssistOverlay open={active === 'summarize'} onClose={() => setActive(null)} title="Summarize Thread">
-        <div className="rounded-xl border border-[hsl(195_85%_60%/0.35)] bg-[hsl(200_75%_55%/0.08)] p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <AlignLeft className="h-3 w-3 text-cyan-300" />
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-cyan-200/90">
-              Thread summary
-            </span>
-            {summarizing && <Loader2 className="h-3 w-3 animate-spin text-cyan-200/80 ml-1" />}
-          </div>
-          {summarizing && !summary && (
-            <div className="text-[11.5px] text-foreground/60">Reading the thread…</div>
-          )}
-          {summaryError && !summarizing && (
-            <div className="text-[11.5px] text-amber-300/90">{summaryError}</div>
-          )}
-          {summary && (
-            <ul className="space-y-1">
-              {summary.map((bullet, i) => (
-                <li key={i} className="text-[12px] leading-snug text-foreground/85 flex gap-1.5">
-                  <span className="text-cyan-300 shrink-0 leading-snug">•</span>
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {summaryDebug && (import.meta as any).env?.DEV && (
-            <div className="mt-2 text-[10px] text-foreground/40 font-mono break-all">
-              id={summaryDebug.threadId} · subject="{summaryDebug.subject}" · msgs={summaryDebug.messageCount} · first={summaryDebug.firstTimestamp || 'n/a'} · last={summaryDebug.lastTimestamp || 'n/a'} · src={summaryDebug.source} · chars={summaryDebug.cleanedCharCount}
-            </div>
-          )}
-          {summary && (
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => { setSummary(null); setSummaryError(null); void runSummarize(); }}
-                disabled={summarizing}
-                className="text-[10.5px] text-cyan-200/80 hover:text-cyan-100 transition-colors disabled:opacity-50"
-              >
-                Regenerate
-              </button>
-            </div>
-          )}
-        </div>
-      </AIAssistOverlay>
-
     </div>
   );
 }
