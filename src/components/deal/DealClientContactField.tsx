@@ -7,10 +7,12 @@ import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToC
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useEffect, useRef, useState } from 'react';
-import { Check, Loader2, Search } from 'lucide-react';
+import { Check, Loader2, Plus, Search, UserPlus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useCreateContact } from '@/hooks/useContacts';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface ContactRow {
@@ -51,11 +53,20 @@ export function DealClientContactField({
   const [results, setResults] = useState<ContactRow[]>([]);
   const [loading, setLoading] = useState(false);
   const searchAbort = useRef(0);
+  const createContact = useCreateContact();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newFirst, setNewFirst] = useState('');
+  const [newLast, setNewLast] = useState('');
+  const [newEmail, setNewEmail] = useState('');
 
   useEffect(() => {
     if (!contactPopoverOpen) {
       setSearch('');
       setResults([]);
+      setShowCreate(false);
+      setNewFirst('');
+      setNewLast('');
+      setNewEmail('');
       return;
     }
   }, [contactPopoverOpen]);
@@ -96,6 +107,51 @@ export function DealClientContactField({
     if (c.email) onUpdateField('contactInfo', c.email);
     setSearch('');
     setResults([]);
+  };
+
+  const openCreate = () => {
+    const q = search.trim();
+    const isEmail = q.includes('@');
+    if (isEmail) {
+      setNewEmail(q);
+      setNewFirst('');
+      setNewLast('');
+    } else if (q) {
+      const parts = q.split(/\s+/);
+      setNewFirst(parts[0] || '');
+      setNewLast(parts.slice(1).join(' '));
+      setNewEmail('');
+    }
+    setShowCreate(true);
+  };
+
+  const handleCreateContact = async () => {
+    const first = newFirst.trim();
+    const last = newLast.trim();
+    const email = newEmail.trim();
+    if (!first && !last && !email) {
+      toast.error('Enter a name or email');
+      return;
+    }
+    try {
+      const created = await createContact.mutateAsync({
+        first_name: first || null,
+        last_name: last || null,
+        full_name: [first, last].filter(Boolean).join(' ').trim() || email || null,
+        email: email || null,
+      } as never);
+      const row: ContactRow = {
+        id: (created as { id: string }).id,
+        first_name: first || null,
+        last_name: last || null,
+        full_name: [first, last].filter(Boolean).join(' ').trim() || null,
+        email: email || null,
+      };
+      handlePickContact(row);
+      setShowCreate(false);
+    } catch {
+      // toast handled by hook
+    }
   };
 
   return (
@@ -146,8 +202,18 @@ export function DealClientContactField({
                             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
                           </div>
                         ) : results.length === 0 ? (
-                          <div className="px-3 py-2 text-xs text-muted-foreground text-center">
-                            No matching contacts
+                          <div className="px-3 py-2 text-xs text-muted-foreground text-center space-y-2">
+                            <div>No matching contacts</div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-full text-xs"
+                              onClick={openCreate}
+                            >
+                              <UserPlus className="h-3.5 w-3.5 mr-1" />
+                              Create new contact{search.trim() ? ` “${search.trim()}”` : ''}
+                            </Button>
                           </div>
                         ) : (
                           results.map((c) => {
@@ -177,6 +243,69 @@ export function DealClientContactField({
                             );
                           })
                         )}
+                      </div>
+                    )}
+                    {results.length > 0 && !showCreate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-full justify-start text-xs text-muted-foreground hover:text-foreground"
+                        onClick={openCreate}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        Create new contact
+                      </Button>
+                    )}
+                    {showCreate && (
+                      <div className="space-y-2 rounded-md border border-border bg-muted/30 p-2">
+                        <div className="text-[11px] font-medium text-muted-foreground">New contact</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            value={newFirst}
+                            onChange={(e) => setNewFirst(e.target.value)}
+                            placeholder="First name"
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            value={newLast}
+                            onChange={(e) => setNewLast(e.target.value)}
+                            placeholder="Last name"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <Input
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          placeholder="Email"
+                          type="email"
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setShowCreate(false)}
+                            disabled={createContact.isPending}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={handleCreateContact}
+                            disabled={createContact.isPending}
+                          >
+                            {createContact.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              'Save contact'
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     )}
                     <p className="text-[10px] text-muted-foreground">Or enter free text below.</p>
