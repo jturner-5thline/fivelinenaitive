@@ -96,17 +96,18 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         'text-left flex-none shrink-0',
         'opacity-70 hover:opacity-100 focus-within:opacity-100',
         'transition-[opacity,box-shadow] duration-200 ease-out',
-        'hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]',
+        'hover:shadow-[0_16px_40px_rgba(8,18,42,0.6),0_4px_12px_rgba(37,99,235,0.18),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(59,130,246,0.32)]',
         'animate-in fade-in duration-150',
         className,
       )}
       style={{
-        background: 'rgba(14, 16, 24, 0.6)',
+        background:
+          'linear-gradient(135deg, rgba(12, 22, 48, 0.78) 0%, rgba(14, 18, 32, 0.62) 45%, rgba(18, 36, 72, 0.72) 100%)',
         backdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-        border: '1px solid rgba(255, 255, 255, 0.22)',
+        border: '1px solid rgba(120, 165, 245, 0.28)',
         boxShadow:
-          '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
+          '0 10px 32px rgba(8, 18, 42, 0.5), 0 2px 8px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(96, 145, 230, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.25)',
         transition: 'opacity 180ms ease-out',
         opacity: forceFocused ? 1 : undefined,
         ...style,
@@ -155,7 +156,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
               e.stopPropagation();
               onLogoClick?.(e);
             }}
-            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_12px_rgba(59,130,246,0.55),0_0_0_1px_rgba(96,165,250,0.35)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
           >
             <img src={naitiveBrandIcon} alt="" className="h-8 w-8" />
             {logoOverlay}
@@ -165,7 +166,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       </Tooltip>
 
       {/* Search affordance */}
-      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-white/40 group-hover:text-white/55 transition-colors" />
+      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-sky-300/55 group-hover:text-sky-200/80 transition-colors" />
 
       {/* Inline composer — multi-line textarea so Shift+Enter inserts a
           newline, pasted bullet lists keep their breaks, and long prompts
@@ -188,7 +189,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       />
 
       {showShortcutHint && (
-        <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors shrink-0">
+        <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-sky-400/20 bg-sky-400/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-sky-200/60 group-hover:text-sky-100/85 transition-colors shrink-0">
           ⌘J
         </kbd>
       )}
