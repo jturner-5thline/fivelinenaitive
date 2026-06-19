@@ -489,6 +489,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         </div>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
