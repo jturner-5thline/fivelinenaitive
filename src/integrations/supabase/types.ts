@@ -27974,6 +27974,35 @@ export type Database = {
         Args: { _company_id: string; _scope_type: string; _user_id: string }
         Returns: Database["public"]["Enums"]["data_access_scope"]
       }
+      get_visible_ai_action_queue: {
+        Args: never
+        Returns: {
+          action_type: string
+          approved_at: string | null
+          created_at: string
+          deal_id: string | null
+          deal_name: string | null
+          description: string | null
+          dismissed_at: string | null
+          executed_at: string | null
+          execution_error: string | null
+          expires_at: string
+          id: string
+          payload: Json
+          reminder_sent_at: string | null
+          source: Json
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ai_action_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       hard_delete_deal: { Args: { _deal_id: string }; Returns: undefined }
       has_active_admin_impersonation: {
         Args: { _user_id: string }
