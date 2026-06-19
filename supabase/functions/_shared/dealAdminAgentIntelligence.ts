@@ -84,6 +84,8 @@ interface DealSignalBundle {
   calendar_items: any[];
   emails: any[];
   open_tasks: any[];
+  claap_recordings: any[];
+  email_threads: any[];
 }
 
 interface CandidateItem {
@@ -145,10 +147,11 @@ const LOOKBACK_DAYS = 30;
 async function gatherSignalsForDeal(
   supabase: SupabaseClient,
   deal: any,
+  companyId: string,
 ): Promise<DealSignalBundle> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  const [fs, notes, act, hist, mile, cal, emails, tasks] = await Promise.all([
+  const [fs, notes, act, hist, mile, cal, emails, tasks, claap, threads] = await Promise.all([
     supabase
       .from("deal_lenders")
       .select("id, name, stage, substage, notes, pass_reason, tracking_status, last_contact_at, last_status_change_at, updated_at")
@@ -201,6 +204,22 @@ async function gatherSignalsForDeal(
       .in("status", ["open", "in_progress", "blocked", "pending"])
       .order("updated_at", { ascending: false })
       .limit(15),
+    // Claap recordings linked to the deal (call transcripts/summaries).
+    supabase
+      .from("deal_claap_recordings")
+      .select("id, recording_id, recording_title, recording_url, recorder_name, recorder_email, duration_seconds, linked_at, notes")
+      .eq("deal_id", deal.id)
+      .gte("linked_at", since)
+      .order("linked_at", { ascending: false })
+      .limit(10),
+    // Email threads classified as matching this deal.
+    supabase
+      .from("email_threads")
+      .select("id, thread_id, subject, latest_message_at, match_confidence")
+      .eq("matched_deal_id", deal.id)
+      .gte("latest_message_at", since)
+      .order("latest_message_at", { ascending: false })
+      .limit(10),
   ]);
 
   // Hydrate emails with subject/snippet from gmail_messages when possible.
@@ -220,6 +239,124 @@ async function gatherSignalsForDeal(
     }));
   }
 
+  // Hydrate matched email threads with their latest gmail messages.
+  const threadRows: any[] = threads.data ?? [];
+  const threadIds = threadRows.map((t) => t.thread_id).filter(Boolean);
+  let threadMessages: Record<string, any[]> = {};
+  if (threadIds.length > 0) {
+    const { data: gmThread } = await supabase
+      .from("gmail_messages")
+      .select("gmail_message_id, thread_id, subject, snippet, from_email, from_name, received_at")
+      .in("thread_id", threadIds)
+      .order("received_at", { ascending: false })
+      .limit(60);
+    for (const m of gmThread ?? []) {
+      const tid = (m as any).thread_id as string;
+      if (!threadMessages[tid]) threadMessages[tid] = [];
+      if (threadMessages[tid].length < 4) threadMessages[tid].push(m);
+    }
+  }
+  const enrichedThreads = threadRows.map((t) => ({
+    ...t,
+    messages: threadMessages[t.thread_id] ?? [],
+  }));
+
+  // Hydrate claap recordings with transcript / summary / action items from
+  // claap_transcripts (deal-linked) and claap_recordings (org-linked).
+  const claapRows: any[] = claap.data ?? [];
+  const { data: cTrans } = await supabase
+    .from("claap_transcripts")
+    .select("id, claap_meeting_id, transcript_text, summary, participants, recorded_at, call_type")
+    .eq("deal_id", deal.id)
+    .gte("recorded_at", since)
+    .order("recorded_at", { ascending: false })
+    .limit(8);
+  const meetingIds = (cTrans ?? []).map((t: any) => t.claap_meeting_id).filter(Boolean);
+  let meetingById = new Map<string, any>();
+  if (meetingIds.length > 0) {
+    const { data: cRec } = await supabase
+      .from("claap_recordings")
+      .select("id, title, summary, action_items, key_takeaways, started_at, ended_at, organizer_email, participants, recording_url")
+      .in("id", meetingIds);
+    meetingById = new Map<string, any>((cRec ?? []).map((r: any) => [r.id, r]));
+  }
+  const enrichedClaap = [
+    ...claapRows.map((r) => ({
+      source: "deal_claap_recordings",
+      id: r.id,
+      title: r.recording_title,
+      url: r.recording_url,
+      recorder: r.recorder_name ?? r.recorder_email,
+      duration_seconds: r.duration_seconds,
+      linked_at: r.linked_at,
+      notes: r.notes,
+    })),
+    ...(cTrans ?? []).map((t: any) => {
+      const m = meetingById.get(t.claap_meeting_id);
+      return {
+        source: "claap_transcripts",
+        id: t.id,
+        title: m?.title ?? null,
+        recorded_at: t.recorded_at,
+        call_type: t.call_type,
+        participants: t.participants ?? m?.participants ?? null,
+        organizer_email: m?.organizer_email ?? null,
+        url: m?.recording_url ?? null,
+        summary: t.summary ?? m?.summary ?? null,
+        action_items: m?.action_items ?? null,
+        key_takeaways: m?.key_takeaways ?? null,
+        transcript_excerpt:
+          typeof t.transcript_text === "string" ? t.transcript_text.slice(0, 4000) : null,
+      };
+    }),
+  ];
+
+  // Fallback: name-match Claap recordings + calendar events that no one
+  // has explicitly linked to this deal yet. These are the signals that
+  // power proposals like "Had call 6/18 — submitting to lenders next
+  // week" when the deal has no deal_calendar_items / deal_claap_recordings.
+  const dealNameRaw = (deal.company ?? "").trim();
+  const nameToken = dealNameRaw.split(/\s+/)[0] ?? dealNameRaw;
+  if (dealNameRaw && nameToken.length >= 3) {
+    const linkedTitles = new Set(enrichedClaap.map((r: any) => (r.title ?? "").toLowerCase()));
+    const { data: nameClaap } = await supabase
+      .from("claap_recordings")
+      .select("id, title, summary, action_items, key_takeaways, started_at, ended_at, organizer_email, participants, recording_url")
+      .eq("org_company_id", companyId)
+      .ilike("title", `%${dealNameRaw}%`)
+      .gte("started_at", since)
+      .order("started_at", { ascending: false })
+      .limit(5);
+    for (const r of nameClaap ?? []) {
+      const t = ((r as any).title ?? "").toLowerCase();
+      if (linkedTitles.has(t)) continue;
+      enrichedClaap.push({
+        source: "claap_recordings_name_match",
+        id: (r as any).id,
+        title: (r as any).title,
+        recorded_at: (r as any).started_at,
+        organizer_email: (r as any).organizer_email,
+        participants: (r as any).participants,
+        url: (r as any).recording_url,
+        summary: (r as any).summary,
+        action_items: (r as any).action_items,
+        key_takeaways: (r as any).key_takeaways,
+        transcript_excerpt: null,
+      });
+    }
+
+    const { data: nameCal } = await supabase
+      .from("calendar_events")
+      .select("id, title, start_time, end_time, organizer_email, attendees, meeting_url, is_cancelled")
+      .ilike("title", `%${dealNameRaw}%`)
+      .gte("start_time", since)
+      .order("start_time", { ascending: false })
+      .limit(8);
+    var nameCalendarEvents = (nameCal ?? []).filter((e: any) => !e.is_cancelled);
+  } else {
+    var nameCalendarEvents: any[] = [];
+  }
+
   return {
     deal_id: deal.id,
     deal_name: deal.company ?? "Untitled Deal",
@@ -235,9 +372,24 @@ async function gatherSignalsForDeal(
     activity: act.data ?? [],
     stage_history: hist.data ?? [],
     milestones: mile.data ?? [],
-    calendar_items: cal.data ?? [],
+    calendar_items: [
+      ...(cal.data ?? []).map((c: any) => ({ ...c, source: "deal_calendar_items" })),
+      ...nameCalendarEvents.map((e: any) => ({
+        source: "calendar_events_name_match",
+        id: e.id,
+        title: e.title,
+        date: typeof e.start_time === "string" ? e.start_time.slice(0, 10) : null,
+        start_time: e.start_time,
+        end_time: e.end_time,
+        organizer_email: e.organizer_email,
+        attendees: e.attendees,
+        meeting_url: e.meeting_url,
+      })),
+    ],
     emails: emailRows,
     open_tasks: tasks.data ?? [],
+    claap_recordings: enrichedClaap,
+    email_threads: enrichedThreads,
   };
 }
 
@@ -259,7 +411,10 @@ Rules:
 - For draft_email, set requires_send_ui=true and include proposed_values { to, subject, body }.
 - Allowed action_type values: ${SUPPORTED_ACTION_TYPES.join(", ")}.
 - linked_entity_label = short human label, e.g. "LAGO Innovation on Censys Technologies".
-- evidence_references must cite the signal that justifies the proposal (kind ∈ email|calendar|activity|status_note|funding_source|stage_history|milestone|task).`;
+- evidence_references must cite the signal that justifies the proposal (kind ∈ email|email_thread|calendar|claap_recording|activity|status_note|funding_source|stage_history|milestone|task).
+- When a Claap recording, calendar event, or email thread describes a meeting that happened ("had call on 6/18", "kickoff scheduled"), the DEFAULT proposal is an add_status_note that synthesizes (a) what happened, (b) who was on it, (c) the stated next step — phrased as a natural status update the deal owner would write. Use call_type, participants, transcript_excerpt, summary, action_items, and next-step language to ground the note. Always cite the claap_recording / calendar / email_thread evidence.
+- Cross-reference signals: if an email thread + a claap recording + a calendar item all describe the same meeting/topic, MERGE them into a single high-confidence add_status_note (or follow-up task / milestone) rather than emitting one item per source.
+- Pull concrete details into proposed_values.note — names, dates ("6/18"), specific commitments ("submit to lenders early next week"). Never write vague text like "follow up" or "review item".`;
 
 function buildUserPrompt(bundle: DealSignalBundle): string {
   // Trim large fields to keep prompt compact.
@@ -303,6 +458,34 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
       notes: trim(e.notes, 160),
     })),
     open_tasks: bundle.open_tasks,
+    claap_recordings: bundle.claap_recordings.map((r: any) => ({
+      source: r.source,
+      id: r.id,
+      title: r.title,
+      url: r.url,
+      recorded_at: r.recorded_at ?? r.linked_at,
+      call_type: r.call_type,
+      organizer_email: r.organizer_email,
+      participants: r.participants,
+      summary: trim(r.summary, 800),
+      action_items: r.action_items,
+      key_takeaways: r.key_takeaways,
+      transcript_excerpt: trim(r.transcript_excerpt, 2500),
+      notes: trim(r.notes, 200),
+    })),
+    email_threads: bundle.email_threads.map((t: any) => ({
+      id: t.id,
+      thread_id: t.thread_id,
+      subject: t.subject,
+      latest_message_at: t.latest_message_at,
+      match_confidence: t.match_confidence,
+      messages: (t.messages ?? []).map((m: any) => ({
+        from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
+        subject: m.subject,
+        snippet: trim(m.snippet, 320),
+        received_at: m.received_at,
+      })),
+    })),
   };
   return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
 }
@@ -316,7 +499,7 @@ async function callModelForCandidates(
 
   const body = {
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 6000,
     system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
       { role: "user", content: buildUserPrompt(bundle) },
@@ -554,18 +737,22 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (totalInserted >= maxQueueRows) break;
     result.evaluated_deals++;
     try {
-      const bundle = await gatherSignalsForDeal(supabase, d);
+      const bundle = await gatherSignalsForDeal(supabase, d, companyId);
       // Skip deals with effectively no signal — avoids burning credits.
       const sigCount =
         bundle.activity.length +
         bundle.emails.length +
         bundle.status_notes.length +
         bundle.stage_history.length +
-        bundle.calendar_items.length;
+        bundle.calendar_items.length +
+        bundle.claap_recordings.length +
+        bundle.email_threads.length;
+      console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
       if (sigCount === 0) continue;
 
       const raw = await callModelForCandidates(bundle);
       result.candidates_proposed += raw.length;
+      console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
       const valid = raw.filter((c) => isValidCandidate(c, minConfidence));
       result.candidates_filtered += raw.length - valid.length;
