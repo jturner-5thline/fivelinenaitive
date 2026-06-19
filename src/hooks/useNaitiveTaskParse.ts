@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { resolveDealFromTaskText } from '@/lib/resolveDealFromTaskText';
+import { buildDealNameIndex, resolveDealFromIndex } from '@/lib/resolveDealFromTaskText';
 
 export interface TaskDraft {
   title: string;
@@ -39,12 +39,15 @@ export interface ParseContext {
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/naitive-task-parse`;
 
-export function useNaitiveTaskParse(text: string, context: ParseContext = {}, debounceMs = 280) {
+export function useNaitiveTaskParse(text: string, context: ParseContext = {}, debounceMs = 140) {
   const [draft, setDraft] = useState<TaskDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reqId = useRef(0);
   const { deals } = useDealsContext();
+  // Build the deal-name index once per `deals` change so per-keystroke
+  // resolution is a pure substring scan over precomputed needles.
+  const dealIndex = useMemo(() => buildDealNameIndex(deals), [deals]);
 
   // Instant client-side deal resolution — no network round-trip. When the
   // user mentions a known deal verbatim, surface the chip immediately and
@@ -52,7 +55,7 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
   useEffect(() => {
     const trimmed = text.trim();
     if (trimmed.length < 4) return;
-    const local = resolveDealFromTaskText(trimmed, deals);
+    const local = resolveDealFromIndex(trimmed, dealIndex);
     if (!local) return;
     setDraft((prev) => {
       // Already aligned — nothing to do.
@@ -85,7 +88,7 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
       // Override AI pick when local exact-mention disagrees.
       return { ...prev, deal_id: local.id, deal_label: local.label };
     });
-  }, [text, deals, context.thread_id]);
+  }, [text, dealIndex, context.thread_id]);
 
   useEffect(() => {
     const trimmed = text.trim();
@@ -119,7 +122,7 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
           // Prefer the instant local deal match over the AI's pick when the
           // user mentioned a deal verbatim — the AI sometimes resolves to a
           // stale duplicate.
-          const local = resolveDealFromTaskText(trimmed, deals);
+          const local = resolveDealFromIndex(trimmed, dealIndex);
           if (local) {
             d.deal_id = local.id;
             d.deal_label = local.label;
@@ -137,7 +140,7 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
     }, debounceMs);
 
     return () => clearTimeout(t);
-  }, [text, context.deal_id, context.contact_id, context.thread_id, debounceMs]);
+  }, [text, context.deal_id, context.contact_id, context.thread_id, debounceMs, dealIndex]);
 
   const reparse = useCallback(() => { reqId.current++; }, []);
 
