@@ -1,82 +1,133 @@
-# Daily Rundown — Capability Audit (read-only)
 
-No code was changed. Findings below cite the files/functions backing each capability.
+## Goal
 
----
+Upgrade the Approval Queue from a deferred-suggestion list into the universal **execution checkpoint** for everything the Deal Admin Agent proposes. Approve = apply the change to the real record. Drafted emails are the only exception: Approve stages them for manual send.
 
-### 1) Add items to the deal calendar directly from the rundown — **Partial**
+## 1. Data model (migration)
 
-- The EOD Rundown mounts `HighlightCalendarMenu` around meeting note/title surfaces, which calls `useAddToDealCalendar().openFromSelection(...)` → opens `AddToDealCalendarDialog` → `AddToDealCalendarForm` (writes to `deal_calendar_items`).
-  - `src/components/dashboard/EndOfDayTab.tsx:55, 1471, 1635` (two `<HighlightCalendarMenu>` wrappers)
-  - `src/components/calendar/HighlightCalendarMenu.tsx`, `AddToDealCalendarProvider.tsx`, `AddToDealCalendarForm.tsx`
-  - DB layer: `src/hooks/useDealCalendarItems.ts` (`addItem`)
-- A dedicated, always-visible "Add to deal calendar" button on each rundown tile is **not** wired in `EndOfDayTab`. The reusable inline button exists (`src/components/dashboard/AddToDealCalendarInlineAction.tsx`) and is used elsewhere (rundown items in `DailyBriefingModal`/agenda surfaces), but **not** in the EOD tile actions row — users must text-highlight content first.
+Extend `ai_action_queue` to support the full action surface and decision-first review:
 
-Verdict: **partial** — capability exists via text-highlight; no explicit one-click "Add to deal calendar" button on the rundown tile itself.
+New columns:
+- `assigned_to uuid` — reviewer in whose queue the item appears (defaults to `user_id` for back-compat)
+- `priority text` — `low | normal | high | urgent`
+- `risk_level text` — `low | medium | high` (drives bulk-approve eligibility)
+- `target_object_type text` — `deal | deal_lender | task | activity_log | deal_milestone | outstanding_item | email_draft | contact | crm_company`
+- `target_object_id uuid`
+- `old_values jsonb` — snapshot of fields the action will change
+- `new_values jsonb` — proposed values (editable before approve)
+- `evidence jsonb` — array of `{ kind, label, ref_id, snippet, url }` (emails, meetings, activity rows, etc.)
+- `rationale text` — why the agent proposed this
+- `edited_before_approval boolean default false`
+- `rejection_reason text`
+- `reassigned_from uuid`
+- `more_context_requested_at timestamptz`
+- `more_context_notes text`
 
----
+New action_type values (extending the existing enum-as-text):
+- `update_deal_stage`
+- `update_deal_status`
+- `add_status_note`
+- `update_funding_source` (lender stage/status)
+- `update_milestone` / `create_milestone`
+- `create_followup_task`
+- `update_contact` / `update_company`
+- `draft_email` (staged send — does NOT auto-send)
+- `escalate`
+- `reassign_deal`
 
-### 2) Newly created tasks auto-identify the linked deal (not random) — **Yes**
+New table `ai_action_audit`:
+- `id, action_queue_id, target_object_type, target_object_id, action_type, old_values jsonb, new_values jsonb, approver_user_id, decision text` (`approved|rejected|reassigned|edited_approved|more_context|email_staged`), `execution_status text` (`success|failed|staged`), `failure_reason text`, `was_edited bool`, `rejection_reason text`, `created_at`.
+- RLS: visible to company members of the linked deal/object; insertable by service role + auth.
 
-- `EndOfDayTab.tsx:1057–1093` renders `QuickCreateTaskDialog` with `initialDealId={prefill.dealId}` and the critical `lockInitialDeal` flag.
-- `src/components/tasks/QuickCreateTaskDialog.tsx:44–52, 199, 213–216` documents and enforces lock-mode: the title-based fuzzy auto-match is suppressed so the explicit meeting→deal link is authoritative and can never be overwritten (or fall back to a random deal when none is linked).
-- On save, `deal_id: input.deal_id || undefined` and `source.module = 'rundown_item'` are persisted (`EndOfDayTab.tsx:1077–1085`).
+New table `staged_email_drafts` (or reuse `email_drafts` if compatible) for emails awaiting manual send after approval:
+- Mirrors draft fields (`to, cc, bcc, subject, body_html, deal_id, thread_id, source_action_id`), `status: 'staged' | 'sent' | 'cancelled'`.
+- Approve on a `draft_email` action writes here and moves the item to `approved` with execution_status `staged`.
 
-Verdict: **yes** — implemented and guarded by `lockInitialDeal`.
+Indexes + GRANT + RLS per project standards. `assigned_to` defaults to `user_id`, backfilled.
 
----
+## 2. Server: execution router
 
-### 3) Reassign tasks that auto-assigned themselves to an external party — **N/A → Yes (for reassignment generally)**
+New edge function `approval-queue-execute` (auth-verified):
+- Input: `{ action_id, edited_values?, decision: 'approve'|'reject'|'reassign'|'more_context', reassign_to_user_id?, rejection_reason?, more_context_notes? }`
+- Loads the queue item, validates `assigned_to === auth.uid()` (or admin), captures fresh `old_values` from live record, merges `edited_values` into `new_values`, executes the typed mutation:
 
-- The system explicitly **never** auto-assigns to externals: `src/hooks/useMeetingTaskSuggestions.ts:208` ("external contact names are never auto-assigned"); external `@mentions` are kept as `external_mention` metadata only, and the task assignee defaults to the meeting attendee or the current user (`useMeetingTaskSuggestions.ts:431` "missing assignee here means a stale/external row. Default to the…").
-- Regardless, the assignee is editable in the create dialog (`QuickCreateTaskDialog.tsx:110, 186–188`, "Assign to" picker over `teamMembers`) and reassigning persisted tasks is supported in `src/hooks/useTasks.ts:664, 681` ("Fire Zapier webhook when task is assigned/reassigned" / "Send task assigned email notification on reassignment").
+| action_type | mutation |
+|---|---|
+| update_deal_stage | `deals.update({ stage })` + post-stage automations |
+| update_deal_status | `deals.update({ status })` |
+| add_status_note | insert `deal_status_notes` |
+| update_funding_source | `deal_lenders.update({ substage, tracking_status })` |
+| create_milestone / update_milestone | `deal_milestones` upsert |
+| create_followup_task | `tasks.insert(...)` (existing logic) |
+| update_contact / update_company | targeted column update |
+| draft_email | insert into `staged_email_drafts` (status=staged) — **no send** |
+| escalate | insert task assigned to escalation target + activity log |
+| reassign_deal | update `deals.manager` |
+| (existing) create_task, log_note, update_lender_status, save_to_data_room, deal_update | keep current paths |
 
-Verdict: the "auto-assigned to external party" scenario should not occur by design; **reassignment itself is fully supported** on both create and edit.
+Always writes an `ai_action_audit` row (success or failure). On failure, queue row → `failed` with `execution_error`, no partial state.
 
----
+Bulk-approve endpoint: same function in array mode, only items where `risk_level='low'`.
 
-### 4) Two notification icons clearing logic (persistent notification that never clears) — **No (bug confirmed)**
+## 3. Agent → queue producer
 
-- Two surfaces render in the header:
-  - `src/components/notifications/HeaderNotificationPreview.tsx` — toast-style banner; auto-dismisses after 5s and has a manual `✕` (`dismiss()` at lines 24–31, 39–41).
-  - `src/components/notifications/DealManagementNotificationBell.tsx` — count badge driven by `useMyDealNotifications` (`src/hooks/useMyDealNotifications.ts`).
-- `useMyDealNotifications` counts `flex_info_notifications` with `status IN ('pending','read')` (lines 57–61). There is **no UI affordance to mark these resolved/cleared** — clicking the bell only navigates to `/` (line 24 of the bell). The count drops only when the underlying row's status moves outside `pending|read` server-side, which the rundown does not do.
-- Net effect matches the reported bug: the bell badge can stay populated indefinitely with no user-facing "clear" / "mark read" action.
+Update `supabase/functions/_shared/adminAgentQueue.ts` + admin-agent-sweep so every concrete recommendation is enqueued as an **execution-style** item with `target_object_type/id`, `old_values`, `new_values`, `rationale`, `evidence`, `risk_level`, and `assigned_to` (the deal manager). Replace reminder titles with imperative titles ("Update LAGO Innovation in Censys Technologies to Terms Issued").
 
-Verdict: **no** — persistent badge has no clearing path from the UI.
+Update copilot-chat write paths so AI-proposed mutations are routed through the queue instead of executed directly (except when the user already approved inline via the existing confirm cards).
 
----
+## 4. Client hooks
 
-### 5) Convert Claap action items into an "outstanding item" — **No**
+`src/hooks/useAiActionQueue.ts`:
+- Add fields to `QueuedAiAction`.
+- `useApproveAiAction(item, { editedValues? })` → calls edge function, no longer does inline writes for the new types; preserves existing types for back-compat fallback.
+- New: `useRejectAiAction(id, reason)`, `useReassignAiAction(id, userId)`, `useRequestMoreContext(id, notes)`, `useStagedEmailDrafts()`.
+- Queue list filters by `assigned_to = auth.uid()` (with admin override for 5th Line).
 
-- Claap action items are surfaced via `useMeetingClaapContext().actionItems` and consumed in:
-  - `MeetingTasksInlineAction.tsx` → routes a single item into `onOpenTask(suggestions[0])` (creates a **task**, not an outstanding item).
-  - `MeetingFollowupInlineAction.tsx` → drafts a follow-up **email** body.
-  - `MeetingCreateFollowUpAction.tsx` → opens the Add-to-Deal-Calendar form (creates a calendar event/task).
-- "Outstanding items" in the rundown are derived from calendar events (`EndOfDayTab.tsx:491` `const outstanding = useMemo<TileEvent[]>...`), not user-created entries. There is no code path that promotes a Claap `action_items[i]` into a new outstanding rundown row.
+## 5. UI — action-first rows + decision-first expanded review
 
-Verdict: **no** — Claap action items can become tasks, emails, or calendar entries, but not a standalone outstanding rundown item.
+Refactor `ActionQueuePanel.tsx`:
 
----
+**Collapsed row** (one line, action-first):
+- Imperative title, deal/company chip, reviewer avatar, age, priority + risk pill, source-trigger summary, `pending` badge.
+- Primary CTA: **Approve & Apply** (or **Approve & Stage** for `draft_email`). Secondary: Reject / Edit / Reassign / More Context / Open Record. Chevron to expand.
 
-### 6) Assign a task to a user other than the creator — **Yes**
+**Expanded review** (decision-first header):
+1. "If approved: **<verb> <target>**" — single bold sentence.
+2. Old → New diff table for `old_values`/`new_values`. Inline editable fields where applicable.
+3. Rationale paragraph.
+4. Evidence list: email subjects, meeting titles, activity rows — each opens the underlying record in a new tab/overlay.
+5. Action bar: Approve · Edit then Approve · Reject (with reason input) · Reassign (user picker) · Request More Context (notes) · Open Linked Record.
+6. For `draft_email`: full email preview + recipients; Approve → "Move to Staged Drafts" toast linking to staged-send UI.
 
-- `QuickCreateTaskDialog.tsx` exposes a full "Assign to" picker over `teamMembers` with open-task counts (`useAssigneeOpenTaskCounts`), remembers the last assignee in localStorage (`LAST_ASSIGNEE_KEY`), and passes `assigned_to: input.assigned_to` to `createTask` (`EndOfDayTab.tsx:1074`).
-- Backend: `src/hooks/useTasks.ts` honors `assigned_to`, fires assignment/reassignment Zapier webhook and email notifications (lines 664, 681). A live in-app banner is shown to assignees by `src/components/TaskAssignmentBanner.tsx`.
+Bulk-approve bar only enables on low-risk items; show count "Approve N low-risk".
 
-Verdict: **yes** — fully implemented.
+Keep current popup chrome (no translucent layer, red badge unchanged) — align with email popup look.
 
----
+## 6. Staged email send UI
 
-## Summary
+New route surface: a "Staged Drafts" panel reachable from the Approval Queue header and the existing email composer area. Lists `staged_email_drafts` with full preview, Edit, Discard, and **Send Now** (calls existing send pipeline). Sending writes an `ai_action_audit` row tying back to the original queue item.
 
-| # | Capability | Status |
-|---|---|---|
-| 1 | Add to deal calendar from rundown | Partial (highlight-only; no per-tile button) |
-| 2 | Tasks auto-identify linked deal | Yes (`lockInitialDeal`) |
-| 3 | Reassign auto-assigned-to-external tasks | Auto-assign-to-external prevented by design; reassign itself works |
-| 4 | Two notification icons clearing logic | No — bell badge has no clear/mark-read UI |
-| 5 | Claap action items → outstanding item | No (only → task / email / calendar) |
-| 6 | Assign task to non-creator | Yes |
+## 7. Audit + safe failure
 
-No files were modified. Awaiting your direction on which gaps (#1, #4, #5 in particular) you'd like a fix plan for.
+- Every approve/reject/reassign/more-context/edit writes one `ai_action_audit` row.
+- Execution wrapped in try/catch on the edge function; on failure the queue row stays visible with `failed` status, a "Retry" button reruns the same payload.
+- Edited values stored back to `new_values` and `edited_before_approval=true` before execution.
+
+## 8. Tests
+
+- Unit: payload builders per action_type, edit-merge logic, bulk-approve risk filter.
+- Edge function: auth required, executes correct mutation per type, writes audit row, draft_email stages without sending.
+- UI smoke: expanded review renders old/new diff, Edit-then-Approve sends merged payload.
+
+## Technical notes
+
+- Existing inline confirm flow (`CopilotActionConfirm`, `CopilotApprovalGroup`) stays — it remains the path for "approve inline now". The Approval Queue is the deferred + universal path.
+- `assigned_to` differs from `user_id` only when an admin reassigns; backfill `assigned_to = user_id`.
+- New action types are added as plain string values (no enum migration) since the column is `text`.
+- Email send pipeline is reused from existing `gmail_send` / `microsoft_send` paths — we only gate it behind manual click on staged drafts.
+
+## Out of scope (this pass)
+
+- Slack/email notifications when items land in someone's queue (existing notification rules already cover this).
+- Cross-tenant reassignment UI beyond same-company members.
+- Mobile-specific layout polish for the expanded review.
