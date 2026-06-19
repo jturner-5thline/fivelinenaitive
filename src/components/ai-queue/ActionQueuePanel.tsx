@@ -31,6 +31,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
+import { StagedDraftsPanel } from './StagedDraftsPanel';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
@@ -101,6 +105,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
   const [confirmApproveAllOpen, setConfirmApproveAllOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<'queue' | 'staged'>('queue');
 
   // Group by deal (or "Unassigned")
   const grouped = useMemo(() => {
@@ -191,6 +197,15 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         )}
       </div>
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex flex-col flex-1 min-h-0">
+        <TabsList className="mx-3 mt-2 h-7 bg-white/5">
+          <TabsTrigger value="queue" className="h-6 text-[11px]">Queue</TabsTrigger>
+          <TabsTrigger value="staged" className="h-6 text-[11px]">Staged Drafts</TabsTrigger>
+        </TabsList>
+        <TabsContent value="staged" className="flex-1 min-h-0 overflow-y-auto mt-0">
+          <StagedDraftsPanel />
+        </TabsContent>
+        <TabsContent value="queue" className="flex-1 min-h-0 flex flex-col mt-0">
       {items.length === 0 && accessRequests.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 py-10 text-center text-muted-foreground">
           <InboxIcon className="h-6 w-6 opacity-50" />
