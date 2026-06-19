@@ -11,15 +11,29 @@ import {
   Loader2,
   ListChecks,
   Info,
+  ChevronDown,
+  Pencil,
+  CircleDot,
+  Banknote,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { logUpdateLenderRefused } from '@/lib/aiAssistRefusalLogger';
 import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { SaveToDealCard } from './SaveToDealCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
+import { UpdateDealStatusInlineCard } from './UpdateDealStatusInlineCard';
+import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
+import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
@@ -30,7 +44,18 @@ import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './th
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
-type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'suggest_times' | 'summarize' | 'outstanding';
+type QuickActionKey =
+  | 'save_dr'
+  | 'update'
+  | 'update_lender'
+  | 'update_status'
+  | 'update_fields'
+  | 'update_contact'
+  | 'draft'
+  | 'task'
+  | 'meeting'
+  | 'summarize'
+  | 'outstanding';
 
 interface ActionDef {
   key: QuickActionKey;
@@ -42,11 +67,10 @@ interface ActionDef {
 
 const ALL_ACTIONS: ActionDef[] = [
   { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-4 w-4" />, iconClass: 'text-amber-300' },
-  { key: 'lender', label: 'Update Lender Stage', icon: <Building2 className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'update', label: 'Update', icon: <Pencil className="h-4 w-4" />, iconClass: 'text-emerald-300' },
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
-  { key: 'suggest_times', label: 'Suggest Times', icon: <CalendarRange className="h-4 w-4" />, iconClass: 'text-violet-300' },
   { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
   { key: 'summarize', label: 'Summarize thread', icon: <AlignLeft className="h-4 w-4" />, iconClass: 'text-cyan-300' },
 ];
