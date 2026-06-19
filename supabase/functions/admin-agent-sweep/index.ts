@@ -27,6 +27,7 @@ import {
   isFridayET,
 } from "../_shared/adminAgentAudit.ts";
 import { enqueueAdminAgentSelections } from "../_shared/adminAgentQueue.ts";
+import { runDealAdminAgentAnalysis } from "../_shared/dealAdminAgentIntelligence.ts";
 import {
   AGENT_KEYS,
   isAgentEnabledForCompany,
@@ -314,6 +315,34 @@ Deno.serve(async (req) => {
       perCompany.new_selections = enqueueRes.inserted_selections;
       perCompany.new_queue_rows = enqueueRes.inserted_queue_rows;
       (perCompany as any).notifications_sent = enqueueRes.notifications_sent;
+
+      // ── Phase 2: cross-source executable intelligence pass ──────
+      // Generates executable Approval Queue items (stage moves, status
+      // notes, funding-source updates, milestones, follow-up tasks,
+      // email drafts) from emails/calendar/activity/notes/etc.
+      try {
+        const intel = await runDealAdminAgentAnalysis({
+          supabase,
+          companyId,
+          attributionUserId: ownerUserId,
+          activatedUserIds,
+          source: "cron",
+          maxDeals: 25,
+          maxQueueRows: 40,
+          minConfidence: 0.65,
+        });
+        (perCompany as any).intelligence = {
+          evaluated: intel.evaluated_deals,
+          proposed: intel.candidates_proposed,
+          filtered: intel.candidates_filtered,
+          merged: intel.candidates_merged,
+          inserted: intel.queue_rows_inserted,
+          errors: intel.errors.length,
+        };
+        perCompany.new_queue_rows += intel.queue_rows_inserted;
+      } catch (e) {
+        (perCompany as any).intelligence_error = (e as Error)?.message ?? "unknown";
+      }
     } catch (e) {
       perCompany.error = (e as Error)?.message ?? "unknown error";
       console.error("[admin-agent-sweep] company failed:", companyId, e);
