@@ -1053,6 +1053,7 @@ export default function Dashboard() {
                 const showOverlayDetail =
                   !!selectedDeal && (viewMode === 'grid' || viewMode === 'pipeline') && !showMilestones && !showDuplicates;
                 return (
+              <>
               <div
                 ref={boardScrollContainerRef}
                 className={cn(
@@ -1159,6 +1160,7 @@ export default function Dashboard() {
                   onStageChange={handleStageChange}
                 />
               )}
+              </>
                 );
               })()}
       </WorkspacePage>
