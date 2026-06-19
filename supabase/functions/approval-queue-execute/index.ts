@@ -156,10 +156,83 @@ Deno.serve(async (req) => {
   const wasEdited = !!input.edited_values && Object.keys(input.edited_values).length > 0;
 
   // Helper to fail safely.
+  // Resolve the on-approve execution type (caller-supplied via payload, else
+  // a deterministic default per action_type). This is persisted on both the
+  // queue row and the audit row so the platform's behavior is traceable.
+  const ON_APPROVE_DEFAULTS: Record<string, string> = {
+    update_deal_stage: 'update_stage',
+    update_deal_status: 'update_record',
+    add_status_note: 'append_note',
+    update_funding_source: 'update_record',
+    update_lender_status: 'update_record',
+    create_milestone: 'create_or_update_milestone',
+    update_milestone: 'create_or_update_milestone',
+    create_followup_task: 'create_task',
+    create_task: 'create_task',
+    log_note: 'append_note',
+    update_contact: 'update_record',
+    update_company: 'update_record',
+    deal_update: 'update_record',
+    escalate: 'create_task',
+    reassign_deal: 'reassign_record_owner',
+    draft_email: 'stage_email_for_send',
+    save_to_data_room: 'immediate_record_write',
+    claap_recording_review: 'immediate_record_write',
+    claap_action_items: 'immediate_record_write',
+  };
+  const onApproveType =
+    (payload?.on_approve_execution_type as string | undefined) ||
+    ON_APPROVE_DEFAULTS[item.action_type] ||
+    'immediate_record_write';
+
+  // Friendly per-action success messages surfaced back to the UI toast.
+  function buildResultMessage(extra?: Record<string, unknown>): string {
+    const dealName = item.deal_name || 'this deal';
+    switch (item.action_type) {
+      case 'update_deal_stage':
+        return `Stage updated to "${(merged.stage ?? payload.stage) as string}" on ${dealName}`;
+      case 'update_deal_status':
+        return `Status updated to "${(merged.status ?? payload.status) as string}" on ${dealName}`;
+      case 'add_status_note':
+      case 'log_note':
+        return `Status note added to ${dealName}`;
+      case 'update_funding_source':
+      case 'update_lender_status': {
+        const s = (merged.substage ?? merged.new_status ?? payload.substage ?? payload.new_status) as string | undefined;
+        return s ? `Funding source updated to ${s}` : `Funding source updated on ${dealName}`;
+      }
+      case 'create_milestone':
+        return `Milestone created on ${dealName}`;
+      case 'update_milestone':
+        return `Milestone updated on ${dealName}`;
+      case 'create_followup_task':
+      case 'create_task':
+        return `Follow-up task created on ${dealName}`;
+      case 'escalate':
+        return `Escalation task created on ${dealName}`;
+      case 'update_contact':
+        return `Contact updated`;
+      case 'update_company':
+        return `Company updated`;
+      case 'deal_update':
+        return `Deal updated on ${dealName}`;
+      case 'reassign_deal':
+        return `Owner reassigned on ${dealName}`;
+      case 'draft_email':
+        return `Draft staged for send`;
+      default:
+        return `Approved: ${item.title}`;
+    }
+    void extra;
+  }
+
   async function recordFailure(reason: string) {
     await admin.from('ai_action_queue').update({
       status: 'failed',
       execution_error: reason,
+      executed_at: now,
+      executed_by: userId,
+      on_approve_execution_type: onApproveType,
     }).eq('id', item.id);
     await admin.from('approval_queue_audit').insert({
       action_queue_id: item.id,
@@ -174,14 +247,21 @@ Deno.serve(async (req) => {
       failure_reason: reason,
       was_edited: wasEdited,
     });
-    return json({ ok: false, error: reason }, 200);
+    return json({ ok: false, error: reason, result_message: `Could not apply "${item.title}": ${reason}` }, 200);
   }
 
-  async function recordSuccess(decision: 'approved' | 'edited_approved' | 'email_staged' = 'approved', execution: 'success' | 'staged' = 'success') {
+  async function recordSuccess(
+    decision: 'approved' | 'edited_approved' | 'email_staged' = 'approved',
+    execution: 'success' | 'staged' = 'success',
+    executionResult: Record<string, unknown> = {},
+  ) {
     await admin.from('ai_action_queue').update({
       status: 'approved',
       approved_at: now,
       executed_at: now,
+      executed_by: userId,
+      on_approve_execution_type: onApproveType,
+      execution_result: executionResult,
       execution_error: null,
       edited_before_approval: wasEdited,
       new_values: merged,
@@ -191,7 +271,12 @@ Deno.serve(async (req) => {
       target_object_type: item.target_object_type,
       target_object_id: item.target_object_id,
       action_type: item.action_type,
-      old_values: item.old_values ?? {},
+      old_values: {
+        ...(item.old_values ?? {}),
+        // Preserve the agent's ORIGINAL proposal so edit-before-approve
+        // deltas remain reconstructable from audit history alone.
+        _original_proposal: item.new_values ?? {},
+      },
       new_values: merged,
       approver_user_id: userId,
       decision: wasEdited ? 'edited_approved' : decision,
@@ -348,7 +433,7 @@ Deno.serve(async (req) => {
       case 'draft_email': {
         // STAGE — do NOT send. User must manually send from staged drafts UI.
         const p = { ...payload, ...merged } as any;
-        const { error } = await admin.from('staged_email_drafts').insert({
+        const { data: staged, error } = await admin.from('staged_email_drafts').insert({
           source_action_id: item.id,
           user_id: userId,
           deal_id: item.deal_id,
@@ -361,10 +446,15 @@ Deno.serve(async (req) => {
           body_text: p.body_text ?? null,
           attachments: p.attachments ?? [],
           status: 'staged',
-        });
+        }).select('id').single();
         if (error) return recordFailure(error.message);
-        await recordSuccess('email_staged', 'staged');
-        return json({ ok: true, decision: 'email_staged' });
+        await recordSuccess('email_staged', 'staged', { staged_email_id: (staged as any)?.id ?? null });
+        return json({
+          ok: true,
+          decision: 'email_staged',
+          result_message: buildResultMessage(),
+          staged_email_id: (staged as any)?.id ?? null,
+        });
       }
       // Legacy / passthrough — existing executors handle these on the client.
       case 'save_to_data_room':
@@ -384,7 +474,12 @@ Deno.serve(async (req) => {
     }
 
     await recordSuccess();
-    return json({ ok: true, decision: 'approved' });
+    return json({
+      ok: true,
+      decision: 'approved',
+      result_message: buildResultMessage(),
+      on_approve_execution_type: onApproveType,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return recordFailure(msg);
