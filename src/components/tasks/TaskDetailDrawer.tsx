@@ -127,6 +127,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
         for (const k of Object.keys(updates)) {
           prev[k] = (task as any)[k] ?? null;
         }
+        // Completion state is doubly-encoded (status + completed_at). When
+        // the caller toggles `status`, also restore/clear `completed_at` so
+        // undoing "mark complete" actually reopens the task — otherwise a
+        // non-null completed_at would keep `isTaskCompleted` true.
+        if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
+          prev.completed_at = (task as any).completed_at ?? null;
+        }
         pushUndo({
           label: 'Task change',
           undo: () => onUpdate(prev as Partial<Task>),
