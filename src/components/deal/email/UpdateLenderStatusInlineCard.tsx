@@ -14,6 +14,41 @@ import { type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { toast } from 'sonner';
 
+/**
+ * Normalize a lender/funding-source name for fuzzy comparison.
+ * - lowercase, strip non-alphanumerics, collapse whitespace
+ * - drop common org suffixes (capital, partners, llc, inc, group, fund, etc.)
+ * so "Structural Capital" and "Structural Capital Partners LLC" compare equal.
+ */
+function normalizeLenderName(raw: string): string {
+  const SUFFIXES = new Set([
+    'capital', 'partners', 'partner', 'fund', 'funds', 'funding',
+    'group', 'holdings', 'llc', 'lp', 'inc', 'corp', 'co', 'company',
+    'bank', 'finance', 'financial', 'credit', 'ventures', 'venture',
+    'management', 'advisors', 'advisers', 'investments', 'investment',
+    'the',
+  ]);
+  const tokens = (raw || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((t) => !SUFFIXES.has(t));
+  return tokens.join(' ').trim();
+}
+
+function lenderNamesMatch(a: string, b: string): boolean {
+  const na = normalizeLenderName(a);
+  const nb = normalizeLenderName(b);
+  if (!na || !nb) return false;
+  if (na === nb) return true;
+  // token-subset match: every token of the shorter side appears in the other
+  const ta = na.split(' ');
+  const tb = nb.split(' ');
+  const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta];
+  return short.every((t) => long.includes(t));
+}
+
 interface Props {
   dealId?: string | null;
   preselectLenderName?: string | null;
