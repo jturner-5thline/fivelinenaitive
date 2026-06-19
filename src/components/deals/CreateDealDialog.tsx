@@ -51,6 +51,7 @@ import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFor
 import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -90,6 +91,17 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const { dealTypes: availableDealTypes, isLoading: isLoadingDealTypes } = useDealTypes();
   const { defaultMilestones } = useDefaultMilestones();
   const { pipelines, activePipelineId, activePipeline, isLoading: isLoadingPipelines } = usePipelineContext();
+  const { isFieldVisible } = useDealInfoFieldOrder();
+  // Field-visibility helpers — admins can hide deal-info fields from the
+  // settings page; when hidden, they must not appear here either, and
+  // their validation must be skipped.
+  const showType = isFieldVisible('type');
+  const showClientContact = isFieldVisible('clientContact');
+  const showSourcedVia = isFieldVisible('sourcedVia');
+  const showReferral = isFieldVisible('referralSource');
+  const showNarrative = isFieldVisible('narrative');
+  const showManager = isFieldVisible('dealManager');
+  const showOwner = isFieldVisible('dealOwner');
   
   // Use active pipeline's stages if available, otherwise use global stages
   const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
@@ -191,10 +203,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
 
   const getBlankOptionalFields = () => {
     const blank: string[] = [];
-    if (!dealManager) blank.push('Deal Manager');
-    if (!dealOwner) blank.push('Deal Owner');
-    if (!referralName.trim()) blank.push('Referral Source Name');
-    if (!referralEmail.trim()) blank.push('Referral Source Email');
+    if (showManager && !dealManager) blank.push('Deal Manager');
+    if (showOwner && !dealOwner) blank.push('Deal Owner');
+    if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
+    if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
     return blank;
   };
 
@@ -212,12 +224,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
 
-    if (selectedDealTypes.length === 0) {
+    if (showType && selectedDealTypes.length === 0) {
       toast.error('Please select at least one Deal Type');
       return;
     }
     
-    if (!contactName.trim() || !contactInfo.trim()) {
+    if (showClientContact && (!contactName.trim() || !contactInfo.trim())) {
       toast.error('Please fill in contact name and contact info');
       return;
     }
@@ -227,7 +239,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
 
-    if (!sourcedVia || sourcedVia === '__none__') {
+    if (showSourcedVia && (!sourcedVia || sourcedVia === '__none__')) {
       toast.error('Please select a source for this deal');
       return;
     }
@@ -413,7 +425,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Row 2: Deal Type + Deal Stage */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${showType ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {showType && (
                 <div className="grid gap-1.5">
                   <Label>Deal Type <span className="text-destructive">*</span></Label>
                   <Popover modal open={dealTypesOpen} onOpenChange={setDealTypesOpen}>
@@ -483,6 +496,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </PopoverContent>
                   </Popover>
                 </div>
+                )}
                 <div className="grid gap-1.5">
                   <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
                   <Select value={dealStage} onValueChange={setDealStage} required>
@@ -505,7 +519,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Pipeline + Sourced Via */}
-              <div className={`grid gap-3 ${pipelines.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`grid gap-3 ${pipelines.length > 1 && showSourcedVia ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 {pipelines.length > 1 && (
                   <div className="grid gap-1.5">
                     <Label>Pipeline</Label>
@@ -527,6 +541,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 )}
+                {showSourcedVia && (
                 <div className="grid gap-1.5">
                   <Label>Sourced Via <span className="text-destructive">*</span></Label>
                   <Select value={sourcedVia} onValueChange={setSourcedVia}>
@@ -541,10 +556,13 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectContent>
                   </Select>
                 </div>
+                )}
               </div>
 
               {/* Row 3: Deal Manager + Deal Owner */}
-              <div className="grid grid-cols-2 gap-3">
+              {(showManager || showOwner) && (
+              <div className={`grid gap-3 ${showManager && showOwner ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                {showManager && (
                 <div className="grid gap-1.5">
                   <Label htmlFor="dealManager">Deal Manager</Label>
                   <Select value={dealManager} onValueChange={setDealManager}>
@@ -560,6 +578,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectContent>
                   </Select>
                 </div>
+                )}
+                {showOwner && (
                 <div className="grid gap-1.5">
                   <Label htmlFor="dealOwner">Deal Owner</Label>
                   <Select value={dealOwner} onValueChange={setDealOwner}>
@@ -575,9 +595,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectContent>
                   </Select>
                 </div>
+                )}
               </div>
+              )}
 
               {/* Row 4: Contact Name + Contact Info */}
+              {showClientContact && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
@@ -600,6 +623,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   />
                 </div>
               </div>
+              )}
 
               {/* Row 5: Deal Status (full width) */}
               <div className="grid gap-1.5">
@@ -614,6 +638,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Deal Narrative */}
+              {showNarrative && (
               <div className="grid gap-1.5">
                 <Label htmlFor="narrative">Deal Narrative</Label>
                 <textarea
@@ -625,8 +650,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   rows={4}
                 />
               </div>
+              )}
 
               {/* Row 6: Referral Source (popover) */}
+              {showReferral && (
               <div className="grid gap-1.5">
                 <Label>Referral Source</Label>
                  <Popover modal>
@@ -667,6 +694,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </PopoverContent>
                 </Popover>
               </div>
+              )}
               {sortedMilestones.length > 0 && (
                 <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
                   <CollapsibleTrigger asChild>
