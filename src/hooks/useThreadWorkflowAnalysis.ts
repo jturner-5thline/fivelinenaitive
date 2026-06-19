@@ -442,6 +442,11 @@ export function useThreadWorkflowAnalysis({
     const key = `${cacheKey}::${dealId || 'no-deal'}`;
     if (lastRunKey.current === key) return;
     lastRunKey.current = key;
+    // Clear stale analysis from the previously open thread immediately so
+    // the AI Assist header doesn't keep showing "Likely: <prev deal>"
+    // while the new thread is being re-analyzed.
+    setAnalysis(null);
+    setError(null);
     run();
   }, [cacheKey, dealId, autoRun, run]);
 
