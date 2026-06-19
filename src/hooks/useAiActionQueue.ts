@@ -267,7 +267,7 @@ export function useEnqueueAiAction() {
         description: `${args.title} — review later from the queue.`,
       });
       invalidateQueueAll(qc);
-      return data as QueuedAiAction;
+      return data as unknown as QueuedAiAction;
     },
     [user, qc],
   );
@@ -529,10 +529,11 @@ export function useApproveAiAction() {
           toast.error('Action failed', { description: data?.error || error?.message });
           return { ok: false, error: data?.error || error?.message };
         }
+        const msg = (data as any)?.result_message as string | undefined;
         if (data.decision === 'email_staged') {
-          toast.success('Draft staged for send', { description: item.title });
+          toast.success(msg || 'Draft staged for send', { description: item.title });
         } else {
-          toast.success('Action approved & applied', { description: item.title });
+          toast.success(msg || 'Approved & applied', { description: item.title });
         }
         invalidateAllTaskCaches(qc);
         return { ok: true };
