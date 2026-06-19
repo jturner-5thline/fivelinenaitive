@@ -5,66 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
-function normName(s: unknown): string {
-  return String(s ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-/**
- * Non-admin users should only see approval items for deals they manage.
- * `deals.manager` is a free-text display name, so we match on full name
- * (with a loose contains fallback) or email local-part.
- */
-function userManagesDeal(
-  managerField: unknown,
-  userFullName: string,
-  userEmailLocal: string,
-): boolean {
-  const manager = normName(managerField);
-  if (!manager) return false;
-  const name = normName(userFullName);
-  if (name && (manager === name || manager.includes(name))) return true;
-  if (userEmailLocal && manager.includes(userEmailLocal)) return true;
-  return false;
-}
-
-async function loadViewerContext(userId: string): Promise<{
-  isAdmin: boolean;
-  fullName: string;
-  emailLocal: string;
-}> {
-  const [{ data: profile }, { data: roleRow }] = await Promise.all([
-    supabase.from('profiles').select('full_name, email').eq('user_id', userId).maybeSingle(),
-    supabase.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle(),
-  ]);
-  const email = normName((profile as any)?.email);
-  return {
-    isAdmin: !!roleRow,
-    fullName: normName((profile as any)?.full_name),
-    emailLocal: email.split('@')[0] || '',
-  };
-}
-
-async function filterToManagedDeals<T extends { deal_id: string | null }>(
-  rows: T[],
-  viewer: { isAdmin: boolean; fullName: string; emailLocal: string },
-): Promise<T[]> {
-  if (viewer.isAdmin) return rows;
-  // Non-admins: drop anything without a deal, then keep only deals they manage.
-  const withDeal = rows.filter(r => !!r.deal_id);
-  const dealIds = Array.from(new Set(withDeal.map(r => r.deal_id as string)));
-  if (dealIds.length === 0) return [];
-  const { data: deals } = await supabase
-    .from('deals')
-    .select('id, manager')
-    .in('id', dealIds);
-  const managerById = new Map<string, string | null>(
-    (deals || []).map((d: any) => [d.id, d.manager ?? null]),
-  );
-  return withDeal.filter(r =>
-    userManagesDeal(managerById.get(r.deal_id as string), viewer.fullName, viewer.emailLocal),
-  );
-}
-
 /**
  * AI Approval Queue — deferred AI suggestions awaiting user approval.
  *
@@ -159,14 +99,10 @@ function useAiActionQueueRealtime() {
     };
 
     const channel = supabase
-      // Shared queue: subscribe to ALL row changes (not just this
-      // user's). RLS still gates what the client actually receives, so
-      // teammates who can see the same shared items get notified the
-      // instant anyone approves / dismisses / edits them.
-      .channel(`ai-action-queue-shared-${user.id}`)
+      .channel(`ai-action-queue-${user.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'ai_action_queue' },
+        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
         () => {
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = setTimeout(flush, REALTIME_DEBOUNCE_MS);
@@ -197,15 +133,12 @@ export function useAiActionQueue() {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<QueuedAiAction[]> => {
-      const [{ data, error }, viewer] = await Promise.all([
-        supabase
-          .from('ai_action_queue')
-          .select('*')
-          .in('status', ['pending'])
-          .order('created_at', { ascending: false })
-          .limit(500),
-        loadViewerContext(user!.id),
-      ]);
+      const { data, error } = await supabase
+        .from('ai_action_queue')
+        .select('*')
+        .in('status', ['pending'])
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       const rows = (data || []) as QueuedAiAction[];
       // Lazy-mark expired rows
@@ -251,9 +184,7 @@ export function useAiActionQueue() {
           .in('id', dupeIds)
           .then(() => { /* noop */ });
       }
-      const deduped = Array.from(seen.values());
-      // Non-admins only see items for deals they manage.
-      return filterToManagedDeals(deduped, viewer);
+      return Array.from(seen.values());
     },
   });
 }
@@ -276,27 +207,21 @@ export function useAiActionQueueCount(): number {
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<number> => {
-      const [{ data, error }, viewer] = await Promise.all([
-        supabase
-          .from('ai_action_queue')
-          .select('id, status, expires_at, action_type, deal_id, title, payload')
-          .eq('status', 'pending')
-          .limit(500),
-        loadViewerContext(user!.id),
-      ]);
+      const { data, error } = await supabase
+        .from('ai_action_queue')
+        .select('id, status, expires_at, action_type, deal_id, title, payload')
+        .eq('status', 'pending')
+        .limit(500);
       if (error) throw error;
       const now = Date.now();
       const live = (data || []).filter(
         (r: any) =>
           r.status === 'pending' && new Date(r.expires_at).getTime() >= now,
       );
-      // Apply the same manager-scope filter as the panel so the badge
-      // count matches what non-admins actually see.
-      const scoped = await filterToManagedDeals(live as any[], viewer);
       // Mirror dedupe logic from useAiActionQueue so the badge count
       // matches what the user sees in the panel.
       const seen = new Set<string>();
-      for (const r of scoped as any[]) {
+      for (const r of live as any[]) {
         const key = [
           r.action_type,
           r.deal_id ?? '',
