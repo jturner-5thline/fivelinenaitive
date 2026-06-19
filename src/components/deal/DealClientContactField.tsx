@@ -6,6 +6,26 @@ import { DebouncedInput } from '@/components/ui/debounced-input';
 import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Loader2, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import { cn } from '@/lib/utils';
+
+interface ContactRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  email: string | null;
+}
+
+const formatContactName = (c: ContactRow): string =>
+  (c.full_name && c.full_name.trim()) ||
+  [c.first_name, c.last_name].filter(Boolean).join(' ').trim() ||
+  c.email ||
+  'Unnamed contact';
 
 interface Props {
   deal: Pick<Deal, 'id' | 'name' | 'company' | 'contact' | 'contactInfo' | 'contactEmail' | 'companyUrl'>;
@@ -23,6 +43,57 @@ export function DealClientContactField({
   onUpdateField,
 }: Props) {
   const resolved = resolveDealClientContact(deal, linkedContact);
+  const { company } = useCompany();
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState<ContactRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const searchAbort = useRef(0);
+
+  useEffect(() => {
+    if (!contactPopoverOpen) {
+      setSearch('');
+      setResults([]);
+      return;
+    }
+  }, [contactPopoverOpen]);
+
+  useEffect(() => {
+    if (!contactPopoverOpen || !company?.id) return;
+    const q = search.trim();
+    const myToken = ++searchAbort.current;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        let query = supabase
+          .from('contacts')
+          .select('id, first_name, last_name, full_name, email')
+          .eq('org_company_id', company.id)
+          .order('full_name', { ascending: true })
+          .limit(10);
+        if (q.length > 0) {
+          const escaped = q.replace(/[\\%_,()]/g, (m) => '\\' + m);
+          const pat = `%${escaped}%`;
+          query = query.or(
+            `full_name.ilike.${pat},first_name.ilike.${pat},last_name.ilike.${pat},email.ilike.${pat}`,
+          );
+        }
+        const { data } = await query;
+        if (myToken !== searchAbort.current) return;
+        setResults((data || []) as ContactRow[]);
+      } finally {
+        if (myToken === searchAbort.current) setLoading(false);
+      }
+    }, 150);
+    return () => clearTimeout(t);
+  }, [search, contactPopoverOpen, company?.id]);
+
+  const handlePickContact = (c: ContactRow) => {
+    const name = formatContactName(c);
+    onUpdateField('contact', name);
+    if (c.email) onUpdateField('contactInfo', c.email);
+    setSearch('');
+    setResults([]);
+  };
 
   return (
     <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
@@ -54,6 +125,56 @@ export function DealClientContactField({
                       {resolved.info && <> · {resolved.info}</>}
                     </div>
                   )}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pick from Contacts</label>
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search contacts…"
+                        className="pl-7 h-8 text-sm"
+                      />
+                    </div>
+                    {(loading || results.length > 0 || search.trim().length > 0) && (
+                      <div className="max-h-44 overflow-auto rounded-md border border-border bg-popover">
+                        {loading ? (
+                          <div className="flex items-center justify-center py-3">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : results.length === 0 ? (
+                          <div className="px-3 py-2 text-xs text-muted-foreground text-center">
+                            No matching contacts
+                          </div>
+                        ) : (
+                          results.map((c) => {
+                            const name = formatContactName(c);
+                            const selected = (deal.contact || '').trim().toLowerCase() === name.toLowerCase();
+                            return (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => handlePickContact(c)}
+                                className={cn(
+                                  'w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-muted/60',
+                                  selected && 'bg-muted font-medium',
+                                )}
+                              >
+                                <span className="truncate">
+                                  {name}
+                                  {c.email && (
+                                    <span className="ml-2 text-muted-foreground">{c.email}</span>
+                                  )}
+                                </span>
+                                {selected && <Check className="h-3.5 w-3.5 text-primary" />}
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground">Or enter free text below.</p>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Contact Name</label>
                     <DebouncedInput
