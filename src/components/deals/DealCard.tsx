@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react';
-import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check } from 'lucide-react';
+import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check, MoreVertical } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
@@ -276,51 +276,8 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           onFlagCountChange={setActiveFlagCount}
         />
 
-        {/*
-          Notification indicator — single overlay anchored to the top-right
-          corner of the tile. Pure absolute overlay (outside content flow)
-          so its presence/absence cannot shift the title's top inset or any
-          other in-card content. Renders as a small solid dot when there is
-          no count, or a compact red pill with the count when > 1. Includes
-          a 2px ring in the page background so it pops cleanly off the tile,
-          and a soft red glow for visibility on dark surfaces.
-        */}
-        {notificationCount > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {notificationCount > 1 ? (
-                  <div
-                    aria-label={`${notificationCount} notifications`}
-                    className="absolute -top-1.5 -right-1.5 z-30 flex h-[27px] min-w-[27px] items-center justify-center rounded-full bg-destructive px-1.5 text-[15px] font-semibold leading-none text-destructive-foreground tabular-nums ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
-                    style={{
-                      // Snap to the device pixel grid + isolate into its own
-                      // compositor layer so the circle stays crisp at any DPR
-                      // (no half-pixel blur from inherited transforms/filters).
-                      transform: 'translateZ(0)',
-                      backfaceVisibility: 'hidden',
-                      WebkitFontSmoothing: 'antialiased',
-                    }}
-                  >
-                    {notificationCount > 99 ? '99+' : notificationCount}
-                  </div>
-                ) : (
-                  <div
-                    aria-label="1 notification"
-                    className="absolute -top-1.5 -right-1.5 z-30 h-[18px] w-[18px] rounded-full bg-destructive ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_12px_hsl(var(--destructive)/0.55)]"
-                    style={{
-                      transform: 'translateZ(0)',
-                      backfaceVisibility: 'hidden',
-                    }}
-                  />
-                )}
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        {/* Notification indicator is now rendered inline in the header row
+            (next to the menu button) to match the refreshed tile design. */}
 
         {/*
           Stale state is communicated via the card ring (warning) and the
