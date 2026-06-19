@@ -721,7 +721,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     refreshInFlightRef.current = true;
     lastSilentRefreshRef.current = now;
     if (opts.manual) lastManualRefreshRef.current = now;
-    setIsRefreshing(true);
+    // Only manual refreshes show chrome/spinners. Silent background refreshes
+    // should never make the already-open email popup look like it's still loading.
+    setIsRefreshing(!!opts.manual);
     // Soft 5s timeout: if the refresh hasn't returned in 5s, surface a
     // non-blocking toast so the user knows we're still working on it
     // instead of staring at a silently-spinning button.
