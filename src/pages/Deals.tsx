@@ -1050,14 +1050,23 @@ export default function Dashboard() {
                   const next = new URLSearchParams(overlaySearchParams);
                   next.delete('deal');
                   setOverlaySearchParams(next, { replace: false });
+                  setForceOverlayDealId(null);
                 };
                 const showInlineDetail =
-                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates;
+                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates
+                  && forceOverlayDealId !== selectedId;
                 // For grid + pipeline views, open the rich deal overlay
                 // (Deal Space, Deal Info, etc.) instead of the inline
                 // side-panel summary. List view keeps the inline split.
                 const showOverlayDetail =
-                  !!selectedDeal && (viewMode === 'grid' || viewMode === 'pipeline') && !showMilestones && !showDuplicates;
+                  !!selectedDeal
+                  && !showMilestones
+                  && !showDuplicates
+                  && (
+                    viewMode === 'grid'
+                    || viewMode === 'pipeline'
+                    || forceOverlayDealId === selectedId
+                  );
                 return (
               <>
               <div
