@@ -708,9 +708,9 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                   }}
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="shrink-0 inline-flex items-center justify-center h-4 w-4 rounded border border-muted-foreground/50 bg-transparent hover:border-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="group/complete shrink-0 inline-flex items-center justify-center h-5 w-5 rounded-full border border-muted-foreground/50 bg-transparent transition-all duration-150 hover:scale-110 hover:border-primary hover:bg-primary/20 active:scale-95 active:bg-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <Check className="h-3 w-3 text-primary opacity-0 hover:opacity-100" strokeWidth={3} />
+                  <Check className="h-3.5 w-3.5 text-primary opacity-0 transition-opacity duration-150 group-hover/complete:opacity-100 group-active/complete:opacity-100" strokeWidth={3} />
                 </button>
 
                 {editingTitleId === task.id && task.kind === 'task' ? (
