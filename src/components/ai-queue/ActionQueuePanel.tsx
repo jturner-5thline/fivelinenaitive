@@ -134,7 +134,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           <Button
             size="sm"
             variant="liquid-glass"
-            className="h-7 gap-1 text-[11px]"
+            className="h-7 gap-1 text-[11px] mr-7"
             disabled={bulkBusy}
             onClick={async () => {
               setBulkBusy(true);
