@@ -81,6 +81,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import { cn } from '@/lib/utils';
 
 // Render only the canonical Deal Rundown detail card (MemoHeader +
@@ -1045,8 +1046,14 @@ export default function Dashboard() {
                   setOverlaySearchParams(next, { replace: false });
                 };
                 const showInlineDetail =
-                  !!selectedDeal && viewMode !== 'pipeline' && viewMode !== 'timeline' && !showMilestones && !showDuplicates;
+                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates;
+                // For grid + pipeline views, open the rich deal overlay
+                // (Deal Space, Deal Info, etc.) instead of the inline
+                // side-panel summary. List view keeps the inline split.
+                const showOverlayDetail =
+                  !!selectedDeal && (viewMode === 'grid' || viewMode === 'pipeline') && !showMilestones && !showDuplicates;
                 return (
+              <>
               <div
                 ref={boardScrollContainerRef}
                 className={cn(
@@ -1139,6 +1146,21 @@ export default function Dashboard() {
                 </aside>
               )}
               </div>
+              {showOverlayDetail && (
+                <NaitiveDealOverlay
+                  deal={selectedDeal}
+                  orderedDeals={deals}
+                  stages={overlayStages}
+                  onClose={closeDetail}
+                  onNavigate={(d) => {
+                    const next = new URLSearchParams(overlaySearchParams);
+                    next.set('deal', d.id);
+                    setOverlaySearchParams(next, { replace: false });
+                  }}
+                  onStageChange={handleStageChange}
+                />
+              )}
+              </>
                 );
               })()}
       </WorkspacePage>
