@@ -5,8 +5,6 @@ import {
   Sparkles as SparklesIcon,
   ListPlus,
   CalendarClock,
-  AlignLeft,
-  Loader2,
   ListChecks,
   ChevronDown,
   Pencil,
@@ -33,7 +31,6 @@ import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { AIAssistOverlay } from './AIAssistOverlay';
 import type { EmailThread } from './mockEmailData';
-import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
@@ -110,10 +107,6 @@ export function EmailQuickActionsToolbar({
   onInsertDraft,
 }: Props) {
   const [active, setActive] = useState<QuickActionKey | null>(null);
-  const [summary, setSummary] = useState<string[] | null>(null);
-  const [summarizing, setSummarizing] = useState(false);
-  const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Pre-warm the user's freebusy cache as soon as the toolbar mounts so
   // clicking Suggest Times renders slots from cache instantly.
@@ -122,13 +115,6 @@ export function EmailQuickActionsToolbar({
   useEffect(() => {
     if (selfEmail) void prefetchFreeBusy(qc, selfEmail);
   }, [qc, selfEmail, thread?.threadId]);
-
-  // Reset summary if thread changes
-  useEffect(() => {
-    setSummary(null);
-    setSummaryDebug(null);
-    setSummaryError(null);
-  }, [thread?.threadId]);
 
   // Only show "Save to Data Room" when the currently viewed message has at
   // least one non-inline attachment with an id. Guard against null/undefined.
@@ -171,41 +157,6 @@ export function EmailQuickActionsToolbar({
       return;
     }
     setActive((prev) => (prev === key ? null : key));
-  };
-
-  const runSummarize = async () => {
-    if (summarizing) return;
-    const propEmails = thread?.emails || [];
-    if (propEmails.length === 0) {
-      setSummary(null);
-      setSummaryError("Couldn't read the selected email thread for summary");
-      return;
-    }
-    setSummarizing(true);
-    setSummaryError(null);
-    try {
-      const result = await summarizeSelectedEmailThread({
-        threadId: thread.provider_thread_id || thread.threadId,
-        subject: thread.subject,
-        emails: propEmails,
-      });
-      setSummary(result.bullets);
-      setSummaryDebug(result.debug);
-    } catch (err) {
-      console.warn('[EmailQuickActionsToolbar] summarize failed', err);
-      const debug = err instanceof Error && 'debug' in err
-        ? (err as Error & { debug?: EmailThreadSummaryDebug }).debug || null
-        : null;
-      setSummary(null);
-      setSummaryDebug(debug);
-      setSummaryError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Couldn't read the selected email thread for summary",
-      );
-    } finally {
-      setSummarizing(false);
-    }
   };
 
   return (
