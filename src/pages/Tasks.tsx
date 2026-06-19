@@ -626,10 +626,11 @@ export default function Tasks() {
         }
       }
       if (filterRecurring !== 'all') {
-        const isRec = !!t.recurrence_rule || !!(t as any).is_recurring;
+        const recurringTask = t as Task & { is_recurring?: boolean; recurrence_end_date?: string | null };
+        const isRec = !!t.recurrence_rule || !!recurringTask.is_recurring;
         if (!isRec) return false;
         if (filterRecurring === 'paused') {
-          const seriesEnd = (t as any).recurrence_end_date as string | null | undefined;
+          const seriesEnd = recurringTask.recurrence_end_date;
           const todayStr = dueBoundaries.today;
           const isPaused = !!seriesEnd && seriesEnd <= todayStr;
           if (!isPaused) return false;
@@ -926,15 +927,15 @@ export default function Tasks() {
     if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
-    if (typeof (c as any).urgentOnly === 'boolean') {
-      setUrgentOnly((c as any).urgentOnly);
-    } else if (Array.isArray((c as any).filterPriorities)) {
+    if (typeof c.urgentOnly === 'boolean') {
+      setUrgentOnly(c.urgentOnly);
+    } else if (Array.isArray(c.filterPriorities)) {
       // Back-compat: any priority preset that previously included 'urgent'
       // now maps to the simplified urgent-only flag; everything else is dropped.
-      setUrgentOnly(((c as any).filterPriorities as string[]).includes('urgent'));
+      setUrgentOnly(c.filterPriorities.includes('urgent'));
     }
-    if (typeof (c as any).showAllDeals === 'boolean') {
-      setShowAllDeals((c as any).showAllDeals);
+    if (typeof c.showAllDeals === 'boolean') {
+      setShowAllDeals(c.showAllDeals);
     }
     if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
     if (c.filterRecurring) setFilterRecurring(c.filterRecurring as FilterRecurring);
@@ -1755,7 +1756,7 @@ export default function Tasks() {
               deal_id: input.deal_id || undefined,
             });
             toast.success(`Task created: "${input.title}"`);
-            const newId = (created as any)?.id as string | undefined;
+            const newId = (created as { id?: string } | null)?.id;
             // Fire-and-forget duplicate check for the new task — results stream
             // into the drawer panel via realtime. Errors here are non-fatal
             // (the DB trigger also runs as a backup).
