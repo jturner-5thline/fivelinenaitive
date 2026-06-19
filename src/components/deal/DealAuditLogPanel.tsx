@@ -309,11 +309,18 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                         <Icon className={cn("h-3 w-3", config.color)} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs leading-relaxed">
-                          <span className="font-medium">{entry.user_display_name || 'System'}</span>
-                          {' '}
-                          <span className="text-muted-foreground">{describeAction(entry)}</span>
-                        </p>
+                        {entry.action_type === 'deal_created' ? (
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium">Deal Created</span>
+                            <span className="text-muted-foreground"> · {entry.user_display_name || 'System'}</span>
+                          </p>
+                        ) : (
+                          <p className="text-xs leading-relaxed">
+                            <span className="font-medium">{entry.user_display_name || 'System'}</span>
+                            {' '}
+                            <span className="text-muted-foreground">{describeAction(entry)}</span>
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-muted-foreground">
                             {formatDistanceToNow(new Date(entry.created_at), { addSuffix: true })}
