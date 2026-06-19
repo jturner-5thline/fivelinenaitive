@@ -467,37 +467,38 @@ export function EmailQuickActionsToolbar({
         </div>
       </AIAssistOverlay>
 
-      {meetingPopoverOpen && modalRoot && createPortal(
-        <div className="absolute inset-0 z-50">
-          <button
-            type="button"
-            aria-label="Close schedule meeting dialog"
-            className="absolute inset-0 rounded-[inherit] bg-background/40 backdrop-blur-sm"
-            onClick={() => setActive(null)}
-          />
-          <div className="relative h-full w-full">
-            <div
-              className="absolute left-1/2 top-1/2 z-10 flex w-[min(525px,calc(100%-48px))] max-w-[calc(100%-48px)] max-h-[calc(100%-48px)] -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden rounded-xl border border-border bg-card shadow-xl"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <QuickBookMeetingPopover
-                thread={thread}
-                dealId={dealId || fallbackDealId}
-                dealName={dealName || fallbackDealName || undefined}
-                meEmail={user?.email || null}
-                meName={(user?.user_metadata as any)?.full_name || null}
-                onInsertDraft={(text) => onInsertDraft(text)}
-                onProposeViaEmail={() => {
-                  setMeetingMode('propose');
-                  setActive('meeting');
-                }}
-                onClose={() => setActive(null)}
-              />
-            </div>
-          </div>
-        </div>,
-        modalRoot,
-      )}
+    </div>
+  );
+}
+
+/**
+ * Small wrapper used by the "Update Deal Fields" overlay. Renders the
+ * existing SuggestedDealUpdatesSection (which only paints when there is at
+ * least one pending suggestion) plus a quiet empty state so the overlay
+ * never looks blank.
+ */
+function UpdateDealFieldsOverlayBody({
+  dealId,
+  dealName,
+  threadId,
+}: {
+  dealId: string | null;
+  dealName: string | null;
+  threadId: string;
+}) {
+  if (!dealId) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-3">
+        <p className="text-xs text-muted-foreground">Link a deal first to see suggested updates.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <SuggestedDealUpdatesSection dealId={dealId} dealName={dealName || ''} threadId={threadId} />
+      <p className="text-[11px] text-muted-foreground/70">
+        AI surfaces deal field updates detected in this email thread. If nothing appears, no actionable updates were found.
+      </p>
     </div>
   );
 }
