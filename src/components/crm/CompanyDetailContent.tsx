@@ -628,38 +628,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </CardContent>
               </Card>
 
-              {/* 4. Watchouts */}
-              <Card className="border-border/70">
-                <CardHeader className="pb-2 border-b">
-                  <CardTitle className="text-sm flex items-center gap-1.5"><ShieldAlert className="h-4 w-4 text-muted-foreground" /> Watchouts</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-3 text-xs space-y-2">
-                  {missingFields.length === 0 && company.lifecycle_stage !== 'churn_risk' ? (
-                    <p className="text-muted-foreground">No blockers detected.</p>
-                  ) : (
-                    <>
-                      {missingFields.length > 0 && (
-                        <div>
-                          <p className="text-[10px] uppercase text-amber-600 font-medium mb-1">Missing data</p>
-                          <ul className="space-y-0.5">
-                            {missingFields.map(m => (
-                              <li key={m.key} className="flex items-center gap-1 text-muted-foreground">
-                                <AlertTriangle className="h-3 w-3 text-amber-500" /> {m.label}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      {company.lifecycle_stage === 'churn_risk' && (
-                        <div className="text-red-600 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" /> Account flagged as churn risk
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* 5. Attachment Summary */}
               <Card className="border-border/70">
                 <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
