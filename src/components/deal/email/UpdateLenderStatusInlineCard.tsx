@@ -63,7 +63,7 @@ interface Props {
  */
 export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
-  const { stages: stageOptions } = useLenderStages();
+  const { stages: stageOptions, substages: milestoneOptions } = useLenderStages();
   const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
 
   // Duplicate-deal guard: if the company has multiple deal rows (e.g. two "Worthy"
@@ -113,6 +113,11 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   useEffect(() => {
     if (lender?.stage) setStage(lender.stage);
   }, [lender?.stage]);
+  const NO_MILESTONE = '__none__';
+  const [milestone, setMilestone] = useState<string>(lender?.substage || NO_MILESTONE);
+  useEffect(() => {
+    setMilestone(lender?.substage || NO_MILESTONE);
+  }, [lender?.substage]);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -202,6 +207,12 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
           ? { trackingStatus: selectedStage.group as DealLender['trackingStatus'] }
           : {}),
       };
+      // Only write substage when the user changed it relative to current value,
+      // so leaving the milestone untouched doesn't wipe an existing one.
+      const nextMilestone = milestone === NO_MILESTONE ? null : milestone;
+      if ((lender.substage || null) !== nextMilestone) {
+        updates.substage = nextMilestone as DealLender['substage'];
+      }
       if (trimmedNote) {
         const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const prev = (lender.notes || '').trim();
@@ -212,7 +223,11 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       await updateLender(lender.id, updates);
       clearTimeout(timeoutId);
       setDone(true);
-      toast.success(`${lender.name} → ${selectedStage?.label || stage}`);
+      const milestoneLabel = milestoneOptions.find((m) => m.id === milestone)?.label;
+      const summary = milestoneLabel && milestone !== NO_MILESTONE
+        ? `${lender.name} → ${selectedStage?.label || stage} · ${milestoneLabel}`
+        : `${lender.name} → ${selectedStage?.label || stage}`;
+      toast.success(summary);
       setTimeout(onClose, 900);
     } catch (err: any) {
       clearTimeout(timeoutId);
