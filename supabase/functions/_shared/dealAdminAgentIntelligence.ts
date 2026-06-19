@@ -566,7 +566,7 @@ async function callModelForCandidates(
         ...it,
         target_object_type,
         target_object_id,
-        item_title,
+        item_title: item_title || synthesizeTitle(it),
         evidence_references,
         proposed_values,
         current_values,
