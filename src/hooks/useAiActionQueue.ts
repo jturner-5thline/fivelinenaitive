@@ -62,6 +62,83 @@ export interface EnqueueArgs {
 const QUEUE_KEY = ['ai-action-queue'] as const;
 const QUEUE_COUNT_KEY = ['ai-action-queue-count'] as const;
 
+/**
+ * Visibility filter for the Approval Queue.
+ * - Admins (role 'admin' in user_roles) see every pending item.
+ * - Everyone else sees only items tied to deals where they are the
+ *   Deal Manager / owner, plus items they personally enqueued.
+ *
+ * Resolution mirrors `dealBelongsToRep` in useRepScorecard: prefer the
+ * explicit `deal_owner_user_id` FK, fall back to case-insensitive name
+ * match against the legacy free-text `manager` / `deal_owner` columns.
+ *
+ * Returns `null` when the user is an admin (= no filter, show all).
+ */
+async function fetchManagedDealIdSet(userId: string): Promise<Set<string> | null> {
+  // Admin short-circuit.
+  const { data: adminRow } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  if (adminRow) return null;
+
+  // Resolve the user's display name(s) for legacy text-column matching.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('display_name, full_name')
+    .eq('id', userId)
+    .maybeSingle();
+  const nameCandidates = [profile?.display_name, profile?.full_name]
+    .filter((s): s is string => !!s && s.trim().length > 0)
+    .map((s) => s.trim().toLowerCase());
+
+  // Pull just the columns we need; cap to keep payload small.
+  const { data: deals } = await supabase
+    .from('deals')
+    .select('id, deal_owner_user_id, deal_owner, manager')
+    .limit(5000);
+
+  const ids = new Set<string>();
+  for (const d of (deals ?? []) as any[]) {
+    if (d.deal_owner_user_id === userId) {
+      ids.add(d.id);
+      continue;
+    }
+    if (nameCandidates.length === 0) continue;
+    const owner = (d.deal_owner ?? '').trim().toLowerCase();
+    const mgr = (d.manager ?? '').trim().toLowerCase();
+    if (nameCandidates.some((c) => c === owner || c === mgr)) {
+      ids.add(d.id);
+    }
+  }
+  return ids;
+}
+
+/** React-Query wrapper so the managed-deal set is fetched once and shared
+ *  by both the queue and the count hooks. */
+function useManagedDealVisibility() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['approval-queue-visibility', user?.id ?? 'anon'],
+    enabled: !!user,
+    staleTime: 60_000,
+    queryFn: () => fetchManagedDealIdSet(user!.id),
+  });
+}
+
+/** Returns true when the queue row should be visible to the user. */
+function rowVisible(
+  row: { user_id: string; deal_id: string | null },
+  userId: string,
+  managedDealIds: Set<string> | null,
+): boolean {
+  if (managedDealIds === null) return true; // admin
+  if (row.user_id === userId) return true; // self-enqueued
+  return !!row.deal_id && managedDealIds.has(row.deal_id);
+}
+
 /** Invalidate both the panel and lightweight count queries together so
  * mutations stay consistent with realtime fan-out. */
 function invalidateQueueAll(qc: ReturnType<typeof useQueryClient>) {
@@ -126,10 +203,19 @@ function useAiActionQueueRealtime() {
 export function useAiActionQueue() {
   const { user } = useAuth();
   useAiActionQueueRealtime();
+  const { data: managedDealIds } = useManagedDealVisibility();
 
   return useQuery({
-    queryKey: [...QUEUE_KEY, user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: [
+      ...QUEUE_KEY,
+      user?.id ?? 'anon',
+      managedDealIds === undefined
+        ? 'pending-visibility'
+        : managedDealIds === null
+          ? 'admin'
+          : `mgr:${managedDealIds.size}`,
+    ],
+    enabled: !!user && managedDealIds !== undefined,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<QueuedAiAction[]> => {
@@ -151,6 +237,12 @@ export function useAiActionQueue() {
           .in('id', expiredIds);
         live = rows.filter(r => !expiredIds.includes(r.id));
       }
+      // Visibility filter: non-admins see only items tied to deals
+      // they manage (or items they enqueued themselves). Pure filter —
+      // no rows are mutated by this step.
+      const visible = live.filter((r) =>
+        rowVisible(r, user!.id, managedDealIds ?? new Set()),
+      );
       // De-duplicate: the same recommendation can be enqueued multiple
       // times (e.g. by repeated AI runs across 5th Line teammates on the
       // shared queue). Collapse to one card per logical action, keeping
@@ -159,7 +251,7 @@ export function useAiActionQueue() {
       const seen = new Map<string, QueuedAiAction>();
       const dupeIds: string[] = [];
       // rows are already ordered created_at DESC — first occurrence wins.
-      for (const r of live) {
+      for (const r of visible) {
         const key = [
           r.action_type,
           r.deal_id ?? '',
@@ -200,16 +292,25 @@ export function useAiActionQueue() {
 export function useAiActionQueueCount(): number {
   const { user } = useAuth();
   useAiActionQueueRealtime();
+  const { data: managedDealIds } = useManagedDealVisibility();
 
   const { data = 0 } = useQuery({
-    queryKey: [...QUEUE_COUNT_KEY, user?.id ?? 'anon'],
-    enabled: !!user,
+    queryKey: [
+      ...QUEUE_COUNT_KEY,
+      user?.id ?? 'anon',
+      managedDealIds === undefined
+        ? 'pending-visibility'
+        : managedDealIds === null
+          ? 'admin'
+          : `mgr:${managedDealIds.size}`,
+    ],
+    enabled: !!user && managedDealIds !== undefined,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
     queryFn: async (): Promise<number> => {
       const { data, error } = await supabase
         .from('ai_action_queue')
-        .select('id, status, expires_at, action_type, deal_id, title, payload')
+        .select('id, user_id, status, expires_at, action_type, deal_id, title, payload')
         .eq('status', 'pending')
         .limit(500);
       if (error) throw error;
@@ -218,10 +319,13 @@ export function useAiActionQueueCount(): number {
         (r: any) =>
           r.status === 'pending' && new Date(r.expires_at).getTime() >= now,
       );
+      const visible = live.filter((r: any) =>
+        rowVisible(r, user!.id, managedDealIds ?? new Set()),
+      );
       // Mirror dedupe logic from useAiActionQueue so the badge count
       // matches what the user sees in the panel.
       const seen = new Set<string>();
-      for (const r of live as any[]) {
+      for (const r of visible as any[]) {
         const key = [
           r.action_type,
           r.deal_id ?? '',
