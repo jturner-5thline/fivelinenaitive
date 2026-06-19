@@ -150,6 +150,12 @@ export default function Dashboard() {
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
 
+  // When the user clicks "Open details" from the inline right-pane summary
+  // (list view), promote the same `?deal=<id>` selection to the rich
+  // NaitiveDealOverlay popup (Deal Space, Deal Info, etc.) instead of
+  // keeping just the side panel open.
+  const [forceOverlayDealId, setForceOverlayDealId] = useState<string | null>(null);
+
   // Persist board scroll position when the deal overlay opens/closes.
   const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
   usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
