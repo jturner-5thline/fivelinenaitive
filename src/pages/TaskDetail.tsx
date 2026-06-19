@@ -60,6 +60,7 @@ export default function TaskDetail() {
       if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (task) return;
       const action = undoStack.pop();
       if (!action) return;
       e.preventDefault();
@@ -67,7 +68,7 @@ export default function TaskDetail() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack]);
+  }, [task, undoStack]);
 
   if (isLoading) {
     return (
