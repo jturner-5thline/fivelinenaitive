@@ -559,14 +559,11 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                           const rest = lines.slice(1).join(' ').trim();
                           return (
                             <>
-                              <div className="flex items-start gap-2">
-                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                <p className="text-[14px] font-semibold leading-snug line-clamp-2" style={{ color: '#ffffff' }}>
-                                  {headline}
-                                </p>
-                              </div>
+                              <p className="text-[14px] font-semibold leading-snug line-clamp-2 text-left" style={{ color: '#ffffff' }}>
+                                {headline}
+                              </p>
                               {rest && (
-                                <p className="text-[13px] leading-snug mt-1 pl-3.5 line-clamp-3" style={{ color: '#ffffff' }}>
+                                <p className="text-[13px] leading-snug mt-1 line-clamp-3 text-left" style={{ color: '#ffffff' }}>
                                   {rest}
                                 </p>
                               )}
