@@ -52,7 +52,9 @@ import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
-import { ContactPickerField, type ContactPickerValue } from '@/components/contacts/ContactPickerField';
+import type { ContactPickerValue } from '@/components/contacts/ContactPickerField';
+import { MultiContactPickerField } from '@/components/contacts/MultiContactPickerField';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -121,10 +123,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [dealOwner, setDealOwner] = useState(initialValues?.dealOwner || '');
   const [contactName, setContactName] = useState(initialValues?.contactName || '');
   const [contactInfo, setContactInfo] = useState(initialValues?.contactInfo || '');
-  const [clientContact, setClientContact] = useState<ContactPickerValue | null>(
+  const [clientContacts, setClientContacts] = useState<ContactPickerValue[]>(
     initialValues?.contactName || initialValues?.contactInfo
-      ? { name: initialValues?.contactName || '', email: initialValues?.contactInfo || '' }
-      : null,
+      ? [{ name: initialValues?.contactName || '', email: initialValues?.contactInfo || '' }]
+      : [],
   );
   const [dealStatusNote, setDealStatusNote] = useState(initialValues?.dealStatusNote || '');
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
@@ -235,8 +237,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       return;
     }
     
-    if (showClientContact && (!contactName.trim() || !contactInfo.trim())) {
-      toast.error('Please fill in contact name and contact info');
+    if (showClientContact && clientContacts.length === 0) {
+      toast.error('Please add at least one client contact');
       return;
     }
 
@@ -292,6 +294,26 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       });
 
       if (newDeal) {
+        // Link any additional selected contacts to the new deal via the
+        // contact_deals junction so the deal carries the full multi-contact
+        // list. The first contact is mirrored into the legacy contact /
+        // contactInfo fields above for backward compatibility.
+        const linkableIds = clientContacts.map((c) => c.id).filter((id): id is string => !!id);
+        if (linkableIds.length > 0) {
+          try {
+            await supabase
+              .from('contact_deals')
+              .insert(
+                linkableIds.map((contactId) => ({
+                  deal_id: newDeal.id,
+                  contact_id: contactId,
+                })) as any,
+              );
+          } catch (linkErr) {
+            console.warn('[CreateDealDialog] failed to link contacts to deal', linkErr);
+          }
+        }
+
         // Populate the data-room (VDR) checklist from the matched deal-type
         // config. This is independent of Outstanding Items and only fires
         // when a deal-type config matches.
@@ -342,7 +364,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setDealOwner('');
     setContactName('');
     setContactInfo('');
-    setClientContact(null);
+    setClientContacts([]);
     setDealStatusNote('');
     setNarrative('');
     setReferralName('');
@@ -612,19 +634,23 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 <Label htmlFor="clientContact">
                   Client Contact <span className="text-destructive">*</span>
                 </Label>
-                <ContactPickerField
+                <MultiContactPickerField
                   id="clientContact"
-                  value={clientContact}
-                  onChange={(v) => {
-                    setClientContact(v);
-                    setContactName(v.name);
-                    setContactInfo(v.email);
+                  value={clientContacts}
+                  onChange={(list) => {
+                    setClientContacts(list);
+                    // Mirror the first contact into the legacy contact /
+                    // contactInfo fields so downstream code that still reads
+                    // those single-string fields keeps working.
+                    const first = list[0];
+                    setContactName(first?.name || '');
+                    setContactInfo(first?.email || '');
                   }}
                   placeholder="Search Contacts or create new…"
-                  invalid={!clientContact && showClientContact}
+                  invalid={clientContacts.length === 0 && showClientContact}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Pick from the Contacts database or add a new contact inline.
+                  Add one or more contacts from the Contacts database, or create new contacts inline.
                 </p>
               </div>
               )}
