@@ -150,6 +150,12 @@ export default function Dashboard() {
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
 
+  // When the user clicks "Open details" from the inline right-pane summary
+  // (list view), promote the same `?deal=<id>` selection to the rich
+  // NaitiveDealOverlay popup (Deal Space, Deal Info, etc.) instead of
+  // keeping just the side panel open.
+  const [forceOverlayDealId, setForceOverlayDealId] = useState<string | null>(null);
+
   // Persist board scroll position when the deal overlay opens/closes.
   const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
   usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
@@ -1044,14 +1050,23 @@ export default function Dashboard() {
                   const next = new URLSearchParams(overlaySearchParams);
                   next.delete('deal');
                   setOverlaySearchParams(next, { replace: false });
+                  setForceOverlayDealId(null);
                 };
                 const showInlineDetail =
-                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates;
+                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates
+                  && forceOverlayDealId !== selectedId;
                 // For grid + pipeline views, open the rich deal overlay
                 // (Deal Space, Deal Info, etc.) instead of the inline
                 // side-panel summary. List view keeps the inline split.
                 const showOverlayDetail =
-                  !!selectedDeal && (viewMode === 'grid' || viewMode === 'pipeline') && !showMilestones && !showDuplicates;
+                  !!selectedDeal
+                  && !showMilestones
+                  && !showDuplicates
+                  && (
+                    viewMode === 'grid'
+                    || viewMode === 'pipeline'
+                    || forceOverlayDealId === selectedId
+                  );
                 return (
               <>
               <div
@@ -1141,7 +1156,10 @@ export default function Dashboard() {
                     </Button>
                   </div>
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
-                    <DealRundownMemoView deal={selectedDeal as any} />
+                    <DealRundownMemoView
+                      deal={selectedDeal as any}
+                      onOpenDeal={(id) => setForceOverlayDealId(id)}
+                    />
                   </div>
                 </aside>
               )}
