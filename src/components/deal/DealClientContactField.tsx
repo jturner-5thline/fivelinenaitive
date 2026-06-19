@@ -21,11 +21,14 @@ interface ContactRow {
   email: string | null;
 }
 
-const formatContactName = (c: ContactRow): string =>
-  (c.full_name && c.full_name.trim()) ||
-  [c.first_name, c.last_name].filter(Boolean).join(' ').trim() ||
-  c.email ||
-  'Unnamed contact';
+const formatContactName = (c: ContactRow): string => {
+  const composed = [c.first_name, c.last_name].filter(Boolean).join(' ').trim();
+  if (composed) return composed;
+  const full = (c.full_name || '').trim();
+  // Avoid showing the email as the "name" when full_name was backfilled with it
+  if (full && full.toLowerCase() !== (c.email || '').toLowerCase()) return full;
+  return c.email || 'Unnamed contact';
+};
 
 interface Props {
   deal: Pick<Deal, 'id' | 'name' | 'company' | 'contact' | 'contactInfo' | 'contactEmail' | 'companyUrl'>;
@@ -149,6 +152,7 @@ export function DealClientContactField({
                         ) : (
                           results.map((c) => {
                             const name = formatContactName(c);
+                            const hasRealName = name && name !== c.email;
                             const selected = (deal.contact || '').trim().toLowerCase() === name.toLowerCase();
                             return (
                               <button
@@ -156,17 +160,19 @@ export function DealClientContactField({
                                 type="button"
                                 onClick={() => handlePickContact(c)}
                                 className={cn(
-                                  'w-full px-3 py-1.5 text-left text-xs flex items-center justify-between hover:bg-muted/60',
+                                  'w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-muted/60',
                                   selected && 'bg-muted font-medium',
                                 )}
                               >
-                                <span className="truncate">
-                                  {name}
-                                  {c.email && (
-                                    <span className="ml-2 text-muted-foreground">{c.email}</span>
+                                <span className="flex-1 min-w-0 flex flex-col">
+                                  <span className="truncate text-foreground">
+                                    {hasRealName ? name : (c.email || 'Unnamed contact')}
+                                  </span>
+                                  {hasRealName && c.email && (
+                                    <span className="truncate text-[11px] text-muted-foreground">{c.email}</span>
                                   )}
                                 </span>
-                                {selected && <Check className="h-3.5 w-3.5 text-primary" />}
+                                {selected && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
                               </button>
                             );
                           })
