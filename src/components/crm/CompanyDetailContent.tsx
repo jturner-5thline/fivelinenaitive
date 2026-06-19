@@ -426,9 +426,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </CardContent>
             </Card>
 
-            {/* Attachments — dedicated module */}
-            <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
-
             {/* 8. Activity Timeline */}
             <Card id="activity" className="border-border/70 scroll-mt-24">
               <CardHeader className="pb-2">
@@ -545,6 +542,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   )}
                 </CardContent>
               </Card>
+
+              {/* Attachments — dedicated module (sidebar width) */}
+              <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
 
             </div>
           </aside>
