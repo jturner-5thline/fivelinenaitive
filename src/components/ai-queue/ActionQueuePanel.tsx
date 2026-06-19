@@ -255,7 +255,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             </AlertDialogContent>
           </AlertDialog>
         )}
-        <AnalyzeNowButton />
+        {/* Deal Admin Agent now runs automatically every 2 hours in the background
+            (deal-admin-agent-auto-sweep cron). Manual trigger removed intentionally. */}
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex flex-col flex-1 min-h-0">
