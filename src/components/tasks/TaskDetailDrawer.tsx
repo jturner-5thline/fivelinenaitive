@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useUndoStack } from '@/hooks/useUndoStack';
+import { isTaskCompleted } from '@/lib/taskCache';
 import { TaskDuplicatePanel } from '@/components/tasks/TaskDuplicatePanel';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
@@ -111,6 +112,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [asanaSyncing, setAsanaSyncing] = useState(false);
+  const isComplete = isTaskCompleted(task);
 
   // Local undo stack for this drawer. Each entry captures the inverse of a
   // single onUpdate call so the user can roll back recent field changes
@@ -133,6 +135,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
         // non-null completed_at would keep `isTaskCompleted` true.
         if (Object.prototype.hasOwnProperty.call(updates, 'status')) {
           prev.completed_at = (task as any).completed_at ?? null;
+          prev.completed_by = (task as any).completed_by ?? null;
         }
         pushUndo({
           label: 'Task change',
@@ -146,11 +149,37 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
     [task, onUpdate, pushUndo],
   );
 
-  const handleUndoClick = useCallback(() => {
+  const runUndo = useCallback(() => {
     const a = popUndo();
-    if (!a) return;
-    Promise.resolve(a.undo()).then(() => toast.success('Undone')).catch(() => {});
-  }, [popUndo]);
+    if (a) {
+      Promise.resolve(a.undo()).then(() => toast.success('Undone')).catch(() => {});
+      return;
+    }
+
+    // Fallback: if the task was completed from another surface before this
+    // drawer recorded an undo entry, the header Undo button should still
+    // reopen it instead of being a dead control.
+    if (isComplete) {
+      Promise.resolve(onUpdate({ status: 'not_started', completed_at: null, completed_by: null } as any))
+        .then(() => toast.success('Undone'))
+        .catch(() => {});
+    }
+  }, [isComplete, onUpdate, popUndo]);
+
+  const handleUndoClick = useCallback(() => runUndo(), [runUndo]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (!canUndo && !isComplete) return;
+      e.preventDefault();
+      runUndo();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canUndo, isComplete, runUndo]);
 
   const handleManualAsanaSync = useCallback(async () => {
     if (asanaSyncing) return;
@@ -287,7 +316,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
     onUpdateWithUndo({ blocker_note: blockerNote.trim() || null } as any);
   };
 
-  const isComplete = task.status === 'complete';
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
@@ -311,10 +339,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             size="icon"
             className="h-7 w-7"
             onClick={handleUndoClick}
-            disabled={!canUndo}
-            title={canUndo ? 'Undo last change (⌘Z)' : 'Nothing to undo'}
+            disabled={!canUndo && !isComplete}
+            title={canUndo ? 'Undo last change (⌘Z)' : isComplete ? 'Mark incomplete (⌘Z)' : 'Nothing to undo'}
           >
-            <Undo2 className="h-3.5 w-3.5" style={{ color: canUndo ? '#eef1f6' : '#8b92a5' }} />
+            <Undo2 className="h-3.5 w-3.5" style={{ color: (canUndo || isComplete) ? '#eef1f6' : '#8b92a5' }} />
           </Button>
           <Button
             variant="ghost"
