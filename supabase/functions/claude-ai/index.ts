@@ -103,7 +103,7 @@ serve(async (req) => {
   let userId: string | undefined;
   let companyId: string | undefined;
   let feature = "chat";
-  let model = "claude-sonnet-4-20250514";
+  let model = "claude-sonnet-4-5-20250929";
 
   try {
     // ── Auth ──────────────────────────────────────────────
@@ -199,7 +199,7 @@ serve(async (req) => {
     }
 
     // ── Resolve model & params ───────────────────────────
-    model = aiConfig?.default_model || "claude-sonnet-4-20250514";
+    model = aiConfig?.default_model || "claude-sonnet-4-5-20250929";
     const temperature = body.temperature ?? aiConfig?.default_temperature ?? 0.7;
     const maxTokens = Math.min(body.max_tokens ?? aiConfig?.max_tokens ?? 4096, 8192);
 

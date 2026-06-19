@@ -241,7 +241,7 @@ async function executeAIProcessAction(
   triggerData: Record<string, any>
 ): Promise<{ success: boolean; message: string; aiOutput?: string }> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  const model = "claude-sonnet-4-20250514";
+  const model = "claude-sonnet-4-5-20250929";
 
   // Resolve company for gating + logging
   const { data: membership } = await supabase
