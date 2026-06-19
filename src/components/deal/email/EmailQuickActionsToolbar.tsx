@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, lazy, Suspense, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import {
   FolderUp,
   Building2,
@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { logUpdateLenderRefused } from '@/lib/aiAssistRefusalLogger';
 import { CreateTaskInlineCard } from './CreateTaskInlineCard';
-import { SaveToDealCard } from './SaveToDealCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { UpdateDealStatusInlineCard } from './UpdateDealStatusInlineCard';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
@@ -34,7 +33,7 @@ import type { EmailThread } from './mockEmailData';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
-const LazySaveToDealCard = React.lazy(() => import('./SaveToDealCard').then((m) => ({ default: m.SaveToDealCard })));
+const LazySaveToDealCard = lazy(() => import('./SaveToDealCard').then((m) => ({ default: m.SaveToDealCard })));
 
 type QuickActionKey =
   | 'save_dr'
@@ -275,15 +274,19 @@ export function EmailQuickActionsToolbar({
           "meeting" tile keeps its existing inline / modal behavior and is
           intentionally NOT wrapped in AIAssistOverlay. */}
       <AIAssistOverlay open={active === 'save_dr'} onClose={() => setActive(null)} title="Save to Data Room">
-        <SaveToDealCard
-          thread={thread}
-          attachments={attachments}
-          messageId={latestMessageId}
-          matchedDealId={dealId}
-          matchedDealName={dealName}
-          fallbackDealId={fallbackDealId}
-          fallbackDealName={fallbackDealName}
-        />
+        {active === 'save_dr' && (
+          <Suspense fallback={null}>
+            <LazySaveToDealCard
+              thread={thread}
+              attachments={attachments}
+              messageId={latestMessageId}
+              matchedDealId={dealId}
+              matchedDealName={dealName}
+              fallbackDealId={fallbackDealId}
+              fallbackDealName={fallbackDealName}
+            />
+          </Suspense>
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'update_lender'} onClose={() => setActive(null)} title="Update Lender Stage">
         <UpdateLenderStatusInlineCard
