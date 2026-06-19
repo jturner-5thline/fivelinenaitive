@@ -20,6 +20,7 @@ import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
 import { InlineQuickAddContact } from '@/components/crm/InlineQuickAddContact';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
+import { CompanyAttachmentsCard } from '@/components/crm/CompanyAttachmentsCard';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -397,6 +398,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 />
               </CardContent>
             </Card>
+
+            <CompanyAttachmentsCard crmCompanyId={company.id} />
 
             {company.custom_fields && Object.keys(company.custom_fields).length > 0 && (
               <Card>
