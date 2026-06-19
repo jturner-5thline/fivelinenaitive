@@ -1,0 +1,392 @@
+// Approval Queue execution router.
+// Validates the approver, executes the proposed mutation against the real
+// record (or stages drafted emails), and writes an audit row.
+//
+// Decisions supported: approve | reject | reassign | more_context
+// For action_type='draft_email', "approve" stages — it does NOT send.
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+type Decision = 'approve' | 'reject' | 'reassign' | 'more_context';
+
+interface ExecuteInput {
+  action_id: string;
+  decision: Decision;
+  edited_values?: Record<string, unknown>;
+  reassign_to_user_id?: string;
+  rejection_reason?: string;
+  more_context_notes?: string;
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+  const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (!authHeader) return json({ error: 'Unauthorized' }, 401);
+
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  const { data: userData, error: authErr } = await userClient.auth.getUser();
+  if (authErr || !userData?.user) return json({ error: 'Unauthorized' }, 401);
+  const userId = userData.user.id;
+
+  let input: ExecuteInput;
+  try {
+    input = await req.json();
+  } catch {
+    return json({ error: 'Invalid JSON' }, 400);
+  }
+  if (!input?.action_id || !input?.decision) {
+    return json({ error: 'action_id and decision required' }, 400);
+  }
+
+  // Load the queue item.
+  const { data: item, error: loadErr } = await admin
+    .from('ai_action_queue')
+    .select('*')
+    .eq('id', input.action_id)
+    .maybeSingle();
+  if (loadErr || !item) return json({ error: 'Action not found' }, 404);
+
+  // Authorization: assignee, original user, or anyone in same company can act.
+  const assignedTo = item.assigned_to ?? item.user_id;
+  if (assignedTo !== userId && item.user_id !== userId) {
+    // Allow same-company members.
+    const { data: myMembership } = await admin
+      .from('company_members').select('company_id').eq('user_id', userId);
+    const { data: theirMembership } = await admin
+      .from('company_members').select('company_id').eq('user_id', assignedTo);
+    const mine = new Set((myMembership ?? []).map((r: any) => r.company_id));
+    const overlap = (theirMembership ?? []).some((r: any) => mine.has(r.company_id));
+    if (!overlap) return json({ error: 'Forbidden' }, 403);
+  }
+
+  const now = new Date().toISOString();
+
+  // -------------------- REJECT --------------------
+  if (input.decision === 'reject') {
+    await admin.from('ai_action_queue').update({
+      status: 'dismissed',
+      dismissed_at: now,
+      rejection_reason: input.rejection_reason ?? null,
+    }).eq('id', item.id);
+    await admin.from('approval_queue_audit').insert({
+      action_queue_id: item.id,
+      target_object_type: item.target_object_type,
+      target_object_id: item.target_object_id,
+      action_type: item.action_type,
+      old_values: item.old_values ?? {},
+      new_values: item.new_values ?? {},
+      approver_user_id: userId,
+      decision: 'rejected',
+      execution_status: 'noop',
+      rejection_reason: input.rejection_reason ?? null,
+    });
+    return json({ ok: true, decision: 'rejected' });
+  }
+
+  // -------------------- REASSIGN --------------------
+  if (input.decision === 'reassign') {
+    if (!input.reassign_to_user_id) return json({ error: 'reassign_to_user_id required' }, 400);
+    await admin.from('ai_action_queue').update({
+      assigned_to: input.reassign_to_user_id,
+      reassigned_from: assignedTo,
+    }).eq('id', item.id);
+    await admin.from('approval_queue_audit').insert({
+      action_queue_id: item.id,
+      target_object_type: item.target_object_type,
+      target_object_id: item.target_object_id,
+      action_type: item.action_type,
+      old_values: { assigned_to: assignedTo },
+      new_values: { assigned_to: input.reassign_to_user_id },
+      approver_user_id: userId,
+      decision: 'reassigned',
+      execution_status: 'success',
+    });
+    return json({ ok: true, decision: 'reassigned' });
+  }
+
+  // -------------------- MORE CONTEXT --------------------
+  if (input.decision === 'more_context') {
+    await admin.from('ai_action_queue').update({
+      more_context_requested_at: now,
+      more_context_notes: input.more_context_notes ?? null,
+    }).eq('id', item.id);
+    await admin.from('approval_queue_audit').insert({
+      action_queue_id: item.id,
+      target_object_type: item.target_object_type,
+      target_object_id: item.target_object_id,
+      action_type: item.action_type,
+      old_values: item.old_values ?? {},
+      new_values: item.new_values ?? {},
+      approver_user_id: userId,
+      decision: 'more_context',
+      execution_status: 'noop',
+    });
+    return json({ ok: true, decision: 'more_context' });
+  }
+
+  // -------------------- APPROVE --------------------
+  // Merge edited values into the proposed new_values.
+  const merged: Record<string, unknown> = {
+    ...(item.new_values || {}),
+    ...(input.edited_values || {}),
+  };
+  // Some legacy items carry their proposal in `payload`. Surface it as fallback.
+  const payload = item.payload || {};
+  const wasEdited = !!input.edited_values && Object.keys(input.edited_values).length > 0;
+
+  // Helper to fail safely.
+  async function recordFailure(reason: string) {
+    await admin.from('ai_action_queue').update({
+      status: 'failed',
+      execution_error: reason,
+    }).eq('id', item.id);
+    await admin.from('approval_queue_audit').insert({
+      action_queue_id: item.id,
+      target_object_type: item.target_object_type,
+      target_object_id: item.target_object_id,
+      action_type: item.action_type,
+      old_values: item.old_values ?? {},
+      new_values: merged,
+      approver_user_id: userId,
+      decision: 'approved',
+      execution_status: 'failed',
+      failure_reason: reason,
+      was_edited: wasEdited,
+    });
+    return json({ ok: false, error: reason }, 200);
+  }
+
+  async function recordSuccess(decision: 'approved' | 'edited_approved' | 'email_staged' = 'approved', execution: 'success' | 'staged' = 'success') {
+    await admin.from('ai_action_queue').update({
+      status: 'approved',
+      approved_at: now,
+      executed_at: now,
+      execution_error: null,
+      edited_before_approval: wasEdited,
+      new_values: merged,
+    }).eq('id', item.id);
+    await admin.from('approval_queue_audit').insert({
+      action_queue_id: item.id,
+      target_object_type: item.target_object_type,
+      target_object_id: item.target_object_id,
+      action_type: item.action_type,
+      old_values: item.old_values ?? {},
+      new_values: merged,
+      approver_user_id: userId,
+      decision: wasEdited ? 'edited_approved' : decision,
+      execution_status: execution,
+      was_edited: wasEdited,
+    });
+    // Activity log entry for traceability.
+    if (item.deal_id) {
+      await admin.from('activity_logs').insert({
+        deal_id: item.deal_id,
+        activity_type: 'ai_action_approved',
+        description: `Approved: ${item.title}`,
+        user_id: userId,
+      });
+    }
+  }
+
+  try {
+    switch (item.action_type) {
+      case 'update_deal_stage': {
+        const stage = merged.stage ?? payload.stage;
+        if (!item.deal_id || !stage) return recordFailure('Missing deal or stage');
+        const { error } = await admin.from('deals').update({ stage }).eq('id', item.deal_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'update_deal_status': {
+        const status = merged.status ?? payload.status;
+        if (!item.deal_id || !status) return recordFailure('Missing deal or status');
+        const { error } = await admin.from('deals').update({ status }).eq('id', item.deal_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'add_status_note': {
+        const note = merged.note ?? payload.note ?? item.description;
+        if (!item.deal_id || !note) return recordFailure('Missing deal or note');
+        const { error } = await admin.from('deal_status_notes').insert({
+          deal_id: item.deal_id,
+          note,
+          user_id: userId,
+        } as any);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'update_funding_source':
+      case 'update_lender_status': {
+        const dlId = (merged.deal_lender_id ?? payload.deal_lender_id) as string | undefined;
+        const substage = (merged.substage ?? merged.new_status ?? payload.substage ?? payload.new_status) as string | undefined;
+        const tracking = (merged.tracking_status ?? payload.tracking_status) as string | undefined;
+        if (!dlId || !substage) return recordFailure('Missing funding source id or status');
+        const upd: Record<string, unknown> = { substage };
+        if (tracking !== undefined) upd.tracking_status = tracking;
+        const { error } = await admin.from('deal_lenders').update(upd as any).eq('id', dlId);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'create_milestone':
+      case 'update_milestone': {
+        const m = { ...payload, ...merged } as any;
+        if (!item.deal_id) return recordFailure('Missing deal');
+        if (item.action_type === 'update_milestone' && m.id) {
+          const { id, ...rest } = m;
+          const { error } = await admin.from('deal_milestones').update(rest).eq('id', id);
+          if (error) return recordFailure(error.message);
+        } else {
+          const { error } = await admin.from('deal_milestones').insert({
+            deal_id: item.deal_id,
+            title: m.title || item.title,
+            due_date: m.due_date ?? null,
+            completed: m.completed ?? false,
+          } as any);
+          if (error) return recordFailure(error.message);
+        }
+        break;
+      }
+      case 'create_followup_task':
+      case 'create_task': {
+        const p = { ...payload, ...merged } as any;
+        const { data: membership } = await admin
+          .from('company_members').select('company_id').eq('user_id', userId).limit(1).maybeSingle();
+        const safePriority = p.priority === 'urgent' ? 'urgent' : null;
+        const { error } = await admin.from('tasks').insert({
+          title: p.title || item.title,
+          description: p.description ?? item.description ?? null,
+          due_date: p.due_date ?? null,
+          priority: safePriority,
+          deal_id: item.deal_id,
+          assigned_to: p.assigned_to ?? userId,
+          assigned_by: userId,
+          company_id: membership?.company_id ?? null,
+        } as any);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'log_note': {
+        const p = { ...payload, ...merged } as any;
+        const { error } = await admin.from('activity_logs').insert({
+          deal_id: item.deal_id,
+          activity_type: p.activity_type || 'note',
+          description: p.description || item.description || item.title,
+          user_id: userId,
+        });
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'update_contact': {
+        const p = { ...payload, ...merged } as any;
+        if (!p.contact_id) return recordFailure('Missing contact_id');
+        const { contact_id, ...fields } = p;
+        const { error } = await admin.from('contacts').update(fields).eq('id', contact_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'update_company': {
+        const p = { ...payload, ...merged } as any;
+        if (!p.company_id) return recordFailure('Missing company_id');
+        const { company_id, ...fields } = p;
+        const { error } = await admin.from('crm_companies').update(fields).eq('id', company_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'deal_update': {
+        const p = { ...payload, ...merged } as any;
+        const fields = p.fields ?? p;
+        if (!item.deal_id || !fields || typeof fields !== 'object') return recordFailure('Missing deal or fields');
+        const { error } = await admin.from('deals').update(fields).eq('id', item.deal_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'escalate': {
+        const p = { ...payload, ...merged } as any;
+        const { data: membership } = await admin
+          .from('company_members').select('company_id').eq('user_id', userId).limit(1).maybeSingle();
+        const { error } = await admin.from('tasks').insert({
+          title: p.title || `Escalation: ${item.title}`,
+          description: p.description ?? item.rationale ?? item.description ?? null,
+          due_date: p.due_date ?? null,
+          priority: 'urgent',
+          deal_id: item.deal_id,
+          assigned_to: p.escalate_to ?? userId,
+          assigned_by: userId,
+          company_id: membership?.company_id ?? null,
+        } as any);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'reassign_deal': {
+        const p = { ...payload, ...merged } as any;
+        if (!item.deal_id || !p.manager) return recordFailure('Missing deal or manager');
+        const { error } = await admin.from('deals').update({ manager: p.manager }).eq('id', item.deal_id);
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      case 'draft_email': {
+        // STAGE — do NOT send. User must manually send from staged drafts UI.
+        const p = { ...payload, ...merged } as any;
+        const { error } = await admin.from('staged_email_drafts').insert({
+          source_action_id: item.id,
+          user_id: userId,
+          deal_id: item.deal_id,
+          thread_id: p.thread_id ?? null,
+          to_recipients: p.to ?? p.to_recipients ?? [],
+          cc_recipients: p.cc ?? p.cc_recipients ?? [],
+          bcc_recipients: p.bcc ?? p.bcc_recipients ?? [],
+          subject: p.subject ?? null,
+          body_html: p.body_html ?? p.body ?? null,
+          body_text: p.body_text ?? null,
+          attachments: p.attachments ?? [],
+          status: 'staged',
+        });
+        if (error) return recordFailure(error.message);
+        await recordSuccess('email_staged', 'staged');
+        return json({ ok: true, decision: 'email_staged' });
+      }
+      // Legacy / passthrough — existing executors handle these on the client.
+      case 'save_to_data_room':
+      case 'claap_recording_review':
+      case 'claap_action_items': {
+        const { error } = await admin.from('activity_logs').insert({
+          deal_id: item.deal_id,
+          activity_type: 'ai_action_approved',
+          description: `Approved (passthrough): ${item.title}`,
+          user_id: userId,
+        });
+        if (error) return recordFailure(error.message);
+        break;
+      }
+      default:
+        return recordFailure(`Unknown action type: ${item.action_type}`);
+    }
+
+    await recordSuccess();
+    return json({ ok: true, decision: 'approved' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return recordFailure(msg);
+  }
+});
