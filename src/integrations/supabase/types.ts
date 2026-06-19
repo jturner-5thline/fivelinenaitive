@@ -20172,6 +20172,8 @@ export type Database = {
           is_active: boolean
           is_demo_user: boolean
           last_daily_rundown_notice_at: string | null
+          last_eod_rundown_email_sent_at: string | null
+          last_eod_rundown_notice_at: string | null
           last_name: string | null
           lender_updates_app: boolean
           lender_updates_email: boolean
@@ -20228,6 +20230,8 @@ export type Database = {
           is_active?: boolean
           is_demo_user?: boolean
           last_daily_rundown_notice_at?: string | null
+          last_eod_rundown_email_sent_at?: string | null
+          last_eod_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
@@ -20284,6 +20288,8 @@ export type Database = {
           is_active?: boolean
           is_demo_user?: boolean
           last_daily_rundown_notice_at?: string | null
+          last_eod_rundown_email_sent_at?: string | null
+          last_eod_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
