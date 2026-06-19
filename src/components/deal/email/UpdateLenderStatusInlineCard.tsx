@@ -64,7 +64,30 @@ interface Props {
 export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
   const { stages: stageOptions } = useLenderStages();
-  const deal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
+  const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
+
+  // Duplicate-deal guard: if the company has multiple deal rows (e.g. two "Worthy"
+  // entries) and the AI-identified funding source is actually tracked on a
+  // *sibling* deal with the same company name, switch to that sibling so we
+  // don't falsely prompt the user to add a lender that already exists.
+  const effectiveDeal = useMemo(() => {
+    if (!initialDeal) return undefined;
+    const proposed = (preselectLenderName || '').trim();
+    if (!proposed) return initialDeal;
+    const onInitial = (initialDeal.lenders || []).some((l) =>
+      lenderNamesMatch(l.name || '', proposed),
+    );
+    if (onInitial) return initialDeal;
+    const sibling = deals.find(
+      (d) =>
+        d.id !== initialDeal.id &&
+        (d.company || '').trim().toLowerCase() === (initialDeal.company || '').trim().toLowerCase() &&
+        (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed)),
+    );
+    return sibling || initialDeal;
+  }, [deals, initialDeal, preselectLenderName]);
+
+  const deal = effectiveDeal;
   const lenders: DealLender[] = deal?.lenders || [];
 
   const initialLenderId = useMemo(() => {
