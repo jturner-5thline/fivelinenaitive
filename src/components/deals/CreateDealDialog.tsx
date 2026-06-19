@@ -52,6 +52,7 @@ import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
+import { ContactPickerField, type ContactPickerValue } from '@/components/contacts/ContactPickerField';
 
 export interface CreateDealInitialValues {
   dealName?: string;
@@ -120,6 +121,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [dealOwner, setDealOwner] = useState(initialValues?.dealOwner || '');
   const [contactName, setContactName] = useState(initialValues?.contactName || '');
   const [contactInfo, setContactInfo] = useState(initialValues?.contactInfo || '');
+  const [clientContact, setClientContact] = useState<ContactPickerValue | null>(
+    initialValues?.contactName || initialValues?.contactInfo
+      ? { name: initialValues?.contactName || '', email: initialValues?.contactInfo || '' }
+      : null,
+  );
   const [dealStatusNote, setDealStatusNote] = useState(initialValues?.dealStatusNote || '');
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
@@ -336,6 +342,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setDealOwner('');
     setContactName('');
     setContactInfo('');
+    setClientContact(null);
     setDealStatusNote('');
     setNarrative('');
     setReferralName('');
@@ -599,29 +606,26 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
               )}
 
-              {/* Row 4: Contact Name + Contact Info */}
+              {/* Row 4: Client Contact (sourced from Contacts) */}
               {showClientContact && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="contactName">Contact Name <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="contactName"
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Enter contact name"
-                    required
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="contactInfo">Contact Info <span className="text-destructive">*</span></Label>
-                  <Input
-                    id="contactInfo"
-                    value={contactInfo}
-                    onChange={(e) => setContactInfo(e.target.value)}
-                    placeholder="Email or phone number"
-                    required
-                  />
-                </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="clientContact">
+                  Client Contact <span className="text-destructive">*</span>
+                </Label>
+                <ContactPickerField
+                  id="clientContact"
+                  value={clientContact}
+                  onChange={(v) => {
+                    setClientContact(v);
+                    setContactName(v.name);
+                    setContactInfo(v.email);
+                  }}
+                  placeholder="Search Contacts or create new…"
+                  invalid={!clientContact && showClientContact}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Pick from the Contacts database or add a new contact inline.
+                </p>
               </div>
               )}
 
