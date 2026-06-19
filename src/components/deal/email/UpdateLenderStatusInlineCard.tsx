@@ -63,7 +63,7 @@ interface Props {
  */
 export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
-  const { stages: stageOptions } = useLenderStages();
+  const { stages: stageOptions, substages: milestoneOptions } = useLenderStages();
   const initialDeal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
 
   // Duplicate-deal guard: if the company has multiple deal rows (e.g. two "Worthy"
@@ -113,6 +113,11 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   useEffect(() => {
     if (lender?.stage) setStage(lender.stage);
   }, [lender?.stage]);
+  const NO_MILESTONE = '__none__';
+  const [milestone, setMilestone] = useState<string>(lender?.substage || NO_MILESTONE);
+  useEffect(() => {
+    setMilestone(lender?.substage || NO_MILESTONE);
+  }, [lender?.substage]);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -202,6 +207,12 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
           ? { trackingStatus: selectedStage.group as DealLender['trackingStatus'] }
           : {}),
       };
+      // Only write substage when the user changed it relative to current value,
+      // so leaving the milestone untouched doesn't wipe an existing one.
+      const nextMilestone = milestone === NO_MILESTONE ? null : milestone;
+      if ((lender.substage || null) !== nextMilestone) {
+        updates.substage = nextMilestone as DealLender['substage'];
+      }
       if (trimmedNote) {
         const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const prev = (lender.notes || '').trim();
@@ -212,7 +223,11 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       await updateLender(lender.id, updates);
       clearTimeout(timeoutId);
       setDone(true);
-      toast.success(`${lender.name} → ${selectedStage?.label || stage}`);
+      const milestoneLabel = milestoneOptions.find((m) => m.id === milestone)?.label;
+      const summary = milestoneLabel && milestone !== NO_MILESTONE
+        ? `${lender.name} → ${selectedStage?.label || stage} · ${milestoneLabel}`
+        : `${lender.name} → ${selectedStage?.label || stage}`;
+      toast.success(summary);
       setTimeout(onClose, 900);
     } catch (err: any) {
       clearTimeout(timeoutId);
@@ -264,6 +279,27 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
             {stageOptions.map((s) => (
               <SelectItem key={s.id} value={s.id} className="text-[12px]">
                 {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">
+          Milestone <span className="text-muted-foreground/50 normal-case">(optional)</span>
+        </label>
+        <Select value={milestone} onValueChange={setMilestone}>
+          <SelectTrigger className="h-8 text-[12px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={NO_MILESTONE} className="text-[12px] text-muted-foreground">
+              — None —
+            </SelectItem>
+            {milestoneOptions.map((m) => (
+              <SelectItem key={m.id} value={m.id} className="text-[12px]">
+                {m.label}
               </SelectItem>
             ))}
           </SelectContent>
