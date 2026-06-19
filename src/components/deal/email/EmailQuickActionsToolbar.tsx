@@ -33,7 +33,6 @@ import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSugge
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { AIAssistOverlay } from './AIAssistOverlay';
-import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 import { useQueryClient } from '@tanstack/react-query';
@@ -112,15 +111,10 @@ export function EmailQuickActionsToolbar({
   onInsertDraft,
 }: Props) {
   const [active, setActive] = useState<QuickActionKey | null>(null);
-  // Meeting tile has two modes: 'quick-book' (popover) and 'propose'
-  // (legacy inline MeetingSchedulerCard reached via the popover's
-  // "Propose via email instead" link). Defaults to quick-book.
-  const [meetingMode, setMeetingMode] = useState<'quick-book' | 'propose'>('quick-book');
   const [summary, setSummary] = useState<string[] | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   // Pre-warm the user's freebusy cache as soon as the toolbar mounts so
   // clicking Suggest Times renders slots from cache instantly.
@@ -152,14 +146,10 @@ export function EmailQuickActionsToolbar({
     if (active === 'save_dr' && uploadableCount === 0) setActive(null);
   }, [active, uploadableCount]);
 
-  const modalRoot = typeof document !== 'undefined'
-    ? document.getElementById('email-popup-modal-root')
-    : null;
-
   // Schedule Meeting now consolidates with Suggest Times — clicking the
   // pill opens the SuggestTimesPanel overlay directly. The legacy
-  // QuickBook popover path stays mounted only as the optional
-  // "Propose via email" sub-flow (set via setMeetingMode('propose')).
+  // QuickBook popover and inline MeetingSchedulerCard paths have been
+  // retired in favor of the single Suggest Times surface.
   const handleMeetingClick = () => {
     setActive((prev) => (prev === 'meeting' ? null : 'meeting'));
   };
@@ -386,17 +376,6 @@ export function EmailQuickActionsToolbar({
           onCancel={() => setActive(null)}
         />
       </AIAssistOverlay>
-      {active === 'meeting' && meetingMode === 'propose' && (
-        <MeetingSchedulerCard
-          recipientEmail={thread.latestEmail?.from_email}
-          recipientName={thread.latestEmail?.from_name || undefined}
-          threadSubject={thread.subject}
-          dealName={dealName || fallbackDealName || undefined}
-          thread={thread}
-          onInsert={(text) => onInsertDraft(text)}
-          onClose={() => setActive(null)}
-        />
-      )}
       <AIAssistOverlay open={active === 'outstanding'} onClose={() => setActive(null)} title="Add to Outstanding Items">
         <AddOutstandingItemsInlineCard
           dealId={dealId || fallbackDealId}
