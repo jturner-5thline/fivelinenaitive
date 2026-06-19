@@ -13,6 +13,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { type Deal, type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { isActiveDeal } from '@/lib/deals';
+import { findActiveSameCompanyDeal } from '@/lib/effectiveDealSelection';
 import { toast } from 'sonner';
 
 /**
@@ -83,7 +84,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     const activeSibling = sameCompanyDeals.find(
       (d) => d.id !== initialDeal.id && isActiveDeal(d),
     );
-    if (!proposed) return isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal);
+    if (!proposed) return findActiveSameCompanyDeal(deals, initialDeal);
 
     const hasProposedLender = (d: Deal) =>
       (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed));
