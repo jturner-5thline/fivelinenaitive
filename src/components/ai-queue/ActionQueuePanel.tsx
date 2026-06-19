@@ -549,3 +549,202 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     </div>
   );
 }
+
+interface ApprovalRowProps {
+  item: QueuedAiAction;
+  busyId: string | null;
+  editingId: string | null;
+  expandedId: string | null;
+  editTitle: string;
+  editDesc: string;
+  setEditTitle: (v: string) => void;
+  setEditDesc: (v: string) => void;
+  startEdit: (item: QueuedAiAction) => void;
+  saveEdit: () => Promise<void> | void;
+  setEditingId: (v: string | null) => void;
+  setExpandedId: (v: string | null) => void;
+  setBusyId: (v: string | null) => void;
+  approve: ReturnType<typeof useApproveAiAction>;
+  dismiss: ReturnType<typeof useDismissAiAction>;
+}
+
+function ApprovalRow({
+  item,
+  busyId,
+  editingId,
+  expandedId,
+  editTitle,
+  editDesc,
+  setEditTitle,
+  setEditDesc,
+  startEdit,
+  saveEdit,
+  setEditingId,
+  setExpandedId,
+  setBusyId,
+  approve,
+  dismiss,
+}: ApprovalRowProps) {
+  const meta = TYPE_META[item.action_type];
+  const Icon = meta?.icon ?? CheckSquare;
+  const isEditing = editingId === item.id;
+  const isExpanded = expandedId === item.id;
+  const outcome = buildOutcomeSentence(item);
+  const onApprove = buildOnApproveSentence(item);
+  const targetLabel = targetSummary(item);
+  const ctaLabel = approveButtonLabel(item);
+
+  return (
+    <li className="p-2.5 space-y-1.5">
+      <div className="flex items-start gap-2">
+        <Icon className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${meta?.color || ''}`} />
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="space-y-1.5">
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="h-7 text-xs"
+              />
+              <Textarea
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                className="min-h-[44px] text-xs"
+              />
+            </div>
+          ) : (
+            <>
+              <p
+                className="text-xs font-medium text-foreground line-clamp-2 break-words"
+                title={item.title}
+              >
+                {item.title}
+              </p>
+              <p
+                className="text-[11px] text-muted-foreground/90 line-clamp-2 break-words"
+                title={onApprove}
+              >
+                {onApprove}
+              </p>
+              {item.description && (
+                <p
+                  className="text-[11px] text-muted-foreground line-clamp-2 break-words mt-0.5 italic"
+                  title={item.description}
+                >
+                  {item.description}
+                </p>
+              )}
+            </>
+          )}
+          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground flex-wrap">
+            <Badge variant="outline" className="h-3.5 px-1 text-[9px] border-white/15">
+              {targetLabel}
+            </Badge>
+            {item.risk_level && (
+              <Badge
+                variant="outline"
+                className={`h-3.5 px-1 text-[9px] ${
+                  item.risk_level === 'high'
+                    ? 'border-red-500/40 text-red-400'
+                    : item.risk_level === 'medium'
+                    ? 'border-amber-500/40 text-amber-400'
+                    : 'border-emerald-500/40 text-emerald-400'
+                }`}
+              >
+                {item.risk_level} risk
+              </Badge>
+            )}
+            {item.priority && item.priority !== 'normal' && (
+              <Badge variant="outline" className="h-3.5 px-1 text-[9px] border-primary/40 text-primary capitalize">
+                {item.priority}
+              </Badge>
+            )}
+            {item.source?.origin === 'admin_agent' && (
+              <Badge
+                variant="outline"
+                className="h-4 px-1.5 text-[9px] font-medium border-primary/40 bg-primary/10 text-primary uppercase tracking-wide"
+              >
+                Admin Agent
+              </Badge>
+            )}
+            <span>·</span>
+            <span>{formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}</span>
+            <span>·</span>
+            <span className="inline-flex items-center gap-0.5">
+              <Clock className="h-2.5 w-2.5" />
+              {expiryLabel(item)}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1">
+        {isEditing ? (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setEditingId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-6 px-2 text-[10px] gap-1"
+              onClick={() => saveEdit()}
+            >
+              <Save className="h-3 w-3" /> Save
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+              onClick={() => setExpandedId(isExpanded ? null : item.id)}
+            >
+              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              Review
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground"
+              onClick={() => startEdit(item)}
+            >
+              <Pencil className="h-3 w-3" /> Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] gap-1 text-muted-foreground hover:text-destructive"
+              onClick={() => dismiss(item.id)}
+            >
+              <X className="h-3 w-3" /> Reject
+            </Button>
+            <Button
+              size="sm"
+              variant="liquid-glass"
+              className="h-6 px-2 text-[10px] gap-1"
+              disabled={busyId === item.id}
+              onClick={async () => {
+                setBusyId(item.id);
+                await approve(item);
+                setBusyId(null);
+              }}
+              title={onApprove}
+            >
+              {busyId === item.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              {ctaLabel}
+            </Button>
+          </>
+        )}
+      </div>
+      {isExpanded && (
+        <ApprovalReviewExpanded item={item} onDone={() => setExpandedId(null)} />
+      )}
+    </li>
+  );
+}
