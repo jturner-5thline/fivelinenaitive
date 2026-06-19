@@ -289,67 +289,81 @@ export function EmailQuickActionsToolbar({
         )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'update_lender'} onClose={() => setActive(null)} title="Update Lender Stage">
-        <UpdateLenderStatusInlineCard
-          dealId={dealId || fallbackDealId}
-          preselectLenderName={likelyLenderName}
-          onClose={() => setActive(null)}
-        />
+        {active === 'update_lender' && (
+          <UpdateLenderStatusInlineCard
+            dealId={dealId || fallbackDealId}
+            preselectLenderName={likelyLenderName}
+            onClose={() => setActive(null)}
+          />
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'update_status'} onClose={() => setActive(null)} title="Update Deal Status / Stage">
-        <UpdateDealStatusInlineCard
-          dealId={dealId || fallbackDealId}
-          onClose={() => setActive(null)}
-        />
+        {active === 'update_status' && (
+          <UpdateDealStatusInlineCard
+            dealId={dealId || fallbackDealId}
+            onClose={() => setActive(null)}
+          />
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'update_fields'} onClose={() => setActive(null)} title="Update Deal Fields">
-        <UpdateDealFieldsOverlayBody
-          dealId={dealId || fallbackDealId || null}
-          dealName={dealName || fallbackDealName || null}
-          threadId={thread.threadId}
-        />
+        {active === 'update_fields' && (
+          <UpdateDealFieldsOverlayBody
+            dealId={dealId || fallbackDealId || null}
+            dealName={dealName || fallbackDealName || null}
+            threadId={thread.threadId}
+          />
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'update_contact'} onClose={() => setActive(null)} title="Update CRM Contact / Company">
-        {contactId ? (
-          <ContactFieldSuggestions contactId={contactId} />
-        ) : (
-          <div className="rounded-xl border border-border bg-card p-3">
-            <p className="text-xs text-muted-foreground">
-              No CRM contact linked to this sender yet.
-            </p>
-          </div>
+        {active === 'update_contact' && (
+          contactId ? (
+            <ContactFieldSuggestions contactId={contactId} />
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="text-xs text-muted-foreground">
+                No CRM contact linked to this sender yet.
+              </p>
+            </div>
+          )
         )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'task'} onClose={() => setActive(null)} title="Create Task">
-        <CreateTaskInlineCard
-          dealId={dealId || fallbackDealId || null}
-          dealName={dealName || fallbackDealName || null}
-          threadId={thread.threadId}
-          subject={thread.subject}
-          senderEmail={thread.latestEmail?.from_email}
-          senderName={thread.latestEmail?.from_name || undefined}
-          defaultOpen
-          onCancel={() => setActive(null)}
-        />
+        {active === 'task' && (
+          <CreateTaskInlineCard
+            dealId={dealId || fallbackDealId || null}
+            dealName={dealName || fallbackDealName || null}
+            threadId={thread.threadId}
+            subject={thread.subject}
+            senderEmail={thread.latestEmail?.from_email}
+            senderName={thread.latestEmail?.from_name || undefined}
+            defaultOpen
+            onCancel={() => setActive(null)}
+          />
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'outstanding'} onClose={() => setActive(null)} title="Add to Outstanding Items">
-        <AddOutstandingItemsInlineCard
-          dealId={dealId || fallbackDealId}
-          dealName={dealName || fallbackDealName}
-          thread={thread}
-          preselectLenderName={likelyLenderName}
-          onClose={() => setActive(null)}
-        />
+        {active === 'outstanding' && (
+          <AddOutstandingItemsInlineCard
+            dealId={dealId || fallbackDealId}
+            dealName={dealName || fallbackDealName}
+            thread={thread}
+            preselectLenderName={likelyLenderName}
+            onClose={() => setActive(null)}
+          />
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'meeting'} onClose={() => setActive(null)} title="Schedule Meeting" hideClose>
-        <SuggestTimesPanel
-          threadId={thread.threadId}
-          subject={thread.subject}
-          recipientEmail={thread.latestEmail?.from_email || null}
-          recipientName={thread.latestEmail?.from_name || null}
-          dealId={dealId || fallbackDealId || null}
-          onInsertDraft={(body) => onInsertDraft(body)}
-          onClose={() => setActive(null)}
-        />
+        {active === 'meeting' && (
+          <SuggestTimesPanel
+            threadId={thread.threadId}
+            subject={thread.subject}
+            recipientEmail={thread.latestEmail?.from_email || null}
+            recipientName={thread.latestEmail?.from_name || null}
+            dealId={dealId || fallbackDealId || null}
+            onInsertDraft={(body) => onInsertDraft(body)}
+            onClose={() => setActive(null)}
+          />
+        )}
       </AIAssistOverlay>
     </div>
   );
