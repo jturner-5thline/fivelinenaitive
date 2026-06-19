@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { resolveDealFromTaskText } from '@/lib/resolveDealFromTaskText';
 
 export interface TaskDraft {
   title: string;
@@ -42,6 +44,48 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reqId = useRef(0);
+  const { deals } = useDealsContext();
+
+  // Instant client-side deal resolution — no network round-trip. When the
+  // user mentions a known deal verbatim, surface the chip immediately and
+  // (later) override the AI's pick if its match is unambiguous.
+  useEffect(() => {
+    const trimmed = text.trim();
+    if (trimmed.length < 4) return;
+    const local = resolveDealFromTaskText(trimmed, deals);
+    if (!local) return;
+    setDraft((prev) => {
+      // Already aligned — nothing to do.
+      if (prev?.deal_id === local.id) return prev;
+      // Skeleton draft so the chip appears before the AI returns.
+      if (!prev) {
+        return {
+          title: trimmed,
+          description: null,
+          due_date: null,
+          due_time: null,
+          priority: null,
+          type: 'general',
+          is_recurring: false,
+          recurrence_rule: null,
+          confidence: 0.5,
+          owner_id: null,
+          owner_label: null,
+          owner_ambiguous: null,
+          deal_id: local.id,
+          deal_label: local.label,
+          lender_id: null,
+          lender_label: null,
+          contact_id: null,
+          contact_label: null,
+          source_thread_id: context.thread_id ?? null,
+          hints: { owner: null, deal: local.label, lender: null, contact: null },
+        };
+      }
+      // Override AI pick when local exact-mention disagrees.
+      return { ...prev, deal_id: local.id, deal_label: local.label };
+    });
+  }, [text, deals, context.thread_id]);
 
   useEffect(() => {
     const trimmed = text.trim();
@@ -71,6 +115,15 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
           // Honor explicit "no priority / leave blank / clear priority" intent.
           if (/\b(no|without|clear|blank|leave\s+blank|remove)\s+priority\b|priority\s+(should\s+be\s+)?(blank|none|null|clear|removed)/i.test(trimmed)) {
             d.priority = null;
+          }
+          // Prefer the instant local deal match over the AI's pick when the
+          // user mentioned a deal verbatim — the AI sometimes resolves to a
+          // stale duplicate.
+          const local = resolveDealFromTaskText(trimmed, deals);
+          if (local) {
+            d.deal_id = local.id;
+            d.deal_label = local.label;
+            d.hints = { ...d.hints, deal: d.hints?.deal ?? local.label };
           }
           setDraft(d);
           setError(null);
