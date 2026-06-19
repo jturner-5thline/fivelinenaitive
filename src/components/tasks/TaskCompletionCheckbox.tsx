@@ -96,7 +96,7 @@ export function TaskCompletionCheckbox({
   // Checkmark glyph opacity
   let glyphOpacity = 0;
   if (effectiveChecked) glyphOpacity = showPreviewUncheck ? 0.5 : 1;
-  else if (showPreviewFill) glyphOpacity = 0.7;
+  else if (showPreviewFill) glyphOpacity = 1;
 
   // Scale
   let scale = 1;
