@@ -67,12 +67,26 @@ export function AIAssistOverlay({ open, onClose, title, children, hideClose }: O
     return () => window.removeEventListener('keydown', onKey);
   }, [open, handleClose]);
 
-  if (!open || !host) return null;
+  // Track whether this overlay has ever been opened. We eagerly mount the
+  // children on first open and KEEP them mounted thereafter (hidden via
+  // CSS) so re-opening is instant — heavy data fetches inside each panel
+  // (deal lookups, AI suggestions, free/busy, etc.) only pay their cost
+  // once per sidebar session instead of on every click.
+  const [hasOpened, setHasOpened] = useState(open);
+  useEffect(() => {
+    if (open) setHasOpened(true);
+  }, [open]);
+
+  if (!host || !hasOpened) return null;
 
   return createPortal(
     <div
-      className="pointer-events-auto absolute inset-0 flex flex-col rounded-xl border border-border bg-card shadow-xl overflow-hidden"
+      className={cn(
+        'pointer-events-auto absolute inset-0 flex-col rounded-xl border border-border bg-card shadow-xl overflow-hidden',
+        open ? 'flex' : 'hidden',
+      )}
       role="dialog"
+      aria-hidden={!open}
       aria-label={title || 'AI Assist panel'}
     >
       {!hideClose && (
