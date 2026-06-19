@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isBefore, addDays, startOfDay, isPast } from 'date-fns';
-import { CheckCircle2, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle, Plus, Users } from 'lucide-react';
+import { CheckCircle2, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle, Plus, Users, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,6 +68,18 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
       }
     },
     [updateTask],
+  );
+
+  // Click handler for the visible Undo button — pops the most recent action
+  // off the stack and runs it. Mirrors the Cmd/Ctrl+Z behavior below.
+  const handleUndoClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation(); // don't toggle the Collapsible
+      const action = popUndo();
+      if (!action) return;
+      Promise.resolve(action.undo()).catch(() => {});
+    },
+    [popUndo],
   );
 
   const handleComplete = useCallback(
