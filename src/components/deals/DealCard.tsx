@@ -434,7 +434,7 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                 {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
               </span>
               <span
-                className="text-[20px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+                className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
                 style={{ color: '#f8fbff' }}
               >
                 {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
