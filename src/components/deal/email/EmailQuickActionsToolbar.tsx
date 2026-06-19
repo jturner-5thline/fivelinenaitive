@@ -34,6 +34,8 @@ import type { EmailThread } from './mockEmailData';
 import { useQueryClient } from '@tanstack/react-query';
 import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
+const LazySaveToDealCard = React.lazy(() => import('./SaveToDealCard').then((m) => ({ default: m.SaveToDealCard })));
+
 type QuickActionKey =
   | 'save_dr'
   | 'update'
