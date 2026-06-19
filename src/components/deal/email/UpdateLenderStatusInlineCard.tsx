@@ -10,8 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { type DealLender } from '@/types/deal';
+import { type Deal, type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
+import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
 
 /**
@@ -49,6 +50,9 @@ function lenderNamesMatch(a: string, b: string): boolean {
   return short.every((t) => long.includes(t));
 }
 
+const getErrorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
+
 interface Props {
   dealId?: string | null;
   preselectLenderName?: string | null;
@@ -73,22 +77,29 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const effectiveDeal = useMemo(() => {
     if (!initialDeal) return undefined;
     const proposed = (preselectLenderName || '').trim();
-    if (!proposed) return initialDeal;
-    const onInitial = (initialDeal.lenders || []).some((l) =>
-      lenderNamesMatch(l.name || '', proposed),
+    const sameCompanyDeals = deals.filter(
+      (d) => (d.company || '').trim().toLowerCase() === (initialDeal.company || '').trim().toLowerCase(),
     );
-    if (onInitial) return initialDeal;
-    const sibling = deals.find(
-      (d) =>
-        d.id !== initialDeal.id &&
-        (d.company || '').trim().toLowerCase() === (initialDeal.company || '').trim().toLowerCase() &&
-        (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed)),
+    const activeSibling = sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && isActiveDeal(d),
     );
-    return sibling || initialDeal;
+    if (!proposed) return isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal);
+
+    const hasProposedLender = (d: Deal) =>
+      (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed));
+    const onInitial = hasProposedLender(initialDeal);
+    if (onInitial && isActiveDeal(initialDeal)) return initialDeal;
+
+    const siblingWithLender = sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && isActiveDeal(d) && hasProposedLender(d),
+    ) || sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && hasProposedLender(d),
+    );
+    return siblingWithLender || (isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal));
   }, [deals, initialDeal, preselectLenderName]);
 
   const deal = effectiveDeal;
-  const lenders: DealLender[] = deal?.lenders || [];
+  const lenders: DealLender[] = useMemo(() => deal?.lenders || [], [deal?.lenders]);
 
   const initialLenderId = useMemo(() => {
     if (!lenders.length) return '';
@@ -144,15 +155,15 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     const handleAdd = async () => {
       setAdding(true);
       try {
-        await addLenderToDeal(dealId, {
+        await addLenderToDeal(deal.id, {
           name: proposedLenderName,
           trackingStatus: 'active',
         });
         toast.success(`${proposedLenderName} added to ${deal.company}`);
         // Card will re-render with the funding source now tracked; user can pick a status next.
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[UpdateLenderStatus] add failed', err);
-        toast.error(err?.message || 'Failed to add lender');
+        toast.error(getErrorMessage(err, 'Failed to add lender'));
       } finally {
         setAdding(false);
       }
@@ -229,10 +240,10 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
         : `${lender.name} → ${selectedStage?.label || stage}`;
       toast.success(summary);
       setTimeout(onClose, 900);
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearTimeout(timeoutId);
       console.error('[UpdateLenderStage] failed', err);
-      toast.error(err?.message || 'Failed to update lender');
+      toast.error(getErrorMessage(err, 'Failed to update lender'));
     } finally {
       setSaving(false);
     }
