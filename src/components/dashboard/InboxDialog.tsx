@@ -350,8 +350,18 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const [warmMounted, setWarmMounted] = useState(false);
   useEffect(() => {
     if (warmMounted) return;
-    if (!status.connected) return;
     const w = typeof window !== 'undefined' ? (window as any) : null;
+    // Always bind the prewarm listener so a `inbox:prewarm` dispatched
+    // before the gmail status finishes loading still flips the heavy
+    // subtree into the DOM. The idle warm-up only kicks in once the
+    // mailbox is actually connected.
+    const onPrewarm = () => setWarmMounted(true);
+    if (typeof window !== 'undefined') window.addEventListener('inbox:prewarm', onPrewarm);
+    if (!status.connected) {
+      return () => {
+        if (typeof window !== 'undefined') window.removeEventListener('inbox:prewarm', onPrewarm);
+      };
+    }
     const schedule = w?.requestIdleCallback
       ? (cb: () => void) => w.requestIdleCallback(cb, { timeout: 2000 })
       : (cb: () => void) => setTimeout(cb, 800);
@@ -359,11 +369,6 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       ? (h: any) => w.cancelIdleCallback(h)
       : (h: any) => clearTimeout(h);
     const handle = schedule(() => setWarmMounted(true));
-    // Hover/focus on the mail icon dispatches `inbox:prewarm` — flip the
-    // warm-mount switch immediately so the heavy subtree is in the DOM
-    // before the click even fires.
-    const onPrewarm = () => setWarmMounted(true);
-    if (typeof window !== 'undefined') window.addEventListener('inbox:prewarm', onPrewarm);
     return () => {
       cancel(handle);
       if (typeof window !== 'undefined') window.removeEventListener('inbox:prewarm', onPrewarm);
