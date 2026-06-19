@@ -798,7 +798,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
-      const valid = raw.filter((c) => isValidCandidate(c, minConfidence));
+      const valid = raw.filter((c) => {
+        const ok = isValidCandidate(c, minConfidence);
+        if (!ok) {
+          console.log(`[deal-admin-agent] REJECT deal=${d.id} type=${c?.action_type} conf=${c?.confidence_score} title=${!!c?.item_title} tot=${c?.target_object_type} toid=${!!c?.target_object_id} ev=${(c?.evidence_references??[]).length} pv=${Object.keys(c?.proposed_values??{}).length}`);
+        }
+        return ok;
+      });
       result.candidates_filtered += raw.length - valid.length;
       if (valid.length === 0) continue;
 
