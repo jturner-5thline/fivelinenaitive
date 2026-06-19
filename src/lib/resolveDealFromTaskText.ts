@@ -28,6 +28,79 @@ const STOPWORDS = new Set([
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
+/**
+ * Preprocessed deal-name index. Built once per `deals` array so the
+ * hot path (per-keystroke) does zero string allocation on the deal
+ * side — only the input text is normalized.
+ */
+export interface DealNameIndexEntry {
+  id: string;
+  label: string;
+  active: boolean;
+  /** Normalized phrases to look for, wrapped in spaces for word-boundary checks. */
+  needles: { phrase: string; len: number }[];
+}
+export type DealNameIndex = DealNameIndexEntry[];
+
+export function buildDealNameIndex(deals: Deal[] | null | undefined): DealNameIndex {
+  if (!deals?.length) return [];
+  const out: DealNameIndex = [];
+  for (const d of deals) {
+    const candidates = [d.company, d.name].filter((v): v is string => !!v && v.trim().length >= 3);
+    if (!candidates.length) continue;
+    const needleSet = new Map<string, number>();
+    for (const raw of candidates) {
+      const n = norm(raw);
+      if (!n || n.length < 3 || STOPWORDS.has(n)) continue;
+      const phrase = ' ' + n + ' ';
+      if (!needleSet.has(phrase) || (needleSet.get(phrase) ?? 0) < n.length) {
+        needleSet.set(phrase, n.length);
+      }
+      const tokens = n.split(' ').filter(t => t.length >= 5 && !STOPWORDS.has(t));
+      for (const tok of tokens) {
+        const tp = ' ' + tok + ' ';
+        if (!needleSet.has(tp) || (needleSet.get(tp) ?? 0) < tok.length) {
+          needleSet.set(tp, tok.length);
+        }
+      }
+    }
+    if (!needleSet.size) continue;
+    out.push({
+      id: d.id,
+      label: d.company || d.name,
+      active: isActiveDeal(d),
+      needles: Array.from(needleSet, ([phrase, len]) => ({ phrase, len })),
+    });
+  }
+  return out;
+}
+
+export function resolveDealFromIndex(
+  text: string,
+  index: DealNameIndex | null | undefined,
+): InstantDealMatch | null {
+  if (!text || !index?.length) return null;
+  const hay = ' ' + norm(text) + ' ';
+  if (hay.length < 5) return null;
+
+  let best: InstantDealMatch | null = null;
+  for (const e of index) {
+    let matchLen = 0;
+    for (const n of e.needles) {
+      if (n.len > matchLen && hay.includes(n.phrase)) matchLen = n.len;
+    }
+    if (!matchLen) continue;
+    const candidate: InstantDealMatch = { id: e.id, label: e.label, matchLen, active: e.active };
+    if (!best) { best = candidate; continue; }
+    if (candidate.active !== best.active) {
+      if (candidate.active) best = candidate;
+    } else if (candidate.matchLen > best.matchLen) {
+      best = candidate;
+    }
+  }
+  return best;
+}
+
 export function resolveDealFromTaskText(
   text: string,
   deals: Deal[] | null | undefined,
