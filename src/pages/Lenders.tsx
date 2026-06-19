@@ -78,6 +78,7 @@ import { useMasterLenders, MasterLender, MasterLenderInsert } from '@/hooks/useM
 import { LenderTileDisplaySettings } from '@/pages/LenderDatabaseConfig';
 import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
 import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtimeNotifications';
+import { RelationshipOwnersPicker } from '@/components/lenders/RelationshipOwnersPicker';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
