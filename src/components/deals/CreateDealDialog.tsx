@@ -364,7 +364,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setDealOwner('');
     setContactName('');
     setContactInfo('');
-    setClientContact(null);
+    setClientContacts([]);
     setDealStatusNote('');
     setNarrative('');
     setReferralName('');
@@ -634,19 +634,23 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 <Label htmlFor="clientContact">
                   Client Contact <span className="text-destructive">*</span>
                 </Label>
-                <ContactPickerField
+                <MultiContactPickerField
                   id="clientContact"
-                  value={clientContact}
-                  onChange={(v) => {
-                    setClientContact(v);
-                    setContactName(v.name);
-                    setContactInfo(v.email);
+                  value={clientContacts}
+                  onChange={(list) => {
+                    setClientContacts(list);
+                    // Mirror the first contact into the legacy contact /
+                    // contactInfo fields so downstream code that still reads
+                    // those single-string fields keeps working.
+                    const first = list[0];
+                    setContactName(first?.name || '');
+                    setContactInfo(first?.email || '');
                   }}
                   placeholder="Search Contacts or create new…"
-                  invalid={!clientContact && showClientContact}
+                  invalid={clientContacts.length === 0 && showClientContact}
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  Pick from the Contacts database or add a new contact inline.
+                  Add one or more contacts from the Contacts database, or create new contacts inline.
                 </p>
               </div>
               )}
