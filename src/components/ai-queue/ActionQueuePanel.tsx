@@ -18,6 +18,49 @@ import {
   Video,
   ListChecks,
 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+
+function AnalyzeNowButton() {
+  const [busy, setBusy] = useState(false);
+  const qc = useQueryClient();
+  const run = async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('deal-admin-agent-analyze', {
+        body: {},
+      });
+      if (error) throw error;
+      const inserted = (data as any)?.queue_rows_inserted ?? 0;
+      const evaluated = (data as any)?.evaluated_deals ?? 0;
+      if (inserted > 0) {
+        toast.success(`Added ${inserted} new item${inserted === 1 ? '' : 's'} to your Approval Queue`);
+      } else {
+        toast.message(`Analyzed ${evaluated} deal${evaluated === 1 ? '' : 's'} — no new actions proposed.`);
+      }
+      qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Deal Admin Agent analysis failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7 gap-1 text-[11px] mr-7"
+      disabled={busy}
+      onClick={run}
+      title="Scan recent emails, calendar, activity and notes for executable actions"
+    >
+      {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+      Analyze now
+    </Button>
+  );
+}
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
   QueuedAiAction,
@@ -195,6 +238,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             </AlertDialogContent>
           </AlertDialog>
         )}
+        <AnalyzeNowButton />
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex flex-col flex-1 min-h-0">
