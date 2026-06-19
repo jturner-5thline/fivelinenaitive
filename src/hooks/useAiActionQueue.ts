@@ -505,8 +505,38 @@ export function useApproveAiAction() {
   const qc = useQueryClient();
 
   return useCallback(
-    async (item: QueuedAiAction) => {
+    async (item: QueuedAiAction, opts?: { editedValues?: Record<string, any> }) => {
       if (!user) return { ok: false };
+      // New execution-checkpoint action types are routed through the
+      // approval-queue-execute edge function so the write is audited and
+      // server-side. Legacy types still use the inline client executor.
+      const newTypes: AiActionType[] = [
+        'update_deal_stage','update_deal_status','add_status_note',
+        'update_funding_source','create_milestone','update_milestone',
+        'create_followup_task','update_contact','update_company',
+        'draft_email','escalate','reassign_deal',
+      ];
+      if (newTypes.includes(item.action_type) || opts?.editedValues) {
+        const { data, error } = await supabase.functions.invoke('approval-queue-execute', {
+          body: {
+            action_id: item.id,
+            decision: 'approve',
+            edited_values: opts?.editedValues,
+          },
+        });
+        invalidateQueueAll(qc);
+        if (error || !data?.ok) {
+          toast.error('Action failed', { description: data?.error || error?.message });
+          return { ok: false, error: data?.error || error?.message };
+        }
+        if (data.decision === 'email_staged') {
+          toast.success('Draft staged for send', { description: item.title });
+        } else {
+          toast.success('Action approved & applied', { description: item.title });
+        }
+        invalidateAllTaskCaches(qc);
+        return { ok: true };
+      }
       const result = await executeQueuedAction(item, user.id);
       const now = new Date().toISOString();
       await supabase
