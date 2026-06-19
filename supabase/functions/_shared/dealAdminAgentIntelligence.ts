@@ -1,0 +1,602 @@
+// deno-lint-ignore-file no-explicit-any
+/**
+ * Deal Admin Agent — cross-source intelligence engine.
+ *
+ * Pulls structured signals per deal (emails, calendar items, activity,
+ * status notes, funding sources, tasks, stage history, milestones),
+ * asks the model to propose EXECUTABLE Approval Queue items, then
+ * applies the promotion rule (clear target object + proposed values +
+ * confidence) before inserting into ai_action_queue.
+ *
+ * Output items conform to the executable contract documented in the
+ * Approval Queue spec and are written with the rich fields the queue
+ * UI + approval-queue-execute router consume.
+ */
+
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-3-flash-preview";
+
+// Mirrors the AiActionType union used by the queue UI/executor.
+const SUPPORTED_ACTION_TYPES = [
+  "update_deal_stage",
+  "update_deal_status",
+  "add_status_note",
+  "update_funding_source",
+  "create_followup_task",
+  "create_milestone",
+  "update_milestone",
+  "update_contact",
+  "update_company",
+  "draft_email",
+  "escalate",
+  "reassign_deal",
+] as const;
+type AdminActionType = typeof SUPPORTED_ACTION_TYPES[number];
+
+const RISK_BY_TYPE: Record<AdminActionType, "low" | "medium" | "high"> = {
+  update_deal_stage: "high",
+  update_deal_status: "medium",
+  add_status_note: "low",
+  update_funding_source: "medium",
+  create_followup_task: "low",
+  create_milestone: "low",
+  update_milestone: "low",
+  update_contact: "low",
+  update_company: "low",
+  draft_email: "medium",
+  escalate: "high",
+  reassign_deal: "high",
+};
+
+const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
+  update_deal_stage: "deal",
+  update_deal_status: "deal",
+  add_status_note: "deal",
+  update_funding_source: "deal_lender",
+  create_followup_task: "task",
+  create_milestone: "deal_milestone",
+  update_milestone: "deal_milestone",
+  update_contact: "contact",
+  update_company: "company",
+  draft_email: "email",
+  escalate: "deal",
+  reassign_deal: "deal",
+};
+
+interface DealSignalBundle {
+  deal_id: string;
+  deal_name: string;
+  current: {
+    stage: string | null;
+    status: string | null;
+    deal_owner_user_id: string | null;
+    is_flagged: boolean;
+    updated_at: string | null;
+  };
+  funding_sources: any[];
+  status_notes: any[];
+  activity: any[];
+  stage_history: any[];
+  milestones: any[];
+  calendar_items: any[];
+  emails: any[];
+  open_tasks: any[];
+}
+
+interface CandidateItem {
+  action_type: AdminActionType;
+  item_title: string;
+  linked_entity_label: string;
+  target_object_type: string;
+  target_object_id: string | null;
+  target_field_paths: string[];
+  current_values: Record<string, any>;
+  proposed_values: Record<string, any>;
+  rationale_summary: string;
+  evidence_summary: string;
+  evidence_references: Array<{
+    kind: string;
+    label: string;
+    ref_id?: string | null;
+    snippet?: string | null;
+    url?: string | null;
+  }>;
+  confidence_score: number;
+  risk_level: "low" | "medium" | "high";
+  bulk_eligible: boolean;
+  requires_send_ui: boolean;
+  priority: "low" | "normal" | "high" | "urgent";
+}
+
+export interface AnalyzeOpts {
+  supabase: SupabaseClient;
+  companyId: string;
+  attributionUserId: string;
+  activatedUserIds?: Set<string>;
+  dealIds?: string[];
+  /** Hard cap on deals processed in this run. */
+  maxDeals?: number;
+  /** Hard cap on enqueued queue rows. */
+  maxQueueRows?: number;
+  /** Min confidence to enqueue. */
+  minConfidence?: number;
+  source: "cron" | "manual" | "chat";
+}
+
+export interface AnalyzeResult {
+  evaluated_deals: number;
+  candidates_proposed: number;
+  candidates_filtered: number;
+  candidates_merged: number;
+  queue_rows_inserted: number;
+  queue_ids: string[];
+  errors: string[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Signal gathering                                                  */
+/* ------------------------------------------------------------------ */
+
+const LOOKBACK_DAYS = 30;
+
+async function gatherSignalsForDeal(
+  supabase: SupabaseClient,
+  deal: any,
+): Promise<DealSignalBundle> {
+  const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
+
+  const [fs, notes, act, hist, mile, cal, emails, tasks] = await Promise.all([
+    supabase
+      .from("deal_lenders")
+      .select("id, name, stage, substage, notes, pass_reason, tracking_status, last_contact_at, last_status_change_at, updated_at")
+      .eq("deal_id", deal.id)
+      .order("updated_at", { ascending: false })
+      .limit(25),
+    supabase
+      .from("deal_status_notes")
+      .select("id, note, created_at, user_id")
+      .eq("deal_id", deal.id)
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("deal_activity")
+      .select("id, source, action_type, before, after, created_at")
+      .eq("deal_id", deal.id)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(30),
+    supabase
+      .from("deal_stage_history")
+      .select("id, from_stage, to_stage, changed_at, source, event_type")
+      .eq("deal_id", deal.id)
+      .order("changed_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("deal_milestones")
+      .select("id, title, due_date, completed, completed_at, status, updated_at")
+      .eq("deal_id", deal.id)
+      .order("due_date", { ascending: true, nullsFirst: false })
+      .limit(15),
+    supabase
+      .from("deal_calendar_items")
+      .select("id, title, date, time, notes, type, created_at")
+      .eq("deal_id", deal.id)
+      .gte("date", since.slice(0, 10))
+      .order("date", { ascending: false })
+      .limit(10),
+    supabase
+      .from("deal_emails")
+      .select("id, gmail_message_id, notes, linked_at")
+      .eq("deal_id", deal.id)
+      .gte("linked_at", since)
+      .order("linked_at", { ascending: false })
+      .limit(15),
+    supabase
+      .from("tasks")
+      .select("id, title, status, priority, due_date, assigned_to, updated_at")
+      .eq("deal_id", deal.id)
+      .in("status", ["open", "in_progress", "blocked", "pending"])
+      .order("updated_at", { ascending: false })
+      .limit(15),
+  ]);
+
+  // Hydrate emails with subject/snippet from gmail_messages when possible.
+  let emailRows: any[] = emails.data ?? [];
+  const msgIds = emailRows
+    .map((e) => e.gmail_message_id)
+    .filter((v) => typeof v === "string" && v.length > 0);
+  if (msgIds.length > 0) {
+    const { data: gm } = await supabase
+      .from("gmail_messages")
+      .select("gmail_message_id, subject, snippet, from_address, received_at")
+      .in("gmail_message_id", msgIds);
+    const byId = new Map<string, any>((gm ?? []).map((r: any) => [r.gmail_message_id, r]));
+    emailRows = emailRows.map((e) => ({
+      ...e,
+      ...(byId.get(e.gmail_message_id) ?? {}),
+    }));
+  }
+
+  return {
+    deal_id: deal.id,
+    deal_name: deal.company ?? "Untitled Deal",
+    current: {
+      stage: deal.stage ?? null,
+      status: deal.status ?? null,
+      deal_owner_user_id: deal.deal_owner_user_id ?? null,
+      is_flagged: !!deal.is_flagged,
+      updated_at: deal.updated_at ?? null,
+    },
+    funding_sources: fs.data ?? [],
+    status_notes: notes.data ?? [],
+    activity: act.data ?? [],
+    stage_history: hist.data ?? [],
+    milestones: mile.data ?? [],
+    calendar_items: cal.data ?? [],
+    emails: emailRows,
+    open_tasks: tasks.data ?? [],
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/*  AI call                                                            */
+/* ------------------------------------------------------------------ */
+
+const SYSTEM_PROMPT = `You are the Deal Admin Agent for a credit/M&A advisory CRM.
+
+Your job: read structured signals about a single deal and propose ONLY EXECUTABLE actions for a human approver — never vague reminders.
+
+Rules:
+- Each proposed action MUST target a specific object (deal, deal_lender, deal_milestone, task, contact, company, email) by id.
+- Each proposed action MUST include concrete current_values and proposed_values for the fields you intend to change.
+- If signals are weak, conflicting, or you cannot identify a target field + value, DO NOT propose anything for that observation.
+- Prefer fewer high-quality items over many low-quality ones. If you have no strong proposals, return an empty array.
+- Use confidence_score 0..1. Only items >= 0.6 will be surfaced.
+- Set bulk_eligible=true only for clearly low-risk items (e.g. adding a status note that mirrors a fact already evidenced).
+- For draft_email, set requires_send_ui=true and include proposed_values { to, subject, body }.
+- Allowed action_type values: ${SUPPORTED_ACTION_TYPES.join(", ")}.
+- linked_entity_label = short human label, e.g. "LAGO Innovation on Censys Technologies".
+- evidence_references must cite the signal that justifies the proposal (kind ∈ email|calendar|activity|status_note|funding_source|stage_history|milestone|task).`;
+
+function buildUserPrompt(bundle: DealSignalBundle): string {
+  // Trim large fields to keep prompt compact.
+  const trim = (s: any, n = 240) =>
+    typeof s === "string" ? (s.length > n ? s.slice(0, n) + "…" : s) : s;
+  const compact = {
+    deal: {
+      id: bundle.deal_id,
+      name: bundle.deal_name,
+      stage: bundle.current.stage,
+      status: bundle.current.status,
+      owner_user_id: bundle.current.deal_owner_user_id,
+      is_flagged: bundle.current.is_flagged,
+      updated_at: bundle.current.updated_at,
+    },
+    funding_sources: bundle.funding_sources.map((f) => ({
+      id: f.id,
+      name: f.name,
+      stage: f.stage,
+      substage: f.substage,
+      tracking_status: f.tracking_status,
+      last_contact_at: f.last_contact_at,
+      notes: trim(f.notes, 200),
+      pass_reason: trim(f.pass_reason, 160),
+    })),
+    status_notes: bundle.status_notes.map((n) => ({
+      id: n.id, created_at: n.created_at, note: trim(n.note, 200),
+    })),
+    recent_activity: bundle.activity.map((a) => ({
+      source: a.source, action_type: a.action_type, created_at: a.created_at,
+      before: trim(JSON.stringify(a.before ?? null), 160),
+      after: trim(JSON.stringify(a.after ?? null), 160),
+    })),
+    stage_history: bundle.stage_history,
+    milestones: bundle.milestones,
+    calendar: bundle.calendar_items,
+    emails: bundle.emails.map((e: any) => ({
+      id: e.id, gmail_message_id: e.gmail_message_id,
+      from: e.from_address, subject: e.subject,
+      snippet: trim(e.snippet, 280), received_at: e.received_at,
+      notes: trim(e.notes, 160),
+    })),
+    open_tasks: bundle.open_tasks,
+  };
+  return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
+}
+
+async function callModelForCandidates(
+  bundle: DealSignalBundle,
+): Promise<CandidateItem[]> {
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY missing — Deal Admin Agent cannot analyze");
+  }
+
+  const body = {
+    model: MODEL,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserPrompt(bundle) },
+    ],
+    response_format: { type: "json_object" },
+  };
+
+  const resp = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const txt = await resp.text().catch(() => "");
+    throw new Error(`AI gateway ${resp.status}: ${txt.slice(0, 200)}`);
+  }
+
+  const j = await resp.json();
+  const content = j?.choices?.[0]?.message?.content ?? "{}";
+  let parsed: any;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return [];
+  }
+  const items = Array.isArray(parsed?.items) ? parsed.items : [];
+  return items.filter((it: any) => it && typeof it === "object") as CandidateItem[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Promotion + dedupe + merge                                         */
+/* ------------------------------------------------------------------ */
+
+function isValidCandidate(c: CandidateItem, minConf: number): boolean {
+  if (!c || !c.action_type) return false;
+  if (!SUPPORTED_ACTION_TYPES.includes(c.action_type as any)) return false;
+  if (typeof c.confidence_score !== "number" || c.confidence_score < minConf) return false;
+  if (!c.item_title || !c.target_object_type) return false;
+  if (!c.proposed_values || typeof c.proposed_values !== "object") return false;
+  if (Object.keys(c.proposed_values).length === 0) return false;
+  // target_object_id required for everything except create_followup_task /
+  // create_milestone / draft_email (which are net-new objects scoped to a deal).
+  const needsId = !["create_followup_task", "create_milestone", "draft_email"].includes(c.action_type);
+  if (needsId && !c.target_object_id) return false;
+  if (!Array.isArray(c.evidence_references) || c.evidence_references.length === 0) return false;
+  return true;
+}
+
+function dedupeAndMerge(
+  candidates: CandidateItem[],
+  existingKeys: Set<string>,
+): { kept: CandidateItem[]; merged: number; filtered: number } {
+  const byTarget = new Map<string, CandidateItem>();
+  let merged = 0;
+  let filtered = 0;
+  for (const c of candidates) {
+    const k = `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`;
+    if (existingKeys.has(k)) {
+      filtered++;
+      continue;
+    }
+    const prev = byTarget.get(k);
+    if (!prev) {
+      byTarget.set(k, c);
+    } else {
+      // Merge: keep the higher-confidence one and union evidence.
+      const winner = c.confidence_score > prev.confidence_score ? c : prev;
+      const loser = winner === c ? prev : c;
+      winner.evidence_references = [
+        ...(winner.evidence_references ?? []),
+        ...(loser.evidence_references ?? []),
+      ].slice(0, 12);
+      byTarget.set(k, winner);
+      merged++;
+    }
+  }
+  return { kept: Array.from(byTarget.values()), merged, filtered };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Queue insert                                                       */
+/* ------------------------------------------------------------------ */
+
+function computePriority(c: CandidateItem, dealFlagged: boolean): "urgent" | "high" | "normal" | "low" {
+  if (dealFlagged && c.risk_level === "high") return "urgent";
+  if (c.action_type === "escalate") return "urgent";
+  if (c.priority) return c.priority;
+  if (c.confidence_score >= 0.85 && c.risk_level !== "low") return "high";
+  if (c.risk_level === "low") return "low";
+  return "normal";
+}
+
+async function insertCandidates(
+  supabase: SupabaseClient,
+  opts: AnalyzeOpts,
+  bundle: DealSignalBundle,
+  candidates: CandidateItem[],
+): Promise<{ ids: string[]; error: string | null }> {
+  if (candidates.length === 0) return { ids: [], error: null };
+
+  // Pick reviewer: deal owner if activated, else attribution user.
+  const owner = bundle.current.deal_owner_user_id;
+  const ownerAllowed = owner && (!opts.activatedUserIds || opts.activatedUserIds.has(owner));
+  const assignedTo = ownerAllowed ? (owner as string) : opts.attributionUserId;
+
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+  const rows = candidates.map((c) => {
+    const risk = c.risk_level ?? RISK_BY_TYPE[c.action_type];
+    const priority = computePriority({ ...c, risk_level: risk }, bundle.current.is_flagged);
+    return {
+      user_id: opts.attributionUserId,
+      assigned_to: assignedTo,
+      deal_id: bundle.deal_id,
+      deal_name: bundle.deal_name,
+      action_type: c.action_type,
+      title: c.item_title,
+      description: c.rationale_summary,
+      priority,
+      risk_level: risk,
+      target_object_type: c.target_object_type ?? TARGET_TYPE_BY_ACTION[c.action_type],
+      target_object_id: c.target_object_id ?? null,
+      old_values: c.current_values ?? {},
+      new_values: c.proposed_values ?? {},
+      evidence: c.evidence_references ?? [],
+      rationale: c.rationale_summary,
+      payload: {
+        linked_entity_label: c.linked_entity_label,
+        target_field_paths: c.target_field_paths ?? [],
+        confidence_score: c.confidence_score,
+        bulk_eligible: !!c.bulk_eligible,
+        requires_send_ui: c.action_type === "draft_email" ? true : !!c.requires_send_ui,
+        evidence_summary: c.evidence_summary,
+        on_approve_execution_type:
+          c.action_type === "draft_email" ? "stage_email_for_send" : "execute_mutation",
+        on_approve_execution_payload: {
+          target_object_type: c.target_object_type,
+          target_object_id: c.target_object_id,
+          new_values: c.proposed_values,
+        },
+        on_reject_behavior: "log_reason_no_mutation",
+      },
+      source: {
+        origin: "deal_admin_agent",
+        trigger: opts.source,
+        company_id: opts.companyId,
+        evidence_count: (c.evidence_references ?? []).length,
+      },
+      expires_at: expiresAt,
+    };
+  });
+
+  const { data, error } = await supabase
+    .from("ai_action_queue")
+    .insert(rows)
+    .select("id");
+  if (error) return { ids: [], error: error.message };
+  return { ids: (data ?? []).map((r: any) => r.id), error: null };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main entry                                                         */
+/* ------------------------------------------------------------------ */
+
+export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<AnalyzeResult> {
+  const {
+    supabase,
+    companyId,
+    dealIds,
+    maxDeals = 25,
+    maxQueueRows = 60,
+    minConfidence = 0.6,
+  } = opts;
+
+  const result: AnalyzeResult = {
+    evaluated_deals: 0,
+    candidates_proposed: 0,
+    candidates_filtered: 0,
+    candidates_merged: 0,
+    queue_rows_inserted: 0,
+    queue_ids: [],
+    errors: [],
+  };
+
+  // 1) Load target deals.
+  let dealQ = supabase
+    .from("deals")
+    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id")
+    .eq("company_id", companyId)
+    .order("updated_at", { ascending: false })
+    .limit(maxDeals);
+  if (dealIds && dealIds.length > 0) dealQ = dealQ.in("id", dealIds);
+  const { data: deals, error: dealErr } = await dealQ;
+  if (dealErr) {
+    result.errors.push(`deals query: ${dealErr.message}`);
+    return result;
+  }
+  const dealList = (deals ?? []).filter((d: any) => {
+    const name = (d.company ?? "").toLowerCase();
+    if (!name) return true;
+    if (name === "test-niki's store" || name === "example deal") return false;
+    if (name.startsWith("test ")) return false;
+    return true;
+  });
+
+  // 2) Existing dedupe keys — anything currently pending/approved in the queue
+  //    for this company we shouldn't re-propose.
+  const dealIdsArr = dealList.map((d: any) => d.id);
+  const existingKeys = new Set<string>();
+  if (dealIdsArr.length > 0) {
+    const { data: existing } = await supabase
+      .from("ai_action_queue")
+      .select("action_type, target_object_type, target_object_id, deal_id, status")
+      .in("deal_id", dealIdsArr)
+      .in("status", ["pending", "approved"]);
+    for (const e of existing ?? []) {
+      existingKeys.add(
+        `${(e as any).action_type}::${(e as any).target_object_type ?? ""}::${(e as any).target_object_id ?? ""}`,
+      );
+    }
+  }
+
+  // 3) Per-deal: gather signals, call model, validate, dedupe, insert.
+  let totalInserted = 0;
+  for (const d of dealList) {
+    if (totalInserted >= maxQueueRows) break;
+    result.evaluated_deals++;
+    try {
+      const bundle = await gatherSignalsForDeal(supabase, d);
+      // Skip deals with effectively no signal — avoids burning credits.
+      const sigCount =
+        bundle.activity.length +
+        bundle.emails.length +
+        bundle.status_notes.length +
+        bundle.stage_history.length +
+        bundle.calendar_items.length;
+      if (sigCount === 0) continue;
+
+      const raw = await callModelForCandidates(bundle);
+      result.candidates_proposed += raw.length;
+
+      const valid = raw.filter((c) => isValidCandidate(c, minConfidence));
+      result.candidates_filtered += raw.length - valid.length;
+      if (valid.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(valid, existingKeys);
+      result.candidates_merged += merged;
+      result.candidates_filtered += filtered;
+      if (kept.length === 0) continue;
+
+      // Rank: confidence desc, then risk asc for ties (low risk first).
+      const ranked = [...kept].sort((a, b) => {
+        if (b.confidence_score !== a.confidence_score) return b.confidence_score - a.confidence_score;
+        const ro = { low: 0, medium: 1, high: 2 } as const;
+        return ro[a.risk_level ?? "medium"] - ro[b.risk_level ?? "medium"];
+      });
+      const remaining = maxQueueRows - totalInserted;
+      const slice = ranked.slice(0, remaining);
+
+      const { ids, error } = await insertCandidates(supabase, opts, bundle, slice);
+      if (error) {
+        result.errors.push(`deal ${d.id}: ${error}`);
+        continue;
+      }
+      // Track inserted keys so subsequent deals don't re-propose the same target.
+      for (const c of slice) {
+        existingKeys.add(
+          `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
+        );
+      }
+      result.queue_ids.push(...ids);
+      result.queue_rows_inserted += ids.length;
+      totalInserted += ids.length;
+    } catch (e) {
+      result.errors.push(`deal ${d.id}: ${(e as Error)?.message ?? "unknown"}`);
+    }
+  }
+
+  return result;
+}
