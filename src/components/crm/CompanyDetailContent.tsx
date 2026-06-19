@@ -406,38 +406,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </CardContent>
             </Card>
 
-            {/* 2. KPI Row */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <Kpi label="Revenue" value={formatCurrency(company.annual_revenue)} />
-              <Kpi label="EBITDA" value="—" hint="Not synced" />
-              <Kpi label="Growth" value="—" hint="YoY" />
-              <Kpi label="Lender matches" value={String(companyDeals.length)} hint="Linked deals" />
-              <Kpi
-                label="Risk score"
-                value={health.label}
-                valueClassName={
-                  health.cls.includes('red') ? 'text-red-600'
-                    : health.cls.includes('amber') ? 'text-amber-600'
-                    : 'text-emerald-600'
-                }
-              />
-            </div>
-
-            {/* 3. Workflow Summary */}
-            <Card className="border-border/70">
-              <CardHeader className="pb-2 border-b">
-                <CardTitle className="text-sm flex items-center gap-1.5">
-                  <Target className="h-4 w-4 text-muted-foreground" /> Workflow Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                <Workflow label="Next step" value={lastActivity?.subject ?? 'Define next action'} />
-                <Workflow label="Open requests" value={String(companyDeals.length)} />
-                <Workflow label="Missing items" value={String(missingFields.length)} tone={missingFields.length ? 'warn' : 'ok'} />
-                <Workflow label="Priority flags" value={company.lifecycle_stage === 'churn_risk' ? '1' : '0'} tone={company.lifecycle_stage === 'churn_risk' ? 'warn' : 'ok'} />
-              </CardContent>
-            </Card>
-
             {/* 4. Contacts */}
             <Card id="contacts" className="border-border/70 scroll-mt-24">
               <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
@@ -483,23 +451,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* 5. Financial Profile */}
-            <Card id="financials" className="border-border/70 scroll-mt-24">
-              <CardHeader className="pb-2 border-b">
-                <CardTitle className="text-sm flex items-center gap-1.5">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" /> Financial Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-3 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <EditableField label="Annual Revenue" type="number" value={company.annual_revenue} onSave={(v) => handleQuickUpdate('annual_revenue', v)} />
-                <EditableField label="ARR" type="number" value={company.arr} onSave={(v) => handleQuickUpdate('arr', v)} />
-                <EditableField label="MRR" type="number" value={company.mrr} onSave={(v) => handleQuickUpdate('mrr', v)} />
-                <EditableField label="Total Contract Value" type="number" value={company.total_contract_value} onSave={(v) => handleQuickUpdate('total_contract_value', v)} />
-                <EditableField label="Renewal Date" type="text" placeholder="YYYY-MM-DD" value={company.renewal_date} onSave={(v) => handleQuickUpdate('renewal_date', v)} />
-                <EditableField label="Contract End" type="text" placeholder="YYYY-MM-DD" value={company.contract_end_date} onSave={(v) => handleQuickUpdate('contract_end_date', v)} />
               </CardContent>
             </Card>
 
