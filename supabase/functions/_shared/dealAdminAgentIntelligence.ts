@@ -535,12 +535,73 @@ async function callModelForCandidates(
     return [];
   }
   const items = Array.isArray(parsed?.items) ? parsed.items : [];
-  return items.filter((it: any) => it && typeof it === "object") as CandidateItem[];
+  return items
+    .filter((it: any) => it && typeof it === "object")
+    .map((it: any) => {
+      // Normalize alternative field names Claude sometimes emits.
+      const target_object_type =
+        it.target_object_type ?? it.target_object ?? it.target_type ?? null;
+      const target_object_id =
+        it.target_object_id ?? it.target_id ?? it.target ?? null;
+      const item_title =
+        it.item_title ?? it.title ?? it.action_title ?? null;
+      const evidence_references = Array.isArray(it.evidence_references)
+        ? it.evidence_references
+        : Array.isArray(it.evidence)
+          ? it.evidence
+          : [];
+      const proposed_values =
+        it.proposed_values && typeof it.proposed_values === "object"
+          ? it.proposed_values
+          : it.proposed && typeof it.proposed === "object"
+            ? it.proposed
+            : {};
+      const current_values =
+        it.current_values && typeof it.current_values === "object"
+          ? it.current_values
+          : it.current && typeof it.current === "object"
+            ? it.current
+            : {};
+      return {
+        ...it,
+        target_object_type,
+        target_object_id,
+        item_title: item_title || synthesizeTitle(it),
+        evidence_references,
+        proposed_values,
+        current_values,
+        confidence_score:
+          typeof it.confidence_score === "number" ? it.confidence_score :
+          typeof it.confidence === "number" ? it.confidence : 0,
+        risk_level: it.risk_level ?? it.risk ?? undefined,
+        rationale_summary: it.rationale_summary ?? it.rationale ?? it.reason ?? "",
+        evidence_summary: it.evidence_summary ?? it.summary ?? "",
+        linked_entity_label: it.linked_entity_label ?? it.entity_label ?? it.label ?? "",
+        target_field_paths: Array.isArray(it.target_field_paths) ? it.target_field_paths : [],
+      };
+    }) as CandidateItem[];
 }
 
 /* ------------------------------------------------------------------ */
 /*  Promotion + dedupe + merge                                         */
 /* ------------------------------------------------------------------ */
+
+function synthesizeTitle(it: any): string {
+  const t = it?.action_type ?? "Update";
+  const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
+  const map: Record<string, string> = {
+    add_status_note: "Add status note",
+    update_funding_source: "Update funding source",
+    create_followup_task: "Create follow-up task",
+    create_milestone: "Create milestone",
+    draft_email: "Draft email",
+    update_deal_field: "Update deal field",
+    update_contact_field: "Update contact",
+    escalate: "Escalate",
+  };
+  const base = map[t] ?? t.replace(/_/g, " ");
+  return label ? `${base} — ${label}` : base;
+}
 
 function isValidCandidate(c: CandidateItem, minConf: number): boolean {
   if (!c || !c.action_type) return false;
@@ -754,7 +815,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
-      const valid = raw.filter((c) => isValidCandidate(c, minConfidence));
+      const valid = raw.filter((c) => {
+        const ok = isValidCandidate(c, minConfidence);
+        if (!ok) {
+          console.log(`[deal-admin-agent] REJECT deal=${d.id} type=${c?.action_type} conf=${c?.confidence_score} title=${!!c?.item_title} tot=${c?.target_object_type} toid=${!!c?.target_object_id} ev=${(c?.evidence_references??[]).length} pv=${Object.keys(c?.proposed_values??{}).length}`);
+        }
+        return ok;
+      });
       result.candidates_filtered += raw.length - valid.length;
       if (valid.length === 0) continue;
 
@@ -775,8 +842,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const { ids, error } = await insertCandidates(supabase, opts, bundle, slice);
       if (error) {
         result.errors.push(`deal ${d.id}: ${error}`);
+        console.log(`[deal-admin-agent] INSERT_ERR deal=${d.id} err=${error}`);
         continue;
       }
+      console.log(`[deal-admin-agent] INSERTED deal=${d.id} count=${ids.length} valid=${valid.length} kept=${kept.length}`);
       // Track inserted keys so subsequent deals don't re-propose the same target.
       for (const c of slice) {
         existingKeys.add(
