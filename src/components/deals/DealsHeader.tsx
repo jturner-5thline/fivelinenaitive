@@ -230,6 +230,12 @@ export function DealsHeader() {
       Object.values(OVERLAY_PREFETCHERS).forEach((load) => {
         load().catch(() => {});
       });
+      // Pre-warm the Mail subtree even without hover so the very first
+      // click renders an already-mounted dialog instead of paying a
+      // mount cost on the click frame.
+      try {
+        window.dispatchEvent(new CustomEvent('inbox:prewarm'));
+      } catch { /* noop */ }
     }, { timeout: 2500 });
     return () => {
       const cancel =
