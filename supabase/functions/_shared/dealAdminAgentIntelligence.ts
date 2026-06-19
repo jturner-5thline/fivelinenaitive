@@ -15,9 +15,9 @@
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3-flash-preview";
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-5-20250929";
 
 // Mirrors the AiActionType union used by the queue UI/executor.
 const SUPPORTED_ACTION_TYPES = [
@@ -310,38 +310,44 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
 async function callModelForCandidates(
   bundle: DealSignalBundle,
 ): Promise<CandidateItem[]> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY missing — Deal Admin Agent cannot analyze");
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
   }
 
   const body = {
     model: MODEL,
+    max_tokens: 4096,
+    system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: buildUserPrompt(bundle) },
     ],
-    response_format: { type: "json_object" },
   };
 
-  const resp = await fetch(GATEWAY_URL, {
+  const resp = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
   });
 
   if (!resp.ok) {
     const txt = await resp.text().catch(() => "");
-    throw new Error(`AI gateway ${resp.status}: ${txt.slice(0, 200)}`);
+    throw new Error(`Anthropic ${resp.status}: ${txt.slice(0, 200)}`);
   }
 
   const j = await resp.json();
-  const content = j?.choices?.[0]?.message?.content ?? "{}";
+  // Anthropic returns content as an array of blocks; concatenate text blocks.
+  const raw: string = Array.isArray(j?.content)
+    ? j.content.filter((b: any) => b?.type === "text").map((b: any) => b.text).join("")
+    : "";
+  // Strip markdown fences if the model wrapped them anyway.
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
   let parsed: any;
   try {
-    parsed = JSON.parse(content);
+    parsed = JSON.parse(cleaned || "{}");
   } catch {
     return [];
   }
