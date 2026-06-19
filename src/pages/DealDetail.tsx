@@ -2024,7 +2024,18 @@ export default function DealDetail() {
         }
       },
     }));
-    return [...localActivities, ...dbActivities].sort((a, b) => 
+    const createdActivity: ActivityItem[] = deal?.createdAt
+      ? [{
+          id: `deal-created-${deal.id}`,
+          type: 'deal_created' as ActivityItem['type'],
+          description: `Deal created`,
+          user: (deal as any).createdByName || 'System',
+          timestamp: deal.createdAt,
+        }]
+      : [];
+    // Avoid duplicate if a deal_created log already exists in DB
+    const hasDbCreated = dbActivities.some(a => a.type === ('deal_created' as ActivityItem['type']));
+    return [...localActivities, ...dbActivities, ...(hasDbCreated ? [] : createdActivity)].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
   }, [activityLogs, removedLenders, deal, addLenderToDeal]);
