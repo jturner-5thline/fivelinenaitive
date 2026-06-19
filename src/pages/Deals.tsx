@@ -1046,7 +1046,12 @@ export default function Dashboard() {
                   setOverlaySearchParams(next, { replace: false });
                 };
                 const showInlineDetail =
-                  !!selectedDeal && viewMode !== 'pipeline' && viewMode !== 'timeline' && !showMilestones && !showDuplicates;
+                  !!selectedDeal && viewMode === 'list' && !showMilestones && !showDuplicates;
+                // For grid + pipeline views, open the rich deal overlay
+                // (Deal Space, Deal Info, etc.) instead of the inline
+                // side-panel summary. List view keeps the inline split.
+                const showOverlayDetail =
+                  !!selectedDeal && (viewMode === 'grid' || viewMode === 'pipeline') && !showMilestones && !showDuplicates;
                 return (
               <div
                 ref={boardScrollContainerRef}
@@ -1140,6 +1145,20 @@ export default function Dashboard() {
                 </aside>
               )}
               </div>
+              {showOverlayDetail && (
+                <NaitiveDealOverlay
+                  deal={selectedDeal}
+                  orderedDeals={deals}
+                  stages={overlayStages}
+                  onClose={closeDetail}
+                  onNavigate={(d) => {
+                    const next = new URLSearchParams(overlaySearchParams);
+                    next.set('deal', d.id);
+                    setOverlaySearchParams(next, { replace: false });
+                  }}
+                  onStageChange={handleStageChange}
+                />
+              )}
                 );
               })()}
       </WorkspacePage>
