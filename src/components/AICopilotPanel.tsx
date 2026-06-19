@@ -2127,6 +2127,33 @@ export function AICopilotPanel() {
                     <span>📰</span>
                     <span>Your Daily Rundown is Ready</span>
                   </button>
+                ) : msg.metadata?.kind === 'end_of_day_rundown_ready' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-daily-rundown-end-of-day'));
+                    }}
+                    style={{
+                      maxWidth: '90%',
+                      padding: '10px 14px',
+                      borderRadius: '12px 12px 12px 2px',
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      background: 'linear-gradient(135deg, rgba(251,191,36,0.20), rgba(244,114,182,0.10))',
+                      border: '1px solid rgba(251,191,36,0.40)',
+                      color: 'var(--foreground)',
+                      fontWeight: 500,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                    aria-label="Open End of Day Briefing"
+                  >
+                    <span>🌇</span>
+                    <span>Your End of Day Briefing is Ready</span>
+                  </button>
                 ) : msg.content?.startsWith('__ERROR__') ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',

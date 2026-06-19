@@ -156,9 +156,44 @@ export function DealsHeader() {
   // `open-daily-rundown`, which opens the same modal as the header icon.
   useEffect(() => {
     if (!canSeeBriefingHeaderItems) return;
-    const handler = () => setIsBriefingOpen(true);
+    const handler = () => {
+      setBriefingInitialTab(undefined);
+      setIsBriefingOpen(true);
+    };
+    const eodHandler = () => {
+      setBriefingInitialTab('end_of_day');
+      setIsBriefingOpen(true);
+    };
     window.addEventListener('open-daily-rundown', handler);
-    return () => window.removeEventListener('open-daily-rundown', handler);
+    window.addEventListener('open-daily-rundown-end-of-day', eodHandler);
+    return () => {
+      window.removeEventListener('open-daily-rundown', handler);
+      window.removeEventListener('open-daily-rundown-end-of-day', eodHandler);
+    };
+  }, [canSeeBriefingHeaderItems]);
+
+  // Initial tab to deep-link the briefing modal into (e.g., "end_of_day"
+  // from the End of Day email button or chat notification).
+  const [briefingInitialTab, setBriefingInitialTab] = useState<string | undefined>(undefined);
+
+  // Honor `?openDailyRundown=endOfDay` URL param (used by the end-of-day
+  // briefing email button) — opens the modal on the End of Day tab, then
+  // strips the param so reloads don't re-open it.
+  useEffect(() => {
+    if (!canSeeBriefingHeaderItems) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const v = params.get('openDailyRundown');
+      if (v === 'endOfDay' || v === 'end_of_day' || v === 'eod') {
+        setBriefingInitialTab('end_of_day');
+        setIsBriefingOpen(true);
+        params.delete('openDailyRundown');
+        const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+        window.history.replaceState({}, '', next);
+      }
+    } catch {
+      // ignore
+    }
   }, [canSeeBriefingHeaderItems]);
 
   // ─── Daily Rundown completion badges ───────────────────────────────
@@ -549,6 +584,7 @@ export function DealsHeader() {
           <DailyBriefingModal
             open={isBriefingOpen}
             onOpenChange={setIsBriefingOpen}
+            initialTab={briefingInitialTab as any}
             {...(isNikiMirror
               ? {
                   title: "Daily Rundown",
