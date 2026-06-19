@@ -37,6 +37,17 @@ import {
   useDeclineDealAccessRequest,
   type DealAccessRequest,
 } from '@/hooks/useDealAccessRequests';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }> = {
   create_task: { label: 'Create Task', icon: CheckSquare, color: 'text-sky-500' },
@@ -77,6 +88,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const [editDesc, setEditDesc] = useState('');
   const [bulkBusy, setBulkBusy] = useState(false);
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  const [confirmApproveAllOpen, setConfirmApproveAllOpen] = useState(false);
 
   // Group by deal (or "Unassigned")
   const grouped = useMemo(() => {
@@ -131,20 +143,39 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           )}
         </div>
         {items.length > 0 && (
-          <Button
-            size="sm"
-            variant="liquid-glass"
-            className="h-7 gap-1 text-[11px] mr-7"
-            disabled={bulkBusy}
-            onClick={async () => {
-              setBulkBusy(true);
-              await approveAll(items);
-              setBulkBusy(false);
-            }}
-          >
-            {bulkBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCheck className="h-3 w-3" />}
-            Approve all
-          </Button>
+          <AlertDialog open={confirmApproveAllOpen} onOpenChange={setConfirmApproveAllOpen}>
+            <AlertDialogTrigger asChild>
+              <Button
+                size="sm"
+                variant="liquid-glass"
+                className="h-7 gap-1 text-[11px] mr-7"
+                disabled={bulkBusy}
+              >
+                {bulkBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCheck className="h-3 w-3" />}
+                Approve all
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Approve all queued actions?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will approve and execute {items.length} action{items.length !== 1 ? 's' : ''} across all deals. You can undo individual approvals from the toast that appears for each.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setBulkBusy(true);
+                    await approveAll(items);
+                    setBulkBusy(false);
+                  }}
+                >
+                  Approve all
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
 
