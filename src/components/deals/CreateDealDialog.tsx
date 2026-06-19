@@ -52,7 +52,7 @@ import { addDays, format } from 'date-fns';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
-import { ContactPickerField, type ContactPickerValue } from '@/components/contacts/ContactPickerField';
+import type { ContactPickerValue } from '@/components/contacts/ContactPickerField';
 import { MultiContactPickerField } from '@/components/contacts/MultiContactPickerField';
 import { supabase } from '@/integrations/supabase/client';
 
