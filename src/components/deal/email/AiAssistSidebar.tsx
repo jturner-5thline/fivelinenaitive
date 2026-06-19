@@ -220,6 +220,7 @@ interface Props {
 
 export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onInsertSuggestions, onOpenInlineReply, onLinkDeal }: Props) {
   const enqueueAiAction = useEnqueueAiAction();
+  const navigate = useNavigate();
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
   const [loadingTones, setLoadingTones] = useState<Record<ToneKey, boolean>>({ concise: false, balanced: false });
