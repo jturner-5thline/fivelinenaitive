@@ -157,27 +157,16 @@ export function EmailQuickActionsToolbar({
     if (active === 'save_dr' && uploadableCount === 0) setActive(null);
   }, [active, uploadableCount]);
 
-  const meetingPopoverOpen = active === 'meeting' && meetingMode === 'quick-book';
   const modalRoot = typeof document !== 'undefined'
     ? document.getElementById('email-popup-modal-root')
     : null;
 
-  useEffect(() => {
-    if (!meetingPopoverOpen) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setActive((prev) => (prev === 'meeting' ? null : prev));
-      }
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [meetingPopoverOpen]);
-
+  // Schedule Meeting now consolidates with Suggest Times — clicking the
+  // pill opens the SuggestTimesPanel overlay directly. The legacy
+  // QuickBook popover path stays mounted only as the optional
+  // "Propose via email" sub-flow (set via setMeetingMode('propose')).
   const handleMeetingClick = () => {
-    setMeetingMode('quick-book');
-    setActive('meeting');
+    setActive((prev) => (prev === 'meeting' ? null : 'meeting'));
   };
 
   const handleClick = (key: QuickActionKey) => {
@@ -253,48 +242,69 @@ export function EmailQuickActionsToolbar({
       >
         {actions.map((a) => {
           const isActive = active === a.key;
-          if (a.key === 'lender') {
+          if (a.key === 'update') {
             const hasDeal = !!(dealId || fallbackDealId);
-            const btn = (
-              <AIAssistActionButton
-                label={a.label}
-                icon={
-                  <span className="inline-flex items-center gap-1">
-                    {a.icon}
-                    {!hasDeal && (
-                      <Info className="h-3 w-3 opacity-60" aria-hidden />
-                    )}
-                  </span>
-                }
-                iconClass={a.iconClass}
-                isActive={isActive}
-                aria-disabled={!hasDeal || undefined}
-                className={cn(
-                  !hasDeal && 'opacity-50 cursor-not-allowed hover:bg-white/[0.03] hover:border-white/10 hover:text-foreground/90',
-                )}
-                onClick={() => {
-                  if (!hasDeal) {
-                    void logUpdateLenderRefused({
-                      reason: 'no_deal_match',
-                      threadId: thread.threadId,
-                      contactId: contactId ?? null,
-                    });
-                    return;
-                  }
-                  handleClick(a.key);
-                }}
-              />
-            );
-            if (hasDeal) return <div key={a.key}>{btn}</div>;
+            const dealLabel = dealName || fallbackDealName || 'deal';
+            const isUpdateActive = active === 'update_lender'
+              || active === 'update_status'
+              || active === 'update_fields'
+              || active === 'update_contact';
             return (
-              <Tooltip key={a.key}>
-                <TooltipTrigger asChild>
-                  <div>{btn}</div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Link a deal first to update lender stage
-                </TooltipContent>
-              </Tooltip>
+              <DropdownMenu key={a.key}>
+                <DropdownMenuTrigger asChild>
+                  <AIAssistActionButton
+                    label={a.label}
+                    icon={
+                      <span className="inline-flex items-center gap-1">
+                        {a.icon}
+                        <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
+                      </span>
+                    }
+                    iconClass={a.iconClass}
+                    isActive={isUpdateActive}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem
+                    disabled={!hasDeal}
+                    onSelect={() => {
+                      if (!hasDeal) {
+                        void logUpdateLenderRefused({
+                          reason: 'no_deal_match',
+                          threadId: thread.threadId,
+                          contactId: contactId ?? null,
+                        });
+                        return;
+                      }
+                      setActive('update_lender');
+                    }}
+                  >
+                    <Building2 className="h-4 w-4 text-emerald-300 mr-2" />
+                    Update Lender in {dealLabel}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!hasDeal}
+                    onSelect={() => hasDeal && setActive('update_status')}
+                  >
+                    <CircleDot className="h-4 w-4 text-amber-300 mr-2" />
+                    Update {dealLabel} status / stage
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!hasDeal}
+                    onSelect={() => hasDeal && setActive('update_fields')}
+                  >
+                    <Banknote className="h-4 w-4 text-sky-300 mr-2" />
+                    Update {dealLabel} fields
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!contactId}
+                    onSelect={() => contactId && setActive('update_contact')}
+                  >
+                    <UserCog className="h-4 w-4 text-fuchsia-300 mr-2" />
+                    Update CRM contact / company
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             );
           }
           if (a.key === 'meeting') {
@@ -338,12 +348,36 @@ export function EmailQuickActionsToolbar({
           fallbackDealName={fallbackDealName}
         />
       </AIAssistOverlay>
-      <AIAssistOverlay open={active === 'lender'} onClose={() => setActive(null)} title="Update Lender Stage">
+      <AIAssistOverlay open={active === 'update_lender'} onClose={() => setActive(null)} title="Update Lender Stage">
         <UpdateLenderStatusInlineCard
           dealId={dealId || fallbackDealId}
           preselectLenderName={likelyLenderName}
           onClose={() => setActive(null)}
         />
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'update_status'} onClose={() => setActive(null)} title="Update Deal Status / Stage">
+        <UpdateDealStatusInlineCard
+          dealId={dealId || fallbackDealId}
+          onClose={() => setActive(null)}
+        />
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'update_fields'} onClose={() => setActive(null)} title="Update Deal Fields">
+        <UpdateDealFieldsOverlayBody
+          dealId={dealId || fallbackDealId || null}
+          dealName={dealName || fallbackDealName || null}
+          threadId={thread.threadId}
+        />
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'update_contact'} onClose={() => setActive(null)} title="Update CRM Contact / Company">
+        {contactId ? (
+          <ContactFieldSuggestions contactId={contactId} />
+        ) : (
+          <div className="rounded-xl border border-border bg-card p-3">
+            <p className="text-xs text-muted-foreground">
+              No CRM contact linked to this sender yet.
+            </p>
+          </div>
+        )}
       </AIAssistOverlay>
       <AIAssistOverlay open={active === 'task'} onClose={() => setActive(null)} title="Create Task">
         <CreateTaskInlineCard
@@ -377,7 +411,7 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       </AIAssistOverlay>
-      <AIAssistOverlay open={active === 'suggest_times'} onClose={() => setActive(null)} title="Suggest Times" hideClose>
+      <AIAssistOverlay open={active === 'meeting'} onClose={() => setActive(null)} title="Schedule Meeting" hideClose>
         <SuggestTimesPanel
           threadId={thread.threadId}
           subject={thread.subject}
