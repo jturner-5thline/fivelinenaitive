@@ -87,6 +87,32 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contact?.id, contact?.email, contact?.website_url]);
 
+  // Hoist memoized derived values ABOVE the early returns so hook order
+  // stays stable across renders (otherwise React throws
+  // "Should have a queue" when the contact resolves).
+  const latestNote = useMemo(
+    () => activities.find((a: any) => a.activity_type === 'note'),
+    [activities],
+  );
+  const filteredActivities = useMemo(
+    () => (activityFilter === 'all'
+      ? activities
+      : activities.filter((a: any) => a.activity_type === activityFilter)),
+    [activities, activityFilter],
+  );
+  const grouped = useMemo(() => {
+    const today: any[] = [];
+    const thisWeek: any[] = [];
+    const earlier: any[] = [];
+    for (const a of filteredActivities as any[]) {
+      const d = new Date(a.occurred_at);
+      if (isToday(d)) today.push(a);
+      else if (isThisWeek(d, { weekStartsOn: 1 })) thisWeek.push(a);
+      else earlier.push(a);
+    }
+    return { today, thisWeek, earlier };
+  }, [filteredActivities]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -121,10 +147,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     toast.success('Note added');
   };
 
-  const filteredActivities = activityFilter === 'all'
-    ? activities
-    : activities.filter((a: any) => a.activity_type === activityFilter);
-
   const lifecycleColors: Record<string, string> = {
     subscriber: 'bg-muted text-muted-foreground', lead: 'bg-blue-500/10 text-blue-500',
     mql: 'bg-purple-500/10 text-purple-500', sql: 'bg-indigo-500/10 text-indigo-500',
@@ -141,24 +163,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const location = [(contact as any).city, (contact as any).state, (contact as any).country].filter(Boolean).join(', ');
   const phonePrimary = contact.phone_mobile || contact.phone_work;
   const latestActivity = activities[0];
-  const latestNote = useMemo(
-    () => activities.find((a: any) => a.activity_type === 'note'),
-    [activities],
-  );
   const activeDeal = contactDeals[0];
-
-  const grouped = useMemo(() => {
-    const today: any[] = [];
-    const thisWeek: any[] = [];
-    const earlier: any[] = [];
-    for (const a of filteredActivities as any[]) {
-      const d = new Date(a.occurred_at);
-      if (isToday(d)) today.push(a);
-      else if (isThisWeek(d, { weekStartsOn: 1 })) thisWeek.push(a);
-      else earlier.push(a);
-    }
-    return { today, thisWeek, earlier };
-  }, [filteredActivities]);
 
   return (
     <>
