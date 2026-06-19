@@ -535,7 +535,51 @@ async function callModelForCandidates(
     return [];
   }
   const items = Array.isArray(parsed?.items) ? parsed.items : [];
-  return items.filter((it: any) => it && typeof it === "object") as CandidateItem[];
+  return items
+    .filter((it: any) => it && typeof it === "object")
+    .map((it: any) => {
+      // Normalize alternative field names Claude sometimes emits.
+      const target_object_type =
+        it.target_object_type ?? it.target_object ?? it.target_type ?? null;
+      const target_object_id =
+        it.target_object_id ?? it.target_id ?? it.target ?? null;
+      const item_title =
+        it.item_title ?? it.title ?? it.action_title ?? null;
+      const evidence_references = Array.isArray(it.evidence_references)
+        ? it.evidence_references
+        : Array.isArray(it.evidence)
+          ? it.evidence
+          : [];
+      const proposed_values =
+        it.proposed_values && typeof it.proposed_values === "object"
+          ? it.proposed_values
+          : it.proposed && typeof it.proposed === "object"
+            ? it.proposed
+            : {};
+      const current_values =
+        it.current_values && typeof it.current_values === "object"
+          ? it.current_values
+          : it.current && typeof it.current === "object"
+            ? it.current
+            : {};
+      return {
+        ...it,
+        target_object_type,
+        target_object_id,
+        item_title,
+        evidence_references,
+        proposed_values,
+        current_values,
+        confidence_score:
+          typeof it.confidence_score === "number" ? it.confidence_score :
+          typeof it.confidence === "number" ? it.confidence : 0,
+        risk_level: it.risk_level ?? it.risk ?? undefined,
+        rationale_summary: it.rationale_summary ?? it.rationale ?? it.reason ?? "",
+        evidence_summary: it.evidence_summary ?? it.summary ?? "",
+        linked_entity_label: it.linked_entity_label ?? it.entity_label ?? it.label ?? "",
+        target_field_paths: Array.isArray(it.target_field_paths) ? it.target_field_paths : [],
+      };
+    }) as CandidateItem[];
 }
 
 /* ------------------------------------------------------------------ */
