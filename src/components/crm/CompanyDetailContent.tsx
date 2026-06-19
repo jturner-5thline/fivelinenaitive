@@ -561,58 +561,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 </CardContent>
               </Card>
 
-              {/* 3. Related Records */}
-              <Card className="border-border/70">
-                <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
-                  <CardTitle className="text-sm flex items-center gap-1.5"><LinkIcon className="h-4 w-4 text-muted-foreground" /> Related Records</CardTitle>
-                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setShowLinkDeal(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> Link
-                  </Button>
-                </CardHeader>
-                <CardContent className="pt-3 space-y-3 text-xs">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Opportunities ({companyDeals.length})</p>
-                    {companyDeals.length === 0 ? (
-                      <p className="text-muted-foreground py-1">No linked deals</p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {companyDeals.slice(0, 4).map((d: any) => (
-                          <li key={d.id} className="flex items-center justify-between gap-2">
-                            <button className="text-primary hover:underline truncate text-left" onClick={() => navigate(`/deal/${d.id}`)}>
-                              {d.company}
-                            </button>
-                            <span className="text-muted-foreground shrink-0">{formatSlug(d.stage)}</span>
-                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => unlinkDeal.mutate({ dealId: d.id })}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Matched lenders</p>
-                    <p className="text-muted-foreground">{companyDeals.length} via linked deals</p>
-                  </div>
-                  {subsidiaries.length > 0 && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase mb-1">Subsidiaries</p>
-                        <ul className="space-y-1">
-                          {subsidiaries.map((s: any) => (
-                            <li key={s.id}>
-                              <button className="text-primary hover:underline" onClick={() => navigate(`/crm-companies/${s.id}`)}>{s.name}</button>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
             </div>
           </aside>
         </div>
