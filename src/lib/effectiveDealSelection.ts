@@ -22,13 +22,13 @@ export function rankActiveDuplicateFirst<T extends { deal: Deal; score: number }
     const aCompany = normalizeCompany(a.deal.company || a.deal.name);
     const bCompany = normalizeCompany(b.deal.company || b.deal.name);
     const sameCompany = !!aCompany && aCompany === bCompany;
-    const scoreDelta = b.score - a.score;
     const aActive = isActiveDeal(a.deal);
     const bActive = isActiveDeal(b.deal);
 
-    if (sameCompany && aActive !== bActive && Math.abs(scoreDelta) < 15) {
+    if (sameCompany && aActive !== bActive) {
       return aActive ? -1 : 1;
     }
+    const scoreDelta = b.score - a.score;
     if (scoreDelta !== 0) return scoreDelta;
     if (aActive !== bActive) return aActive ? -1 : 1;
     return 0;
