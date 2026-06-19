@@ -1,16 +1,13 @@
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import {
   FolderUp,
   Building2,
   Sparkles as SparklesIcon,
   ListPlus,
   CalendarClock,
-  CalendarRange,
   AlignLeft,
   Loader2,
   ListChecks,
-  Info,
   ChevronDown,
   Pencil,
   CircleDot,
@@ -19,7 +16,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +31,6 @@ import { UpdateDealStatusInlineCard } from './UpdateDealStatusInlineCard';
 import { SuggestedDealUpdatesSection } from './SuggestedDealUpdatesSection';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
-import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { AIAssistOverlay } from './AIAssistOverlay';
 import { useAuth } from '@/contexts/AuthContext';
