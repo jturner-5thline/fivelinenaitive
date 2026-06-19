@@ -40,6 +40,7 @@ import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useDeals, DEFAULT_DEAL_FILTERS } from '@/hooks/useDeals';
 import { useDealSavedViews, DealViewConfig } from '@/hooks/useDealSavedViews';
 import { DealSavedViewsMenu } from '@/components/deals/DealSavedViewsMenu';
+import { useDealsLastViewState } from '@/hooks/useDealsLastViewState';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
