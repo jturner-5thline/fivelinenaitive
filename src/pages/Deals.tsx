@@ -1156,7 +1156,10 @@ export default function Dashboard() {
                     </Button>
                   </div>
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
-                    <DealRundownMemoView deal={selectedDeal as any} />
+                    <DealRundownMemoView
+                      deal={selectedDeal as any}
+                      onOpenDeal={(id) => setForceOverlayDealId(id)}
+                    />
                   </div>
                 </aside>
               )}
