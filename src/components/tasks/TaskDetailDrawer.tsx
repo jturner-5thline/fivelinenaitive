@@ -302,6 +302,16 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <Button
             variant="ghost"
             size="icon"
+            className="h-7 w-7"
+            onClick={handleUndoClick}
+            disabled={!canUndo}
+            title={canUndo ? 'Undo last change (⌘Z)' : 'Nothing to undo'}
+          >
+            <Undo2 className="h-3.5 w-3.5" style={{ color: canUndo ? '#eef1f6' : '#8b92a5' }} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             className="h-7 w-7 relative"
             onClick={handleManualAsanaSync}
             disabled={asanaSyncing}
