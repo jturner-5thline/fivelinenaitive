@@ -587,6 +587,25 @@ async function callModelForCandidates(
 /* ------------------------------------------------------------------ */
 
 function isValidCandidate(c: CandidateItem, minConf: number): boolean {
+
+function synthesizeTitle(it: any): string {
+  const t = it?.action_type ?? "Update";
+  const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
+  const map: Record<string, string> = {
+    add_status_note: "Add status note",
+    update_funding_source: "Update funding source",
+    create_followup_task: "Create follow-up task",
+    create_milestone: "Create milestone",
+    draft_email: "Draft email",
+    update_deal_field: "Update deal field",
+    update_contact_field: "Update contact",
+    escalate: "Escalate",
+  };
+  const base = map[t] ?? t.replace(/_/g, " ");
+  return label ? `${base} — ${label}` : base;
+}
+
+function _isValidCandidate_unused() {}
   if (!c || !c.action_type) return false;
   if (!SUPPORTED_ACTION_TYPES.includes(c.action_type as any)) return false;
   if (typeof c.confidence_score !== "number" || c.confidence_score < minConf) return false;
