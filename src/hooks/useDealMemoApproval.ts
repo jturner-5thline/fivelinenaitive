@@ -537,14 +537,14 @@ export function useDealMemoApproval(
         const { data: taskData, error: taskError } = await supabase
           .from('tasks')
           .insert({
-            title: `Review ${deal?.company || 'Deal'}`,
+            title: `Review ${deal?.company || 'Deal'} Memo`,
             assigned_to: nextApprover.userId,
             assigned_by: user.id,
             deal_id: dealId,
             company_id: membership?.company_id || deal?.company_id || null,
             due_date: today,
             status: 'not_started',
-            priority: 'high',
+            priority: 'urgent',
             task_type: 'deal_memo_approval',
             description: `Please review and approve the Deal Memo for ${deal?.company || 'the deal'}. Open the Deal Memo from the deal page to approve or reject.`,
           } as any)
