@@ -267,7 +267,7 @@ export function useEnqueueAiAction() {
         description: `${args.title} — review later from the queue.`,
       });
       invalidateQueueAll(qc);
-      return data as QueuedAiAction;
+      return data as unknown as QueuedAiAction;
     },
     [user, qc],
   );
