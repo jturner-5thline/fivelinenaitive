@@ -12,6 +12,7 @@ import {
 import { useDealsContext } from '@/contexts/DealsContext';
 import { type DealLender } from '@/types/deal';
 import { useLenderStages } from '@/contexts/LenderStagesContext';
+import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
 
 /**
@@ -73,18 +74,25 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const effectiveDeal = useMemo(() => {
     if (!initialDeal) return undefined;
     const proposed = (preselectLenderName || '').trim();
-    if (!proposed) return initialDeal;
-    const onInitial = (initialDeal.lenders || []).some((l) =>
-      lenderNamesMatch(l.name || '', proposed),
+    const sameCompanyDeals = deals.filter(
+      (d) => (d.company || '').trim().toLowerCase() === (initialDeal.company || '').trim().toLowerCase(),
     );
-    if (onInitial) return initialDeal;
-    const sibling = deals.find(
-      (d) =>
-        d.id !== initialDeal.id &&
-        (d.company || '').trim().toLowerCase() === (initialDeal.company || '').trim().toLowerCase() &&
-        (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed)),
+    const activeSibling = sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && isActiveDeal(d),
     );
-    return sibling || initialDeal;
+    if (!proposed) return isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal);
+
+    const hasProposedLender = (d: typeof initialDeal) =>
+      (d.lenders || []).some((l) => lenderNamesMatch(l.name || '', proposed));
+    const onInitial = hasProposedLender(initialDeal);
+    if (onInitial && isActiveDeal(initialDeal)) return initialDeal;
+
+    const siblingWithLender = sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && isActiveDeal(d) && hasProposedLender(d),
+    ) || sameCompanyDeals.find(
+      (d) => d.id !== initialDeal.id && hasProposedLender(d),
+    );
+    return siblingWithLender || (isActiveDeal(initialDeal) ? initialDeal : (activeSibling || initialDeal));
   }, [deals, initialDeal, preselectLenderName]);
 
   const deal = effectiveDeal;
@@ -144,7 +152,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     const handleAdd = async () => {
       setAdding(true);
       try {
-        await addLenderToDeal(dealId, {
+        await addLenderToDeal(deal.id, {
           name: proposedLenderName,
           trackingStatus: 'active',
         });
