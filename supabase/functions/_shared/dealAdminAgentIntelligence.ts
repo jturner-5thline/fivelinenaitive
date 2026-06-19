@@ -769,6 +769,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   }
   const dealList = (deals ?? []).filter((d: any) => {
     const name = (d.company ?? "").toLowerCase();
+    const status = (d.status ?? "").toLowerCase();
+    const stage = (d.stage ?? "").toLowerCase();
+    if (status === "archived" || status === "archive" || stage === "archived") return false;
     if (!name) return true;
     if (name === "test-niki's store" || name === "example deal") return false;
     if (name.startsWith("test ")) return false;
