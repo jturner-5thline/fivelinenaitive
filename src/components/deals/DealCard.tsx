@@ -427,17 +427,38 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           )}
 
-          {/* ── ROW 3: "Deal size" label + value ── */}
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
-              {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
-            </span>
-            <span
-              className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
-              style={{ color: '#f8fbff' }}
-            >
-              {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
-            </span>
+          {/* ── ROW 3: "Deal size" label + value | type/engagement tags ── */}
+          <div className="flex items-end justify-between gap-3 min-w-0">
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
+                {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
+              </span>
+              <span
+                className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+                style={{ color: '#f8fbff' }}
+              >
+                {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+              </span>
+            </div>
+            {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
+              <div className="flex items-center justify-end gap-1.5 flex-wrap min-w-0 pb-0.5">
+                {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
+                  <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                    {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                  </Badge>
+                )}
+                {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
+                  <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25">
+                    {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
+                  </Badge>
+                )}
+                {dealTypeLabels.map((label, index) => (
+                  <Badge key={index} variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Migrated + FLEx badges row */}
@@ -485,27 +506,6 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   </Tooltip>
                 </TooltipProvider>
               )}
-            </div>
-          )}
-
-          {/* ── Deal type / engagement pills (moved above notes panel) ── */}
-          {!compact && (deal.engagementType || deal.exclusivity || dealTypeLabels.length > 0) && (
-            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
-                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
-                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-                </Badge>
-              )}
-              {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
-                <Badge variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-primary/10 text-primary border-primary/25">
-                  {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
-                </Badge>
-              )}
-              {dealTypeLabels.map((label, index) => (
-                <Badge key={index} variant="outline" className="text-[11px] font-medium rounded-md px-2 py-0.5 bg-white/[0.03] border-white/10" style={{ color: 'rgba(222, 234, 250, 0.92)' }}>
-                  {label}
-                </Badge>
-              ))}
             </div>
           )}
 
