@@ -586,8 +586,6 @@ async function callModelForCandidates(
 /*  Promotion + dedupe + merge                                         */
 /* ------------------------------------------------------------------ */
 
-function isValidCandidate(c: CandidateItem, minConf: number): boolean {
-
 function synthesizeTitle(it: any): string {
   const t = it?.action_type ?? "Update";
   const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
@@ -605,7 +603,7 @@ function synthesizeTitle(it: any): string {
   return label ? `${base} — ${label}` : base;
 }
 
-function _isValidCandidate_unused() {}
+function isValidCandidate(c: CandidateItem, minConf: number): boolean {
   if (!c || !c.action_type) return false;
   if (!SUPPORTED_ACTION_TYPES.includes(c.action_type as any)) return false;
   if (typeof c.confidence_score !== "number" || c.confidence_score < minConf) return false;
