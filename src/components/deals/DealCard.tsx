@@ -330,30 +330,48 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             4. The right column is also self-start with a fixed visual height
                so a missing stage pill does not cause baseline drift.
         */}
-        <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3">
+        <div className="px-5 pt-4 pb-5 flex flex-col flex-1 gap-3">
 
-          {/* ── ROW 1: Name (truncates, up to 2 lines) | Status pill ── */}
+          {/* ── ROW 1: Name | inline notification bell + menu ── */}
           <div className="flex items-start justify-between gap-2 min-w-0">
             <h3
-              className="text-base font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
+              className="text-[17px] font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
               style={{ color: '#f8fbff' }}
               title={deal.company}
             >
               {deal.company}
             </h3>
             <div className="flex items-center gap-1 shrink-0">
-              {onToggleFlag && (
+              {notificationCount > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        aria-label={`${notificationCount} notifications`}
+                        className="flex h-6 items-center gap-1 rounded-full bg-destructive/15 px-2 text-[11px] font-semibold text-destructive border border-destructive/30"
+                      >
+                        <Bell className="h-3 w-3" />
+                        {notificationCount > 99 ? '99+' : notificationCount}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{notificationCount} item{notificationCount !== 1 ? 's' : ''} need attention</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {onToggleFlag && showFlagIndicator && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`h-6 w-6 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                  className="h-6 w-6 relative text-destructive"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setIsFlagDialogOpen(true);
                   }}
                 >
-                  <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
+                  <Flag className="h-3.5 w-3.5 fill-current" />
                   {displayFlagCount > 1 && (
                     <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
                       {displayFlagCount}
@@ -364,23 +382,17 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 opacity-60 hover:opacity-100 transition-opacity"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setIsEditDrawerMounted(true);
                   setIsEditDrawerOpen(true);
                 }}
+                aria-label="More options"
               >
-                <Search className="h-3.5 w-3.5" />
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
-              {!hideStatus && (
-                <InlineStatusDropdown
-                  dealId={deal.id}
-                  status={deal.status}
-                  onStatusChange={onStatusChange}
-                />
-              )}
               {isEditDrawerMounted && (
                 <DealEditDrawer
                   deal={deal}
@@ -395,30 +407,15 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             </div>
           </div>
 
-          {/* ── ROW 2: Size (own row) | Stage pill (wraps below if no room) ── */}
-          <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
-            {deal.dealClass === 'finserv' ? (
-              <span className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
-                <span
-                  className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                  style={{ color: '#f8fbff' }}
-                >
-                  {formatCurrencyValue(deal.mrr ?? 0)}
-                </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
-                  MRR
-                </span>
-              </span>
-            ) : (
-              <span
-                className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-                style={{ color: '#f8fbff' }}
-              >
-                {formatCurrencyValue(deal.value)}
-              </span>
-            )}
-            {!hideStatus && !compact && (
-              <div className="shrink-0 max-w-full min-w-0">
+          {/* ── ROW 2: Status pill + Stage pill (inline pills row) ── */}
+          {!hideStatus && (
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+              />
+              {!compact && (
                 <InlineStageDropdown
                   dealId={deal.id}
                   stage={deal.stage}
@@ -426,8 +423,21 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                   dealName={deal.company}
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
+          {/* ── ROW 3: "Deal size" label + value ── */}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: 'rgba(180, 198, 224, 0.75)' }}>
+              {deal.dealClass === 'finserv' ? 'MRR' : 'Deal size'}
+            </span>
+            <span
+              className="text-[28px] font-bold leading-none tracking-tight tabular-nums whitespace-nowrap"
+              style={{ color: '#f8fbff' }}
+            >
+              {formatCurrencyValue(deal.dealClass === 'finserv' ? (deal.mrr ?? 0) : deal.value)}
+            </span>
           </div>
 
           {/* Migrated + FLEx badges row */}
