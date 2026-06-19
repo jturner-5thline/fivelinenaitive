@@ -517,7 +517,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   }
 
   const masterPane = (
-    <div className="popup-shell-surface flex flex-col h-full min-h-0 min-w-0 rounded-xl overflow-hidden">
+    <div className="popup-shell-surface flex flex-col h-full w-full min-h-0 min-w-0 max-w-full rounded-xl overflow-hidden">
       {isAdmin && (
         <div className="shrink-0 px-3 pt-2 pb-1.5 border-b border-white/5 flex flex-wrap items-center gap-1.5">
           <FilterChip
@@ -672,7 +672,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
         </div>
       ) : (
         <>
-          <div className="w-[368px] shrink-0 min-w-0 min-h-0 h-full flex">{masterPane}</div>
+          <div className="w-[368px] shrink-0 min-w-0 max-w-[368px] min-h-0 h-full flex overflow-hidden">{masterPane}</div>
           <div className="flex-1 min-w-0 min-h-0 h-full flex">{detailPane}</div>
         </>
       )}
