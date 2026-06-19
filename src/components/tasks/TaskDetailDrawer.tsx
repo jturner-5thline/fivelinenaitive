@@ -225,13 +225,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const creatorProfile = task.creator_profile || fetchedCreator || null;
 
   const handleSaveTitle = () => {
-    if (titleValue.trim() && titleValue !== task.title) onUpdate({ title: titleValue.trim() } as any);
+    if (titleValue.trim() && titleValue !== task.title) onUpdateWithUndo({ title: titleValue.trim() } as any);
     setEditingTitle(false);
   };
 
   const handleSaveDesc = () => {
     if (descValue !== (task.description || '')) {
-      onUpdate({ description: descValue } as any);
+      onUpdateWithUndo({ description: descValue } as any);
       createMentions.mutate({ taskId: task.id, text: descValue, source: 'description' });
     }
   };
@@ -263,7 +263,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
   const handleToggleComplete = () => {
     const newStatus = isComplete ? 'not_started' : 'complete';
-    onUpdate({ status: newStatus } as any);
+    onUpdateWithUndo({ status: newStatus } as any);
     if (newStatus === 'complete') fireCelebration();
   };
 
@@ -272,12 +272,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
       toast.error('Please add a blocker note before setting status to Blocked');
       return;
     }
-    onUpdate({ status: v } as any);
+    onUpdateWithUndo({ status: v } as any);
     if (v === 'complete') fireCelebration();
   };
 
   const handleSaveBlockerNote = () => {
-    onUpdate({ blocker_note: blockerNote.trim() || null } as any);
+    onUpdateWithUndo({ blocker_note: blockerNote.trim() || null } as any);
   };
 
   const isComplete = task.status === 'complete';
@@ -410,7 +410,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <User className="h-3 w-3" /> Assignee
               </div>
-              <Select value={task.assigned_to} onValueChange={v => onUpdate({ assigned_to: v } as any)}>
+              <Select value={task.assigned_to} onValueChange={v => onUpdateWithUndo({ assigned_to: v } as any)}>
                 <SelectTrigger className="h-7 text-xs border-none bg-transparent px-1 w-auto min-w-[120px]">
                   <div className="flex items-center gap-1.5">
                     <Avatar className="h-5 w-5">
@@ -529,12 +529,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 <Calendar className="h-3 w-3" /> Due date
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <Input type="date" value={task.due_date || ''} onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
+                <Input type="date" value={task.due_date || ''} onChange={e => onUpdateWithUndo({ due_date: e.target.value || null } as any)}
                   className="h-7 text-xs w-[130px] bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" />
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: today } as any)}>Today</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: tomorrow } as any)}>Tomorrow</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: today } as any)}>Today</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: tomorrow } as any)}>Tomorrow</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
                 </div>
               </div>
             </div>
