@@ -406,10 +406,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </CardContent>
             </Card>
 
-            {/* 6. Attachments — dedicated module */}
-            <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
-
-            {/* 7. Recent Notes */}
+            {/* Recent Notes */}
             <Card id="notes" className="border-border/70 scroll-mt-24">
               <CardHeader className="pb-2 border-b flex flex-row items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-1.5">
@@ -443,6 +440,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 )}
               </CardContent>
             </Card>
+
+            {/* Attachments — dedicated module */}
+            <CompanyAttachmentsTable crmCompanyId={company.id} companyName={company.name} />
 
             {/* 8. Activity Timeline */}
             <Card id="activity" className="border-border/70 scroll-mt-24">
