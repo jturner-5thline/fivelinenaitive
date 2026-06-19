@@ -561,12 +561,12 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
                             <>
                               <div className="flex items-start gap-2">
                                 <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                <p className="text-[13px] font-semibold leading-snug line-clamp-2" style={{ color: 'rgba(240, 246, 255, 0.98)' }}>
+                                <p className="text-[14px] font-semibold leading-snug line-clamp-2" style={{ color: '#ffffff' }}>
                                   {headline}
                                 </p>
                               </div>
                               {rest && (
-                                <p className="text-[12px] leading-snug mt-1 pl-3.5 line-clamp-3" style={{ color: 'rgba(200, 215, 238, 0.75)' }}>
+                                <p className="text-[13px] leading-snug mt-1 pl-3.5 line-clamp-3" style={{ color: '#ffffff' }}>
                                   {rest}
                                 </p>
                               )}
