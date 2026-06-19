@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useUndoStack } from '@/hooks/useUndoStack';
 import { TaskDuplicatePanel } from '@/components/tasks/TaskDuplicatePanel';
 import { type Task, useTaskComments, useTaskActivity, useSubtasks } from '@/hooks/useTasks';
 import { useTaskDependencies } from '@/hooks/useTaskDependencies';
@@ -37,7 +38,7 @@ import {
   X, Calendar, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
-  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw,
+  Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw, Undo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow, format, addDays, nextMonday } from 'date-fns';
@@ -110,6 +111,39 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [asanaSyncing, setAsanaSyncing] = useState(false);
+
+  // Local undo stack for this drawer. Each entry captures the inverse of a
+  // single onUpdate call so the user can roll back recent field changes
+  // (title, status, due date, assignee, etc.) without leaving the panel.
+  const { push: pushUndo, pop: popUndo, canUndo } = useUndoStack(20);
+
+  // Wraps the parent-provided onUpdate so every drawer mutation records
+  // its inverse on the undo stack. We snapshot the prior values from the
+  // current `task` BEFORE applying the change.
+  const onUpdateWithUndo = useCallback(
+    (updates: Partial<Task>) => {
+      try {
+        const prev: Record<string, any> = {};
+        for (const k of Object.keys(updates)) {
+          prev[k] = (task as any)[k] ?? null;
+        }
+        pushUndo({
+          label: 'Task change',
+          undo: () => onUpdate(prev as Partial<Task>),
+        });
+      } catch {
+        // Never let undo bookkeeping block the underlying update.
+      }
+      onUpdate(updates);
+    },
+    [task, onUpdate, pushUndo],
+  );
+
+  const handleUndoClick = useCallback(() => {
+    const a = popUndo();
+    if (!a) return;
+    Promise.resolve(a.undo()).then(() => toast.success('Undone')).catch(() => {});
+  }, [popUndo]);
 
   const handleManualAsanaSync = useCallback(async () => {
     if (asanaSyncing) return;
@@ -191,13 +225,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const creatorProfile = task.creator_profile || fetchedCreator || null;
 
   const handleSaveTitle = () => {
-    if (titleValue.trim() && titleValue !== task.title) onUpdate({ title: titleValue.trim() } as any);
+    if (titleValue.trim() && titleValue !== task.title) onUpdateWithUndo({ title: titleValue.trim() } as any);
     setEditingTitle(false);
   };
 
   const handleSaveDesc = () => {
     if (descValue !== (task.description || '')) {
-      onUpdate({ description: descValue } as any);
+      onUpdateWithUndo({ description: descValue } as any);
       createMentions.mutate({ taskId: task.id, text: descValue, source: 'description' });
     }
   };
@@ -229,7 +263,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
 
   const handleToggleComplete = () => {
     const newStatus = isComplete ? 'not_started' : 'complete';
-    onUpdate({ status: newStatus } as any);
+    onUpdateWithUndo({ status: newStatus } as any);
     if (newStatus === 'complete') fireCelebration();
   };
 
@@ -238,12 +272,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
       toast.error('Please add a blocker note before setting status to Blocked');
       return;
     }
-    onUpdate({ status: v } as any);
+    onUpdateWithUndo({ status: v } as any);
     if (v === 'complete') fireCelebration();
   };
 
   const handleSaveBlockerNote = () => {
-    onUpdate({ blocker_note: blockerNote.trim() || null } as any);
+    onUpdateWithUndo({ blocker_note: blockerNote.trim() || null } as any);
   };
 
   const isComplete = task.status === 'complete';
@@ -265,6 +299,16 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={handleUndoClick}
+            disabled={!canUndo}
+            title={canUndo ? 'Undo last change (⌘Z)' : 'Nothing to undo'}
+          >
+            <Undo2 className="h-3.5 w-3.5" style={{ color: canUndo ? '#eef1f6' : '#8b92a5' }} />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -376,7 +420,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
                 <User className="h-3 w-3" /> Assignee
               </div>
-              <Select value={task.assigned_to} onValueChange={v => onUpdate({ assigned_to: v } as any)}>
+              <Select value={task.assigned_to} onValueChange={v => onUpdateWithUndo({ assigned_to: v } as any)}>
                 <SelectTrigger className="h-7 text-xs border-none bg-transparent px-1 w-auto min-w-[120px]">
                   <div className="flex items-center gap-1.5">
                     <Avatar className="h-5 w-5">
@@ -495,12 +539,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 <Calendar className="h-3 w-3" /> Due date
               </div>
               <div className="flex items-center gap-1 flex-wrap">
-                <Input type="date" value={task.due_date || ''} onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
+                <Input type="date" value={task.due_date || ''} onChange={e => onUpdateWithUndo({ due_date: e.target.value || null } as any)}
                   className="h-7 text-xs w-[130px] bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" />
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: today } as any)}>Today</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: tomorrow } as any)}>Tomorrow</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: today } as any)}>Today</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: tomorrow } as any)}>Tomorrow</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdateWithUndo({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
                 </div>
               </div>
             </div>
