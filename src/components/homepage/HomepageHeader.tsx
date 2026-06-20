@@ -6,6 +6,7 @@ import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHeader = () => {
   const [scrolled, setScrolled] = useState(false);
+  const [blurred, setBlurred] = useState(false);
 
   useEffect(() => {
     const onScroll = () => {
@@ -13,6 +14,11 @@ export const HomepageHeader = () => {
       const headerOffset = 80; // approx header height + top offset
       const threshold = hero ? hero.offsetTop + hero.offsetHeight - headerOffset : window.innerHeight - headerOffset;
       setScrolled(window.scrollY > threshold);
+      const heading = document.querySelector('[data-homepage-hero] h1') as HTMLElement | null;
+      if (heading) {
+        const rect = heading.getBoundingClientRect();
+        setBlurred(rect.top < headerOffset);
+      }
     };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -30,7 +36,10 @@ export const HomepageHeader = () => {
           "mx-auto rounded-[10px] transition-all duration-300 ease-out pointer-events-auto",
           scrolled
             ? "container max-w-6xl bg-[rgba(8,10,18,0.72)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.07] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-14px_rgba(0,0,0,0.55)]"
-            : "w-full bg-transparent border border-transparent backdrop-blur-md backdrop-saturate-150"
+            : cn(
+                "w-full bg-transparent border border-transparent",
+                blurred && "backdrop-blur-md backdrop-saturate-150"
+              )
         )}
       >
         <nav className="pl-2 pr-2 sm:pl-3 sm:pr-3 h-12 sm:h-14 flex items-center justify-between gap-4 leading-none">
