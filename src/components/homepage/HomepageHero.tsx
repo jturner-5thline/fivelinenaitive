@@ -77,13 +77,8 @@ export const HomepageHero = () => {
           </h1>
 
           {/* Primary subhead — true subhead, brighter & shorter */}
-          <p className="mt-7 sm:mt-8 max-w-[34rem] text-[17px] sm:text-[19px] md:text-[20px] font-light leading-[1.5] text-white/85">
+          <p className="mt-7 sm:mt-8 max-w-[38rem] text-[19px] sm:text-[22px] md:text-[24px] font-light leading-[1.5] text-white/85">
             We centralize deal execution into a single operating system — bringing work, decisions, and data together as deals move through review, diligence, and approval.
-          </p>
-
-          {/* Secondary support copy — lower contrast, smaller */}
-          <p className="mt-3.5 max-w-[32rem] text-[14px] sm:text-[15px] font-light leading-[1.65] text-white/45">
-            Intelligence is embedded directly into execution, surfacing bottlenecks, highlighting risk, and keeping work moving without adding more tools or manual oversight.
           </p>
 
           {/* Email capture form */}
