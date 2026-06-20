@@ -151,8 +151,17 @@ export async function preloadThreadWorkflowAnalysis({
 
   const cached = readCache()[key];
   if (cached?.analysis) return cached.analysis;
+  const cachePrefix = `${threadData.threadId}::${messageId}::`;
+  const cachedVariant = Object.entries(readCache()).find(
+    ([variantKey, value]) => variantKey.startsWith(cachePrefix) && value?.analysis,
+  )?.[1]?.analysis;
+  if (cachedVariant) return cachedVariant;
   const existing = workflowAnalysisInflight.get(key);
   if (existing) return existing;
+  const existingVariant = Array.from(workflowAnalysisInflight.entries()).find(([variantKey]) =>
+    variantKey.startsWith(cachePrefix),
+  )?.[1];
+  if (existingVariant) return existingVariant;
 
   const promise = (async () => {
     try {
