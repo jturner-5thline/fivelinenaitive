@@ -214,6 +214,69 @@ export async function preloadThreadWorkflowAnalysis({
               normalized.recommended_update.title = normalized.recommended_update.title
                 .replace(new RegExp(escaped, 'gi'), canonical.name);
             }
+            if (
+              normalized.recommended_update.title &&
+              !normalized.recommended_update.title.toLowerCase().includes(canonical.name.toLowerCase())
+            ) {
+              const lender = normalized.recommended_update.lender_name || 'lender';
+              const stage = normalized.recommended_update.new_stage || 'updated';
+              normalized.recommended_update.title = `Update ${lender} stage on ${canonical.name} → ${stage}`;
+            }
+          }
+        }
+      } catch {
+        /* non-fatal */
+      }
+      try {
+        const isInternal = (n?: string | null) => {
+          const s = (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          return (
+            s === '5th line' ||
+            s === '5th line capital' ||
+            s === 'fifth line' ||
+            s === 'fifth line capital' ||
+            s.startsWith('5th line ') ||
+            s.startsWith('fifth line ')
+          );
+        };
+        if (isInternal(normalized.likely_lender_firm?.name)) {
+          normalized.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: '5th Line is the internal firm and is excluded from lender tags.',
+          };
+        }
+        if (
+          normalized.recommended_update?.kind === 'lender_status' &&
+          isInternal(normalized.recommended_update.lender_name)
+        ) {
+          normalized.recommended_update = { ...normalized.recommended_update, kind: 'none' };
+        }
+
+        const senderEmail = latestInbound?.from_email as string | undefined;
+        const headers = (latestInbound?.headers || latestInbound?.gmail_headers) as HeaderMap;
+        const newsletter = isNewsletterSender(senderEmail);
+        const listMail = hasListUnsubscribe(headers);
+        const lowConfNoLender =
+          normalized.likely_lender_firm?.confidence === 'low' &&
+          !normalized.recommended_update?.lender_id;
+        const refuseReason = newsletter
+          ? 'newsletter_sender'
+          : listMail
+            ? 'list_unsubscribe_header'
+            : lowConfNoLender
+              ? 'low_confidence'
+              : null;
+        if (refuseReason) {
+          normalized.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: refuseReason,
+          };
+          if (normalized.recommended_update?.kind === 'lender_status') {
+            normalized.recommended_update = { ...normalized.recommended_update, kind: 'none' };
           }
         }
       } catch {
