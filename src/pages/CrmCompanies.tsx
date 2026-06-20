@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, Building2, Loader2, RefreshCw } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
@@ -15,6 +15,8 @@ import { AdvancedFilterBuilder } from '@/components/filters/AdvancedFilterBuilde
 import { COMPANY_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { exportCrmCompaniesToXlsx } from '@/lib/crmCompaniesXlsxExport';
+import { useCompany } from '@/hooks/useCompany';
 
 export default function CrmCompanies() {
   const [showCreate, setShowCreate] = useState(false);
@@ -22,10 +24,12 @@ export default function CrmCompanies() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
+  const { company } = useCompany();
 
   const { data: result, isLoading, isFetching } = useCrmCompanies({
     page,
@@ -71,6 +75,24 @@ export default function CrmCompanies() {
     }
   };
 
+  const handleExport = async () => {
+    if (!company?.id) return;
+    setIsExporting(true);
+    try {
+      const count = await exportCrmCompaniesToXlsx({
+        orgCompanyId: company.id,
+        quickFilter,
+        advancedFilters: debouncedFilters,
+        matchMode,
+      });
+      toast.success(`Exported ${count} companies`);
+    } catch (e: any) {
+      toast.error('Export failed', { description: e.message });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleQuickFilterChange = (value: string) => {
     setQuickFilter(value);
     setPage(0);
@@ -101,6 +123,10 @@ export default function CrmCompanies() {
               <Button variant="outline" size="sm" onClick={handleSync} disabled={isSyncing}>
                 {isSyncing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
                 Sync HubSpot
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
+                Export
               </Button>
               <Button variant="outline" size="sm"><Upload className="h-4 w-4 mr-1.5" /> Import</Button>
               <Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1.5" /> Add Company</Button>
