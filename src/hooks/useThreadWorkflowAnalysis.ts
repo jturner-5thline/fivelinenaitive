@@ -436,6 +436,17 @@ export function useThreadWorkflowAnalysis({
 
       setAnalysis(result);
 
+      // Persist to localStorage so reopening the same thread renders
+      // the analysis instantly without re-invoking the edge function.
+      if (cacheKey) {
+        const cache = readCache();
+        cache[`${cacheKey}::${dealId || 'no-deal'}`] = {
+          analysis: result,
+          savedAt: Date.now(),
+        };
+        writeCache(cache);
+      }
+
       // Fire prefill analytics event so we can track AI suggestion quality.
       const rec = result.recommended_update;
       if (rec && rec.kind !== 'none') {
