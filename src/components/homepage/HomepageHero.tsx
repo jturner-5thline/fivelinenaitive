@@ -68,6 +68,33 @@ export const HomepageHero = () => {
         }}
       />
 
+      {/* Brand hue alignment: shifts the existing hero glow toward the
+          naitive logo palette (cyan → blue → violet) without brightening
+          or restructuring the background. Uses hue-only blending so
+          overall luminance is preserved. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          mixBlendMode: 'color',
+          opacity: 0.55,
+          background:
+            'radial-gradient(60% 55% at 22% 78%, rgba(34,211,238,0.55) 0%, rgba(34,211,238,0) 70%),' +
+            'radial-gradient(70% 65% at 55% 60%, rgba(96,142,240,0.6) 0%, rgba(96,142,240,0) 72%),' +
+            'radial-gradient(55% 55% at 85% 40%, rgba(139,108,232,0.55) 0%, rgba(139,108,232,0) 70%)',
+        }}
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          mixBlendMode: 'overlay',
+          opacity: 0.12,
+          background:
+            'radial-gradient(80% 70% at 40% 65%, rgba(126,184,247,0.5) 0%, rgba(126,184,247,0) 70%)',
+        }}
+      />
+
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
         <div className="max-w-full md:max-w-[34rem] lg:max-w-[40rem] xl:max-w-[42rem] flex flex-col items-start">
