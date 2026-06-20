@@ -9,6 +9,7 @@ const corsHeaders = {
 const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 /**
@@ -614,9 +615,18 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userError } = await authClient.auth.getUser(token);
 
     if (userError || !userData?.user?.id) {
       console.error("[gmail-messages] auth error:", userError?.message || "no user");
@@ -627,6 +637,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const user = { id: userData.user.id };
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const requestData: MessageRequest = await req.json();
     const { action } = requestData;
