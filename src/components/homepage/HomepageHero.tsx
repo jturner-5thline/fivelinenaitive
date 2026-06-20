@@ -57,7 +57,7 @@ export const HomepageHero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
+    <section data-homepage-hero className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
       <div
         aria-hidden
         className="absolute inset-0 bg-no-repeat pointer-events-none"
