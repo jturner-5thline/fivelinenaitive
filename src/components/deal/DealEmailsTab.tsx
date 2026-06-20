@@ -101,7 +101,7 @@ import {
 } from './email/systemAutoLabels';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
-import { preloadThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
+import { getThreadWorkflowCacheKey, preloadThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
@@ -1497,17 +1497,24 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     const runNext = async (index: number) => {
       if (cancelled || index >= queue.length) return;
       const thread = queue[index];
+      const convoKey = thread.latestEmail?.provider_thread_id || thread.latestEmail?.threadId;
+      const convoEmails = convoKey
+        ? emails
+            .filter((e) => (e.provider_thread_id || e.threadId) === convoKey)
+            .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
+        : thread.emails;
       const threadData = {
         subject: thread.subject,
         threadId: thread.threadId,
         latestEmail: thread.latestEmail,
-        emails: thread.emails,
+        emails: convoEmails.length > 0 ? convoEmails : thread.emails,
       };
-      const key = `${thread.threadId}::${(thread.latestEmail as any)?.gmail_message_id || thread.latestEmail?.id || ''}::${dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || 'no-deal'}`;
+      const resolvedDealId = dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null;
+      const key = getThreadWorkflowCacheKey(threadData, resolvedDealId);
       if (!preloadedWorkflowKeysRef.current.has(key)) {
-        preloadedWorkflowKeysRef.current.add(key);
+        if (key) preloadedWorkflowKeysRef.current.add(key);
         await preloadThreadWorkflowAnalysis({
-          dealId: dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null,
+          dealId: resolvedDealId,
           threadData,
           deals: allDeals,
         });
@@ -1522,7 +1529,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       cancelled = true;
       window.clearTimeout(starter);
     };
-  }, [allThreads, dealId, emailDealIdMap, isInboxScope, allDeals]);
+  }, [allThreads, dealId, emailDealIdMap, isInboxScope, allDeals, emails]);
 
   const responseQueue = useMemo(() => {
     return emails
