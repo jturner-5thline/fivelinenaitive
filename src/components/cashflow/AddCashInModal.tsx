@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -65,6 +65,7 @@ function stageLabel(s: string | null) {
 
 export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalProps) {
   const { company } = useCompany();
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,44 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  useEffect(() => {
+    if (!open) return;
+    let closing = false;
+
+    const closeImmediately = (event: Event) => {
+      if (closing) return;
+      closing = true;
+      event.preventDefault();
+      event.stopPropagation();
+      (event as Event & { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+      onClose();
+    };
+
+    const handlePointer = (event: PointerEvent) => {
+      const rect = closeButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const hitSlop = 8;
+      const insideCloseButton =
+        event.clientX >= rect.left - hitSlop &&
+        event.clientX <= rect.right + hitSlop &&
+        event.clientY >= rect.top - hitSlop &&
+        event.clientY <= rect.bottom + hitSlop;
+
+      if (insideCloseButton) closeImmediately(event);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeImmediately(event);
+    };
+
+    document.addEventListener('pointerdown', handlePointer, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointer, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [open, onClose]);
 
   // Fetch deals
   useEffect(() => {
@@ -253,6 +292,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
         <div style={s.header}>
           <span style={s.title}>Add Cash-In from Deals</span>
           <button
+            ref={closeButtonRef}
             type="button"
             aria-label="Close add cash-in modal"
             onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
