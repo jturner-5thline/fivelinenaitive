@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { SpinningGlobe } from "@/components/SpinningGlobe";
+
 import { Helmet } from "react-helmet-async";
 import { Loader2, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { z } from "zod";
@@ -343,10 +343,8 @@ const Auth = () => {
         <title>{getTitle()} | naitive</title>
       </Helmet>
       
-      <div className="min-h-screen bg-[radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.2)_0%,_hsl(270,80%,4%)_40%,_hsl(270,100%,2%)_100%)] relative overflow-hidden">
-        <div className="absolute inset-0 blur-sm"><SpinningGlobe /></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a12]" />
-        
+      <div className="min-h-screen bg-background relative overflow-hidden">
+
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
           <div className="w-full flex justify-center mt-[10vh] mb-auto pointer-events-none select-none">
             <img 
