@@ -1731,13 +1731,6 @@ export function CashFlowManager() {
           onClose={handleCloseActivityLog}
         />
       )}
-      {addCashInOpen && (
-        <AddCashInModal
-          open={addCashInOpen}
-          onClose={() => setAddCashInOpen(false)}
-          onItemsAdded={handleCashInItemsAdded}
-        />
-      )}
       {scheduledModalOpen && (
         <ScheduledCashFlowsModal
           open={scheduledModalOpen}
@@ -1800,6 +1793,13 @@ export function CashFlowManager() {
           }}
           onOpenCashInPanel={() => setCashInDialogOpen(true)}
           cashInNext8WTotal={computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks}
+        />
+      )}
+      {addCashInOpen && (
+        <AddCashInModal
+          open={addCashInOpen}
+          onClose={() => setAddCashInOpen(false)}
+          onItemsAdded={handleCashInItemsAdded}
         />
       )}
     </div>

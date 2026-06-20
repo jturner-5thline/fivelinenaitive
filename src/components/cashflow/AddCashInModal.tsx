@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -65,6 +65,7 @@ function stageLabel(s: string | null) {
 
 export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalProps) {
   const { company } = useCompany();
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,44 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   const [showStatusFilter, setShowStatusFilter] = useState(false);
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  useEffect(() => {
+    if (!open) return;
+    let closing = false;
+
+    const closeImmediately = (event: Event) => {
+      if (closing) return;
+      closing = true;
+      event.preventDefault();
+      event.stopPropagation();
+      (event as Event & { stopImmediatePropagation?: () => void }).stopImmediatePropagation?.();
+      onClose();
+    };
+
+    const handlePointer = (event: PointerEvent) => {
+      const rect = closeButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const hitSlop = 8;
+      const insideCloseButton =
+        event.clientX >= rect.left - hitSlop &&
+        event.clientX <= rect.right + hitSlop &&
+        event.clientY >= rect.top - hitSlop &&
+        event.clientY <= rect.bottom + hitSlop;
+
+      if (insideCloseButton) closeImmediately(event);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeImmediately(event);
+    };
+
+    document.addEventListener('pointerdown', handlePointer, true);
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointer, true);
+      document.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [open, onClose]);
 
   // Fetch deals
   useEffect(() => {
@@ -218,8 +257,8 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   const allClosing = filtered.length > 0 && filtered.every(d => rows[d.id]?.closingEnabled);
 
   const s = {
-    overlay: { position: 'fixed' as const, inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    dialog: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, width: '92vw', maxWidth: 1200, height: '82vh', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' },
+    overlay: { position: 'fixed' as const, inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto' as const },
+    dialog: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, width: '92vw', maxWidth: 1200, height: '82vh', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', pointerEvents: 'auto' as const },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid hsl(var(--border))' },
     title: { fontSize: 16, fontWeight: 700, color: 'hsl(var(--foreground))' },
     toolbar: { display: 'flex', gap: 8, padding: '12px 20px', alignItems: 'center', flexWrap: 'wrap' as const, borderBottom: '1px solid hsl(var(--border))' },
@@ -252,7 +291,17 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
         {/* Header */}
         <div style={s.header}>
           <span style={s.title}>Add Cash-In from Deals</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer' }}><X size={18} /></button>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            aria-label="Close add cash-in modal"
+            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClose(); }}
+            style={{ background: 'none', border: 'none', color: 'hsl(var(--muted-foreground))', cursor: 'pointer', pointerEvents: 'auto', position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32 }}
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Toolbar: search + filters */}
