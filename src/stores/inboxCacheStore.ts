@@ -30,6 +30,15 @@ const PAGE_SIZE = 50;
 const LS_KEY = 'naitive.inboxCache.v1';
 const LS_MAX_MESSAGES = 50;
 
+async function getActiveAccessToken(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function loadPersistedCache(): {
   inboxMessages: any[];
   sentMessages: any[];
@@ -123,9 +132,12 @@ function overlayStateDeltas(messages: any[], states: Array<{ id: string; gmail_m
 async function syncMessageStates(messages: any[], limit = PAGE_SIZE) {
   const ids = messages.map(normalizeReadState).slice(0, limit).map(getMessageKey).filter(Boolean);
   if (!ids.length) return [];
+  const accessToken = await getActiveAccessToken();
+  if (!accessToken) return [];
   try {
     const { data } = await supabase.functions.invoke('gmail-messages', {
       body: { action: 'sync_state', message_ids: ids },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     return (data?.states || []) as Array<{ id: string; gmail_message_id?: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>;
   } catch {
@@ -261,6 +273,8 @@ async function fetchPage(args: {
   maxResults?: number;
 }): Promise<{ messages: any[]; nextPageToken: string | null; ok: boolean }> {
   const { labelIds, pageToken, maxResults = PAGE_SIZE } = args;
+  const accessToken = await getActiveAccessToken();
+  if (!accessToken) return { messages: [], nextPageToken: null, ok: false };
   try {
     const { data, error } = await supabase.functions.invoke('gmail-messages', {
       body: {
@@ -269,6 +283,7 @@ async function fetchPage(args: {
         label_ids: labelIds,
         page_token: pageToken || undefined,
       },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (error || data?.fallback) return { messages: [], nextPageToken: null, ok: false };
     return {
