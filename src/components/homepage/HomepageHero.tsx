@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
-import { SpinningGlobe } from "@/components/SpinningGlobe";
 import { supabase } from "@/integrations/supabase/client";
+import heroProductMockup from "@/assets/hero-product-mockup.jpg";
 
 export const HomepageHero = () => {
   const [email, setEmail] = useState(() => {
@@ -58,13 +58,26 @@ export const HomepageHero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
-      {/* Globe — scaled down, pushed right. Screen blend so any internal dark fill disappears into the page gradient. */}
-      <div
-        className="absolute inset-0 flex items-center justify-end overflow-hidden pointer-events-none"
-        style={{ mixBlendMode: 'screen' }}
-      >
-        <div className="w-[65%] h-full relative right-[-8%]">
-          <SpinningGlobe />
+      {/* Product mockup — angled monitor with naitive UI, right-weighted */}
+      <div className="absolute inset-0 flex items-center justify-end overflow-hidden pointer-events-none">
+        <div className="relative w-[72%] h-full right-[-6%] flex items-center">
+          <img
+            src={heroProductMockup}
+            alt="naitive deal management dashboard on a premium curved monitor"
+            width={1920}
+            height={1080}
+            className="w-full h-auto object-contain select-none"
+            style={{ filter: 'drop-shadow(0 40px 80px rgba(0,0,0,0.6))' }}
+            draggable={false}
+          />
+          {/* Edge fade into page background */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse at center, transparent 55%, rgba(2,2,8,0.85) 100%)',
+            }}
+          />
         </div>
       </div>
 
