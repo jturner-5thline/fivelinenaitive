@@ -622,7 +622,7 @@ export function useThreadWorkflowAnalysis({
       if (timedOut) return;
       setLoading(false);
     }
-  }, [dealId, threadData, latestInbound, messageId]);
+  }, [dealId, threadData, latestInbound, messageId, deals]);
 
   // Auto-run on mount + when key inputs change.
   useEffect(() => {
