@@ -1522,7 +1522,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       cancelled = true;
       window.clearTimeout(starter);
     };
-  }, [allThreads, dealId, emailDealIdMap, isInboxScope]);
+  }, [allThreads, dealId, emailDealIdMap, isInboxScope, allDeals]);
 
   const responseQueue = useMemo(() => {
     return emails
