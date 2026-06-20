@@ -347,22 +347,43 @@ const Auth = () => {
         className="min-h-screen relative overflow-hidden"
         style={{
           backgroundImage:
-            "radial-gradient(900px 360px at 12% -10%, hsl(220 70% 55% / 0.18), transparent 60%), radial-gradient(700px 320px at 88% 110%, hsl(260 70% 55% / 0.14), transparent 60%), linear-gradient(135deg, hsl(220 30% 10%) 0%, hsl(245 24% 8%) 48%, hsl(260 15% 5%) 100%)",
+            "radial-gradient(1100px 500px at 8% -10%, hsl(220 85% 55% / 0.22), transparent 55%), radial-gradient(900px 420px at 92% 110%, hsl(265 85% 55% / 0.18), transparent 55%), linear-gradient(135deg, hsl(222 40% 7%) 0%, hsl(235 38% 6%) 45%, hsl(258 30% 4%) 100%)",
         }}
       >
+        {/* Sharp diagonal highlight */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{
+            backgroundImage:
+              "linear-gradient(115deg, transparent 0%, transparent 38%, hsl(220 100% 70% / 0.06) 50%, transparent 62%, transparent 100%)",
+          }}
+        />
+        {/* Fine grid texture for sharpness */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(hsl(0 0% 100% / 1) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100% / 1) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
 
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-start pt-2 pb-4 px-4">
-          <div className="w-full flex justify-center pointer-events-none select-none mb-1">
-            <img 
-              src={naitiveLogoFull} 
-              alt="naitive" 
-              className="w-[28vw] max-w-[260px] h-auto shrink-0 object-contain animate-fade-in opacity-60"
-              style={{ aspectRatio: 'auto' }}
-            />
-          </div>
-          
-          <div className="w-full max-w-md">
-            <form onSubmit={mode === "mfa" ? handleMFAVerify : handleSubmit} className="space-y-6">
+        <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-6">
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 px-7 py-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
+            style={{
+              background:
+                "linear-gradient(180deg, hsl(220 25% 10% / 0.65) 0%, hsl(235 30% 7% / 0.7) 100%)",
+            }}
+          >
+            <div className="flex justify-center pointer-events-none select-none mb-5">
+              <img
+                src={naitiveLogoFull}
+                alt="naitive"
+                className="w-[180px] h-auto object-contain opacity-90"
+              />
+            </div>
+            <form onSubmit={mode === "mfa" ? handleMFAVerify : handleSubmit} className="space-y-4">
               {isDemoAccess && mode === "login" && (
                 <div className="rounded-md border border-white/15 bg-white/5 px-4 py-3 text-sm text-white/80">
                   This is your Naitive demo access page. Your demo credentials are prefilled below — click Login to open your seeded workspace.
@@ -508,8 +529,7 @@ const Auth = () => {
               <Button
                   type="submit"
                   disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
-                  variant="liquid-glass"
-                  className="w-full py-6 font-light tracking-wide text-white"
+                  className="w-full py-5 font-medium tracking-wide bg-white text-black hover:bg-white/90 transition-colors"
                 >
                   {loading ? "Please wait..." : 
                     mode === "forgot" ? "Send Reset Link" :
@@ -525,7 +545,7 @@ const Auth = () => {
                       <span className="w-full border-t border-white/20" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-[#010114] px-2 text-white/40">Or continue with</span>
+                      <span className="px-2 text-white/40 backdrop-blur-sm">Or continue with</span>
                     </div>
                   </div>
 
@@ -534,7 +554,7 @@ const Auth = () => {
                     variant="liquid-glass"
                     onClick={handleGoogleSignIn}
                     disabled={googleLoading}
-                    className="w-full py-6 font-light tracking-wide text-white"
+                    className="w-full py-5 font-light tracking-wide text-white border border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
                   >
                     {googleLoading ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -609,7 +629,7 @@ const Auth = () => {
                       setLoading(false);
                     }
                   }}
-                  className="w-full text-white/60 hover:text-white hover:bg-[hsl(270,50%,40%,0.15)] py-6 font-light tracking-wide"
+                  className="w-full text-white/70 hover:text-white border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] py-5 font-light tracking-wide"
                 >
                   Try Demo
                 </Button>
@@ -617,7 +637,7 @@ const Auth = () => {
             </form>
             
             {!isDemoAccess && mode !== "reset" && mode !== "mfa" && (
-              <p className="text-center text-white/50 mt-6 font-light">
+              <p className="text-center text-white/50 mt-4 font-light text-sm">
                 {mode === "forgot" ? (
                   <button
                     type="button"
