@@ -21,13 +21,16 @@ export const HomepageHeader = () => {
   }, []);
 
   return (
-    <div className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none">
+    <div className={cn(
+      "fixed top-3 sm:top-5 left-0 right-0 z-50 pointer-events-none transition-[padding] duration-300 ease-out",
+      scrolled ? "px-3 sm:px-6" : "px-2 sm:px-3"
+    )}>
       <header
         className={cn(
-          "container mx-auto max-w-6xl rounded-[10px] transition-all duration-300 ease-out pointer-events-auto",
+          "mx-auto rounded-[10px] transition-all duration-300 ease-out pointer-events-auto",
           scrolled
-            ? "bg-[rgba(8,10,18,0.72)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.07] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-14px_rgba(0,0,0,0.55)]"
-            : "bg-transparent border border-transparent"
+            ? "container max-w-6xl bg-[rgba(8,10,18,0.72)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.07] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-14px_rgba(0,0,0,0.55)]"
+            : "w-full bg-transparent border border-transparent"
         )}
       >
         <nav className="pl-2 pr-2 sm:pl-3 sm:pr-3 h-12 sm:h-14 flex items-center justify-between gap-4 leading-none">
