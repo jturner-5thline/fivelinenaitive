@@ -1510,17 +1510,6 @@ export function CashFlowManager() {
             <button
               type="button"
               className="cf-pill"
-              onClick={() => setCashInDialogOpen(true)}
-              title="Cash-In: Next 8 Weeks — click to view & edit"
-            >
-              <span className="cf-pill-label">Cash-In Next 8W</span>
-              <span className="cf-pill-value">
-                {fmtShort(computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks)}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="cf-pill"
               style={{ position: 'relative' }}
               onClick={() => setNotesDialogOpen(true)}
               title="Notes & Cell Comments"
@@ -1809,6 +1798,8 @@ export function CashFlowManager() {
             }
             return ok;
           }}
+          onOpenCashInPanel={() => setCashInDialogOpen(true)}
+          cashInNext8WTotal={computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks}
         />
       )}
     </div>
