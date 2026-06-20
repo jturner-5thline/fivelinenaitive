@@ -98,6 +98,7 @@ const CACHE_KEY = 'naitive.threadWorkflow.cache.v1';
 const CACHE_MAX_ENTRIES = 200;
 
 type CacheState = Record<string, { analysis: WorkflowAnalysis; savedAt: number }>;
+const workflowAnalysisInflight = new Map<string, Promise<WorkflowAnalysis | null>>();
 
 function readCache(): CacheState {
   try {
@@ -118,6 +119,201 @@ function writeCache(state: CacheState) {
   } catch {
     /* ignore */
   }
+}
+
+export function getThreadWorkflowCacheKey(threadData?: any, dealId?: string | null) {
+  const latestInbound =
+    threadData?.emails?.find?.((e: any) => e.from_name !== 'You') || threadData?.latestEmail;
+  const messageId: string | undefined = latestInbound?.gmail_message_id || latestInbound?.id;
+  if (!threadData?.threadId || !messageId) return null;
+  return `${threadData.threadId}::${messageId}::${dealId || 'no-deal'}`;
+}
+
+export function getCachedThreadWorkflowAnalysis(threadData?: any, dealId?: string | null) {
+  const key = getThreadWorkflowCacheKey(threadData, dealId);
+  return key ? readCache()[key]?.analysis || null : null;
+}
+
+export async function preloadThreadWorkflowAnalysis({
+  dealId,
+  threadData,
+  deals,
+}: {
+  dealId?: string | null;
+  threadData?: any;
+  deals?: any[];
+}) {
+  const latestInbound =
+    threadData?.emails?.find?.((e: any) => e.from_name !== 'You') || threadData?.latestEmail;
+  const messageId: string | undefined = latestInbound?.gmail_message_id || latestInbound?.id;
+  const key = getThreadWorkflowCacheKey(threadData, dealId);
+  if (!threadData || !latestInbound || !messageId || !key) return null;
+
+  const cached = readCache()[key];
+  if (cached?.analysis) return cached.analysis;
+  const cachePrefix = `${threadData.threadId}::${messageId}::`;
+  const cachedVariant = Object.entries(readCache()).find(
+    ([variantKey, value]) => variantKey.startsWith(cachePrefix) && value?.analysis,
+  )?.[1]?.analysis;
+  if (cachedVariant) return cachedVariant;
+  const existing = workflowAnalysisInflight.get(key);
+  if (existing) return existing;
+  const existingVariant = Array.from(workflowAnalysisInflight.entries()).find(([variantKey]) =>
+    variantKey.startsWith(cachePrefix),
+  )?.[1];
+  if (existingVariant) return existingVariant;
+
+  const promise = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('smart-email-ai', {
+        body: {
+          action: 'analyze_thread_workflow',
+          dealId: dealId || undefined,
+          emailData: {
+            gmail_message_id: messageId,
+            id: messageId,
+            from_name: latestInbound.from_name,
+            from_email: latestInbound.from_email,
+            subject: latestInbound.subject,
+            body_preview: latestInbound.body_preview,
+            received_at: latestInbound.received_at,
+          },
+          threadData: {
+            subject: threadData.subject,
+            threadId: threadData.threadId,
+            latestEmail: latestInbound,
+            emails: (threadData.emails || []).slice(0, 6),
+          },
+        },
+      });
+      if (error || data?.error) return null;
+      const result = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
+      if (!result || (result as any).raw) return null;
+      const normalized = result as WorkflowAnalysis;
+      try {
+        const subject = (latestInbound?.subject || threadData?.subject || '').toLowerCase();
+        let canonical: { id: string; name: string } | null = null;
+        if (dealId) {
+          const matched = (deals || []).find((d: any) => d.id === dealId);
+          if (matched) canonical = { id: matched.id, name: matched.name };
+        }
+        if (!canonical && subject) {
+          const candidates = (deals || [])
+            .filter((d: any) => d?.name && subject.includes(String(d.name).toLowerCase()))
+            .sort((a: any, b: any) => (b.name?.length || 0) - (a.name?.length || 0));
+          if (candidates.length > 0) canonical = { id: candidates[0].id, name: candidates[0].name };
+        }
+        if (canonical && canonical.id !== normalized.likely_deal?.id) {
+          const previousAiDealName =
+            normalized.recommended_update?.deal_name || normalized.likely_deal?.name || '';
+          normalized.likely_deal = {
+            id: canonical.id,
+            name: canonical.name,
+            confidence: 'high',
+            reasoning: dealId
+              ? 'Thread is already linked to this deal.'
+              : `Deal name appears in the email subject ("${latestInbound?.subject || ''}").`,
+          };
+          if (normalized.recommended_update && normalized.recommended_update.kind !== 'none') {
+            normalized.recommended_update.deal_id = canonical.id;
+            normalized.recommended_update.deal_name = canonical.name;
+            normalized.recommended_update.lender_id = '';
+            if (normalized.recommended_update.title && previousAiDealName) {
+              const escaped = previousAiDealName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              normalized.recommended_update.title = normalized.recommended_update.title
+                .replace(new RegExp(escaped, 'gi'), canonical.name);
+            }
+            if (
+              normalized.recommended_update.title &&
+              !normalized.recommended_update.title.toLowerCase().includes(canonical.name.toLowerCase())
+            ) {
+              const lender = normalized.recommended_update.lender_name || 'lender';
+              const stage = normalized.recommended_update.new_stage || 'updated';
+              normalized.recommended_update.title = `Update ${lender} stage on ${canonical.name} → ${stage}`;
+            }
+          }
+        }
+      } catch {
+        /* non-fatal */
+      }
+      try {
+        const isInternal = (n?: string | null) => {
+          const s = (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+          return (
+            s === '5th line' ||
+            s === '5th line capital' ||
+            s === 'fifth line' ||
+            s === 'fifth line capital' ||
+            s.startsWith('5th line ') ||
+            s.startsWith('fifth line ')
+          );
+        };
+        if (isInternal(normalized.likely_lender_firm?.name)) {
+          normalized.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: '5th Line is the internal firm and is excluded from lender tags.',
+          };
+        }
+        if (
+          normalized.recommended_update?.kind === 'lender_status' &&
+          isInternal(normalized.recommended_update.lender_name)
+        ) {
+          normalized.recommended_update = { ...normalized.recommended_update, kind: 'none' };
+        }
+
+        const senderEmail = latestInbound?.from_email as string | undefined;
+        const headers = (latestInbound?.headers || latestInbound?.gmail_headers) as HeaderMap;
+        const newsletter = isNewsletterSender(senderEmail);
+        const listMail = hasListUnsubscribe(headers);
+        const lowConfNoLender =
+          normalized.likely_lender_firm?.confidence === 'low' &&
+          !normalized.recommended_update?.lender_id;
+        const refuseReason = newsletter
+          ? 'newsletter_sender'
+          : listMail
+            ? 'list_unsubscribe_header'
+            : lowConfNoLender
+              ? 'low_confidence'
+              : null;
+        if (refuseReason) {
+          normalized.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: refuseReason,
+          };
+          if (normalized.recommended_update?.kind === 'lender_status') {
+            normalized.recommended_update = { ...normalized.recommended_update, kind: 'none' };
+          }
+        }
+      } catch {
+        /* non-fatal */
+      }
+      const cache = readCache();
+      cache[key] = { analysis: normalized, savedAt: Date.now() };
+      if (normalized.likely_deal?.id) {
+        cache[`${threadData.threadId}::${messageId}::${normalized.likely_deal.id}`] = {
+          analysis: normalized,
+          savedAt: Date.now(),
+        };
+      }
+      cache[`${threadData.threadId}::${messageId}::no-deal`] = {
+        analysis: normalized,
+        savedAt: Date.now(),
+      };
+      writeCache(cache);
+      return normalized;
+    } catch {
+      return null;
+    } finally {
+      workflowAnalysisInflight.delete(key);
+    }
+  })();
+
+  workflowAnalysisInflight.set(key, promise);
+  return promise;
 }
 
 function readDismissed(): DismissalState {
@@ -248,32 +444,8 @@ export function useThreadWorkflowAnalysis({
       setLoading(false);
     }, 25_000);
     try {
-      const { data, error } = await supabase.functions.invoke('smart-email-ai', {
-        body: {
-          action: 'analyze_thread_workflow',
-          dealId: dealId || undefined,
-          emailData: {
-            gmail_message_id: messageId,
-            id: messageId,
-            from_name: latestInbound.from_name,
-            from_email: latestInbound.from_email,
-            subject: latestInbound.subject,
-            body_preview: latestInbound.body_preview,
-            received_at: latestInbound.received_at,
-          },
-          threadData: {
-            subject: threadData.subject,
-            threadId: threadData.threadId,
-            latestEmail: latestInbound,
-            emails: (threadData.emails || []).slice(0, 6),
-          },
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const r = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
-      if (!r || (r as any).raw) throw new Error('Invalid workflow analysis response');
-      const result = r as WorkflowAnalysis;
+      const result = await preloadThreadWorkflowAnalysis({ dealId, threadData, deals });
+      if (!result) throw new Error('Invalid workflow analysis response');
 
       // ─── Canonical deal override ────────────────────────────────────
       // The AI sometimes nominates the wrong deal (e.g. picks "Back Bar
@@ -469,7 +641,7 @@ export function useThreadWorkflowAnalysis({
       if (timedOut) return;
       setLoading(false);
     }
-  }, [dealId, threadData, latestInbound, messageId]);
+  }, [dealId, threadData, latestInbound, messageId, deals]);
 
   // Auto-run on mount + when key inputs change.
   useEffect(() => {

@@ -101,6 +101,7 @@ import {
 } from './email/systemAutoLabels';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
+import { getThreadWorkflowCacheKey, preloadThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
@@ -1483,6 +1484,52 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           } as EmailThread),
       );
   }, [filteredEmails]);
+
+  // Pre-warm AI Assist while the user is still browsing the list. This fills
+  // the shared workflow cache before the right-side email detail/AI Assist
+  // panel mounts, so opening a thread usually hydrates instantly instead of
+  // starting analysis on click.
+  const preloadedWorkflowKeysRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!allThreads.length) return;
+    let cancelled = false;
+    const queue = allThreads.slice(0, isInboxScope ? 8 : 5);
+    const runNext = async (index: number) => {
+      if (cancelled || index >= queue.length) return;
+      const thread = queue[index];
+      const convoKey = thread.latestEmail?.provider_thread_id || thread.latestEmail?.threadId;
+      const convoEmails = convoKey
+        ? emails
+            .filter((e) => (e.provider_thread_id || e.threadId) === convoKey)
+            .sort((a, b) => new Date(b.received_at).getTime() - new Date(a.received_at).getTime())
+        : thread.emails;
+      const threadData = {
+        subject: thread.subject,
+        threadId: thread.threadId,
+        latestEmail: thread.latestEmail,
+        emails: convoEmails.length > 0 ? convoEmails : thread.emails,
+      };
+      const resolvedDealId = dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null;
+      const key = getThreadWorkflowCacheKey(threadData, resolvedDealId);
+      if (key && !preloadedWorkflowKeysRef.current.has(key)) {
+        preloadedWorkflowKeysRef.current.add(key);
+        await preloadThreadWorkflowAnalysis({
+          dealId: resolvedDealId,
+          threadData,
+          deals: allDeals,
+        });
+      }
+      const schedule = (window as any).requestIdleCallback
+        ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1200 })
+        : (cb: () => void) => window.setTimeout(cb, 250);
+      schedule(() => void runNext(index + 1));
+    };
+    const starter = window.setTimeout(() => void runNext(0), 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(starter);
+    };
+  }, [allThreads, dealId, emailDealIdMap, isInboxScope, allDeals, emails]);
 
   const responseQueue = useMemo(() => {
     return emails
