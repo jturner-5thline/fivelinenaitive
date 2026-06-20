@@ -838,21 +838,42 @@ export function AgendaIntel() {
       if (persisted) {
         const d = deals.find(x => x.id === persisted);
         if (d) return d;
+        // Link row exists but the deals list hasn't loaded that row yet
+        // (or it's filtered out). Return a minimal placeholder so the
+        // explicit user link is still honored — never fall through to
+        // fuzzy title matching when a persisted link is present.
+        return {
+          id: persisted,
+          name: persistedLinks[event.id]?.dealId ? '(linked deal)' : '',
+          stage: '',
+        };
       }
       const override = dealLinkOverrides[event.id];
       if (override) {
         const d = deals.find(x => x.id === override);
         if (d) return d;
+        return { id: override, name: '(linked deal)', stage: '' };
       }
       if (!deals.length) return null;
-      const summary = (event.summary || '').toLowerCase();
-      const desc = (event.description || '').toLowerCase();
-      // Title/description name match
+      // Word-bounded match on the meeting *title* only. Description is
+      // intentionally excluded — Google often packs descriptions with
+      // boilerplate / URLs / agendas that contain incidental matches
+      // against unrelated deal names (e.g. "censys.io" inside a Meet
+      // link), which previously caused the wrong deal to auto-fill the
+      // "Create follow-up" form.
+      const summary = ` ${(event.summary || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ')} `;
+      let best: DealRow | null = null;
+      let bestLen = 0;
       for (const deal of deals) {
-        const n = deal.name.toLowerCase();
-        if (n.length > 3 && (summary.includes(n) || desc.includes(n))) return deal;
+        const n = (deal.name || '').toLowerCase().trim();
+        if (n.length < 4) continue;
+        const needle = ` ${n.replace(/[^a-z0-9]+/g, ' ')} `;
+        if (summary.includes(needle) && n.length > bestLen) {
+          best = deal;
+          bestLen = n.length;
+        }
       }
-      return null;
+      return best;
     },
     [deals, dealLinkOverrides, persistedLinks],
   );
