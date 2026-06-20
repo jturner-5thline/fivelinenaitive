@@ -321,32 +321,8 @@ export function useThreadWorkflowAnalysis({
       setLoading(false);
     }, 25_000);
     try {
-      const { data, error } = await supabase.functions.invoke('smart-email-ai', {
-        body: {
-          action: 'analyze_thread_workflow',
-          dealId: dealId || undefined,
-          emailData: {
-            gmail_message_id: messageId,
-            id: messageId,
-            from_name: latestInbound.from_name,
-            from_email: latestInbound.from_email,
-            subject: latestInbound.subject,
-            body_preview: latestInbound.body_preview,
-            received_at: latestInbound.received_at,
-          },
-          threadData: {
-            subject: threadData.subject,
-            threadId: threadData.threadId,
-            latestEmail: latestInbound,
-            emails: (threadData.emails || []).slice(0, 6),
-          },
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const r = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
-      if (!r || (r as any).raw) throw new Error('Invalid workflow analysis response');
-      const result = r as WorkflowAnalysis;
+      const result = await preloadThreadWorkflowAnalysis({ dealId, threadData });
+      if (!result) throw new Error('Invalid workflow analysis response');
 
       // ─── Canonical deal override ────────────────────────────────────
       // The AI sometimes nominates the wrong deal (e.g. picks "Back Bar
