@@ -98,6 +98,7 @@ const CACHE_KEY = 'naitive.threadWorkflow.cache.v1';
 const CACHE_MAX_ENTRIES = 200;
 
 type CacheState = Record<string, { analysis: WorkflowAnalysis; savedAt: number }>;
+const workflowAnalysisInflight = new Map<string, Promise<WorkflowAnalysis | null>>();
 
 function readCache(): CacheState {
   try {
@@ -118,6 +119,78 @@ function writeCache(state: CacheState) {
   } catch {
     /* ignore */
   }
+}
+
+export function getThreadWorkflowCacheKey(threadData?: any, dealId?: string | null) {
+  const latestInbound =
+    threadData?.emails?.find?.((e: any) => e.from_name !== 'You') || threadData?.latestEmail;
+  const messageId: string | undefined = latestInbound?.gmail_message_id || latestInbound?.id;
+  if (!threadData?.threadId || !messageId) return null;
+  return `${threadData.threadId}::${messageId}::${dealId || 'no-deal'}`;
+}
+
+export function getCachedThreadWorkflowAnalysis(threadData?: any, dealId?: string | null) {
+  const key = getThreadWorkflowCacheKey(threadData, dealId);
+  return key ? readCache()[key]?.analysis || null : null;
+}
+
+export async function preloadThreadWorkflowAnalysis({
+  dealId,
+  threadData,
+}: {
+  dealId?: string | null;
+  threadData?: any;
+}) {
+  const latestInbound =
+    threadData?.emails?.find?.((e: any) => e.from_name !== 'You') || threadData?.latestEmail;
+  const messageId: string | undefined = latestInbound?.gmail_message_id || latestInbound?.id;
+  const key = getThreadWorkflowCacheKey(threadData, dealId);
+  if (!threadData || !latestInbound || !messageId || !key) return null;
+
+  const cached = readCache()[key];
+  if (cached?.analysis) return cached.analysis;
+  const existing = workflowAnalysisInflight.get(key);
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('smart-email-ai', {
+        body: {
+          action: 'analyze_thread_workflow',
+          dealId: dealId || undefined,
+          emailData: {
+            gmail_message_id: messageId,
+            id: messageId,
+            from_name: latestInbound.from_name,
+            from_email: latestInbound.from_email,
+            subject: latestInbound.subject,
+            body_preview: latestInbound.body_preview,
+            received_at: latestInbound.received_at,
+          },
+          threadData: {
+            subject: threadData.subject,
+            threadId: threadData.threadId,
+            latestEmail: latestInbound,
+            emails: (threadData.emails || []).slice(0, 6),
+          },
+        },
+      });
+      if (error || data?.error) return null;
+      const result = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
+      if (!result || (result as any).raw) return null;
+      const cache = readCache();
+      cache[key] = { analysis: result as WorkflowAnalysis, savedAt: Date.now() };
+      writeCache(cache);
+      return result as WorkflowAnalysis;
+    } catch {
+      return null;
+    } finally {
+      workflowAnalysisInflight.delete(key);
+    }
+  })();
+
+  workflowAnalysisInflight.set(key, promise);
+  return promise;
 }
 
 function readDismissed(): DismissalState {
