@@ -343,7 +343,7 @@ const Auth = () => {
         <title>{getTitle()} | naitive</title>
       </Helmet>
       
-      <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] relative overflow-hidden">
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
           <div className="w-full flex justify-center mt-[10vh] mb-auto pointer-events-none select-none">
