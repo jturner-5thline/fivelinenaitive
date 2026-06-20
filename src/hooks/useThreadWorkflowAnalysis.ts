@@ -362,7 +362,7 @@ export function useThreadWorkflowAnalysis({
       setLoading(false);
     }, 25_000);
     try {
-      const result = await preloadThreadWorkflowAnalysis({ dealId, threadData });
+      const result = await preloadThreadWorkflowAnalysis({ dealId, threadData, deals });
       if (!result) throw new Error('Invalid workflow analysis response');
 
       // ─── Canonical deal override ────────────────────────────────────
