@@ -284,6 +284,16 @@ export async function preloadThreadWorkflowAnalysis({
       }
       const cache = readCache();
       cache[key] = { analysis: normalized, savedAt: Date.now() };
+      if (normalized.likely_deal?.id) {
+        cache[`${threadData.threadId}::${messageId}::${normalized.likely_deal.id}`] = {
+          analysis: normalized,
+          savedAt: Date.now(),
+        };
+      }
+      cache[`${threadData.threadId}::${messageId}::no-deal`] = {
+        analysis: normalized,
+        savedAt: Date.now(),
+      };
       writeCache(cache);
       return normalized;
     } catch {
