@@ -5,6 +5,7 @@ import { prefetchFullEmailMessage } from '@/components/deal/email/useFullEmailMe
 import { preloadThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
  * Eagerly populate the inbox cache as soon as the Dashboard mounts and keep
@@ -84,13 +85,14 @@ function prewarmAiAssist(messages: any[], deals: any[]) {
 }
 
 export function useInboxPrefetch() {
+  const { user, session, isLoading } = useAuth();
   const { status } = useGmail();
   const { deals } = useDealsContext();
   const prefetch = useInboxCacheStore((s) => s.prefetch);
   const refresh = useInboxCacheStore((s) => s.refresh);
 
   useEffect(() => {
-    if (!status.connected) return;
+    if (isLoading || !user || !session?.access_token || !status.connected) return;
 
     // Kick off the initial prefetch right away, then prewarm bodies.
     void prefetch().then(() => {
@@ -132,5 +134,5 @@ export function useInboxPrefetch() {
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('focus', onFocus);
     };
-  }, [status.connected, prefetch, refresh, deals]);
+  }, [isLoading, user, session?.access_token, status.connected, prefetch, refresh, deals]);
 }

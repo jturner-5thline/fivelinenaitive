@@ -260,6 +260,9 @@ export function DealsHeader() {
       // top message bodies so the popup paints with fresh content.
       void (async () => {
         try {
+          const { supabase } = await import('@/integrations/supabase/client');
+          const { data } = await supabase.auth.getSession();
+          if (!data.session?.access_token) return;
           const [{ useInboxCacheStore }, { prefetchFullEmailMessage }] = await Promise.all([
             import('@/stores/inboxCacheStore'),
             import('@/components/deal/email/useFullEmailMessage'),
