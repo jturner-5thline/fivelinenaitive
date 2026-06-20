@@ -137,9 +137,11 @@ export function getCachedThreadWorkflowAnalysis(threadData?: any, dealId?: strin
 export async function preloadThreadWorkflowAnalysis({
   dealId,
   threadData,
+  deals,
 }: {
   dealId?: string | null;
   threadData?: any;
+  deals?: any[];
 }) {
   const latestInbound =
     threadData?.emails?.find?.((e: any) => e.from_name !== 'You') || threadData?.latestEmail;
@@ -178,10 +180,49 @@ export async function preloadThreadWorkflowAnalysis({
       if (error || data?.error) return null;
       const result = data?.result as WorkflowAnalysis | { raw?: string } | undefined;
       if (!result || (result as any).raw) return null;
+      const normalized = result as WorkflowAnalysis;
+      try {
+        const subject = (latestInbound?.subject || threadData?.subject || '').toLowerCase();
+        let canonical: { id: string; name: string } | null = null;
+        if (dealId) {
+          const matched = (deals || []).find((d: any) => d.id === dealId);
+          if (matched) canonical = { id: matched.id, name: matched.name };
+        }
+        if (!canonical && subject) {
+          const candidates = (deals || [])
+            .filter((d: any) => d?.name && subject.includes(String(d.name).toLowerCase()))
+            .sort((a: any, b: any) => (b.name?.length || 0) - (a.name?.length || 0));
+          if (candidates.length > 0) canonical = { id: candidates[0].id, name: candidates[0].name };
+        }
+        if (canonical && canonical.id !== normalized.likely_deal?.id) {
+          const previousAiDealName =
+            normalized.recommended_update?.deal_name || normalized.likely_deal?.name || '';
+          normalized.likely_deal = {
+            id: canonical.id,
+            name: canonical.name,
+            confidence: 'high',
+            reasoning: dealId
+              ? 'Thread is already linked to this deal.'
+              : `Deal name appears in the email subject ("${latestInbound?.subject || ''}").`,
+          };
+          if (normalized.recommended_update && normalized.recommended_update.kind !== 'none') {
+            normalized.recommended_update.deal_id = canonical.id;
+            normalized.recommended_update.deal_name = canonical.name;
+            normalized.recommended_update.lender_id = '';
+            if (normalized.recommended_update.title && previousAiDealName) {
+              const escaped = previousAiDealName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              normalized.recommended_update.title = normalized.recommended_update.title
+                .replace(new RegExp(escaped, 'gi'), canonical.name);
+            }
+          }
+        }
+      } catch {
+        /* non-fatal */
+      }
       const cache = readCache();
-      cache[key] = { analysis: result as WorkflowAnalysis, savedAt: Date.now() };
+      cache[key] = { analysis: normalized, savedAt: Date.now() };
       writeCache(cache);
-      return result as WorkflowAnalysis;
+      return normalized;
     } catch {
       return null;
     } finally {
