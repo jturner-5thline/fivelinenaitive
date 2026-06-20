@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import heroBg from "@/assets/hero-bg-v2.png.asset.json";
+import heroBg from "@/assets/hero-bg-v3.png.asset.json";
 
 export const HomepageHero = () => {
   const [email, setEmail] = useState(() => {
