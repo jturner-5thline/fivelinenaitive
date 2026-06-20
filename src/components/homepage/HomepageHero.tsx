@@ -72,7 +72,7 @@ export const HomepageHero = () => {
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
         <div className="max-w-full md:max-w-[34rem] lg:max-w-[40rem] xl:max-w-[42rem] flex flex-col items-start">
           {/* Headline */}
-          <h1 className="text-[30px] sm:text-[40px] md:text-[48px] lg:text-[56px] font-semibold tracking-[-0.025em] leading-[1.02] text-white max-w-[20ch]">
+          <h1 className="mt-10 sm:mt-14 md:mt-16 text-[30px] sm:text-[40px] md:text-[48px] lg:text-[56px] font-semibold tracking-[-0.025em] leading-[1.02] text-white max-w-[20ch]">
             The Operating System for Deal Management
           </h1>
 
