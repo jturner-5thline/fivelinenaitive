@@ -231,27 +231,6 @@ export function DealFilters({
           </Button>
         )}
       </div>
-
-      {/* Active Filter Chips */}
-      {activeChips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {activeChips.map((chip) => (
-            <Badge
-              key={`${chip.type}-${chip.value}`}
-              variant="secondary"
-              className="gap-1 pr-1"
-            >
-              {chip.label}
-              <button
-                onClick={() => removeFilter(chip.type, chip.value)}
-                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20 transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
