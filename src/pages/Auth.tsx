@@ -529,8 +529,7 @@ const Auth = () => {
               <Button
                   type="submit"
                   disabled={loading || (mode === "mfa" && mfaCode.length !== 6)}
-                  variant="liquid-glass"
-                  className="w-full py-6 font-light tracking-wide text-white"
+                  className="w-full py-5 font-medium tracking-wide bg-white text-black hover:bg-white/90 transition-colors"
                 >
                   {loading ? "Please wait..." : 
                     mode === "forgot" ? "Send Reset Link" :
@@ -546,7 +545,7 @@ const Auth = () => {
                       <span className="w-full border-t border-white/20" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-[#010114] px-2 text-white/40">Or continue with</span>
+                      <span className="px-2 text-white/40 backdrop-blur-sm">Or continue with</span>
                     </div>
                   </div>
 
@@ -555,7 +554,7 @@ const Auth = () => {
                     variant="liquid-glass"
                     onClick={handleGoogleSignIn}
                     disabled={googleLoading}
-                    className="w-full py-6 font-light tracking-wide text-white"
+                    className="w-full py-5 font-light tracking-wide text-white border border-white/15 bg-white/[0.04] hover:bg-white/[0.08]"
                   >
                     {googleLoading ? (
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
