@@ -1503,7 +1503,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         latestEmail: thread.latestEmail,
         emails: thread.emails,
       };
-      const key = `${thread.threadId}::${thread.latestEmail?.gmail_message_id || thread.latestEmail?.id || ''}::${dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || 'no-deal'}`;
+      const key = `${thread.threadId}::${(thread.latestEmail as any)?.gmail_message_id || thread.latestEmail?.id || ''}::${dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || 'no-deal'}`;
       if (!preloadedWorkflowKeysRef.current.has(key)) {
         preloadedWorkflowKeysRef.current.add(key);
         await preloadThreadWorkflowAnalysis({
