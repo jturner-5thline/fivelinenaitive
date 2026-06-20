@@ -15,39 +15,39 @@ export const HomepageHeader = () => {
   }, []);
 
   return (
-    <div className="fixed top-3 sm:top-4 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none">
+    <div className="fixed top-3 sm:top-5 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none">
       <header
         className={cn(
-          "container mx-auto rounded-2xl transition-all duration-300 ease-out pointer-events-auto",
+          "container mx-auto max-w-6xl rounded-full transition-all duration-300 ease-out pointer-events-auto",
           scrolled
-            ? "bg-[rgba(8,10,18,0.78)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.08] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-12px_rgba(0,0,0,0.6)]"
-            : "bg-[rgba(8,10,18,0.45)] backdrop-blur-md backdrop-saturate-150 border border-white/[0.06] shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-14px_rgba(0,0,0,0.45)]"
+            ? "bg-[rgba(8,10,18,0.72)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.07] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-14px_rgba(0,0,0,0.55)]"
+            : "bg-[rgba(8,10,18,0.38)] backdrop-blur-md backdrop-saturate-150 border border-white/[0.05] shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-16px_rgba(0,0,0,0.4)]"
         )}
       >
-        <nav className="pl-1 pr-3 sm:pl-2 sm:pr-5 py-1.5 flex items-center justify-between gap-4 leading-none">
+        <nav className="pl-2 pr-2 sm:pl-3 sm:pr-3 h-12 sm:h-14 flex items-center justify-between gap-4 leading-none">
         {/* Logo */}
-        <Link to="/" className="flex items-center shrink-0 leading-none" aria-label="naitive home">
+        <Link to="/" className="flex items-center shrink-0 leading-none -ml-1" aria-label="naitive home">
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-20 sm:h-24 w-auto object-contain block -my-5 sm:-my-6 -ml-3 sm:-ml-4"
+            className="h-16 sm:h-20 w-auto object-contain block -my-4 sm:-my-5"
             style={{ aspectRatio: 'auto' }}
           />
         </Link>
 
         {/* CTA */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-white/75 hover:text-white hover:bg-white/[0.06] text-[13px] font-medium tracking-[-0.005em] px-3 sm:px-4"
+            className="h-9 text-white/75 hover:text-white hover:bg-white/[0.06] text-[13px] font-medium tracking-[-0.005em] px-3 sm:px-4 rounded-full"
             asChild
           >
             <Link to="/login">Log in</Link>
           </Button>
           <Button 
             size="sm" 
-            className="marketing-glass-cta border-0 text-[13px] font-semibold tracking-[-0.005em] px-4 sm:px-5"
+            className="marketing-glass-cta h-9 border-0 text-[13px] font-semibold tracking-[-0.005em] px-4 sm:px-5 rounded-full"
             asChild
           >
             <Link to="/waitlist">Contact Us</Link>
