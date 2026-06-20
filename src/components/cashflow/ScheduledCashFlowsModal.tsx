@@ -252,6 +252,8 @@ export function ScheduledCashFlowsModal({
   cashOutCategories = [],
   creditFacilities = [],
   onCreditFacilitiesChange,
+  onOpenCashInPanel,
+  cashInNext8WTotal,
 }: Props) {
   const [drafts, setDrafts] = useState<DraftEntry[]>([]);
   const [saving, setSaving] = useState(false);
