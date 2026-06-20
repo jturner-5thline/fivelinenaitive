@@ -32,9 +32,7 @@ export default function Homepage() {
         className="dark min-h-screen relative"
         style={{
           colorScheme: 'dark',
-          background:
-            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
-          backgroundAttachment: 'fixed',
+          background: '#000000',
         }}
       >
         <HomepageHeader />
