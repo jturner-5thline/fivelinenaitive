@@ -39,7 +39,7 @@ export const HomepageHeader = () => {
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-24 sm:h-[7.5rem] w-auto object-contain block -my-8 sm:-my-10"
+            className="h-16 sm:h-24 md:h-28 lg:h-[7.5rem] w-auto object-contain block -my-5 sm:-my-8 md:-my-9 lg:-my-10"
             style={{ aspectRatio: 'auto' }}
           />
         </Link>
