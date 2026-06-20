@@ -244,9 +244,9 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   return createPortal(
     <div
       style={s.overlay}
-      onClick={onClose}
-      onPointerDownCapture={(e) => e.stopPropagation()}
-      onMouseDownCapture={(e) => e.stopPropagation()}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <div style={s.dialog} onClick={e => e.stopPropagation()}>
         {/* Header */}
