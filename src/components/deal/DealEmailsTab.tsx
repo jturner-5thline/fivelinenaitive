@@ -1511,8 +1511,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       };
       const resolvedDealId = dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null;
       const key = getThreadWorkflowCacheKey(threadData, resolvedDealId);
-      if (!preloadedWorkflowKeysRef.current.has(key)) {
-        if (key) preloadedWorkflowKeysRef.current.add(key);
+      if (key && !preloadedWorkflowKeysRef.current.has(key)) {
+        preloadedWorkflowKeysRef.current.add(key);
         await preloadThreadWorkflowAnalysis({
           dealId: resolvedDealId,
           threadData,
