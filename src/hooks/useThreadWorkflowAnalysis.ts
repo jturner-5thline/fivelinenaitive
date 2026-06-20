@@ -478,6 +478,17 @@ export function useThreadWorkflowAnalysis({
     const key = `${cacheKey}::${dealId || 'no-deal'}`;
     if (lastRunKey.current === key) return;
     lastRunKey.current = key;
+    // Hydrate instantly from localStorage if we've analyzed this exact
+    // (thread message + linked deal) combination before. The same key
+    // shape is written in `run()` on success, so a cache hit avoids the
+    // edge-function round-trip entirely on refresh / thread re-open.
+    const cached = readCache()[key];
+    if (cached?.analysis) {
+      setAnalysis(cached.analysis);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     // Clear stale analysis from the previously open thread immediately so
     // the AI Assist header doesn't keep showing "Likely: <prev deal>"
     // while the new thread is being re-analyzed.
