@@ -70,25 +70,25 @@ export const HomepageHero = () => {
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
-        <div className="max-w-full md:max-w-[62%] lg:max-w-[52%] xl:max-w-[46rem] flex flex-col items-start">
+        <div className="max-w-full md:max-w-[34rem] lg:max-w-[40rem] xl:max-w-[42rem] flex flex-col items-start">
           {/* Eyebrow */}
-          <p className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.22em] text-white/55">
-            <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
+          <p className="flex items-center text-[10.5px] sm:text-[11px] font-medium uppercase tracking-[0.28em] text-white/50">
+            <span className="inline-block w-5 h-px bg-white/25 mr-3" />
             Deal execution platform
           </p>
 
           {/* Headline */}
-          <h1 className="mt-5 sm:mt-6 text-[28px] sm:text-4xl md:text-5xl lg:text-[56px] font-semibold tracking-[-0.02em] leading-[1.05] text-white">
+          <h1 className="mt-3 sm:mt-4 text-[30px] sm:text-[40px] md:text-[48px] lg:text-[56px] font-semibold tracking-[-0.025em] leading-[1.02] text-white max-w-[20ch]">
             The Operating System for Deal Management
           </h1>
 
-          {/* Primary subhead */}
-          <p className="mt-6 sm:mt-8 max-w-[38rem] text-base sm:text-lg md:text-xl font-light leading-[1.55] text-white/80">
+          {/* Primary subhead — true subhead, brighter & shorter */}
+          <p className="mt-7 sm:mt-8 max-w-[34rem] text-[17px] sm:text-[19px] md:text-[20px] font-light leading-[1.5] text-white/85">
             We centralize deal execution into a single operating system — bringing work, decisions, and data together as deals move through review, diligence, and approval.
           </p>
 
-          {/* Secondary support copy */}
-          <p className="mt-4 max-w-[36rem] text-sm sm:text-base font-light leading-[1.65] text-white/55">
+          {/* Secondary support copy — lower contrast, smaller */}
+          <p className="mt-3.5 max-w-[32rem] text-[14px] sm:text-[15px] font-light leading-[1.65] text-white/45">
             Intelligence is embedded directly into execution, surfacing bottlenecks, highlighting risk, and keeping work moving without adding more tools or manual oversight.
           </p>
 
@@ -96,7 +96,7 @@ export const HomepageHero = () => {
           {submitted ? (
             <div
               role="status"
-              className="mt-9 sm:mt-11 w-full max-w-[34rem] flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-4 text-white"
+              className="mt-12 sm:mt-14 w-full max-w-[32rem] flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] backdrop-blur-md p-4 text-white"
             >
               <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0 text-emerald-400" />
               <p className="text-sm sm:text-base font-light leading-relaxed">
@@ -106,10 +106,10 @@ export const HomepageHero = () => {
           ) : (
           <form
             onSubmit={handleSubmit}
-            className="mt-9 sm:mt-11 w-full max-w-[34rem] flex flex-col gap-3"
+            className="mt-12 sm:mt-14 w-full max-w-[32rem] flex flex-col gap-0"
             aria-label="Book a demo"
           >
-            <div className="group/form flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-1.5 w-full sm:p-1.5 sm:rounded-2xl sm:border sm:border-white/10 sm:bg-white/[0.04] sm:backdrop-blur-md sm:shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-14px_rgba(0,0,0,0.6)] sm:focus-within:border-white/25 sm:transition-colors">
+            <div className="group/form flex flex-col sm:flex-row sm:items-stretch gap-2 sm:gap-0 w-full sm:p-1 sm:rounded-[14px] sm:border sm:border-white/[0.09] sm:bg-[rgba(10,12,20,0.55)] sm:backdrop-blur-xl sm:backdrop-saturate-150 sm:shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_12px_40px_-18px_rgba(0,0,0,0.75)] sm:focus-within:border-white/20 sm:transition-colors">
               <label htmlFor="hero-email" className="sr-only">
                 Work email
               </label>
@@ -122,14 +122,14 @@ export const HomepageHero = () => {
                 disabled={isSubmitting}
                 aria-invalid={!!errorMsg}
                 onChange={(e) => { setEmail(e.target.value); if (errorMsg) setErrorMsg(null); }}
-                className={`flex-1 min-w-0 h-12 sm:h-11 px-4 rounded-xl sm:rounded-lg bg-white/[0.04] sm:bg-transparent border sm:border-0 text-white placeholder:text-white/40 text-sm sm:text-[15px] outline-none transition-colors focus:bg-white/[0.08] sm:focus:bg-transparent sm:focus:ring-0 ${errorMsg ? "border-red-400/70 focus:border-red-400" : "border-white/10 focus:border-white/30"}`}
+                className={`flex-1 min-w-0 h-12 sm:h-12 px-4 sm:px-5 rounded-xl sm:rounded-l-[10px] sm:rounded-r-none bg-white/[0.04] sm:bg-transparent border sm:border-0 text-white placeholder:text-white/40 text-[15px] tracking-[-0.005em] outline-none transition-colors focus:bg-white/[0.08] sm:focus:bg-transparent sm:focus:ring-0 ${errorMsg ? "border-red-400/70 focus:border-red-400" : "border-white/10 focus:border-white/30"}`}
               />
               <Button
                 type="submit"
                 size="lg"
                 disabled={isSubmitting}
                 aria-busy={isSubmitting}
-                className="marketing-glass-cta h-12 sm:h-11 px-6 sm:px-7 rounded-xl sm:rounded-lg text-sm sm:text-[15px] font-semibold tracking-[-0.005em] border-0 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="marketing-glass-cta h-12 sm:h-12 px-6 sm:px-6 rounded-xl sm:rounded-[10px] text-[14.5px] font-semibold tracking-[-0.005em] border-0 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -142,11 +142,11 @@ export const HomepageHero = () => {
               </Button>
             </div>
             {errorMsg && (
-              <p role="alert" className="text-xs sm:text-sm text-red-300">
+              <p role="alert" className="mt-3 text-xs sm:text-sm text-red-300">
                 {errorMsg}
               </p>
             )}
-            <p className="mt-1 text-[11px] sm:text-xs leading-[1.6] font-light text-white/35 max-w-[32rem]">
+            <p className="mt-6 sm:mt-8 text-[11px] leading-[1.6] font-light text-white/30 max-w-[30rem]">
               By submitting this form, you consent to allow naitive to store and process the personal information submitted here to provide you with occasional updates and content that may interest you.
             </p>
           </form>
