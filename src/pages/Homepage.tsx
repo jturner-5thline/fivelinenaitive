@@ -39,8 +39,23 @@ export default function Homepage() {
         
         <HomepageHero />
 
+        {/* Soft hero → page transition. The next section is pulled up
+            into the hero area and carries its own transparent-to-black
+            gradient so the hero dissolves into the page without a hard
+            edge. Nothing is overlaid on the hero image itself. */}
+        <div className="relative -mt-32 sm:-mt-40 md:-mt-48 z-10 pointer-events-none">
+          <div
+            aria-hidden
+            className="h-32 sm:h-40 md:h-48 w-full"
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.75) 70%, #000 100%)',
+            }}
+          />
+        </div>
+
         {/* Scrolling capability tags — full-width banner directly under hero */}
-        <div className="scroll-reveal">
+        <div className="scroll-reveal relative z-10 bg-black">
           <HomepageScrollingTags />
         </div>
 
