@@ -538,10 +538,30 @@ export function ScheduledCashFlowsModal({
                 Schedule recurring or one-time cash flows that auto-populate the weekly view.
               </DialogDescription>
             </div>
-            <Button onClick={addRow} size="sm" className="gap-1.5 shrink-0">
-              <Plus className="h-4 w-4" />
-              Add Entry
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onOpenCashInPanel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenCashInPanel}
+                  className="gap-1.5"
+                  title="Cash-In: Next 8 Weeks — view & edit"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Cash-In Next 8W
+                  {typeof cashInNext8WTotal === 'number' && (
+                    <span className="ml-1 text-xs font-semibold text-muted-foreground">
+                      {fmtUSDWhole(cashInNext8WTotal)}
+                    </span>
+                  )}
+                </Button>
+              )}
+              <Button onClick={addRow} size="sm" className="gap-1.5">
+                <Plus className="h-4 w-4" />
+                Add Entry
+              </Button>
+            </div>
           </div>
         </DialogHeader>
 
