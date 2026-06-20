@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { Search, X, ArrowUpDown, ArrowUp, ArrowDown, Filter } from 'lucide-react';
@@ -217,7 +218,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
   const allClosing = filtered.length > 0 && filtered.every(d => rows[d.id]?.closingEnabled);
 
   const s = {
-    overlay: { position: 'fixed' as const, inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    overlay: { position: 'fixed' as const, inset: 0, zIndex: 2147483000, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     dialog: { background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, width: '92vw', maxWidth: 1200, height: '82vh', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid hsl(var(--border))' },
     title: { fontSize: 16, fontWeight: 700, color: 'hsl(var(--foreground))' },
@@ -240,8 +241,13 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
     dot: (color: string) => ({ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: color, marginRight: 5, flexShrink: 0 }),
   };
 
-  return (
-    <div style={s.overlay} onClick={onClose}>
+  return createPortal(
+    <div
+      style={s.overlay}
+      onClick={onClose}
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      onMouseDownCapture={(e) => e.stopPropagation()}
+    >
       <div style={s.dialog} onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div style={s.header}>
