@@ -48,10 +48,11 @@ export const HomepageWorkflow = () => {
             ref={leftRef}
             className={`transition-all duration-700 ${leftVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55 mb-5">
+              <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
               How it works
             </p>
-            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-12">
+            <h2 className="text-3xl md:text-[44px] font-semibold tracking-[-0.02em] text-white leading-[1.08] mb-12 max-w-[28rem]">
               From mandate to close, in one system.
             </h2>
 
