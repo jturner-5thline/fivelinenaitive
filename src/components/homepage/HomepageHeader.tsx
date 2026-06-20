@@ -20,11 +20,11 @@ export const HomepageHeader = () => {
         className={cn(
           "container mx-auto rounded-2xl transition-all duration-300 ease-out pointer-events-auto",
           scrolled
-            ? "bg-[linear-gradient(180deg,rgba(18,22,36,0.92)_0%,rgba(6,10,20,0.88)_100%)] backdrop-blur-lg border border-white/15 shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-8px_rgba(0,0,0,0.55),0_2px_6px_-2px_rgba(0,0,0,0.4)]"
-            : "bg-[linear-gradient(180deg,rgba(16,20,32,0.7)_0%,rgba(6,10,20,0.6)_100%)] backdrop-blur-md border border-white/12 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_6px_18px_-8px_rgba(0,0,0,0.4),0_1px_4px_-1px_rgba(0,0,0,0.25)]"
+            ? "bg-[rgba(8,10,18,0.78)] backdrop-blur-xl backdrop-saturate-150 border border-white/[0.08] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-12px_rgba(0,0,0,0.6)]"
+            : "bg-[rgba(8,10,18,0.45)] backdrop-blur-md backdrop-saturate-150 border border-white/[0.06] shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_8px_24px_-14px_rgba(0,0,0,0.45)]"
         )}
       >
-        <nav className="pl-1 pr-4 sm:pl-2 sm:pr-6 py-1.5 flex items-center justify-between gap-4 leading-none">
+        <nav className="pl-1 pr-3 sm:pl-2 sm:pr-5 py-1.5 flex items-center justify-between gap-4 leading-none">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0 leading-none" aria-label="naitive home">
           <img
@@ -36,18 +36,18 @@ export const HomepageHeader = () => {
         </Link>
 
         {/* CTA */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-2">
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-white/80 hover:text-white hover:bg-white/10"
+            className="text-white/75 hover:text-white hover:bg-white/[0.06] text-[13px] font-medium tracking-[-0.005em] px-3 sm:px-4"
             asChild
           >
             <Link to="/login">Log in</Link>
           </Button>
           <Button 
             size="sm" 
-            className="marketing-glass-cta border-0"
+            className="marketing-glass-cta border-0 text-[13px] font-semibold tracking-[-0.005em] px-4 sm:px-5"
             asChild
           >
             <Link to="/waitlist">Contact Us</Link>

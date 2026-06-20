@@ -17,13 +17,17 @@ export const HomepageCTA = () => {
           }}
         >
           <div className="relative px-6 sm:px-12 lg:px-20 py-16 md:py-24 text-center max-w-3xl mx-auto">
-            <p className="text-sm font-medium uppercase tracking-[0.25em] text-[hsl(270,65%,75%)] mb-5">
-              Get started
-            </p>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] mb-5">
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <span className="inline-block w-6 h-px bg-white/30" />
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55">
+                Get started
+              </p>
+              <span className="inline-block w-6 h-px bg-white/30" />
+            </div>
+            <h2 className="text-4xl md:text-5xl lg:text-[56px] font-semibold tracking-[-0.02em] text-white leading-[1.05] mb-6">
               Ready to experience naitive?
             </h2>
-            <p className="text-lg text-white/65 mb-10 max-w-xl mx-auto">
+            <p className="text-base md:text-lg font-light text-white/65 leading-[1.6] mb-10 max-w-[32rem] mx-auto">
               Join the deal teams operating with clarity, speed, and discipline. Request access today.
             </p>
 

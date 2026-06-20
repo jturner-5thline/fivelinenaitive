@@ -38,14 +38,14 @@ export const HomepageDataPrivacy = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-12 lg:gap-16 items-start">
           {/* Left intro */}
           <div className="lg:sticky lg:top-24">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs mb-5">
-              <Shield className="w-3.5 h-3.5" />
-              Data & Privacy
-            </div>
-            <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55 mb-5">
+              <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
+              Data &amp; Privacy
+            </p>
+            <h2 className="text-3xl md:text-[44px] font-semibold tracking-[-0.02em] text-white leading-[1.08] mb-6">
               Your data,<br/>your control.
             </h2>
-            <p className="text-white/60 leading-relaxed mb-7 max-w-md">
+            <p className="text-base font-light text-white/60 leading-[1.6] mb-7 max-w-[26rem]">
               n<span className="bg-gradient-to-r from-[hsl(270,65%,55%)] to-[hsl(220,70%,72%)] bg-clip-text text-transparent">ai</span>tive does not sell or monetize customer data. Period.
             </p>
             <Link

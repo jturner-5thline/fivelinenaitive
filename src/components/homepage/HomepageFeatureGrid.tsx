@@ -42,14 +42,15 @@ export const HomepageFeatureGrid = () => {
   return (
     <section className="py-16 md:py-24 bg-transparent">
       <div className="container mx-auto px-6">
-        <div ref={ref} className={`max-w-3xl mb-14 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">
+        <div ref={ref} className={`max-w-2xl mb-14 md:mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55 mb-5">
+            <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
             Platform
           </p>
-          <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
+          <h2 className="text-3xl md:text-[44px] font-semibold tracking-[-0.02em] text-white leading-[1.08]">
             Built for the way deals actually move.
           </h2>
-          <p className="mt-5 text-lg text-white/60 leading-relaxed max-w-2xl">
+          <p className="mt-6 text-base md:text-lg font-light text-white/60 leading-[1.6] max-w-[36rem]">
             Five purpose-built modules that replace the patchwork of spreadsheets, inboxes, and folders deal teams rely on today.
           </p>
         </div>
