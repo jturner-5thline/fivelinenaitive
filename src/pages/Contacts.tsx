@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, RefreshCw, Loader2, Link2 } from 'lucide-react';
+import { Plus, Upload, RefreshCw, Loader2, Link2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
@@ -16,6 +16,9 @@ import { CONTACT_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { CrmUpdateQueueButton } from '@/components/crm/CrmUpdateQueueButton';
+import { exportContactsToXlsx } from '@/lib/contactsXlsxExport';
+import { useCompany } from '@/hooks/useCompany';
+import { applyFiltersToQuery } from '@/lib/filterUtils';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
@@ -24,10 +27,12 @@ export default function Contacts() {
   const [pageSize, setPageSize] = useState(50);
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
+  const { company } = useCompany();
 
   const handleSyncContacts = async () => {
     setIsSyncingContacts(true);
@@ -80,6 +85,24 @@ export default function Contacts() {
     }
   };
 
+  const handleExport = async () => {
+    if (!company?.id) return;
+    setIsExporting(true);
+    try {
+      const count = await exportContactsToXlsx({
+        orgCompanyId: company.id,
+        quickFilter,
+        advancedFilters: debouncedFilters,
+        matchMode,
+      });
+      toast.success(`Exported ${count} contacts`);
+    } catch (e: any) {
+      toast.error('Export failed', { description: e.message });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const { data: result, isLoading, isFetching } = useContacts({
     page,
     pageSize,
@@ -128,6 +151,10 @@ export default function Contacts() {
               <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
                 {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
                 Match Companies
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
+                Export
               </Button>
               <Button variant="outline" size="sm">
                 <Upload className="h-4 w-4 mr-1.5" /> Import
