@@ -343,7 +343,13 @@ const Auth = () => {
         <title>{getTitle()} | naitive</title>
       </Helmet>
       
-      <div className="min-h-screen bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] relative overflow-hidden">
+      <div
+        className="min-h-screen relative overflow-hidden bg-background"
+        style={{
+          backgroundImage:
+            "radial-gradient(900px 320px at 12% -10%, hsl(var(--primary) / 0.12), transparent 60%), radial-gradient(700px 280px at 88% 110%, hsl(var(--primary) / 0.08), transparent 60%), linear-gradient(to bottom, hsl(var(--card) / 0.96), hsl(var(--background) / 0.96))",
+        }}
+      >
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-end pb-4 md:pb-6 px-4">
           <div className="w-full flex justify-center mt-[10vh] mb-auto pointer-events-none select-none">
