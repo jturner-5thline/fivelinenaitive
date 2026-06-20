@@ -78,6 +78,10 @@ interface Props {
    * the database. Rows that simply aren't in `entries` are left alone.
    */
   onSave: (entries: ScheduledCashFlow[], deleteIds: string[]) => Promise<boolean>;
+  /** Optional: opens the "Cash-In: Next 8 Weeks" panel (moved here from the toolbar). */
+  onOpenCashInPanel?: () => void;
+  /** Headline total to show on the Cash-In Next 8W button. */
+  cashInNext8WTotal?: number;
 }
 
 type DraftEntry = Omit<ScheduledCashFlow, 'id' | 'company_id'> & { id?: string; _draftId: string };
