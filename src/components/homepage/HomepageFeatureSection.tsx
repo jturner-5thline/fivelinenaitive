@@ -24,15 +24,16 @@ export const HomepageFeatureSection = ({
           {/* Text */}
           <div
             ref={textRef}
-            className={`flex-1 max-w-xl transition-all duration-700 delay-100 ${textVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+            className={`flex-1 max-w-[34rem] transition-all duration-700 delay-100 ${textVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55 mb-5">
+              <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
               Module
             </p>
-            <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-5 leading-tight">
+            <h3 className="text-3xl md:text-4xl lg:text-[40px] font-semibold tracking-[-0.02em] text-white mb-6 leading-[1.1]">
               {title}
             </h3>
-            <p className="text-lg text-white/60 leading-relaxed">
+            <p className="text-base md:text-lg font-light text-white/60 leading-[1.6]">
               {description}
             </p>
           </div>
