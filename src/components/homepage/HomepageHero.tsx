@@ -71,14 +71,8 @@ export const HomepageHero = () => {
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
         <div className="max-w-full md:max-w-[34rem] lg:max-w-[40rem] xl:max-w-[42rem] flex flex-col items-start">
-          {/* Eyebrow */}
-          <p className="flex items-center text-[10.5px] sm:text-[11px] font-medium uppercase tracking-[0.28em] text-white/50">
-            <span className="inline-block w-5 h-px bg-white/25 mr-3" />
-            Deal execution platform
-          </p>
-
           {/* Headline */}
-          <h1 className="mt-3 sm:mt-4 text-[30px] sm:text-[40px] md:text-[48px] lg:text-[56px] font-semibold tracking-[-0.025em] leading-[1.02] text-white max-w-[20ch]">
+          <h1 className="text-[30px] sm:text-[40px] md:text-[48px] lg:text-[56px] font-semibold tracking-[-0.025em] leading-[1.02] text-white max-w-[20ch]">
             The Operating System for Deal Management
           </h1>
 
