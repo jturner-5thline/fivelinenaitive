@@ -629,7 +629,7 @@ const Auth = () => {
                       setLoading(false);
                     }
                   }}
-                  className="w-full text-white/60 hover:text-white hover:bg-[hsl(270,50%,40%,0.15)] py-6 font-light tracking-wide"
+                  className="w-full text-white/70 hover:text-white border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] py-5 font-light tracking-wide"
                 >
                   Try Demo
                 </Button>
@@ -637,7 +637,7 @@ const Auth = () => {
             </form>
             
             {!isDemoAccess && mode !== "reset" && mode !== "mfa" && (
-              <p className="text-center text-white/50 mt-6 font-light">
+              <p className="text-center text-white/50 mt-4 font-light text-sm">
                 {mode === "forgot" ? (
                   <button
                     type="button"
