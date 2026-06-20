@@ -60,8 +60,12 @@ export const HomepageHero = () => {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
       <div
         aria-hidden
-        className="absolute inset-0 bg-no-repeat bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${heroBg.url})` }}
+        className="absolute inset-0 bg-no-repeat pointer-events-none"
+        style={{
+          backgroundImage: `url(${heroBg.url})`,
+          backgroundSize: '100% 100%',
+          backgroundPosition: 'center bottom',
+        }}
       />
 
       {/* Left-aligned, vertically centered content */}
