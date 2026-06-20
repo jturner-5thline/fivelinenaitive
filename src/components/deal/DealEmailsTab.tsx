@@ -1509,6 +1509,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
         await preloadThreadWorkflowAnalysis({
           dealId: dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null,
           threadData,
+          deals: allDeals,
         });
       }
       const schedule = (window as any).requestIdleCallback
