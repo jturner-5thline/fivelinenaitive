@@ -103,6 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Do not trust the locally-restored session event until `getUser()`
+        // below has verified the token with the auth server. A stale local
+        // session can otherwise briefly mount protected routes and trigger
+        // authenticated edge functions with an invalid bearer token.
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
@@ -231,8 +239,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // THEN check for existing session, but validate it server-side before
+    // exposing `user` to the app. `getSession()` can return stale local auth
+    // data; `getUser()` confirms the access token is still valid.
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: verified, error: verifyError } = await supabase.auth.getUser();
+        if (verifyError || !verified.user) {
+          try { await supabase.auth.signOut(); } catch { /* ignore */ }
+          localStorage.removeItem('naitive_remember_me');
+          sessionStorage.removeItem('naitive_session_only');
+          sessionStorage.removeItem('naitive_session_active');
+          sessionStorage.removeItem('naitive_approval_requested');
+          setSession(null);
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+        session = { ...session, user: verified.user };
+      }
+
       // Check if this is a session-only login that should be cleared
       // (browser was closed and reopened without Remember Me)
       // Only apply this logic if the user explicitly chose NOT to remember (session-only flag was set)
