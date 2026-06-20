@@ -101,6 +101,7 @@ import {
 } from './email/systemAutoLabels';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { rankDealsForThread } from '@/lib/dealEvidenceMatcher';
+import { preloadThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 
 /** Compute next business day in local TZ as 'YYYY-MM-DD'. Skips weekends. */
 function nextBusinessDayISO(): string {
