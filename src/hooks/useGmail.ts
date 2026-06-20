@@ -191,6 +191,18 @@ function clearPersistedStatus() {
   try { localStorage.removeItem(GMAIL_STATUS_KEY); } catch { /* ignore */ }
 }
 
+async function invokeGmailMessages(body: Record<string, unknown>) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) {
+    throw new Error('No active session. Please sign in again.');
+  }
+  return supabase.functions.invoke('gmail-messages', {
+    body,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
 export function useGmail() {
   const { user } = useAuth();
   const initialStatus = cachedStatus || loadPersistedStatus() || { connected: false };
@@ -439,19 +451,12 @@ export function useGmail() {
 
     setIsLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session?.access_token) {
-        setIsLoading(false);
-        return null;
-      }
-      const { data, error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'list',
-          max_results: options?.maxResults || 50,
-          page_token: options?.pageToken,
-          label_ids: options?.labelIds,
-          query: options?.query,
-        },
+      const { data, error } = await invokeGmailMessages({
+        action: 'list',
+        max_results: options?.maxResults || 50,
+        page_token: options?.pageToken,
+        label_ids: options?.labelIds,
+        query: options?.query,
       });
 
       if (error) throw error;
@@ -517,11 +522,9 @@ export function useGmail() {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'get',
-          message_id: messageId,
-        },
+      const { data, error } = await invokeGmailMessages({
+        action: 'get',
+        message_id: messageId,
       });
 
       if (error) throw error;
@@ -607,18 +610,16 @@ export function useGmail() {
         },
       });
 
-      const { data, error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'send',
-          to: normalizedTo,
-          subject: options.subject,
-          body: options.body,
-          body_html: options.bodyHtml,
-          cc: normalizedCc,
-          bcc: normalizedBcc,
-          attachments: encodedAttachments,
-          reply_to_message_id: options.replyToMessageId,
-        },
+      const { data, error } = await invokeGmailMessages({
+        action: 'send',
+        to: normalizedTo,
+        subject: options.subject,
+        body: options.body,
+        body_html: options.bodyHtml,
+        cc: normalizedCc,
+        bcc: normalizedBcc,
+        attachments: encodedAttachments,
+        reply_to_message_id: options.replyToMessageId,
       });
 
       if (error) throw error;
@@ -677,11 +678,9 @@ export function useGmail() {
 
       // Fire the Gmail PATCH in the background. We do NOT await it for
       // the UI — the optimistic update above is what the user sees.
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: read ? 'mark_read' : 'mark_unread',
-          message_id: messageId,
-        },
+      const { error } = await invokeGmailMessages({
+        action: read ? 'mark_read' : 'mark_unread',
+        message_id: messageId,
       });
 
       if (error) throw error;
@@ -698,11 +697,9 @@ export function useGmail() {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: starred ? 'star' : 'unstar',
-          message_id: messageId,
-        },
+      const { error } = await invokeGmailMessages({
+        action: starred ? 'star' : 'unstar',
+        message_id: messageId,
       });
 
       if (error) throw error;
@@ -723,11 +720,9 @@ export function useGmail() {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'trash',
-          message_id: messageId,
-        },
+      const { error } = await invokeGmailMessages({
+        action: 'trash',
+        message_id: messageId,
       });
 
       if (error) throw error;
@@ -745,11 +740,9 @@ export function useGmail() {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'archive',
-          message_id: messageId,
-        },
+      const { error } = await invokeGmailMessages({
+        action: 'archive',
+        message_id: messageId,
       });
 
       if (error) throw error;
@@ -771,12 +764,10 @@ export function useGmail() {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'move',
-          message_id: messageId,
-          folder,
-        },
+      const { error } = await invokeGmailMessages({
+        action: 'move',
+        message_id: messageId,
+        folder,
       });
 
       if (error) throw error;
