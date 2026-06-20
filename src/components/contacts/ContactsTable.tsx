@@ -290,54 +290,81 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                 <TableHead className="w-10">
                   <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                 </TableHead>
-                <TableHead><SortHeader field="full_name">Name</SortHeader></TableHead>
-                <TableHead><SortHeader field="job_title">Title</SortHeader></TableHead>
-                <TableHead><SortHeader field="contact_type">Type</SortHeader></TableHead>
+                <TableHead><SortHeader field="first_name">First Name</SortHeader></TableHead>
+                <TableHead><SortHeader field="last_name">Last Name</SortHeader></TableHead>
                 <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
-                <TableHead>Company</TableHead>
+                <TableHead><SortHeader field="hs_city">City</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_contact_status">Lead Status</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_contact_type">Contact Type</SortHeader></TableHead>
+                <TableHead><SortHeader field="created_at">Create Date</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_notes_last_contacted">Last Contacted</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_industry">Industry</SortHeader></TableHead>
+                <TableHead><SortHeader field="job_title">Job Title</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_hs_email_optout">Opted out: One to One</SortHeader></TableHead>
+                <TableHead><SortHeader field="email_domain_normalized">Email Domain</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_state">State/Region</SortHeader></TableHead>
+                <TableHead>Company Name</TableHead>
                 <TableHead>LinkedIn</TableHead>
-                <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
-                <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
-                <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
-                <TableHead><SortHeader field="lead_source">Source</SortHeader></TableHead>
-                <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
-                <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
+                <TableHead><SortHeader field="phone_work">Phone</SortHeader></TableHead>
+                <TableHead><SortHeader field="phone_mobile">Mobile</SortHeader></TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             )}
             itemContent={(_index, contact) => {
               const crmCompany = (contact as any).crm_company;
-              const companyName = crmCompany?.name || null;
+              const c: any = contact as any;
+              const companyName = crmCompany?.name || c.hs_company_name || null;
               const companyId = (contact as any).crm_company_id;
+              const optOut = c.hs_hs_email_optout;
+              const optOutLabel = optOut === true || optOut === 'true' || optOut === 1 || optOut === '1'
+                ? 'Yes'
+                : optOut === false || optOut === 'false' || optOut === 0 || optOut === '0'
+                  ? 'No'
+                  : '—';
               return (
                 <>
                   <TableCell onClick={e => e.stopPropagation()}>
                     <Checkbox checked={selectedIds.has(contact.id)} onCheckedChange={() => toggleOne(contact.id)} />
                   </TableCell>
-                  <TableCell>
-                    <div className="font-medium text-sm">{contact.full_name || '—'}</div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
-                  <TableCell className="text-sm">
-                    {(contact as any).contact_type ? (
-                      <Badge variant="outline" className="text-[10px]">{(contact as any).contact_type}</Badge>
-                    ) : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
+                  <TableCell className="text-sm font-medium">{contact.first_name || '—'}</TableCell>
+                  <TableCell className="text-sm font-medium">{contact.last_name || '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {contact.email ? (
-                      <a
-                        href={`mailto:${contact.email}`}
-                        onClick={e => e.stopPropagation()}
-                        className="hover:underline"
-                      >{contact.email}</a>
+                      <a href={`mailto:${contact.email}`} onClick={e => e.stopPropagation()} className="hover:underline">{contact.email}</a>
                     ) : '—'}
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.hs_city || '—'}</TableCell>
+                  <TableCell className="text-sm">
+                    {c.hs_contact_status ? (
+                      <Badge variant="outline" className="text-[10px]">{c.hs_contact_status}</Badge>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {(c.hs_contact_type || c.contact_type) ? (
+                      <Badge variant="outline" className="text-[10px]">{c.hs_contact_type || c.contact_type}</Badge>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {contact.created_at ? format(new Date(contact.created_at), 'MMM d, yyyy') : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {c.hs_notes_last_contacted ? format(new Date(c.hs_notes_last_contacted), 'MMM d, yyyy') : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate" title={c.hs_industry || ''}>{c.hs_industry || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{optOutLabel}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.email_domain_normalized || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.hs_state || '—'}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {companyName ? (
-                      <span
-                        className="text-primary hover:underline cursor-pointer"
-                        onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
-                      >{companyName}</span>
+                      companyId ? (
+                        <span
+                          className="text-primary hover:underline cursor-pointer"
+                          onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
+                        >{companyName}</span>
+                      ) : (
+                        <span>{companyName}</span>
+                      )
                     ) : '—'}
                   </TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
@@ -353,24 +380,8 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                       </a>
                     ) : <span className="text-muted-foreground text-sm">—</span>}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>
-                      {LIFECYCLE_STAGES.find(s => s.value === contact.lifecycle_stage)?.label || contact.lifecycle_stage}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className={cn('text-[10px]', statusColors[contact.status] || '')}>
-                      {CONTACT_STATUSES.find(s => s.value === contact.status)?.label || contact.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contact.owner_user_id ? (ownerNameById.get(contact.owner_user_id) || 'Unknown') : '—'}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
-                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_work || '—'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{contact.phone_mobile || '—'}</TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
