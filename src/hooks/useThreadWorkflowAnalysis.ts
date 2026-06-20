@@ -94,6 +94,31 @@ interface UseThreadWorkflowAnalysisOptions {
 
 type DismissalState = Record<string, true>;
 const DISMISS_KEY = 'naitive.threadWorkflow.dismissed';
+const CACHE_KEY = 'naitive.threadWorkflow.cache.v1';
+const CACHE_MAX_ENTRIES = 200;
+
+type CacheState = Record<string, { analysis: WorkflowAnalysis; savedAt: number }>;
+
+function readCache(): CacheState {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+function writeCache(state: CacheState) {
+  try {
+    // Trim to most-recent N entries to keep localStorage small.
+    const entries = Object.entries(state).sort(
+      (a, b) => (b[1]?.savedAt || 0) - (a[1]?.savedAt || 0),
+    );
+    const trimmed: CacheState = {};
+    for (const [k, v] of entries.slice(0, CACHE_MAX_ENTRIES)) trimmed[k] = v;
+    localStorage.setItem(CACHE_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* ignore */
+  }
+}
 
 function readDismissed(): DismissalState {
   try {
