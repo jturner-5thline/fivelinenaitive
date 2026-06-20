@@ -39,17 +39,18 @@ export default function Homepage() {
         
         <HomepageHero />
 
-        {/* Soft hero → page transition. The next section is pulled up
-            into the hero area and carries its own transparent-to-black
-            gradient so the hero dissolves into the page without a hard
-            edge. Nothing is overlaid on the hero image itself. */}
-        <div className="relative -mt-32 sm:-mt-40 md:-mt-48 z-10 pointer-events-none">
+        {/* Soft hero → page transition. A tall, very gradual
+            transparent-to-black gradient is pulled up into the hero
+            area so the hero dissolves into the page without a hard
+            edge. Nothing is overlaid that changes the hero's look —
+            this only fills the lowest sliver and the area below. */}
+        <div className="relative -mt-56 sm:-mt-64 md:-mt-72 lg:-mt-80 z-10 pointer-events-none">
           <div
             aria-hidden
-            className="h-32 sm:h-40 md:h-48 w-full"
+            className="h-56 sm:h-64 md:h-72 lg:h-80 w-full"
             style={{
               background:
-                'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.75) 70%, #000 100%)',
+                'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.04) 25%, rgba(0,0,0,0.18) 50%, rgba(0,0,0,0.5) 78%, #000 100%)',
             }}
           />
         </div>
