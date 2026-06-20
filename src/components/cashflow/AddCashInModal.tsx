@@ -454,6 +454,7 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
