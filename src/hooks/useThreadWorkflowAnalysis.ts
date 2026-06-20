@@ -94,6 +94,31 @@ interface UseThreadWorkflowAnalysisOptions {
 
 type DismissalState = Record<string, true>;
 const DISMISS_KEY = 'naitive.threadWorkflow.dismissed';
+const CACHE_KEY = 'naitive.threadWorkflow.cache.v1';
+const CACHE_MAX_ENTRIES = 200;
+
+type CacheState = Record<string, { analysis: WorkflowAnalysis; savedAt: number }>;
+
+function readCache(): CacheState {
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+function writeCache(state: CacheState) {
+  try {
+    // Trim to most-recent N entries to keep localStorage small.
+    const entries = Object.entries(state).sort(
+      (a, b) => (b[1]?.savedAt || 0) - (a[1]?.savedAt || 0),
+    );
+    const trimmed: CacheState = {};
+    for (const [k, v] of entries.slice(0, CACHE_MAX_ENTRIES)) trimmed[k] = v;
+    localStorage.setItem(CACHE_KEY, JSON.stringify(trimmed));
+  } catch {
+    /* ignore */
+  }
+}
 
 function readDismissed(): DismissalState {
   try {
@@ -411,6 +436,17 @@ export function useThreadWorkflowAnalysis({
 
       setAnalysis(result);
 
+      // Persist to localStorage so reopening the same thread renders
+      // the analysis instantly without re-invoking the edge function.
+      if (cacheKey) {
+        const cache = readCache();
+        cache[`${cacheKey}::${dealId || 'no-deal'}`] = {
+          analysis: result,
+          savedAt: Date.now(),
+        };
+        writeCache(cache);
+      }
+
       // Fire prefill analytics event so we can track AI suggestion quality.
       const rec = result.recommended_update;
       if (rec && rec.kind !== 'none') {
@@ -442,6 +478,17 @@ export function useThreadWorkflowAnalysis({
     const key = `${cacheKey}::${dealId || 'no-deal'}`;
     if (lastRunKey.current === key) return;
     lastRunKey.current = key;
+    // Hydrate instantly from localStorage if we've analyzed this exact
+    // (thread message + linked deal) combination before. The same key
+    // shape is written in `run()` on success, so a cache hit avoids the
+    // edge-function round-trip entirely on refresh / thread re-open.
+    const cached = readCache()[key];
+    if (cached?.analysis) {
+      setAnalysis(cached.analysis);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     // Clear stale analysis from the previously open thread immediately so
     // the AI Assist header doesn't keep showing "Likely: <prev deal>"
     // while the new thread is being re-analyzed.
