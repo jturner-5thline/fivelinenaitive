@@ -1334,9 +1334,26 @@ export function AgendaIntel() {
         teamMembers={teamMembers}
         currentUserId={user?.id || ''}
         initialTitle={taskDialogEvent ? `Follow up: ${taskDialogEvent.summary || '(no title)'}` : ''}
-        initialDealId={taskDialogEvent ? (matchDeal(taskDialogEvent)?.id ?? null) : null}
+        initialDealId={
+          taskDialogEvent
+            ? (persistedLinks[taskDialogEvent.id]?.dealId
+               ?? dealLinkOverrides[taskDialogEvent.id]
+               ?? matchDeal(taskDialogEvent)?.id
+               ?? null)
+            : null
+        }
         initialDueDate={taskDialogEvent ? parseISO(taskDialogEvent.start) : null}
         onCreate={async (input) => {
+          // Hard guarantee: when the meeting has an explicit
+          // user-persisted deal link, that id wins over whatever the
+          // dialog returned. Prevents the wrong deal from ever being
+          // attached to a follow-up task.
+          const lockedDealId = taskDialogEvent
+            ? (persistedLinks[taskDialogEvent.id]?.dealId
+               ?? dealLinkOverrides[taskDialogEvent.id]
+               ?? null)
+            : null;
+          const effectiveDealId = lockedDealId ?? input.deal_id ?? null;
           await createTask.mutateAsync({
             title: input.title,
             priority: input.priority,
@@ -1345,8 +1362,8 @@ export function AgendaIntel() {
             assigned_to: input.assigned_to,
             recurrence_rule: input.recurrence_rule,
             recurrence_end_date: input.recurrence_end_date,
-            deal_id: input.deal_id || undefined,
-            source: input.deal_id && taskDialogEvent
+            deal_id: effectiveDealId || undefined,
+            source: effectiveDealId && taskDialogEvent
               ? {
                   module: 'rundown_item',
                   recordId: taskDialogEvent.id,
