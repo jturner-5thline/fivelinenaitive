@@ -344,10 +344,10 @@ const Auth = () => {
       </Helmet>
       
       <div
-        className="min-h-screen relative overflow-hidden bg-background"
+        className="min-h-screen relative overflow-hidden"
         style={{
           backgroundImage:
-            "radial-gradient(900px 320px at 12% -10%, hsl(var(--primary) / 0.12), transparent 60%), radial-gradient(700px 280px at 88% 110%, hsl(var(--primary) / 0.08), transparent 60%), linear-gradient(to bottom, hsl(var(--card) / 0.96), hsl(var(--background) / 0.96))",
+            "radial-gradient(900px 360px at 12% -10%, hsl(220 70% 55% / 0.18), transparent 60%), radial-gradient(700px 320px at 88% 110%, hsl(260 70% 55% / 0.14), transparent 60%), linear-gradient(135deg, hsl(220 30% 10%) 0%, hsl(245 24% 8%) 48%, hsl(260 15% 5%) 100%)",
         }}
       >
 
