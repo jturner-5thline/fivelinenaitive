@@ -33,11 +33,12 @@ export const HomepageTestimonials = () => {
   return (
     <section className="py-16 md:py-24 bg-transparent">
       <div ref={ref} className={`container mx-auto px-6 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-        <div className="max-w-3xl mb-14">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[hsl(270,65%,72%)] mb-4">
+        <div className="max-w-2xl mb-14 md:mb-16">
+          <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/55 mb-5">
+            <span className="inline-block w-6 h-px align-middle bg-white/30 mr-3" />
             Built for
           </p>
-          <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight">
+          <h2 className="text-3xl md:text-[44px] font-semibold tracking-[-0.02em] text-white leading-[1.08]">
             Who naitive is built for.
           </h2>
         </div>
