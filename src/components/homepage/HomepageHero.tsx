@@ -1,9 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2 } from "lucide-react";
-import { SpinningGlobe } from "@/components/SpinningGlobe";
 import { supabase } from "@/integrations/supabase/client";
-import heroBg from "@/assets/hero-bg.png.asset.json";
 
 export const HomepageHero = () => {
   const [email, setEmail] = useState(() => {
@@ -59,12 +57,6 @@ export const HomepageHero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
-      {/* Hero background image */}
-      <div
-        className="absolute inset-0 bg-no-repeat bg-cover bg-center pointer-events-none"
-        style={{ backgroundImage: `url(${heroBg.url})` }}
-        aria-hidden="true"
-      />
 
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-4 sm:px-6">
