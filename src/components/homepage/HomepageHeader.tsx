@@ -8,9 +8,15 @@ export const HomepageHeader = () => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => {
+      const hero = document.querySelector('[data-homepage-hero]') as HTMLElement | null;
+      const headerOffset = 80; // approx header height + top offset
+      const threshold = hero ? hero.offsetTop + hero.offsetHeight - headerOffset : window.innerHeight - headerOffset;
+      setScrolled(window.scrollY > threshold);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
