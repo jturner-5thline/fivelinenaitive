@@ -1485,6 +1485,44 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       );
   }, [filteredEmails]);
 
+  // Pre-warm AI Assist while the user is still browsing the list. This fills
+  // the shared workflow cache before the right-side email detail/AI Assist
+  // panel mounts, so opening a thread usually hydrates instantly instead of
+  // starting analysis on click.
+  const preloadedWorkflowKeysRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!allThreads.length) return;
+    let cancelled = false;
+    const queue = allThreads.slice(0, isInboxScope ? 8 : 5);
+    const runNext = async (index: number) => {
+      if (cancelled || index >= queue.length) return;
+      const thread = queue[index];
+      const threadData = {
+        subject: thread.subject,
+        threadId: thread.threadId,
+        latestEmail: thread.latestEmail,
+        emails: thread.emails,
+      };
+      const key = `${thread.threadId}::${thread.latestEmail?.gmail_message_id || thread.latestEmail?.id || ''}::${dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || 'no-deal'}`;
+      if (!preloadedWorkflowKeysRef.current.has(key)) {
+        preloadedWorkflowKeysRef.current.add(key);
+        await preloadThreadWorkflowAnalysis({
+          dealId: dealId || emailDealIdMap.get(thread.latestEmail?.id || '') || null,
+          threadData,
+        });
+      }
+      const schedule = (window as any).requestIdleCallback
+        ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1200 })
+        : (cb: () => void) => window.setTimeout(cb, 250);
+      schedule(() => void runNext(index + 1));
+    };
+    const starter = window.setTimeout(() => void runNext(0), 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(starter);
+    };
+  }, [allThreads, dealId, emailDealIdMap, isInboxScope]);
+
   const responseQueue = useMemo(() => {
     return emails
       .filter(e => e.needs_response && e.folder === 'inbox')
