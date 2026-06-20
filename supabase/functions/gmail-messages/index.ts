@@ -626,17 +626,17 @@ serve(async (req: Request): Promise<Response> => {
     const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: userData, error: userError } = await authClient.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
 
-    if (userError || !userData?.user?.id) {
-      console.error("[gmail-messages] auth error:", userError?.message || "no user");
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("[gmail-messages] auth error:", claimsError?.message || "no claims");
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const user = { id: userData.user.id };
+    const user = { id: claimsData.claims.sub as string };
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const requestData: MessageRequest = await req.json();
