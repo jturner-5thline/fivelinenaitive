@@ -351,12 +351,12 @@ const Auth = () => {
         }}
       >
 
-        <div className="relative z-10 min-h-screen flex flex-col items-center justify-start pt-6 md:pt-8 pb-6 px-4">
-          <div className="w-full flex justify-center pointer-events-none select-none mb-4">
+        <div className="relative z-10 min-h-screen flex flex-col items-center justify-start pt-2 pb-4 px-4">
+          <div className="w-full flex justify-center pointer-events-none select-none mb-1">
             <img 
               src={naitiveLogoFull} 
               alt="naitive" 
-              className="w-[42vw] max-w-[420px] h-auto shrink-0 object-contain animate-fade-in opacity-60"
+              className="w-[28vw] max-w-[260px] h-auto shrink-0 object-contain animate-fade-in opacity-60"
               style={{ aspectRatio: 'auto' }}
             />
           </div>
