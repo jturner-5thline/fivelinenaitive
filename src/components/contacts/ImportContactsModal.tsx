@@ -250,7 +250,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
     setStep('done');
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     if (created) toast.success(`Imported ${created} contacts`);
-    if (failed) toast.error(`${failed} rows failed`);
+    if (failed) toast.error(`${failed} rows failed`, { description: errors[0] });
+    if (!created && !failed) {
+      toast.error('No rows imported — make sure the "Email" column is mapped and rows have values');
+    }
   };
 
   const handleClose = () => { reset(); onClose(); };
