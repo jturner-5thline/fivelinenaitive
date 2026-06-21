@@ -81,13 +81,19 @@ Deno.serve(async (req) => {
     .filter((r: any) => r && hasIdentity(r))
     .map((r: any) => {
       const { company_name: companyName, ...contact } = r;
+      const fullName = String(contact.full_name ?? "").trim();
+      if (fullName && !contact.first_name && !contact.last_name) {
+        const parts = fullName.split(/\s+/);
+        contact.first_name = parts.shift() ?? null;
+        contact.last_name = parts.join(" ") || null;
+      }
+      delete contact.full_name;
       const crmCompanyId = companyName
         ? companyCache.get(String(companyName).trim().toLowerCase())
         : undefined;
       return {
         ...contact,
         email: contact.email ? String(contact.email).trim() : null,
-        full_name: contact.full_name || [contact.first_name, contact.last_name].filter(Boolean).join(" ") || null,
         crm_company_id: crmCompanyId ?? contact.crm_company_id ?? null,
         org_company_id,
         created_by: userId,
