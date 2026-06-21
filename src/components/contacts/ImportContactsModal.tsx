@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import ExcelJS from 'exceljs';
+import * as XLSX from 'xlsx';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -102,20 +102,24 @@ async function parseFile(file: File): Promise<{ headers: string[]; rows: Record<
     const delim = firstLine.includes('\t') ? '\t' : firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
     return parseDelimited(text, delim);
   }
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(await file.arrayBuffer());
-  const ws = wb.worksheets[0];
-  if (!ws) return { headers: [], rows: [] };
-  const headers: string[] = [];
-  ws.getRow(1).eachCell({ includeEmpty: false }, (cell) => headers.push(String(cell.value ?? '').trim()));
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const firstSheet = workbook.SheetNames[0];
+  if (!firstSheet) return { headers: [], rows: [] };
+  const sheetRows = XLSX.utils.sheet_to_json<(string | number | boolean | Date | null)[]>(workbook.Sheets[firstSheet], {
+    header: 1,
+    defval: '',
+    raw: false,
+  });
+  const headerRow = sheetRows[0] ?? [];
+  const headers = headerRow.map((cell, index) => String(cell ?? '').trim() || `Column ${index + 1}`);
   const rows: Record<string, string>[] = [];
-  for (let i = 2; i <= ws.rowCount; i++) {
-    const r = ws.getRow(i);
+  for (let i = 1; i < sheetRows.length; i++) {
+    const row = sheetRows[i] ?? [];
     const obj: Record<string, string> = {};
     let any = false;
     headers.forEach((h, idx) => {
-      const v = r.getCell(idx + 1).value;
-      const s = v == null ? '' : typeof v === 'object' && 'text' in (v as any) ? String((v as any).text) : String(v);
+      const v = row[idx];
+      const s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v);
       obj[h] = s.trim();
       if (obj[h]) any = true;
     });
@@ -213,43 +217,9 @@ export function ImportContactsModal({ open, onClose }: Props) {
     setStep('importing');
     let created = 0, failed = 0; const errors: string[] = [];
 
-    // 1) Find the company-name source column (if any) and collect unique names.
-    let companySrc: string | null = null;
-    for (const [src, tgt] of Object.entries(mapping)) if (tgt === COMPANY_NAME_KEY) { companySrc = src; break; }
-    const companyCache = new Map<string, string>(); // lowercase name -> crm_company_id
-
-    if (companySrc) {
-      const uniqueNames = Array.from(new Set(
-        rows
-          .filter(r => hasImportableIdentity(r, mapping))
-          .map(r => (r[companySrc!] || '').trim())
-          .filter(Boolean)
-      ));
-      // Bulk lookup existing companies (chunked IN queries)
-      const lookupChunk = 200;
-      for (let i = 0; i < uniqueNames.length; i += lookupChunk) {
-        const slice = uniqueNames.slice(i, i + lookupChunk);
-        const { data: existing } = await supabase
-          .from('crm_companies')
-          .select('id,name')
-          .eq('org_company_id', company.id)
-          .in('name', slice);
-        (existing ?? []).forEach((c: any) => companyCache.set(String(c.name).toLowerCase(), c.id));
-      }
-      // Bulk-create missing companies in one insert
-      const missing = uniqueNames.filter(n => !companyCache.has(n.toLowerCase()));
-      if (missing.length) {
-        const payload = missing.map(name => ({ name, org_company_id: company.id, created_by: user?.id }));
-        const { data: createdCos } = await supabase
-          .from('crm_companies')
-          .insert(payload as any)
-          .select('id,name');
-        (createdCos ?? []).forEach((c: any) => companyCache.set(String(c.name).toLowerCase(), c.id));
-      }
-      setProgress(20);
-    }
-
-    // 2) Build all records synchronously (no awaits).
+    // Build all records synchronously and let the bulk-import edge function
+    // resolve/create company links server-side. This avoids slow browser-side
+    // company inserts on 80k+ row imports.
     const records: any[] = [];
     for (const r of rows) {
       const out: any = {};
@@ -258,8 +228,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
         const v = r[src];
         if (v == null || v === '') continue;
         if (tgt === COMPANY_NAME_KEY) {
-          const cid = companyCache.get(String(v).trim().toLowerCase());
-          if (cid) out.crm_company_id = cid;
+          out.company_name = String(v).trim();
         } else if (tgt === 'created_at' || tgt === 'last_contacted_date') {
           const d = new Date(String(v));
           if (!isNaN(d.getTime())) out[tgt] = d.toISOString();
@@ -277,12 +246,11 @@ export function ImportContactsModal({ open, onClose }: Props) {
         records.push(out);
       }
     }
-    setProgress(30);
+    setProgress(5);
 
-    // 3) Send mega-chunks to the bulk-import edge function in parallel.
-    //    The function uses the service role + 1k batches with 8x concurrency
-    //    inside Postgres, so we get high throughput even for 80k+ rows.
-    const chunkSize = 10000;
+    // Send small enough chunks to avoid edge payload/time limits while keeping
+    // multiple requests in flight for large Excel imports.
+    const chunkSize = 2000;
     const concurrency = 6;
     const chunks: any[][] = [];
     for (let i = 0; i < records.length; i += chunkSize) chunks.push(records.slice(i, i + chunkSize));
@@ -305,7 +273,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
         if (errors.length < 10) errors.push(e?.message ?? 'Bulk import request failed');
       }
       doneChunks++;
-      setProgress(30 + Math.min(70, Math.round((doneChunks / Math.max(1, chunks.length)) * 70)));
+      setProgress(5 + Math.min(95, Math.round((doneChunks / Math.max(1, chunks.length)) * 95)));
     };
 
     for (let i = 0; i < chunks.length; i += concurrency) {

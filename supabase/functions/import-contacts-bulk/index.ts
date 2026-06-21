@@ -2,16 +2,11 @@
 // them with the service-role client to skip per-row RLS overhead. The caller
 // must be authenticated; we verify they belong to the supplied org_company_id.
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -32,7 +27,7 @@ Deno.serve(async (req) => {
   const { org_company_id, rows } = body ?? {};
   if (!org_company_id || !Array.isArray(rows)) return json({ error: "org_company_id and rows[] required" }, 400);
   if (rows.length === 0) return json({ inserted: 0, failed: 0, errors: [] });
-  if (rows.length > 20000) return json({ error: "Max 20000 rows per request" }, 400);
+  if (rows.length > 5000) return json({ error: "Max 5000 rows per request" }, 400);
 
   const admin = createClient(SUPABASE_URL, SERVICE);
 
@@ -49,23 +44,68 @@ Deno.serve(async (req) => {
     ["email", "full_name", "first_name", "last_name", "phone_work", "phone_mobile", "linkedin_url"]
       .some((key) => String(r?.[key] ?? "").trim());
 
-  // Normalize: force org_company_id + created_by server-side so the caller can't impersonate.
-  const prepared = rows
-    .filter((r: any) => r && hasIdentity(r))
-    .map((r: any) => ({
-      ...r,
-      email: r.email ? String(r.email).trim() : null,
-      full_name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || null,
+  const companyNames = Array.from(new Set(rows
+    .map((r: any) => String(r?.company_name ?? "").trim())
+    .filter(Boolean)
+  ));
+  const companyCache = new Map<string, string>();
+
+  for (let i = 0; i < companyNames.length; i += 500) {
+    const slice = companyNames.slice(i, i + 500);
+    const { data, error } = await admin
+      .from("crm_companies")
+      .select("id,name")
+      .eq("org_company_id", org_company_id)
+      .in("name", slice);
+    if (error) return json({ error: error.message }, 500);
+    (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
+  }
+
+  const missingCompanies = companyNames.filter((name) => !companyCache.has(name.toLowerCase()));
+  for (let i = 0; i < missingCompanies.length; i += 500) {
+    const payload = missingCompanies.slice(i, i + 500).map((name) => ({
+      name,
       org_company_id,
       created_by: userId,
     }));
+    const { data, error } = await admin
+      .from("crm_companies")
+      .insert(payload)
+      .select("id,name");
+    if (error) return json({ error: error.message }, 500);
+    (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
+  }
+
+  // Normalize: force org_company_id + created_by server-side so the caller can't impersonate.
+  const prepared = rows
+    .filter((r: any) => r && hasIdentity(r))
+    .map((r: any) => {
+      const { company_name: companyName, ...contact } = r;
+      const fullName = String(contact.full_name ?? "").trim();
+      if (fullName && !contact.first_name && !contact.last_name) {
+        const parts = fullName.split(/\s+/);
+        contact.first_name = parts.shift() ?? null;
+        contact.last_name = parts.join(" ") || null;
+      }
+      delete contact.full_name;
+      const crmCompanyId = companyName
+        ? companyCache.get(String(companyName).trim().toLowerCase())
+        : undefined;
+      return {
+        ...contact,
+        email: contact.email ? String(contact.email).trim() : null,
+        crm_company_id: crmCompanyId ?? contact.crm_company_id ?? null,
+        org_company_id,
+        created_by: userId,
+      };
+    });
 
   let inserted = 0;
   let failed = 0;
   const errors: string[] = [];
 
-  const BATCH = 1000;
-  const CONCURRENCY = 8;
+  const BATCH = 500;
+  const CONCURRENCY = 4;
 
   const chunks: any[][] = [];
   for (let i = 0; i < prepared.length; i += BATCH) chunks.push(prepared.slice(i, i + BATCH));
