@@ -69,22 +69,21 @@ Deno.serve(async (req) => {
       org_company_id,
       created_by: userId,
     }));
-    // Use upsert with ignoreDuplicates to survive races between concurrent chunks
-    // and pre-existing rows. Then re-fetch to backfill the cache for any rows
-    // that were skipped due to conflicts.
-    const { error: upsertErr } = await admin
+    // Best-effort insert. There's no unique constraint on (org_company_id,name),
+    // so duplicates between concurrent chunks just create extra rows — we then
+    // re-fetch and pick the first id per name for caching. Never 500 the whole
+    // import if a single company batch fails.
+    const { error: insertErr } = await admin
       .from("crm_companies")
-      .upsert(payload, { onConflict: "org_company_id,name", ignoreDuplicates: true });
-    if (upsertErr) {
-      // Fall back to plain insert ignoring errors; we'll re-fetch below.
-      console.warn("crm_companies upsert warning:", upsertErr.message);
+      .insert(payload);
+    if (insertErr) {
+      console.warn("crm_companies insert warning:", insertErr.message);
     }
-    const { data: fetched, error: fetchErr } = await admin
+    const { data: fetched } = await admin
       .from("crm_companies")
       .select("id,name")
       .eq("org_company_id", org_company_id)
       .in("name", slice);
-    if (fetchErr) return json({ error: `company lookup: ${fetchErr.message}` }, 500);
     (fetched ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
   }
 
