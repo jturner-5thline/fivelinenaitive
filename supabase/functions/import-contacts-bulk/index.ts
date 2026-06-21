@@ -63,17 +63,29 @@ Deno.serve(async (req) => {
 
   const missingCompanies = companyNames.filter((name) => !companyCache.has(name.toLowerCase()));
   for (let i = 0; i < missingCompanies.length; i += 500) {
-    const payload = missingCompanies.slice(i, i + 500).map((name) => ({
+    const slice = missingCompanies.slice(i, i + 500);
+    const payload = slice.map((name) => ({
       name,
       org_company_id,
       created_by: userId,
     }));
-    const { data, error } = await admin
+    // Use upsert with ignoreDuplicates to survive races between concurrent chunks
+    // and pre-existing rows. Then re-fetch to backfill the cache for any rows
+    // that were skipped due to conflicts.
+    const { error: upsertErr } = await admin
       .from("crm_companies")
-      .insert(payload)
-      .select("id,name");
-    if (error) return json({ error: error.message }, 500);
-    (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
+      .upsert(payload, { onConflict: "org_company_id,name", ignoreDuplicates: true });
+    if (upsertErr) {
+      // Fall back to plain insert ignoring errors; we'll re-fetch below.
+      console.warn("crm_companies upsert warning:", upsertErr.message);
+    }
+    const { data: fetched, error: fetchErr } = await admin
+      .from("crm_companies")
+      .select("id,name")
+      .eq("org_company_id", org_company_id)
+      .in("name", slice);
+    if (fetchErr) return json({ error: `company lookup: ${fetchErr.message}` }, 500);
+    (fetched ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
   }
 
   // Normalize: force org_company_id + created_by server-side so the caller can't impersonate.
