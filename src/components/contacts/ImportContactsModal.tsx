@@ -82,7 +82,13 @@ function autoMap(headers: string[]): Record<string, string> {
 
 async function parseFile(file: File): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
   const name = file.name.toLowerCase();
-  if (name.endsWith('.csv')) return parseCsv(await file.text());
+  if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
+    const text = await file.text();
+    // Auto-detect delimiter from the header row: tab > semicolon > comma
+    const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
+    const delim = firstLine.includes('\t') ? '\t' : firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
+    return parseDelimited(text, delim);
+  }
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await file.arrayBuffer());
   const ws = wb.worksheets[0];
@@ -105,7 +111,7 @@ async function parseFile(file: File): Promise<{ headers: string[]; rows: Record<
   return { headers, rows };
 }
 
-function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+function parseDelimited(text: string, delim: string = ','): { headers: string[]; rows: Record<string, string>[] } {
   const lines: string[][] = [];
   let cur: string[] = []; let field = ''; let inQ = false;
   for (let i = 0; i < text.length; i++) {
@@ -115,7 +121,7 @@ function parseCsv(text: string): { headers: string[]; rows: Record<string, strin
       else field += c;
     } else {
       if (c === '"') inQ = true;
-      else if (c === ',') { cur.push(field); field = ''; }
+      else if (c === delim) { cur.push(field); field = ''; }
       else if (c === '\n') { cur.push(field); lines.push(cur); cur = []; field = ''; }
       else if (c === '\r') { /* skip */ }
       else field += c;
@@ -153,6 +159,16 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
   const mappedTargets = useMemo(() => new Set(Object.values(mapping).filter(v => v !== SKIP)), [mapping]);
   const hasEmail = mappedTargets.has('email');
+
+  // Find which source column maps to email, then count how many rows actually have an email value.
+  const emailSourceCol = useMemo(() => {
+    for (const [src, tgt] of Object.entries(mapping)) if (tgt === 'email') return src;
+    return null;
+  }, [mapping]);
+  const rowsWithEmail = useMemo(() => {
+    if (!emailSourceCol) return 0;
+    return rows.reduce((n, r) => (r[emailSourceCol]?.trim() ? n + 1 : n), 0);
+  }, [rows, emailSourceCol]);
 
   const reset = () => {
     setStep('upload'); setFileName(''); setHeaders([]); setRows([]); setMapping({});
@@ -298,6 +314,12 @@ export function ImportContactsModal({ open, onClose }: Props) {
                 You must map at least one column to <strong>Email</strong> to import.
               </div>
             )}
+            {hasEmail && (
+              <div className={`rounded-md border p-3 text-xs ${rowsWithEmail === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
+                <strong>{rowsWithEmail}</strong> of {rows.length} rows have a value in the mapped Email column and will be imported.
+                {rowsWithEmail === 0 && ' Check that you mapped the correct column — rows without an email are skipped.'}
+              </div>
+            )}
 
             <div className="border rounded-lg divide-y">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 bg-muted/40 text-xs font-medium text-muted-foreground">
@@ -359,7 +381,9 @@ export function ImportContactsModal({ open, onClose }: Props) {
           {step === 'map' && (
             <>
               <Button variant="outline" onClick={reset}>Back</Button>
-              <Button onClick={runImport} disabled={!hasEmail}>Import {rows.length} rows</Button>
+              <Button onClick={runImport} disabled={!hasEmail || rowsWithEmail === 0}>
+                Import {rowsWithEmail || rows.length} rows
+              </Button>
             </>
           )}
           {(step === 'upload' || step === 'done') && (
