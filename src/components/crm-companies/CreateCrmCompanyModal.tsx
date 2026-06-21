@@ -24,6 +24,8 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     status: 'active' as string,
     lifecycle_stage: 'target' as string,
     employee_range: '',
+    year_founded: '',
+    financing_status: '',
     hq_city: '',
     hq_country: '',
     segment: '',
@@ -41,15 +43,20 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
   const handleSubmit = () => {
     if (!form.name.trim()) return;
     // Convert empty strings to null so optional fields stay blank rather than empty text.
-    const payload = Object.fromEntries(
+    const payload: Record<string, any> = Object.fromEntries(
       Object.entries(form).map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v])
     );
+    if (payload.year_founded != null) {
+      const n = parseInt(String(payload.year_founded).replace(/[^\d]/g, ''), 10);
+      payload.year_founded = isNaN(n) ? null : n;
+    }
     create.mutate(payload as any, {
       onSuccess: () => {
         onClose();
         setForm({
           name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
           lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
+          year_founded: '', financing_status: '',
           segment: '', website_url: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
           address: '', hq_address: '', notes: '', owner_user_id: '',
         });
@@ -111,6 +118,31 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
           <div className="space-y-1.5">
             <Label htmlFor="employee_range" className="text-xs">Employee Range</Label>
             <Input id="employee_range" placeholder="51-200" value={form.employee_range} onChange={(e) => setForm(p => ({ ...p, employee_range: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="year_founded" className="text-xs">Year Founded</Label>
+            <Input id="year_founded" placeholder="2015" inputMode="numeric" value={form.year_founded} onChange={(e) => setForm(p => ({ ...p, year_founded: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Company Financing Status</Label>
+            <Select value={form.financing_status || 'unset'} onValueChange={v => setForm(p => ({ ...p, financing_status: v === 'unset' ? '' : v }))}>
+              <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">—</SelectItem>
+                <SelectItem value="bootstrapped">Bootstrapped</SelectItem>
+                <SelectItem value="pre_seed">Pre-Seed</SelectItem>
+                <SelectItem value="seed">Seed</SelectItem>
+                <SelectItem value="series_a">Series A</SelectItem>
+                <SelectItem value="series_b">Series B</SelectItem>
+                <SelectItem value="series_c">Series C</SelectItem>
+                <SelectItem value="series_d_plus">Series D+</SelectItem>
+                <SelectItem value="growth">Growth / Late Stage</SelectItem>
+                <SelectItem value="private_equity">Private Equity-Backed</SelectItem>
+                <SelectItem value="public">Public</SelectItem>
+                <SelectItem value="acquired">Acquired</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="hq_city" className="text-xs">City</Label>

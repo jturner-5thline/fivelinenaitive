@@ -7242,6 +7242,7 @@ export type Database = {
           employee_count: number | null
           employee_range: string | null
           external_ids: Json | null
+          financing_status: string | null
           hq_address: string | null
           hq_city: string | null
           hq_country: string | null
@@ -7281,6 +7282,7 @@ export type Database = {
           twitter_url: string | null
           updated_at: string
           website_url: string | null
+          year_founded: number | null
         }
         Insert: {
           additional_domains?: string[] | null
@@ -7300,6 +7302,7 @@ export type Database = {
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
+          financing_status?: string | null
           hq_address?: string | null
           hq_city?: string | null
           hq_country?: string | null
@@ -7339,6 +7342,7 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
+          year_founded?: number | null
         }
         Update: {
           additional_domains?: string[] | null
@@ -7358,6 +7362,7 @@ export type Database = {
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
+          financing_status?: string | null
           hq_address?: string | null
           hq_city?: string | null
           hq_country?: string | null
@@ -7397,6 +7402,7 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
+          year_founded?: number | null
         }
         Relationships: [
           {
