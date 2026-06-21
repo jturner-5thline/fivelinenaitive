@@ -57,23 +57,37 @@ Deno.serve(async (req) => {
       .select("id,name")
       .eq("org_company_id", org_company_id)
       .in("name", slice);
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      console.warn("crm_companies lookup warning:", error.message);
+      continue;
+    }
     (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
   }
 
   const missingCompanies = companyNames.filter((name) => !companyCache.has(name.toLowerCase()));
   for (let i = 0; i < missingCompanies.length; i += 500) {
-    const payload = missingCompanies.slice(i, i + 500).map((name) => ({
+    const slice = missingCompanies.slice(i, i + 500);
+    const payload = slice.map((name) => ({
       name,
       org_company_id,
       created_by: userId,
     }));
-    const { data, error } = await admin
+    // Best-effort insert. There's no unique constraint on (org_company_id,name),
+    // so duplicates between concurrent chunks just create extra rows — we then
+    // re-fetch and pick the first id per name for caching. Never 500 the whole
+    // import if a single company batch fails.
+    const { error: insertErr } = await admin
       .from("crm_companies")
-      .insert(payload)
-      .select("id,name");
-    if (error) return json({ error: error.message }, 500);
-    (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
+      .insert(payload);
+    if (insertErr) {
+      console.warn("crm_companies insert warning:", insertErr.message);
+    }
+    const { data: fetched } = await admin
+      .from("crm_companies")
+      .select("id,name")
+      .eq("org_company_id", org_company_id)
+      .in("name", slice);
+    (fetched ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
   }
 
   // Normalize: force org_company_id + created_by server-side so the caller can't impersonate.
