@@ -721,7 +721,10 @@ export function AgendaIntel() {
     };
   }, [emailDialogEvent]);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 900px)');
+    // Only collapse the two-column master/detail layout on true tablet /
+    // mobile widths. Across all laptop and desktop widths (>=768px) we keep
+    // a persistent two-column shell so the meeting list stays visible.
+    const mq = window.matchMedia('(max-width: 767px)');
     const update = () => setIsNarrow(mq.matches);
     update();
     mq.addEventListener('change', update);
