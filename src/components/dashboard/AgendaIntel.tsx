@@ -721,7 +721,10 @@ export function AgendaIntel() {
     };
   }, [emailDialogEvent]);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 900px)');
+    // Only collapse the two-column master/detail layout on true tablet /
+    // mobile widths. Across all laptop and desktop widths (>=768px) we keep
+    // a persistent two-column shell so the meeting list stays visible.
+    const mq = window.matchMedia('(max-width: 767px)');
     const update = () => setIsNarrow(mq.matches);
     update();
     mq.addEventListener('change', update);
@@ -1307,15 +1310,26 @@ export function AgendaIntel() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {filterBar}
-      <div className="flex gap-2 min-h-0 flex-1 pt-3 h-[calc(100vh-260px)] min-h-[520px]">
+      <div
+        className={cn(
+          'min-h-0 flex-1 pt-3 h-[calc(100vh-260px)] min-h-[520px] gap-2',
+          // Persistent two-column shell across all laptop/desktop widths.
+          // Left column: meeting/agenda list (300–360px). Right column:
+          // selected meeting details (flexible, can shrink via min-w-0).
+          // Collapses to a single stacked column only on true tablet/mobile.
+          isNarrow
+            ? 'flex'
+            : 'grid grid-cols-[minmax(300px,360px)_minmax(0,1fr)]',
+        )}
+      >
         {isNarrow ? (
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
             {selectedRecord ? detailPane : masterPane}
           </div>
         ) : (
           <>
-            <div className="w-[340px] shrink-0 min-w-0">{masterPane}</div>
-            <div className="flex-1 min-w-0">{detailPane}</div>
+            <div className="min-w-0 min-h-0 overflow-hidden">{masterPane}</div>
+            <div className="min-w-0 min-h-0 overflow-hidden">{detailPane}</div>
           </>
         )}
       </div>
