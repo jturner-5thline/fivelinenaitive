@@ -220,7 +220,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
     if (companySrc) {
       const uniqueNames = Array.from(new Set(
-        rows.map(r => (r[companySrc!] || '').trim()).filter(Boolean)
+        rows
+          .filter(r => hasImportableIdentity(r, mapping))
+          .map(r => (r[companySrc!] || '').trim())
+          .filter(Boolean)
       ));
       // Bulk lookup existing companies (chunked IN queries)
       const lookupChunk = 200;
