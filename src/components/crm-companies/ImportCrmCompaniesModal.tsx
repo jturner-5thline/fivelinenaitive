@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, FileSpreadsheet, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 
