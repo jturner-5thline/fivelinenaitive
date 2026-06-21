@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Upload, Building2, Loader2, RefreshCw, Download } from 'lucide-react';
+import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
@@ -30,6 +31,8 @@ export default function CrmCompanies() {
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
   const queryClient = useQueryClient();
   const { company } = useCompany();
 
@@ -39,6 +42,7 @@ export default function CrmCompanies() {
     quickFilter,
     advancedFilters: debouncedFilters,
     matchMode,
+    search: debouncedSearch,
   });
 
   const companies = result?.data ?? [];
@@ -167,6 +171,26 @@ export default function CrmCompanies() {
               <TabsTrigger value="no_activity_30d">No Activity 30d</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <div className="relative max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search companies by name, domain, industry..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              className="pl-8 pr-8 h-9"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => { setSearch(''); setPage(0); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
+              </button>
+            )}
+          </div>
 
           {isLoading ? (
             <div className="space-y-3">
