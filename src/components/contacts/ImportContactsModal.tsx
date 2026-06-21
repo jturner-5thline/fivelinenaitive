@@ -19,7 +19,8 @@ const COMPANY_NAME_KEY = '__company_name__';
 const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
   { value: 'first_name', label: 'First Name' },
   { value: 'last_name', label: 'Last Name' },
-  { value: 'email', label: 'Email', required: true },
+  { value: 'full_name', label: 'Full Name' },
+  { value: 'email', label: 'Email' },
   { value: 'city', label: 'City' },
   { value: 'lead_status', label: 'Lead Status' },
   { value: 'contact_type', label: 'Contact Type' },
@@ -37,8 +38,20 @@ const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
 ];
 
 const SKIP = '__skip__';
+const CONTACT_IDENTITY_FIELDS = new Set(['email', 'full_name', 'first_name', 'last_name', 'phone_work', 'phone_mobile', 'linkedin_url']);
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+function hasImportableIdentity(row: Record<string, string>, mapping: Record<string, string>) {
+  return Object.entries(mapping).some(([src, tgt]) =>
+    CONTACT_IDENTITY_FIELDS.has(tgt) && Boolean(row[src]?.trim())
+  );
+}
+
+function hasContactIdentity(contact: Record<string, any>) {
+  return ['email', 'full_name', 'first_name', 'last_name', 'phone_work', 'phone_mobile', 'linkedin_url']
+    .some((key) => String(contact[key] ?? '').trim());
+}
 
 function autoMap(headers: string[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -47,7 +60,7 @@ function autoMap(headers: string[]): Record<string, string> {
   const aliases: Record<string, string> = {
     firstname: 'first_name', givenname: 'first_name',
     lastname: 'last_name', surname: 'last_name', familyname: 'last_name',
-    fullname: 'first_name',
+    fullname: 'full_name', name: 'full_name', contactname: 'full_name',
     emailaddress: 'email', emails: 'email', primaryemail: 'email',
     leadstatus: 'lead_status', status: 'lead_status',
     contacttype: 'contact_type', type: 'contact_type',
@@ -159,6 +172,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
   const mappedTargets = useMemo(() => new Set(Object.values(mapping).filter(v => v !== SKIP)), [mapping]);
   const hasEmail = mappedTargets.has('email');
+  const hasIdentityMapping = useMemo(
+    () => Object.values(mapping).some((target) => CONTACT_IDENTITY_FIELDS.has(target)),
+    [mapping]
+  );
 
   // Find which source column maps to email, then count how many rows actually have an email value.
   const emailSourceCol = useMemo(() => {
@@ -169,6 +186,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
     if (!emailSourceCol) return 0;
     return rows.reduce((n, r) => (r[emailSourceCol]?.trim() ? n + 1 : n), 0);
   }, [rows, emailSourceCol]);
+  const importableRows = useMemo(
+    () => rows.reduce((n, r) => (hasImportableIdentity(r, mapping) ? n + 1 : n), 0),
+    [rows, mapping]
+  );
 
   const reset = () => {
     setStep('upload'); setFileName(''); setHeaders([]); setRows([]); setMapping({});
@@ -199,7 +220,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
     if (companySrc) {
       const uniqueNames = Array.from(new Set(
-        rows.map(r => (r[companySrc!] || '').trim()).filter(Boolean)
+        rows
+          .filter(r => hasImportableIdentity(r, mapping))
+          .map(r => (r[companySrc!] || '').trim())
+          .filter(Boolean)
       ));
       // Bulk lookup existing companies (chunked IN queries)
       const lookupChunk = 200;
@@ -246,7 +270,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
           out[tgt] = v;
         }
       }
-      if (out.email) {
+      if (hasContactIdentity(out)) {
         out.full_name = out.full_name || [out.first_name, out.last_name].filter(Boolean).join(' ') || undefined;
         out.created_by = user?.id;
         out.org_company_id = company.id;
@@ -294,7 +318,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
     if (created) toast.success(`Imported ${created} contacts`);
     if (failed) toast.error(`${failed} rows failed`, { description: errors[0] });
     if (!created && !failed) {
-      toast.error('No rows imported — make sure the "Email" column is mapped and rows have values');
+      toast.error('No rows imported — map at least one name, email, phone, or LinkedIn column with values');
     }
   };
 
@@ -335,15 +359,16 @@ export function ImportContactsModal({ open, onClose }: Props) {
               <span>· {rows.length} rows · {headers.length} columns</span>
             </div>
 
-            {!hasEmail && (
+            {!hasIdentityMapping && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                You must map at least one column to <strong>Email</strong> to import.
+                Map at least one name, email, phone, or LinkedIn column to import contacts.
               </div>
             )}
-            {hasEmail && (
-              <div className={`rounded-md border p-3 text-xs ${rowsWithEmail === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
-                <strong>{rowsWithEmail}</strong> of {rows.length} rows have a value in the mapped Email column and will be imported.
-                {rowsWithEmail === 0 && ' Check that you mapped the correct column — rows without an email are skipped.'}
+            {hasIdentityMapping && (
+              <div className={`rounded-md border p-3 text-xs ${importableRows === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
+                <strong>{importableRows}</strong> of {rows.length} rows have a mapped name, email, phone, or LinkedIn value and will be imported.
+                {hasEmail && rowsWithEmail < rows.length && ` ${rowsWithEmail} rows have an email value.`}
+                {importableRows === 0 && ' Check that the correct columns are mapped — fully blank contact rows are skipped.'}
               </div>
             )}
 
@@ -407,8 +432,8 @@ export function ImportContactsModal({ open, onClose }: Props) {
           {step === 'map' && (
             <>
               <Button variant="outline" onClick={reset}>Back</Button>
-              <Button onClick={runImport} disabled={!hasEmail || rowsWithEmail === 0}>
-                Import {rowsWithEmail || rows.length} rows
+              <Button onClick={runImport} disabled={!hasIdentityMapping || importableRows === 0}>
+                Import {importableRows || rows.length} rows
               </Button>
             </>
           )}

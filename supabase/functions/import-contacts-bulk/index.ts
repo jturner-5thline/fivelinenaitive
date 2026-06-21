@@ -45,12 +45,16 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!membership) return json({ error: "Not a member of this workspace" }, 403);
 
+  const hasIdentity = (r: any) =>
+    ["email", "full_name", "first_name", "last_name", "phone_work", "phone_mobile", "linkedin_url"]
+      .some((key) => String(r?.[key] ?? "").trim());
+
   // Normalize: force org_company_id + created_by server-side so the caller can't impersonate.
   const prepared = rows
-    .filter((r: any) => r && typeof r.email === "string" && r.email.trim())
+    .filter((r: any) => r && hasIdentity(r))
     .map((r: any) => ({
       ...r,
-      email: String(r.email).trim(),
+      email: r.email ? String(r.email).trim() : null,
       full_name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(" ") || null,
       org_company_id,
       created_by: userId,
