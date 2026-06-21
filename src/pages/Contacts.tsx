@@ -29,8 +29,10 @@ export default function Contacts() {
   const [isSyncingContacts, setIsSyncingContacts] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
+  const debouncedSearch = useDebouncedValue(search, 300);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
@@ -107,6 +109,7 @@ export default function Contacts() {
   const { data: result, isLoading, isFetching } = useContacts({
     page,
     pageSize,
+    search: debouncedSearch,
     quickFilter,
     advancedFilters: debouncedFilters,
     matchMode,
@@ -128,6 +131,11 @@ export default function Contacts() {
 
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
+    setPage(0);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
     setPage(0);
   };
 
@@ -214,7 +222,7 @@ export default function Contacts() {
           ) : (
             <>
               <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
-                <ContactsTable contacts={contacts} />
+                <ContactsTable contacts={contacts} search={search} onSearchChange={handleSearchChange} />
               </div>
               <TablePagination
                 page={page}

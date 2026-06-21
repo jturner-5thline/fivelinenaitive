@@ -25,6 +25,8 @@ import { SortableHeader } from '@/components/ui/sortable-header';
 interface ContactsTableProps {
   contacts: Contact[];
   onBulkAction?: (action: string, contactIds: string[]) => void;
+  search?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -50,9 +52,11 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange }: ContactsTableProps) {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const search = controlledSearch ?? localSearch;
+  const setSearch = onSearchChange ?? setLocalSearch;
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [contactTypeFilter, setContactTypeFilter] = useState<string>('all');
