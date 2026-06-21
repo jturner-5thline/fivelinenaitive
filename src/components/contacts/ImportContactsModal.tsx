@@ -255,25 +255,30 @@ export function ImportContactsModal({ open, onClose }: Props) {
     }
     setProgress(30);
 
-    // 3) Insert in large batches, in parallel.
-    const batchSize = 500;
-    const concurrency = 4;
+    // 3) Send mega-chunks to the bulk-import edge function in parallel.
+    //    The function uses the service role + 1k batches with 8x concurrency
+    //    inside Postgres, so we get high throughput even for 80k+ rows.
+    const chunkSize = 10000;
+    const concurrency = 6;
     const chunks: any[][] = [];
-    for (let i = 0; i < records.length; i += batchSize) chunks.push(records.slice(i, i + batchSize));
+    for (let i = 0; i < records.length; i += chunkSize) chunks.push(records.slice(i, i + chunkSize));
 
     let doneChunks = 0;
     const runChunk = async (chunk: any[]) => {
-      // No .select() — avoids return roundtrip.
-      const { error } = await supabase.from('contacts').insert(chunk as any);
-      if (error) {
-        // Fallback: per-row to isolate bad rows.
-        for (const row of chunk) {
-          const { error: e2 } = await supabase.from('contacts').insert(row as any);
-          if (e2) { failed++; if (errors.length < 5) errors.push(`${row.email}: ${e2.message}`); }
-          else created++;
+      try {
+        const { data, error } = await supabase.functions.invoke('import-contacts-bulk', {
+          body: { org_company_id: company.id, rows: chunk },
+        });
+        if (error) throw error;
+        const res = data as { inserted?: number; failed?: number; errors?: string[] };
+        created += res?.inserted ?? 0;
+        failed += res?.failed ?? 0;
+        if (res?.errors?.length) {
+          for (const e of res.errors) if (errors.length < 10) errors.push(e);
         }
-      } else {
-        created += chunk.length;
+      } catch (e: any) {
+        failed += chunk.length;
+        if (errors.length < 10) errors.push(e?.message ?? 'Bulk import request failed');
       }
       doneChunks++;
       setProgress(30 + Math.min(70, Math.round((doneChunks / Math.max(1, chunks.length)) * 70)));
