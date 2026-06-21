@@ -172,6 +172,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
 
   const mappedTargets = useMemo(() => new Set(Object.values(mapping).filter(v => v !== SKIP)), [mapping]);
   const hasEmail = mappedTargets.has('email');
+  const hasIdentityMapping = useMemo(
+    () => Object.values(mapping).some((target) => CONTACT_IDENTITY_FIELDS.has(target)),
+    [mapping]
+  );
 
   // Find which source column maps to email, then count how many rows actually have an email value.
   const emailSourceCol = useMemo(() => {
@@ -182,6 +186,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
     if (!emailSourceCol) return 0;
     return rows.reduce((n, r) => (r[emailSourceCol]?.trim() ? n + 1 : n), 0);
   }, [rows, emailSourceCol]);
+  const importableRows = useMemo(
+    () => rows.reduce((n, r) => (hasImportableIdentity(r, mapping) ? n + 1 : n), 0),
+    [rows, mapping]
+  );
 
   const reset = () => {
     setStep('upload'); setFileName(''); setHeaders([]); setRows([]); setMapping({});
@@ -259,7 +267,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
           out[tgt] = v;
         }
       }
-      if (out.email) {
+      if (hasContactIdentity(out)) {
         out.full_name = out.full_name || [out.first_name, out.last_name].filter(Boolean).join(' ') || undefined;
         out.created_by = user?.id;
         out.org_company_id = company.id;
@@ -307,7 +315,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
     if (created) toast.success(`Imported ${created} contacts`);
     if (failed) toast.error(`${failed} rows failed`, { description: errors[0] });
     if (!created && !failed) {
-      toast.error('No rows imported — make sure the "Email" column is mapped and rows have values');
+      toast.error('No rows imported — map at least one name, email, phone, or LinkedIn column with values');
     }
   };
 
