@@ -140,6 +140,7 @@ export function useContacts(params: ContactsListParams = {}) {
       const to = from + pageSize - 1;
 
       const { data, error, count } = await query
+        .order('updated_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
         .range(from, to);
 
