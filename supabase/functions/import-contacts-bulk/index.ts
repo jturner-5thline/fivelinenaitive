@@ -57,7 +57,10 @@ Deno.serve(async (req) => {
       .select("id,name")
       .eq("org_company_id", org_company_id)
       .in("name", slice);
-    if (error) return json({ error: error.message }, 500);
+    if (error) {
+      console.warn("crm_companies lookup warning:", error.message);
+      continue;
+    }
     (data ?? []).forEach((c: any) => companyCache.set(String(c.name).trim().toLowerCase(), c.id));
   }
 
