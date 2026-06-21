@@ -37,6 +37,8 @@ const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
   { value: 'company_type', label: 'Type (prospect/customer/...)' },
   { value: 'status', label: 'Status' },
   { value: 'lifecycle_stage', label: 'Lifecycle Stage' },
+  { value: 'year_founded', label: 'Year Founded' },
+  { value: 'financing_status', label: 'Company Financing Status' },
 ];
 
 const SKIP = '__skip__';
@@ -61,6 +63,8 @@ function autoMap(headers: string[]): Record<string, string> {
         city: 'hq_city', country: 'hq_country', email: 'main_contact_email', emailaddress: 'main_contact_email',
         linkedin: 'linkedin_url', employees: 'employee_count', headcount: 'employee_count', size: 'employee_range',
         type: 'company_type', stage: 'lifecycle_stage',
+        founded: 'year_founded', yearfounded: 'year_founded', foundedyear: 'year_founded', foundingyear: 'year_founded',
+        financingstatus: 'financing_status', financing: 'financing_status', fundingstatus: 'financing_status', funding: 'financing_status',
       };
       const target = aliases[nh];
       if (target) hit = norms.find(f => f.value === target && !used.has(f.value));
@@ -194,6 +198,9 @@ export function ImportCrmCompaniesModal({ open, onClose }: Props) {
         if (v == null || v === '') continue;
         if (tgt === 'employee_count') {
           const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10);
+          if (!isNaN(n)) out[tgt] = n;
+        } else if (tgt === 'year_founded') {
+          const n = parseInt(String(v).replace(/[^\d]/g, ''), 10);
           if (!isNaN(n)) out[tgt] = n;
         } else {
           out[tgt] = v;
