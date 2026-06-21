@@ -26,6 +26,7 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     employee_range: '',
     year_founded: '',
     financing_status: '',
+    created_at: '',
     hq_city: '',
     hq_country: '',
     segment: '',
@@ -50,13 +51,17 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
       const n = parseInt(String(payload.year_founded).replace(/[^\d]/g, ''), 10);
       payload.year_founded = isNaN(n) ? null : n;
     }
+    if (payload.created_at) {
+      const d = new Date(String(payload.created_at));
+      payload.created_at = isNaN(d.getTime()) ? null : d.toISOString();
+    }
     create.mutate(payload as any, {
       onSuccess: () => {
         onClose();
         setForm({
           name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
           lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
-          year_founded: '', financing_status: '',
+          year_founded: '', financing_status: '', created_at: '',
           segment: '', website_url: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
           address: '', hq_address: '', notes: '', owner_user_id: '',
         });
@@ -122,6 +127,10 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
           <div className="space-y-1.5">
             <Label htmlFor="year_founded" className="text-xs">Year Founded</Label>
             <Input id="year_founded" placeholder="2015" inputMode="numeric" value={form.year_founded} onChange={(e) => setForm(p => ({ ...p, year_founded: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="created_at" className="text-xs">Create Date</Label>
+            <Input id="created_at" type="date" value={form.created_at} onChange={(e) => setForm(p => ({ ...p, created_at: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Company Financing Status</Label>
