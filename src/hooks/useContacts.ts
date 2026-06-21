@@ -100,7 +100,23 @@ export function useContacts(params: ContactsListParams = {}) {
 
       // Server-side search
       if (search?.trim()) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,job_title.ilike.%${search}%,linkedin_url.ilike.%${search}%,contact_type.ilike.%${search}%`);
+        const s = search.trim();
+        const parts = s.split(/\s+/).filter(Boolean);
+        const ors: string[] = [
+          `full_name.ilike.%${s}%`,
+          `first_name.ilike.%${s}%`,
+          `last_name.ilike.%${s}%`,
+          `email.ilike.%${s}%`,
+          `job_title.ilike.%${s}%`,
+          `linkedin_url.ilike.%${s}%`,
+          `contact_type.ilike.%${s}%`,
+        ];
+        // "first last" → match first_name=first AND last_name=last via combined ilike on concatenated fields fallback
+        if (parts.length >= 2) {
+          ors.push(`first_name.ilike.%${parts[0]}%`);
+          ors.push(`last_name.ilike.%${parts[parts.length - 1]}%`);
+        }
+        query = query.or(ors.join(','));
       }
 
       // Server-side filters
