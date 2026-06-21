@@ -82,7 +82,13 @@ function autoMap(headers: string[]): Record<string, string> {
 
 async function parseFile(file: File): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
   const name = file.name.toLowerCase();
-  if (name.endsWith('.csv')) return parseCsv(await file.text());
+  if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
+    const text = await file.text();
+    // Auto-detect delimiter from the header row: tab > semicolon > comma
+    const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
+    const delim = firstLine.includes('\t') ? '\t' : firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
+    return parseDelimited(text, delim);
+  }
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await file.arrayBuffer());
   const ws = wb.worksheets[0];
@@ -105,7 +111,7 @@ async function parseFile(file: File): Promise<{ headers: string[]; rows: Record<
   return { headers, rows };
 }
 
-function parseCsv(text: string): { headers: string[]; rows: Record<string, string>[] } {
+function parseDelimited(text: string, delim: string = ','): { headers: string[]; rows: Record<string, string>[] } {
   const lines: string[][] = [];
   let cur: string[] = []; let field = ''; let inQ = false;
   for (let i = 0; i < text.length; i++) {
@@ -115,7 +121,7 @@ function parseCsv(text: string): { headers: string[]; rows: Record<string, strin
       else field += c;
     } else {
       if (c === '"') inQ = true;
-      else if (c === ',') { cur.push(field); field = ''; }
+      else if (c === delim) { cur.push(field); field = ''; }
       else if (c === '\n') { cur.push(field); lines.push(cur); cur = []; field = ''; }
       else if (c === '\r') { /* skip */ }
       else field += c;
