@@ -95,7 +95,7 @@ export function useContacts(params: ContactsListParams = {}) {
     queryFn: async () => {
       let query = supabase
         .from('contacts')
-        .select(LIST_COLUMNS, { count: 'exact' })
+        .select(LIST_COLUMNS, { count: 'estimated' })
         .eq('org_company_id', company!.id);
 
       // Server-side search
@@ -108,17 +108,12 @@ export function useContacts(params: ContactsListParams = {}) {
           `last_name.ilike.%${s}%`,
           `email.ilike.%${s}%`,
           `job_title.ilike.%${s}%`,
-          `linkedin_url.ilike.%${s}%`,
-          `contact_type.ilike.%${s}%`,
         ];
         // Keep multi-word searches precise so "Mike Ferraro" is not buried behind every Mike or Ferraro.
         if (parts.length >= 2) {
           ors = [
             `full_name.ilike.%${s}%`,
             `email.ilike.%${s}%`,
-            `job_title.ilike.%${s}%`,
-            `linkedin_url.ilike.%${s}%`,
-            `contact_type.ilike.%${s}%`,
             `and(first_name.ilike.%${parts[0]}%,last_name.ilike.%${parts[parts.length - 1]}%)`,
           ];
         }
@@ -178,6 +173,8 @@ export function useContacts(params: ContactsListParams = {}) {
     },
     enabled: !!company?.id,
     placeholderData: (prev) => prev,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   });
 }
 
