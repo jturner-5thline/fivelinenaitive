@@ -356,15 +356,16 @@ export function ImportContactsModal({ open, onClose }: Props) {
               <span>· {rows.length} rows · {headers.length} columns</span>
             </div>
 
-            {!hasEmail && (
+            {!hasIdentityMapping && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-                You must map at least one column to <strong>Email</strong> to import.
+                Map at least one name, email, phone, or LinkedIn column to import contacts.
               </div>
             )}
-            {hasEmail && (
-              <div className={`rounded-md border p-3 text-xs ${rowsWithEmail === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
-                <strong>{rowsWithEmail}</strong> of {rows.length} rows have a value in the mapped Email column and will be imported.
-                {rowsWithEmail === 0 && ' Check that you mapped the correct column — rows without an email are skipped.'}
+            {hasIdentityMapping && (
+              <div className={`rounded-md border p-3 text-xs ${importableRows === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
+                <strong>{importableRows}</strong> of {rows.length} rows have a mapped name, email, phone, or LinkedIn value and will be imported.
+                {hasEmail && rowsWithEmail < rows.length && ` ${rowsWithEmail} rows have an email value.`}
+                {importableRows === 0 && ' Check that the correct columns are mapped — fully blank contact rows are skipped.'}
               </div>
             )}
 
@@ -428,8 +429,8 @@ export function ImportContactsModal({ open, onClose }: Props) {
           {step === 'map' && (
             <>
               <Button variant="outline" onClick={reset}>Back</Button>
-              <Button onClick={runImport} disabled={!hasEmail || rowsWithEmail === 0}>
-                Import {rowsWithEmail || rows.length} rows
+              <Button onClick={runImport} disabled={!hasIdentityMapping || importableRows === 0}>
+                Import {importableRows || rows.length} rows
               </Button>
             </>
           )}
