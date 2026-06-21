@@ -229,6 +229,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
     for (let i = 0; i < records.length; i += batchSize) {
       const chunk = records.slice(i, i + batchSize).map(r => ({
         ...r,
+        full_name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || undefined,
         created_by: user?.id,
         org_company_id: company.id,
       }));
