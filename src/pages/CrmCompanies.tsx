@@ -166,9 +166,6 @@ export default function CrmCompanies() {
               <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
               <TabsTrigger value="customers">Customers</TabsTrigger>
               <TabsTrigger value="prospects">Prospects</TabsTrigger>
-              <TabsTrigger value="churn_risk">Churn Risk</TabsTrigger>
-              <TabsTrigger value="renewal_90d">Renewals 90d</TabsTrigger>
-              <TabsTrigger value="no_activity_30d">No Activity 30d</TabsTrigger>
             </TabsList>
           </Tabs>
 
