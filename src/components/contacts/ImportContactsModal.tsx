@@ -19,7 +19,8 @@ const COMPANY_NAME_KEY = '__company_name__';
 const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
   { value: 'first_name', label: 'First Name' },
   { value: 'last_name', label: 'Last Name' },
-  { value: 'email', label: 'Email', required: true },
+  { value: 'full_name', label: 'Full Name' },
+  { value: 'email', label: 'Email' },
   { value: 'city', label: 'City' },
   { value: 'lead_status', label: 'Lead Status' },
   { value: 'contact_type', label: 'Contact Type' },
@@ -37,8 +38,20 @@ const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
 ];
 
 const SKIP = '__skip__';
+const CONTACT_IDENTITY_FIELDS = new Set(['email', 'full_name', 'first_name', 'last_name', 'phone_work', 'phone_mobile', 'linkedin_url']);
 
 const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+function hasImportableIdentity(row: Record<string, string>, mapping: Record<string, string>) {
+  return Object.entries(mapping).some(([src, tgt]) =>
+    CONTACT_IDENTITY_FIELDS.has(tgt) && Boolean(row[src]?.trim())
+  );
+}
+
+function hasContactIdentity(contact: Record<string, any>) {
+  return ['email', 'full_name', 'first_name', 'last_name', 'phone_work', 'phone_mobile', 'linkedin_url']
+    .some((key) => String(contact[key] ?? '').trim());
+}
 
 function autoMap(headers: string[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -47,7 +60,7 @@ function autoMap(headers: string[]): Record<string, string> {
   const aliases: Record<string, string> = {
     firstname: 'first_name', givenname: 'first_name',
     lastname: 'last_name', surname: 'last_name', familyname: 'last_name',
-    fullname: 'first_name',
+    fullname: 'full_name', name: 'full_name', contactname: 'full_name',
     emailaddress: 'email', emails: 'email', primaryemail: 'email',
     leadstatus: 'lead_status', status: 'lead_status',
     contacttype: 'contact_type', type: 'contact_type',
