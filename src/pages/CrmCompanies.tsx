@@ -213,6 +213,7 @@ export default function CrmCompanies() {
       </div>
 
       <CreateCrmCompanyModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <ImportCrmCompaniesModal open={showImport} onClose={() => setShowImport(false)} />
     </>
   );
 }
