@@ -160,6 +160,16 @@ export function ImportContactsModal({ open, onClose }: Props) {
   const mappedTargets = useMemo(() => new Set(Object.values(mapping).filter(v => v !== SKIP)), [mapping]);
   const hasEmail = mappedTargets.has('email');
 
+  // Find which source column maps to email, then count how many rows actually have an email value.
+  const emailSourceCol = useMemo(() => {
+    for (const [src, tgt] of Object.entries(mapping)) if (tgt === 'email') return src;
+    return null;
+  }, [mapping]);
+  const rowsWithEmail = useMemo(() => {
+    if (!emailSourceCol) return 0;
+    return rows.reduce((n, r) => (r[emailSourceCol]?.trim() ? n + 1 : n), 0);
+  }, [rows, emailSourceCol]);
+
   const reset = () => {
     setStep('upload'); setFileName(''); setHeaders([]); setRows([]); setMapping({});
     setProgress(0); setResult({ created: 0, failed: 0, errors: [] });
@@ -304,6 +314,12 @@ export function ImportContactsModal({ open, onClose }: Props) {
                 You must map at least one column to <strong>Email</strong> to import.
               </div>
             )}
+            {hasEmail && (
+              <div className={`rounded-md border p-3 text-xs ${rowsWithEmail === 0 ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-border bg-muted/40 text-muted-foreground'}`}>
+                <strong>{rowsWithEmail}</strong> of {rows.length} rows have a value in the mapped Email column and will be imported.
+                {rowsWithEmail === 0 && ' Check that you mapped the correct column — rows without an email are skipped.'}
+              </div>
+            )}
 
             <div className="border rounded-lg divide-y">
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 bg-muted/40 text-xs font-medium text-muted-foreground">
@@ -365,7 +381,9 @@ export function ImportContactsModal({ open, onClose }: Props) {
           {step === 'map' && (
             <>
               <Button variant="outline" onClick={reset}>Back</Button>
-              <Button onClick={runImport} disabled={!hasEmail}>Import {rows.length} rows</Button>
+              <Button onClick={runImport} disabled={!hasEmail || rowsWithEmail === 0}>
+                Import {rowsWithEmail || rows.length} rows
+              </Button>
             </>
           )}
           {(step === 'upload' || step === 'done') && (
