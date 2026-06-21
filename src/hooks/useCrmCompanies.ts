@@ -123,9 +123,16 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
 
       // Server-side search
       if (search?.trim()) {
-        query = query.or(
-          `name.ilike.%${search}%,domain.ilike.%${search}%,industry.ilike.%${search}%,address.ilike.%${search}%,hq_address.ilike.%${search}%,notes.ilike.%${search}%,website_url.ilike.%${search}%,linkedin_url.ilike.%${search}%,phone.ilike.%${search}%`
-        );
+        // Fuzzy: split into tokens, every token must appear somewhere in name (case-insensitive).
+        // Sanitize PostgREST-reserved chars to avoid breaking the filter string.
+        const tokens = search
+          .trim()
+          .split(/\s+/)
+          .map((t) => t.replace(/[%,()*]/g, ''))
+          .filter(Boolean);
+        for (const t of tokens) {
+          query = query.ilike('name', `%${t}%`);
+        }
       }
 
       // Server-side filters
