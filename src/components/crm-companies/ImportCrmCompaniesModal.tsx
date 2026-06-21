@@ -39,6 +39,7 @@ const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
   { value: 'lifecycle_stage', label: 'Lifecycle Stage' },
   { value: 'year_founded', label: 'Year Founded' },
   { value: 'financing_status', label: 'Company Financing Status' },
+  { value: 'created_at', label: 'Create Date' },
 ];
 
 const SKIP = '__skip__';
@@ -65,6 +66,7 @@ function autoMap(headers: string[]): Record<string, string> {
         type: 'company_type', stage: 'lifecycle_stage',
         founded: 'year_founded', yearfounded: 'year_founded', foundedyear: 'year_founded', foundingyear: 'year_founded',
         financingstatus: 'financing_status', financing: 'financing_status', fundingstatus: 'financing_status', funding: 'financing_status',
+        createdate: 'created_at', createddate: 'created_at', createdat: 'created_at', datecreated: 'created_at', created: 'created_at',
       };
       const target = aliases[nh];
       if (target) hit = norms.find(f => f.value === target && !used.has(f.value));
@@ -202,6 +204,9 @@ export function ImportCrmCompaniesModal({ open, onClose }: Props) {
         } else if (tgt === 'year_founded') {
           const n = parseInt(String(v).replace(/[^\d]/g, ''), 10);
           if (!isNaN(n)) out[tgt] = n;
+        } else if (tgt === 'created_at') {
+          const d = new Date(String(v));
+          if (!isNaN(d.getTime())) out[tgt] = d.toISOString();
         } else {
           out[tgt] = v;
         }
