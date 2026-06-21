@@ -224,7 +224,9 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
           <TableVirtuoso
             // Virtualizes the CRM companies grid so the DOM only carries the
             // visible window worth of rows regardless of tenant size.
-            style={{ height: Math.min(680, 56 + filtered.length * 44) }}
+            // Use window scrolling so the page itself scrolls (no nested scroll
+            // inside the companies box) and the full row list expands naturally.
+            useWindowScroll
             data={filtered}
             components={{
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
