@@ -5617,6 +5617,7 @@ export type Database = {
           behavioral_score: number | null
           buying_role: string | null
           campaign: string | null
+          city: string | null
           company_id: string | null
           contact_score: number | null
           contact_type: string | null
@@ -6050,8 +6051,10 @@ export type Database = {
           hs_zoom_webinar_registration_count: number | null
           hubspot_contact_id: string | null
           id: string
+          industry: string | null
           job_title: string | null
           last_activity_date: string | null
+          last_contacted_date: string | null
           last_inbound_activity_date: string | null
           last_modified_by: string | null
           last_name: string | null
@@ -6059,11 +6062,13 @@ export type Database = {
           lead_source: string | null
           lead_source_latest: string | null
           lead_source_original: string | null
+          lead_status: string | null
           lifecycle_stage: string | null
           linkedin_url: string | null
           locale: string | null
           migrated_from_hubspot: boolean | null
           next_activity_date: string | null
+          opted_out_one_to_one: boolean | null
           org_company_id: string | null
           owner_user_id: string | null
           phone_mobile: string | null
@@ -6076,6 +6081,7 @@ export type Database = {
           seniority: string | null
           sms_opt_in: boolean | null
           source_system: string | null
+          state_region: string | null
           status: string | null
           synced_with_hubspot: boolean | null
           tags: string[] | null
@@ -6094,6 +6100,7 @@ export type Database = {
           behavioral_score?: number | null
           buying_role?: string | null
           campaign?: string | null
+          city?: string | null
           company_id?: string | null
           contact_score?: number | null
           contact_type?: string | null
@@ -6531,8 +6538,10 @@ export type Database = {
           hs_zoom_webinar_registration_count?: number | null
           hubspot_contact_id?: string | null
           id?: string
+          industry?: string | null
           job_title?: string | null
           last_activity_date?: string | null
+          last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
           last_modified_by?: string | null
           last_name?: string | null
@@ -6540,11 +6549,13 @@ export type Database = {
           lead_source?: string | null
           lead_source_latest?: string | null
           lead_source_original?: string | null
+          lead_status?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
           migrated_from_hubspot?: boolean | null
           next_activity_date?: string | null
+          opted_out_one_to_one?: boolean | null
           org_company_id?: string | null
           owner_user_id?: string | null
           phone_mobile?: string | null
@@ -6557,6 +6568,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
+          state_region?: string | null
           status?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null
@@ -6575,6 +6587,7 @@ export type Database = {
           behavioral_score?: number | null
           buying_role?: string | null
           campaign?: string | null
+          city?: string | null
           company_id?: string | null
           contact_score?: number | null
           contact_type?: string | null
@@ -7012,8 +7025,10 @@ export type Database = {
           hs_zoom_webinar_registration_count?: number | null
           hubspot_contact_id?: string | null
           id?: string
+          industry?: string | null
           job_title?: string | null
           last_activity_date?: string | null
+          last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
           last_modified_by?: string | null
           last_name?: string | null
@@ -7021,11 +7036,13 @@ export type Database = {
           lead_source?: string | null
           lead_source_latest?: string | null
           lead_source_original?: string | null
+          lead_status?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
           migrated_from_hubspot?: boolean | null
           next_activity_date?: string | null
+          opted_out_one_to_one?: boolean | null
           org_company_id?: string | null
           owner_user_id?: string | null
           phone_mobile?: string | null
@@ -7038,6 +7055,7 @@ export type Database = {
           seniority?: string | null
           sms_opt_in?: boolean | null
           source_system?: string | null
+          state_region?: string | null
           status?: string | null
           synced_with_hubspot?: boolean | null
           tags?: string[] | null

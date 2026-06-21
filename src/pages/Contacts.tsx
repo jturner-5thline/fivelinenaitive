@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
+import { ImportContactsModal } from '@/components/contacts/ImportContactsModal';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +22,7 @@ import { useCompany } from '@/hooks/useCompany';
 
 export default function Contacts() {
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
@@ -155,7 +157,7 @@ export default function Contacts() {
                 {isExporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
                 Export
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
                 <Upload className="h-4 w-4 mr-1.5" /> Import
               </Button>
               <Button size="sm" onClick={() => setShowCreate(true)}>
@@ -229,6 +231,7 @@ export default function Contacts() {
       </div>
 
       <CreateContactModal open={showCreate} onClose={() => setShowCreate(false)} />
+      <ImportContactsModal open={showImport} onClose={() => setShowImport(false)} />
     </>
   );
 }
