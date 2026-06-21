@@ -229,6 +229,7 @@ export function ImportContactsModal({ open, onClose }: Props) {
     for (let i = 0; i < records.length; i += batchSize) {
       const chunk = records.slice(i, i + batchSize).map(r => ({
         ...r,
+        full_name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || undefined,
         created_by: user?.id,
         org_company_id: company.id,
       }));
@@ -249,7 +250,10 @@ export function ImportContactsModal({ open, onClose }: Props) {
     setStep('done');
     queryClient.invalidateQueries({ queryKey: ['contacts'] });
     if (created) toast.success(`Imported ${created} contacts`);
-    if (failed) toast.error(`${failed} rows failed`);
+    if (failed) toast.error(`${failed} rows failed`, { description: errors[0] });
+    if (!created && !failed) {
+      toast.error('No rows imported — make sure the "Email" column is mapped and rows have values');
+    }
   };
 
   const handleClose = () => { reset(); onClose(); };
