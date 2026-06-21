@@ -187,45 +187,54 @@ export function ImportContactsModal({ open, onClose }: Props) {
     } finally { setParsing(false); }
   };
 
-  // Resolve a company name to crm_company_id. Cache lookups and create if missing.
-  const companyCache = new Map<string, string>();
-  const resolveCompany = async (rawName: string): Promise<string | undefined> => {
-    const name = rawName.trim();
-    if (!name || !company?.id) return undefined;
-    const key = name.toLowerCase();
-    if (companyCache.has(key)) return companyCache.get(key);
-    const { data: existing } = await supabase
-      .from('crm_companies')
-      .select('id')
-      .eq('org_company_id', company.id)
-      .ilike('name', name)
-      .limit(1);
-    if (existing && existing[0]) { companyCache.set(key, existing[0].id); return existing[0].id; }
-    const { data: created, error } = await supabase
-      .from('crm_companies')
-      .insert({ name, org_company_id: company.id, created_by: user?.id } as any)
-      .select('id')
-      .single();
-    if (error || !created) return undefined;
-    companyCache.set(key, created.id);
-    return created.id;
-  };
-
   const runImport = async () => {
     if (!company?.id) { toast.error('No active workspace'); return; }
     setStep('importing');
     let created = 0, failed = 0; const errors: string[] = [];
 
+    // 1) Find the company-name source column (if any) and collect unique names.
+    let companySrc: string | null = null;
+    for (const [src, tgt] of Object.entries(mapping)) if (tgt === COMPANY_NAME_KEY) { companySrc = src; break; }
+    const companyCache = new Map<string, string>(); // lowercase name -> crm_company_id
+
+    if (companySrc) {
+      const uniqueNames = Array.from(new Set(
+        rows.map(r => (r[companySrc!] || '').trim()).filter(Boolean)
+      ));
+      // Bulk lookup existing companies (chunked IN queries)
+      const lookupChunk = 200;
+      for (let i = 0; i < uniqueNames.length; i += lookupChunk) {
+        const slice = uniqueNames.slice(i, i + lookupChunk);
+        const { data: existing } = await supabase
+          .from('crm_companies')
+          .select('id,name')
+          .eq('org_company_id', company.id)
+          .in('name', slice);
+        (existing ?? []).forEach((c: any) => companyCache.set(String(c.name).toLowerCase(), c.id));
+      }
+      // Bulk-create missing companies in one insert
+      const missing = uniqueNames.filter(n => !companyCache.has(n.toLowerCase()));
+      if (missing.length) {
+        const payload = missing.map(name => ({ name, org_company_id: company.id, created_by: user?.id }));
+        const { data: createdCos } = await supabase
+          .from('crm_companies')
+          .insert(payload as any)
+          .select('id,name');
+        (createdCos ?? []).forEach((c: any) => companyCache.set(String(c.name).toLowerCase(), c.id));
+      }
+      setProgress(20);
+    }
+
+    // 2) Build all records synchronously (no awaits).
     const records: any[] = [];
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
+    for (const r of rows) {
       const out: any = {};
       for (const [src, tgt] of Object.entries(mapping)) {
         if (tgt === SKIP) continue;
         const v = r[src];
         if (v == null || v === '') continue;
         if (tgt === COMPANY_NAME_KEY) {
-          const cid = await resolveCompany(v);
+          const cid = companyCache.get(String(v).trim().toLowerCase());
           if (cid) out.crm_company_id = cid;
         } else if (tgt === 'created_at' || tgt === 'last_contacted_date') {
           const d = new Date(String(v));
@@ -237,29 +246,41 @@ export function ImportContactsModal({ open, onClose }: Props) {
           out[tgt] = v;
         }
       }
-      if (out.email) records.push(out);
-      setProgress(Math.min(50, Math.round((i / rows.length) * 50)));
+      if (out.email) {
+        out.full_name = out.full_name || [out.first_name, out.last_name].filter(Boolean).join(' ') || undefined;
+        out.created_by = user?.id;
+        out.org_company_id = company.id;
+        records.push(out);
+      }
     }
+    setProgress(30);
 
-    const batchSize = 50;
-    for (let i = 0; i < records.length; i += batchSize) {
-      const chunk = records.slice(i, i + batchSize).map(r => ({
-        ...r,
-        full_name: r.full_name || [r.first_name, r.last_name].filter(Boolean).join(' ') || undefined,
-        created_by: user?.id,
-        org_company_id: company.id,
-      }));
-      const { data, error } = await supabase.from('contacts').insert(chunk as any).select('id');
+    // 3) Insert in large batches, in parallel.
+    const batchSize = 500;
+    const concurrency = 4;
+    const chunks: any[][] = [];
+    for (let i = 0; i < records.length; i += batchSize) chunks.push(records.slice(i, i + batchSize));
+
+    let doneChunks = 0;
+    const runChunk = async (chunk: any[]) => {
+      // No .select() — avoids return roundtrip.
+      const { error } = await supabase.from('contacts').insert(chunk as any);
       if (error) {
+        // Fallback: per-row to isolate bad rows.
         for (const row of chunk) {
           const { error: e2 } = await supabase.from('contacts').insert(row as any);
           if (e2) { failed++; if (errors.length < 5) errors.push(`${row.email}: ${e2.message}`); }
           else created++;
         }
       } else {
-        created += data?.length ?? chunk.length;
+        created += chunk.length;
       }
-      setProgress(50 + Math.min(50, Math.round(((i + chunk.length) / records.length) * 50)));
+      doneChunks++;
+      setProgress(30 + Math.min(70, Math.round((doneChunks / Math.max(1, chunks.length)) * 70)));
+    };
+
+    for (let i = 0; i < chunks.length; i += concurrency) {
+      await Promise.all(chunks.slice(i, i + concurrency).map(runChunk));
     }
 
     setResult({ created, failed, errors });
