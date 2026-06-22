@@ -431,7 +431,29 @@ Rules:
 - evidence_references must cite the signal that justifies the proposal (kind ∈ email|email_thread|calendar|claap_recording|activity|status_note|funding_source|stage_history|milestone|task).
 - When a Claap recording, calendar event, or email thread describes a meeting that happened ("had call on 6/18", "kickoff scheduled"), the DEFAULT proposal is an add_status_note that synthesizes (a) what happened, (b) who was on it, (c) the stated next step — phrased as a natural status update the deal owner would write. Use call_type, participants, transcript_excerpt, summary, action_items, and next-step language to ground the note. Always cite the claap_recording / calendar / email_thread evidence.
 - Cross-reference signals: if an email thread + a claap recording + a calendar item all describe the same meeting/topic, MERGE them into a single high-confidence add_status_note (or follow-up task / milestone) rather than emitting one item per source.
-- Pull concrete details into proposed_values.note — names, dates ("6/18"), specific commitments ("submit to lenders early next week"). Never write vague text like "follow up" or "review item".`;
+- Pull concrete details into proposed_values.note — names, dates ("6/18"), specific commitments ("submit to lenders early next week"). Never write vague text like "follow up" or "review item".
+
+TONE
+- Internal copy (status notes, internal tasks, internal task descriptions): ${INTERNAL_TONE}.
+- External drafts (draft_email to lenders, referral sources, clients): ${EXTERNAL_TONE}.
+- If a user_style_fingerprint block is provided, mimic that user's phrasing/length tendencies in both internal and external copy.
+
+EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
+- ETA commitment from a counterparty ("I'll send financials by Friday") → add_status_note capturing the commitment AND a create_followup_task due the committed date, assigned to the deal manager.
+- Status signal ("still working on materials", "almost done") → add_status_note only.
+- Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
+- Implicit next step from the deal manager ("let me check and get back to you", "I'll circle back") → create_followup_task on the deal manager.
+
+CLAAP RECORDING MAPPING
+- For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
+- Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
+
+LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
+- Rule L1: funding_sources[].business_days_since_last_contact >= 3 AND tracking_status is active/engaged (not "passed"/"closed") → draft_email to that lender (requires_send_ui=true) gently nudging for an update. Cite the funding_source id as target_object_id and as evidence (kind="funding_source").
+- Rule L2: An outbound email to a lender contact reads as urgent (deadline language, escalation, "ASAP", calling out timing) AND no inbound reply has arrived → draft_email re-pinging that lender. Reference the email id in evidence (kind="email"). Tone: still semi-formal, do not blame.
+- Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
+- All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
+- Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
 function buildUserPrompt(bundle: DealSignalBundle): string {
   // Trim large fields to keep prompt compact.
@@ -454,6 +476,7 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
       substage: f.substage,
       tracking_status: f.tracking_status,
       last_contact_at: f.last_contact_at,
+      business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
     })),
