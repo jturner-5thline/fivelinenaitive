@@ -561,6 +561,23 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
+const REFERRAL_RULES = `
+
+REFERRAL SOURCE UPDATE RULES (use referral_sources[])
+- Rule R1: referral_sources[].business_days_since_last_outbound >= 3 → draft_email to that referral source with a short factual status update on where the deal stands (current stage, latest lender progress, any outstanding items, next step).
+- Rule R2: referral_sources[].stage_changes_since_last_outbound.length > 0 → draft_email referencing the new stage and what it means in plain language. Cite the stage_history entry as evidence (kind="stage_history").
+- Rule R3: any of (new_lenders_since_last_outbound, milestones_completed_since_last_outbound, status_notes_since_last_outbound) is non-empty AND describes a meaningful event (term sheet received, diligence milestone hit, new lender added, indication received) → draft_email summarizing the event for the referral source. Cite the underlying signal as evidence (kind="status_note"|"milestone"|"funding_source").
+- All referral draft_email items:
+    - target_object_type MUST be "referral_source" and target_object_id MUST be the referral_sources[].id (this keeps dedupe per (deal, referral source)).
+    - requires_send_ui=true.
+    - proposed_values MUST include { to: [referral_source.email], subject, body }.
+    - Tone: ${EXTERNAL_TONE}. Professional but not stiff. Body <= 130 words. Mention the deal/company name once.
+    - Do not include market opinions, commitments, or pricing — keep to facts already in the signals.
+- Pick at most ONE rule per referral source per scan — emit one draft email per (deal, referral_source). If multiple rules fire, pick the most recent meaningful event and reference all triggers in rationale_summary.
+- Silence rule: if no rule fires for any referral source, emit nothing for referral sources. Do NOT propose generic "say hi" emails.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + REFERRAL_RULES;
+
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
   const trim = (s: any, n = 240) =>
@@ -650,7 +667,7 @@ async function callModelForCandidates(
   const body = {
     model: MODEL,
     max_tokens: 6000,
-    system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
+    system: `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
       { role: "user", content: buildUserPrompt(bundle, fingerprint) },
     ],
