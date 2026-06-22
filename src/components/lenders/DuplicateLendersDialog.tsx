@@ -1148,14 +1148,19 @@ export function DuplicateLendersDialog({
 
   // Reuse sophisticated detector for grouping
   const groups: DupGroup[] = useMemo(() => {
+    if (!open) return [];
     const { groups } = detectDuplicateLenders(
       lenders.map(l => ({ id: l.id, name: l.name || '' }))
     );
     const byId = new Map(lenders.map(l => [l.id, l]));
+    // Precompute completeness once per lender — sort comparators would otherwise
+    // call the O(schema) scorer many times per duplicate group.
+    const scoreById = new Map<string, number>();
+    for (const l of lenders) scoreById.set(l.id, completenessScore(l));
     return groups
       .map(g => {
         const ls = g.memberIds.map(id => byId.get(id)).filter(Boolean) as MasterLender[];
-        ls.sort((a, b) => completenessScore(b) - completenessScore(a));
+        ls.sort((a, b) => (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0));
         return {
           id: g.groupId,
           primaryName: ls[0]?.name || g.groupId,
@@ -1164,7 +1169,7 @@ export function DuplicateLendersDialog({
       })
       .filter(g => g.lenders.length > 1)
       .sort((a, b) => b.lenders.length - a.lenders.length);
-  }, [lenders]);
+  }, [lenders, open]);
 
   // Pick first group when opening / when current is gone
   useEffect(() => {
