@@ -433,16 +433,13 @@ export default function Lenders() {
     [],
   );
   const [duplicateIndex, setDuplicateIndex] = useState(EMPTY_DUPLICATE_INDEX);
-  const duplicatesNeeded = showDuplicatesOnly || isDuplicatesDialogOpen;
   useEffect(() => {
-    if (!duplicatesNeeded) {
-      // Keep the empty index until the user actually asks for duplicates.
-      return;
-    }
-    if (loadingMore) return; // wait for the stream to settle
+    // Wait for the background stream of pages to settle so the detector
+    // doesn't re-run on every batch while the directory is loading. Once the
+    // list is stable, schedule the detection on an idle callback so chips
+    // populate shortly after load without blocking interaction.
+    if (loadingMore) return;
     if (!masterLenders.length) return;
-    // Defer to idle so we never block the click that opened the dialog or
-    // toggled the filter.
     const run = () => {
       const next = detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name })));
       setDuplicateIndex(next);
@@ -454,7 +451,7 @@ export default function Lenders() {
     }
     const t = setTimeout(run, 0);
     return () => clearTimeout(t);
-  }, [duplicatesNeeded, loadingMore, masterLenders]);
+  }, [loadingMore, masterLenders]);
 
   // Per-lender list of sibling names in the same duplicate cluster (excluding
   // self), used to power the popover when the user clicks the "X possible
