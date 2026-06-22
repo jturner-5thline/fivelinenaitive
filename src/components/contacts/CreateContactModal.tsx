@@ -12,6 +12,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface CreateContactModalProps {
   open: boolean;
@@ -54,7 +55,21 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
   };
 
   const handleSubmit = () => {
-    if (!form.first_name && !form.last_name && !form.email) return;
+    const firstName = form.first_name.trim();
+    const lastName = form.last_name.trim();
+    const email = form.email.trim();
+    const missing: string[] = [];
+    if (!firstName) missing.push('First Name');
+    if (!lastName) missing.push('Last Name');
+    if (!email) missing.push('Email');
+    if (missing.length > 0) {
+      toast.error(`Missing required field${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}`);
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
     const linkedinTrim = form.linkedin_url.trim();
     if (linkedinTrim && !/^https?:\/\//i.test(linkedinTrim) && !/^([\w-]+\.)+[a-z]{2,}/i.test(linkedinTrim)) {
       // soft validation: warn but do not block; let it through
@@ -88,15 +103,15 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label htmlFor="first_name" className="text-xs">First Name</Label>
+            <Label htmlFor="first_name" className="text-xs">First Name <span className="text-destructive">*</span></Label>
             <Input id="first_name" value={form.first_name} onChange={(e) => setForm(p => ({ ...p, first_name: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="last_name" className="text-xs">Last Name</Label>
+            <Label htmlFor="last_name" className="text-xs">Last Name <span className="text-destructive">*</span></Label>
             <Input id="last_name" value={form.last_name} onChange={(e) => setForm(p => ({ ...p, last_name: e.target.value }))} />
           </div>
           <div className="space-y-1.5 col-span-2">
-            <Label htmlFor="email" className="text-xs">Email</Label>
+            <Label htmlFor="email" className="text-xs">Email <span className="text-destructive">*</span></Label>
             <Input id="email" type="email" value={form.email} onChange={(e) => handleEmailChange(e.target.value)} />
           </div>
 
@@ -189,7 +204,15 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={createContact.isPending}>
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              createContact.isPending ||
+              !form.first_name.trim() ||
+              !form.last_name.trim() ||
+              !form.email.trim()
+            }
+          >
             {createContact.isPending ? 'Creating...' : 'Create Contact'}
           </Button>
         </DialogFooter>
