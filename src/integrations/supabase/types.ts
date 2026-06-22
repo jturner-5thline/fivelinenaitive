@@ -28499,6 +28499,10 @@ export type Database = {
           similarity: number
         }[]
       }
+      merge_master_lenders: {
+        Args: { _keep_id: string; _merge_ids: string[] }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

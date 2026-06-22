@@ -528,15 +528,23 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
   const mergeLenders = async (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>): Promise<boolean> => {
     try {
-      // Update the primary lender with merged data
-      const { error: updateError } = await supabase.from('master_lenders').update(mergedData).eq('id', keepId);
-
+      // Apply the user-resolved fields to the kept funding source first.
+      const { error: updateError } = await supabase
+        .from('master_lenders')
+        .update(mergedData)
+        .eq('id', keepId);
       if (updateError) throw updateError;
 
-      // Delete the duplicate lenders
-      const { error: deleteError } = await supabase.from('master_lenders').delete().in('id', mergeIds);
-
-      if (deleteError) throw deleteError;
+      // Hand off the actual merge to the database function so deal history
+      // (active / on-deck / on-hold / passed / excluded), notes, contacts,
+      // fit attributes, pass patterns, audit logs, disqualifications, and
+      // sync request links all move onto the kept lender atomically before
+      // the duplicates are removed.
+      const { error: rpcError } = await supabase.rpc('merge_master_lenders', {
+        _keep_id: keepId,
+        _merge_ids: mergeIds,
+      });
+      if (rpcError) throw rpcError;
 
       // Update local state immutably - create new array with updated primary and without merged entries
       setLenders((prev) => {
