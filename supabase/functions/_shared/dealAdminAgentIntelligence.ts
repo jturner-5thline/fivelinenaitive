@@ -944,6 +944,20 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const remaining = maxQueueRows - totalInserted;
       const slice = ranked.slice(0, remaining);
 
+      if (opts.dryRun) {
+        const preview = buildCandidateRows(opts, bundle, slice);
+        result.preview_rows = result.preview_rows ?? [];
+        result.preview_rows.push(...preview);
+        result.queue_rows_inserted += preview.length;
+        totalInserted += preview.length;
+        for (const c of slice) {
+          existingKeys.add(
+            `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
+          );
+        }
+        continue;
+      }
+
       const { ids, error } = await insertCandidates(supabase, opts, bundle, slice);
       if (error) {
         result.errors.push(`deal ${d.id}: ${error}`);
