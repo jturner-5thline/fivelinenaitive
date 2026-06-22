@@ -416,7 +416,104 @@ async function gatherSignalsForDeal(
     open_tasks: tasks.data ?? [],
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
+    referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
   };
+}
+
+/**
+ * Build a per-deal list of referral sources the deal manager should
+ * keep in the loop, each annotated with:
+ *   - business_days_since_last_outbound: outbound email to that source
+ *   - stage_changed_since_last_outbound: deal stage moved with no update sent
+ *   - meaningful_events_since_last_outbound: stage history / new lenders /
+ *     milestone completions / term-sheet status notes that occurred AFTER
+ *     the last outbound message
+ * The model uses these flags to fire rules R1/R2/R3.
+ */
+async function gatherReferralSourcesForDeal(
+  supabase: SupabaseClient,
+  deal: any,
+  since: string,
+  today: Date,
+): Promise<any[]> {
+  const out: any[] = [];
+  const refSourceId = deal.referral_source_id as string | null | undefined;
+  if (!refSourceId) return out;
+
+  const { data: rs } = await supabase
+    .from("referral_sources")
+    .select("id, name, email, phone, company, type")
+    .eq("id", refSourceId)
+    .maybeSingle();
+  if (!rs || !(rs as any).email) return out;
+  const email = String((rs as any).email).toLowerCase();
+
+  // Last outbound email sent to this referral source (any deal, any time).
+  const { data: lastOutbound } = await supabase
+    .from("gmail_sent_messages")
+    .select("id, subject, sent_at, created_at, body_text")
+    .contains("to_emails", [email])
+    .order("sent_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  const lastOut = (lastOutbound ?? [])[0] ?? null;
+  const lastOutAt: string | null =
+    (lastOut?.sent_at as string | null) ?? (lastOut?.created_at as string | null) ?? null;
+  const bdSinceOutbound = lastOutAt
+    ? businessDaysBetween(new Date(lastOutAt), today)
+    : null;
+
+  // Recent stage transitions on this deal AFTER the last outbound.
+  const cutoff = lastOutAt ?? since;
+  const { data: stagesSince } = await supabase
+    .from("deal_stage_history")
+    .select("from_stage, to_stage, changed_at")
+    .eq("deal_id", deal.id)
+    .gt("changed_at", cutoff)
+    .order("changed_at", { ascending: false })
+    .limit(5);
+
+  // New funding sources added since the last outbound.
+  const { data: newLenders } = await supabase
+    .from("deal_lenders")
+    .select("id, name, stage, created_at")
+    .eq("deal_id", deal.id)
+    .gt("created_at", cutoff)
+    .limit(10);
+
+  // Milestones completed since the last outbound.
+  const { data: doneMiles } = await supabase
+    .from("deal_milestones")
+    .select("id, title, completed_at")
+    .eq("deal_id", deal.id)
+    .eq("completed", true)
+    .gt("completed_at", cutoff)
+    .limit(10);
+
+  // Status notes added since the last outbound (term sheet, diligence, etc).
+  const { data: notesSince } = await supabase
+    .from("deal_status_notes")
+    .select("id, note, created_at")
+    .eq("deal_id", deal.id)
+    .gt("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  out.push({
+    id: (rs as any).id,
+    name: (rs as any).name,
+    email,
+    phone: (rs as any).phone ?? null,
+    company: (rs as any).company ?? null,
+    type: (rs as any).type ?? null,
+    last_outbound_at: lastOutAt,
+    last_outbound_subject: (lastOut as any)?.subject ?? null,
+    business_days_since_last_outbound: bdSinceOutbound,
+    stage_changes_since_last_outbound: stagesSince ?? [],
+    new_lenders_since_last_outbound: newLenders ?? [],
+    milestones_completed_since_last_outbound: doneMiles ?? [],
+    status_notes_since_last_outbound: notesSince ?? [],
+  });
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
