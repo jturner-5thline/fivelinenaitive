@@ -9,6 +9,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,6 +42,8 @@ interface LenderGridCardProps {
   lender: MasterLender;
   activeDealCount: number;
   duplicateCount?: number;
+  duplicateSiblings?: { id: string; name: string }[];
+  onOpenSiblingDetail?: (lenderId: string) => void;
   tileDisplaySettings: LenderTileDisplaySettings;
   summary: LenderSummary;
   isQuickUploading: boolean;
