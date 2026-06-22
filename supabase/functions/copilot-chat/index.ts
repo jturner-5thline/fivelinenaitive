@@ -1941,6 +1941,39 @@ const tools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // ── Deal Admin Agent — Duty 5: 'Where Are We On This' query helpers ─
+  {
+    type: "function",
+    function: {
+      name: "get_deal_claap_recordings",
+      description: "Claap call recordings linked to a deal, with AI summary, key decisions, next steps, and participants. Use for 'where are we on <deal>' status queries to surface what was discussed/decided on recent calls. Returns recordings ordered most-recent-first.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          since_days: { type: "number", description: "Look back this many days. Default 30, max 180." },
+          limit: { type: "number", description: "Max recordings to return. Default 10, max 25." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_approval_queue",
+      description: "Open Approval Queue items (ai_action_queue) for a deal — pending Admin Agent proposals such as status updates, follow-up tasks, lender chases, and referral-source updates awaiting user approval. Use in 'where are we on <deal>' status queries to surface what is pending the user's action on this deal.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          status: { type: "string", description: "Filter by queue status. Default 'pending'. Use 'all' to include approved/dismissed/executed too." },
+          limit: { type: "number", description: "Max items to return. Default 20, max 50." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
   {
     type: "function",
     function: {
