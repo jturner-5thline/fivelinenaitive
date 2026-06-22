@@ -517,6 +517,28 @@ export default function Lenders() {
     setIsDetailOpen(true);
   };
 
+  // Deep-link support: open the lender detail dialog when ?lender=<id>
+  // is present in the URL (e.g. when navigated to from a deal's lender
+  // popup). Clears the param once the dialog is opened so refreshing or
+  // closing the dialog doesn't trap the user.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const lenderParam = searchParams.get('lender');
+    if (!lenderParam || !masterLenders.length) return;
+    const match =
+      masterLenders.find((l) => l.id === lenderParam) ||
+      masterLenders.find(
+        (l) => l.name.toLowerCase().trim() === lenderParam.toLowerCase().trim(),
+      );
+    if (match) {
+      openLenderDetail(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('lender');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, masterLenders]);
+
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).
   const filteredLenders = useMemo(() => {
