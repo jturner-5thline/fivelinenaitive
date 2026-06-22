@@ -174,6 +174,13 @@ export default function Dashboard() {
   // Persist board scroll position when the deal overlay opens/closes.
   const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
   usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
+  // Vertical offset (px) applied to the inline detail aside so its top
+  // aligns with the clicked tile in the left list. Clamped so items near
+  // the bottom of the list don't push the panel into excessive blank
+  // space below the list.
+  const detailAsideRef = useRef<HTMLElement | null>(null);
+  const leftListColumnRef = useRef<HTMLDivElement | null>(null);
+  const [detailOffset, setDetailOffset] = useState(0);
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
