@@ -5890,6 +5890,60 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (error) return { error: error.message };
       return { count: (data || []).length, since_days: sinceDays, errors: data || [] };
     }
+    // ── Deal Admin Agent — Duty 5: 'Where Are We On This' ─────────
+    case "get_deal_claap_recordings": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required" };
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 180);
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 25);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      // Primary source: claap_meetings has the rich AI fields + direct deal_id.
+      const { data: meetings, error: mErr } = await supabase
+        .from("claap_meetings")
+        .select("id, claap_id, title, ai_summary, key_decisions, next_steps, sentiment, organizer_email, duration_seconds, started_at")
+        .eq("deal_id", dealId)
+        .gte("started_at", sinceIso)
+        .order("started_at", { ascending: false })
+        .limit(limit);
+      if (mErr) return { error: mErr.message };
+      // Fallback/companion: legacy deal_claap_recordings link table.
+      const { data: linked } = await supabase
+        .from("deal_claap_recordings")
+        .select("recording_id, recording_title, recording_url, duration_seconds, recorder_name, recorder_email, linked_at, notes")
+        .eq("deal_id", dealId)
+        .gte("linked_at", sinceIso)
+        .order("linked_at", { ascending: false })
+        .limit(limit);
+      return {
+        deal_id: dealId,
+        since_days: sinceDays,
+        meetings_count: (meetings || []).length,
+        meetings: meetings || [],
+        linked_recordings_count: (linked || []).length,
+        linked_recordings: linked || [],
+      };
+    }
+    case "get_deal_approval_queue": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required" };
+      const status = String(args.status || "pending").toLowerCase();
+      const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+      let q = supabase
+        .from("ai_action_queue")
+        .select("id, action_type, title, description, rationale, priority, risk_level, status, target_object_type, target_object_id, assigned_to, created_at, updated_at, expires_at")
+        .eq("deal_id", dealId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (status !== "all") q = q.eq("status", status);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return {
+        deal_id: dealId,
+        status_filter: status,
+        count: (data || []).length,
+        items: data || [],
+      };
+    }
     // ── FinServ ops (5th Line internal pipeline) ───────────────────
     case "get_finserv_pipeline_summary": {
       const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
