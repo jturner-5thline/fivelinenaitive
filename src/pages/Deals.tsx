@@ -1233,8 +1233,8 @@ export default function Dashboard() {
                 <aside
                   ref={detailAsideRef}
                   style={{
-                    transform: `translateY(${detailOffset}px)`,
-                    transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    marginTop: `${detailOffset}px`,
+                    transition: 'margin-top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
                   className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
                   aria-label="Selected deal summary"
