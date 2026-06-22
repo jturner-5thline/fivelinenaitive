@@ -165,6 +165,11 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     normalized: basicNormalize(l.name || ''),
     core: stripSuffixes(basicNormalize(l.name || '')),
   }));
+  // O(1) id → meta lookup. The collection step below used to call
+  // `meta.find(...)` per member which is O(n) per call and dominated the
+  // total runtime once the directory grew past a few thousand rows.
+  const metaById = new Map<string, typeof meta[number]>();
+  for (const m of meta) metaById.set(m.id, m);
 
   // 1) Exact normalized match.
   const byNormalized = new Map<string, string[]>();
@@ -190,33 +195,30 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     for (let i = 1; i < ids.length; i++) dsu.union(ids[0], ids[i]);
   }
 
-  // 3) Strict substring on core names (both > 3 chars). O(n^2) but bucketed
-  // by leading character to keep practical cost low for a few thousand rows.
-  const buckets = new Map<string, typeof meta>();
+  // 3) Word-boundary substring match between core names. This used to be a
+  // bucketed O(n²) scan, which dominated runtime on 6k+ directories. We now
+  // build a single-word index (cores that consist of one token > 3 chars) and
+  // for every multi-word core, union it with every single-word core that
+  // appears as one of its tokens — e.g. "Espresso" ⊂ "Espresso Capital".
+  // Complexity: O(total tokens), effectively linear in n.
+  const singleWordIds = new Map<string, string[]>();
   for (const m of meta) {
     if (!m.core || m.core.length <= 3) continue;
-    const key = m.core[0];
-    const arr = buckets.get(key) ?? [];
-    arr.push(m);
-    buckets.set(key, arr);
+    if (m.core.includes(' ')) continue;
+    const arr = singleWordIds.get(m.core) ?? [];
+    arr.push(m.id);
+    singleWordIds.set(m.core, arr);
   }
-  for (const arr of buckets.values()) {
-    for (let i = 0; i < arr.length; i++) {
-      for (let j = i + 1; j < arr.length; j++) {
-        const a = arr[i];
-        const b = arr[j];
-        if (a.core === b.core) continue;
-        const longer = a.core.length >= b.core.length ? a.core : b.core;
-        const shorter = a.core.length >= b.core.length ? b.core : a.core;
-        if (shorter.length <= 3) continue;
-        // Require word-boundary match so "Bank" doesn't grab "Banksy Capital".
-        if (
-          longer === shorter ||
-          longer.startsWith(shorter + ' ') ||
-          longer.endsWith(' ' + shorter) ||
-          longer.includes(' ' + shorter + ' ')
-        ) {
-          dsu.union(a.id, b.id);
+  if (singleWordIds.size > 0) {
+    for (const m of meta) {
+      if (!m.core || !m.core.includes(' ')) continue;
+      const tokens = m.core.split(' ');
+      for (const token of tokens) {
+        if (token.length <= 3) continue;
+        const matches = singleWordIds.get(token);
+        if (!matches) continue;
+        for (const otherId of matches) {
+          if (otherId !== m.id) dsu.union(m.id, otherId);
         }
       }
     }
@@ -239,7 +241,7 @@ export function detectDuplicateLenders(lenders: DuplicateInput[]): DuplicateInde
     // Stable groupId from the lexicographically smallest core name in the
     // cluster — keeps grouping deterministic across renders.
     const cores = memberIds
-      .map((id) => meta.find((m) => m.id === id)?.core || '')
+      .map((id) => metaById.get(id)?.core || '')
       .filter(Boolean)
       .sort();
     const groupId = cores[0] || root;
