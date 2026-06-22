@@ -1070,6 +1070,14 @@ export default function DealDetail() {
 
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
+  const [lenderDialogTab, setLenderDialogTab] = useState<'overview' | 'workflow' | 'funding-source'>('overview');
+  const [lenderWorkflowFilter, setLenderWorkflowFilter] = useState<'all' | 'requested' | 'completed'>('all');
+  useEffect(() => {
+    if (selectedLenderName) {
+      setLenderDialogTab('overview');
+      setLenderWorkflowFilter('all');
+    }
+  }, [selectedLenderName]);
 
   // When a funding source popup opens, if the funding source isn't in the cached masterLenders list yet
   // (background load still in progress), do a targeted single-row fetch so contacts show instantly.
