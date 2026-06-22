@@ -360,12 +360,11 @@ function MergedPreview({
         <div className="space-y-1.5">
           {rest.map(r => {
             const Icon = r.field.icon;
-            const tintClass =
-              r.selection.mode === 'combine'
-                ? 'text-accent'
-                : r.isConflict
-                ? 'text-primary'
-                : 'text-success';
+            const tintClass = r.isCombined
+              ? 'text-accent'
+              : r.isConflict
+              ? 'text-primary'
+              : 'text-success';
             return (
               <div key={r.field.key} className="flex items-start gap-2 border-b border-border/30 py-1 last:border-b-0">
                 <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', tintClass)} />
@@ -417,9 +416,9 @@ function MergeView({
     const initial: Record<string, Selection> = {};
     MERGE_FIELDS.forEach(field => {
       const opts = buildDistinctOptions(field, group.lenders);
-      if (opts.length === 0) { initial[field.key] = { mode: 'pick', optionId: '' }; return; }
+      if (opts.length === 0) { initial[field.key] = { optionIds: [] }; return; }
       const primaryOpt = opts.find(o => o.sourceIndices.includes(0)) ?? opts[0];
-      initial[field.key] = { mode: 'pick', optionId: primaryOpt.id };
+      initial[field.key] = { optionIds: [primaryOpt.id] };
     });
     return initial;
   });
@@ -430,8 +429,9 @@ function MergeView({
   const resolved: ResolvedField[] = useMemo(() => {
     return MERGE_FIELDS.map(field => {
       const options = fieldOptions.get(field.key) || [];
-      const selection = selections[field.key] ?? { mode: 'pick', optionId: options[0]?.id ?? '' };
-      const { value, formatted } = resolveSelection(field, options, selection, group.lenders);
+      const fallback: Selection = { optionIds: options[0] ? [options[0].id] : [] };
+      const selection = selections[field.key] ?? fallback;
+      const { value, formatted, isCombined } = resolveSelection(field, options, selection);
       return {
         field,
         options,
@@ -439,20 +439,28 @@ function MergeView({
         resolvedValue: value,
         resolvedFormatted: formatted,
         isConflict: options.length > 1,
+        isCombined,
       };
     });
-  }, [fieldOptions, selections, group.lenders]);
+  }, [fieldOptions, selections]);
 
   const conflicts = resolved.filter(r => r.isConflict);
   const matched = resolved.filter(r => !r.isConflict && hasValue(r.resolvedValue));
 
-  const handlePick = useCallback((fieldKey: string, optionId: string) => {
-    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'pick', optionId } }));
-    setReviewed(prev => new Set(prev).add(fieldKey));
-  }, []);
-
-  const handleCombine = useCallback((fieldKey: string) => {
-    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'combine' } }));
+  const handleToggle = useCallback((fieldKey: string, optionId: string, combinable: boolean) => {
+    setSelections(prev => {
+      const current = prev[fieldKey]?.optionIds ?? [];
+      let next: string[];
+      if (!combinable) {
+        next = [optionId];
+      } else if (current.includes(optionId)) {
+        // Remove unless it's the last one (keep at least one selected)
+        next = current.length > 1 ? current.filter(id => id !== optionId) : current;
+      } else {
+        next = [...current, optionId];
+      }
+      return { ...prev, [fieldKey]: { optionIds: next } };
+    });
     setReviewed(prev => new Set(prev).add(fieldKey));
   }, []);
 
@@ -529,8 +537,9 @@ function MergeView({
                       options={r.options}
                       selection={r.selection}
                       combinable={!!r.field.combinable}
-                      onPick={(id) => handlePick(r.field.key, id)}
-                      onCombine={() => handleCombine(r.field.key)}
+                      isCombined={r.isCombined}
+                      resolvedFormatted={r.resolvedFormatted}
+                      onToggle={(id) => handleToggle(r.field.key, id, !!r.field.combinable)}
                     />
                   ))}
                 </div>
