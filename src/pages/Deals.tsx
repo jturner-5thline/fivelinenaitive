@@ -1165,11 +1165,7 @@ export default function Dashboard() {
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
-                className={cn(
-                  showInlineDetail
-                    ? 'block pr-[calc(clamp(546px,49.4vw,832px)+1rem)] transition-[padding] duration-300'
-                    : 'contents'
-                )}
+                className="contents"
               >
               {/*
                 Flagged-filter context banner — renders ONLY when the
