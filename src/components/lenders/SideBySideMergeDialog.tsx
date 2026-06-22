@@ -541,11 +541,25 @@ function MergeView({
   isProcessing: boolean;
 }) {
   // Per-field distinct options
-  const fieldOptions = useMemo(() => {
+  const baseFieldOptions = useMemo(() => {
     const map = new Map<string, DistinctOption[]>();
     MERGE_FIELDS.forEach(f => map.set(f.key, buildDistinctOptions(f, group.lenders)));
     return map;
   }, [group]);
+
+  // User-added custom options per field. Stored separately so we can re-derive
+  // the merged option list on every render without losing them.
+  const [customOptionsByField, setCustomOptionsByField] = useState<Record<string, DistinctOption[]>>({});
+
+  const fieldOptions = useMemo(() => {
+    const map = new Map<string, DistinctOption[]>();
+    MERGE_FIELDS.forEach(f => {
+      const base = baseFieldOptions.get(f.key) || [];
+      const custom = customOptionsByField[f.key] || [];
+      map.set(f.key, [...base, ...custom]);
+    });
+    return map;
+  }, [baseFieldOptions, customOptionsByField]);
 
   // Initial selections: pick the primary's option if it has one; else first option
   const [selections, setSelections] = useState<Record<string, Selection>>(() => {
@@ -597,6 +611,18 @@ function MergeView({
       }
       return { ...prev, [fieldKey]: { optionIds: next } };
     });
+    setReviewed(prev => new Set(prev).add(fieldKey));
+  }, []);
+
+  const handleAddCustom = useCallback((fieldKey: string, value: any, formatted: string) => {
+    const id = `custom:${fieldKey}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+    const opt: DistinctOption = { id, value, formatted, sourceIndices: [], isCustom: true };
+    setCustomOptionsByField(prev => ({
+      ...prev,
+      [fieldKey]: [...(prev[fieldKey] || []), opt],
+    }));
+    // Auto-select the new custom value as the sole selection for this field.
+    setSelections(prev => ({ ...prev, [fieldKey]: { optionIds: [id] } }));
     setReviewed(prev => new Set(prev).add(fieldKey));
   }, []);
 
@@ -676,6 +702,7 @@ function MergeView({
                       isCombined={r.isCombined}
                       resolvedFormatted={r.resolvedFormatted}
                       onToggle={(id) => handleToggle(r.field.key, id, !!r.field.combinable)}
+                      onAddCustom={(value, formatted) => handleAddCustom(r.field.key, value, formatted)}
                     />
                   ))}
                 </div>
