@@ -32,7 +32,7 @@ export default function Contacts() {
   const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
-  const debouncedSearch = useDebouncedValue(search, 300);
+  const debouncedSearch = useDebouncedValue(search, 150);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
