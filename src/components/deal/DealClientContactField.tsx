@@ -6,11 +6,12 @@ import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToC
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, UserPlus } from 'lucide-react';
+import { Plus, X, UserPlus, Star } from 'lucide-react';
 import {
   useDealClientContacts,
   useAddDealClientContact,
   useRemoveDealClientContact,
+  useSetPreferredDealContact,
 } from '@/hooks/useDealClientContacts';
 import {
   ContactSearchAndCreate,
@@ -37,23 +38,41 @@ export function DealClientContactField({
   const { data: linkedContacts = [] } = useDealClientContacts(deal.id);
   const addContact = useAddDealClientContact();
   const removeContact = useRemoveDealClientContact();
+  const setPreferred = useSetPreferredDealContact();
 
   // Chips to display: prefer the full linked list from contact_deals.
   // Fall back to the legacy free-text contact when no junction rows exist
   // (older deals not yet migrated to contact_deals links).
-  const chips: Array<{ id: string | null; name: string; email: string | null }> =
+  const chips: Array<{
+    id: string | null;
+    name: string;
+    email: string | null;
+    isPreferred: boolean;
+  }> =
     linkedContacts.length > 0
-      ? linkedContacts.map((c) => ({ id: c.id, name: c.name, email: c.email }))
+      ? (() => {
+          const explicit = linkedContacts.find(
+            (c) => (c.role || '').toLowerCase() === 'primary',
+          );
+          const preferredId = explicit?.id ?? linkedContacts[0]?.id ?? null;
+          return linkedContacts.map((c) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            isPreferred: c.id === preferredId,
+          }));
+        })()
       : resolved.name
-        ? [{ id: null, name: resolved.name, email: resolved.info }]
+        ? [{ id: null, name: resolved.name, email: resolved.info, isPreferred: true }]
         : [];
 
   const linkedIds = new Set(linkedContacts.map((c) => c.id));
 
   const syncLegacyFromList = (list: typeof linkedContacts) => {
-    const first = list[0];
-    onUpdateField('contact', first ? first.name : '');
-    onUpdateField('contactInfo', first?.email || '');
+    const preferred =
+      list.find((c) => (c.role || '').toLowerCase() === 'primary') || list[0];
+    onUpdateField('contact', preferred ? preferred.name : '');
+    onUpdateField('contactInfo', preferred?.email || '');
   };
 
   const handlePickContact = async (c: PickedContact) => {
@@ -91,6 +110,20 @@ export function DealClientContactField({
     onUpdateField('contactInfo', '');
   };
 
+  const handleSetPreferred = async (contactId: string) => {
+    const target = linkedContacts.find((c) => c.id === contactId);
+    if (!target) return;
+    try {
+      await setPreferred.mutateAsync({ dealId: deal.id, contactId });
+      // Mirror into legacy fields so emails, drafts, reminders, lender
+      // submissions immediately draft against the newly chosen contact.
+      onUpdateField('contact', target.name);
+      onUpdateField('contactInfo', target.email || '');
+    } catch {
+      // toast handled by hook
+    }
+  };
+
   return (
     <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-start gap-2 min-w-0">
       <span className="text-muted-foreground text-sm break-words mt-1.5">Client Contacts</span>
@@ -105,9 +138,39 @@ export function DealClientContactField({
             <Tooltip key={chip.id ?? `legacy-${idx}`}>
               <TooltipTrigger asChild>
                 <Badge
-                  variant="secondary"
-                  className="h-7 pl-2 pr-1 gap-1 text-xs font-normal max-w-full"
+                  variant={chip.isPreferred ? 'default' : 'secondary'}
+                  className="h-7 pl-1.5 pr-1 gap-1 text-xs font-normal max-w-full"
                 >
+                  {chip.id && chips.length > 1 ? (
+                    <button
+                      type="button"
+                      aria-label={
+                        chip.isPreferred
+                          ? `${chip.name} is the preferred contact`
+                          : `Set ${chip.name} as preferred contact`
+                      }
+                      title={
+                        chip.isPreferred
+                          ? 'Preferred contact — used for emails, reminders & lender submissions'
+                          : 'Set as preferred contact for this deal'
+                      }
+                      className="inline-flex h-4 w-4 items-center justify-center rounded hover:bg-muted-foreground/20"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!chip.isPreferred && chip.id) handleSetPreferred(chip.id);
+                      }}
+                    >
+                      <Star
+                        className={
+                          chip.isPreferred
+                            ? 'h-3 w-3 fill-current'
+                            : 'h-3 w-3 opacity-60'
+                        }
+                      />
+                    </button>
+                  ) : chip.isPreferred ? (
+                    <Star className="h-3 w-3 fill-current" />
+                  ) : null}
                   <span className="truncate max-w-[180px]" data-testid="deal-client-contact-value">
                     {chip.name}
                   </span>
@@ -125,12 +188,21 @@ export function DealClientContactField({
                   </button>
                 </Badge>
               </TooltipTrigger>
-              {chip.email && (
-                <TooltipContent side="top" className="max-w-[220px]">
-                  <p className="font-medium">{chip.name}</p>
+              <TooltipContent side="top" className="max-w-[240px]">
+                <p className="font-medium">{chip.name}</p>
+                {chip.email && (
                   <p className="text-xs text-muted-foreground">{chip.email}</p>
-                </TooltipContent>
-              )}
+                )}
+                {chip.isPreferred ? (
+                  <p className="text-[11px] mt-1">
+                    Preferred — emails, reminders & lender submissions use this contact.
+                  </p>
+                ) : chip.id && chips.length > 1 ? (
+                  <p className="text-[11px] mt-1">
+                    Click the star to make this the preferred contact for this deal.
+                  </p>
+                ) : null}
+              </TooltipContent>
             </Tooltip>
           ))}
         </TooltipProvider>

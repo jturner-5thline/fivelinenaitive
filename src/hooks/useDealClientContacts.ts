@@ -122,3 +122,36 @@ export function useRemoveDealClientContact() {
     onError: (err: any) => toast.error(err?.message || 'Failed to remove contact'),
   });
 }
+
+/**
+ * Mark one linked contact as the "primary" (preferred) contact for a deal.
+ * All other rows for the deal have their role cleared so there is exactly
+ * one preferred contact at a time. Downstream features (lender submissions,
+ * email drafts, automatic reminders) read the primary via
+ * `usePrimaryDealContact`, which prioritises role='primary'.
+ */
+export function useSetPreferredDealContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ dealId, contactId }: { dealId: string; contactId: string }) => {
+      // Clear primary from everyone else on this deal.
+      const { error: clearErr } = await supabase
+        .from('contact_deals')
+        .update({ role: null } as any)
+        .eq('deal_id', dealId)
+        .neq('contact_id', contactId);
+      if (clearErr) throw clearErr;
+      const { error: setErr } = await supabase
+        .from('contact_deals')
+        .update({ role: 'primary' } as any)
+        .eq('deal_id', dealId)
+        .eq('contact_id', contactId);
+      if (setErr) throw setErr;
+    },
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ['deal-client-contacts', vars.dealId] });
+      qc.invalidateQueries({ queryKey: ['primary-deal-contact', vars.dealId] });
+    },
+    onError: (err: any) => toast.error(err?.message || 'Failed to set preferred contact'),
+  });
+}
