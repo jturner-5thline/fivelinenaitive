@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin, DollarSign, Briefcase, FileText, Tag, Globe, Phone, Calendar } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin,
+  DollarSign, Briefcase, FileText, Tag, Globe, Calendar, Star, ChevronDown,
+  Layers, Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -11,7 +13,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
@@ -28,12 +29,6 @@ interface SideBySideMergeDialogProps {
 interface DuplicateGroup {
   normalizedName: string;
   lenders: MasterLender[];
-}
-
-interface FieldSelection {
-  field: string;
-  selectedLenderId: string | null;
-  customValue?: any;
 }
 
 function normalizeNameForComparison(name: string): string {
@@ -56,15 +51,6 @@ function formatDate(date: string | null | undefined): string {
   return new Date(date).toLocaleDateString();
 }
 
-// Fields that support multi-select (combining values from multiple lenders)
-const MULTI_SELECT_FIELDS = [
-  'contact_name',
-  'contact_title', 
-  'email',
-  'lender_one_pager_url',
-  'relationship_owners',
-];
-
 // Define all the fields we want to show
 interface MergeFieldDef {
   key: string;
@@ -72,37 +58,39 @@ interface MergeFieldDef {
   icon: React.ComponentType<{ className?: string }>;
   format: (v: any) => string;
   multiline?: boolean;
-  multiSelect?: boolean;
+  /** field can be unioned across sources (arrays or comma/pipe-delimited strings) */
+  combinable?: boolean;
+  section: 'identity' | 'contact' | 'deal';
 }
 
 const MERGE_FIELDS: MergeFieldDef[] = [
   { key: 'name', label: 'Funding Source Name', icon: Building2, format: (v: any) => v || '-' },
-  { key: 'lender_type', label: 'Funding Source Type', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'geo', label: 'Geography', icon: MapPin, format: (v: any) => v || '-' },
-  { key: 'min_deal', label: 'Min Deal Size', icon: DollarSign, format: formatCurrency },
-  { key: 'max_deal', label: 'Max Deal Size', icon: DollarSign, format: formatCurrency },
-  { key: 'min_revenue', label: 'Min Revenue', icon: DollarSign, format: formatCurrency },
-  { key: 'ebitda_min', label: 'Min EBITDA', icon: DollarSign, format: formatCurrency },
-  { key: 'loan_types', label: 'Loan Types', icon: FileText, format: formatArray },
-  { key: 'industries', label: 'Industries', icon: Briefcase, format: formatArray },
-  { key: 'industries_to_avoid', label: 'Industries to Avoid', icon: X, format: formatArray },
-  { key: 'sponsorship', label: 'Sponsorship', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'sub_debt', label: 'Sub Debt', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'cash_burn', label: 'Cash Burn', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'b2b_b2c', label: 'B2B/B2C', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'refinancing', label: 'Refinancing', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'company_requirements', label: 'Company Requirements', icon: FileText, format: (v: any) => v || '-', multiline: true },
-  { key: 'deal_structure_notes', label: 'Deal Structure Notes', icon: FileText, format: (v: any) => v || '-', multiline: true },
-  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'referral_lender', label: 'Referral Lender', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'nda', label: 'NDA', icon: FileText, format: (v: any) => v || '-' },
-  { key: 'onboarded_to_flex', label: 'Onboarded to Flex', icon: Check, format: (v: any) => v || '-' },
-  { key: 'gift_address', label: 'Gift Address', icon: MapPin, format: (v: any) => v || '-' },
-  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'created_at', label: 'Created', icon: Calendar, format: formatDate },
+  { key: 'name', label: 'Funding Source Name', icon: Building2, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'lender_type', label: 'Funding Source Type', icon: Tag, format: (v: any) => v || '-', combinable: true, section: 'identity' },
+  { key: 'referral_lender', label: 'Referral Lender', icon: Tag, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'nda', label: 'NDA', icon: FileText, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'onboarded_to_flex', label: 'Onboarded to Flex', icon: Check, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'gift_address', label: 'Gift Address', icon: MapPin, format: (v: any) => v || '-', section: 'contact' },
+  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'geo', label: 'Geography', icon: MapPin, format: (v: any) => v || '-', combinable: true, section: 'deal' },
+  { key: 'min_deal', label: 'Min Deal Size', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'max_deal', label: 'Max Deal Size', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'min_revenue', label: 'Min Revenue', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'ebitda_min', label: 'Min EBITDA', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'loan_types', label: 'Loan Types', icon: FileText, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'industries', label: 'Industries', icon: Briefcase, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'industries_to_avoid', label: 'Industries to Avoid', icon: X, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'sponsorship', label: 'Sponsorship', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'sub_debt', label: 'Sub Debt', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'cash_burn', label: 'Cash Burn', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'b2b_b2c', label: 'B2B/B2C', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'refinancing', label: 'Refinancing', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'company_requirements', label: 'Company Requirements', icon: FileText, format: (v: any) => v || '-', multiline: true, section: 'deal' },
+  { key: 'deal_structure_notes', label: 'Deal Structure Notes', icon: FileText, format: (v: any) => v || '-', multiline: true, section: 'deal' },
 ];
 
 interface FieldRowProps {
