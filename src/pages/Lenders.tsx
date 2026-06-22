@@ -1749,6 +1749,8 @@ export default function Lenders() {
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
                             duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
+                            duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
+                            onOpenSiblingDetail={openLenderSiblingDetailStable}
                             summary={getLenderSummary(lender.name)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
@@ -1803,6 +1805,8 @@ export default function Lenders() {
                           lender={lender}
                           activeDealCount={activeDealCounts[lender.name] || 0}
                           duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
+                          duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
+                          onOpenSiblingDetail={openLenderSiblingDetailStable}
                           tileDisplaySettings={tileDisplaySettings}
                           summary={getLenderSummary(lender.name)}
                           isQuickUploading={isQuickUploading}
