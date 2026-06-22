@@ -799,12 +799,34 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   };
 
   // 1) Load target deals.
+  // Scope: deals where the Deal Manager (deal_owner_user_id) is an
+  // activated Admin Agent user. For the 5th Line workspace, additionally
+  // restrict to the default ("Active Pipeline") pipeline.
+  const activatedArr = Array.from(opts.activatedUserIds ?? new Set<string>());
+  if (activatedArr.length === 0) {
+    result.errors.push("no activated users — nothing in scope");
+    return result;
+  }
+
+  let activePipelineId: string | null = null;
+  if (companyId === FIFTH_LINE_COMPANY_ID) {
+    const { data: pipeRow } = await supabase
+      .from("deal_pipelines")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("is_default", true)
+      .maybeSingle();
+    activePipelineId = (pipeRow as any)?.id ?? null;
+  }
+
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id")
+    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id")
     .eq("company_id", companyId)
+    .in("deal_owner_user_id", activatedArr)
     .order("updated_at", { ascending: false })
     .limit(maxDeals);
+  if (activePipelineId) dealQ = dealQ.eq("pipeline_id", activePipelineId);
   if (dealIds && dealIds.length > 0) dealQ = dealQ.in("id", dealIds);
   const { data: deals, error: dealErr } = await dealQ;
   if (dealErr) {
@@ -821,6 +843,27 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (name.startsWith("test ")) return false;
     return true;
   });
+
+  // Pre-fetch a per-manager style fingerprint from recent approval edits.
+  const fingerprintByUser = new Map<string, string>();
+  for (const uid of activatedArr) {
+    const { data: deltas } = await supabase
+      .from("admin_agent_tone_deltas")
+      .select("action_type, original_draft, edited_draft, diff_summary, created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(15);
+    if (deltas && deltas.length > 0) {
+      fingerprintByUser.set(
+        uid,
+        deltas.map((d: any, i: number) => {
+          const orig = JSON.stringify(d.original_draft ?? {}).slice(0, 400);
+          const edit = JSON.stringify(d.edited_draft ?? {}).slice(0, 400);
+          return `#${i + 1} [${d.action_type}]\n  proposed: ${orig}\n  user-edited: ${edit}${d.diff_summary ? `\n  delta: ${d.diff_summary}` : ""}`;
+        }).join("\n"),
+      );
+    }
+  }
 
   // 2) Existing dedupe keys — anything currently pending/approved in the queue
   //    for this company we shouldn't re-propose.
@@ -858,7 +901,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
       if (sigCount === 0) continue;
 
-      const raw = await callModelForCandidates(bundle);
+      const fingerprint = bundle.current.deal_owner_user_id
+        ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
+        : null;
+      const raw = await callModelForCandidates(bundle, fingerprint);
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
