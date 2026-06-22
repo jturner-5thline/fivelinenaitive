@@ -309,9 +309,9 @@ function extractDomain(url: string | null | undefined): string | null {
     return new URL(u).hostname.replace(/^www\./, '').toLowerCase();
   } catch { return null; }
 }
-function completenessScore(l: MasterLender): number {
+function completenessScore(l: MasterLender, fields: FieldDef[] = BASE_FUNDING_SOURCE_FIELDS): number {
   let s = 0;
-  for (const f of getFundingSourceFields([l])) if (!isEmpty(getFieldValue(l, f.key))) s++;
+  for (const f of fields) if (!isEmpty(getFieldValue(l, f.key))) s++;
   return s;
 }
 function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
@@ -336,7 +336,7 @@ interface Conflict {
   severity: 'high' | 'med';
   detail: string;
 }
-function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders)): Conflict[] {
+function detectConflicts(lenders: MasterLender[], fields: FieldDef[] = BASE_FUNDING_SOURCE_FIELDS): Conflict[] {
   if (lenders.length < 2) return [];
   const out: Conflict[] = [];
   for (const f of fields) {
