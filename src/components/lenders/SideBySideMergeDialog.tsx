@@ -1,9 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin, DollarSign, Briefcase, FileText, Tag, Globe, Phone, Calendar } from 'lucide-react';
+import { useState, useMemo, useCallback } from 'react';
+import {
+  Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin,
+  DollarSign, Briefcase, FileText, Tag, Globe, Star, ChevronDown,
+  Layers, Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -11,17 +13,16 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
+import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
 
 interface SideBySideMergeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lenders: MasterLender[];
   onMergeLenders: (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => Promise<void>;
-  /** Optional: manually selected lender IDs to merge (bypasses duplicate detection) */
   selectedLenderIds?: string[];
 }
 
@@ -30,297 +31,549 @@ interface DuplicateGroup {
   lenders: MasterLender[];
 }
 
-interface FieldSelection {
-  field: string;
-  selectedLenderId: string | null;
-  customValue?: any;
-}
-
 function normalizeNameForComparison(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .trim();
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 }
 
-import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
 const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v, '-');
+const formatArray = (arr: string[] | null | undefined) => (!arr || arr.length === 0 ? '-' : arr.join(', '));
 
-function formatArray(arr: string[] | null | undefined): string {
-  if (!arr || arr.length === 0) return '-';
-  return arr.join(', ');
-}
+type SectionKey = 'identity' | 'contact' | 'deal';
 
-function formatDate(date: string | null | undefined): string {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString();
-}
-
-// Fields that support multi-select (combining values from multiple lenders)
-const MULTI_SELECT_FIELDS = [
-  'contact_name',
-  'contact_title', 
-  'email',
-  'lender_one_pager_url',
-  'relationship_owners',
-];
-
-// Define all the fields we want to show
 interface MergeFieldDef {
   key: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   format: (v: any) => string;
   multiline?: boolean;
-  multiSelect?: boolean;
+  combinable?: boolean;
+  section: SectionKey;
 }
 
 const MERGE_FIELDS: MergeFieldDef[] = [
-  { key: 'name', label: 'Funding Source Name', icon: Building2, format: (v: any) => v || '-' },
-  { key: 'lender_type', label: 'Funding Source Type', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'geo', label: 'Geography', icon: MapPin, format: (v: any) => v || '-' },
-  { key: 'min_deal', label: 'Min Deal Size', icon: DollarSign, format: formatCurrency },
-  { key: 'max_deal', label: 'Max Deal Size', icon: DollarSign, format: formatCurrency },
-  { key: 'min_revenue', label: 'Min Revenue', icon: DollarSign, format: formatCurrency },
-  { key: 'ebitda_min', label: 'Min EBITDA', icon: DollarSign, format: formatCurrency },
-  { key: 'loan_types', label: 'Loan Types', icon: FileText, format: formatArray },
-  { key: 'industries', label: 'Industries', icon: Briefcase, format: formatArray },
-  { key: 'industries_to_avoid', label: 'Industries to Avoid', icon: X, format: formatArray },
-  { key: 'sponsorship', label: 'Sponsorship', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'sub_debt', label: 'Sub Debt', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'cash_burn', label: 'Cash Burn', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'b2b_b2c', label: 'B2B/B2C', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'refinancing', label: 'Refinancing', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'company_requirements', label: 'Company Requirements', icon: FileText, format: (v: any) => v || '-', multiline: true },
-  { key: 'deal_structure_notes', label: 'Deal Structure Notes', icon: FileText, format: (v: any) => v || '-', multiline: true },
-  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'referral_lender', label: 'Referral Lender', icon: Tag, format: (v: any) => v || '-' },
-  { key: 'nda', label: 'NDA', icon: FileText, format: (v: any) => v || '-' },
-  { key: 'onboarded_to_flex', label: 'Onboarded to Flex', icon: Check, format: (v: any) => v || '-' },
-  { key: 'gift_address', label: 'Gift Address', icon: MapPin, format: (v: any) => v || '-' },
-  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-', multiSelect: true },
-  { key: 'created_at', label: 'Created', icon: Calendar, format: formatDate },
+  { key: 'name', label: 'Funding Source Name', icon: Building2, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'lender_type', label: 'Funding Source Type', icon: Tag, format: (v: any) => v || '-', combinable: true, section: 'identity' },
+  { key: 'referral_lender', label: 'Referral Lender', icon: Tag, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'nda', label: 'NDA', icon: FileText, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'onboarded_to_flex', label: 'Onboarded to Flex', icon: Check, format: (v: any) => v || '-', section: 'identity' },
+  { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'relationship_owners', label: 'Relationship Owners', icon: User, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'gift_address', label: 'Gift Address', icon: MapPin, format: (v: any) => v || '-', section: 'contact' },
+  { key: 'lender_one_pager_url', label: 'One Pager URL', icon: Globe, format: (v: any) => v || '-', combinable: true, section: 'contact' },
+  { key: 'geo', label: 'Geography', icon: MapPin, format: (v: any) => v || '-', combinable: true, section: 'deal' },
+  { key: 'min_deal', label: 'Min Deal Size', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'max_deal', label: 'Max Deal Size', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'min_revenue', label: 'Min Revenue', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'ebitda_min', label: 'Min EBITDA', icon: DollarSign, format: formatCurrency, section: 'deal' },
+  { key: 'loan_types', label: 'Loan Types', icon: FileText, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'industries', label: 'Industries', icon: Briefcase, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'industries_to_avoid', label: 'Industries to Avoid', icon: X, format: formatArray, combinable: true, section: 'deal' },
+  { key: 'sponsorship', label: 'Sponsorship', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'sub_debt', label: 'Sub Debt', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'cash_burn', label: 'Cash Burn', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'b2b_b2c', label: 'B2B/B2C', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'refinancing', label: 'Refinancing', icon: Tag, format: (v: any) => v || '-', section: 'deal' },
+  { key: 'company_requirements', label: 'Company Requirements', icon: FileText, format: (v: any) => v || '-', multiline: true, section: 'deal' },
+  { key: 'deal_structure_notes', label: 'Deal Structure Notes', icon: FileText, format: (v: any) => v || '-', multiline: true, section: 'deal' },
 ];
 
-interface FieldRowProps {
-  fieldDef: MergeFieldDef;
-  lenders: MasterLender[];
-  selectedLenderIds: string[];
-  onSelect: (lenderId: string) => void;
-  onToggle: (lenderId: string) => void;
+const SECTION_LABELS: Record<SectionKey, string> = {
+  identity: 'Identity',
+  contact: 'Contact',
+  deal: 'Deal parameters',
+};
+
+// ── helpers ─────────────────────────────────────────────────────────────
+
+function hasValue(v: any): boolean {
+  if (v == null || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
 }
 
-function FieldRow({ fieldDef, lenders, selectedLenderIds, onSelect, onToggle }: FieldRowProps) {
-  const Icon = fieldDef.icon;
-  const isMultiSelect = fieldDef.multiSelect;
-  const values = lenders.map(l => ({
-    id: l.id,
-    value: (l as any)[fieldDef.key],
-    formatted: fieldDef.format((l as any)[fieldDef.key]),
-  }));
+function valueKey(v: any): string {
+  if (v == null || v === '') return '';
+  if (Array.isArray(v)) return JSON.stringify([...v].map(x => String(x).trim().toLowerCase()).sort());
+  return String(v).trim().toLowerCase();
+}
 
-  // Check if all values are the same (or all empty)
-  const uniqueValues = new Set(values.map(v => JSON.stringify(v.value)));
-  const allSame = uniqueValues.size === 1;
-  const hasAnyValue = values.some(v => v.value != null && v.value !== '' && (Array.isArray(v.value) ? v.value.length > 0 : true));
+/** Combine values across sources: arrays → union, strings → " | "-joined unique tokens. */
+function combineValues(values: any[]): any {
+  const nonEmpty = values.filter(hasValue);
+  if (nonEmpty.length === 0) return null;
+  if (nonEmpty.every(v => Array.isArray(v))) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const arr of nonEmpty as any[][]) {
+      for (const item of arr) {
+        const k = String(item).trim().toLowerCase();
+        if (!seen.has(k)) { seen.add(k); out.push(item); }
+      }
+    }
+    return out;
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of nonEmpty) {
+    const tokens = String(v).split(/\s*[|,]\s*/).filter(Boolean);
+    for (const t of tokens) {
+      const k = t.trim().toLowerCase();
+      if (!seen.has(k)) { seen.add(k); out.push(t); }
+    }
+  }
+  return out.join(' | ');
+}
 
-  if (!hasAnyValue) return null;
+interface DistinctOption {
+  /** stable id derived from valueKey */
+  id: string;
+  value: any;
+  formatted: string;
+  sourceIndices: number[]; // 0 = primary
+}
 
-  // Count how many are selected for multi-select fields
-  const selectedCount = isMultiSelect ? selectedLenderIds.length : 0;
+function buildDistinctOptions(field: MergeFieldDef, lenders: MasterLender[]): DistinctOption[] {
+  const byKey = new Map<string, DistinctOption>();
+  lenders.forEach((l, idx) => {
+    const v = (l as any)[field.key];
+    if (!hasValue(v)) return;
+    const k = valueKey(v);
+    const existing = byKey.get(k);
+    if (existing) { existing.sourceIndices.push(idx); }
+    else byKey.set(k, { id: k, value: v, formatted: field.format(v), sourceIndices: [idx] });
+  });
+  // Sort: primary first, then by source count desc
+  return [...byKey.values()].sort((a, b) => {
+    const aHasP = a.sourceIndices.includes(0) ? 1 : 0;
+    const bHasP = b.sourceIndices.includes(0) ? 1 : 0;
+    if (aHasP !== bHasP) return bHasP - aHasP;
+    return b.sourceIndices.length - a.sourceIndices.length;
+  });
+}
 
+// ── source chip ─────────────────────────────────────────────────────────
+
+function SourceChip({ idx, isPrimary }: { idx: number; isPrimary: boolean }) {
   return (
-    <div className="border-b border-border/50 last:border-b-0">
-      <div className="flex items-center gap-1.5 py-1.5 px-2 bg-muted/30">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="text-xs font-medium truncate">{fieldDef.label}</span>
-        {allSame && <Badge variant="secondary" className="text-[10px] ml-auto px-1.5 py-0">Same</Badge>}
-        {isMultiSelect && !allSame && (
-          <Badge variant="outline" className="text-[10px] ml-auto gap-0.5 px-1.5 py-0">
-            <span className="text-primary">{selectedCount}</span> • Multi
-          </Badge>
-        )}
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] leading-none',
+        isPrimary
+          ? 'border-primary/40 bg-primary/10 text-primary'
+          : 'border-border bg-muted/60 text-muted-foreground'
+      )}
+      title={isPrimary ? 'Primary record' : `Source #${idx + 1}`}
+    >
+      {isPrimary && <Star className="h-2.5 w-2.5 fill-current" />}
+      {isPrimary ? 'Primary' : `#${idx + 1}`}
+    </span>
+  );
+}
+
+// ── selection model ─────────────────────────────────────────────────────
+
+type Selection =
+  | { mode: 'pick'; optionId: string }
+  | { mode: 'combine' };
+
+interface ResolvedField {
+  field: MergeFieldDef;
+  options: DistinctOption[];
+  selection: Selection;
+  resolvedValue: any;
+  resolvedFormatted: string;
+  isConflict: boolean; // >1 distinct option
+}
+
+function resolveSelection(
+  field: MergeFieldDef,
+  options: DistinctOption[],
+  selection: Selection,
+  lenders: MasterLender[],
+): { value: any; formatted: string } {
+  if (selection.mode === 'combine') {
+    const v = combineValues(lenders.map(l => (l as any)[field.key]));
+    return { value: v, formatted: field.format(v) };
+  }
+  const opt = options.find(o => o.id === selection.optionId) ?? options[0];
+  return opt ? { value: opt.value, formatted: opt.formatted } : { value: null, formatted: '-' };
+}
+
+// ── Option Card ─────────────────────────────────────────────────────────
+
+interface OptionCardProps {
+  formatted: string;
+  multiline?: boolean;
+  selected: boolean;
+  variant: 'pick' | 'combine';
+  sources?: { idx: number; isPrimary: boolean }[];
+  combineTag?: boolean;
+  onClick: () => void;
+}
+
+function OptionCard({ formatted, multiline, selected, variant, sources, combineTag, onClick }: OptionCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group relative w-full rounded-lg border bg-card/40 px-3 py-2 text-left transition-all',
+        'hover:-translate-y-px hover:border-primary/40 hover:bg-card/70 hover:shadow-sm',
+        'motion-reduce:transform-none motion-reduce:transition-none',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        !selected && 'border-border/60',
+        selected && variant === 'pick' && 'border-primary bg-primary/10 ring-1 ring-primary/40',
+        selected && variant === 'combine' && 'border-accent bg-accent/10 ring-1 ring-accent/50 [border-style:solid]',
+      )}
+      style={
+        selected && variant === 'combine'
+          ? undefined
+          : variant === 'combine' && !selected
+          ? { borderStyle: 'dashed' }
+          : undefined
+      }
+    >
+      <div className="flex items-start gap-2">
+        <div
+          className={cn(
+            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+            selected && variant === 'pick' && 'border-primary bg-primary text-primary-foreground',
+            selected && variant === 'combine' && 'border-accent bg-accent text-accent-foreground',
+            !selected && 'border-border',
+          )}
+        >
+          {selected && <Check className="h-3 w-3" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              'text-sm text-foreground',
+              multiline ? 'whitespace-pre-wrap break-words' : 'truncate',
+            )}
+          >
+            {formatted}
+          </p>
+          {(sources?.length || combineTag) && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              {combineTag && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-px text-[10px] leading-none text-accent">
+                  <Layers className="h-2.5 w-2.5" /> combined
+                </span>
+              )}
+              {sources?.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="grid" style={{ gridTemplateColumns: `repeat(${lenders.length}, 1fr)` }}>
-        {values.map((val, idx) => {
-          const isSelected = selectedLenderIds.includes(val.id);
-          const hasValue = val.value != null && val.value !== '' && (Array.isArray(val.value) ? val.value.length > 0 : true);
-          
-          return (
-            <button
-              key={val.id}
-              onClick={() => {
-                if (!hasValue) return;
-                if (isMultiSelect) {
-                  onToggle(val.id);
-                } else {
-                  onSelect(val.id);
-                }
-              }}
-              disabled={!hasValue}
-              className={cn(
-                "p-2 text-left transition-all relative border-r last:border-r-0 border-border/30",
-                hasValue && "hover:bg-primary/5 cursor-pointer",
-                !hasValue && "bg-muted/20 cursor-not-allowed",
-                isSelected && !isMultiSelect && "bg-primary/10 ring-2 ring-primary ring-inset",
-                isSelected && isMultiSelect && "bg-green-500/10 ring-2 ring-green-500 ring-inset",
-                fieldDef.multiline && "min-h-[80px]"
-              )}
-            >
-              {isSelected && (
-                <div className="absolute top-0.5 right-0.5">
-                  <Check className={cn("h-3 w-3", isMultiSelect ? "text-green-500" : "text-primary")} />
-                </div>
-              )}
-              <span className={cn(
-                "text-xs block truncate",
-                !hasValue && "text-muted-foreground italic",
-                fieldDef.multiline && "whitespace-pre-wrap line-clamp-2"
-              )}>
-                {val.formatted}
-              </span>
-            </button>
-          );
-        })}
+    </button>
+  );
+}
+
+// ── Resolver Row ────────────────────────────────────────────────────────
+
+interface ResolverRowProps {
+  field: MergeFieldDef;
+  options: DistinctOption[];
+  selection: Selection;
+  combinable: boolean;
+  onPick: (optionId: string) => void;
+  onCombine: () => void;
+}
+
+function ResolverRow({ field, options, selection, combinable, onPick, onCombine }: ResolverRowProps) {
+  const Icon = field.icon;
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/30 p-3">
+      <div className="mb-2 flex items-center gap-2">
+        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{field.label}</span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{options.length} options</span>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map(opt => (
+          <OptionCard
+            key={opt.id}
+            formatted={opt.formatted}
+            multiline={field.multiline}
+            selected={selection.mode === 'pick' && selection.optionId === opt.id}
+            variant="pick"
+            sources={opt.sourceIndices.map(i => ({ idx: i, isPrimary: i === 0 }))}
+            onClick={() => onPick(opt.id)}
+          />
+        ))}
+        {combinable && options.length > 1 && (
+          <OptionCard
+            formatted={field.format(combineValues(options.flatMap(o => [o.value])))}
+            multiline={field.multiline}
+            selected={selection.mode === 'combine'}
+            variant="combine"
+            combineTag
+            onClick={onCombine}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function MergeView({ 
-  group, 
-  onMerge, 
+// ── Merged Preview ──────────────────────────────────────────────────────
+
+function MergedPreview({
+  primary,
+  resolved,
+}: {
+  primary: MasterLender;
+  resolved: ResolvedField[];
+}) {
+  const nameField = resolved.find(r => r.field.key === 'name');
+  const typeField = resolved.find(r => r.field.key === 'lender_type');
+  const rest = resolved.filter(r => r.field.key !== 'name' && r.field.key !== 'lender_type' && hasValue(r.resolvedValue));
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-primary/30 bg-gradient-to-b from-primary/10 to-card/40 p-4 shadow-sm">
+        <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-primary">
+          <Sparkles className="h-3 w-3" /> Merged record · live preview
+        </div>
+        <div className="mb-3">
+          <p className="truncate text-base font-semibold text-foreground">
+            {nameField?.resolvedFormatted || primary.name}
+          </p>
+          {typeField && hasValue(typeField.resolvedValue) && (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{typeField.resolvedFormatted}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          {rest.map(r => {
+            const Icon = r.field.icon;
+            const tintClass =
+              r.selection.mode === 'combine'
+                ? 'text-accent'
+                : r.isConflict
+                ? 'text-primary'
+                : 'text-success';
+            return (
+              <div key={r.field.key} className="flex items-start gap-2 border-b border-border/30 py-1 last:border-b-0">
+                <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', tintClass)} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.field.label}</p>
+                  <p
+                    className={cn(
+                      'text-xs text-foreground',
+                      r.field.multiline ? 'whitespace-pre-wrap break-words' : 'truncate',
+                    )}
+                  >
+                    {r.resolvedFormatted}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+        The other records are archived and their links repoint to this one. Reversible for 30 days.
+      </p>
+    </div>
+  );
+}
+
+// ── MergeView (left + right) ────────────────────────────────────────────
+
+function MergeView({
+  group,
+  onMerge,
   onSkip,
-  isProcessing 
-}: { 
-  group: DuplicateGroup; 
+  isProcessing,
+}: {
+  group: DuplicateGroup;
   onMerge: (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => void;
   onSkip: () => void;
   isProcessing: boolean;
 }) {
-  // Initialize selections - for each field, select the first lender that has a value
-  // For multi-select fields, we store an array of lender IDs
-  const [selections, setSelections] = useState<Record<string, string[]>>(() => {
-    const initial: Record<string, string[]> = {};
+  // Per-field distinct options
+  const fieldOptions = useMemo(() => {
+    const map = new Map<string, DistinctOption[]>();
+    MERGE_FIELDS.forEach(f => map.set(f.key, buildDistinctOptions(f, group.lenders)));
+    return map;
+  }, [group]);
+
+  // Initial selections: pick the primary's option if it has one; else first option
+  const [selections, setSelections] = useState<Record<string, Selection>>(() => {
+    const initial: Record<string, Selection> = {};
     MERGE_FIELDS.forEach(field => {
-      const lenderWithValue = group.lenders.find(l => {
-        const val = (l as any)[field.key];
-        return val != null && val !== '' && (Array.isArray(val) ? val.length > 0 : true);
-      });
-      if (lenderWithValue) {
-        initial[field.key] = [lenderWithValue.id];
-      } else {
-        initial[field.key] = [];
-      }
+      const opts = buildDistinctOptions(field, group.lenders);
+      if (opts.length === 0) { initial[field.key] = { mode: 'pick', optionId: '' }; return; }
+      const primaryOpt = opts.find(o => o.sourceIndices.includes(0)) ?? opts[0];
+      initial[field.key] = { mode: 'pick', optionId: primaryOpt.id };
     });
     return initial;
   });
 
-  const handleFieldSelect = (fieldKey: string, lenderId: string) => {
-    // Single select - replace the selection
-    setSelections(prev => ({ ...prev, [fieldKey]: [lenderId] }));
-  };
+  const [autoMatchOpen, setAutoMatchOpen] = useState(false);
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
 
-  const handleFieldToggle = (fieldKey: string, lenderId: string) => {
-    // Multi-select - toggle the selection
-    setSelections(prev => {
-      const current = prev[fieldKey] || [];
-      if (current.includes(lenderId)) {
-        // Remove from selection
-        return { ...prev, [fieldKey]: current.filter(id => id !== lenderId) };
-      } else {
-        // Add to selection
-        return { ...prev, [fieldKey]: [...current, lenderId] };
-      }
+  const resolved: ResolvedField[] = useMemo(() => {
+    return MERGE_FIELDS.map(field => {
+      const options = fieldOptions.get(field.key) || [];
+      const selection = selections[field.key] ?? { mode: 'pick', optionId: options[0]?.id ?? '' };
+      const { value, formatted } = resolveSelection(field, options, selection, group.lenders);
+      return {
+        field,
+        options,
+        selection,
+        resolvedValue: value,
+        resolvedFormatted: formatted,
+        isConflict: options.length > 1,
+      };
     });
-  };
+  }, [fieldOptions, selections, group.lenders]);
+
+  const conflicts = resolved.filter(r => r.isConflict);
+  const matched = resolved.filter(r => !r.isConflict && hasValue(r.resolvedValue));
+
+  const handlePick = useCallback((fieldKey: string, optionId: string) => {
+    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'pick', optionId } }));
+    setReviewed(prev => new Set(prev).add(fieldKey));
+  }, []);
+
+  const handleCombine = useCallback((fieldKey: string) => {
+    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'combine' } }));
+    setReviewed(prev => new Set(prev).add(fieldKey));
+  }, []);
 
   const handleConfirmMerge = () => {
-    // Use the first lender as the "keep" record, merge others into it
     const keepId = group.lenders[0].id;
     const mergeIds = group.lenders.slice(1).map(l => l.id);
-
-    // Build merged data from selections
     const mergedData: Partial<MasterLenderInsert> = {};
-    
-    Object.entries(selections).forEach(([fieldKey, lenderIds]) => {
-      if (fieldKey === 'created_at') return; // Skip read-only fields
-      if (lenderIds.length === 0) return;
-
-      const fieldDef = MERGE_FIELDS.find(f => f.key === fieldKey);
-      const isMultiSelect = fieldDef?.multiSelect;
-
-      if (isMultiSelect && lenderIds.length > 1) {
-        // Combine values from multiple lenders with delimiter
-        const values = lenderIds
-          .map(id => {
-            const lender = group.lenders.find(l => l.id === id);
-            return lender ? (lender as any)[fieldKey] : null;
-          })
-          .filter(v => v != null && v !== '');
-        
-        // Join with " | " delimiter for multiple values
-        (mergedData as any)[fieldKey] = values.join(' | ');
-      } else {
-        // Single selection - use the value from the selected lender
-        const lender = group.lenders.find(l => l.id === lenderIds[0]);
-        if (lender) {
-          (mergedData as any)[fieldKey] = (lender as any)[fieldKey];
-        }
-      }
+    resolved.forEach(r => {
+      if (r.field.key === 'created_at') return;
+      (mergedData as any)[r.field.key] = r.resolvedValue;
     });
-
     onMerge(keepId, mergeIds, mergedData);
   };
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Scrollable container */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {/* Header with lender columns */}
-        <div className="border-b bg-muted/50 sticky top-0 z-10">
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${group.lenders.length}, 1fr)` }}>
-            {group.lenders.map((lender, idx) => (
-              <div key={lender.id} className="p-2 border-r last:border-r-0 border-border/30">
-                <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Building2 className="h-3 w-3 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{lender.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {idx === 0 ? 'Primary' : `#${idx + 1}`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+  // Group conflicts by section
+  const conflictsBySection: Record<SectionKey, ResolvedField[]> = {
+    identity: conflicts.filter(c => c.field.section === 'identity'),
+    contact: conflicts.filter(c => c.field.section === 'contact'),
+    deal: conflicts.filter(c => c.field.section === 'deal'),
+  };
 
-        <div className="divide-y divide-border/50">
-          {MERGE_FIELDS.map(field => (
-            <FieldRow
-              key={field.key}
-              fieldDef={field}
-              lenders={group.lenders}
-              selectedLenderIds={selections[field.key] || []}
-              onSelect={(lenderId) => handleFieldSelect(field.key, lenderId)}
-              onToggle={(lenderId) => handleFieldToggle(field.key, lenderId)}
-            />
+  const totalConflicts = conflicts.length;
+  const reviewedCount = conflicts.filter(c => reviewed.has(c.field.key)).length;
+  const progress = totalConflicts === 0 ? 1 : reviewedCount / totalConflicts;
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Source row */}
+      <div className="border-b border-border/60 bg-muted/20 px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Sources</span>
+          {group.lenders.map((l, idx) => (
+            <span
+              key={l.id}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]',
+                idx === 0
+                  ? 'border-primary/40 bg-primary/10 text-primary'
+                  : 'border-border bg-card/40 text-muted-foreground',
+              )}
+            >
+              {idx === 0 && <Star className="h-2.5 w-2.5 fill-current" />}
+              <span className="max-w-[160px] truncate">{l.name}</span>
+              <span className="opacity-60">· {idx === 0 ? 'Primary' : `#${idx + 1}`}</span>
+            </span>
           ))}
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="border-t p-3 flex justify-between items-center bg-background gap-4">
-        <p className="text-xs text-muted-foreground hidden sm:block">
-          Click to select • Green fields combine values
-        </p>
-        <div className="flex gap-2 ml-auto">
+      {/* Two-pane body */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* LEFT: resolver */}
+        <div className="min-w-0 flex-1 overflow-y-auto p-4">
+          {totalConflicts === 0 && (
+            <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-center text-sm text-foreground">
+              All fields already match across sources. Review the merged record on the right and confirm.
+            </div>
+          )}
+
+          {(['identity', 'contact', 'deal'] as SectionKey[]).map(section => {
+            const items = conflictsBySection[section];
+            if (items.length === 0) return null;
+            return (
+              <section key={section} className="mb-5 last:mb-0">
+                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {SECTION_LABELS[section]}
+                  <span className="ml-2 text-muted-foreground/70">· {items.length} need a decision</span>
+                </h3>
+                <div className="space-y-2">
+                  {items.map(r => (
+                    <ResolverRow
+                      key={r.field.key}
+                      field={r.field}
+                      options={r.options}
+                      selection={r.selection}
+                      combinable={!!r.field.combinable}
+                      onPick={(id) => handlePick(r.field.key, id)}
+                      onCombine={() => handleCombine(r.field.key)}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+
+          {matched.length > 0 && (
+            <div className="mt-4 rounded-xl border border-border/60 bg-card/20">
+              <button
+                type="button"
+                onClick={() => setAutoMatchOpen(v => !v)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-card/40 rounded-xl"
+                aria-expanded={autoMatchOpen}
+              >
+                <Check className="h-3.5 w-3.5 text-success" />
+                <span>{matched.length} fields already match</span>
+                <ChevronDown className={cn('ml-auto h-3.5 w-3.5 transition-transform motion-reduce:transition-none', autoMatchOpen && 'rotate-180')} />
+              </button>
+              {autoMatchOpen && (
+                <div className="border-t border-border/60 p-3">
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    {matched.map(r => {
+                      const Icon = r.field.icon;
+                      return (
+                        <div key={r.field.key} className="flex items-start gap-2 rounded-md border border-success/20 bg-success/5 px-2 py-1.5">
+                          <Icon className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{r.field.label}</p>
+                            <p className={cn('text-xs text-foreground', r.field.multiline ? 'line-clamp-2' : 'truncate')}>{r.resolvedFormatted}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: sticky preview */}
+        <aside className="border-t border-border/60 bg-muted/10 p-4 lg:w-[360px] lg:shrink-0 lg:border-l lg:border-t-0">
+          <div className="lg:sticky lg:top-0">
+            <MergedPreview primary={group.lenders[0]} resolved={resolved} />
+          </div>
+        </aside>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center gap-3 border-t border-border/60 bg-background/60 px-4 py-3">
+        <ProgressRing value={progress} />
+        <span className="text-xs text-muted-foreground">
+          {reviewedCount} of {totalConflicts} conflicts reviewed
+        </span>
+        <div className="ml-auto flex gap-2">
           <Button variant="outline" size="sm" onClick={onSkip} disabled={isProcessing}>
             Skip
           </Button>
@@ -334,6 +587,31 @@ function MergeView({
   );
 }
 
+function ProgressRing({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(1, value));
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - pct);
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" className="shrink-0" aria-hidden="true">
+      <circle cx="12" cy="12" r={r} className="fill-none stroke-border" strokeWidth="2.5" />
+      <circle
+        cx="12"
+        cy="12"
+        r={r}
+        className="fill-none stroke-primary transition-[stroke-dashoffset] duration-300 motion-reduce:transition-none"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform="rotate(-90 12 12)"
+      />
+    </svg>
+  );
+}
+
+// ── Dialog Shell ────────────────────────────────────────────────────────
+
 export function SideBySideMergeDialog({
   open,
   onOpenChange,
@@ -344,181 +622,140 @@ export function SideBySideMergeDialog({
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentGroupIndex, setCurrentGroupIndex] = useState(0);
 
-  // Determine if we're in manual selection mode
   const isManualSelectionMode = selectedLenderIds && selectedLenderIds.length >= 2;
 
-  // Find duplicate groups OR use manually selected lenders
   const duplicateGroups = useMemo(() => {
-    // If manual selection mode, create a single group from selected lenders
     if (isManualSelectionMode) {
-      const selectedLenders = lenders.filter(l => selectedLenderIds.includes(l.id));
+      const selectedLenders = lenders.filter(l => selectedLenderIds!.includes(l.id));
       if (selectedLenders.length >= 2) {
         return [{
           normalizedName: 'manual-selection',
-          lenders: selectedLenders.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          ),
+          lenders: selectedLenders.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
         }];
       }
       return [];
     }
-
-    // Otherwise, auto-detect duplicates by name
     const nameMap = new Map<string, MasterLender[]>();
-    
     lenders.forEach(lender => {
       const normalized = normalizeNameForComparison(lender.name);
       const existing = nameMap.get(normalized) || [];
       existing.push(lender);
       nameMap.set(normalized, existing);
     });
-
     const groups: DuplicateGroup[] = [];
     nameMap.forEach((lenderList, normalizedName) => {
       if (lenderList.length > 1) {
         groups.push({
           normalizedName,
-          lenders: lenderList.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          ),
+          lenders: lenderList.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()),
         });
       }
     });
-
     return groups.sort((a, b) => b.lenders.length - a.lenders.length);
   }, [lenders, selectedLenderIds, isManualSelectionMode]);
 
   const currentGroup = duplicateGroups[currentGroupIndex];
   const totalGroups = duplicateGroups.length;
 
+  // Compute conflict/match summary for header
+  const summary = useMemo(() => {
+    if (!currentGroup) return { match: 0, conflict: 0 };
+    let match = 0, conflict = 0;
+    MERGE_FIELDS.forEach(f => {
+      const opts = buildDistinctOptions(f, currentGroup.lenders);
+      if (opts.length > 1) conflict++;
+      else if (opts.length === 1) match++;
+    });
+    return { match, conflict };
+  }, [currentGroup]);
+
   const handleMerge = async (keepId: string, mergeIds: string[], mergedData: Partial<MasterLenderInsert>) => {
     setIsProcessing(true);
     try {
       await onMergeLenders(keepId, mergeIds, mergedData);
-      toast({ 
-        title: 'Lenders merged', 
-        description: `Successfully merged ${mergeIds.length + 1} entries into one.` 
-      });
-      // Move to next group or close if done
-      if (currentGroupIndex < totalGroups - 1) {
-        setCurrentGroupIndex(prev => prev + 1);
-      } else {
-        onOpenChange(false);
-        setCurrentGroupIndex(0);
-      }
-    } catch (error) {
-      toast({ 
-        title: 'Merge failed', 
-        description: 'An error occurred while merging lenders.',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+      toast({ title: 'Lenders merged', description: `Successfully merged ${mergeIds.length + 1} entries into one.` });
+      if (currentGroupIndex < totalGroups - 1) setCurrentGroupIndex(prev => prev + 1);
+      else { onOpenChange(false); setCurrentGroupIndex(0); }
+    } catch {
+      toast({ title: 'Merge failed', description: 'An error occurred while merging lenders.', variant: 'destructive' });
+    } finally { setIsProcessing(false); }
   };
 
   const handleSkip = () => {
-    if (currentGroupIndex < totalGroups - 1) {
-      setCurrentGroupIndex(prev => prev + 1);
-    } else {
-      onOpenChange(false);
-      setCurrentGroupIndex(0);
-    }
+    if (currentGroupIndex < totalGroups - 1) setCurrentGroupIndex(prev => prev + 1);
+    else { onOpenChange(false); setCurrentGroupIndex(0); }
   };
 
-  const handlePrevious = () => {
-    if (currentGroupIndex > 0) {
-      setCurrentGroupIndex(prev => prev - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentGroupIndex < totalGroups - 1) {
-      setCurrentGroupIndex(prev => prev + 1);
-    }
-  };
-
-  // Reset index when dialog opens
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
-      setCurrentGroupIndex(0);
-    }
+    if (newOpen) setCurrentGroupIndex(0);
     onOpenChange(newOpen);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full max-h-[90vh] h-[90vh] flex flex-col p-0">
-        <DialogHeader className="p-4 pb-0 shrink-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="flex items-center gap-2">
-                <Merge className="h-5 w-5" />
+      <DialogContent className="flex h-[90vh] max-h-[90vh] w-full max-w-[1100px] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 border-b border-border/60 bg-gradient-to-b from-primary/10 to-transparent px-5 py-3">
+          <div className="flex items-start gap-3">
+            <ConvergingRings />
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="flex items-center gap-2 text-base">
                 Side-by-Side Merge
               </DialogTitle>
-              <DialogDescription className="mt-1">
-                {isManualSelectionMode
-                  ? `Merging ${currentGroup?.lenders.length || 0} selected lenders`
-                  : totalGroups > 0 
-                    ? `Group ${currentGroupIndex + 1} of ${totalGroups} • "${currentGroup?.lenders[0]?.name}"`
-                    : 'No duplicate lenders found'}
+              <DialogDescription className="mt-0.5 text-xs">
+                {currentGroup
+                  ? <>Resolving {currentGroup.lenders.length} records into 1 · <span className="text-success">{summary.match} match</span> · <span className="text-primary">{summary.conflict} need a decision</span></>
+                  : 'No duplicate funding sources found'}
               </DialogDescription>
             </div>
             {totalGroups > 1 && (
-              <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={handlePrevious}
-                  disabled={currentGroupIndex === 0 || isProcessing}
-                >
-                  <ChevronLeft className="h-4 w-4" />
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentGroupIndex(i => Math.max(0, i - 1))} disabled={currentGroupIndex === 0 || isProcessing} aria-label="Previous group">
+                  <ChevronLeft className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-sm text-muted-foreground min-w-[60px] text-center">
+                <span className="min-w-[44px] text-center text-[11px] text-muted-foreground">
                   {currentGroupIndex + 1} / {totalGroups}
                 </span>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  onClick={handleNext}
-                  disabled={currentGroupIndex === totalGroups - 1 || isProcessing}
-                >
-                  <ChevronRight className="h-4 w-4" />
+                <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentGroupIndex(i => Math.min(totalGroups - 1, i + 1))} disabled={currentGroupIndex === totalGroups - 1 || isProcessing} aria-label="Next group">
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
             )}
           </div>
         </DialogHeader>
 
-        <Separator className="my-2" />
-
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {currentGroup ? (
             <MergeView
-              key={currentGroup.normalizedName}
+              key={currentGroup.normalizedName + ':' + currentGroupIndex}
               group={currentGroup}
               onMerge={handleMerge}
               onSkip={handleSkip}
               isProcessing={isProcessing}
             />
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-green-500" />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                  <Check className="h-8 w-8 text-success" />
                 </div>
                 <p className="text-lg font-medium">No duplicates found</p>
-                <p className="text-muted-foreground mt-1">
-                  Your lender database is clean with no duplicate entries.
-                </p>
-                <Button className="mt-4" onClick={() => onOpenChange(false)}>
-                  Close
-                </Button>
+                <p className="mt-1 text-muted-foreground">Your funding-source database is clean.</p>
+                <Button className="mt-4" onClick={() => onOpenChange(false)}>Close</Button>
               </div>
             </div>
           )}
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ConvergingRings() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0" aria-hidden="true">
+      <circle cx="13" cy="18" r="8" className="fill-none stroke-primary/70" strokeWidth="1.5" />
+      <circle cx="23" cy="18" r="8" className="fill-none stroke-accent/70" strokeWidth="1.5" strokeDasharray="2 2" />
+      <circle cx="18" cy="18" r="3" className="fill-primary" />
+    </svg>
   );
 }
