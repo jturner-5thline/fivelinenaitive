@@ -636,7 +636,20 @@ serve(async (req: Request): Promise<Response> => {
     if (!claimsError && claimsData?.claims?.sub) {
       userId = claimsData.claims.sub as string;
     } else {
-      const { data: userData, error: userError } = await authClient.auth.getUser(token);
+      // getUser() hits the Auth server over the network; retry a couple times
+      // on transient connection resets before declaring the token invalid.
+      let userData: any = null;
+      let userError: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await authClient.auth.getUser(token);
+        userData = res.data;
+        userError = res.error;
+        if (!userError && userData?.user?.id) break;
+        const msg = String(userError?.message || "");
+        const transient = /connection reset|connection error|SendRequest|fetch failed|network|ECONNRESET|timeout/i.test(msg);
+        if (!transient) break;
+        await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+      }
       if (userError || !userData?.user?.id) {
         console.error("[gmail-messages] auth error:", claimsError?.message || userError?.message || "no claims");
         return new Response(JSON.stringify({ error: "Invalid token" }), {
