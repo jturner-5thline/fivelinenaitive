@@ -696,6 +696,26 @@ export default function Lenders() {
     return [...base].sort((a, b) => rank(a) - rank(b));
   }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
 
+  // When the Duplicates filter is active, organize the visible lenders into
+  // clusters so the user can review and merge each group as a unit. Each
+  // group lists every member that survived the current filters (search,
+  // advanced filters, etc.) so empty groups are dropped.
+  const duplicateGroupsView = useMemo(() => {
+    if (!showDuplicatesOnly) return [] as Array<{ groupId: string; lenders: typeof sortedLenders }>;
+    const byGroup = new Map<string, typeof sortedLenders>();
+    for (const lender of sortedLenders) {
+      const gid = duplicateIndex.byLenderId[lender.id]?.groupId;
+      if (!gid) continue;
+      const arr = byGroup.get(gid) ?? [];
+      arr.push(lender);
+      byGroup.set(gid, arr);
+    }
+    return Array.from(byGroup.entries())
+      .filter(([, members]) => members.length >= 2)
+      .map(([groupId, lenders]) => ({ groupId, lenders }))
+      .sort((a, b) => a.groupId.localeCompare(b.groupId));
+  }, [showDuplicatesOnly, sortedLenders, duplicateIndex]);
+
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
     handleQuickUpload(lenderName, category);
