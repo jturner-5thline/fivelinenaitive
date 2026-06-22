@@ -649,6 +649,22 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         received_at: m.received_at,
       })),
     })),
+    referral_sources: (bundle.referral_sources ?? []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      company: r.company,
+      type: r.type,
+      last_outbound_at: r.last_outbound_at,
+      last_outbound_subject: r.last_outbound_subject,
+      business_days_since_last_outbound: r.business_days_since_last_outbound,
+      stage_changes_since_last_outbound: r.stage_changes_since_last_outbound,
+      new_lenders_since_last_outbound: r.new_lenders_since_last_outbound,
+      milestones_completed_since_last_outbound: r.milestones_completed_since_last_outbound,
+      status_notes_since_last_outbound: (r.status_notes_since_last_outbound ?? []).map((n: any) => ({
+        id: n.id, created_at: n.created_at, note: trim(n.note, 200),
+      })),
+    })),
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
