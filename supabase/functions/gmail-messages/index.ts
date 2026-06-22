@@ -626,17 +626,28 @@ serve(async (req: Request): Promise<Response> => {
     const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
 
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("[gmail-messages] auth error:", claimsError?.message || "no claims");
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Try fast local JWT verification via getClaims() first. If the project
+    // is still issuing legacy HS256 tokens (or signing-key rollout is mid-
+    // flight), getClaims will fail to verify — fall back to getUser() which
+    // validates against the Auth server and works for both token formats.
+    let userId: string | null = null;
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (!claimsError && claimsData?.claims?.sub) {
+      userId = claimsData.claims.sub as string;
+    } else {
+      const { data: userData, error: userError } = await authClient.auth.getUser(token);
+      if (userError || !userData?.user?.id) {
+        console.error("[gmail-messages] auth error:", claimsError?.message || userError?.message || "no claims");
+        return new Response(JSON.stringify({ error: "Invalid token" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = userData.user.id;
     }
 
-    const user = { id: claimsData.claims.sub as string };
+    const user = { id: userId };
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const requestData: MessageRequest = await req.json();
