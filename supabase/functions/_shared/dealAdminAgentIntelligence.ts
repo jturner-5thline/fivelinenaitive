@@ -1040,7 +1040,8 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.stage_history.length +
         bundle.calendar_items.length +
         bundle.claap_recordings.length +
-        bundle.email_threads.length;
+        bundle.email_threads.length +
+        bundle.referral_sources.length;
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
       if (sigCount === 0) continue;
 
