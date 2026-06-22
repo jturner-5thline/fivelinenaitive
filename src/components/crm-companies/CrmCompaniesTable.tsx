@@ -280,6 +280,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             {CRM_COMPANY_LIFECYCLES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {leadingFilterSlot}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
