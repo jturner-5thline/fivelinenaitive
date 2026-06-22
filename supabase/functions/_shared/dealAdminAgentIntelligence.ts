@@ -931,7 +931,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
 
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id")
+    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id, referral_source_id")
     .eq("company_id", companyId)
     .in("deal_owner_user_id", activatedArr)
     .order("updated_at", { ascending: false })
