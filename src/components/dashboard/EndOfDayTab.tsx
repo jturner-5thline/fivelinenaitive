@@ -478,10 +478,11 @@ export function EndOfDayTab({
     };
   }, [paneWidth]);
 
-  // Responsive: <1100px collapses to single column
+  // Responsive: only collapse to a single stacked column on true tablet/mobile widths.
+  // Laptop and desktop (>=768px) always show the two-column master/detail layout.
   const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1100px)');
+    const mq = window.matchMedia('(max-width: 767px)');
     const update = () => setIsNarrow(mq.matches);
     update();
     mq.addEventListener('change', update);
