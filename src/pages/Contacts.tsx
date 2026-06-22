@@ -32,7 +32,10 @@ export default function Contacts() {
   const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
-  const debouncedSearch = useDebouncedValue(search, 150);
+  // Longer debounce for the server fetch — the table filters the
+  // currently-loaded page client-side as the user types, so typing
+  // feels instant and we only hit the network after they pause.
+  const debouncedSearch = useDebouncedValue(search, 400);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
@@ -201,7 +204,9 @@ export default function Contacts() {
             </div>
           ) : (
             <>
-              <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+              {/* Never block pointer events during background fetches —
+                  doing so freezes the search input mid-keystroke. */}
+              <div className={isFetching ? 'opacity-70 transition-opacity' : ''}>
                 <ContactsTable
                   contacts={contacts}
                   search={search}
