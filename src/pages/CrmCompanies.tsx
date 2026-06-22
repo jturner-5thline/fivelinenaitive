@@ -161,26 +161,6 @@ export default function CrmCompanies() {
             onMatchModeChange={setMatchMode}
           />
 
-          <div className="relative max-w-sm">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search companies by name, domain, industry..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              className="pl-8 pr-8 h-9"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => { setSearch(''); setPage(0); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted"
-                aria-label="Clear search"
-              >
-                <X className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            )}
-          </div>
-
           {isLoading ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -209,7 +189,30 @@ export default function CrmCompanies() {
           ) : (
             <>
               <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
-                <CrmCompaniesTable companies={companies} />
+                <CrmCompaniesTable
+                  companies={companies}
+                  leadingFilterSlot={
+                    <div className="relative w-[260px]">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search companies..."
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        className="pl-8 pr-8 h-9"
+                      />
+                      {search && (
+                        <button
+                          type="button"
+                          onClick={() => { setSearch(''); setPage(0); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted"
+                          aria-label="Clear search"
+                        >
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                      )}
+                    </div>
+                  }
+                />
               </div>
               <TablePagination
                 page={page}

@@ -25,6 +25,7 @@ import { SortableHeader } from '@/components/ui/sortable-header';
 interface CrmCompaniesTableProps {
   companies: CrmCompany[];
   onBulkAction?: (action: string, ids: string[]) => void;
+  leadingFilterSlot?: React.ReactNode;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -43,7 +44,7 @@ const statusColors: Record<string, string> = {
   churned: 'bg-red-500/10 text-red-500',
 };
 
-export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTableProps) {
+export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }: CrmCompaniesTableProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
@@ -279,6 +280,7 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
             {CRM_COMPANY_LIFECYCLES.map(l => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {leadingFilterSlot}
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[130px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
