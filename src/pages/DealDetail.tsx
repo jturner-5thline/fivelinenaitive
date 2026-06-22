@@ -5450,7 +5450,7 @@ export default function DealDetail() {
 
       {/* Lender Detail Dialog */}
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60">
             <DialogTitle className="flex items-center gap-2 text-lg">
               {(() => {
@@ -5508,24 +5508,37 @@ export default function DealDetail() {
               <Tabs
                 value={lenderDialogTab}
                 onValueChange={(v) => setLenderDialogTab(v as any)}
-                className="w-full flex flex-col flex-1 min-h-0"
+                className="w-full flex flex-row flex-1 min-h-0"
               >
-                <div className="px-6 pt-3 shrink-0">
-                  <TabsList className="grid w-full grid-cols-3 h-9">
-                    <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
-                    <TabsTrigger value="workflow" className="text-xs gap-1.5">
+                <div className="shrink-0 w-40 border-r border-border/60 bg-muted/30 px-2 py-4">
+                  <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-1">
+                    <TabsTrigger
+                      value="overview"
+                      className="w-full justify-start text-xs h-9 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
+                      Overview
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="workflow"
+                      className="w-full justify-start text-xs h-9 px-3 gap-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
                       Workflow
                       {(lenderOutstandingItems.length + lenderActivities.length) > 0 && (
-                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px] ml-auto">
                           {lenderOutstandingItems.length + lenderActivities.length}
                         </Badge>
                       )}
                     </TabsTrigger>
-                    <TabsTrigger value="funding-source" className="text-xs">Funding Source</TabsTrigger>
+                    <TabsTrigger
+                      value="funding-source"
+                      className="w-full justify-start text-xs h-9 px-3 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                    >
+                      Funding Source
+                    </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <ScrollArea className="flex-1 min-h-0">
+                <ScrollArea className="flex-1 min-h-0 min-w-0">
                   <div className="px-6 py-5">
 
                 {/* ─────────── OVERVIEW ─────────── */}
