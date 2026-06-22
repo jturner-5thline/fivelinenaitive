@@ -111,16 +111,13 @@ export const LenderListCard = memo(function LenderListCard({
           {duplicateCount > 0 && (
             <Popover>
               <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <Badge
-                  asChild
-                  variant="outline"
-                  className="text-xs shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 cursor-pointer hover:bg-amber-500/20"
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 shrink-0 cursor-pointer hover:bg-amber-500/20"
                 >
-                  <button type="button">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    {duplicateCount === 1 ? '1 possible dup' : `${duplicateCount} possible dups`}
-                  </button>
-                </Badge>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {duplicateCount === 1 ? '1 possible dup' : `${duplicateCount} possible dups`}
+                </button>
               </PopoverTrigger>
               <PopoverContent
                 side="top"
