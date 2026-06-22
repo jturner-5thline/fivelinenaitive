@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { computeTotalFee } from '@/lib/fees';
 import { Helmet } from 'react-helmet-async';
@@ -174,6 +174,13 @@ export default function Dashboard() {
   // Persist board scroll position when the deal overlay opens/closes.
   const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
   usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
+  // Vertical offset (px) applied to the inline detail aside so its top
+  // aligns with the clicked tile in the left list. Clamped so items near
+  // the bottom of the list don't push the panel into excessive blank
+  // space below the list.
+  const detailAsideRef = useRef<HTMLElement | null>(null);
+  const leftListColumnRef = useRef<HTMLDivElement | null>(null);
+  const [detailOffset, setDetailOffset] = useState(0);
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -221,6 +228,47 @@ export default function Dashboard() {
       console.info('[deals] deal count:', allDeals.length);
     }
   }, [isLoading, allDeals.length]);
+
+  // Align the inline detail aside's top edge with the clicked deal tile.
+  // We measure the tile's offset relative to the shared flex container
+  // (which holds both the list and the aside) and translate the aside
+  // downward by that amount. The offset is clamped so deals near the
+  // bottom of the list don't push the panel into excessive blank space.
+  const inlineSelectedDealId = overlaySearchParams.get('deal');
+  useLayoutEffect(() => {
+    if (!inlineSelectedDealId) {
+      setDetailOffset(0);
+      return;
+    }
+    const measure = () => {
+      const container = boardScrollContainerRef.current;
+      const aside = detailAsideRef.current;
+      const leftCol = leftListColumnRef.current;
+      if (!container || !aside || !leftCol) return;
+      const row = leftCol.querySelector<HTMLElement>(
+        `[data-deal-open-id="${CSS.escape(inlineSelectedDealId)}"]`
+      );
+      if (!row) return;
+      const containerTop = container.getBoundingClientRect().top;
+      const rowTop = row.getBoundingClientRect().top;
+      const rawOffset = rowTop - containerTop;
+      // Clamp so the aside never extends past the bottom of the left list.
+      const maxOffset = Math.max(
+        0,
+        leftCol.offsetHeight - aside.offsetHeight,
+      );
+      const next = Math.max(0, Math.min(rawOffset, maxOffset));
+      setDetailOffset(next);
+    };
+    // Defer one frame so the aside has rendered and we get accurate
+    // height measurements for the clamp.
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [inlineSelectedDealId, allDeals.length, viewMode, isLoading]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
 
@@ -1113,7 +1161,10 @@ export default function Dashboard() {
                 )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              <div className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}>
+              <div
+                ref={showInlineDetail ? leftListColumnRef : undefined}
+                className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}
+              >
               {/*
                 Flagged-filter context banner — renders ONLY when the
                 flag filter is on. Computed from the unfiltered deal set
@@ -1180,6 +1231,11 @@ export default function Dashboard() {
               </div>
               {showInlineDetail && selectedDeal && (
                 <aside
+                  ref={detailAsideRef}
+                  style={{
+                    marginTop: `${detailOffset}px`,
+                    transition: 'margin-top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
                   className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
                   aria-label="Selected deal summary"
                 >
