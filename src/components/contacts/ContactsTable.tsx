@@ -272,18 +272,19 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
         )}
       </div>
 
-      {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
+      {/* Table — fixed height to always show ~25 rows */}
+      <div className="border rounded-lg overflow-hidden" style={{ height: 56 + 25 * 44 }}>
         {filtered.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
             <p className="text-sm">No contacts found</p>
           </div>
         ) : (
           <TableVirtuoso
             // Virtualizes the contacts list so the DOM never carries more than the
-            // visible window worth of rows (~20). Massive perf win for large CRMs.
-            style={{ height: Math.min(640, 56 + filtered.length * 44) }}
+            // visible window worth of rows. Fixed height keeps the module stable
+            // at ~25 visible rows regardless of result count.
+            style={{ height: '100%' }}
             data={filtered}
             components={{
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
