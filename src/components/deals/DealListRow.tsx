@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { cn } from '@/lib/utils';
 
 interface DealListRowProps {
   deal: Deal;
