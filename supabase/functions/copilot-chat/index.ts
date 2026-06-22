@@ -1941,6 +1941,39 @@ const tools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // ── Deal Admin Agent — Duty 5: 'Where Are We On This' query helpers ─
+  {
+    type: "function",
+    function: {
+      name: "get_deal_claap_recordings",
+      description: "Claap call recordings linked to a deal, with AI summary, key decisions, next steps, and participants. Use for 'where are we on <deal>' status queries to surface what was discussed/decided on recent calls. Returns recordings ordered most-recent-first.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          since_days: { type: "number", description: "Look back this many days. Default 30, max 180." },
+          limit: { type: "number", description: "Max recordings to return. Default 10, max 25." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_deal_approval_queue",
+      description: "Open Approval Queue items (ai_action_queue) for a deal — pending Admin Agent proposals such as status updates, follow-up tasks, lender chases, and referral-source updates awaiting user approval. Use in 'where are we on <deal>' status queries to surface what is pending the user's action on this deal.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID. Required." },
+          status: { type: "string", description: "Filter by queue status. Default 'pending'. Use 'all' to include approved/dismissed/executed too." },
+          limit: { type: "number", description: "Max items to return. Default 20, max 50." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
   {
     type: "function",
     function: {
@@ -5857,6 +5890,60 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (error) return { error: error.message };
       return { count: (data || []).length, since_days: sinceDays, errors: data || [] };
     }
+    // ── Deal Admin Agent — Duty 5: 'Where Are We On This' ─────────
+    case "get_deal_claap_recordings": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required" };
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 30, 1), 180);
+      const limit = Math.min(Math.max(Number(args.limit) || 10, 1), 25);
+      const sinceIso = new Date(Date.now() - sinceDays * 86400000).toISOString();
+      // Primary source: claap_meetings has the rich AI fields + direct deal_id.
+      const { data: meetings, error: mErr } = await supabase
+        .from("claap_meetings")
+        .select("id, claap_id, title, ai_summary, key_decisions, next_steps, sentiment, organizer_email, duration_seconds, started_at")
+        .eq("deal_id", dealId)
+        .gte("started_at", sinceIso)
+        .order("started_at", { ascending: false })
+        .limit(limit);
+      if (mErr) return { error: mErr.message };
+      // Fallback/companion: legacy deal_claap_recordings link table.
+      const { data: linked } = await supabase
+        .from("deal_claap_recordings")
+        .select("recording_id, recording_title, recording_url, duration_seconds, recorder_name, recorder_email, linked_at, notes")
+        .eq("deal_id", dealId)
+        .gte("linked_at", sinceIso)
+        .order("linked_at", { ascending: false })
+        .limit(limit);
+      return {
+        deal_id: dealId,
+        since_days: sinceDays,
+        meetings_count: (meetings || []).length,
+        meetings: meetings || [],
+        linked_recordings_count: (linked || []).length,
+        linked_recordings: linked || [],
+      };
+    }
+    case "get_deal_approval_queue": {
+      const dealId = String(args.deal_id || entityId || "").trim();
+      if (!dealId) return { error: "deal_id required" };
+      const status = String(args.status || "pending").toLowerCase();
+      const limit = Math.min(Math.max(Number(args.limit) || 20, 1), 50);
+      let q = supabase
+        .from("ai_action_queue")
+        .select("id, action_type, title, description, rationale, priority, risk_level, status, target_object_type, target_object_id, assigned_to, created_at, updated_at, expires_at")
+        .eq("deal_id", dealId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (status !== "all") q = q.eq("status", status);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      return {
+        deal_id: dealId,
+        status_filter: status,
+        count: (data || []).length,
+        items: data || [],
+      };
+    }
     // ── FinServ ops (5th Line internal pipeline) ───────────────────
     case "get_finserv_pipeline_summary": {
       const FIFTH_LINE = "44556c46-9127-4b12-b14e-d6fee784afcf";
@@ -8123,21 +8210,51 @@ RESPONSE FORMAT (Fix 1):
 Always return natural language responses for user-facing messages. Use markdown formatting (headings, bold, bullets, tables) instead of raw JSON. Only use structured JSON for internal API action payloads (confirm cards, auto-executed cards, email drafts) wrapped in \`\`\`json blocks. NEVER return raw JSON objects as the main chat response.
 
 SINGLE-DEAL STATUS RESPONSE FORMAT:
-When the user asks for the status, update, or "where are we on" a single deal (e.g. "status of Project Atlas", "where are we on Acme", "give me an update on <Deal>"), you MUST follow this exact structure. Do NOT collapse into a single paragraph or a one-line summary.
+When the user asks for the status, update, or "where are we on" a single deal (e.g. "status of Project Atlas", "where are we on Acme", "give me an update on <Deal>", "what's the latest on <Deal>"), you MUST follow this exact structure. This is the Deal Admin Agent "Where Are We On This" capability — pull LIVE data at query time, never from cached scan results.
 
-1. **Stage + Status header** — first line, bold, in the form:
-   **Stage:** <pipeline stage> &nbsp;·&nbsp; **Status:** <on-track / at-risk / off-track / on-hold / closed-won / closed-lost>
-   Include the pipeline name in parentheses after the stage if non-default (e.g. "Diligence (In Development)").
+DEAL RESOLUTION:
+- If the user names a deal, call search_deals first (fuzzy/typo tolerant) to resolve it.
+- If the user says "this", "this deal", "where are we on this", or omits a name AND ${entityType === 'deal' && entityId ? `the current page context is deal entityId=${entityId}, use that deal_id directly without calling search_deals.` : `the current page is NOT a deal page, ask the user which deal they mean — do NOT guess.`}
+- If the resolved deal is archived OR not in scope for the user (e.g. a deal manager querying someone else's deal — RLS will return no row), respond with a single friendly sentence such as "I can't pull a status update on <name> — that deal is archived" or "I can't pull a status update on <name> — it's outside the deals assigned to you. Ask an admin if you need a copy." Do NOT render the 5-section layout in that case.
 
-2. **One-sentence narrative** — a single sentence summarizing where the deal stands today (no fluff, no preamble).
+DATA GATHERING (call these tools in parallel before drafting the response — always live, never invented):
+- get_deal_full (deal core + write-up + lenders + outstanding items + milestones + activity log + memo + documents)
+- get_deal_emails (last 7 days)
+- get_recent_crm_activities (deal_id=<id>, since_days=7)
+- get_deal_claap_recordings (deal_id=<id>, since_days=30) — for call takeaways, decisions, action items
+- get_deal_approval_queue (deal_id=<id>, status='pending') — for Approval Queue items pending the user
+- get_outstanding_items, get_deal_stage_history if not already covered above
 
-3. **Milestones** — a bulleted list under a \`**Milestones**\` heading. Every milestone title MUST be bold and followed by its target date in parentheses and a status marker:
-   - **<Milestone title>** (target: YYYY-MM-DD) — ✅ complete / 🟡 in progress / ⏳ upcoming / 🔴 overdue
-   List ALL milestones returned by get_deal_full / get_deal_milestones in their canonical order. If a milestone has no target date, write \`(target: TBD)\`. Do not omit milestones to shorten the answer.
+RESPONSE LAYOUT — exactly these five labeled sections, in order, with the markdown heading verbatim. OMIT any section that has no data; do not render empty sections or "None" placeholders. Each section is a short bullet list (no paragraphs). The whole response must be readable in under 60 seconds — be concise and advisory in tone.
 
-4. **Proactive follow-up question** — close the response with exactly one short, specific follow-up question tailored to the deal's current state (e.g. "Want me to chase the two overdue lender responses?", "Should I draft the IC memo update for Friday?", "Want me to set a target date for the open milestones?"). Never end on a flat statement — always end with a question mark.
+**1. Current Status**
+- Stage: <stage name> (pipeline name in parens if non-default), days in current stage
+- Most recent status note (one line, with date)
+- Overall status flag if set (on-track / at-risk / off-track / on-hold / closed-won / closed-lost)
 
-Do not wrap this layout in a table. Do not replace the milestone bullets with a table. Always pull live values from get_deal_full / get_deal_milestones before rendering — never invent stage, status, milestone titles, or dates.
+**2. Recent Activity (last 7 days)**
+- Lender updates: stage moves, status changes, notes
+- Documents uploaded
+- Emails sent / received (sender → subject, dated)
+- Tasks completed
+- Claap calls logged with extracted takeaways, decisions, action items (cite call title + date)
+
+**3. Outstanding Items**
+- Open tasks: overdue first, then due soon (title + due date)
+- Outstanding lender requests
+- Missing / pending documents
+- Approval Queue items pending this deal (title + action type)
+
+**4. Lender Pipeline**
+- Active lenders with current per-lender status and last-update date
+- Lenders flagged as stale or unresponsive
+- Lenders with missed response commitments
+
+**5. Next Steps**
+- 2–4 concrete next actions implied by the deal's current state
+- Open Approval Queue items the user can act on now (link by title)
+
+Do not wrap this layout in a table. Do not invent stage, lender status, dates, or any other value — pull from the tool results above. Do not append a follow-up question; the five sections are the complete answer.
 
 CHAINED AUTONOMOUS EXECUTION MODE:
 Activate this mode whenever the user's message contains MULTIPLE sequential steps in one prompt — typically signalled by phrases like "and then", "for each", "after that", numbered/bulleted steps, or any instruction that combines a READ across one system (Gmail, calendar, deals, lenders, tasks, QuickBooks) with a follow-up WRITE in another (create_task, update_lender_status, draft_email, update_deal_fields, etc.). Examples that trigger this mode:
