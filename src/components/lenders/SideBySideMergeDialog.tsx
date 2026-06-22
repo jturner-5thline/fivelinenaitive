@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import {
   Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin,
   DollarSign, Briefcase, FileText, Tag, Globe, Star, ChevronDown,
-  Layers, Sparkles,
+  Layers, Sparkles, Plus, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
