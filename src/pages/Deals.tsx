@@ -228,6 +228,47 @@ export default function Dashboard() {
       console.info('[deals] deal count:', allDeals.length);
     }
   }, [isLoading, allDeals.length]);
+
+  // Align the inline detail aside's top edge with the clicked deal tile.
+  // We measure the tile's offset relative to the shared flex container
+  // (which holds both the list and the aside) and translate the aside
+  // downward by that amount. The offset is clamped so deals near the
+  // bottom of the list don't push the panel into excessive blank space.
+  const inlineSelectedDealId = overlaySearchParams.get('deal');
+  useLayoutEffect(() => {
+    if (!inlineSelectedDealId) {
+      setDetailOffset(0);
+      return;
+    }
+    const measure = () => {
+      const container = boardScrollContainerRef.current;
+      const aside = detailAsideRef.current;
+      const leftCol = leftListColumnRef.current;
+      if (!container || !aside || !leftCol) return;
+      const row = leftCol.querySelector<HTMLElement>(
+        `[data-deal-open-id="${CSS.escape(inlineSelectedDealId)}"]`
+      );
+      if (!row) return;
+      const containerTop = container.getBoundingClientRect().top;
+      const rowTop = row.getBoundingClientRect().top;
+      const rawOffset = rowTop - containerTop;
+      // Clamp so the aside never extends past the bottom of the left list.
+      const maxOffset = Math.max(
+        0,
+        leftCol.offsetHeight - aside.offsetHeight,
+      );
+      const next = Math.max(0, Math.min(rawOffset, maxOffset));
+      setDetailOffset(next);
+    };
+    // Defer one frame so the aside has rendered and we get accurate
+    // height measurements for the clamp.
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [inlineSelectedDealId, allDeals.length, viewMode, isLoading]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
 
