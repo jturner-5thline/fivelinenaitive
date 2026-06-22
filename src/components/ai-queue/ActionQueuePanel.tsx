@@ -643,9 +643,8 @@ function DetailPane({
           </div>
         </div>
 
-        {/* Why naitive suggests this */}
-        {item.rationale && (
-          <div className="mt-6">
+        {/* Why naitive suggests this — always rendered */}
+        <div className="mt-6">
             <p
               className="text-[10.5px] uppercase text-[#9b6fd4]"
               style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
@@ -656,10 +655,9 @@ function DetailPane({
               className="mt-2 text-[13.5px] text-[#ecedf4]/90 max-w-[64ch]"
               style={{ ...FONT_BODY, lineHeight: 1.6 }}
             >
-              {item.rationale}
+              {item.rationale || buildRationaleFallback(item)}
             </p>
-          </div>
-        )}
+        </div>
 
         {/* Sources */}
         {evidence.length > 0 && (
