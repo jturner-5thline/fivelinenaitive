@@ -455,7 +455,7 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
-function buildUserPrompt(bundle: DealSignalBundle): string {
+function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
   const trim = (s: any, n = 240) =>
     typeof s === "string" ? (s.length > n ? s.slice(0, n) + "…" : s) : s;
@@ -527,11 +527,15 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
       })),
     })),
   };
-  return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
+  const fp = fingerprint && fingerprint.trim().length > 0
+    ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
+    : "";
+  return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n${fp}\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
 }
 
 async function callModelForCandidates(
   bundle: DealSignalBundle,
+  fingerprint?: string | null,
 ): Promise<CandidateItem[]> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
@@ -542,7 +546,7 @@ async function callModelForCandidates(
     max_tokens: 6000,
     system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
-      { role: "user", content: buildUserPrompt(bundle) },
+      { role: "user", content: buildUserPrompt(bundle, fingerprint) },
     ],
   };
 
