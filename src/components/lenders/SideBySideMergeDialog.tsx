@@ -264,10 +264,11 @@ interface OptionCardProps {
   selected: boolean;
   variant: 'pick' | 'combine';
   sources?: { idx: number; isPrimary: boolean }[];
+  isCustom?: boolean;
   onClick: () => void;
 }
 
-function OptionCard({ formatted, multiline, selected, variant, sources, onClick }: OptionCardProps) {
+function OptionCard({ formatted, multiline, selected, variant, sources, isCustom, onClick }: OptionCardProps) {
   return (
     <button
       type="button"
@@ -280,6 +281,7 @@ function OptionCard({ formatted, multiline, selected, variant, sources, onClick 
         !selected && 'border-border/60',
         selected && variant === 'pick' && 'border-primary bg-primary/10 ring-1 ring-primary/40',
         selected && variant === 'combine' && 'border-accent bg-accent/10 ring-1 ring-accent/50',
+        isCustom && !selected && 'border-accent/30',
       )}
       aria-pressed={selected}
     >
@@ -304,9 +306,10 @@ function OptionCard({ formatted, multiline, selected, variant, sources, onClick 
           >
             {formatted}
           </p>
-          {sources?.length ? (
+          {(sources?.length || isCustom) ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-              {sources.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
+              {isCustom && <CustomChip />}
+              {sources?.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
             </div>
           ) : null}
         </div>
