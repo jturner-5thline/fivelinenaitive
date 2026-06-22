@@ -714,22 +714,17 @@ function computePriority(c: CandidateItem, dealFlagged: boolean): "urgent" | "hi
   return "normal";
 }
 
-async function insertCandidates(
-  supabase: SupabaseClient,
+function buildCandidateRows(
   opts: AnalyzeOpts,
   bundle: DealSignalBundle,
   candidates: CandidateItem[],
-): Promise<{ ids: string[]; error: string | null }> {
-  if (candidates.length === 0) return { ids: [], error: null };
-
-  // Pick reviewer: deal owner if activated, else attribution user.
+): any[] {
+  if (candidates.length === 0) return [];
   const owner = bundle.current.deal_owner_user_id;
   const ownerAllowed = owner && (!opts.activatedUserIds || opts.activatedUserIds.has(owner));
   const assignedTo = ownerAllowed ? (owner as string) : opts.attributionUserId;
-
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-
-  const rows = candidates.map((c) => {
+  return candidates.map((c) => {
     const risk = c.risk_level ?? RISK_BY_TYPE[c.action_type];
     const priority = computePriority({ ...c, risk_level: risk }, bundle.current.is_flagged);
     return {
@@ -773,7 +768,16 @@ async function insertCandidates(
       expires_at: expiresAt,
     };
   });
+}
 
+async function insertCandidates(
+  supabase: SupabaseClient,
+  opts: AnalyzeOpts,
+  bundle: DealSignalBundle,
+  candidates: CandidateItem[],
+): Promise<{ ids: string[]; error: string | null }> {
+  const rows = buildCandidateRows(opts, bundle, candidates);
+  if (rows.length === 0) return { ids: [], error: null };
   const { data, error } = await supabase
     .from("ai_action_queue")
     .insert(rows)
