@@ -134,6 +134,12 @@ export interface AnalyzeOpts {
   /** Min confidence to enqueue. */
   minConfidence?: number;
   source: "cron" | "manual" | "chat";
+  /**
+   * When true, the analysis runs end-to-end but does NOT insert into
+   * ai_action_queue. The would-be rows are returned on the result for
+   * verification (manual "test scan").
+   */
+  dryRun?: boolean;
 }
 
 export interface AnalyzeResult {
@@ -144,6 +150,8 @@ export interface AnalyzeResult {
   queue_rows_inserted: number;
   queue_ids: string[];
   errors: string[];
+  /** Populated when dryRun=true — the rows that WOULD have been inserted. */
+  preview_rows?: any[];
 }
 
 /* ------------------------------------------------------------------ */
