@@ -422,12 +422,39 @@ export default function Lenders() {
   }, [deals, masterLenders]);
 
   // Detect potential duplicate funding sources within the current tenant's
-  // master lender list. Runs purely client-side because the directory is
-  // already loaded in full for cross-referencing (see useMasterLenders above).
-  const duplicateIndex = useMemo(
-    () => detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name }))),
-    [masterLenders],
+  // master lender list. The detector is O(n^2) over bucketed names — at 6k+
+  // rows it's expensive enough that we only compute it when the user has
+  // actually requested duplicate info (filter toggle or the dialog) AND only
+  // after the background stream of pages has settled. Otherwise we keep a
+  // stable empty index so the heavy filter/sort memos downstream don't
+  // invalidate on every streamed page.
+  const EMPTY_DUPLICATE_INDEX = useMemo(
+    () => ({ groups: [] as Array<{ groupId: string; memberIds: string[] }>, byLenderId: {} as Record<string, { groupId: string; count: number }> }),
+    [],
   );
+  const [duplicateIndex, setDuplicateIndex] = useState(EMPTY_DUPLICATE_INDEX);
+  const duplicatesNeeded = showDuplicatesOnly || isDuplicatesDialogOpen;
+  useEffect(() => {
+    if (!duplicatesNeeded) {
+      // Keep the empty index until the user actually asks for duplicates.
+      return;
+    }
+    if (loadingMore) return; // wait for the stream to settle
+    if (!masterLenders.length) return;
+    // Defer to idle so we never block the click that opened the dialog or
+    // toggled the filter.
+    const run = () => {
+      const next = detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name })));
+      setDuplicateIndex(next);
+    };
+    const idle = (window as any).requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout: number }) => number);
+    if (idle) {
+      const id = idle(run, { timeout: 500 });
+      return () => (window as any).cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(run, 0);
+    return () => clearTimeout(t);
+  }, [duplicatesNeeded, loadingMore, masterLenders]);
 
   // Build a per-lender deal-history index used by the search:
   // deal names, pass reasons, and lender notes from all deals where this funding source appears.
