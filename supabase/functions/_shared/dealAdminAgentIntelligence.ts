@@ -134,6 +134,12 @@ export interface AnalyzeOpts {
   /** Min confidence to enqueue. */
   minConfidence?: number;
   source: "cron" | "manual" | "chat";
+  /**
+   * When true, the analysis runs end-to-end but does NOT insert into
+   * ai_action_queue. The would-be rows are returned on the result for
+   * verification (manual "test scan").
+   */
+  dryRun?: boolean;
 }
 
 export interface AnalyzeResult {
@@ -144,6 +150,8 @@ export interface AnalyzeResult {
   queue_rows_inserted: number;
   queue_ids: string[];
   errors: string[];
+  /** Populated when dryRun=true — the rows that WOULD have been inserted. */
+  preview_rows?: any[];
 }
 
 /* ------------------------------------------------------------------ */
@@ -706,22 +714,17 @@ function computePriority(c: CandidateItem, dealFlagged: boolean): "urgent" | "hi
   return "normal";
 }
 
-async function insertCandidates(
-  supabase: SupabaseClient,
+function buildCandidateRows(
   opts: AnalyzeOpts,
   bundle: DealSignalBundle,
   candidates: CandidateItem[],
-): Promise<{ ids: string[]; error: string | null }> {
-  if (candidates.length === 0) return { ids: [], error: null };
-
-  // Pick reviewer: deal owner if activated, else attribution user.
+): any[] {
+  if (candidates.length === 0) return [];
   const owner = bundle.current.deal_owner_user_id;
   const ownerAllowed = owner && (!opts.activatedUserIds || opts.activatedUserIds.has(owner));
   const assignedTo = ownerAllowed ? (owner as string) : opts.attributionUserId;
-
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-
-  const rows = candidates.map((c) => {
+  return candidates.map((c) => {
     const risk = c.risk_level ?? RISK_BY_TYPE[c.action_type];
     const priority = computePriority({ ...c, risk_level: risk }, bundle.current.is_flagged);
     return {
@@ -765,7 +768,16 @@ async function insertCandidates(
       expires_at: expiresAt,
     };
   });
+}
 
+async function insertCandidates(
+  supabase: SupabaseClient,
+  opts: AnalyzeOpts,
+  bundle: DealSignalBundle,
+  candidates: CandidateItem[],
+): Promise<{ ids: string[]; error: string | null }> {
+  const rows = buildCandidateRows(opts, bundle, candidates);
+  if (rows.length === 0) return { ids: [], error: null };
   const { data, error } = await supabase
     .from("ai_action_queue")
     .insert(rows)
@@ -931,6 +943,20 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       });
       const remaining = maxQueueRows - totalInserted;
       const slice = ranked.slice(0, remaining);
+
+      if (opts.dryRun) {
+        const preview = buildCandidateRows(opts, bundle, slice);
+        result.preview_rows = result.preview_rows ?? [];
+        result.preview_rows.push(...preview);
+        result.queue_rows_inserted += preview.length;
+        totalInserted += preview.length;
+        for (const c of slice) {
+          existingKeys.add(
+            `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
+          );
+        }
+        continue;
+      }
 
       const { ids, error } = await insertCandidates(supabase, opts, bundle, slice);
       if (error) {
