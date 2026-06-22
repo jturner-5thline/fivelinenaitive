@@ -138,35 +138,19 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const declineAccess = useDeclineDealAccessRequest();
 
   const [tab, setTab] = useState<'queue' | 'staged'>('queue');
-  const [filter, setFilter] = useState<FilterKey>('all');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [bulkLowBusy, setBulkLowBusy] = useState(false);
-  const [bulkAllBusy, setBulkAllBusy] = useState(false);
-
-  const lowRiskItems = useMemo(
-    () =>
-      items.filter(
-        (it) =>
-          riskOf(it) === 'low' &&
-          it.action_type !== 'claap_recording_review' &&
-          it.action_type !== 'claap_action_items',
-      ),
-    [items],
-  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return items.filter((it) => {
-      const r = riskOf(it);
-      if (filter !== 'all' && filter !== r) return false;
       if (q) {
         const hay = `${it.title} ${it.deal_name ?? ''} ${it.description ?? ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [items, filter, query]);
+  }, [items, query]);
 
   // Keep selection if visible; otherwise pick first.
   useEffect(() => {
@@ -180,12 +164,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   );
 
   const totalCount = items.length + accessRequests.length;
-  const counts = {
-    all: items.length,
-    low: items.filter((i) => riskOf(i) === 'low').length,
-    review: items.filter((i) => riskOf(i) === 'review').length,
-    needs_you: items.filter((i) => riskOf(i) === 'needs_you').length,
-  };
 
   return (
     <div
