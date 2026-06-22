@@ -1161,7 +1161,13 @@ export default function Dashboard() {
                   'opacity-0',
                   showInlineDetail && 'relative',
                 )}
-                style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
+                style={{
+                  animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
+                  paddingRight: showInlineDetail
+                    ? 'calc(clamp(546px, 49.4vw, 832px) + 1.25rem)'
+                    : undefined,
+                  transition: 'padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
@@ -1233,9 +1239,8 @@ export default function Dashboard() {
               </div>
               {showInlineDetail && selectedDeal && (
                 <style>{`
-                  tr[data-deal-open-id]:not([data-deal-open-id="${selectedId}"]) {
-                    clip-path: inset(0 calc(clamp(546px, 49.4vw, 832px) + 1.25rem) 0 0 round 0.375rem);
-                    transition: clip-path 300ms cubic-bezier(0.4, 0, 0.2, 1);
+                  tr[data-deal-open-id="${selectedId}"] > td {
+                    box-shadow: inset 0 0 0 1px rgba(155,111,212,.55), 0 8px 24px -12px rgba(155,111,212,.45) !important;
                   }
                 `}</style>
               )}
