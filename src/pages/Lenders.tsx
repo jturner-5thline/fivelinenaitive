@@ -1758,6 +1758,64 @@ export default function Lenders() {
                   <LendersListSkeleton viewMode={viewMode === 'spreadsheet' ? 'list' : viewMode} />
                 )}
 
+                {/* Grouped Duplicates View */}
+                {!isLoading && showDuplicatesOnly && viewMode !== 'spreadsheet' && duplicateGroupsView.length > 0 && (
+                  <div className="space-y-4" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+                    {duplicateGroupsView.map(({ groupId, lenders: groupLenders }) => {
+                      const ids = groupLenders.map((l) => l.id);
+                      const displayName = groupLenders[0]?.name || groupId;
+                      return (
+                        <div
+                          key={groupId}
+                          className="rounded-lg border border-border/60 bg-card/40 backdrop-blur-sm overflow-hidden"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openMergeForGroup(ids)}
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {displayName}
+                              </span>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                · {groupLenders.length} possible duplicates
+                              </span>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary shrink-0">
+                              <GitMerge className="h-3.5 w-3.5" />
+                              Merge group
+                            </span>
+                          </button>
+                          <div className="p-3 space-y-2">
+                            {groupLenders.map((lender) => (
+                              <div key={lender.id} data-lender-row={lender.id}>
+                                <LenderListCard
+                                  lender={lender}
+                                  activeDealCount={activeDealCounts[lender.name] || 0}
+                                  duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
+                                  duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
+                                  onOpenSiblingDetail={openLenderSiblingDetailStable}
+                                  summary={getLenderSummary(lender.name)}
+                                  isQuickUploading={isQuickUploading}
+                                  quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                                  isSelected={selectedLenderIds.has(lender.id)}
+                                  onToggleSelect={toggleLenderSelection}
+                                  onOpenDetail={openLenderDetailStable}
+                                  onEdit={openEditDialogStable}
+                                  onDelete={handleDeleteStable}
+                                  onQuickUpload={handleQuickUploadStable}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* List View */}
                 {/* List View - Virtualized */}
                 {!isLoading && !showDuplicatesOnly && viewMode === 'list' && sortedLenders.length > 0 && (
