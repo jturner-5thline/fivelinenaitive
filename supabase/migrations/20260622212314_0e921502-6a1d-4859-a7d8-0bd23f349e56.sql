@@ -1,0 +1,2 @@
+ALTER TABLE public.deal_lenders DROP CONSTRAINT deal_lenders_master_lender_id_fkey;
+ALTER TABLE public.deal_lenders ADD CONSTRAINT deal_lenders_master_lender_id_fkey FOREIGN KEY (master_lender_id) REFERENCES public.master_lenders(id) ON DELETE CASCADE;
