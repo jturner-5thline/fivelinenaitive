@@ -38,6 +38,7 @@ import {
   buildOnApproveSentence,
   approveButtonLabel,
   targetSummary,
+  buildRationaleFallback,
 } from './approvalCopy';
 import {
   useDealAccessRequests,
