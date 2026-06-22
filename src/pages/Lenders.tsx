@@ -456,6 +456,32 @@ export default function Lenders() {
     return () => clearTimeout(t);
   }, [duplicatesNeeded, loadingMore, masterLenders]);
 
+  // Per-lender list of sibling names in the same duplicate cluster (excluding
+  // self), used to power the popover when the user clicks the "X possible
+  // dups" chip on a card.
+  const duplicateSiblingsByLenderId = useMemo(() => {
+    const out: Record<string, { id: string; name: string }[]> = {};
+    if (!duplicateIndex.groups.length) return out;
+    const nameById = new Map(masterLenders.map((l) => [l.id, l.name]));
+    for (const group of duplicateIndex.groups) {
+      for (const id of group.memberIds) {
+        out[id] = group.memberIds
+          .filter((other) => other !== id)
+          .map((other) => ({ id: other, name: nameById.get(other) || 'Unknown' }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+    }
+    return out;
+  }, [duplicateIndex, masterLenders]);
+
+  const openLenderSiblingDetailStable = useCallback(
+    (lenderId: string) => {
+      const match = masterLenders.find((l) => l.id === lenderId);
+      if (match) openLenderDetail(match);
+    },
+    [masterLenders],
+  );
+
   // Build a per-lender deal-history index used by the search:
   // deal names, pass reasons, and lender notes from all deals where this funding source appears.
   const lenderDealIndex = useMemo(() => {
