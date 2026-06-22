@@ -139,7 +139,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           {...props}
           role="button"
           tabIndex={0}
-          className={cn(props.className, 'cursor-pointer')}
+          className={cn(props.className, 'cursor-pointer [&>td]:py-1 [&>td]:h-[31px]')}
           onClick={activate}
           onKeyDown={(e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -273,7 +273,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       </div>
 
       {/* Table — fixed height to always show ~25 rows */}
-      <div className="border rounded-lg overflow-hidden" style={{ height: 56 + 25 * 44 }}>
+      <div className="border rounded-lg overflow-hidden" style={{ height: 56 + 25 * 31 }}>
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
