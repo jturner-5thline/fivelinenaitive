@@ -754,6 +754,15 @@ export default function Lenders() {
     setSelectedLenderIds(new Set());
   }, []);
 
+  // Open the side-by-side merge dialog with a specific duplicate cluster
+  // preselected. Used by the grouped Duplicates view so users can jump from
+  // a cluster straight into the merge experience.
+  const openMergeForGroup = useCallback((memberIds: string[]) => {
+    if (memberIds.length < 2) return;
+    setSelectedLenderIds(new Set(memberIds));
+    setIsSideBySideMergeOpen(true);
+  }, []);
+
   const handlePushSelectedToFlex = useCallback(async () => {
     if (selectedLenderIds.size === 0) return;
     
