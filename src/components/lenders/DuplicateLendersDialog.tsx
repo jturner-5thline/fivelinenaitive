@@ -228,6 +228,23 @@ function getFundingSourceFields(records: UnknownRecord[] = []): FieldDef[] {
     });
 }
 
+// Static base fields derived purely from the master lender schema — used as a
+// fast-path so we don't rebuild the field list on every completenessScore /
+// detectConflicts call. Only rebuild when a record actually introduces an
+// unknown key (rare in practice).
+const BASE_FUNDING_SOURCE_FIELDS: FieldDef[] = getFundingSourceFields([]);
+const BASE_FIELD_KEYS: Set<string> = new Set(BASE_FUNDING_SOURCE_FIELDS.map(f => f.key));
+
+function getFundingSourceFieldsCached(records: UnknownRecord[] = []): FieldDef[] {
+  for (const record of records) {
+    if (!record) continue;
+    for (const k of Object.keys(record)) {
+      if (!BASE_FIELD_KEYS.has(k)) return getFundingSourceFields(records);
+    }
+  }
+  return BASE_FUNDING_SOURCE_FIELDS;
+}
+
 const SECTION_META: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
