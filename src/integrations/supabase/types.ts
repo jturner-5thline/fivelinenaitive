@@ -9775,6 +9775,7 @@ export type Database = {
           quote_rate: number | null
           quote_term: string | null
           score: number | null
+          selected_contact_id: string | null
           stage: string
           submitted_at: string | null
           substage: string | null
@@ -9802,6 +9803,7 @@ export type Database = {
           quote_rate?: number | null
           quote_term?: string | null
           score?: number | null
+          selected_contact_id?: string | null
           stage?: string
           submitted_at?: string | null
           substage?: string | null
@@ -9829,6 +9831,7 @@ export type Database = {
           quote_rate?: number | null
           quote_term?: string | null
           score?: number | null
+          selected_contact_id?: string | null
           stage?: string
           submitted_at?: string | null
           substage?: string | null
@@ -9856,6 +9859,13 @@ export type Database = {
             columns: ["master_lender_id"]
             isOneToOne: false
             referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lenders_selected_contact_id_fkey"
+            columns: ["selected_contact_id"]
+            isOneToOne: false
+            referencedRelation: "lender_contacts"
             referencedColumns: ["id"]
           },
         ]
