@@ -10,6 +10,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,6 +42,8 @@ interface LenderListCardProps {
   lender: MasterLender;
   activeDealCount: number;
   duplicateCount?: number;
+  duplicateSiblings?: { id: string; name: string }[];
+  onOpenSiblingDetail?: (lenderId: string) => void;
   summary: LenderSummary;
   isQuickUploading: boolean;
   quickUploadLenderName: string | null;
@@ -56,6 +63,8 @@ export const LenderListCard = memo(function LenderListCard({
   lender,
   activeDealCount,
   duplicateCount = 0,
+  duplicateSiblings,
+  onOpenSiblingDetail,
   summary,
   isQuickUploading,
   quickUploadLenderName,
@@ -100,20 +109,51 @@ export const LenderListCard = memo(function LenderListCard({
           <h3 className="font-medium truncate">{lender.name}</h3>
           <LenderFlagIndicator lenderName={lender.name} />
           {duplicateCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Badge
+                  asChild
                   variant="outline"
-                  className="text-xs shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1"
+                  className="text-xs shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1 cursor-pointer hover:bg-amber-500/20"
                 >
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-                  {duplicateCount === 1 ? '1 possible dup' : `${duplicateCount} possible dups`}
+                  <button type="button">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    {duplicateCount === 1 ? '1 possible dup' : `${duplicateCount} possible dups`}
+                  </button>
                 </Badge>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                Shares a name with {duplicateCount} other funding source{duplicateCount === 1 ? '' : 's'} in this workspace. Use Merge to consolidate.
-              </TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent
+                side="top"
+                align="start"
+                className="w-64 p-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Possible duplicates
+                </div>
+                <div className="max-h-64 overflow-auto">
+                  {(duplicateSiblings ?? []).length === 0 ? (
+                    <div className="px-2 py-2 text-xs text-muted-foreground">
+                      No sibling details available.
+                    </div>
+                  ) : (
+                    (duplicateSiblings ?? []).map((sib) => (
+                      <button
+                        key={sib.id}
+                        type="button"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-muted/60 truncate"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenSiblingDetail?.(sib.id);
+                        }}
+                      >
+                        {sib.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
           {lender.tier && (
             <Badge
