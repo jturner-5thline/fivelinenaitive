@@ -78,6 +78,7 @@ const SNOOZE_KEY_PREFIX = 'eod:snoozed';
 const ACTIVITY_KEY_PREFIX = 'eod:activity';
 const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
+const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 
 type FilterChip = 'has_deal' | 'no_follow_up' | 'carry_14d';
 
@@ -373,11 +374,18 @@ export function EndOfDayTab({
   }, [user]);
 
   const { events: hookEvents, listEvents, status } = useGoogleCalendar();
-  const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
+  // Hydrate instantly from a per-user localStorage cache so reopening the
+  // End of Day tab paints the master list immediately. The real fetch still
+  // runs in the background and refreshes the cache.
+  const eventsCacheKey = `${EVENTS_CACHE_KEY_PREFIX}:${userId}`;
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    if (hookEvents && hookEvents.length) return hookEvents;
+    return readLS<CalendarEvent[]>(eventsCacheKey, []);
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setEvents(hookEvents || []);
+    if (hookEvents && hookEvents.length) setEvents(hookEvents);
   }, [hookEvents]);
 
   const { deals } = useDealsContext();
@@ -499,12 +507,14 @@ export function EndOfDayTab({
       const timeMax = endOfDay(new Date()).toISOString();
       const res = await listEvents({ timeMin, timeMax, maxResults: EOD_FETCH_MAX_RESULTS });
       if (!cancelled) {
-        setEvents(res?.events || hookEvents || []);
+        const next = res?.events || hookEvents || [];
+        setEvents(next);
+        try { writeLS(eventsCacheKey, next); } catch { /* ignore quota */ }
         setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [enabled, status?.connected, listEvents, hookEvents]);
+  }, [enabled, status?.connected, listEvents, hookEvents, eventsCacheKey]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
   const outstanding = useMemo<TileEvent[]>(() => {
@@ -841,7 +851,7 @@ export function EndOfDayTab({
     );
   }
 
-  if (loading && outstanding.length === 0) {
+  if (loading && outstanding.length === 0 && events.length === 0) {
     return (
       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-12">
         <Loader2 className="h-4 w-4 animate-spin" />
