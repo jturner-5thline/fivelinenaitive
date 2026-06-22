@@ -107,12 +107,12 @@ function SortableFilterableHead({
   const isActiveSort = !!sortField_ && sortField === sortField_;
 
   return (
-    <TableHead ref={setNodeRef} style={style} className="text-foreground text-center">
+    <TableHead ref={setNodeRef} style={style} className="text-[#9697a6] text-center text-[10px] font-mono uppercase tracking-[0.14em]">
       <div className="inline-flex items-center gap-1 whitespace-nowrap">
         <span
           {...attributes}
           {...listeners}
-          className="cursor-grab p-0.5 text-muted-foreground/50 hover:text-muted-foreground"
+          className="cursor-grab p-0.5 text-[#5f606e] hover:text-[#9697a6]"
           aria-label="Reorder column"
         >
           <GripVertical className="h-3 w-3" />
@@ -124,9 +124,9 @@ function SortableFilterableHead({
           className={cn(
             'inline-flex items-center gap-0.5 px-1 py-0.5 rounded transition-colors',
             sortField_ && onToggleSort
-              ? 'hover:bg-muted/60 cursor-pointer'
+              ? 'hover:bg-white/[0.04] cursor-pointer'
               : 'cursor-default',
-            isActiveSort && 'text-foreground',
+            isActiveSort && 'text-[#f4f4f7]',
           )}
         >
           <span>{COLUMN_LABELS[id]}</span>
@@ -396,13 +396,18 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             {activeChips.map((c) => (
               <span
                 key={c.key}
-                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full bg-primary/10 text-primary text-[11px]"
+                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[11px] font-mono"
+                style={{
+                  color: '#b79bf0',
+                  background: 'rgba(155,111,212,.14)',
+                  border: '1px solid rgba(155,111,212,.28)',
+                }}
               >
                 {c.label}
                 <button
                   type="button"
                   onClick={() => onFiltersChange(c.clear)}
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-primary/20"
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-white/10"
                   aria-label={`Remove filter ${c.label}`}
                 >
                   <X className="h-3 w-3" />
@@ -412,7 +417,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <button
               type="button"
               onClick={() => onFiltersChange(clearAllColumnFilters())}
-              className="ml-1 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              className="ml-1 text-[11px] font-mono text-[#9697a6] hover:text-[#f4f4f7] underline-offset-2 hover:underline"
             >
               Clear all
             </button>
@@ -420,10 +425,12 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
         )}
         <div className="overflow-visible px-0 py-1">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <Table className="border-separate border-spacing-y-1.5">
+            <Table className="border-separate border-spacing-y-2">
               <TableHeader>
-                <TableRow className="bg-card rounded-md [&>th:first-child]:rounded-l-md [&>th:last-child]:rounded-r-md hover:bg-card">
-                  <TableHead className="w-[40px] px-2">
+                <TableRow
+                  className="rounded-xl [&>th:first-child]:rounded-l-xl [&>th:last-child]:rounded-r-xl hover:bg-transparent [&>th]:border-y [&>th]:border-white/[0.06] [&>th:first-child]:border-l [&>th:last-child]:border-r [&>th]:bg-[linear-gradient(180deg,rgba(22,22,31,0.85),rgba(16,16,24,0.85))] [&>th]:backdrop-blur-md [&>th]:h-11"
+                >
+                  <TableHead className="w-[40px] px-2 text-[#9697a6]">
                     <Checkbox
                       checked={sortedDeals.length > 0 && selectedDealIds.size === sortedDeals.length}
                       onCheckedChange={toggleSelectAll}
@@ -444,7 +451,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                       />
                     ))}
                   </SortableContext>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
+import { cn } from '@/lib/utils';
 
 interface DealListRowProps {
   deal: Deal;
@@ -145,7 +146,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
               </Tooltip>
             </TooltipProvider>
           )}
-          <span className="truncate max-w-[200px] text-foreground font-semibold">
+          <span className="truncate max-w-[200px] text-[#f4f4f7] font-semibold tracking-tight" style={{ fontFamily: "'Syne', ui-sans-serif, system-ui, sans-serif" }}>
             {deal.company}
           </span>
           {notificationCount > 0 && deal.status !== 'archived' && deal.stage !== 'closed-lost' && (
@@ -182,9 +183,18 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     ),
     value: (
       <TableCell key="value" className="text-center tabular-nums">
-        <span className="font-semibold text-foreground">
-          {formatCurrencyValue(deal.value)}
-        </span>
+        {(() => {
+          const formatted = formatCurrencyValue(deal.value);
+          const m = /^([^\d-]*)([\d,.\s-]+)([A-Za-z]*)$/.exec(formatted);
+          if (!m) return <span className="font-semibold text-[#f4f4f7] font-mono">{formatted}</span>;
+          const [, prefix, num, suffix] = m;
+          return (
+            <span className="font-semibold text-[#f4f4f7] font-mono">
+              {prefix}{num}
+              {suffix && <span className="text-[#9697a6]">{suffix}</span>}
+            </span>
+          );
+        })()}
       </TableCell>
     ),
     status: (
@@ -209,44 +219,68 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     ),
     manager: (
       <TableCell key="manager">
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <User className="h-3.5 w-3.5" />
-          <span className="truncate max-w-[100px]">{deal.manager || 'No manager'}</span>
-        </div>
+        {(() => {
+          const name = deal.manager || '';
+          const initials = name
+            ? name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('')
+            : '';
+          return (
+            <div className="flex items-center gap-2 text-sm text-[#c3c4d0]">
+              {initials ? (
+                <span
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                  style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
+                >
+                  {initials}
+                </span>
+              ) : (
+                <User className="h-3.5 w-3.5 text-[#5f606e]" />
+              )}
+              <span className="truncate max-w-[120px]">{name || 'No manager'}</span>
+            </div>
+          );
+        })()}
       </TableCell>
     ),
     type: (
       <TableCell key="type" className="text-center">
-        <Badge variant="secondary" className="text-xs rounded-lg whitespace-nowrap">
+        <Badge
+          variant="outline"
+          className="text-[10px] font-mono uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#9697a6]"
+        >
           {ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || '—')}
         </Badge>
       </TableCell>
     ),
     dealType: (
       <TableCell key="dealType">
-        <div className="flex flex-nowrap gap-1 overflow-hidden">
+        <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
           {dealTypeLabels.length > 0 ? (
             <>
               {dealTypeLabels.slice(0, 1).map((label, index) => (
-                <Badge key={index} variant="outline" className="text-xs rounded-lg">
+                <Badge
+                  key={index}
+                  variant="outline"
+                  className="text-[10px] font-mono uppercase tracking-wider rounded-md border-white/10 bg-white/[0.03] text-[#9697a6]"
+                >
                   {label}
                 </Badge>
               ))}
               {dealTypeLabels.length > 1 && (
-                <Badge variant="outline" className="text-xs rounded-lg">
+                <span className="text-[10px] font-mono text-[#5f606e] border-l border-white/10 pl-1.5 ml-0.5">
                   +{dealTypeLabels.length - 1}
-                </Badge>
+                </span>
               )}
             </>
           ) : (
-            <span className="text-sm text-muted-foreground">—</span>
+            <span className="text-sm text-[#5f606e]">—</span>
           )}
         </div>
       </TableCell>
     ),
     totalFee: (
       <TableCell key="totalFee" className="text-center tabular-nums">
-        <span className="text-sm font-medium text-foreground">
+        <span className="text-sm font-medium text-[#f4f4f7] font-mono">
           {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
         </span>
       </TableCell>
@@ -284,17 +318,42 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     })(),
     updated: (
       <TableCell key="updated">
-        <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${timeAgoData.highlightClass}`}>
-          <Clock className="h-3 w-3" />
-          <span>{timeAgoData.text}</span>
-        </div>
+        {timeAgoData.text === 'Over 30 Days' ? (
+          <div
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-mono"
+            style={{
+              color: '#f47272',
+              background: 'rgba(244,114,114,.13)',
+              border: '1px solid rgba(244,114,114,.30)',
+            }}
+          >
+            <Clock className="h-3 w-3" />
+            <span>{timeAgoData.text}</span>
+          </div>
+        ) : (
+          <div className={`flex items-center gap-1.5 text-xs text-[#9697a6] font-mono ${timeAgoData.highlightClass}`}>
+            <Clock className="h-3 w-3" />
+            <span>{timeAgoData.text}</span>
+          </div>
+        )}
       </TableCell>
     ),
   };
 
   return (
     <TableRow 
-      className={`group cursor-pointer rounded-md shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)] bg-transparent hover:shadow-[inset_0_0_0_1px_hsl(292,46%,72%,0.6)] transition-colors duration-200 h-14 [&>td]:py-0 [&>td]:align-middle [&>td]:whitespace-nowrap ${timeAgoData.isStale ? 'bg-warning/5' : ''} ${isSelected ? 'bg-primary/10 shadow-[inset_0_0_0_1px_hsl(272,100%,70%,0.5)]' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
+      className={cn(
+        'group cursor-pointer transition-all duration-200 h-14',
+        '[&>td]:py-0 [&>td]:align-middle [&>td]:whitespace-nowrap',
+        '[&>td:first-child]:rounded-l-xl [&>td:last-child]:rounded-r-xl',
+        '[&>td]:bg-[linear-gradient(180deg,#16161f,#101018)]',
+        '[&>td]:border-y [&>td]:border-white/[0.06]',
+        '[&>td:first-child]:border-l [&>td:last-child]:border-r',
+        'hover:[&>td]:shadow-[inset_0_1px_0_rgba(255,255,255,.05)] hover:-translate-y-px',
+        isSelected
+          ? '[&>td]:!shadow-[inset_0_0_0_1px_rgba(155,111,212,.55),0_8px_24px_-12px_rgba(155,111,212,.45)]'
+          : '',
+      )}
       data-deal-open-id={deal.id}
       onClick={(e) => {
         if (shouldIgnoreOverlayOriginEvent(e, e.currentTarget)) return;
