@@ -193,6 +193,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           >
             {totalCount} pending
           </span>
+          <span
+            className="text-[10px] uppercase text-[#ecedf4]/58"
+            style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+          >
+            synced just now
+          </span>
         </div>
         <div className="flex items-center gap-2">
           {onClose && (
@@ -206,12 +212,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             </button>
           )}
         </div>
-      </div>
-      <div
-        className="relative px-5 pt-1 pb-3 text-[10.5px] uppercase text-[#ecedf4]/58 border-b border-white/[0.05]"
-        style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-      >
-        synced just now
       </div>
 
       {/* Body */}
