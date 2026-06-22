@@ -93,14 +93,15 @@ export function useContacts(params: ContactsListParams = {}) {
   return useQuery<PaginatedResult<Contact>>({
     queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
     queryFn: async () => {
-      // Use planner-estimated count (very fast — avoids running the query a
-      // second time without LIMIT just to produce a total). When a search
-      // term is present we skip the count entirely; the user only needs the
-      // first page of matches.
-      const hasSearch = !!search?.trim();
+      // Use the planner's row-count estimate instead of an exact COUNT(*).
+      // PostgREST's default 'exact' (and 'estimated' when the planner row
+      // estimate is below 1000) runs the filtered query a second time
+      // without LIMIT just to produce a total — that's what made large
+      // ILIKE searches feel slow. 'planned' returns the planner estimate
+      // directly, which is effectively free.
       let query = supabase
         .from('contacts')
-        .select(LIST_COLUMNS, hasSearch ? undefined : { count: 'planned' })
+        .select(LIST_COLUMNS, { count: 'planned' })
         .eq('org_company_id', company!.id);
 
       // Server-side search
