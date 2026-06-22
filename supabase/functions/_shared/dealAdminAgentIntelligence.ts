@@ -94,6 +94,7 @@ interface DealSignalBundle {
   open_tasks: any[];
   claap_recordings: any[];
   email_threads: any[];
+  referral_sources: any[];
 }
 
 interface CandidateItem {
