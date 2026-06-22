@@ -8241,8 +8241,9 @@ When the user asks for the status, update, or "where are we on" a single deal (e
 
 DEAL RESOLUTION:
 - If the user names a deal, call search_deals first (fuzzy/typo tolerant) to resolve it.
-- If the user says "this", "this deal", "where are we on this", or omits a name AND ${entityType === 'deal' && entityId ? `the current page context is deal entityId=${entityId}, use that deal_id directly without calling search_deals.` : `the current page is NOT a deal page, ask the user which deal they mean — do NOT guess.`}
+- If the user says "this", "this deal", "where are we on this", or omits a name AND ${entityType === 'deal' && entityId ? `the current page context is deal entityId=${entityId}, use that deal_id directly without calling search_deals.` : `the current page is NOT a deal page, ask the user which deal they mean using the picker format below — do NOT guess and do NOT call any tool until they pick.\n\n  PICKER FORMAT (copy verbatim, substituting the user's recent/active deals — prefer the AMBIGUOUS STATUS QUERY block above if present):\n  Which deal did you mean?\n  - [Deal Name — Stage (Status)](entity://deal/<deal_id>)\n  - [Deal Name — Stage (Status)](entity://deal/<deal_id>)`}
 - If the resolved deal is archived OR not in scope for the user (e.g. a deal manager querying someone else's deal — RLS will return no row), respond with a single friendly sentence such as "I can't pull a status update on <name> — that deal is archived" or "I can't pull a status update on <name> — it's outside the deals assigned to you. Ask an admin if you need a copy." Do NOT render the 5-section layout in that case.
+- If a deal name in the user's message has MULTIPLE plausible matches (POSSIBLE DEAL MATCHES FROM PROMPT or AMBIGUOUS STATUS QUERY block present above), STOP and render the picker exactly as instructed in that block — do NOT pick one yourself, do NOT call get_deal_full or any other tool until the user picks.
 
 DATA GATHERING (call these tools in parallel before drafting the response — always live, never invented):
 - get_deal_full (deal core + write-up + lenders + outstanding items + milestones + activity log + memo + documents)
