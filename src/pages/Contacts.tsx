@@ -183,17 +183,6 @@ export default function Contacts() {
             onMatchModeChange={setMatchMode}
           />
 
-          {/* Quick filters */}
-          <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
-            <TabsList>
-              <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
-              <TabsTrigger value="new_leads">New Leads</TabsTrigger>
-              <TabsTrigger value="meeting_scheduled">Meeting Scheduled</TabsTrigger>
-              <TabsTrigger value="high_score">High Score</TabsTrigger>
-              <TabsTrigger value="no_activity_7d">No Activity 7d</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           {/* Content */}
           {isLoading ? (
             <div className="space-y-3">
