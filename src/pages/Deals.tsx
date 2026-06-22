@@ -1165,11 +1165,7 @@ export default function Dashboard() {
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
-                className={cn(
-                  showInlineDetail
-                    ? 'block pr-[calc(clamp(546px,49.4vw,832px)+1rem)] transition-[padding] duration-300'
-                    : 'contents'
-                )}
+                className="contents"
               >
               {/*
                 Flagged-filter context banner — renders ONLY when the
@@ -1235,6 +1231,14 @@ export default function Dashboard() {
                 />
               )}
               </div>
+              {showInlineDetail && selectedDeal && (
+                <style>{`
+                  tr[data-deal-open-id]:not([data-deal-open-id="${selectedId}"]) {
+                    clip-path: inset(0 calc(clamp(546px, 49.4vw, 832px) + 1.25rem) 0 0 round 0.375rem);
+                    transition: clip-path 300ms cubic-bezier(0.4, 0, 0.2, 1);
+                  }
+                `}</style>
+              )}
               {showInlineDetail && selectedDeal && (
                 <aside
                   ref={detailAsideRef}
