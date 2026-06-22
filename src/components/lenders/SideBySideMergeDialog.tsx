@@ -328,12 +328,34 @@ interface ResolverRowProps {
   isCombined: boolean;
   resolvedFormatted: string;
   onToggle: (optionId: string) => void;
+  onAddCustom: (value: any, formatted: string) => void;
 }
 
-function ResolverRow({ field, options, selection, combinable, isCombined, resolvedFormatted, onToggle }: ResolverRowProps) {
+function ResolverRow({ field, options, selection, combinable, isCombined, resolvedFormatted, onToggle, onAddCustom }: ResolverRowProps) {
   const Icon = field.icon;
   const selectedSet = new Set(selection.optionIds);
   const multiVariant = combinable && selectedSet.size >= 2;
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState('');
+  const isArrayField = field.format === formatArray;
+  const placeholder = isArrayField
+    ? 'Comma-separated values'
+    : field.format === formatCurrency
+    ? 'e.g. 5000000'
+    : 'Enter a custom value';
+
+  const handleSaveCustom = () => {
+    const parsed = parseCustomInput(field, customDraft);
+    if (!hasValue(parsed)) {
+      setCustomOpen(false);
+      setCustomDraft('');
+      return;
+    }
+    onAddCustom(parsed, field.format(parsed));
+    setCustomOpen(false);
+    setCustomDraft('');
+  };
+
   return (
     <div className="rounded-xl border border-border/60 bg-card/30 p-3">
       <div className="mb-2 flex items-center gap-2">
@@ -353,9 +375,23 @@ function ResolverRow({ field, options, selection, combinable, isCombined, resolv
             {isCombined ? `combined · ${selectedSet.size}` : 'multi-select'}
           </span>
         )}
-        <span className={cn('text-[10px] text-muted-foreground', combinable ? '' : 'ml-auto')}>
+        <span className="text-[10px] text-muted-foreground">
           {options.length} options
         </span>
+        <button
+          type="button"
+          onClick={() => setCustomOpen(v => !v)}
+          className={cn(
+            'ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-px text-[10px] leading-none transition-colors',
+            customOpen
+              ? 'border-accent/50 bg-accent/10 text-accent'
+              : 'border-border bg-muted/40 text-muted-foreground hover:border-accent/40 hover:text-accent',
+          )}
+          aria-expanded={customOpen}
+        >
+          <Plus className="h-2.5 w-2.5" />
+          Custom value
+        </button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(opt => (
@@ -366,10 +402,62 @@ function ResolverRow({ field, options, selection, combinable, isCombined, resolv
             selected={selectedSet.has(opt.id)}
             variant={multiVariant ? 'combine' : 'pick'}
             sources={opt.sourceIndices.map(i => ({ idx: i, isPrimary: i === 0 }))}
+            isCustom={opt.isCustom}
             onClick={() => onToggle(opt.id)}
           />
         ))}
       </div>
+      {customOpen && (
+        <div className="mt-2 rounded-lg border border-accent/40 bg-accent/5 p-2">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-accent">
+            <Pencil className="h-2.5 w-2.5" />
+            New custom value
+            {isArrayField && <span className="text-muted-foreground/70 normal-case tracking-normal">· separate with commas</span>}
+          </div>
+          {field.multiline ? (
+            <Textarea
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              placeholder={placeholder}
+              rows={3}
+              className="text-sm"
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              placeholder={placeholder}
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleSaveCustom(); }
+                if (e.key === 'Escape') { setCustomOpen(false); setCustomDraft(''); }
+              }}
+            />
+          )}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => { setCustomOpen(false); setCustomDraft(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleSaveCustom}
+              disabled={!customDraft.trim()}
+            >
+              Use this value
+            </Button>
+          </div>
+        </div>
+      )}
       {isCombined && (
         <p className="mt-2 truncate text-[11px] text-muted-foreground">
           → {resolvedFormatted}
