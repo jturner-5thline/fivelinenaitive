@@ -5,6 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isDemoEmail, withDemoLenderContact } from '@/lib/demoLenderContact';
 import { toast } from 'sonner';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
+import {
+  loadCachedLenders,
+  saveCachedLenders,
+  clearCachedLenders,
+} from './lenderCacheStorage';
 
 type MasterLenderRow = Database['public']['Tables']['master_lenders']['Row'];
 type MasterLenderDbInsert = Database['public']['Tables']['master_lenders']['Insert'];
@@ -61,6 +66,9 @@ function invalidateMasterLendersCache() {
   cacheUserId = null;
   cacheTimestamp = 0;
   cachePromise = null;
+  // Best-effort: drop the persisted snapshot too so the next cold load
+  // doesn't repaint stale rows after a destructive mutation.
+  void clearCachedLenders();
 }
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
@@ -94,6 +102,59 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const backgroundLoadIdRef = useRef(0);
+  /** Set once persisted-cache hydration has finished (success OR miss) so we
+   *  don't repaint a stale snapshot on top of fresh network data. */
+  const idbHydratedRef = useRef(false);
+
+  // ─── Stale-while-revalidate hydration from IndexedDB ────────────────
+  // On cold loads / hard refresh the in-memory cache is empty and the user
+  // would otherwise stare at a skeleton until the first network round-trip
+  // (~hundreds of ms for 6k+ rows over the wire) completes. Reading from
+  // IDB is ~10–30ms, so we kick it off immediately and paint cached rows
+  // the moment they land — the network refresh continues in parallel and
+  // overwrites the list when it finishes.
+  useEffect(() => {
+    if (mode !== 'all' || searchQuery) {
+      idbHydratedRef.current = true;
+      return;
+    }
+    if (!user) {
+      idbHydratedRef.current = true;
+      return;
+    }
+    // If the in-memory cache already populated state, skip — it's authoritative.
+    if (cachedLenders && cacheUserId === user.id) {
+      idbHydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    loadCachedLenders<MasterLender>(user.id)
+      .then((snapshot) => {
+        if (cancelled) return;
+        if (idbHydratedRef.current) return; // network beat us — don't clobber
+        if (!snapshot || snapshot.userId !== user.id) return;
+        const mapped = snapshot.lenders.map((l) => withDemoLenderContact(l, isDemo));
+        // Seed both React state AND the in-memory cache so peers mounting
+        // in parallel also get the instant snapshot.
+        cachedLenders = mapped;
+        cacheUserId = user.id;
+        cacheTimestamp = snapshot.savedAt;
+        setLenders(mapped);
+        setTotalCount(mapped.length);
+        setHasMore(false);
+        setLoading(false);
+      })
+      .catch(() => { /* ignore — fall through to network */ })
+      .finally(() => {
+        idbHydratedRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+    // We only want this to run once per (user, mode) — extra deps would
+    // re-trigger on unrelated state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, mode, searchQuery, isDemo]);
 
   const fetchPage = useCallback(
     async (pageIndex: number, withCount = false, query = '') => {
@@ -234,6 +295,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       if (loadId !== backgroundLoadIdRef.current) return;
 
       const firstPage = initialData ?? [];
+      // Network beat the IDB hydration → mark hydration as "done" so a
+      // delayed IDB read can't overwrite the fresh first page.
+      idbHydratedRef.current = true;
       setLenders(firstPage);
       if (mode === 'all' && !searchQuery) {
         cachedLenders = firstPage;
@@ -304,6 +368,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
           setLoadingMore(false);
           setHasMore(false);
+          // Persist the complete snapshot so the next cold load is instant.
+          if (user) {
+            void saveCachedLenders(user.id, accumulated);
+          }
           return accumulated;
         };
 
