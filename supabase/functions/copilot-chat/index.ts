@@ -7720,9 +7720,36 @@ serve(async (req) => {
             const d: any = filtered[0];
             dealResolverLog.resolved_deal_id = d.id;
             dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
-          } else if (filtered.length > 1) {
+           } else if (filtered.length > 1) {
             const top3 = filtered.slice(0, 3);
             dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT — the user's message could refer to more than one deal.\n\nHARD RULES:\n1. You MUST NOT call ANY write tool (update_deal_fields, update_deal_stage, update_deal_status, move_deal_pipeline, add_deal_note, update_lender_status, create_task, draft_email, delete_outstanding_item, etc.) until the user picks. This explicitly includes "add hours" / pre_signing_hours_delta / post_signing_hours_delta.\n2. Reply with EXACTLY the format below — a short question line, then one markdown link per candidate, nothing else. The frontend renders the link list as a clickable deal picker card.\n3. When the user picks (the next turn will reference one deal by id), re-issue the ORIGINAL request against that deal_id without asking them to repeat it.\n\nFORMAT (copy verbatim, substituting candidates):\nWhich deal did you mean?\n${top3.map((d: any) => `- [${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"})](entity://deal/${d.id})`).join("\n")}`;
+          }
+        }
+        // ── Status-intent fallback ───────────────────────────────
+        // If the user issued a "where are we / status / update" style query
+        // with NO clear deal target (no probes produced candidates, no page
+        // context), surface a picker of the user's most recent active deals
+        // so they can disambiguate instead of getting a freeform "which
+        // deal?" question.
+        if (!dealResolverBlock) {
+          const statusIntent = /\b(where\s+are\s+we|where\s+do\s+we\s+stand|what'?s\s+(?:the\s+)?(?:latest|status|update)|give\s+me\s+(?:an?\s+)?(?:update|status)|status\s+(?:of|on)|update\s+on)\b/i.test(userText);
+          if (statusIntent) {
+            const { data: recent } = await supabaseUser
+              .from("deals")
+              .select("id, company, stage, status, updated_at")
+              .is("merged_into", null)
+              .eq("status", "active")
+              .order("updated_at", { ascending: false })
+              .limit(5);
+            const picks = (recent || []).filter((d: any) => d.company);
+            if (picks.length > 1) {
+              dealResolverLog.candidates = picks.map((d: any) => ({ id: d.id, company: d.company }));
+              dealResolverBlock = `\n\nAMBIGUOUS STATUS QUERY — the user asked for a status update without naming a deal and is not on a deal page.\n\nHARD RULES:\n1. You MUST NOT call ANY data-gathering or write tool until the user picks.\n2. Reply with EXACTLY the format below — a short question line, then one markdown link per candidate, nothing else. The frontend renders the link list as a clickable deal picker card.\n3. When the user picks, re-issue the ORIGINAL status request against that deal_id.\n\nFORMAT (copy verbatim):\nWhich deal did you mean?\n${picks.map((d: any) => `- [${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"})](entity://deal/${d.id})`).join("\n")}`;
+            } else if (picks.length === 1) {
+              const d: any = picks[0];
+              dealResolverLog.resolved_deal_id = d.id;
+              dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (only active deal in scope; treat this as the focused deal for THIS turn).\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"}\n- For full record call get_deal_full({ deal_id: "${d.id}" }).`;
+            }
           }
         }
       }
