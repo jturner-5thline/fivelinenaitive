@@ -292,6 +292,46 @@ Deno.serve(async (req) => {
         user_id: userId,
       });
     }
+    // Silent tone training — only when the approver edited an agent
+    // proposal (deal_admin_agent origin) for text-bearing action types.
+    try {
+      const origin = (item.source as any)?.origin ?? null;
+      const trackable = ['draft_email', 'add_status_note', 'create_followup_task'];
+      if (
+        wasEdited &&
+        origin === 'deal_admin_agent' &&
+        trackable.includes(item.action_type)
+      ) {
+        const { data: membership } = await admin
+          .from('company_members')
+          .select('company_id')
+          .eq('user_id', userId)
+          .limit(1)
+          .maybeSingle();
+        // Build a short human-readable diff summary across known text fields.
+        const fields = ['body', 'body_html', 'body_text', 'subject', 'note', 'title', 'description'];
+        const diffs: string[] = [];
+        for (const f of fields) {
+          const a = (item.new_values as any)?.[f];
+          const b = (merged as any)?.[f];
+          if (typeof a === 'string' && typeof b === 'string' && a !== b) {
+            const delta = b.length - a.length;
+            diffs.push(`${f}: ${a.length}→${b.length} chars (Δ${delta >= 0 ? '+' : ''}${delta})`);
+          }
+        }
+        await admin.from('admin_agent_tone_deltas').insert({
+          user_id: userId,
+          company_id: membership?.company_id ?? null,
+          queue_item_id: item.id,
+          action_type: item.action_type,
+          original_draft: item.new_values ?? {},
+          edited_draft: merged,
+          diff_summary: diffs.join('; ') || null,
+        });
+      }
+    } catch (e) {
+      console.warn('[approval-queue-execute] tone-delta capture failed:', (e as Error)?.message);
+    }
   }
 
   try {
