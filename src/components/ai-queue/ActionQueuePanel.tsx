@@ -552,17 +552,22 @@ function DetailPane({
   onReject,
 }: {
   item: QueuedAiAction;
-  onApprove: () => Promise<unknown>;
+  onApprove: (opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
   onReject: () => Promise<unknown>;
 }) {
   const meta = TYPE_META[item.action_type];
-  const risk = riskOf(item);
-  const riskInfo = RISK[risk];
   const target = targetSummary(item);
   const onApproveSentence = buildOnApproveSentence(item);
   const outcome = buildOutcomeSentence(item);
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const [edits, setEdits] = useState<Record<string, any>>({});
+
+  // Reset edits whenever a different item is selected.
+  useEffect(() => {
+    setEdits({});
+    setEditMode(false);
+  }, [item.id]);
 
   // Claap items keep their dedicated card for now.
   if (item.action_type === 'claap_recording_review' || item.action_type === 'claap_action_items') {
@@ -575,6 +580,12 @@ function DetailPane({
 
   const evidence = Array.isArray(item.evidence) ? item.evidence : [];
   const expires = expiryDaysLabel(item);
+  const oldValues = (item.old_values || {}) as Record<string, any>;
+  const newValues = (item.new_values || {}) as Record<string, any>;
+  const fieldKeys = Array.from(
+    new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]),
+  );
+  const editedCount = Object.keys(edits).length;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -686,10 +697,70 @@ function DetailPane({
           </div>
         )}
 
-        {/* Inline edit / diff (collapsible) */}
-        {editMode && (
+        {/* Proposed changes — always visible; editable when editMode is on */}
+        {fieldKeys.length > 0 && (
           <div className="mt-6">
-            <ApprovalReviewExpanded item={item} onDone={() => setEditMode(false)} />
+            <div className="flex items-center justify-between">
+              <p
+                className="text-[10.5px] uppercase text-[#ecedf4]/55"
+                style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
+              >
+                Proposed changes
+              </p>
+              {editMode && editedCount > 0 && (
+                <span
+                  className="text-[10px] uppercase text-[#f3c969]"
+                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                >
+                  {editedCount} edited
+                </span>
+              )}
+            </div>
+            <div className="mt-2 rounded-[12px] border border-white/[0.08] overflow-hidden">
+              <div
+                className="grid grid-cols-[120px_1fr_1fr] text-[10.5px] uppercase text-[#ecedf4]/55 border-b border-white/[0.06] bg-white/[0.02]"
+                style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+              >
+                <div className="px-3 py-1.5">Field</div>
+                <div className="px-3 py-1.5">Current</div>
+                <div className="px-3 py-1.5">Proposed</div>
+              </div>
+              {fieldKeys.map((k, idx) => {
+                const oldV = oldValues[k];
+                const proposed = edits[k] ?? newValues[k];
+                return (
+                  <div
+                    key={k}
+                    className={`grid grid-cols-[120px_1fr_1fr] text-[12px] ${
+                      idx === fieldKeys.length - 1 ? '' : 'border-b border-white/[0.05]'
+                    }`}
+                  >
+                    <div className="px-3 py-2 text-[#ecedf4]/85" style={FONT_BODY}>
+                      {k}
+                    </div>
+                    <div className="px-3 py-2 text-[#ecedf4]/45 line-through" style={FONT_BODY}>
+                      {oldV == null || oldV === '' ? '—' : String(oldV)}
+                    </div>
+                    <div className="px-3 py-2" style={FONT_BODY}>
+                      {editMode ? (
+                        <Input
+                          value={proposed == null ? '' : String(proposed)}
+                          onChange={(e) =>
+                            setEdits((p) => ({ ...p, [k]: e.target.value }))
+                          }
+                          className="h-7 text-[12px] px-2 bg-white/[0.04] border-white/[0.10] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                          style={FONT_BODY}
+                        />
+                      ) : (
+                        <span className="text-[#ecedf4]">
+                          {proposed == null || proposed === '' ? '—' : String(proposed)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -716,10 +787,11 @@ function DetailPane({
         <button
           type="button"
           onClick={() => setEditMode((v) => !v)}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.04]"
+          disabled={fieldKeys.length === 0}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.04] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
           style={FONT_BODY}
         >
-          <Pencil className="h-3.5 w-3.5" /> {editMode ? 'Hide edit' : 'Edit'}
+          <Pencil className="h-3.5 w-3.5" /> {editMode ? 'Done editing' : 'Edit'}
         </button>
         <div className="flex-1" />
         <button
@@ -741,7 +813,7 @@ function DetailPane({
           disabled={busy !== null}
           onClick={async () => {
             setBusy('a');
-            await onApprove();
+            await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
             setBusy(null);
           }}
           className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-[12px] font-semibold text-[#0a0a14] shadow-[0_8px_30px_-8px_rgba(94,205,245,0.55)] hover:brightness-110 transition-all disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
@@ -751,7 +823,7 @@ function DetailPane({
           }}
         >
           {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {approveButtonLabel(item)}
+          {approveButtonLabel(item, editedCount > 0)}
         </button>
       </div>
     </div>
