@@ -161,14 +161,6 @@ export default function CrmCompanies() {
             onMatchModeChange={setMatchMode}
           />
 
-          <Tabs value={quickFilter} onValueChange={handleQuickFilterChange}>
-            <TabsList>
-              <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
-              <TabsTrigger value="customers">Customers</TabsTrigger>
-              <TabsTrigger value="prospects">Prospects</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           <div className="relative max-w-sm">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
