@@ -266,6 +266,51 @@ export type Database = {
         }
         Relationships: []
       }
+      _stage_hs_companies_import: {
+        Row: {
+          city: string | null
+          country: string | null
+          create_date: string | null
+          description: string | null
+          domain: string | null
+          employee_count: number | null
+          employee_range: string | null
+          financing_status: string | null
+          industry: string | null
+          name: string | null
+          website_url: string | null
+          year_founded: number | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          create_date?: string | null
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          employee_range?: string | null
+          financing_status?: string | null
+          industry?: string | null
+          name?: string | null
+          website_url?: string | null
+          year_founded?: number | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          create_date?: string | null
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          employee_range?: string | null
+          financing_status?: string | null
+          industry?: string | null
+          name?: string | null
+          website_url?: string | null
+          year_founded?: number | null
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           activity_type: string
