@@ -250,8 +250,11 @@ export default function Dashboard() {
       );
       if (!row) return;
       const containerTop = container.getBoundingClientRect().top;
-      const rowTop = row.getBoundingClientRect().top;
-      const rawOffset = rowTop - containerTop;
+      // Align the panel's TOP edge with the clicked tile's BOTTOM edge so
+      // the panel sits BELOW the tile (vertically) rather than overlapping
+      // its right half. Small gap matches the flex `gap-4` spacing.
+      const rowRect = row.getBoundingClientRect();
+      const rawOffset = rowRect.bottom - containerTop + 8;
       // Clamp so the aside never extends past the bottom of the left list.
       const maxOffset = Math.max(
         0,
