@@ -1236,10 +1236,10 @@ export default function Dashboard() {
                 <aside
                   ref={detailAsideRef}
                   style={{
-                    marginTop: `${detailOffset}px`,
-                    transition: 'margin-top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    top: `${detailOffset}px`,
+                    transition: 'top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
-                  className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
+                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(546px,49.4vw,832px)] max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right shadow-2xl z-10"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
