@@ -430,13 +430,29 @@ async function createCrmLead(
 
   // Insert deal in 5th Line workspace
   try {
+    // Resolve the 5th Line "naitive Pipeline" so the demo lead lands on the
+    // Naitive page's "Demo Access" stage instead of the default Active Pipeline.
+    let naitivePipelineId: string | null = null;
+    try {
+      const { data: pipe } = await admin
+        .from("deal_pipelines")
+        .select("id")
+        .eq("company_id", FIFTH_LINE_COMPANY_ID)
+        .eq("name", "naitive Pipeline")
+        .maybeSingle();
+      naitivePipelineId = (pipe?.id as string | undefined) ?? null;
+    } catch (lookupErr) {
+      console.warn("[create-demo-access] naitive pipeline lookup failed", lookupErr);
+    }
+
     const { data: deal } = await admin
       .from("deals")
       .insert({
         company: args.companyName,
         value: 0,
         status: "active",
-        stage: "Initial Review",
+        stage: "demo-access",
+        pipeline_id: naitivePipelineId,
         deal_class: "standard",
         deal_type: `${args.accountType} Lead`,
         manager: "James Turner",
