@@ -156,10 +156,6 @@ export default function Contacts() {
             <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
             <div className="flex items-center gap-2">
               <CrmUpdateQueueButton />
-              <Button variant="outline" size="sm" onClick={handleSyncContacts} disabled={isSyncingContacts}>
-                {isSyncingContacts ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1.5" />}
-                Sync HubSpot
-              </Button>
               <Button variant="outline" size="sm" onClick={handleMatchCompanies} disabled={isMatching}>
                 {isMatching ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Link2 className="h-4 w-4 mr-1.5" />}
                 Match Companies
