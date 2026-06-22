@@ -5430,6 +5430,51 @@ export type Database = {
           },
         ]
       }
+      contact_company_match_audit: {
+        Row: {
+          contact_id: string
+          created_at: string
+          created_by: string | null
+          decision: string
+          id: string
+          normalized_company_domain: string | null
+          normalized_contact_domain: string | null
+          org_company_id: string
+          proposed_company_id: string | null
+          raw_company_website: string | null
+          raw_contact_email: string | null
+          reason: string | null
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          created_by?: string | null
+          decision: string
+          id?: string
+          normalized_company_domain?: string | null
+          normalized_contact_domain?: string | null
+          org_company_id: string
+          proposed_company_id?: string | null
+          raw_company_website?: string | null
+          raw_contact_email?: string | null
+          reason?: string | null
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          id?: string
+          normalized_company_domain?: string | null
+          normalized_contact_domain?: string | null
+          org_company_id?: string
+          proposed_company_id?: string | null
+          raw_company_website?: string | null
+          raw_contact_email?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       contact_deals: {
         Row: {
           contact_id: string
@@ -6092,6 +6137,7 @@ export type Database = {
           last_activity_date: string | null
           last_contacted_date: string | null
           last_inbound_activity_date: string | null
+          last_match_run_at: string | null
           last_modified_by: string | null
           last_name: string | null
           last_outbound_touch_date: string | null
@@ -6102,6 +6148,9 @@ export type Database = {
           lifecycle_stage: string | null
           linkedin_url: string | null
           locale: string | null
+          match_confidence: number | null
+          match_source: string | null
+          match_status: string
           migrated_from_hubspot: boolean | null
           next_activity_date: string | null
           opted_out_one_to_one: boolean | null
@@ -6579,6 +6628,7 @@ export type Database = {
           last_activity_date?: string | null
           last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
+          last_match_run_at?: string | null
           last_modified_by?: string | null
           last_name?: string | null
           last_outbound_touch_date?: string | null
@@ -6589,6 +6639,9 @@ export type Database = {
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
+          match_confidence?: number | null
+          match_source?: string | null
+          match_status?: string
           migrated_from_hubspot?: boolean | null
           next_activity_date?: string | null
           opted_out_one_to_one?: boolean | null
@@ -7066,6 +7119,7 @@ export type Database = {
           last_activity_date?: string | null
           last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
+          last_match_run_at?: string | null
           last_modified_by?: string | null
           last_name?: string | null
           last_outbound_touch_date?: string | null
@@ -7076,6 +7130,9 @@ export type Database = {
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           locale?: string | null
+          match_confidence?: number | null
+          match_source?: string | null
+          match_status?: string
           migrated_from_hubspot?: boolean | null
           next_activity_date?: string | null
           opted_out_one_to_one?: boolean | null
@@ -11971,6 +12028,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      domain_match_settings: {
+        Row: {
+          auto_apply: boolean
+          extra_freemail_domains: string[]
+          ignored_domains: string[]
+          org_company_id: string
+          subdomain_matching: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_apply?: boolean
+          extra_freemail_domains?: string[]
+          ignored_domains?: string[]
+          org_company_id: string
+          subdomain_matching?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_apply?: boolean
+          extra_freemail_domains?: string[]
+          ignored_domains?: string[]
+          org_company_id?: string
+          subdomain_matching?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       drafted_agreements: {
         Row: {
@@ -27947,6 +28034,14 @@ export type Database = {
         Returns: undefined
       }
       backfill_claap_recordings_from_meetings: { Args: never; Returns: Json }
+      bulk_contact_company_match: {
+        Args: {
+          p_limit?: number
+          p_only_unmatched?: boolean
+          p_org_company_id: string
+        }
+        Returns: Json
+      }
       calculate_next_schedule: {
         Args: { cron_expression: string; timezone?: string }
         Returns: string
@@ -28353,6 +28448,7 @@ export type Database = {
       }
       is_fifth_line_internal_admin: { Args: never; Returns: boolean }
       is_flex_hidden_stage: { Args: { p_stage: string }; Returns: boolean }
+      is_freemail_domain: { Args: { d: string }; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
@@ -28427,6 +28523,10 @@ export type Database = {
         Returns: undefined
       }
       reset_demo_ai_chats: { Args: never; Returns: number }
+      run_contact_company_match: {
+        Args: { p_contact_id: string; p_force?: boolean; p_source?: string }
+        Returns: Json
+      }
       save_dashboard_grid_layout: {
         Args: { _company_id: string; _dashboard_id: string; _layout: Json }
         Returns: undefined
