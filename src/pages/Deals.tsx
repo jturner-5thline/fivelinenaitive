@@ -1160,13 +1160,13 @@ export default function Dashboard() {
                 ref={boardScrollContainerRef}
                 className={cn(
                   'opacity-0',
-                  showInlineDetail && 'flex gap-4 items-start',
+                  showInlineDetail && 'relative',
                 )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
-                className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}
+                className="contents"
               >
               {/*
                 Flagged-filter context banner — renders ONLY when the
