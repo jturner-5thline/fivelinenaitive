@@ -152,15 +152,6 @@ export default function CrmCompanies() {
             </div>
           )}
 
-          {/* Advanced Filters */}
-          <AdvancedFilterBuilder
-            availableFields={COMPANY_CORE_FIELDS}
-            filters={advancedFilters}
-            onFiltersChange={handleFiltersChange}
-            matchMode={matchMode}
-            onMatchModeChange={setMatchMode}
-          />
-
           {isLoading ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -192,6 +183,7 @@ export default function CrmCompanies() {
                 <CrmCompaniesTable
                   companies={companies}
                   leadingFilterSlot={
+                    <>
                     <div className="relative w-[260px]">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -211,6 +203,14 @@ export default function CrmCompanies() {
                         </button>
                       )}
                     </div>
+                    <AdvancedFilterBuilder
+                      availableFields={COMPANY_CORE_FIELDS}
+                      filters={advancedFilters}
+                      onFiltersChange={handleFiltersChange}
+                      matchMode={matchMode}
+                      onMatchModeChange={setMatchMode}
+                    />
+                    </>
                   }
                 />
               </div>
