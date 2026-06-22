@@ -1120,7 +1120,10 @@ export default function Dashboard() {
                 )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
-              <div className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}>
+              <div
+                ref={showInlineDetail ? leftListColumnRef : undefined}
+                className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}
+              >
               {/*
                 Flagged-filter context banner — renders ONLY when the
                 flag filter is on. Computed from the unfiltered deal set
@@ -1187,6 +1190,11 @@ export default function Dashboard() {
               </div>
               {showInlineDetail && selectedDeal && (
                 <aside
+                  ref={detailAsideRef}
+                  style={{
+                    transform: `translateY(${detailOffset}px)`,
+                    transition: 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
                   className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
                   aria-label="Selected deal summary"
                 >
