@@ -243,22 +243,21 @@ export default function Dashboard() {
     const measure = () => {
       const container = boardScrollContainerRef.current;
       const aside = detailAsideRef.current;
-      const leftCol = leftListColumnRef.current;
-      if (!container || !aside || !leftCol) return;
-      const row = leftCol.querySelector<HTMLElement>(
+      if (!container || !aside) return;
+      const row = container.querySelector<HTMLElement>(
         `[data-deal-open-id="${CSS.escape(inlineSelectedDealId)}"]`
       );
       if (!row) return;
       const containerTop = container.getBoundingClientRect().top;
       // Align the panel's TOP edge with the clicked tile's BOTTOM edge so
       // the panel sits BELOW the tile (vertically) rather than overlapping
-      // its right half. Small gap matches the flex `gap-4` spacing.
+      // its right half.
       const rowRect = row.getBoundingClientRect();
-      const rawOffset = rowRect.bottom - containerTop + 8;
+      const rawOffset = rowRect.bottom - containerTop + 12;
       // Clamp so the aside never extends past the bottom of the left list.
       const maxOffset = Math.max(
         0,
-        leftCol.offsetHeight - aside.offsetHeight,
+        container.offsetHeight - aside.offsetHeight,
       );
       const next = Math.max(0, Math.min(rawOffset, maxOffset));
       setDetailOffset(next);
@@ -1160,13 +1159,13 @@ export default function Dashboard() {
                 ref={boardScrollContainerRef}
                 className={cn(
                   'opacity-0',
-                  showInlineDetail && 'flex gap-4 items-start',
+                  showInlineDetail && 'relative',
                 )}
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
-                className={cn(showInlineDetail ? 'flex-1 min-w-0 pr-1 overflow-visible' : 'contents')}
+                className="contents"
               >
               {/*
                 Flagged-filter context banner — renders ONLY when the
@@ -1236,10 +1235,10 @@ export default function Dashboard() {
                 <aside
                   ref={detailAsideRef}
                   style={{
-                    marginTop: `${detailOffset}px`,
-                    transition: 'margin-top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    top: `${detailOffset}px`,
+                    transition: 'top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
-                  className="hidden lg:flex flex-col w-[clamp(546px,49.4vw,832px)] shrink-0 sticky top-4 self-start max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right"
+                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(546px,49.4vw,832px)] max-h-[calc(100vh-6rem)] rounded-xl border border-white/10 bg-background/40 overflow-hidden animate-slide-in-right shadow-2xl z-10"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex items-center justify-between px-3 py-2 border-b border-white/10">
