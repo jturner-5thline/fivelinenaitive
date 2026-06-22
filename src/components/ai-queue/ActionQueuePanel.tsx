@@ -590,16 +590,8 @@ function DetailPane({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex-1 min-h-0 overflow-y-auto px-7 py-6">
-        {/* Eyebrow */}
-        <p
-          className="text-[10.5px] uppercase text-[#ecedf4]/55"
-          style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
-        >
-          {(meta?.label ?? 'Action').toLowerCase()} action · proposed by naitive
-        </p>
-
         {/* Title row */}
-        <div className="mt-2 flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h3
               className="text-[24px] leading-[1.2] tracking-tight text-[#ecedf4]"
