@@ -195,23 +195,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {counts.low > 0 && tab === 'queue' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={bulkAllBusy}
-              onClick={async () => {
-                setBulkAllBusy(true);
-                await approveAll(lowRiskItems);
-                setBulkAllBusy(false);
-              }}
-              className="h-8 px-3 text-[11px] rounded-lg border border-white/[0.10] bg-white/[0.035] hover:bg-white/[0.07] text-[#ecedf4]/85"
-              style={FONT_MONO}
-            >
-              {bulkAllBusy ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
-              Approve {counts.low} low-risk
-            </Button>
-          )}
           {onClose && (
             <button
               type="button"
@@ -260,70 +243,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 />
               </div>
 
-              {/* Filter chips */}
-              <div className="flex flex-wrap gap-1.5">
-                <FilterChip label="All" count={counts.all} active={filter === 'all'} onClick={() => setFilter('all')} />
-                <FilterChip
-                  label="Low risk"
-                  dot={RISK.low.hex}
-                  count={counts.low}
-                  active={filter === 'low'}
-                  onClick={() => setFilter('low')}
-                />
-                <FilterChip
-                  label="Review"
-                  dot={RISK.review.hex}
-                  count={counts.review}
-                  active={filter === 'review'}
-                  onClick={() => setFilter('review')}
-                />
-                <FilterChip
-                  label="Needs you"
-                  dot={RISK.needs_you.hex}
-                  count={counts.needs_you}
-                  active={filter === 'needs_you'}
-                  onClick={() => setFilter('needs_you')}
-                />
-              </div>
-
-              {/* Bulk low-risk card */}
-              {lowRiskItems.length > 0 && filter !== 'review' && filter !== 'needs_you' && (
-                <div
-                  className="rounded-[13px] border border-[#6fe3b0]/25 p-3 flex items-center gap-3"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, rgba(111,227,176,0.08) 0%, rgba(255,255,255,0.025) 100%)',
-                  }}
-                >
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#6fe3b0]/15 ring-1 ring-inset ring-[#6fe3b0]/30 shrink-0">
-                    <ClipboardCheck className="h-4 w-4 text-[#6fe3b0]" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12.5px] text-[#ecedf4]" style={FONT_BODY}>
-                      {lowRiskItems.length} low-risk action{lowRiskItems.length === 1 ? '' : 's'}
-                    </p>
-                    <p
-                      className="text-[10px] uppercase text-[#ecedf4]/58 mt-0.5"
-                      style={{ ...FONT_MONO, letterSpacing: '0.08em' }}
-                    >
-                      milestones, notes, follow-up tasks
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    disabled={bulkLowBusy}
-                    onClick={async () => {
-                      setBulkLowBusy(true);
-                      await approveAll(lowRiskItems);
-                      setBulkLowBusy(false);
-                    }}
-                    className="h-7 px-2.5 text-[11px] rounded-md bg-[#6fe3b0]/15 hover:bg-[#6fe3b0]/25 text-[#6fe3b0] border border-[#6fe3b0]/30"
-                    style={FONT_MONO}
-                  >
-                    {bulkLowBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve all'}
-                  </Button>
-                </div>
-              )}
             </div>
 
             {/* Scrollable row list */}
