@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import {
   Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin,
-  DollarSign, Briefcase, FileText, Tag, Globe, Calendar, Star, ChevronDown,
+  DollarSign, Briefcase, FileText, Tag, Globe, Star, ChevronDown,
   Layers, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,6 @@ function normalizeNameForComparison(name: string): string {
 
 const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v, '-');
 const formatArray = (arr: string[] | null | undefined) => (!arr || arr.length === 0 ? '-' : arr.join(', '));
-const formatDate = (date: string | null | undefined) => (!date ? '-' : new Date(date).toLocaleDateString());
 
 type SectionKey = 'identity' | 'contact' | 'deal';
 
