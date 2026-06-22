@@ -243,22 +243,21 @@ export default function Dashboard() {
     const measure = () => {
       const container = boardScrollContainerRef.current;
       const aside = detailAsideRef.current;
-      const leftCol = leftListColumnRef.current;
-      if (!container || !aside || !leftCol) return;
-      const row = leftCol.querySelector<HTMLElement>(
+      if (!container || !aside) return;
+      const row = container.querySelector<HTMLElement>(
         `[data-deal-open-id="${CSS.escape(inlineSelectedDealId)}"]`
       );
       if (!row) return;
       const containerTop = container.getBoundingClientRect().top;
       // Align the panel's TOP edge with the clicked tile's BOTTOM edge so
       // the panel sits BELOW the tile (vertically) rather than overlapping
-      // its right half. Small gap matches the flex `gap-4` spacing.
+      // its right half.
       const rowRect = row.getBoundingClientRect();
-      const rawOffset = rowRect.bottom - containerTop + 8;
+      const rawOffset = rowRect.bottom - containerTop + 12;
       // Clamp so the aside never extends past the bottom of the left list.
       const maxOffset = Math.max(
         0,
-        leftCol.offsetHeight - aside.offsetHeight,
+        container.offsetHeight - aside.offsetHeight,
       );
       const next = Math.max(0, Math.min(rawOffset, maxOffset));
       setDetailOffset(next);
