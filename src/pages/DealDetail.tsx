@@ -5450,9 +5450,9 @@ export default function DealDetail() {
 
       {/* Lender Detail Dialog */}
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
-        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
-          <DialogHeader className="shrink-0">
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60">
+            <DialogTitle className="flex items-center gap-2 text-lg">
               {(() => {
                 const ml = masterLenders.find(
                   (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
@@ -5476,6 +5476,10 @@ export default function DealDetail() {
               })()}
               <LenderFlagIndicator lenderName={selectedLenderName || ''} />
             </DialogTitle>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Working record for this funding source on{' '}
+              <span className="text-foreground/80">{deal?.company || deal?.name}</span>
+            </p>
           </DialogHeader>
           {selectedLenderName && (() => {
             // Look up lender from the master lenders directory (database), with direct-fetch fallback
@@ -5491,204 +5495,377 @@ export default function DealDetail() {
                 activity.metadata?.lenderName === selectedLenderName
             );
             const dealLender = deal?.lenders?.find(l => l.name === selectedLenderName);
+            const lenderAllRequestedItems = outstandingItems.filter(item =>
+              Array.isArray(item.requestedBy)
+                ? item.requestedBy.includes(selectedLenderName)
+                : item.requestedBy === selectedLenderName,
+            );
+            const lenderCompletedItems = lenderAllRequestedItems.filter(item =>
+              item.deliveredToLenders.includes(selectedLenderName),
+            );
+            const currentStage = configuredStages.find(s => s.id === dealLender?.stage);
             return (
-              <Tabs defaultValue="this-deal" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="this-deal">This Deal</TabsTrigger>
-                  <TabsTrigger value="comms">Comms Timeline</TabsTrigger>
-                  <TabsTrigger value="about">About {selectedLenderName}</TabsTrigger>
-                </TabsList>
-                
-                <ScrollArea className="h-[60vh]">
-                <TabsContent value="this-deal" className="space-y-6 mt-4">
-                  {/* Stage & Notes Editing */}
-                  {dealLender && (
-                    <>
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2">Status history</h4>
-                        {(() => {
-                          const timeline = buildStatusTimeline(dealLender);
-                          if (timeline.length === 0) {
-                            return <p className="text-sm text-muted-foreground italic">No recorded transitions</p>;
-                          }
+              <Tabs
+                value={lenderDialogTab}
+                onValueChange={(v) => setLenderDialogTab(v as any)}
+                className="w-full flex flex-col flex-1 min-h-0"
+              >
+                <div className="px-6 pt-3 shrink-0">
+                  <TabsList className="grid w-full grid-cols-3 h-9">
+                    <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
+                    <TabsTrigger value="workflow" className="text-xs gap-1.5">
+                      Workflow
+                      {(lenderOutstandingItems.length + lenderActivities.length) > 0 && (
+                        <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                          {lenderOutstandingItems.length + lenderActivities.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="funding-source" className="text-xs">Funding Source</TabsTrigger>
+                  </TabsList>
+                </div>
 
-                          return (
-                            <div className="space-y-3">
-                              {timeline.map((event, index) => (
-                                <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-3">
-                                  <div className="flex flex-col items-center pt-1">
-                                    <span className="h-2 w-2 rounded-full bg-primary" />
-                                    {index < timeline.length - 1 && <span className="mt-1 h-8 w-px bg-border" />}
-                                  </div>
-                                  <div className="min-w-0 pb-1">
-                                    <div className="text-sm font-medium">{event.label}</div>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="text-xs text-muted-foreground cursor-default">
-                                          {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top">
-                                        <div className="space-y-1">
-                                          <div>{formatFullTimestamp(event.iso)}</div>
-                                          {event.approximate && <div className="text-muted-foreground">approximate</div>}
-                                        </div>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </div>
-                                </div>
+                <ScrollArea className="flex-1 min-h-0">
+                  <div className="px-6 py-5">
+
+                {/* ─────────── OVERVIEW ─────────── */}
+                <TabsContent value="overview" className="m-0 focus-visible:outline-none">
+                  {dealLender ? (
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+                      {/* Left: editable decision fields (~60%) */}
+                      <div className="md:col-span-3 space-y-5">
+                        {/* Stage — visually prominent */}
+                        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Stage
+                          </Label>
+                          <Select
+                            value={dealLender.stage}
+                            onValueChange={(value) => {
+                              const newStage = configuredStages.find(s => s.id === value);
+                              if (newStage?.group === 'passed') {
+                                setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
+                                setSelectedPassReasons([]);
+                                setPassReasonDialogOpen(true);
+                              } else {
+                                const newGroup = newStage?.group || 'active';
+                                withSavingAsync(`lender-stage-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, {
+                                    stage: value,
+                                    trackingStatus: newGroup,
+                                  });
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-11 mt-1.5 text-sm font-semibold bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {configuredStages.map((stage) => (
+                                <SelectItem key={stage.id} value={stage.id}>
+                                  {stage.label}
+                                </SelectItem>
                               ))}
-                            </div>
+                            </SelectContent>
+                          </Select>
+                          {currentStage?.group && (
+                            <p className="text-[10px] text-muted-foreground mt-1.5 capitalize">
+                              Group · {currentStage.group}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Score (secondary) */}
+                        {scoreConfig.enabled && (
+                          <div>
+                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Score
+                            </Label>
+                            <Select
+                              value={dealLender.score != null ? String(dealLender.score) : ''}
+                              onValueChange={(value) => {
+                                const scoreVal = value === '' ? null : Number(value);
+                                withSavingAsync(`lender-score-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, { score: scoreVal });
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-9 mt-1.5">
+                                <SelectValue placeholder="No score" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1 — Most Interested</SelectItem>
+                                <SelectItem value="2">2 — Moderate Interest</SelectItem>
+                                <SelectItem value="3">3 — Least Interested</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Preferred contact for this deal */}
+                        <DealLenderContactPicker
+                          dealLenderId={dealLender.id}
+                          masterLenderId={masterLender?.id ?? null}
+                          directoryDefault={{
+                            name: masterLender?.contact_name ?? null,
+                            title: masterLender?.contact_title ?? null,
+                            email: masterLender?.email ?? null,
+                          }}
+                        />
+
+                        {/* Notes — larger */}
+                        <div>
+                          <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Notes
+                          </Label>
+                          <div className="mt-1.5 rounded-md border border-border bg-background min-h-[140px] p-1 text-sm leading-relaxed">
+                            <InlineEditField
+                              value={dealLender.notes || ''}
+                              onSave={(value) => {
+                                withSavingAsync(`lender-notes-${dealLender.id}`, async () => {
+                                  await updateLenderInDb(dealLender.id, { notes: value });
+                                });
+                              }}
+                              type="textarea"
+                              placeholder="Add notes specific to this funding source on this deal…"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: status history + meta (~40%) */}
+                      <div className="md:col-span-2 space-y-4">
+                        <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Status History
+                            </Label>
+                            <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                              Read-only
+                            </Badge>
+                          </div>
+                          {(() => {
+                            const timeline = buildStatusTimeline(dealLender);
+                            if (timeline.length === 0) {
+                              return <p className="text-xs text-muted-foreground italic">No recorded transitions</p>;
+                            }
+                            return (
+                              <div className="space-y-2.5">
+                                {timeline.map((event, index) => (
+                                  <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-2.5">
+                                    <div className="flex flex-col items-center pt-1">
+                                      <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+                                      {index < timeline.length - 1 && <span className="mt-1 h-6 w-px bg-border" />}
+                                    </div>
+                                    <div className="min-w-0 pb-0.5">
+                                      <div className="text-xs font-medium leading-tight">{event.label}</div>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="text-[10px] text-muted-foreground cursor-default">
+                                            {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          <div className="space-y-1">
+                                            <div>{formatFullTimestamp(event.iso)}</div>
+                                            {event.approximate && <div className="text-muted-foreground">approximate</div>}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Quick meta */}
+                        <div className="rounded-lg border border-border/60 p-4 space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Open requests</span>
+                            <span className="font-medium">{lenderOutstandingItems.length}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Completed</span>
+                            <span className="font-medium">{lenderCompletedItems.length}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Activity events</span>
+                            <span className="font-medium">{lenderActivities.length}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-full mt-2 text-xs justify-start"
+                            onClick={() => setLenderDialogTab('workflow')}
+                          >
+                            <ArrowRight className="h-3 w-3 mr-1.5" />
+                            Open Workflow
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">
+                      This funding source isn't linked to the deal yet.
+                    </p>
+                  )}
+                </TabsContent>
+
+                {/* ─────────── WORKFLOW ─────────── */}
+                <TabsContent value="workflow" className="m-0 focus-visible:outline-none">
+                  <div className="flex items-center justify-between gap-3 mb-4">
+                    <ToggleGroup
+                      type="single"
+                      value={lenderWorkflowFilter}
+                      onValueChange={(v) => v && setLenderWorkflowFilter(v as any)}
+                      className="bg-muted/40 rounded-md p-0.5"
+                    >
+                      <ToggleGroupItem value="all" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                        All Activity
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="requested" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm gap-1.5">
+                        Requested Items
+                        {lenderOutstandingItems.length > 0 && (
+                          <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                            {lenderOutstandingItems.length}
+                          </Badge>
+                        )}
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="completed" className="h-7 px-3 text-xs data-[state=on]:bg-background data-[state=on]:shadow-sm gap-1.5">
+                        Completed
+                        {lenderCompletedItems.length > 0 && (
+                          <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                            {lenderCompletedItems.length}
+                          </Badge>
+                        )}
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                    {lenderAllRequestedItems.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={() => setRequestedItemsDrawerLender(selectedLenderName)}
+                      >
+                        <ListChecks className="h-3 w-3" />
+                        Open full list
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-6">
+                    {(lenderWorkflowFilter === 'all' || lenderWorkflowFilter === 'requested') && (
+                      <section>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            {lenderWorkflowFilter === 'requested' ? 'All Requested Items' : 'Open Requested Items'}
+                          </h4>
+                        </div>
+                        {(() => {
+                          const items = lenderWorkflowFilter === 'requested'
+                            ? lenderAllRequestedItems
+                            : lenderOutstandingItems;
+                          return items.length > 0 ? (
+                            <RequestedItemsSummary
+                              items={items}
+                              lenderName={selectedLenderName!}
+                              onViewAll={() => setRequestedItemsDrawerLender(selectedLenderName)}
+                            />
+                          ) : (
+                            <p className="text-xs text-muted-foreground italic">
+                              No items requested by this funding source
+                            </p>
                           );
                         })()}
-                      </div>
-
-                      {/* Stage Selector */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2">Stage</h4>
-                        <Select
-                          value={dealLender.stage}
-                          onValueChange={(value) => {
-                            const newStage = configuredStages.find(s => s.id === value);
-                            if (newStage?.group === 'passed') {
-                              setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
-                              setSelectedPassReasons([]);
-                              setPassReasonDialogOpen(true);
-                            } else {
-                              const newGroup = newStage?.group || 'active';
-                              withSavingAsync(`lender-stage-${dealLender.id}`, async () => {
-                                await updateLenderInDb(dealLender.id, { 
-                                  stage: value, 
-                                  trackingStatus: newGroup,
-                                });
-                              });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {configuredStages.map((stage) => (
-                              <SelectItem key={stage.id} value={stage.id}>
-                                {stage.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                       {scoreConfig.enabled && (
-                       <div>
-                        <h4 className="text-sm font-semibold mb-2">Score</h4>
-                        <Select
-                          value={dealLender.score != null ? String(dealLender.score) : ''}
-                          onValueChange={(value) => {
-                            const scoreVal = value === '' ? null : Number(value);
-                            withSavingAsync(`lender-score-${dealLender.id}`, async () => {
-                              await updateLenderInDb(dealLender.id, { score: scoreVal });
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="h-9">
-                            <SelectValue placeholder="No score" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1 — Most Interested</SelectItem>
-                            <SelectItem value="2">2 — Moderate Interest</SelectItem>
-                            <SelectItem value="3">3 — Least Interested</SelectItem>
-                          </SelectContent>
-                        </Select>
-                       </div>
-                       )}
-
-                      {/* Funding Source Notes */}
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2">Notes</h4>
-                        <InlineEditField
-                          value={dealLender.notes || ''}
-                          onSave={(value) => {
-                            withSavingAsync(`lender-notes-${dealLender.id}`, async () => {
-                              await updateLenderInDb(dealLender.id, { notes: value });
-                            });
-                          }}
-                          type="textarea"
-                          placeholder="Add lender notes..."
-                        />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Outstanding Items for this Lender */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold">Requested Items</h4>
-                      {lenderOutstandingItems.length > 0 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={() => setRequestedItemsDrawerLender(selectedLenderName)}
-                        >
-                          <ListChecks className="h-3 w-3" />
-                          View All ({lenderOutstandingItems.length})
-                        </Button>
-                      )}
-                    </div>
-                    {lenderOutstandingItems.length > 0 ? (
-                      <RequestedItemsSummary
-                        items={lenderOutstandingItems}
-                        lenderName={selectedLenderName!}
-                        onViewAll={() => setRequestedItemsDrawerLender(selectedLenderName)}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">No items requested by this funding source</p>
+                      </section>
                     )}
-                  </div>
 
-                  {/* Activity History for this Lender */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Activity History</h4>
-                    {lenderActivities.length > 0 ? (
-                      <ActivityTimeline activities={lenderActivities} />
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">No activity recorded for this funding source on this deal</p>
+                    {lenderWorkflowFilter === 'completed' && (
+                      <section>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                          Delivered to this funding source
+                        </h4>
+                        {lenderCompletedItems.length > 0 ? (
+                          <RequestedItemsSummary
+                            items={lenderCompletedItems}
+                            lenderName={selectedLenderName!}
+                            onViewAll={() => setRequestedItemsDrawerLender(selectedLenderName)}
+                          />
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">
+                            Nothing has been marked delivered to this funding source yet
+                          </p>
+                        )}
+                      </section>
+                    )}
+
+                    {lenderWorkflowFilter === 'all' && (
+                      <section>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                          Activity &amp; Communications
+                        </h4>
+                        {lenderActivities.length > 0 ? (
+                          <ActivityTimeline activities={lenderActivities} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">
+                            No activity recorded for this funding source on this deal
+                          </p>
+                        )}
+                        {deal && (
+                          <div className="mt-5 pt-5 border-t border-border/60">
+                            <h5 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                              Comms timeline
+                            </h5>
+                            <LenderCommsTimeline
+                              dealId={deal.id}
+                              lenderName={selectedLenderName}
+                              masterLenderId={masterLender?.id}
+                            />
+                          </div>
+                        )}
+                      </section>
                     )}
                   </div>
                 </TabsContent>
 
-                <TabsContent value="comms" className="mt-4">
-                  {deal && (
-                    <LenderCommsTimeline
-                      dealId={deal.id}
-                      lenderName={selectedLenderName}
-                      masterLenderId={masterLender?.id}
-                    />
-                  )}
-                </TabsContent>
-
-                <TabsContent value="about" className="space-y-6 mt-4">
-                  {/* Internal Funding Source Notes */}
-                  <div>
+                {/* ─────────── FUNDING SOURCE ─────────── */}
+                <TabsContent value="funding-source" className="m-0 focus-visible:outline-none space-y-6">
+                  {/* About the funding source */}
+                  <section>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-semibold">Internal Notes</h4>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        About {selectedLenderName}
+                      </h4>
                       <LenderNotesPopover lenderName={selectedLenderName} masterLenderId={masterLender?.id} side="left">
                         <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                           <MessageSquare className="h-3 w-3" />
-                          View / Add Notes
+                          Internal notes
                         </Button>
                       </LenderNotesPopover>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-2">Internal only — not visible to lenders or borrowers</p>
-                  </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Directory record · not specific to this deal. Internal notes are not visible to lenders or borrowers.
+                    </p>
+                  </section>
 
-                  {/* Contact Information - from directory */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
+                  {/* Available contacts */}
+                  <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Available Contacts
+                    </h4>
                     {masterLender?.contact_name ? (
-                      <div className="space-y-1 text-sm">
-                        <p><span className="text-muted-foreground">Name:</span> {masterLender.contact_name}{masterLender.contact_title ? `, ${masterLender.contact_title}` : ''}</p>
-                        {masterLender.email && <p><span className="text-muted-foreground">Email:</span> {masterLender.email}</p>}
+                      <div className="rounded-md border border-border/60 p-3 space-y-0.5 text-sm">
+                        <p className="font-medium">
+                          {masterLender.contact_name}
+                          {masterLender.contact_title ? <span className="font-normal text-muted-foreground">, {masterLender.contact_title}</span> : null}
+                        </p>
+                        {masterLender.email && (
+                          <p className="text-xs text-muted-foreground">{masterLender.email}</p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground/80 pt-1">Directory default contact</p>
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
@@ -5706,11 +5883,13 @@ export default function DealDetail() {
                         />
                       </div>
                     )}
-                  </div>
+                  </section>
 
-                  {/* Deal Preferences */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Deal Preferences</h4>
+                  {/* Deal preferences */}
+                  <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Deal Preferences
+                    </h4>
                     {lenderDetails?.preferences && lenderDetails.preferences.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
                         {lenderDetails.preferences.map((pref, idx) => (
@@ -5720,11 +5899,13 @@ export default function DealDetail() {
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No preferences listed</p>
                     )}
-                  </div>
+                  </section>
 
-                  {/* All Deals with this Lender */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Deals with {selectedLenderName}</h4>
+                  {/* Other deals with this lender */}
+                  <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                      Other Deals with {selectedLenderName}
+                    </h4>
                     <div className="space-y-2">
                       {getLenderDeals(selectedLenderName).map((dealInfo) => (
                         <EditableLenderDealTile
@@ -5736,8 +5917,10 @@ export default function DealDetail() {
                         />
                       ))}
                     </div>
-                  </div>
+                  </section>
                 </TabsContent>
+
+                  </div>
                 </ScrollArea>
               </Tabs>
             );
