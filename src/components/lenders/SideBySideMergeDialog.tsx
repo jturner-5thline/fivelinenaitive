@@ -134,6 +134,8 @@ interface DistinctOption {
   value: any;
   formatted: string;
   sourceIndices: number[]; // 0 = primary
+  /** True for user-entered overrides not present on any source record. */
+  isCustom?: boolean;
 }
 
 function buildDistinctOptions(field: MergeFieldDef, lenders: MasterLender[]): DistinctOption[] {
@@ -172,6 +174,47 @@ function SourceChip({ idx, isPrimary }: { idx: number; isPrimary: boolean }) {
       {isPrimary ? 'Primary' : `#${idx + 1}`}
     </span>
   );
+}
+
+function CustomChip() {
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-px text-[10px] leading-none text-accent"
+      title="User-entered custom value"
+    >
+      <Pencil className="h-2.5 w-2.5" />
+      Custom
+    </span>
+  );
+}
+
+/**
+ * Parse a raw text input into the typed value the field expects, based on
+ * the field's format function. Arrays are produced by splitting on commas
+ * (and `|`). Currency/number fields parse digits. All others return the
+ * trimmed string.
+ */
+function parseCustomInput(field: MergeFieldDef, raw: string): any {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (field.format === formatArray) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const tok of trimmed.split(/\s*[,|]\s*/)) {
+      const t = tok.trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+    }
+    return out.length ? out : null;
+  }
+  if (field.format === formatCurrency) {
+    const n = Number(trimmed.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+  return trimmed;
 }
 
 // ── selection model ─────────────────────────────────────────────────────
