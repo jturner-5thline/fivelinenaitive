@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import {
   Check, X, Merge, ChevronLeft, ChevronRight, Building2, User, Mail, MapPin,
   DollarSign, Briefcase, FileText, Tag, Globe, Star, ChevronDown,
-  Layers, Sparkles,
+  Layers, Sparkles, Plus, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { MasterLender, MasterLenderInsert } from '@/hooks/useMasterLenders';
 import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
@@ -132,6 +134,8 @@ interface DistinctOption {
   value: any;
   formatted: string;
   sourceIndices: number[]; // 0 = primary
+  /** True for user-entered overrides not present on any source record. */
+  isCustom?: boolean;
 }
 
 function buildDistinctOptions(field: MergeFieldDef, lenders: MasterLender[]): DistinctOption[] {
@@ -170,6 +174,47 @@ function SourceChip({ idx, isPrimary }: { idx: number; isPrimary: boolean }) {
       {isPrimary ? 'Primary' : `#${idx + 1}`}
     </span>
   );
+}
+
+function CustomChip() {
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-px text-[10px] leading-none text-accent"
+      title="User-entered custom value"
+    >
+      <Pencil className="h-2.5 w-2.5" />
+      Custom
+    </span>
+  );
+}
+
+/**
+ * Parse a raw text input into the typed value the field expects, based on
+ * the field's format function. Arrays are produced by splitting on commas
+ * (and `|`). Currency/number fields parse digits. All others return the
+ * trimmed string.
+ */
+function parseCustomInput(field: MergeFieldDef, raw: string): any {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (field.format === formatArray) {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const tok of trimmed.split(/\s*[,|]\s*/)) {
+      const t = tok.trim();
+      if (!t) continue;
+      const k = t.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(t);
+    }
+    return out.length ? out : null;
+  }
+  if (field.format === formatCurrency) {
+    const n = Number(trimmed.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+  return trimmed;
 }
 
 // ── selection model ─────────────────────────────────────────────────────
@@ -219,10 +264,11 @@ interface OptionCardProps {
   selected: boolean;
   variant: 'pick' | 'combine';
   sources?: { idx: number; isPrimary: boolean }[];
+  isCustom?: boolean;
   onClick: () => void;
 }
 
-function OptionCard({ formatted, multiline, selected, variant, sources, onClick }: OptionCardProps) {
+function OptionCard({ formatted, multiline, selected, variant, sources, isCustom, onClick }: OptionCardProps) {
   return (
     <button
       type="button"
@@ -235,6 +281,7 @@ function OptionCard({ formatted, multiline, selected, variant, sources, onClick 
         !selected && 'border-border/60',
         selected && variant === 'pick' && 'border-primary bg-primary/10 ring-1 ring-primary/40',
         selected && variant === 'combine' && 'border-accent bg-accent/10 ring-1 ring-accent/50',
+        isCustom && !selected && 'border-accent/30',
       )}
       aria-pressed={selected}
     >
@@ -259,9 +306,10 @@ function OptionCard({ formatted, multiline, selected, variant, sources, onClick 
           >
             {formatted}
           </p>
-          {sources?.length ? (
+          {(sources?.length || isCustom) ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-              {sources.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
+              {isCustom && <CustomChip />}
+              {sources?.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
             </div>
           ) : null}
         </div>
@@ -280,12 +328,34 @@ interface ResolverRowProps {
   isCombined: boolean;
   resolvedFormatted: string;
   onToggle: (optionId: string) => void;
+  onAddCustom: (value: any, formatted: string) => void;
 }
 
-function ResolverRow({ field, options, selection, combinable, isCombined, resolvedFormatted, onToggle }: ResolverRowProps) {
+function ResolverRow({ field, options, selection, combinable, isCombined, resolvedFormatted, onToggle, onAddCustom }: ResolverRowProps) {
   const Icon = field.icon;
   const selectedSet = new Set(selection.optionIds);
   const multiVariant = combinable && selectedSet.size >= 2;
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState('');
+  const isArrayField = field.format === formatArray;
+  const placeholder = isArrayField
+    ? 'Comma-separated values'
+    : field.format === formatCurrency
+    ? 'e.g. 5000000'
+    : 'Enter a custom value';
+
+  const handleSaveCustom = () => {
+    const parsed = parseCustomInput(field, customDraft);
+    if (!hasValue(parsed)) {
+      setCustomOpen(false);
+      setCustomDraft('');
+      return;
+    }
+    onAddCustom(parsed, field.format(parsed));
+    setCustomOpen(false);
+    setCustomDraft('');
+  };
+
   return (
     <div className="rounded-xl border border-border/60 bg-card/30 p-3">
       <div className="mb-2 flex items-center gap-2">
@@ -305,9 +375,23 @@ function ResolverRow({ field, options, selection, combinable, isCombined, resolv
             {isCombined ? `combined · ${selectedSet.size}` : 'multi-select'}
           </span>
         )}
-        <span className={cn('text-[10px] text-muted-foreground', combinable ? '' : 'ml-auto')}>
+        <span className="text-[10px] text-muted-foreground">
           {options.length} options
         </span>
+        <button
+          type="button"
+          onClick={() => setCustomOpen(v => !v)}
+          className={cn(
+            'ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-px text-[10px] leading-none transition-colors',
+            customOpen
+              ? 'border-accent/50 bg-accent/10 text-accent'
+              : 'border-border bg-muted/40 text-muted-foreground hover:border-accent/40 hover:text-accent',
+          )}
+          aria-expanded={customOpen}
+        >
+          <Plus className="h-2.5 w-2.5" />
+          Custom value
+        </button>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(opt => (
@@ -318,10 +402,62 @@ function ResolverRow({ field, options, selection, combinable, isCombined, resolv
             selected={selectedSet.has(opt.id)}
             variant={multiVariant ? 'combine' : 'pick'}
             sources={opt.sourceIndices.map(i => ({ idx: i, isPrimary: i === 0 }))}
+            isCustom={opt.isCustom}
             onClick={() => onToggle(opt.id)}
           />
         ))}
       </div>
+      {customOpen && (
+        <div className="mt-2 rounded-lg border border-accent/40 bg-accent/5 p-2">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-accent">
+            <Pencil className="h-2.5 w-2.5" />
+            New custom value
+            {isArrayField && <span className="text-muted-foreground/70 normal-case tracking-normal">· separate with commas</span>}
+          </div>
+          {field.multiline ? (
+            <Textarea
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              placeholder={placeholder}
+              rows={3}
+              className="text-sm"
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              placeholder={placeholder}
+              className="h-8 text-sm"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleSaveCustom(); }
+                if (e.key === 'Escape') { setCustomOpen(false); setCustomDraft(''); }
+              }}
+            />
+          )}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-xs"
+              onClick={() => { setCustomOpen(false); setCustomDraft(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleSaveCustom}
+              disabled={!customDraft.trim()}
+            >
+              Use this value
+            </Button>
+          </div>
+        </div>
+      )}
       {isCombined && (
         <p className="mt-2 truncate text-[11px] text-muted-foreground">
           → {resolvedFormatted}
@@ -405,11 +541,25 @@ function MergeView({
   isProcessing: boolean;
 }) {
   // Per-field distinct options
-  const fieldOptions = useMemo(() => {
+  const baseFieldOptions = useMemo(() => {
     const map = new Map<string, DistinctOption[]>();
     MERGE_FIELDS.forEach(f => map.set(f.key, buildDistinctOptions(f, group.lenders)));
     return map;
   }, [group]);
+
+  // User-added custom options per field. Stored separately so we can re-derive
+  // the merged option list on every render without losing them.
+  const [customOptionsByField, setCustomOptionsByField] = useState<Record<string, DistinctOption[]>>({});
+
+  const fieldOptions = useMemo(() => {
+    const map = new Map<string, DistinctOption[]>();
+    MERGE_FIELDS.forEach(f => {
+      const base = baseFieldOptions.get(f.key) || [];
+      const custom = customOptionsByField[f.key] || [];
+      map.set(f.key, [...base, ...custom]);
+    });
+    return map;
+  }, [baseFieldOptions, customOptionsByField]);
 
   // Initial selections: pick the primary's option if it has one; else first option
   const [selections, setSelections] = useState<Record<string, Selection>>(() => {
@@ -461,6 +611,18 @@ function MergeView({
       }
       return { ...prev, [fieldKey]: { optionIds: next } };
     });
+    setReviewed(prev => new Set(prev).add(fieldKey));
+  }, []);
+
+  const handleAddCustom = useCallback((fieldKey: string, value: any, formatted: string) => {
+    const id = `custom:${fieldKey}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
+    const opt: DistinctOption = { id, value, formatted, sourceIndices: [], isCustom: true };
+    setCustomOptionsByField(prev => ({
+      ...prev,
+      [fieldKey]: [...(prev[fieldKey] || []), opt],
+    }));
+    // Auto-select the new custom value as the sole selection for this field.
+    setSelections(prev => ({ ...prev, [fieldKey]: { optionIds: [id] } }));
     setReviewed(prev => new Set(prev).add(fieldKey));
   }, []);
 
@@ -540,6 +702,7 @@ function MergeView({
                       isCombined={r.isCombined}
                       resolvedFormatted={r.resolvedFormatted}
                       onToggle={(id) => handleToggle(r.field.key, id, !!r.field.combinable)}
+                      onAddCustom={(value, formatted) => handleAddCustom(r.field.key, value, formatted)}
                     />
                   ))}
                 </div>
