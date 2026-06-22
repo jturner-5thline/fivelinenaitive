@@ -211,7 +211,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         className="relative px-5 pt-1 pb-3 text-[10.5px] uppercase text-[#ecedf4]/58 border-b border-white/[0.05]"
         style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
       >
-        naitive suggested actions · synced just now
+        synced just now
       </div>
 
       {/* Body */}
