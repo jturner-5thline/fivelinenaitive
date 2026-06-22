@@ -292,7 +292,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               <DetailPane
                 key={selected.id}
                 item={selected}
-                onApprove={() => approve(selected)}
+                onApprove={(opts) => approve(selected, opts)}
                 onReject={() => dismiss(selected.id)}
               />
             ) : (
