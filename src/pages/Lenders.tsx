@@ -433,25 +433,59 @@ export default function Lenders() {
     [],
   );
   const [duplicateIndex, setDuplicateIndex] = useState(EMPTY_DUPLICATE_INDEX);
+  // Fingerprint of the (id, name) pairs that actually drive duplicate
+  // detection. Refetches and unrelated state changes routinely produce a new
+  // `masterLenders` array reference even when no name/id changed; depending
+  // on that reference caused the detector (and every downstream memo) to
+  // re-run constantly and stall the page. Comparing a tiny string instead
+  // keeps the effect quiet unless the inputs really changed.
+  const duplicateInputFingerprint = useMemo(() => {
+    if (!masterLenders.length) return '';
+    // Inputs are already ordered by name from the loader; a simple join is
+    // stable and cheap (~tens of KB at 6k rows).
+    let s = '';
+    for (const l of masterLenders) s += l.id + '|' + (l.name || '') + '\n';
+    return s;
+  }, [masterLenders]);
+
   useEffect(() => {
     // Wait for the background stream of pages to settle so the detector
-    // doesn't re-run on every batch while the directory is loading. Once the
-    // list is stable, schedule the detection on an idle callback so chips
-    // populate shortly after load without blocking interaction.
+    // doesn't re-run on every batch while the directory is loading.
     if (loadingMore) return;
-    if (!masterLenders.length) return;
+    if (!duplicateInputFingerprint) return;
+    let cancelled = false;
     const run = () => {
+      if (cancelled) return;
       const next = detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name })));
+      if (cancelled) return;
       setDuplicateIndex(next);
     };
-    const idle = (window as any).requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout: number }) => number);
-    if (idle) {
-      const id = idle(run, { timeout: 500 });
-      return () => (window as any).cancelIdleCallback?.(id);
-    }
-    const t = setTimeout(run, 0);
-    return () => clearTimeout(t);
-  }, [loadingMore, masterLenders]);
+    // Debounce briefly so back-to-back state changes coalesce, then run on
+    // an idle frame so chips populate without blocking interaction.
+    const debounce = setTimeout(() => {
+      const idle = (window as any).requestIdleCallback as
+        | undefined
+        | ((cb: () => void, opts?: { timeout: number }) => number);
+      if (idle) {
+        const id = idle(run, { timeout: 1500 });
+        // store on a closure-visible handle for cleanup
+        (run as any)._idleId = id;
+      } else {
+        (run as any)._idleId = setTimeout(run, 0);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(debounce);
+      const id = (run as any)._idleId;
+      if (id != null) {
+        (window as any).cancelIdleCallback?.(id);
+        clearTimeout(id);
+      }
+    };
+    // Intentionally depend on the fingerprint, not on `masterLenders` directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingMore, duplicateInputFingerprint]);
 
   // Per-lender list of sibling names in the same duplicate cluster (excluding
   // self), used to power the popover when the user clicks the "X possible
