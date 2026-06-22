@@ -174,9 +174,13 @@ function SourceChip({ idx, isPrimary }: { idx: number; isPrimary: boolean }) {
 
 // ── selection model ─────────────────────────────────────────────────────
 
-type Selection =
-  | { mode: 'pick'; optionId: string }
-  | { mode: 'combine' };
+/** A field selection is a non-empty list of option ids.
+ *  - length 1  → single pick
+ *  - length 2+ → combined (only meaningful for combinable fields; non-combinable
+ *    fields always coerce back to a single pick on click). */
+interface Selection {
+  optionIds: string[];
+}
 
 interface ResolvedField {
   field: MergeFieldDef;
@@ -185,20 +189,26 @@ interface ResolvedField {
   resolvedValue: any;
   resolvedFormatted: string;
   isConflict: boolean; // >1 distinct option
+  isCombined: boolean; // user selected 2+ option cards
 }
 
 function resolveSelection(
   field: MergeFieldDef,
   options: DistinctOption[],
   selection: Selection,
-  lenders: MasterLender[],
-): { value: any; formatted: string } {
-  if (selection.mode === 'combine') {
-    const v = combineValues(lenders.map(l => (l as any)[field.key]));
-    return { value: v, formatted: field.format(v) };
+): { value: any; formatted: string; isCombined: boolean } {
+  const selectedOpts = selection.optionIds
+    .map(id => options.find(o => o.id === id))
+    .filter((o): o is DistinctOption => !!o);
+  if (selectedOpts.length === 0) {
+    return { value: null, formatted: '-', isCombined: false };
   }
-  const opt = options.find(o => o.id === selection.optionId) ?? options[0];
-  return opt ? { value: opt.value, formatted: opt.formatted } : { value: null, formatted: '-' };
+  if (selectedOpts.length === 1 || !field.combinable) {
+    const opt = selectedOpts[selectedOpts.length - 1];
+    return { value: opt.value, formatted: opt.formatted, isCombined: false };
+  }
+  const v = combineValues(selectedOpts.map(o => o.value));
+  return { value: v, formatted: field.format(v), isCombined: true };
 }
 
 // ── Option Card ─────────────────────────────────────────────────────────
@@ -209,11 +219,10 @@ interface OptionCardProps {
   selected: boolean;
   variant: 'pick' | 'combine';
   sources?: { idx: number; isPrimary: boolean }[];
-  combineTag?: boolean;
   onClick: () => void;
 }
 
-function OptionCard({ formatted, multiline, selected, variant, sources, combineTag, onClick }: OptionCardProps) {
+function OptionCard({ formatted, multiline, selected, variant, sources, onClick }: OptionCardProps) {
   return (
     <button
       type="button"
@@ -225,20 +234,15 @@ function OptionCard({ formatted, multiline, selected, variant, sources, combineT
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         !selected && 'border-border/60',
         selected && variant === 'pick' && 'border-primary bg-primary/10 ring-1 ring-primary/40',
-        selected && variant === 'combine' && 'border-accent bg-accent/10 ring-1 ring-accent/50 [border-style:solid]',
+        selected && variant === 'combine' && 'border-accent bg-accent/10 ring-1 ring-accent/50',
       )}
-      style={
-        selected && variant === 'combine'
-          ? undefined
-          : variant === 'combine' && !selected
-          ? { borderStyle: 'dashed' }
-          : undefined
-      }
+      aria-pressed={selected}
     >
       <div className="flex items-start gap-2">
         <div
           className={cn(
-            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+            'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center border',
+            variant === 'combine' ? 'rounded-[4px]' : 'rounded-full',
             selected && variant === 'pick' && 'border-primary bg-primary text-primary-foreground',
             selected && variant === 'combine' && 'border-accent bg-accent text-accent-foreground',
             !selected && 'border-border',
@@ -255,16 +259,11 @@ function OptionCard({ formatted, multiline, selected, variant, sources, combineT
           >
             {formatted}
           </p>
-          {(sources?.length || combineTag) && (
+          {sources?.length ? (
             <div className="mt-1.5 flex flex-wrap items-center gap-1">
-              {combineTag && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent/10 px-1.5 py-px text-[10px] leading-none text-accent">
-                  <Layers className="h-2.5 w-2.5" /> combined
-                </span>
-              )}
-              {sources?.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
+              {sources.map(s => <SourceChip key={s.idx} idx={s.idx} isPrimary={s.isPrimary} />)}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </button>
@@ -278,18 +277,37 @@ interface ResolverRowProps {
   options: DistinctOption[];
   selection: Selection;
   combinable: boolean;
-  onPick: (optionId: string) => void;
-  onCombine: () => void;
+  isCombined: boolean;
+  resolvedFormatted: string;
+  onToggle: (optionId: string) => void;
 }
 
-function ResolverRow({ field, options, selection, combinable, onPick, onCombine }: ResolverRowProps) {
+function ResolverRow({ field, options, selection, combinable, isCombined, resolvedFormatted, onToggle }: ResolverRowProps) {
   const Icon = field.icon;
+  const selectedSet = new Set(selection.optionIds);
+  const multiVariant = combinable && selectedSet.size >= 2;
   return (
     <div className="rounded-xl border border-border/60 bg-card/30 p-3">
       <div className="mb-2 flex items-center gap-2">
         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{field.label}</span>
-        <span className="ml-auto text-[10px] text-muted-foreground">{options.length} options</span>
+        {combinable && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[10px] leading-none',
+              isCombined
+                ? 'border-accent/50 bg-accent/10 text-accent'
+                : 'border-border bg-muted/40 text-muted-foreground',
+            )}
+            title="Tap multiple cards to combine their values"
+          >
+            <Layers className="h-2.5 w-2.5" />
+            {isCombined ? `combined · ${selectedSet.size}` : 'multi-select'}
+          </span>
+        )}
+        <span className={cn('text-[10px] text-muted-foreground', combinable ? '' : 'ml-auto')}>
+          {options.length} options
+        </span>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map(opt => (
@@ -297,23 +315,18 @@ function ResolverRow({ field, options, selection, combinable, onPick, onCombine 
             key={opt.id}
             formatted={opt.formatted}
             multiline={field.multiline}
-            selected={selection.mode === 'pick' && selection.optionId === opt.id}
-            variant="pick"
+            selected={selectedSet.has(opt.id)}
+            variant={multiVariant ? 'combine' : 'pick'}
             sources={opt.sourceIndices.map(i => ({ idx: i, isPrimary: i === 0 }))}
-            onClick={() => onPick(opt.id)}
+            onClick={() => onToggle(opt.id)}
           />
         ))}
-        {combinable && options.length > 1 && (
-          <OptionCard
-            formatted={field.format(combineValues(options.flatMap(o => [o.value])))}
-            multiline={field.multiline}
-            selected={selection.mode === 'combine'}
-            variant="combine"
-            combineTag
-            onClick={onCombine}
-          />
-        )}
       </div>
+      {isCombined && (
+        <p className="mt-2 truncate text-[11px] text-muted-foreground">
+          → {resolvedFormatted}
+        </p>
+      )}
     </div>
   );
 }
@@ -347,12 +360,11 @@ function MergedPreview({
         <div className="space-y-1.5">
           {rest.map(r => {
             const Icon = r.field.icon;
-            const tintClass =
-              r.selection.mode === 'combine'
-                ? 'text-accent'
-                : r.isConflict
-                ? 'text-primary'
-                : 'text-success';
+            const tintClass = r.isCombined
+              ? 'text-accent'
+              : r.isConflict
+              ? 'text-primary'
+              : 'text-success';
             return (
               <div key={r.field.key} className="flex items-start gap-2 border-b border-border/30 py-1 last:border-b-0">
                 <Icon className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', tintClass)} />
@@ -404,9 +416,9 @@ function MergeView({
     const initial: Record<string, Selection> = {};
     MERGE_FIELDS.forEach(field => {
       const opts = buildDistinctOptions(field, group.lenders);
-      if (opts.length === 0) { initial[field.key] = { mode: 'pick', optionId: '' }; return; }
+      if (opts.length === 0) { initial[field.key] = { optionIds: [] }; return; }
       const primaryOpt = opts.find(o => o.sourceIndices.includes(0)) ?? opts[0];
-      initial[field.key] = { mode: 'pick', optionId: primaryOpt.id };
+      initial[field.key] = { optionIds: [primaryOpt.id] };
     });
     return initial;
   });
@@ -417,8 +429,9 @@ function MergeView({
   const resolved: ResolvedField[] = useMemo(() => {
     return MERGE_FIELDS.map(field => {
       const options = fieldOptions.get(field.key) || [];
-      const selection = selections[field.key] ?? { mode: 'pick', optionId: options[0]?.id ?? '' };
-      const { value, formatted } = resolveSelection(field, options, selection, group.lenders);
+      const fallback: Selection = { optionIds: options[0] ? [options[0].id] : [] };
+      const selection = selections[field.key] ?? fallback;
+      const { value, formatted, isCombined } = resolveSelection(field, options, selection);
       return {
         field,
         options,
@@ -426,20 +439,28 @@ function MergeView({
         resolvedValue: value,
         resolvedFormatted: formatted,
         isConflict: options.length > 1,
+        isCombined,
       };
     });
-  }, [fieldOptions, selections, group.lenders]);
+  }, [fieldOptions, selections]);
 
   const conflicts = resolved.filter(r => r.isConflict);
   const matched = resolved.filter(r => !r.isConflict && hasValue(r.resolvedValue));
 
-  const handlePick = useCallback((fieldKey: string, optionId: string) => {
-    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'pick', optionId } }));
-    setReviewed(prev => new Set(prev).add(fieldKey));
-  }, []);
-
-  const handleCombine = useCallback((fieldKey: string) => {
-    setSelections(prev => ({ ...prev, [fieldKey]: { mode: 'combine' } }));
+  const handleToggle = useCallback((fieldKey: string, optionId: string, combinable: boolean) => {
+    setSelections(prev => {
+      const current = prev[fieldKey]?.optionIds ?? [];
+      let next: string[];
+      if (!combinable) {
+        next = [optionId];
+      } else if (current.includes(optionId)) {
+        // Remove unless it's the last one (keep at least one selected)
+        next = current.length > 1 ? current.filter(id => id !== optionId) : current;
+      } else {
+        next = [...current, optionId];
+      }
+      return { ...prev, [fieldKey]: { optionIds: next } };
+    });
     setReviewed(prev => new Set(prev).add(fieldKey));
   }, []);
 
@@ -516,8 +537,9 @@ function MergeView({
                       options={r.options}
                       selection={r.selection}
                       combinable={!!r.field.combinable}
-                      onPick={(id) => handlePick(r.field.key, id)}
-                      onCombine={() => handleCombine(r.field.key)}
+                      isCombined={r.isCombined}
+                      resolvedFormatted={r.resolvedFormatted}
+                      onToggle={(id) => handleToggle(r.field.key, id, !!r.field.combinable)}
                     />
                   ))}
                 </div>
