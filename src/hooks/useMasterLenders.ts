@@ -390,6 +390,10 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
          } else {
            // already running
          }
+      } else if (mode === 'all' && !searchQuery) {
+        // First page already contained the entire directory (small tenants).
+        // Persist immediately so the next cold load is instant.
+        void saveCachedLenders(user.id, firstPage);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lenders';
