@@ -1760,7 +1760,7 @@ export default function Lenders() {
 
                 {/* List View */}
                 {/* List View - Virtualized */}
-                {!isLoading && viewMode === 'list' && sortedLenders.length > 0 && (
+                {!isLoading && !showDuplicatesOnly && viewMode === 'list' && sortedLenders.length > 0 && (
                   <Virtuoso
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
@@ -1816,7 +1816,7 @@ export default function Lenders() {
                 )}
 
                 {/* Grid View - Virtualized */}
-                {!isLoading && viewMode === 'grid' && sortedLenders.length > 0 && (
+                {!isLoading && !showDuplicatesOnly && viewMode === 'grid' && sortedLenders.length > 0 && (
                   <VirtuosoGrid
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
