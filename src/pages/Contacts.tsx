@@ -174,15 +174,6 @@ export default function Contacts() {
             </div>
           </div>
 
-          {/* Advanced Filters */}
-          <AdvancedFilterBuilder
-            availableFields={CONTACT_CORE_FIELDS}
-            filters={advancedFilters}
-            onFiltersChange={handleFiltersChange}
-            matchMode={matchMode}
-            onMatchModeChange={setMatchMode}
-          />
-
           {/* Content */}
           {isLoading ? (
             <div className="space-y-3">
@@ -211,7 +202,20 @@ export default function Contacts() {
           ) : (
             <>
               <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
-                <ContactsTable contacts={contacts} search={search} onSearchChange={handleSearchChange} />
+                <ContactsTable
+                  contacts={contacts}
+                  search={search}
+                  onSearchChange={handleSearchChange}
+                  toolbarExtras={
+                    <AdvancedFilterBuilder
+                      availableFields={CONTACT_CORE_FIELDS}
+                      filters={advancedFilters}
+                      onFiltersChange={handleFiltersChange}
+                      matchMode={matchMode}
+                      onMatchModeChange={setMatchMode}
+                    />
+                  }
+                />
               </div>
               <TablePagination
                 page={page}

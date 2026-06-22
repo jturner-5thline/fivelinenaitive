@@ -90,9 +90,8 @@ export function AdvancedFilterBuilder({
     <div className="space-y-2">
       <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5">
+          <Button variant="outline" size="sm" className="gap-1.5" aria-label="Advanced Filters">
             <Filter className="h-3.5 w-3.5" />
-            Advanced Filters
             {activeCount > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] px-1.5 text-xs">
                 {activeCount}

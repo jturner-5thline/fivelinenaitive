@@ -27,6 +27,7 @@ interface ContactsTableProps {
   onBulkAction?: (action: string, contactIds: string[]) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
+  toolbarExtras?: React.ReactNode;
 }
 
 const lifecycleColors: Record<string, string> = {
@@ -52,7 +53,7 @@ const statusColors: Record<string, string> = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange }: ContactsTableProps) {
+export function ContactsTable({ contacts, onBulkAction, search: controlledSearch, onSearchChange, toolbarExtras }: ContactsTableProps) {
   const navigate = useNavigate();
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
@@ -201,6 +202,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search contacts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
         </div>
+        {toolbarExtras}
         <Select value={lifecycleFilter} onValueChange={setLifecycleFilter}>
           <SelectTrigger className="w-[150px] h-9">
             <SelectValue placeholder="Lifecycle" />
