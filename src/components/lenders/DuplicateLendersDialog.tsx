@@ -228,6 +228,23 @@ function getFundingSourceFields(records: UnknownRecord[] = []): FieldDef[] {
     });
 }
 
+// Static base fields derived purely from the master lender schema — used as a
+// fast-path so we don't rebuild the field list on every completenessScore /
+// detectConflicts call. Only rebuild when a record actually introduces an
+// unknown key (rare in practice).
+const BASE_FUNDING_SOURCE_FIELDS: FieldDef[] = getFundingSourceFields([]);
+const BASE_FIELD_KEYS: Set<string> = new Set(BASE_FUNDING_SOURCE_FIELDS.map(f => f.key));
+
+function getFundingSourceFieldsCached(records: UnknownRecord[] = []): FieldDef[] {
+  for (const record of records) {
+    if (!record) continue;
+    for (const k of Object.keys(record)) {
+      if (!BASE_FIELD_KEYS.has(k)) return getFundingSourceFields(records);
+    }
+  }
+  return BASE_FUNDING_SOURCE_FIELDS;
+}
+
 const SECTION_META: Record<string, { label: string; icon: ComponentType<{ className?: string }> }> = {
   identity: { label: 'Identity', icon: Building2 },
   commercial: { label: 'Commercial Profile', icon: Layers },
@@ -292,9 +309,9 @@ function extractDomain(url: string | null | undefined): string | null {
     return new URL(u).hostname.replace(/^www\./, '').toLowerCase();
   } catch { return null; }
 }
-function completenessScore(l: MasterLender): number {
+function completenessScore(l: MasterLender, fields: FieldDef[] = BASE_FUNDING_SOURCE_FIELDS): number {
   let s = 0;
-  for (const f of getFundingSourceFields([l])) if (!isEmpty(getFieldValue(l, f.key))) s++;
+  for (const f of fields) if (!isEmpty(getFieldValue(l, f.key))) s++;
   return s;
 }
 function autoWinner(field: FieldDef, lenders: MasterLender[]): string {
@@ -319,7 +336,7 @@ interface Conflict {
   severity: 'high' | 'med';
   detail: string;
 }
-function detectConflicts(lenders: MasterLender[], fields = getFundingSourceFields(lenders)): Conflict[] {
+function detectConflicts(lenders: MasterLender[], fields: FieldDef[] = BASE_FUNDING_SOURCE_FIELDS): Conflict[] {
   if (lenders.length < 2) return [];
   const out: Conflict[] = [];
   for (const f of fields) {
@@ -1131,14 +1148,19 @@ export function DuplicateLendersDialog({
 
   // Reuse sophisticated detector for grouping
   const groups: DupGroup[] = useMemo(() => {
+    if (!open) return [];
     const { groups } = detectDuplicateLenders(
       lenders.map(l => ({ id: l.id, name: l.name || '' }))
     );
     const byId = new Map(lenders.map(l => [l.id, l]));
+    // Precompute completeness once per lender — sort comparators would otherwise
+    // call the O(schema) scorer many times per duplicate group.
+    const scoreById = new Map<string, number>();
+    for (const l of lenders) scoreById.set(l.id, completenessScore(l));
     return groups
       .map(g => {
         const ls = g.memberIds.map(id => byId.get(id)).filter(Boolean) as MasterLender[];
-        ls.sort((a, b) => completenessScore(b) - completenessScore(a));
+        ls.sort((a, b) => (scoreById.get(b.id) ?? 0) - (scoreById.get(a.id) ?? 0));
         return {
           id: g.groupId,
           primaryName: ls[0]?.name || g.groupId,
@@ -1147,7 +1169,7 @@ export function DuplicateLendersDialog({
       })
       .filter(g => g.lenders.length > 1)
       .sort((a, b) => b.lenders.length - a.lenders.length);
-  }, [lenders]);
+  }, [lenders, open]);
 
   // Pick first group when opening / when current is gone
   useEffect(() => {
