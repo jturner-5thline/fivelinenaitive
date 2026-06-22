@@ -9,6 +9,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -37,6 +42,8 @@ interface LenderGridCardProps {
   lender: MasterLender;
   activeDealCount: number;
   duplicateCount?: number;
+  duplicateSiblings?: { id: string; name: string }[];
+  onOpenSiblingDetail?: (lenderId: string) => void;
   tileDisplaySettings: LenderTileDisplaySettings;
   summary: LenderSummary;
   isQuickUploading: boolean;
@@ -57,6 +64,8 @@ export const LenderGridCard = memo(function LenderGridCard({
   lender,
   activeDealCount,
   duplicateCount = 0,
+  duplicateSiblings,
+  onOpenSiblingDetail,
   tileDisplaySettings,
   summary,
   isQuickUploading,
@@ -130,20 +139,48 @@ export const LenderGridCard = memo(function LenderGridCard({
           </Badge>
         )}
         {duplicateCount > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
-                variant="outline"
-                className="text-xs rounded-none rounded-br-lg border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1"
+          <Popover>
+            <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-xs rounded-none rounded-br-lg border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2 py-0.5 cursor-pointer hover:bg-amber-500/20"
               >
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
                 {duplicateCount} dup{duplicateCount === 1 ? '' : 's'}
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              Shares a name with {duplicateCount} other funding source{duplicateCount === 1 ? '' : 's'}.
-            </TooltipContent>
-          </Tooltip>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="start"
+              className="w-64 p-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-2 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                Possible duplicates
+              </div>
+              <div className="max-h-64 overflow-auto">
+                {(duplicateSiblings ?? []).length === 0 ? (
+                  <div className="px-2 py-2 text-xs text-muted-foreground">
+                    No sibling details available.
+                  </div>
+                ) : (
+                  (duplicateSiblings ?? []).map((sib) => (
+                    <button
+                      key={sib.id}
+                      type="button"
+                      className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-muted/60 truncate"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenSiblingDetail?.(sib.id);
+                      }}
+                    >
+                      {sib.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
