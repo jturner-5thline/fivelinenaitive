@@ -5664,6 +5664,19 @@ export default function DealDetail() {
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
                     )}
+                    {dealLender && (
+                      <div className="mt-3">
+                        <DealLenderContactPicker
+                          dealLenderId={dealLender.id}
+                          masterLenderId={masterLender?.id ?? null}
+                          directoryDefault={{
+                            name: masterLender?.contact_name ?? null,
+                            title: masterLender?.contact_title ?? null,
+                            email: masterLender?.email ?? null,
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Deal Preferences */}
