@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy } from 'lucide-react';
@@ -516,6 +516,28 @@ export default function Lenders() {
     setIsDetailEditMode(editMode);
     setIsDetailOpen(true);
   };
+
+  // Deep-link support: open the lender detail dialog when ?lender=<id>
+  // is present in the URL (e.g. when navigated to from a deal's lender
+  // popup). Clears the param once the dialog is opened so refreshing or
+  // closing the dialog doesn't trap the user.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const lenderParam = searchParams.get('lender');
+    if (!lenderParam || !masterLenders.length) return;
+    const match =
+      masterLenders.find((l) => l.id === lenderParam) ||
+      masterLenders.find(
+        (l) => l.name.toLowerCase().trim() === lenderParam.toLowerCase().trim(),
+      );
+    if (match) {
+      openLenderDetail(match);
+      const next = new URLSearchParams(searchParams);
+      next.delete('lender');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, masterLenders]);
 
   // Filter lenders: advanced filters → AI filter → active-deals → text search.
   // Text search runs client-side across many fields (real-time substring match).

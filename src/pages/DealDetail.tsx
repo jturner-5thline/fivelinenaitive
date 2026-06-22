@@ -5445,7 +5445,27 @@ export default function DealDetail() {
         <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
-              {selectedLenderName}
+              {(() => {
+                const ml = masterLenders.find(
+                  (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
+                );
+                const target = ml?.id
+                  ? `/lenders?lender=${encodeURIComponent(ml.id)}`
+                  : `/lenders?lender=${encodeURIComponent(selectedLenderName || '')}`;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLenderName(null);
+                      navigate(target);
+                    }}
+                    className="text-left hover:underline underline-offset-2 decoration-dotted"
+                    title="Open in Funding Sources"
+                  >
+                    {selectedLenderName}
+                  </button>
+                );
+              })()}
               <LenderFlagIndicator lenderName={selectedLenderName || ''} />
             </DialogTitle>
           </DialogHeader>
