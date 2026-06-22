@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase, ExternalLink } from 'lucide-react';
+import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase, ExternalLink, Filter, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
 import { useContacts } from '@/hooks/useContacts';
 import { useLinkContactToCompany } from '@/hooks/useCrmLinks';
@@ -56,6 +57,17 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
     direction: 'desc',
   });
 
+  type ColFilterMode = 'all' | 'not_empty' | 'empty' | 'contains';
+  type ColFilter = { mode: ColFilterMode; value?: string };
+  const [columnFilters, setColumnFilters] = useState<Record<string, ColFilter>>({});
+  const setColFilter = (field: string, f: ColFilter) =>
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (f.mode === 'all') delete next[field];
+      else next[field] = f;
+      return next;
+    });
+
   // Modal states
   const [linkContactCompanyId, setLinkContactCompanyId] = useState<string | null>(null);
   const [createContactCompanyId, setCreateContactCompanyId] = useState<string | null>(null);
@@ -102,6 +114,21 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
     }
     if (industryFilter !== 'all') result = result.filter(c => c.industry === industryFilter);
 
+    // Per-column header filters
+    for (const [field, f] of Object.entries(columnFilters)) {
+      result = result.filter(c => {
+        const raw = (c as any)[field];
+        const isEmpty = raw == null || raw === '' || (typeof raw === 'string' && raw.trim() === '');
+        if (f.mode === 'not_empty') return !isEmpty;
+        if (f.mode === 'empty') return isEmpty;
+        if (f.mode === 'contains') {
+          if (!f.value) return true;
+          return String(raw ?? '').toLowerCase().includes(f.value.toLowerCase());
+        }
+        return true;
+      });
+    }
+
     if (sortField && sortDir) {
       result.sort((a, b) => {
         const aVal = (a as any)[sortField] ?? '';
@@ -112,7 +139,7 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
       });
     }
     return result;
-  }, [companies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir]);
+  }, [companies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir, columnFilters]);
 
   const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
   const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
@@ -128,6 +155,88 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
       {children}
     </SortableHeader>
   );
+
+  const ColHeader = ({
+    field,
+    filterField,
+    sortable = true,
+    children,
+  }: {
+    field: string;
+    filterField?: string;
+    sortable?: boolean;
+    children: React.ReactNode;
+  }) => {
+    const ff = filterField ?? field;
+    const current = columnFilters[ff];
+    const active = !!current;
+    const [draft, setDraft] = useState<ColFilter>(current ?? { mode: 'all', value: '' });
+    return (
+      <div className="flex items-center gap-1">
+        {sortable ? (
+          <SortableHeader asButton field={field} activeField={sortField} direction={sortDir} onSort={handleSort}>
+            {children}
+          </SortableHeader>
+        ) : (
+          <span className="text-xs font-medium">{children}</span>
+        )}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('h-5 w-5', active && 'text-primary')}
+              aria-label={`Filter ${typeof children === 'string' ? children : ff}`}
+              data-no-row-nav
+            >
+              <Filter className="h-3 w-3" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2 space-y-2" align="start">
+            <div className="text-xs font-medium text-muted-foreground">Filter</div>
+            <Select
+              value={draft.mode}
+              onValueChange={(v) => setDraft(d => ({ ...d, mode: v as ColFilterMode }))}
+            >
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All values</SelectItem>
+                <SelectItem value="not_empty">Not empty</SelectItem>
+                <SelectItem value="empty">Empty</SelectItem>
+                <SelectItem value="contains">Contains…</SelectItem>
+              </SelectContent>
+            </Select>
+            {draft.mode === 'contains' && (
+              <Input
+                value={draft.value ?? ''}
+                onChange={e => setDraft(d => ({ ...d, value: e.target.value }))}
+                placeholder="Text to match"
+                className="h-8 text-xs"
+              />
+            )}
+            <div className="flex gap-1 pt-1">
+              <Button size="sm" className="h-7 text-xs flex-1" onClick={() => setColFilter(ff, draft)}>Apply</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={() => { setDraft({ mode: 'all', value: '' }); setColFilter(ff, { mode: 'all' }); }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            {sortable && (
+              <div className="flex gap-1 border-t pt-2">
+                <Button size="sm" variant="ghost" className="h-7 text-xs flex-1" onClick={() => handleSort(field)}>
+                  <ArrowUp className="h-3 w-3 mr-1" /> Sort
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  };
 
   const formatCurrency = (v: number | null) => v != null ? `$${v.toLocaleString()}` : '—';
 
@@ -267,24 +376,24 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
             fixedHeaderContent={() => (
               <TableRow className="bg-muted/30">
                 <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
-                <TableHead><SortHeader field="name">Company</SortHeader></TableHead>
-                <TableHead><SortHeader field="domain">Domain</SortHeader></TableHead>
-                <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
-                <TableHead><SortHeader field="company_type">Type</SortHeader></TableHead>
-                <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
-                <TableHead>Website</TableHead>
-                <TableHead>LinkedIn</TableHead>
-                <TableHead><SortHeader field="phone">Phone</SortHeader></TableHead>
-                <TableHead><SortHeader field="address">Address</SortHeader></TableHead>
-                <TableHead><SortHeader field="hq_address">HQ Address</SortHeader></TableHead>
-                <TableHead>Notes</TableHead>
-                <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
-                <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
-                <TableHead><SortHeader field="segment">Segment</SortHeader></TableHead>
-                <TableHead><SortHeader field="arr">ARR</SortHeader></TableHead>
-                <TableHead><SortHeader field="employee_range">Size</SortHeader></TableHead>
-                <TableHead><SortHeader field="hq_country">Location</SortHeader></TableHead>
-                <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
+                <TableHead><ColHeader field="name">Company</ColHeader></TableHead>
+                <TableHead><ColHeader field="domain">Domain</ColHeader></TableHead>
+                <TableHead><ColHeader field="industry">Industry</ColHeader></TableHead>
+                <TableHead><ColHeader field="company_type">Type</ColHeader></TableHead>
+                <TableHead><ColHeader field="owner_user_id">Owner</ColHeader></TableHead>
+                <TableHead><ColHeader field="website_url" sortable={false}>Website</ColHeader></TableHead>
+                <TableHead><ColHeader field="linkedin_url" sortable={false}>LinkedIn</ColHeader></TableHead>
+                <TableHead><ColHeader field="phone">Phone</ColHeader></TableHead>
+                <TableHead><ColHeader field="address">Address</ColHeader></TableHead>
+                <TableHead><ColHeader field="hq_address">HQ Address</ColHeader></TableHead>
+                <TableHead><ColHeader field="notes" sortable={false}>Notes</ColHeader></TableHead>
+                <TableHead><ColHeader field="lifecycle_stage">Stage</ColHeader></TableHead>
+                <TableHead><ColHeader field="status">Status</ColHeader></TableHead>
+                <TableHead><ColHeader field="segment">Segment</ColHeader></TableHead>
+                <TableHead><ColHeader field="arr">ARR</ColHeader></TableHead>
+                <TableHead><ColHeader field="employee_range">Size</ColHeader></TableHead>
+                <TableHead><ColHeader field="hq_country">Location</ColHeader></TableHead>
+                <TableHead><ColHeader field="last_activity_date">Last Activity</ColHeader></TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             )}
