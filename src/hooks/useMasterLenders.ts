@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -82,6 +82,20 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const searchQuery = options.searchQuery?.trim() ?? '';
   const eagerAll = options.eagerAll ?? false;
 
+  // Stable identifier for this hook's filter/search/order combination.
+  // Used as the IndexedDB record key so switching between different views
+  // (e.g., "all by name asc" vs. "search:foo by updated_at desc") never
+  // mixes results — each view paints from its own snapshot.
+  const paramsKey = useMemo(() => {
+    const search = searchQuery ? `q:${searchQuery.toLowerCase()}` : 'q:';
+    return [
+      `mode:${mode}`,
+      `ps:${pageSize}`,
+      `order:${orderColumn}:${orderAscending ? 'asc' : 'desc'}`,
+      search,
+    ].join('|');
+  }, [mode, pageSize, orderColumn, orderAscending, searchQuery]);
+
   const [lenders, setLenders] = useState<MasterLender[]>(() => {
     // Initialize from cache if available and same user
     if (mode === 'all' && !searchQuery && cachedLenders && cacheUserId === user?.id) {
@@ -114,34 +128,38 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   // the moment they land — the network refresh continues in parallel and
   // overwrites the list when it finishes.
   useEffect(() => {
-    if (mode !== 'all' || searchQuery) {
-      idbHydratedRef.current = true;
-      return;
-    }
+    // Reset hydration state whenever the params combination changes so
+    // the new view gets its own snapshot read.
+    idbHydratedRef.current = false;
     if (!user) {
       idbHydratedRef.current = true;
       return;
     }
     // If the in-memory cache already populated state, skip — it's authoritative.
-    if (cachedLenders && cacheUserId === user.id) {
+    if (mode === 'all' && !searchQuery && cachedLenders && cacheUserId === user.id) {
       idbHydratedRef.current = true;
       return;
     }
     let cancelled = false;
-    loadCachedLenders<MasterLender>(user.id)
+    loadCachedLenders<MasterLender>(user.id, paramsKey)
       .then((snapshot) => {
         if (cancelled) return;
         if (idbHydratedRef.current) return; // network beat us — don't clobber
         if (!snapshot || snapshot.userId !== user.id) return;
         const mapped = snapshot.lenders.map((l) => withDemoLenderContact(l, isDemo));
-        // Seed both React state AND the in-memory cache so peers mounting
-        // in parallel also get the instant snapshot.
-        cachedLenders = mapped;
-        cacheUserId = user.id;
-        cacheTimestamp = snapshot.savedAt;
+        // Only seed the shared in-memory cache for the canonical
+        // "all + no search" view — other views are param-specific and
+        // shouldn't pollute the global directory cache.
+        if (mode === 'all' && !searchQuery) {
+          cachedLenders = mapped;
+          cacheUserId = user.id;
+          cacheTimestamp = snapshot.savedAt;
+        }
         setLenders(mapped);
         setTotalCount(mapped.length);
-        setHasMore(false);
+        // For paged/search snapshots we don't actually know if more rows
+        // exist on the server — let the network refresh re-compute hasMore.
+        setHasMore(mode === 'all' && !searchQuery ? false : false);
         setLoading(false);
       })
       .catch(() => { /* ignore — fall through to network */ })
@@ -151,10 +169,8 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
     return () => {
       cancelled = true;
     };
-    // We only want this to run once per (user, mode) — extra deps would
-    // re-trigger on unrelated state changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, mode, searchQuery, isDemo]);
+  }, [user?.id, paramsKey, isDemo]);
 
   const fetchPage = useCallback(
     async (pageIndex: number, withCount = false, query = '') => {
@@ -309,6 +325,14 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoading(false);
       setError(null);
 
+      // Persist the first-page snapshot under this view's params key so
+      // a re-visit of the exact same filter/search/order combo paints
+      // instantly on the next cold load. Skip the 'all + no search' case
+      // here — that one is persisted below after the full directory loads.
+      if (!(mode === 'all' && !searchQuery)) {
+        void saveCachedLenders(user.id, firstPage, paramsKey);
+      }
+
        // In "all" mode AND no search query, continue loading the remainder in the background.
       // When searching, we always stay in paged mode to avoid loading too much data.
       if (mode === 'all' && !searchQuery && (count == null ? firstPage.length === pageSize : firstPage.length < count)) {
@@ -370,7 +394,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
           setHasMore(false);
           // Persist the complete snapshot so the next cold load is instant.
           if (user) {
-            void saveCachedLenders(user.id, accumulated);
+            void saveCachedLenders(user.id, accumulated, paramsKey);
           }
           return accumulated;
         };
@@ -393,7 +417,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       } else if (mode === 'all' && !searchQuery) {
         // First page already contained the entire directory (small tenants).
         // Persist immediately so the next cold load is instant.
-        void saveCachedLenders(user.id, firstPage);
+        void saveCachedLenders(user.id, firstPage, paramsKey);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch lenders';
@@ -403,7 +427,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       setLoadingMore(false);
       setHasMore(false);
     }
-  }, [eagerAll, fetchPage, mode, pageSize, orderAscending, orderColumn, searchQuery, user]);
+  }, [eagerAll, fetchPage, mode, pageSize, orderAscending, orderColumn, paramsKey, searchQuery, user]);
 
   useEffect(() => {
     fetchLenders();
