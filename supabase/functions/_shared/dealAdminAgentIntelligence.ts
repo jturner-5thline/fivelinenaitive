@@ -14,6 +14,14 @@
  */
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { businessDaysBetween } from "./businessDays.ts";
+
+// 5th Line workspace — only this company gets the "Active Pipeline" scope filter.
+const FIFTH_LINE_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
+
+// Tone presets applied to every model call.
+const INTERNAL_TONE = "concise, fairly informal, not casual or funny";
+const EXTERNAL_TONE = "concise, semi-formal, acquaintance / friendly";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -261,6 +269,15 @@ async function gatherSignalsForDeal(
     messages: threadMessages[t.thread_id] ?? [],
   }));
 
+  // Pre-compute "business days since last lender contact" for each funding
+  // source so the prompt can apply the 3-BD follow-up rule deterministically.
+  const today = new Date();
+  const fundingWithBd = (fs.data ?? []).map((f: any) => {
+    const lastTs = f.last_contact_at ?? f.last_status_change_at ?? f.updated_at ?? null;
+    const bd = lastTs ? businessDaysBetween(new Date(lastTs), today) : null;
+    return { ...f, business_days_since_last_contact: bd };
+  });
+
   // Hydrate claap recordings with transcript / summary / action items from
   // claap_transcripts (deal-linked) and claap_recordings (org-linked).
   const claapRows: any[] = claap.data ?? [];
@@ -367,7 +384,7 @@ async function gatherSignalsForDeal(
       is_flagged: !!deal.is_flagged,
       updated_at: deal.updated_at ?? null,
     },
-    funding_sources: fs.data ?? [],
+    funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
     stage_history: hist.data ?? [],
