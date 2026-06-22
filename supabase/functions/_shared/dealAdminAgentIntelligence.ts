@@ -94,6 +94,7 @@ interface DealSignalBundle {
   open_tasks: any[];
   claap_recordings: any[];
   email_threads: any[];
+  referral_sources: any[];
 }
 
 interface CandidateItem {
@@ -415,7 +416,104 @@ async function gatherSignalsForDeal(
     open_tasks: tasks.data ?? [],
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
+    referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
   };
+}
+
+/**
+ * Build a per-deal list of referral sources the deal manager should
+ * keep in the loop, each annotated with:
+ *   - business_days_since_last_outbound: outbound email to that source
+ *   - stage_changed_since_last_outbound: deal stage moved with no update sent
+ *   - meaningful_events_since_last_outbound: stage history / new lenders /
+ *     milestone completions / term-sheet status notes that occurred AFTER
+ *     the last outbound message
+ * The model uses these flags to fire rules R1/R2/R3.
+ */
+async function gatherReferralSourcesForDeal(
+  supabase: SupabaseClient,
+  deal: any,
+  since: string,
+  today: Date,
+): Promise<any[]> {
+  const out: any[] = [];
+  const refSourceId = deal.referral_source_id as string | null | undefined;
+  if (!refSourceId) return out;
+
+  const { data: rs } = await supabase
+    .from("referral_sources")
+    .select("id, name, email, phone, company, type")
+    .eq("id", refSourceId)
+    .maybeSingle();
+  if (!rs || !(rs as any).email) return out;
+  const email = String((rs as any).email).toLowerCase();
+
+  // Last outbound email sent to this referral source (any deal, any time).
+  const { data: lastOutbound } = await supabase
+    .from("gmail_sent_messages")
+    .select("id, subject, sent_at, created_at, body_text")
+    .contains("to_emails", [email])
+    .order("sent_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  const lastOut = (lastOutbound ?? [])[0] ?? null;
+  const lastOutAt: string | null =
+    (lastOut?.sent_at as string | null) ?? (lastOut?.created_at as string | null) ?? null;
+  const bdSinceOutbound = lastOutAt
+    ? businessDaysBetween(new Date(lastOutAt), today)
+    : null;
+
+  // Recent stage transitions on this deal AFTER the last outbound.
+  const cutoff = lastOutAt ?? since;
+  const { data: stagesSince } = await supabase
+    .from("deal_stage_history")
+    .select("from_stage, to_stage, changed_at")
+    .eq("deal_id", deal.id)
+    .gt("changed_at", cutoff)
+    .order("changed_at", { ascending: false })
+    .limit(5);
+
+  // New funding sources added since the last outbound.
+  const { data: newLenders } = await supabase
+    .from("deal_lenders")
+    .select("id, name, stage, created_at")
+    .eq("deal_id", deal.id)
+    .gt("created_at", cutoff)
+    .limit(10);
+
+  // Milestones completed since the last outbound.
+  const { data: doneMiles } = await supabase
+    .from("deal_milestones")
+    .select("id, title, completed_at")
+    .eq("deal_id", deal.id)
+    .eq("completed", true)
+    .gt("completed_at", cutoff)
+    .limit(10);
+
+  // Status notes added since the last outbound (term sheet, diligence, etc).
+  const { data: notesSince } = await supabase
+    .from("deal_status_notes")
+    .select("id, note, created_at")
+    .eq("deal_id", deal.id)
+    .gt("created_at", cutoff)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  out.push({
+    id: (rs as any).id,
+    name: (rs as any).name,
+    email,
+    phone: (rs as any).phone ?? null,
+    company: (rs as any).company ?? null,
+    type: (rs as any).type ?? null,
+    last_outbound_at: lastOutAt,
+    last_outbound_subject: (lastOut as any)?.subject ?? null,
+    business_days_since_last_outbound: bdSinceOutbound,
+    stage_changes_since_last_outbound: stagesSince ?? [],
+    new_lenders_since_last_outbound: newLenders ?? [],
+    milestones_completed_since_last_outbound: doneMiles ?? [],
+    status_notes_since_last_outbound: notesSince ?? [],
+  });
+  return out;
 }
 
 /* ------------------------------------------------------------------ */
@@ -462,6 +560,23 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
+
+const REFERRAL_RULES = `
+
+REFERRAL SOURCE UPDATE RULES (use referral_sources[])
+- Rule R1: referral_sources[].business_days_since_last_outbound >= 3 → draft_email to that referral source with a short factual status update on where the deal stands (current stage, latest lender progress, any outstanding items, next step).
+- Rule R2: referral_sources[].stage_changes_since_last_outbound.length > 0 → draft_email referencing the new stage and what it means in plain language. Cite the stage_history entry as evidence (kind="stage_history").
+- Rule R3: any of (new_lenders_since_last_outbound, milestones_completed_since_last_outbound, status_notes_since_last_outbound) is non-empty AND describes a meaningful event (term sheet received, diligence milestone hit, new lender added, indication received) → draft_email summarizing the event for the referral source. Cite the underlying signal as evidence (kind="status_note"|"milestone"|"funding_source").
+- All referral draft_email items:
+    - target_object_type MUST be "referral_source" and target_object_id MUST be the referral_sources[].id (this keeps dedupe per (deal, referral source)).
+    - requires_send_ui=true.
+    - proposed_values MUST include { to: [referral_source.email], subject, body }.
+    - Tone: ${EXTERNAL_TONE}. Professional but not stiff. Body <= 130 words. Mention the deal/company name once.
+    - Do not include market opinions, commitments, or pricing — keep to facts already in the signals.
+- Pick at most ONE rule per referral source per scan — emit one draft email per (deal, referral_source). If multiple rules fire, pick the most recent meaningful event and reference all triggers in rationale_summary.
+- Silence rule: if no rule fires for any referral source, emit nothing for referral sources. Do NOT propose generic "say hi" emails.`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + REFERRAL_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
@@ -534,6 +649,22 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         received_at: m.received_at,
       })),
     })),
+    referral_sources: (bundle.referral_sources ?? []).map((r: any) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      company: r.company,
+      type: r.type,
+      last_outbound_at: r.last_outbound_at,
+      last_outbound_subject: r.last_outbound_subject,
+      business_days_since_last_outbound: r.business_days_since_last_outbound,
+      stage_changes_since_last_outbound: r.stage_changes_since_last_outbound,
+      new_lenders_since_last_outbound: r.new_lenders_since_last_outbound,
+      milestones_completed_since_last_outbound: r.milestones_completed_since_last_outbound,
+      status_notes_since_last_outbound: (r.status_notes_since_last_outbound ?? []).map((n: any) => ({
+        id: n.id, created_at: n.created_at, note: trim(n.note, 200),
+      })),
+    })),
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
@@ -552,7 +683,7 @@ async function callModelForCandidates(
   const body = {
     model: MODEL,
     max_tokens: 6000,
-    system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
+    system: `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
       { role: "user", content: buildUserPrompt(bundle, fingerprint) },
     ],
@@ -833,7 +964,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
 
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id")
+    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id, referral_source_id")
     .eq("company_id", companyId)
     .in("deal_owner_user_id", activatedArr)
     .order("updated_at", { ascending: false })
@@ -909,7 +1040,8 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.stage_history.length +
         bundle.calendar_items.length +
         bundle.claap_recordings.length +
-        bundle.email_threads.length;
+        bundle.email_threads.length +
+        bundle.referral_sources.length;
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
       if (sigCount === 0) continue;
 
