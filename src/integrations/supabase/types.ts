@@ -610,6 +610,42 @@ export type Database = {
           },
         ]
       }
+      admin_agent_tone_deltas: {
+        Row: {
+          action_type: string
+          company_id: string | null
+          created_at: string
+          diff_summary: string | null
+          edited_draft: Json
+          id: string
+          original_draft: Json
+          queue_item_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          company_id?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          edited_draft?: Json
+          id?: string
+          original_draft?: Json
+          queue_item_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          company_id?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          edited_draft?: Json
+          id?: string
+          original_draft?: Json
+          queue_item_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       admin_agent_user_overrides: {
         Row: {
           company_id: string

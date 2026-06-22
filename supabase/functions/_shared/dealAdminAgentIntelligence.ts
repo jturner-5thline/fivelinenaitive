@@ -14,6 +14,14 @@
  */
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { businessDaysBetween } from "./businessDays.ts";
+
+// 5th Line workspace — only this company gets the "Active Pipeline" scope filter.
+const FIFTH_LINE_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
+
+// Tone presets applied to every model call.
+const INTERNAL_TONE = "concise, fairly informal, not casual or funny";
+const EXTERNAL_TONE = "concise, semi-formal, acquaintance / friendly";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -261,6 +269,15 @@ async function gatherSignalsForDeal(
     messages: threadMessages[t.thread_id] ?? [],
   }));
 
+  // Pre-compute "business days since last lender contact" for each funding
+  // source so the prompt can apply the 3-BD follow-up rule deterministically.
+  const today = new Date();
+  const fundingWithBd = (fs.data ?? []).map((f: any) => {
+    const lastTs = f.last_contact_at ?? f.last_status_change_at ?? f.updated_at ?? null;
+    const bd = lastTs ? businessDaysBetween(new Date(lastTs), today) : null;
+    return { ...f, business_days_since_last_contact: bd };
+  });
+
   // Hydrate claap recordings with transcript / summary / action items from
   // claap_transcripts (deal-linked) and claap_recordings (org-linked).
   const claapRows: any[] = claap.data ?? [];
@@ -367,7 +384,7 @@ async function gatherSignalsForDeal(
       is_flagged: !!deal.is_flagged,
       updated_at: deal.updated_at ?? null,
     },
-    funding_sources: fs.data ?? [],
+    funding_sources: fundingWithBd,
     status_notes: notes.data ?? [],
     activity: act.data ?? [],
     stage_history: hist.data ?? [],
@@ -414,9 +431,31 @@ Rules:
 - evidence_references must cite the signal that justifies the proposal (kind ∈ email|email_thread|calendar|claap_recording|activity|status_note|funding_source|stage_history|milestone|task).
 - When a Claap recording, calendar event, or email thread describes a meeting that happened ("had call on 6/18", "kickoff scheduled"), the DEFAULT proposal is an add_status_note that synthesizes (a) what happened, (b) who was on it, (c) the stated next step — phrased as a natural status update the deal owner would write. Use call_type, participants, transcript_excerpt, summary, action_items, and next-step language to ground the note. Always cite the claap_recording / calendar / email_thread evidence.
 - Cross-reference signals: if an email thread + a claap recording + a calendar item all describe the same meeting/topic, MERGE them into a single high-confidence add_status_note (or follow-up task / milestone) rather than emitting one item per source.
-- Pull concrete details into proposed_values.note — names, dates ("6/18"), specific commitments ("submit to lenders early next week"). Never write vague text like "follow up" or "review item".`;
+- Pull concrete details into proposed_values.note — names, dates ("6/18"), specific commitments ("submit to lenders early next week"). Never write vague text like "follow up" or "review item".
 
-function buildUserPrompt(bundle: DealSignalBundle): string {
+TONE
+- Internal copy (status notes, internal tasks, internal task descriptions): ${INTERNAL_TONE}.
+- External drafts (draft_email to lenders, referral sources, clients): ${EXTERNAL_TONE}.
+- If a user_style_fingerprint block is provided, mimic that user's phrasing/length tendencies in both internal and external copy.
+
+EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
+- ETA commitment from a counterparty ("I'll send financials by Friday") → add_status_note capturing the commitment AND a create_followup_task due the committed date, assigned to the deal manager.
+- Status signal ("still working on materials", "almost done") → add_status_note only.
+- Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
+- Implicit next step from the deal manager ("let me check and get back to you", "I'll circle back") → create_followup_task on the deal manager.
+
+CLAAP RECORDING MAPPING
+- For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
+- Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
+
+LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
+- Rule L1: funding_sources[].business_days_since_last_contact >= 3 AND tracking_status is active/engaged (not "passed"/"closed") → draft_email to that lender (requires_send_ui=true) gently nudging for an update. Cite the funding_source id as target_object_id and as evidence (kind="funding_source").
+- Rule L2: An outbound email to a lender contact reads as urgent (deadline language, escalation, "ASAP", calling out timing) AND no inbound reply has arrived → draft_email re-pinging that lender. Reference the email id in evidence (kind="email"). Tone: still semi-formal, do not blame.
+- Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
+- All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
+- Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
+
+function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
   const trim = (s: any, n = 240) =>
     typeof s === "string" ? (s.length > n ? s.slice(0, n) + "…" : s) : s;
@@ -437,6 +476,7 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
       substage: f.substage,
       tracking_status: f.tracking_status,
       last_contact_at: f.last_contact_at,
+      business_days_since_last_contact: (f as any).business_days_since_last_contact ?? null,
       notes: trim(f.notes, 200),
       pass_reason: trim(f.pass_reason, 160),
     })),
@@ -487,11 +527,15 @@ function buildUserPrompt(bundle: DealSignalBundle): string {
       })),
     })),
   };
-  return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
+  const fp = fingerprint && fingerprint.trim().length > 0
+    ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
+    : "";
+  return `Deal signals (last ${LOOKBACK_DAYS} days):\n\n${JSON.stringify(compact, null, 2)}\n${fp}\nReturn JSON: { "items": [CandidateItem, ...] }. If nothing is strongly actionable, return { "items": [] }.`;
 }
 
 async function callModelForCandidates(
   bundle: DealSignalBundle,
+  fingerprint?: string | null,
 ): Promise<CandidateItem[]> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
@@ -502,7 +546,7 @@ async function callModelForCandidates(
     max_tokens: 6000,
     system: `${SYSTEM_PROMPT}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
-      { role: "user", content: buildUserPrompt(bundle) },
+      { role: "user", content: buildUserPrompt(bundle, fingerprint) },
     ],
   };
 
@@ -755,12 +799,34 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   };
 
   // 1) Load target deals.
+  // Scope: deals where the Deal Manager (deal_owner_user_id) is an
+  // activated Admin Agent user. For the 5th Line workspace, additionally
+  // restrict to the default ("Active Pipeline") pipeline.
+  const activatedArr = Array.from(opts.activatedUserIds ?? new Set<string>());
+  if (activatedArr.length === 0) {
+    result.errors.push("no activated users — nothing in scope");
+    return result;
+  }
+
+  let activePipelineId: string | null = null;
+  if (companyId === FIFTH_LINE_COMPANY_ID) {
+    const { data: pipeRow } = await supabase
+      .from("deal_pipelines")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("is_default", true)
+      .maybeSingle();
+    activePipelineId = (pipeRow as any)?.id ?? null;
+  }
+
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id")
+    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id")
     .eq("company_id", companyId)
+    .in("deal_owner_user_id", activatedArr)
     .order("updated_at", { ascending: false })
     .limit(maxDeals);
+  if (activePipelineId) dealQ = dealQ.eq("pipeline_id", activePipelineId);
   if (dealIds && dealIds.length > 0) dealQ = dealQ.in("id", dealIds);
   const { data: deals, error: dealErr } = await dealQ;
   if (dealErr) {
@@ -777,6 +843,27 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (name.startsWith("test ")) return false;
     return true;
   });
+
+  // Pre-fetch a per-manager style fingerprint from recent approval edits.
+  const fingerprintByUser = new Map<string, string>();
+  for (const uid of activatedArr) {
+    const { data: deltas } = await supabase
+      .from("admin_agent_tone_deltas")
+      .select("action_type, original_draft, edited_draft, diff_summary, created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(15);
+    if (deltas && deltas.length > 0) {
+      fingerprintByUser.set(
+        uid,
+        deltas.map((d: any, i: number) => {
+          const orig = JSON.stringify(d.original_draft ?? {}).slice(0, 400);
+          const edit = JSON.stringify(d.edited_draft ?? {}).slice(0, 400);
+          return `#${i + 1} [${d.action_type}]\n  proposed: ${orig}\n  user-edited: ${edit}${d.diff_summary ? `\n  delta: ${d.diff_summary}` : ""}`;
+        }).join("\n"),
+      );
+    }
+  }
 
   // 2) Existing dedupe keys — anything currently pending/approved in the queue
   //    for this company we shouldn't re-propose.
@@ -814,7 +901,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
       if (sigCount === 0) continue;
 
-      const raw = await callModelForCandidates(bundle);
+      const fingerprint = bundle.current.deal_owner_user_id
+        ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
+        : null;
+      const raw = await callModelForCandidates(bundle, fingerprint);
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
