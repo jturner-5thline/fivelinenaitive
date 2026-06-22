@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy, Layers, GitMerge } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
@@ -696,6 +696,26 @@ export default function Lenders() {
     return [...base].sort((a, b) => rank(a) - rank(b));
   }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
 
+  // When the Duplicates filter is active, organize the visible lenders into
+  // clusters so the user can review and merge each group as a unit. Each
+  // group lists every member that survived the current filters (search,
+  // advanced filters, etc.) so empty groups are dropped.
+  const duplicateGroupsView = useMemo(() => {
+    if (!showDuplicatesOnly) return [] as Array<{ groupId: string; lenders: typeof sortedLenders }>;
+    const byGroup = new Map<string, typeof sortedLenders>();
+    for (const lender of sortedLenders) {
+      const gid = duplicateIndex.byLenderId[lender.id]?.groupId;
+      if (!gid) continue;
+      const arr = byGroup.get(gid) ?? [];
+      arr.push(lender);
+      byGroup.set(gid, arr);
+    }
+    return Array.from(byGroup.entries())
+      .filter(([, members]) => members.length >= 2)
+      .map(([groupId, lenders]) => ({ groupId, lenders }))
+      .sort((a, b) => a.groupId.localeCompare(b.groupId));
+  }, [showDuplicatesOnly, sortedLenders, duplicateIndex]);
+
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
     handleQuickUpload(lenderName, category);
@@ -732,6 +752,15 @@ export default function Lenders() {
 
   const clearSelection = useCallback(() => {
     setSelectedLenderIds(new Set());
+  }, []);
+
+  // Open the side-by-side merge dialog with a specific duplicate cluster
+  // preselected. Used by the grouped Duplicates view so users can jump from
+  // a cluster straight into the merge experience.
+  const openMergeForGroup = useCallback((memberIds: string[]) => {
+    if (memberIds.length < 2) return;
+    setSelectedLenderIds(new Set(memberIds));
+    setIsSideBySideMergeOpen(true);
   }, []);
 
   const handlePushSelectedToFlex = useCallback(async () => {
@@ -1729,9 +1758,67 @@ export default function Lenders() {
                   <LendersListSkeleton viewMode={viewMode === 'spreadsheet' ? 'list' : viewMode} />
                 )}
 
+                {/* Grouped Duplicates View */}
+                {!isLoading && showDuplicatesOnly && viewMode !== 'spreadsheet' && duplicateGroupsView.length > 0 && (
+                  <div className="space-y-4" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+                    {duplicateGroupsView.map(({ groupId, lenders: groupLenders }) => {
+                      const ids = groupLenders.map((l) => l.id);
+                      const displayName = groupLenders[0]?.name || groupId;
+                      return (
+                        <div
+                          key={groupId}
+                          className="rounded-lg border border-border/60 bg-card/40 backdrop-blur-sm overflow-hidden"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openMergeForGroup(ids)}
+                            className="w-full flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {displayName}
+                              </span>
+                              <span className="text-xs text-muted-foreground shrink-0">
+                                · {groupLenders.length} possible duplicates
+                              </span>
+                            </div>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary shrink-0">
+                              <GitMerge className="h-3.5 w-3.5" />
+                              Merge group
+                            </span>
+                          </button>
+                          <div className="p-3 space-y-2">
+                            {groupLenders.map((lender) => (
+                              <div key={lender.id} data-lender-row={lender.id}>
+                                <LenderListCard
+                                  lender={lender}
+                                  activeDealCount={activeDealCounts[lender.name] || 0}
+                                  duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
+                                  duplicateSiblings={duplicateSiblingsByLenderId[lender.id]}
+                                  onOpenSiblingDetail={openLenderSiblingDetailStable}
+                                  summary={getLenderSummary(lender.name)}
+                                  isQuickUploading={isQuickUploading}
+                                  quickUploadLenderName={quickUploadTarget?.lenderName || null}
+                                  isSelected={selectedLenderIds.has(lender.id)}
+                                  onToggleSelect={toggleLenderSelection}
+                                  onOpenDetail={openLenderDetailStable}
+                                  onEdit={openEditDialogStable}
+                                  onDelete={handleDeleteStable}
+                                  onQuickUpload={handleQuickUploadStable}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* List View */}
                 {/* List View - Virtualized */}
-                {!isLoading && viewMode === 'list' && sortedLenders.length > 0 && (
+                {!isLoading && !showDuplicatesOnly && viewMode === 'list' && sortedLenders.length > 0 && (
                   <Virtuoso
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
@@ -1787,7 +1874,7 @@ export default function Lenders() {
                 )}
 
                 {/* Grid View - Virtualized */}
-                {!isLoading && viewMode === 'grid' && sortedLenders.length > 0 && (
+                {!isLoading && !showDuplicatesOnly && viewMode === 'grid' && sortedLenders.length > 0 && (
                   <VirtuosoGrid
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
