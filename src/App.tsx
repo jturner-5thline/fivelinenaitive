@@ -175,6 +175,7 @@ const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
 const Contacts = lazy(lazyRetry(() => import("./pages/Contacts")));
 const ContactDetail = lazy(lazyRetry(() => import("./pages/ContactDetail")));
+const ContactCompanySync = lazy(lazyRetry(() => import("./pages/admin/ContactCompanySync")));
 const NotFound = lazy(lazyRetry(() => import("./pages/NotFound")));
 const CrmCompanies = lazy(lazyRetry(() => import("./pages/CrmCompanies")));
 const CrmCompanyDetail = lazy(lazyRetry(() => import("./pages/CrmCompanyDetail")));
