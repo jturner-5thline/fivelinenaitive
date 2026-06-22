@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_lenders ADD COLUMN IF NOT EXISTS selected_contact_id uuid REFERENCES public.lender_contacts(id) ON DELETE SET NULL; CREATE INDEX IF NOT EXISTS idx_deal_lenders_selected_contact_id ON public.deal_lenders(selected_contact_id);

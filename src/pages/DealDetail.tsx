@@ -7,6 +7,7 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
+import { DealLenderContactPicker } from '@/components/deal/DealLenderContactPicker';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
@@ -5663,6 +5664,19 @@ export default function DealDetail() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground italic">No contact information available</p>
+                    )}
+                    {dealLender && (
+                      <div className="mt-3">
+                        <DealLenderContactPicker
+                          dealLenderId={dealLender.id}
+                          masterLenderId={masterLender?.id ?? null}
+                          directoryDefault={{
+                            name: masterLender?.contact_name ?? null,
+                            title: masterLender?.contact_title ?? null,
+                            email: masterLender?.email ?? null,
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
 
