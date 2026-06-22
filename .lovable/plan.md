@@ -1,98 +1,123 @@
-## Goal
+# Contact ↔ Company Domain Sync
 
-Add an "Auto-Suggest Status Updates & Follow-Up Tasks" capability to the existing Deal Admin Agent. Reuse the existing intelligence engine (`runDealAdminAgentAnalysis`) and Approval Queue (Duty 3 / `ai_action_queue` + `approval-queue-execute`). No parallel scheduler, no parallel queue.
+## Summary
+Generalize the existing Blount-only auto-link trigger into a platform-wide, per-org contact-to-company sync driven by normalized email/website domains, with freemail exclusions, an ignore list, a review queue, and a bulk resync action.
 
-## What already exists (do not rebuild)
+## What already exists (reuse, don't rebuild)
+- `contacts.email_domain_normalized` + trigger `tg_contacts_set_email_domain_normalized` (uses `normalize_email_domain`)
+- `crm_companies.domain_normalized` + trigger `tg_crm_companies_set_domain_normalized` (uses `normalize_website_domain`, prefers `website_url` then `domain`)
+- Index `idx_crm_companies_domain_normalized (org_company_id, domain_normalized)`
+- `crm_company_id` FK on contacts
+- Blount-only triggers `tg_blount_company_autolink_contacts` and `trg_blount_contact_autolink` — to be replaced by an org-agnostic version
 
-- Per-deal signal gathering for emails, email threads, Claap recordings + transcripts, calendar items, deal activity, status notes, funding sources (deal_lenders), open tasks, stage history, milestones — in `supabase/functions/_shared/dealAdminAgentIntelligence.ts`.
-- Claude-powered candidate generation with confidence/risk/evidence, dedupe by `(action_type, target_object_type, target_object_id)`, and insertion into `ai_action_queue` with full executable payload.
-- Approval Queue UI (`ActionQueuePanel`, `useAiActionQueue`) and executor (`approval-queue-execute`) for `add_status_note`, `update_funding_source`, `create_followup_task`, `update_milestone`, `draft_email`, `update_deal_stage`, etc.
-- Per-company entitlement + per-user activation gates (`admin_agent_user_overrides.is_activated`).
-- Silence-by-default: when the engine returns zero candidates, nothing is inserted and no notification fires.
+## Schema changes (one migration)
 
-## Deltas to ship
+### `contacts` (new columns)
+- `match_status` enum-as-text: `unmatched | matched | needs_review | ignored` (default `unmatched`)
+- `match_confidence` numeric(3,2) — 1.00 root-domain, 0.80 subdomain, 0.50 ambiguous, 0.00 freemail/no match
+- `match_source` text — `auto_trigger | bulk_resync | manual_override | suggestion_accepted`
+- `last_match_run_at` timestamptz
 
-### 1. Scope filter (per-user Deal Manager + Active Pipeline)
+### `crm_companies`
+- No structural change. `website_domain_normalized` requested in spec is already covered by `domain_normalized`; add a view-only computed alias if helpful but no new column.
 
-In `dealAdminAgentIntelligence.ts › runDealAdminAgentAnalysis`, replace the current "load deals by company, ordered by updated_at" with:
+### New `contact_company_match_audit`
+```
+id, org_company_id, contact_id, proposed_company_id (nullable),
+raw_contact_email, raw_company_website, normalized_contact_domain,
+normalized_company_domain, decision (auto_matched|suggested|ignored|rejected|no_match),
+reason text, created_at, created_by (nullable)
+```
+RLS scoped by `org_company_id` via `is_member_of_company`. GRANT to authenticated + service_role.
 
-- For each activated user in the company, load only deals where `deals.deal_owner_user_id = <activated user>` (this is the "Deal Manager" field).
-- Drop archived deals (already done) and the global test-deal exclusion list (already done).
-- For the 5th Line company (`44556c46-9127-4b12-b14e-d6fee784afcf`): resolve the **default** pipeline via `deal_pipelines.is_default = true` for that company and require `deals.pipeline_id = <default pipeline id>`. Per project memory, the default pipeline is "Active Pipeline".
-- Attribute the resulting Approval Queue items to that activated user (assignee = deal manager), not to "first activated user in workspace".
+### New `domain_match_settings` (per org, 1 row)
+```
+org_company_id PK, auto_apply boolean default true,
+subdomain_matching boolean default false,
+ignored_domains text[] default '{}',
+extra_freemail_domains text[] default '{}',
+updated_at
+```
+RLS: company members read; admins write.
 
-### 2. 30-minute scan cadence
+### Freemail list
+Single source of truth: a SQL-side `IMMUTABLE` function `public.is_freemail_domain(text)` returning true for gmail.com, yahoo.com, outlook.com, hotmail.com, icloud.com, aol.com, proton.me, protonmail.com, live.com, msn.com, gmx.com, mail.com, yandex.com, zoho.com, fastmail.com, hey.com, me.com, mac.com, ymail.com, rocketmail.com, comcast.net, verizon.net, att.net, sbcglobal.net. Mirror as a TS constant in `src/lib/freemailDomains.ts`.
 
-- Add a pg_cron job that hits `deal-admin-agent-auto-sweep` every 30 minutes (use the existing `supabase/functions/deal-admin-agent-auto-sweep` entry point — no new function needed).
-- Keep weekly `admin-agent-sweep` as-is (it handles the legacy portfolio audit and is a different code path).
-- Tune `max_deals` / `max_queue_rows` / `min_confidence` for the higher cadence so we don't flood the queue.
+## Matching logic (DB function)
 
-### 3. Lender follow-up triggers (prompt extension)
+New `public.run_contact_company_match(p_contact_id uuid) returns jsonb`:
+1. Load contact email + normalized domain + org_company_id + existing crm_company_id.
+2. If `crm_company_id IS NOT NULL` — return no-op (preserve existing link).
+3. If domain is null, freemail, in `ignored_domains`, or in `extra_freemail_domains` → mark `match_status='ignored'`, write audit row, return.
+4. Find candidates in `crm_companies` for the same `org_company_id` where:
+   - exact: `domain_normalized = contact_domain` (confidence 1.00), OR
+   - subdomain (only if `subdomain_matching=true`): contact_domain ends with `.' || domain_normalized` (confidence 0.80).
+5. Decide:
+   - 1 exact + `auto_apply` → set `crm_company_id`, `match_status='matched'`, confidence 1.00, source `auto_trigger`; audit `auto_matched`.
+   - 1 exact + `auto_apply=false` → status `needs_review`; audit `suggested`.
+   - >1 candidates → status `needs_review`, store no FK; audit one row per candidate with `decision='suggested'`.
+   - 0 → status `unmatched`; audit `no_match`.
+6. Always update `last_match_run_at`.
 
-Extend the existing Claude system prompt in `dealAdminAgentIntelligence.ts` with three explicit lender rules — they emit `draft_email` (external) plus an optional `create_followup_task` (internal):
+## Triggers (replace Blount-specific ones)
 
-1. Lender (deal_lender) `last_contact_at` is older than 3 US business days with no inbound reply since.
-2. An outbound email to the lender contact reads urgent (Claude classifies tone) and has no inbound reply.
-3. A lender stated they would respond by a date (parsed from email/Claap) and that date is today or past.
+- Drop `trg_blount_contact_autolink` and `trg_blount_company_autolink`.
+- `trg_contacts_autolink_after_change` AFTER INSERT OR UPDATE OF email, email_domain_normalized, crm_company_id ON contacts → calls `run_contact_company_match(NEW.id)` when email_domain_normalized changed and crm_company_id is null.
+- `trg_companies_autolink_unmatched` AFTER INSERT OR UPDATE OF domain_normalized ON crm_companies → re-runs match for all unmatched contacts in the same org whose `email_domain_normalized` equals the new value (uses the same function, batched in a CTE).
 
-Reuse the existing `businessDaysBetween` helper (`src/lib/businessDays.ts`) — port the same logic to the edge function shared module so the prompt can pre-compute "BD since last contact" per lender and pass it into the bundle.
+Both triggers no-op when `auto_apply=false` (only write audit rows / set `needs_review`).
 
-### 4. Email/Claap detection coverage (prompt sharpening)
+## Edge function: `contact-company-sync`
+Auth: `supabase.auth.getUser()` mandatory, 401 on miss; user-scoped client; verify caller `is_member_of_company(target_org)`.
 
-Add explicit instructions to the existing prompt so the model emits these patterns the user called out:
-- ETA commitments ("by Friday") → `add_status_note` + optional `create_followup_task`.
-- "Still working on it" → `add_status_note`.
-- "Won't be ready until X" → `update_funding_source` ETA or outstanding-item ETA via `add_status_note`.
-- "Let me check and get back to you" → `create_followup_task`.
-- Claap: on every linked recording in the bundle, always emit one `add_status_note` synthesizing what happened + next step (already partly done — tighten and make it mandatory when a recording exists and there is no matching status note within 48h).
+Modes:
+- `mode=single, contact_id`
+- `mode=bulk_org` — iterates all contacts in caller's org (batched 500/loop)
+- `mode=bulk_company, company_id` — re-matches all contacts whose email domain equals that company's domain_normalized
+- `mode=resync_contact, contact_id, force=true` — clears `crm_company_id` first when force
 
-### 5. Tone presets
+Returns `{ matched, suggested, ignored, unmatched, processed }`.
 
-Pass two tone constants into the prompt:
-- Internal (status notes, internal tasks): concise, fairly informal, not casual/funny.
-- External drafts (`draft_email`): concise, semi-formal, acquaintance/friendly.
+## Frontend
 
-### 6. Per-user tone training (silent learning)
+### Shared util `src/lib/domainMatch.ts`
+- `normalizeEmailDomain(email)`, `normalizeWebsiteDomain(url)`, `isFreemailDomain(domain)`, `extractRootDomain(domain)`. Mirrors the SQL logic for client-side previews.
 
-New table `admin_agent_tone_deltas`:
-- `id`, `user_id`, `company_id`, `queue_item_id`, `action_type`, `original_draft jsonb`, `edited_draft jsonb`, `diff_summary text`, `created_at`.
-- RLS + GRANTs per project standards.
+### Review queue page `src/pages/admin/ContactCompanySync.tsx` (route `/admin/contact-company-sync`)
+- Header: "Run sync" button (calls edge fn `bulk_org`) with toast progress.
+- Tabs: All / Matched / Needs review / Unmatched / Ignored — driven by `contacts.match_status` filter.
+- Table per contact: email, extracted domain, current company, suggested company(ies) from audit table, reason, confidence.
+- Row actions: Confirm (apply suggestion), Reject, Reassign (opens company picker), Mark ignored.
+- Settings drawer: auto_apply toggle, subdomain matching toggle, ignored domains chips, extra freemail chips.
 
-Hook: in `approval-queue-execute` for `draft_email` (and `add_status_note` / `create_followup_task` when `new_values` was edited), compare incoming `new_values` to stored `old_values`/`payload.on_approve_execution_payload.new_values`; if changed, insert a delta row. No UI, no notifications.
+### Hook `src/hooks/useContactCompanySync.ts`
+- `useDomainMatchSettings()` / `useUpdateDomainMatchSettings()`
+- `useMatchSuggestions(filter)` — joins `contact_company_match_audit` with contacts + companies, scoped by org
+- `useRunSync({ mode, ... })` invokes edge fn
+- `useResolveSuggestion({ contactId, companyId|null, decision })` — updates contact + writes audit row
 
-Use: in `runDealAdminAgentAnalysis`, before calling the model, fetch the last ~15 tone deltas for the deal manager and include a compact "user style fingerprint" block in the prompt ("this user typically shortens X, prefers Y phrasing").
+### Surface hooks
+- Add "Re-sync company" item to existing contact detail action menu (`src/pages/ContactDetail.tsx`) calling `mode=resync_contact, force=true`.
+- Add a small badge in contact rows when `match_status='needs_review'` linking to the review queue.
 
-### 7. 4-business-day escalation
+## Backfill (in the same migration, after triggers)
+- Recompute `email_domain_normalized` and `domain_normalized` for all rows (touch via update where null).
+- For each contact with null `crm_company_id` and non-freemail non-ignored domain:
+  - exact-match single → set company, `match_status='matched'`, audit `auto_matched`.
+  - exact-match multi → `match_status='needs_review'`, audit per candidate.
+  - else → `match_status='unmatched'`.
+- Existing linked contacts are left alone (preserve relationship).
 
-New scheduled task (pg_cron, daily 9am ET) — extend `admin-agent-sweep` (or add a small `admin-agent-escalate` function) that:
-- Finds `ai_action_queue` rows with `status='pending'`, `source.origin='deal_admin_agent'`, `created_at` older than 4 US business days.
-- Resolves the company admin (first user with `role='admin'` in `user_roles` for that company).
-- Inserts a new `ai_action_queue` row of type `escalate` assigned to the admin, linking back to the stale item. Existing executor already handles `escalate`.
-- Marks the original row with `payload.escalated_at` so it isn't re-escalated.
+## Acceptance
+- New trigger runs on every contact insert/update across all orgs (no hardcoded org id).
+- Freemail addresses never auto-link.
+- Multi-candidate domains queue for review.
+- Pre-existing `crm_company_id` is never overwritten without explicit resync.
+- Bulk run reports counts and is idempotent.
+- All decisions are auditable via `contact_company_match_audit`.
 
-### 8. Dedupe / fingerprinting (already in place, just verified)
-
-Existing dedupe key is `(action_type, target_object_type, target_object_id)` over rows with `status in ('pending','approved')` for the deal. That already satisfies "do not re-propose a signal already in the queue or actioned" because the target objects (email id, claap id, task id, lender id) are encoded into `target_object_id` / `evidence_references`. No changes.
-
-## Out of scope
-
-- No new approval surface — everything lands in the existing Approval Queue.
-- No new in-app notifications when there are zero candidates (silence rule already holds).
-- No changes to the chat-driven `verify_deal_information` flow.
-
-## Files touched
-
-- `supabase/functions/_shared/dealAdminAgentIntelligence.ts` — scope filter, lender BD pre-compute, prompt extensions, tone preset, tone-delta fingerprint, deal-manager assignee.
-- `supabase/functions/deal-admin-agent-auto-sweep/index.ts` — iterate per activated user (deal manager) instead of attributing to "first activated user".
-- `supabase/functions/approval-queue-execute/index.ts` — write `admin_agent_tone_deltas` row when an edited draft is approved.
-- `supabase/functions/_shared/businessDays.ts` *(new)* — port of `src/lib/businessDays.ts` for edge-function use.
-- `supabase/functions/admin-agent-escalate/index.ts` *(new, small)* — 4-BD escalation pass.
-- `supabase/migrations/<ts>_admin_agent_tone_deltas.sql` — create table + RLS + GRANT.
-- pg_cron schedules (via `supabase--insert`, not migration, per scheduled-jobs guidance): every 30 min → `deal-admin-agent-auto-sweep`; daily 9am ET → `admin-agent-escalate`.
-
-## Verification
-
-- Deploy, trigger `deal-admin-agent-auto-sweep` with `{ company_id: "<5th line id>" }` and inspect `ai_action_queue` rows for a known deal manager.
-- Confirm queue rows only appear for deals where `deal_owner_user_id` matches an activated user and (for 5th Line) `pipeline_id` is the default Active Pipeline.
-- Approve an edited `draft_email` and confirm a row lands in `admin_agent_tone_deltas`.
-- Backdate a queue row > 4 BD and run the escalate function; confirm an `escalate` queue row is created for the company admin.
+## Technical notes
+- All SQL functions use `SECURITY DEFINER SET search_path = public` only where they need to bypass RLS to write audit rows. The match function is `STABLE` for reads; mutation lives in a wrapper.
+- Edge function invokes `run_contact_company_match` via `supabase.rpc` per id (batched in transactions of 500).
+- No `count: 'exact'` queries on the review tables — paginated with `count: 'planned'`.
+- Memory rule respected: roles via `user_roles`/`has_role`; settings page gated to company admins.
