@@ -93,9 +93,14 @@ export function useContacts(params: ContactsListParams = {}) {
   return useQuery<PaginatedResult<Contact>>({
     queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
     queryFn: async () => {
+      // Use planner-estimated count (very fast — avoids running the query a
+      // second time without LIMIT just to produce a total). When a search
+      // term is present we skip the count entirely; the user only needs the
+      // first page of matches.
+      const hasSearch = !!search?.trim();
       let query = supabase
         .from('contacts')
-        .select(LIST_COLUMNS, { count: 'estimated' })
+        .select(LIST_COLUMNS, hasSearch ? undefined : { count: 'planned' })
         .eq('org_company_id', company!.id);
 
       // Server-side search
