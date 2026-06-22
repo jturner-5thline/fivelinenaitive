@@ -599,22 +599,6 @@ function DetailPane({
               {target}
             </p>
           </div>
-          <span
-            className="shrink-0 inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[10.5px] uppercase"
-            style={{
-              ...FONT_MONO,
-              letterSpacing: '0.10em',
-              color: riskInfo.hex,
-              borderColor: `${riskInfo.hex}55`,
-              background: `${riskInfo.hex}14`,
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: riskInfo.hex, boxShadow: `0 0 8px ${riskInfo.hex}77` }}
-            />
-            {riskInfo.label}
-          </span>
         </div>
 
         {/* Metadata row */}
