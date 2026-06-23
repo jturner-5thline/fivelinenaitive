@@ -160,10 +160,16 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
           console.warn('[CreateTaskFromEmail] backlink failed:', e);
         }
       }
+      // Close the modal as soon as the local task exists. External sync can be
+      // slow, so it runs in the background and never owns the submit spinner.
+      toast.success('Task created from email');
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      onOpenChange(false);
+
       // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
       if (created?.id) {
         const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
-        syncTaskAfterCreate({
+        void syncTaskAfterCreate({
           taskId: created.id,
           title: trimmed,
           description: description.trim() || null,
@@ -171,8 +177,6 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
           assignedTo: assignee || user.id,
         }).catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
       }
-      qc.invalidateQueries({ queryKey: ['tasks'] });
-      onOpenChange(false);
     } catch (err: any) {
       console.error('[CreateTaskFromEmail] insert failed', err);
       toast.error(err?.message || 'Could not create task');
