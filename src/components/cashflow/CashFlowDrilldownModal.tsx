@@ -260,6 +260,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           id: `${entry.id}-${occ}`,
           entryId: entry.id,
           date: occ,
+          originalDate: getOriginalOccurrenceDate(entry, occ),
           account: entry.account,
           category: cat,
           notes: entry.notes,
