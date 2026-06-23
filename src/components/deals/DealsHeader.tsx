@@ -54,6 +54,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Dashboard: loadDashboard,
   Calendar: loadCalendar,
   Mail: loadMail,
+  Tasks: loadTasks,
   'Approval Queue': loadTasks,
   'Daily Rundown': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
