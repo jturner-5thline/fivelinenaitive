@@ -580,13 +580,19 @@ export function DealsHeader() {
           />
         </Suspense>
       )}
-      {isTasksOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} />}>
+      {/*
+        Tasks overlays are kept mounted after first open (or after the
+        idle pre-mount) so the popup paints with already-loaded tasks
+        instead of refetching every time. The OverlayLoadingShell only
+        ever shows on the very first click before the chunk hydrates.
+      */}
+      {(tasksMounted || isTasksOpen) && (
+        <Suspense fallback={isTasksOpen ? <OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} /> : null}>
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
         </Suspense>
       )}
-      {isTasksListOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksListOpen(false)} />}>
+      {(tasksMounted || isTasksListOpen) && (
+        <Suspense fallback={isTasksListOpen ? <OverlayLoadingShell kind="tasks" onClose={() => setIsTasksListOpen(false)} /> : null}>
           <TasksOverlay open={isTasksListOpen} onOpenChange={setIsTasksListOpen} />
         </Suspense>
       )}
