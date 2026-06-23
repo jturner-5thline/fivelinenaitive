@@ -331,14 +331,48 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: editDraft.frequency_type,
       flow_type: editDraft.flow_type,
     };
-    // Date edits only apply to one-time entries — moving a recurring
-    // series' anchor date would change every future occurrence and is
-    // out of scope for the per-row edit affordance.
+    // Date moves are supported for every entry type:
+    //   • one-time entries → rewrite `start_date` (and one_time_date config)
+    //   • recurring entries → write a per-occurrence `date_overrides`
+    //     mapping keyed by the ORIGINAL occurrence date. This moves only
+    //     this one occurrence to the new week without disturbing the
+    //     underlying recurring schedule.
     const isOneTime = editDraft.frequency_type === 'one_time';
-    const dateChanged =
-      isOneTime && /^\d{4}-\d{2}-\d{2}$/.test(editDraft.date) && editDraft.date !== editDraft.occurrenceDate;
+    const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(editDraft.date);
+    const dateChanged = dateValid && editDraft.date !== editDraft.occurrenceDate;
     if (dateChanged) {
-      otherPatch.start_date = editDraft.date;
+      if (isOneTime) {
+        otherPatch.start_date = editDraft.date;
+        otherPatch.end_date = editDraft.date;
+        const baseCfg = items.find((e) => e.id === entryId)?.frequency_config || {};
+        otherPatch.frequency_config = {
+          ...baseCfg,
+          one_time_date: editDraft.date,
+        };
+      } else {
+        const baseEntry = items.find((e) => e.id === entryId);
+        const baseCfg = baseEntry?.frequency_config || {};
+        const existingMap = baseCfg.date_overrides || {};
+        // If this occurrence's amount has a per-period override under the
+        // old effective-date key, re-key it so subsequent lookups by the
+        // new (now-effective) date keep finding it.
+        const amountMap = { ...(baseCfg.amount_overrides || {}) };
+        if (
+          Object.prototype.hasOwnProperty.call(amountMap, editDraft.occurrenceDate) &&
+          editDraft.occurrenceDate !== editDraft.date
+        ) {
+          amountMap[editDraft.date] = amountMap[editDraft.occurrenceDate];
+          delete amountMap[editDraft.occurrenceDate];
+        }
+        otherPatch.frequency_config = {
+          ...baseCfg,
+          date_overrides: {
+            ...existingMap,
+            [editDraft.originalOccurrenceDate]: editDraft.date,
+          },
+          amount_overrides: amountMap,
+        };
+      }
     }
     const amountChanged = Math.abs(amt - editDraft.originalAmount) > 0.0049;
     const isRecurring = editDraft.frequency_type !== 'one_time';
