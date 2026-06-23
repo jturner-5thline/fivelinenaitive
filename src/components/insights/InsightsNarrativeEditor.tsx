@@ -243,6 +243,12 @@ export function InsightsNarrativeEditor({
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  const openAttachDialog = useCallback(() => {
+    setDragOver(false);
+    setFocused(true);
+    setAttachDialog({ mode: 'file' });
+  }, []);
+
   // Track text selection inside the narrative editor and surface a small
   // "Comment → Queue" action above the selection.
   useEffect(() => {
@@ -335,11 +341,12 @@ export function InsightsNarrativeEditor({
     );
   }
 
-  const TbBtn = ({ onClick, active, title, children, preserveFocus = true }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
+  const TbBtn = ({ onClick, onPointerDown, active, title, children, preserveFocus = true }: { onClick: () => void; onPointerDown?: React.PointerEventHandler<HTMLButtonElement>; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
     <button
       type="button"
       title={title}
       aria-label={title}
+      onPointerDown={onPointerDown}
       onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
       onClick={onClick}
       className={cn(
@@ -438,7 +445,15 @@ export function InsightsNarrativeEditor({
             input.accept = 'image/*';
             input.click();
           }}><ImageIcon size={14} /></TbBtn>
-          <TbBtn title="Attach file" preserveFocus={false} onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
+          <TbBtn
+            title="Attach file"
+            preserveFocus={false}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              openAttachDialog();
+            }}
+            onClick={openAttachDialog}
+          ><Paperclip size={14} /></TbBtn>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
