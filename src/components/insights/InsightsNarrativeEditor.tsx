@@ -103,12 +103,11 @@ export function InsightsNarrativeEditor({
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
   const lastEmittedRef = useRef<string>(initialHTMLRef.current);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingFileModeRef = useRef<'file' | 'image' | 'auto'>('file');
   const [uploading, setUploading] = useState(false);
   const [focused, setFocused] = useState(false);
-  // Attach dialog (paperclip): native picker is unreliable across browsers
-  // when triggered programmatically; the dialog gives a stable target +
-  // drag-and-drop affordance.
+  // Attach dialog (paperclip): keep the file input mounted persistently and
+  // trigger it only from an immediate user click (toolbar or Browse files).
   const [attachDialog, setAttachDialog] = useState<null | { mode: 'file' | 'image' }>(null);
   const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -336,12 +335,12 @@ export function InsightsNarrativeEditor({
     );
   }
 
-  const TbBtn = ({ onClick, active, title, children }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) => (
+  const TbBtn = ({ onClick, active, title, children, preserveFocus = true }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
     <button
       type="button"
       title={title}
       aria-label={title}
-      onMouseDown={e => e.preventDefault()}
+      onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
       onClick={onClick}
       className={cn(
         'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
@@ -432,8 +431,14 @@ export function InsightsNarrativeEditor({
           <TbBtn title="Blockquote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote size={14} /></TbBtn>
           {sep}
           <TbBtn title="Add link" active={editor.isActive('link')} onClick={onPromptLink}><LinkIcon size={14} /></TbBtn>
-          <TbBtn title="Insert image" onClick={() => imageInputRef.current?.click()}><ImageIcon size={14} /></TbBtn>
-          <TbBtn title="Attach file" onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
+          <TbBtn title="Insert image" preserveFocus={false} onClick={() => {
+            const input = fileInputRef.current;
+            if (!input) return;
+            pendingFileModeRef.current = 'image';
+            input.accept = 'image/*';
+            input.click();
+          }}><ImageIcon size={14} /></TbBtn>
+          <TbBtn title="Attach file" preserveFocus={false} onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
@@ -444,28 +449,7 @@ export function InsightsNarrativeEditor({
         </div>
       )}
 
-      {/*
-        File pickers: keep these mounted (even when the chromeless toolbar
-        is hidden) and use an off-screen style instead of the `hidden`
-        attribute. Some Chromium builds refuse to open the native file
-        picker when `.click()` is called on a `display: none` input, which
-        is why the paperclip button appeared to do nothing.
-      */}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        tabIndex={-1}
-        aria-hidden="true"
-        style={{
-          position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
-          overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
-        }}
-        onChange={async e => {
-          const f = e.target.files?.[0]; e.target.value = '';
-          if (f) await uploadFile(f, { insertInline: true });
-        }}
-      />
+      {/* Persistent file picker: always mounted and never display:none. */}
       <input
         ref={fileInputRef}
         type="file"
@@ -476,8 +460,14 @@ export function InsightsNarrativeEditor({
           overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
         }}
         onChange={async e => {
-          const f = e.target.files?.[0]; e.target.value = '';
-          if (f) await uploadFile(f, { insertInline: false });
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          e.currentTarget.accept = '';
+          if (!f) return;
+          const mode = pendingFileModeRef.current;
+          pendingFileModeRef.current = 'file';
+          setAttachDialog(null);
+          await uploadFile(f, { insertInline: mode === 'image' || (mode === 'auto' && f.type.startsWith('image/')) });
         }}
       />
 
@@ -580,7 +570,6 @@ export function InsightsNarrativeEditor({
           role="dialog"
           aria-modal="true"
           aria-label="Attach a file"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setAttachDialog(null); }}
           style={{
             position: 'fixed', inset: 0, zIndex: 1500,
             background: 'rgba(4,10,22,0.65)', backdropFilter: 'blur(4px)',
@@ -588,7 +577,6 @@ export function InsightsNarrativeEditor({
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               width: 'min(92vw, 460px)',
               background: 'rgb(12,22,42)',
@@ -619,25 +607,38 @@ export function InsightsNarrativeEditor({
                 const f = e.dataTransfer.files?.[0];
                 if (!f) return;
                 setAttachDialog(null);
-                await uploadFile(f, { insertInline: f.type.startsWith('image/') });
+                await uploadFile(f, { insertInline: false });
               }}
-              onClick={() => fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? 'rgba(120,170,255,0.7)' : 'rgba(120,170,255,0.3)'}`,
                 background: dragOver ? 'rgba(120,170,255,0.08)' : 'rgba(10,18,36,0.5)',
                 borderRadius: 10,
                 padding: '28px 16px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                cursor: 'pointer', textAlign: 'center', transition: 'background 120ms',
+                textAlign: 'center', transition: 'background 120ms',
               }}
             >
               <UploadCloud size={26} style={{ color: 'rgba(160,200,255,0.75)' }} />
               <div style={{ fontSize: 13, fontWeight: 600 }}>Drag &amp; drop a file here</div>
-              <div style={{ fontSize: 12, color: 'rgba(160,200,255,0.65)' }}>
-                or <span style={{ color: 'rgb(140,190,255)', textDecoration: 'underline' }}>browse</span> from your device
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = fileInputRef.current;
+                  if (!input) return;
+                  pendingFileModeRef.current = 'file';
+                  input.accept = '';
+                  input.click();
+                }}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                  background: 'rgba(120,170,255,0.16)', color: 'rgb(210,230,255)',
+                  border: '1px solid rgba(120,170,255,0.35)', cursor: 'pointer',
+                }}
+              >
+                Browse files
+              </button>
               <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.45)', marginTop: 4 }}>
-                Max 15 MB. Images insert inline; other files attach below.
+                Max 15 MB. Files attach below the narrative.
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
