@@ -25,7 +25,7 @@ import type { NaitiveStageHistoryRow } from '@/hooks/useNaitiveStageHistory';
 import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
 import { ChevronDown } from 'lucide-react';
-import { useNaitiveQualCallsCount } from '@/hooks/useNaitiveQualCallsCount';
+import { useNaitiveQualCallsCount, usePrefetchNaitiveQualCalls } from '@/hooks/useNaitiveQualCallsCount';
 
 type RangeKey = 'this-week' | 'last-week' | 'last-30' | 'last-90' | 'custom';
 
@@ -483,6 +483,23 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
   const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
   const [qualCallsOpen, setQualCallsOpen] = useState(false);
+
+  // Warm the cache for every standard timeframe (and its prior-period
+  // comparison) so the user can flip between This Week / Last Week / 30 / 90
+  // days without waiting for a Nylas round-trip each time.
+  const prefetchRanges = useMemo(() => {
+    const keys: RangeKey[] = ['this-week', 'last-week', 'last-30', 'last-90'];
+    const out: { from: Date; to: Date }[] = [];
+    for (const k of keys) {
+      const r = rangeFor(k);
+      out.push({ from: r.from, to: r.to });
+      const p = previousRange(r.from, r.to);
+      out.push({ from: p.from, to: p.to });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  usePrefetchNaitiveQualCalls(prefetchRanges);
 
   const buckets = useMemo(() => weeklyBuckets(deals, history), [deals, history]);
 
