@@ -432,6 +432,18 @@ function StatCard({ label, value, prev, isPercent }: {
   );
 }
 
+function EmptyStatCard() {
+  return (
+    <Card className="bg-card border-border">
+      <CardContent className="p-4">
+        <p className="text-2xl font-bold text-muted-foreground leading-tight tracking-tight">
+          -
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 interface Props {
   deals: Deal[];
   history: NaitiveStageHistoryRow[];
