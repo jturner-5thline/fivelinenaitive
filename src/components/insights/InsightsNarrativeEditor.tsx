@@ -103,12 +103,11 @@ export function InsightsNarrativeEditor({
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
   const lastEmittedRef = useRef<string>(initialHTMLRef.current);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingFileModeRef = useRef<'file' | 'image' | 'auto'>('file');
   const [uploading, setUploading] = useState(false);
   const [focused, setFocused] = useState(false);
-  // Attach dialog (paperclip): native picker is unreliable across browsers
-  // when triggered programmatically; the dialog gives a stable target +
-  // drag-and-drop affordance.
+  // Attach dialog (paperclip): keep the file input mounted persistently and
+  // trigger it only from an immediate user click (toolbar or Browse files).
   const [attachDialog, setAttachDialog] = useState<null | { mode: 'file' | 'image' }>(null);
   const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
