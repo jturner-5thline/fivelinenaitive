@@ -12,7 +12,7 @@
  * stay correct.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronDown, Check, Loader2 } from 'lucide-react';
+import { ChevronDown, Check, Loader2, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -50,30 +50,41 @@ export function EditableDealStageTag({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  // Pipeline the user is currently browsing inside the popover. Defaults to
+  // the deal's own pipeline; changing it lets the user pick a stage from a
+  // different pipeline (effectively moving the deal between pipelines).
+  const [viewPipelineId, setViewPipelineId] = useState<string | null>(
+    pipelineId ?? null,
+  );
 
   const current = (stage || '') as string;
   const currentLabel = current
     ? getStageConfigForDeal(current, pipelineId)?.label || titleCase(current)
     : null;
 
-  // Resolve the list of stages the user can pick from. Prefer the deal's
-  // own pipeline; fall back to the default pipeline, then any pipeline.
-  const stageOptions = useMemo(() => {
-    const byId = pipelineId ? pipelines.find((p) => p.id === pipelineId) : null;
-    const fallback =
-      byId ||
+  // The pipeline being browsed in the popover. Prefer explicit selection,
+  // then the deal's own pipeline, then default, then any.
+  const viewPipeline = useMemo(() => {
+    return (
+      (viewPipelineId ? pipelines.find((p) => p.id === viewPipelineId) : null) ||
+      (pipelineId ? pipelines.find((p) => p.id === pipelineId) : null) ||
       pipelines.find((p) => p.isDefault) ||
       pipelines[0] ||
-      null;
-    return fallback?.stages ?? [];
-  }, [pipelines, pipelineId]);
+      null
+    );
+  }, [pipelines, viewPipelineId, pipelineId]);
+  const stageOptions = viewPipeline?.stages ?? [];
+  const isCrossPipeline = !!viewPipeline && !!pipelineId && viewPipeline.id !== pipelineId;
 
   const handleSelect = useCallback(async (nextId: string) => {
     setOpen(false);
-    if (!nextId || nextId === current) return;
+    const movingPipeline = !!viewPipeline && !!pipelineId && viewPipeline.id !== pipelineId;
+    if (!nextId || (nextId === current && !movingPipeline)) return;
     setPending(true);
     try {
-      await updateDeal(dealId, { stage: nextId as any });
+      const updates: any = { stage: nextId };
+      if (movingPipeline && viewPipeline) updates.pipelineId = viewPipeline.id;
+      await updateDeal(dealId, updates);
       // Same cross-surface invalidation as EditableDealStatusTag so the
       // rundown / briefing / pipeline boards re-pull immediately.
       queryClient.invalidateQueries({ queryKey: ['briefing-pipeline'] });
@@ -81,19 +92,30 @@ export function EditableDealStageTag({
       queryClient.invalidateQueries({ queryKey: ['briefing'] });
       queryClient.invalidateQueries({ queryKey: ['naitive-pipeline-data'] });
       queryClient.invalidateQueries({ queryKey: ['finserv-pipeline-data'] });
+      const targetPipelineId = movingPipeline && viewPipeline ? viewPipeline.id : pipelineId;
       const label =
-        getStageConfigForDeal(nextId, pipelineId)?.label || titleCase(nextId);
-      toast.success(`Stage updated to ${label}`);
+        getStageConfigForDeal(nextId, targetPipelineId)?.label || titleCase(nextId);
+      if (movingPipeline && viewPipeline) {
+        toast.success(`Moved to ${viewPipeline.name} · ${label}`);
+      } else {
+        toast.success(`Stage updated to ${label}`);
+      }
     } catch (err: any) {
       console.error('[EditableDealStageTag] update failed', err);
       toast.error('Failed to update stage', { description: err?.message });
     } finally {
       setPending(false);
     }
-  }, [current, dealId, updateDeal, pipelineId, getStageConfigForDeal, queryClient]);
+  }, [current, dealId, updateDeal, pipelineId, viewPipeline, getStageConfigForDeal, queryClient]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setViewPipelineId(pipelineId ?? null);
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -131,12 +153,38 @@ export function EditableDealStageTag({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-56 p-1 max-h-[320px] overflow-y-auto"
+        className="w-64 p-1 max-h-[360px] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
+        {pipelines.length > 1 && (
+          <div className="px-2 pt-1.5 pb-1">
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+              <ArrowRightLeft className="h-3 w-3" />
+              Pipeline
+            </div>
+            <select
+              value={viewPipeline?.id ?? ''}
+              onChange={(e) => setViewPipelineId(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full h-7 rounded-md bg-background border border-border text-xs px-1.5 focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              {pipelines.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}{p.id === pipelineId ? ' (current)' : ''}{p.isDefault ? ' • default' : ''}
+                </option>
+              ))}
+            </select>
+            {isCrossPipeline && (
+              <div className="text-[10px] text-amber-300/80 mt-1 px-0.5">
+                Selecting a stage will move this deal to {viewPipeline?.name}.
+              </div>
+            )}
+            <div className="h-px bg-border/60 mt-1.5" />
+          </div>
+        )}
         <div role="menu" aria-label="Deal stage">
           {stageOptions.length === 0 ? (
             <div className="px-2 py-3 text-[11px] text-muted-foreground text-center">
@@ -144,7 +192,7 @@ export function EditableDealStageTag({
             </div>
           ) : (
             stageOptions.map((opt) => {
-              const isActive = opt.id === current;
+              const isActive = !isCrossPipeline && opt.id === current;
               return (
                 <button
                   key={opt.id}
