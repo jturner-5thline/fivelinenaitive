@@ -28,7 +28,22 @@ interface ReqBody {
   time_max?: string;
 }
 
-async function countForGrant(grantId: string, startUnix: number, endUnix: number): Promise<number> {
+interface NaitiveEvent {
+  id: string;
+  title: string;
+  start: string | null; // ISO
+  end: string | null;   // ISO
+  user_email: string | null;
+  user_name: string | null;
+  html_link: string | null;
+}
+
+async function fetchForGrant(
+  grantId: string,
+  startUnix: number,
+  endUnix: number,
+  user: { email: string | null; name: string | null },
+): Promise<NaitiveEvent[]> {
   const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
   url.searchParams.set("calendar_id", "primary");
   url.searchParams.set("start", String(startUnix));
@@ -39,17 +54,33 @@ async function countForGrant(grantId: string, startUnix: number, endUnix: number
   });
   if (!resp.ok) {
     console.warn("[naitive-qual-calls-count] nylas err", grantId, resp.status);
-    return 0;
+    return [];
   }
   const data = await resp.json();
   const raw = (data?.data || []) as any[];
-  let n = 0;
+  const out: NaitiveEvent[] = [];
   for (const e of raw) {
     if (e?.status === "cancelled") continue;
     const title: string = e?.title || "";
-    if (TITLE_RE.test(title)) n++;
+    if (!TITLE_RE.test(title)) continue;
+    const w = e?.when || {};
+    const startIso = w.start_time
+      ? new Date(w.start_time * 1000).toISOString()
+      : (w.start_date || null);
+    const endIso = w.end_time
+      ? new Date(w.end_time * 1000).toISOString()
+      : (w.end_date || null);
+    out.push({
+      id: String(e.id),
+      title,
+      start: startIso,
+      end: endIso,
+      user_email: user.email,
+      user_name: user.name,
+      html_link: e.html_link || null,
+    });
   }
-  return n;
+  return out;
 }
 
 serve(async (req: Request): Promise<Response> => {
@@ -100,7 +131,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // All profiles in same domain (including caller).
     const { data: profiles, error: profErr } = await supabase
-      .from("profiles").select("user_id, email");
+      .from("profiles").select("user_id, email, display_name, full_name");
     if (profErr) throw profErr;
     const sameDomainIds = (profiles || [])
       .filter((p: any) => domainOf(p.email) === callerDomain)
@@ -113,19 +144,38 @@ serve(async (req: Request): Promise<Response> => {
 
     const { data: tokens } = await supabase
       .from("gmail_tokens").select("user_id, grant_id").in("user_id", sameDomainIds);
-    const grantIds = (tokens || [])
-      .map((t: any) => t.grant_id)
-      .filter((g: any): g is string => !!g);
+    const profileById = new Map<string, { email: string | null; name: string | null }>();
+    for (const p of (profiles || []) as any[]) {
+      profileById.set(p.user_id, {
+        email: p.email ?? null,
+        name: p.display_name ?? p.full_name ?? null,
+      });
+    }
+    const grants: { grantId: string; user: { email: string | null; name: string | null } }[] = [];
+    for (const t of (tokens || []) as any[]) {
+      if (!t.grant_id) continue;
+      grants.push({
+        grantId: t.grant_id,
+        user: profileById.get(t.user_id) || { email: null, name: null },
+      });
+    }
 
     const startUnix = Math.floor(new Date(body.time_min).getTime() / 1000);
     const endUnix = Math.floor(new Date(body.time_max).getTime() / 1000);
 
-    const counts = await Promise.all(
-      grantIds.map((g) => countForGrant(g, startUnix, endUnix).catch(() => 0)),
+    const perGrant = await Promise.all(
+      grants.map((g) =>
+        fetchForGrant(g.grantId, startUnix, endUnix, g.user).catch(() => [] as NaitiveEvent[]),
+      ),
     );
-    const total = counts.reduce((a, b) => a + b, 0);
+    const events = perGrant.flat().sort((a, b) => {
+      const ta = a.start ? new Date(a.start).getTime() : 0;
+      const tb = b.start ? new Date(b.start).getTime() : 0;
+      return ta - tb;
+    });
+    const total = events.length;
 
-    return new Response(JSON.stringify({ count: total, users: grantIds.length }), {
+    return new Response(JSON.stringify({ count: total, users: grants.length, events }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {

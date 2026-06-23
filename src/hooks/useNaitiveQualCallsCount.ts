@@ -9,10 +9,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface NaitiveQualCallEvent {
+  id: string;
+  title: string;
+  start: string | null;
+  end: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  html_link: string | null;
+}
+
+export interface NaitiveQualCallsResult {
+  count: number;
+  events: NaitiveQualCallEvent[];
+}
+
 export function useNaitiveQualCallsCount(from: Date, to: Date) {
   const timeMin = from.toISOString();
   const timeMax = to.toISOString();
-  return useQuery<number, Error>({
+  return useQuery<NaitiveQualCallsResult, Error>({
     queryKey: ['naitive-qual-calls-count', timeMin, timeMax],
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -21,7 +36,10 @@ export function useNaitiveQualCallsCount(from: Date, to: Date) {
         body: { time_min: timeMin, time_max: timeMax },
       });
       if (error) throw new Error(error.message || 'Failed to load qual calls');
-      return Number(data?.count ?? 0);
+      return {
+        count: Number(data?.count ?? 0),
+        events: Array.isArray(data?.events) ? (data.events as NaitiveQualCallEvent[]) : [],
+      };
     },
   });
 }

@@ -405,15 +405,24 @@ function ReasonPie({ data, emptyText, onSliceClick }: {
   );
 }
 
-function StatCard({ label, value, prev, isPercent }: {
-  label: string; value: number; prev: number; isPercent?: boolean;
+function StatCard({ label, value, prev, isPercent, onClick }: {
+  label: string; value: number; prev: number; isPercent?: boolean; onClick?: () => void;
 }) {
   const delta = value - prev;
   const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
   const color = delta > 0 ? 'text-green-600' : delta < 0 ? 'text-destructive' : 'text-muted-foreground';
   const fmt = (n: number) => (isPercent ? `${n}%` : `${n}`);
   return (
-    <Card className="bg-card border-border">
+    <Card
+      className={cn(
+        'bg-card border-border',
+        onClick && 'cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors',
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <CardContent className="p-4">
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">
           {label}
@@ -473,6 +482,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   // than from stage-history, since these meetings live on calendars.
   const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
   const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
+  const [qualCallsOpen, setQualCallsOpen] = useState(false);
 
   const buckets = useMemo(() => weeklyBuckets(deals, history), [deals, history]);
 
@@ -600,8 +610,9 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         <EmptyStatCard />
         <StatCard
           label="Qual Calls"
-          value={qualCallsCurrent.data ?? 0}
-          prev={qualCallsPrevious.data ?? 0}
+          value={qualCallsCurrent.data?.count ?? 0}
+          prev={qualCallsPrevious.data?.count ?? 0}
+          onClick={() => setQualCallsOpen(true)}
         />
         <EmptyStatCard />
         <EmptyStatCard />
@@ -891,6 +902,60 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
             ) : (
               <p className="text-sm text-muted-foreground py-6 text-center">
                 No deals match this blocker.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qualCallsOpen} onOpenChange={setQualCallsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Qual Calls · {qualCallsCurrent.data?.count ?? 0}{' '}
+              {(qualCallsCurrent.data?.count ?? 0) === 1 ? 'event' : 'events'}
+            </DialogTitle>
+            <DialogDescription>
+              Calendar events titled "&lt;Name&gt; &lt;&gt; naitive" across all 5th Line teammates,{' '}
+              {format(from, 'MMM d')} – {format(to, 'MMM d, yyyy')}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+            {qualCallsCurrent.isLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+            ) : qualCallsCurrent.data && qualCallsCurrent.data.events.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {qualCallsCurrent.data.events.map((ev) => (
+                  <li key={ev.id} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {ev.html_link ? (
+                          <a
+                            href={ev.html_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                          >
+                            {ev.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-semibold text-foreground truncate">{ev.title}</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          On {ev.user_name || ev.user_email || 'Unknown'}
+                          {ev.user_name && ev.user_email ? ` (${ev.user_email})` : ''}'s calendar
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums text-right">
+                        {ev.start ? format(new Date(ev.start), 'MMM d, h:mma') : '—'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No qual calls in this window.
               </p>
             )}
           </div>
