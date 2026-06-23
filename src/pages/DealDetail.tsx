@@ -1079,6 +1079,17 @@ export default function DealDetail() {
     }
   }, [selectedLenderName]);
 
+  // Allow nested components (e.g. Ask AI tab markdown links) to open the
+  // funding-source modal without prop-drilling.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string }>).detail;
+      if (detail?.name) setSelectedLenderName(detail.name);
+    };
+    window.addEventListener('naitive:open-lender', handler as EventListener);
+    return () => window.removeEventListener('naitive:open-lender', handler as EventListener);
+  }, []);
+
   // When a funding source popup opens, if the funding source isn't in the cached masterLenders list yet
   // (background load still in progress), do a targeted single-row fetch so contacts show instantly.
   useEffect(() => {
