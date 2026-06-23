@@ -278,6 +278,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
         return;
       }
       instances.current.push(chart);
+      // Initial manual size to fill the wrapper (responsive:false disables auto).
+      try { chart.resize(wrap.clientWidth, wrap.clientHeight); } catch { /* noop */ }
       // Manual, safe resize observer (bypasses Chart.js responsive code path
       // that crashes when the canvas's parent is detached during teardown).
       try {
@@ -325,7 +327,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </button>
           </div>
           <div ref={chart1WrapRef} style={{ height: 200, position: 'relative' }}>
-            <canvas ref={chart1Ref} />
+            <canvas ref={chart1Ref} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
         </div>
         <div className="cf-chart-card">
@@ -342,7 +344,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </button>
           </div>
           <div ref={chart2WrapRef} style={{ height: 200, position: 'relative' }}>
-            <canvas ref={chart2Ref} />
+            <canvas ref={chart2Ref} style={{ width: '100%', height: '100%', display: 'block' }} />
           </div>
         </div>
       </div>
@@ -358,8 +360,12 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             style={{ height: 'min(70vh, 640px)', position: 'relative' }}
             className="w-full"
           >
-            {expanded === 'liquidity' && <canvas ref={chart1ModalRef} />}
-            {expanded === 'flow' && <canvas ref={chart2ModalRef} />}
+            {expanded === 'liquidity' && (
+              <canvas ref={chart1ModalRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+            )}
+            {expanded === 'flow' && (
+              <canvas ref={chart2ModalRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+            )}
           </div>
         </DialogContent>
       </Dialog>
