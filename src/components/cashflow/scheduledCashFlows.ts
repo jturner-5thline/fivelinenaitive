@@ -33,6 +33,8 @@ export interface FrequencyConfig {
   excluded_dates?: string[];
 }
 
+// (date_overrides extension below — see FrequencyConfig augmentation)
+
 export interface ScheduledCashFlow {
   id: string;
   company_id: string;
