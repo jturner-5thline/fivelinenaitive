@@ -62,6 +62,37 @@ function nonEmpty(val: string | null | undefined): string | undefined {
   return stripped.length > 0 ? val : undefined;
 }
 
+/** Format structured existing_debt_items rows into a human-readable string for FLEx. */
+function formatExistingDebtItems(items: unknown): string | undefined {
+  if (!Array.isArray(items) || items.length === 0) return undefined;
+  const lines: string[] = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const it = raw as Record<string, unknown>;
+    const lender = typeof it.lender === 'string' ? it.lender.trim() : '';
+    const amount = typeof it.amount === 'string' ? it.amount.trim() : '';
+    const type = typeof it.type === 'string' ? it.type.trim() : '';
+    const notes = typeof it.notes === 'string' ? it.notes.trim() : '';
+    let maturity = '';
+    if (typeof it.maturityDate === 'string' && it.maturityDate) {
+      const d = new Date(it.maturityDate);
+      if (!isNaN(d.getTime())) {
+        maturity = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      }
+    }
+    const head = [lender, amount].filter(Boolean).join(' — ');
+    const meta = [type, maturity ? `matures ${maturity}` : ''].filter(Boolean).join(', ');
+    const parts = [head, meta].filter(Boolean).join(' (') + (meta ? ')' : '');
+    const line = [parts, notes].filter(Boolean).join('. ');
+    if (line) lines.push(`• ${line}`);
+  }
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function resolveExistingDebt(details: string | null | undefined, items: unknown): string | undefined {
+  return nonEmpty(details) ?? formatExistingDebtItems(items);
+}
+
 interface PushToFlexRequest {
   dealId?: string;
   action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
@@ -152,6 +183,7 @@ serve(async (req) => {
           description,
           use_of_funds,
           existing_debt_details,
+          existing_debt_items,
           data_room_url,
           key_items,
           publish_as_anonymous,
@@ -190,7 +222,7 @@ serve(async (req) => {
         last_year_revenue: nonEmpty(d.last_year_revenue),
         description: nonEmpty(d.description),
         use_of_funds: nonEmpty(d.use_of_funds),
-        existing_debt: nonEmpty(d.existing_debt_details),
+        existing_debt: resolveExistingDebt(d.existing_debt_details, (d as any).existing_debt_items),
         data_room_url: nonEmpty(d.data_room_url),
         key_items: d.key_items || undefined,
         is_published: !d.publish_as_anonymous,
@@ -379,6 +411,15 @@ serve(async (req) => {
         .eq("deal_id", dealId)
         .order("position", { ascending: true });
 
+      // Fetch structured existing_debt_items so we can serialize them when the
+      // free-text existingDebtDetails field is empty (clients store debt as items).
+      const { data: writeupRow } = await supabase
+        .from("deal_writeups")
+        .select("existing_debt_items")
+        .eq("deal_id", dealId)
+        .maybeSingle();
+      const existingDebtItems = (writeupRow as any)?.existing_debt_items;
+
       // Fetch company-level disclaimer from company_settings
       let companyDisclaimer: string | null = null;
       if (deal.company_id) {
@@ -415,7 +456,7 @@ serve(async (req) => {
         accounting_system: nonEmpty(writeUpData!.accountingSystem),
         description: nonEmpty(writeUpData!.description),
         use_of_funds: nonEmpty(writeUpData!.useOfFunds),
-        existing_debt: nonEmpty(writeUpData!.existingDebtDetails),
+        existing_debt: resolveExistingDebt(writeUpData!.existingDebtDetails, existingDebtItems),
         data_room_url: nonEmpty(writeUpData!.dataRoomUrl),
         key_items: writeUpData!.keyItems?.length > 0 ? writeUpData!.keyItems : undefined,
         company_highlights: writeUpData!.companyHighlights?.length > 0 ? writeUpData!.companyHighlights : undefined,
