@@ -31,9 +31,16 @@ export interface FrequencyConfig {
    * `generateOccurrences` skips any date listed here.
    */
   excluded_dates?: string[];
+  /**
+   * Per-occurrence date remap keyed by ORIGINAL occurrence date (YYYY-MM-DD)
+   * with the new effective date as the value. Set when a user edits the date
+   * of a single occurrence via the cell drilldown. `generateOccurrences`
+   * returns the remapped (effective) date instead of the original one, which
+   * moves that single occurrence to a different week without affecting the
+   * underlying recurring schedule.
+   */
+  date_overrides?: Record<string, string>;
 }
-
-// (date_overrides extension below — see FrequencyConfig augmentation)
 
 export interface ScheduledCashFlow {
   id: string;
