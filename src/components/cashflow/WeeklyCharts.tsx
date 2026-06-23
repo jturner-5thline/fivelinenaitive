@@ -32,7 +32,12 @@ export const WeeklyCharts = memo(function WeeklyCharts({
   const chart2Ref = useRef<HTMLCanvasElement>(null);
   const chart1ModalRef = useRef<HTMLCanvasElement>(null);
   const chart2ModalRef = useRef<HTMLCanvasElement>(null);
+  const chart1WrapRef = useRef<HTMLDivElement>(null);
+  const chart2WrapRef = useRef<HTMLDivElement>(null);
+  const chart1ModalWrapRef = useRef<HTMLDivElement>(null);
+  const chart2ModalWrapRef = useRef<HTMLDivElement>(null);
   const instances = useRef<Chart[]>([]);
+  const observers = useRef<ResizeObserver[]>([]);
   const [expanded, setExpanded] = useState<null | 'liquidity' | 'flow'>(null);
 
   // Memoize chart data to avoid recalculation
@@ -82,9 +87,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
     const commonOptions = {
-      responsive: true,
+      responsive: false,
       maintainAspectRatio: false,
-      resizeDelay: 300,
       animation: false as const,
       plugins: {
         legend: {
@@ -258,19 +262,48 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
-    const targets: Array<[HTMLCanvasElement | null, () => any]> = [
-      [chart1Ref.current, buildLiquidityConfig],
-      [chart2Ref.current, buildFlowConfig],
-      [expanded === 'liquidity' ? chart1ModalRef.current : null, buildLiquidityConfig],
-      [expanded === 'flow' ? chart2ModalRef.current : null, buildFlowConfig],
+    const targets: Array<[HTMLCanvasElement | null, HTMLDivElement | null, () => any]> = [
+      [chart1Ref.current, chart1WrapRef.current, buildLiquidityConfig],
+      [chart2Ref.current, chart2WrapRef.current, buildFlowConfig],
+      [expanded === 'liquidity' ? chart1ModalRef.current : null, chart1ModalWrapRef.current, buildLiquidityConfig],
+      [expanded === 'flow' ? chart2ModalRef.current : null, chart2ModalWrapRef.current, buildFlowConfig],
     ];
-    targets.forEach(([canvas, build]) => {
-      if (!canvas) return;
-      instances.current.push(new Chart(canvas, build()));
+    targets.forEach(([canvas, wrap, build]) => {
+      if (!canvas || !wrap) return;
+      if (!canvas.isConnected || !wrap.isConnected) return;
+      let chart: Chart;
+      try {
+        chart = new Chart(canvas, build());
+      } catch {
+        return;
+      }
+      instances.current.push(chart);
+      // Manual, safe resize observer (bypasses Chart.js responsive code path
+      // that crashes when the canvas's parent is detached during teardown).
+      try {
+        const ro = new ResizeObserver(() => {
+          if (!wrap.isConnected || !canvas.isConnected) return;
+          try {
+            chart.resize();
+          } catch {
+            /* swallow: chart may be torn down or detached */
+          }
+        });
+        ro.observe(wrap);
+        observers.current.push(ro);
+      } catch {
+        /* ResizeObserver unavailable */
+      }
     });
 
     return () => {
-      instances.current.forEach((c) => c.destroy());
+      observers.current.forEach((o) => {
+        try { o.disconnect(); } catch { /* noop */ }
+      });
+      observers.current = [];
+      instances.current.forEach((c) => {
+        try { c.destroy(); } catch { /* noop */ }
+      });
       instances.current = [];
     };
   }, [chartData, theme, expanded]);
@@ -291,7 +324,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div style={{ height: 200 }}>
+          <div ref={chart1WrapRef} style={{ height: 200, position: 'relative' }}>
             <canvas ref={chart1Ref} />
           </div>
         </div>
@@ -308,7 +341,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div style={{ height: 200 }}>
+          <div ref={chart2WrapRef} style={{ height: 200, position: 'relative' }}>
             <canvas ref={chart2Ref} />
           </div>
         </div>
@@ -320,7 +353,11 @@ export const WeeklyCharts = memo(function WeeklyCharts({
               {expanded === 'liquidity' ? 'Cash Balance & Liquidity' : 'Cash In vs Cash Out'}
             </DialogTitle>
           </DialogHeader>
-          <div style={{ height: 'min(70vh, 640px)' }} className="w-full">
+          <div
+            ref={expanded === 'liquidity' ? chart1ModalWrapRef : chart2ModalWrapRef}
+            style={{ height: 'min(70vh, 640px)', position: 'relative' }}
+            className="w-full"
+          >
             {expanded === 'liquidity' && <canvas ref={chart1ModalRef} />}
             {expanded === 'flow' && <canvas ref={chart2ModalRef} />}
           </div>
