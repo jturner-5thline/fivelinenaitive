@@ -692,17 +692,20 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                     return (
                       <tr key={r.id} className="border-t border-border bg-muted/30">
                         <td className="px-3 py-2 whitespace-nowrap align-top">
-                          {editDraft.frequency_type === 'one_time' ? (
-                            <input
-                              type="date"
-                              value={editDraft.date}
-                              onChange={(e) => setEditDraft((d) => d && { ...d, date: e.target.value })}
-                              className="h-8 w-[140px] rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              title="Change the date to move this entry to a different week"
-                            />
-                          ) : (
-                            <div title="Date editing is only available for one-time entries">
-                              {formatNiceDate(r.date)}
+                          <input
+                            type="date"
+                            value={editDraft.date}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, date: e.target.value })}
+                            className="h-8 w-[140px] rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            title={
+                              editDraft.frequency_type === 'one_time'
+                                ? 'Change the date to move this entry to a different week'
+                                : 'Change the date to move only this occurrence to a different week (the recurring schedule is unchanged)'
+                            }
+                          />
+                          {editDraft.frequency_type !== 'one_time' && (
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              Moves only this occurrence
                             </div>
                           )}
                         </td>
