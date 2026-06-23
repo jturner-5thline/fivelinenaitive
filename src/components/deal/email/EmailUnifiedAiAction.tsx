@@ -31,7 +31,7 @@ import {
   type TaskDraft,
 } from '@/hooks/useNaitiveTaskParse';
 import { TaskModeChips } from '@/components/dashboard/chat/TaskModeChips';
-import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { syncTaskAfterCreate } from '@/lib/asana/syncTaskAfterCreate';
 import type { EmailThread } from './mockEmailData';
 import { inferLenderStatus } from './inferLenderStatus';
 
@@ -332,29 +332,31 @@ export function EmailUnifiedAiAction({
             {
               syncSource: 'naitive_email_assist',
               sourceThreadId: thread.threadId,
+              initialAsanaSyncStatus: 'pending',
             },
           )) as any;
           queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['deal-tasks'] });
-          try {
-            const ctx = await getAsanaSyncContext(company?.id || null);
-            if (ctx) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('user_id', draftToCreate.owner_id || user.id)
-                .maybeSingle();
-              await syncTaskToAsana(ctx, {
-                id: result.id,
-                title: draftToCreate.title,
-                assignee_email: profile?.email || null,
-              });
-            }
-          } catch (e) {
-            console.error('[EmailUnifiedAiAction] Asana sync failed', e);
-          }
+          // The task row now exists; never keep the email AI Assist button in a
+          // loading state while external sync work runs. Asana can take many
+          // seconds or time out, so it continues in the background and records
+          // its own status on the task row.
+          void syncTaskAfterCreate({
+            taskId: result.id,
+            title: draftToCreate.title,
+            description: draftToCreate.description ?? null,
+            dueDate: draftToCreate.due_date ?? null,
+            assignedTo: draftToCreate.owner_id || user.id,
+            companyId: company?.id || null,
+          }).then((syncResult) => {
+            if (syncResult.ok) return;
+            console.warn('[EmailUnifiedAiAction] Asana sync failed', syncResult.error);
+            toast.error('Task created, but Asana sync failed', {
+              description: syncResult.error || 'You can retry sync from the task later.',
+            });
+          });
           toast.success(`Task created: "${draftToCreate.title}"`, {
             action: {
               label: 'View task →',
