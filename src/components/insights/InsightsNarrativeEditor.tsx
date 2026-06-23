@@ -12,6 +12,7 @@ import {
   Link as LinkIcon, Image as ImageIcon, Paperclip,
   X, Loader2, FileText, ExternalLink, Check,
 } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -105,6 +106,11 @@ export function InsightsNarrativeEditor({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Attach dialog (paperclip): native picker is unreliable across browsers
+  // when triggered programmatically; the dialog gives a stable target +
+  // drag-and-drop affordance.
+  const [attachDialog, setAttachDialog] = useState<null | { mode: 'file' | 'image' }>(null);
+  const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selAction, setSelAction] = useState<
     { text: string; left: number; top: number; host: HTMLElement } | null
@@ -427,7 +433,7 @@ export function InsightsNarrativeEditor({
           {sep}
           <TbBtn title="Add link" active={editor.isActive('link')} onClick={onPromptLink}><LinkIcon size={14} /></TbBtn>
           <TbBtn title="Insert image" onClick={() => imageInputRef.current?.click()}><ImageIcon size={14} /></TbBtn>
-          <TbBtn title="Attach file" onClick={() => fileInputRef.current?.click()}><Paperclip size={14} /></TbBtn>
+          <TbBtn title="Attach file" onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
