@@ -17,6 +17,7 @@ export interface NaitiveQualCallEvent {
   user_email: string | null;
   user_name: string | null;
   html_link: string | null;
+  attendees?: { email: string | null; name: string | null }[];
 }
 
 export interface NaitiveQualCallsResult {

@@ -942,8 +942,17 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                           <p className="text-sm font-semibold text-foreground truncate">{ev.title}</p>
                         )}
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          On {ev.user_name || ev.user_email || 'Unknown'}
-                          {ev.user_name && ev.user_email ? ` (${ev.user_email})` : ''}'s calendar
+                          {(() => {
+                            const list = ev.attendees && ev.attendees.length > 0
+                              ? ev.attendees
+                              : [{ name: ev.user_name, email: ev.user_email }];
+                            const labels = list.map(
+                              (a) => a.name || a.email || 'Unknown',
+                            );
+                            return list.length > 1
+                              ? `On calendars of ${labels.join(', ')}`
+                              : `On ${labels[0]}'s calendar`;
+                          })()}
                         </p>
                       </div>
                       <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums text-right">

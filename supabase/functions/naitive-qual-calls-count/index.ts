@@ -30,6 +30,7 @@ interface ReqBody {
 
 interface NaitiveEvent {
   id: string;
+  dedupe_key: string;
   title: string;
   start: string | null; // ISO
   end: string | null;   // ISO
@@ -70,8 +71,16 @@ async function fetchForGrant(
     const endIso = w.end_time
       ? new Date(w.end_time * 1000).toISOString()
       : (w.end_date || null);
+    // Same meeting can appear on multiple teammates' calendars. Prefer
+    // Nylas' ical_uid / master_event_id when present; fall back to a
+    // normalized title+start composite so we still collapse duplicates.
+    const icalUid: string | null = e?.ical_uid || e?.master_event_id || null;
+    const dedupe_key = icalUid
+      ? `uid:${icalUid}`
+      : `ts:${title.trim().toLowerCase()}|${startIso || ""}`;
     out.push({
       id: String(e.id),
+      dedupe_key,
       title,
       start: startIso,
       end: endIso,
@@ -168,7 +177,26 @@ serve(async (req: Request): Promise<Response> => {
         fetchForGrant(g.grantId, startUnix, endUnix, g.user).catch(() => [] as NaitiveEvent[]),
       ),
     );
-    const events = perGrant.flat().sort((a, b) => {
+    // Collapse the same meeting that lives on multiple teammates' calendars
+    // into a single event, while accumulating every teammate it appeared on.
+    const merged = new Map<string, NaitiveEvent & { attendees: { email: string | null; name: string | null }[] }>();
+    for (const ev of perGrant.flat()) {
+      const existing = merged.get(ev.dedupe_key);
+      if (existing) {
+        const already = existing.attendees.some(
+          (a) => (a.email || "").toLowerCase() === (ev.user_email || "").toLowerCase(),
+        );
+        if (!already) {
+          existing.attendees.push({ email: ev.user_email, name: ev.user_name });
+        }
+      } else {
+        merged.set(ev.dedupe_key, {
+          ...ev,
+          attendees: [{ email: ev.user_email, name: ev.user_name }],
+        });
+      }
+    }
+    const events = Array.from(merged.values()).sort((a, b) => {
       const ta = a.start ? new Date(a.start).getTime() : 0;
       const tb = b.start ? new Date(b.start).getTime() : 0;
       return ta - tb;
