@@ -35,8 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogPortal,
-  AlertDialogOverlay,
 } from '@/components/ui/alert-dialog';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
@@ -779,31 +777,6 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               isOpen={isPipelineDialogOpen}
               onClose={() => setIsPipelineDialogOpen(false)}
             />
-            <AlertDialog open={isDeleteOpen} onOpenChange={(o) => !isDeleting && setIsDeleteOpen(o)}>
-              <AlertDialogPortal>
-                <AlertDialogOverlay className="z-[1400] bg-transparent" />
-                <AlertDialogPrimitive.Content
-                  className="fixed left-[50%] top-[50%] z-[1410] grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-2xl rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-                >
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete “{deal.company}”?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete this deal and its related records. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
-                    disabled={isDeleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isDeleting ? 'Deleting…' : 'Delete deal'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-                </AlertDialogPrimitive.Content>
-              </AlertDialogPortal>
-            </AlertDialog>
           </div>
 
           {/* Footer */}
@@ -820,5 +793,36 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     </>
   );
 
-  return createPortal(drawerContent, document.body);
+  const deleteConfirmationModal = (
+    <AlertDialog open={isDeleteOpen} onOpenChange={(open) => !isDeleting && setIsDeleteOpen(open)}>
+      <AlertDialogPrimitive.Portal container={document.body}>
+        <AlertDialogPrimitive.Overlay className="fixed inset-0 z-[10040] bg-background/20 backdrop-blur-[1px] pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <AlertDialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[10050] grid max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg border border-border bg-popover p-6 text-popover-foreground shadow-2xl outline-none pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{deal.company}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this deal and its related records. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete deal'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogPrimitive.Content>
+      </AlertDialogPrimitive.Portal>
+    </AlertDialog>
+  );
+
+  return (
+    <>
+      {createPortal(drawerContent, document.body)}
+      {deleteConfirmationModal}
+    </>
+  );
 }
