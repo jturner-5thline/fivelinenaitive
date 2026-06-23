@@ -607,7 +607,7 @@ export function InsightsNarrativeEditor({
                 const f = e.dataTransfer.files?.[0];
                 if (!f) return;
                 setAttachDialog(null);
-                await uploadFile(f, { insertInline: f.type.startsWith('image/') });
+                await uploadFile(f, { insertInline: false });
               }}
               style={{
                 border: `2px dashed ${dragOver ? 'rgba(120,170,255,0.7)' : 'rgba(120,170,255,0.3)'}`,
