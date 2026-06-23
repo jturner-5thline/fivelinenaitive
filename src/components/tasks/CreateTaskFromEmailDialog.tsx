@@ -168,14 +168,15 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
 
       // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
       if (created?.id) {
-        const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
-        void syncTaskAfterCreate({
-          taskId: created.id,
-          title: trimmed,
-          description: description.trim() || null,
-          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
-          assignedTo: assignee || user.id,
-        }).catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
+        void import('@/lib/asana/syncTaskAfterCreate')
+          .then(({ syncTaskAfterCreate }) => syncTaskAfterCreate({
+            taskId: created.id,
+            title: trimmed,
+            description: description.trim() || null,
+            dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
+            assignedTo: assignee || user.id,
+          }))
+          .catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
       }
     } catch (err: any) {
       console.error('[CreateTaskFromEmail] insert failed', err);
