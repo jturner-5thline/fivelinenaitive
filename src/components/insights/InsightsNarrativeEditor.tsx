@@ -148,10 +148,24 @@ export function InsightsNarrativeEditor({
   });
 
   // Sync incoming value updates (e.g. after period switch or hydration).
+  //
+  // IMPORTANT: while the user is actively typing (editor focused), we must
+  // never re-apply the parent's `value` prop. Autosave roundtrips can push
+  // a stale narrative back into `value` after the user has typed more
+  // characters; calling `setContent` then would drop those keystrokes,
+  // jump the cursor, and scroll the page. We only resync when the editor
+  // is unfocused (period switch, hydration, external edits).
   useEffect(() => {
     if (!editor) return;
+    if (editor.isFocused) return;
     const incoming = toInitialHTML(value);
     if (incoming === lastEmittedRef.current) return;
+    // Also skip if the current editor content already matches incoming —
+    // avoids a redundant setContent that would still reset the cursor.
+    if (incoming === editor.getHTML()) {
+      lastEmittedRef.current = incoming;
+      return;
+    }
     lastEmittedRef.current = incoming;
     editor.commands.setContent(incoming, { emitUpdate: false });
   }, [value, editor]);
