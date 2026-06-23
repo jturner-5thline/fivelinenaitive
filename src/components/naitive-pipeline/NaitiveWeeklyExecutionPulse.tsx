@@ -907,6 +907,60 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={qualCallsOpen} onOpenChange={setQualCallsOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">
+              Qual Calls · {qualCallsCurrent.data?.count ?? 0}{' '}
+              {(qualCallsCurrent.data?.count ?? 0) === 1 ? 'event' : 'events'}
+            </DialogTitle>
+            <DialogDescription>
+              Calendar events titled "&lt;Name&gt; &lt;&gt; naitive" across all 5th Line teammates,{' '}
+              {format(from, 'MMM d')} – {format(to, 'MMM d, yyyy')}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+            {qualCallsCurrent.isLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+            ) : qualCallsCurrent.data && qualCallsCurrent.data.events.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {qualCallsCurrent.data.events.map((ev) => (
+                  <li key={ev.id} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {ev.html_link ? (
+                          <a
+                            href={ev.html_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                          >
+                            {ev.title}
+                          </a>
+                        ) : (
+                          <p className="text-sm font-semibold text-foreground truncate">{ev.title}</p>
+                        )}
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          On {ev.user_name || ev.user_email || 'Unknown'}
+                          {ev.user_name && ev.user_email ? ` (${ev.user_email})` : ''}'s calendar
+                        </p>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums text-right">
+                        {ev.start ? format(new Date(ev.start), 'MMM d, h:mma') : '—'}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No qual calls in this window.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
