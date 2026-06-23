@@ -173,6 +173,10 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
      *  the "For this Period Only" scope so we can write a per-occurrence
      *  override on `frequency_config.amount_overrides`. */
     occurrenceDate: string;
+    /** Editable date (YYYY-MM-DD). For one-time entries this rewrites
+     *  the entry's `start_date`, which moves the row to the corresponding
+     *  week on the weekly grid. Recurring entries ignore this field. */
+    date: string;
     /** Snapshot of the original amount when edit started, used to detect
      *  whether the amount actually changed and trigger the scope prompt. */
     originalAmount: number;
@@ -297,6 +301,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: r.entry.frequency_type,
       flow_type: r.entry.flow_type,
       occurrenceDate: r.date,
+      date: r.date,
       originalAmount: Math.abs(getOccurrenceAmount(r.entry, r.date)),
     });
   };
@@ -314,6 +319,15 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: editDraft.frequency_type,
       flow_type: editDraft.flow_type,
     };
+    // Date edits only apply to one-time entries — moving a recurring
+    // series' anchor date would change every future occurrence and is
+    // out of scope for the per-row edit affordance.
+    const isOneTime = editDraft.frequency_type === 'one_time';
+    const dateChanged =
+      isOneTime && /^\d{4}-\d{2}-\d{2}$/.test(editDraft.date) && editDraft.date !== editDraft.occurrenceDate;
+    if (dateChanged) {
+      otherPatch.start_date = editDraft.date;
+    }
     const amountChanged = Math.abs(amt - editDraft.originalAmount) > 0.0049;
     const isRecurring = editDraft.frequency_type !== 'one_time';
     // Only recurring + amount-changed edits need the scope prompt.
