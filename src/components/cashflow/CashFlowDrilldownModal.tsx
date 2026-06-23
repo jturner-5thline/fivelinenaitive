@@ -178,9 +178,14 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
      *  the "For this Period Only" scope so we can write a per-occurrence
      *  override on `frequency_config.amount_overrides`. */
     occurrenceDate: string;
+    /** Immutable original occurrence date — the stable key used to write
+     *  per-occurrence date_overrides on recurring entries. */
+    originalOccurrenceDate: string;
     /** Editable date (YYYY-MM-DD). For one-time entries this rewrites
-     *  the entry's `start_date`, which moves the row to the corresponding
-     *  week on the weekly grid. Recurring entries ignore this field. */
+     *  the entry's `start_date`. For recurring entries this writes a
+     *  per-occurrence `date_overrides` entry — moving only that one
+     *  occurrence to a different week. Either way it updates which week
+     *  the row appears in on the weekly grid. */
     date: string;
     /** Snapshot of the original amount when edit started, used to detect
      *  whether the amount actually changed and trigger the scope prompt. */
