@@ -1536,7 +1536,36 @@ CRITICAL RULES:
                                     <li>{highlightChildren(children, msg.sources, onCitationClick)}</li>
                                   ),
                                   strong: ({ children }) => (
-                                    <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
+                                    (() => {
+                                      // If the bolded text matches a lender
+                                      // attached to THIS deal, render it as a
+                                      // clickable trigger that opens the same
+                                      // funding-source modal used on the
+                                      // Funding Sources tab. Otherwise fall
+                                      // back to a normal <strong>.
+                                      const flat = React.Children.toArray(children)
+                                        .map((c) => (typeof c === 'string' ? c : ''))
+                                        .join('')
+                                        .trim();
+                                      const matched = flat
+                                        ? lenderNameLookup.get(flat.toLowerCase())
+                                        : undefined;
+                                      if (matched) {
+                                        return (
+                                          <button
+                                            type="button"
+                                            onClick={() => openLenderModal(matched)}
+                                            title={`Open ${matched}`}
+                                            className="font-semibold text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80 hover:decoration-solid transition-colors"
+                                          >
+                                            {matched}
+                                          </button>
+                                        );
+                                      }
+                                      return (
+                                        <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
+                                      );
+                                    })()
                                   ),
                                   em: ({ children }) => (
                                     <em>{highlightChildren(children, msg.sources, onCitationClick)}</em>
