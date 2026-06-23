@@ -312,6 +312,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: r.entry.frequency_type,
       flow_type: r.entry.flow_type,
       occurrenceDate: r.date,
+      originalOccurrenceDate: r.originalDate,
       date: r.date,
       originalAmount: Math.abs(getOccurrenceAmount(r.entry, r.date)),
     });
