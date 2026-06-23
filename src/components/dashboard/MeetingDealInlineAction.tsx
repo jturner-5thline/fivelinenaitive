@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { toast } from 'sonner';
 import type { Deal } from '@/types/deal';
 
@@ -53,6 +54,7 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
   const { user } = useAuth();
   const { company } = useCompany();
   const { deals } = useDealsContext();
+  const { pipelines } = usePipelineContext();
   const qc = useQueryClient();
   const [approving, setApproving] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
@@ -170,6 +172,20 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
     ).slice(0, 12);
   }, [deals, pickerQuery]);
 
+  // Resolve "Pipeline · Stage" label so the picker shows which pipeline + stage
+  // a deal lives in (helps the user avoid picking the wrong deal).
+  const stageLabelFor = (d: Deal): string | null => {
+    const pipeline =
+      (d.pipelineId ? pipelines.find(p => p.id === d.pipelineId) : null) ||
+      pipelines.find(p => p.isDefault) ||
+      null;
+    if (!pipeline) return null;
+    const stageId = (d.stage || '') as string;
+    const stage = (pipeline.stages as any[] | undefined)?.find((s) => s.id === stageId);
+    const stageLabel = stage?.label || stageId || null;
+    return [pipeline.name, stageLabel].filter(Boolean).join(' · ');
+  };
+
   // Legacy CTA (no candidate)
   if (band === 'none') {
     return (
@@ -200,6 +216,9 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
                   <Briefcase className="h-3 w-3 text-white/60" />{d.name}
                 </div>
                 <div className="text-[10px] text-muted-foreground truncate">{d.company}</div>
+                {stageLabelFor(d) && (
+                  <div className="text-[10px] text-white/50 truncate mt-0.5">{stageLabelFor(d)}</div>
+                )}
               </button>
             ))}
           </div>
@@ -300,6 +319,9 @@ export function MeetingDealInlineAction({ eventId, eventTitle, attendees, onLink
                 >
                   <div className="font-medium text-white truncate">{d.name}</div>
                   <div className="text-[10px] text-muted-foreground truncate">{d.company}</div>
+                  {stageLabelFor(d) && (
+                    <div className="text-[10px] text-white/50 truncate mt-0.5">{stageLabelFor(d)}</div>
+                  )}
                 </button>
               ))}
             </div>
