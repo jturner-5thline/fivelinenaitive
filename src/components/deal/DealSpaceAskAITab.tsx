@@ -604,6 +604,39 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
     return () => { cancelled = true; };
   }, [ready, dealId]);
   const cadence = useDealClientCadence(deferredDealId, dealMeta.contactEmail);
+
+  // Names of lenders attached to THIS deal. Used to turn `**Lender Name**`
+  // mentions in AI responses into clickable triggers that open the same
+  // funding-source modal used on the Funding Sources tab (via a window
+  // CustomEvent listened to by DealDetail). Strictly scoped to this deal,
+  // so cross-deal lender mentions never become clickable here.
+  const [dealLenderNames, setDealLenderNames] = useState<string[]>([]);
+  useEffect(() => {
+    if (!ready || !dealId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deal_lenders')
+        .select('name')
+        .eq('deal_id', dealId);
+      if (cancelled) return;
+      const names = Array.from(
+        new Set((data || []).map((r: { name: string | null }) => (r.name || '').trim()).filter(Boolean)),
+      );
+      setDealLenderNames(names);
+    })();
+    return () => { cancelled = true; };
+  }, [ready, dealId]);
+  const lenderNameLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of dealLenderNames) m.set(n.toLowerCase(), n);
+    return m;
+  }, [dealLenderNames]);
+  const openLenderModal = useCallback((name: string) => {
+    window.dispatchEvent(
+      new CustomEvent('naitive:open-lender', { detail: { name } }),
+    );
+  }, []);
   const cadenceVisible =
     cadence.isStale &&
     !!dealMeta.contactEmail &&
@@ -1503,7 +1536,36 @@ CRITICAL RULES:
                                     <li>{highlightChildren(children, msg.sources, onCitationClick)}</li>
                                   ),
                                   strong: ({ children }) => (
-                                    <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
+                                    (() => {
+                                      // If the bolded text matches a lender
+                                      // attached to THIS deal, render it as a
+                                      // clickable trigger that opens the same
+                                      // funding-source modal used on the
+                                      // Funding Sources tab. Otherwise fall
+                                      // back to a normal <strong>.
+                                      const flat = React.Children.toArray(children)
+                                        .map((c) => (typeof c === 'string' ? c : ''))
+                                        .join('')
+                                        .trim();
+                                      const matched = flat
+                                        ? lenderNameLookup.get(flat.toLowerCase())
+                                        : undefined;
+                                      if (matched) {
+                                        return (
+                                          <button
+                                            type="button"
+                                            onClick={() => openLenderModal(matched)}
+                                            title={`Open ${matched}`}
+                                            className="font-semibold text-primary underline decoration-dotted underline-offset-2 hover:text-primary/80 hover:decoration-solid transition-colors"
+                                          >
+                                            {matched}
+                                          </button>
+                                        );
+                                      }
+                                      return (
+                                        <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
+                                      );
+                                    })()
                                   ),
                                   em: ({ children }) => (
                                     <em>{highlightChildren(children, msg.sources, onCitationClick)}</em>
