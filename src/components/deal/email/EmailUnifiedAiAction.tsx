@@ -31,7 +31,7 @@ import {
   type TaskDraft,
 } from '@/hooks/useNaitiveTaskParse';
 import { TaskModeChips } from '@/components/dashboard/chat/TaskModeChips';
-import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { syncTaskAfterCreate } from '@/lib/asana/syncTaskAfterCreate';
 import type { EmailThread } from './mockEmailData';
 import { inferLenderStatus } from './inferLenderStatus';
 
@@ -319,12 +319,25 @@ export function EmailUnifiedAiAction({
           const draftToCreate: TaskDraft = (taskDraft as TaskDraft) || {
             title: suggestion.title,
             description: suggestion.body,
-            owner_id: user.id,
             due_date: null,
-            priority: 'medium',
-            entity_type: resolvedDealId ? 'deal' : null,
-            entity_id: resolvedDealId || null,
-          } as any;
+            due_time: null,
+            priority: 'normal',
+            type: 'follow_up',
+            is_recurring: false,
+            recurrence_rule: null,
+            confidence: 0.7,
+            owner_id: user.id,
+            owner_label: 'You',
+            owner_ambiguous: null,
+            deal_id: resolvedDealId,
+            deal_label: resolvedDealName,
+            lender_id: null,
+            lender_label: null,
+            contact_id: contactRemoved ? null : contactId,
+            contact_label: contactRemoved ? null : contactLabel,
+            source_thread_id: thread.threadId,
+            hints: { owner: null, deal: resolvedDealName, lender: null, contact: contactLabel },
+          };
           const result = (await createTaskFromDraft(
             draftToCreate,
             user.id,
@@ -332,29 +345,33 @@ export function EmailUnifiedAiAction({
             {
               syncSource: 'naitive_email_assist',
               sourceThreadId: thread.threadId,
+              initialAsanaSyncStatus: 'pending',
             },
           )) as any;
           queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
           queryClient.invalidateQueries({ queryKey: ['deal-tasks'] });
-          try {
-            const ctx = await getAsanaSyncContext(company?.id || null);
-            if (ctx) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('user_id', draftToCreate.owner_id || user.id)
-                .maybeSingle();
-              await syncTaskToAsana(ctx, {
-                id: result.id,
-                title: draftToCreate.title,
-                assignee_email: profile?.email || null,
-              });
-            }
-          } catch (e) {
-            console.error('[EmailUnifiedAiAction] Asana sync failed', e);
-          }
+          // The task row now exists; never keep the email AI Assist button in a
+          // loading state while external sync work runs. Asana can take many
+          // seconds or time out, so it continues in the background and records
+          // its own status on the task row.
+          void syncTaskAfterCreate({
+            taskId: result.id,
+            title: draftToCreate.title,
+            description: draftToCreate.description ?? null,
+            dueDate: draftToCreate.due_date ?? null,
+            assignedTo: draftToCreate.owner_id || user.id,
+            companyId: company?.id || null,
+          }).then((syncResult) => {
+            if (syncResult.ok) return;
+            console.warn('[EmailUnifiedAiAction] Asana sync failed', syncResult.error);
+            toast.error('Task created, but Asana sync failed', {
+              description: syncResult.error || 'You can retry sync from the task later.',
+            });
+          }).catch((e) => {
+            console.warn('[EmailUnifiedAiAction] Asana sync failed', e);
+          });
           toast.success(`Task created: "${draftToCreate.title}"`, {
             action: {
               label: 'View task →',
@@ -941,7 +958,6 @@ export function EmailUnifiedAiAction({
                     onClick={confirm}
                     disabled={
                       creating ||
-                      (suggestion.intent === 'task' && !taskDraft) ||
                       (suggestion.intent === 'allocate_hours' &&
                         !(suggestion.hour_plan?.items || []).some((i) => i.status === 'matched'))
                     }

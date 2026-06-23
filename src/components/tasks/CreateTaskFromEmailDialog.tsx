@@ -136,7 +136,12 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
         source_email_received_at: email.receivedAt || null,
       } as any).select('id').single();
       if (error) throw error;
+      // Close the modal as soon as the local task exists. Follow-up backlink
+      // and external sync work can be slow, so neither owns the submit spinner.
       toast.success('Task created from email');
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      onOpenChange(false);
+
       // Unified deal follow-up backlink (idempotent) — links the task
       // to the originating email so it surfaces on the deal calendar
       // with provenance.
@@ -160,19 +165,19 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
           console.warn('[CreateTaskFromEmail] backlink failed:', e);
         }
       }
+
       // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
       if (created?.id) {
-        const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
-        syncTaskAfterCreate({
-          taskId: created.id,
-          title: trimmed,
-          description: description.trim() || null,
-          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
-          assignedTo: assignee || user.id,
-        }).catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
+        void import('@/lib/asana/syncTaskAfterCreate')
+          .then(({ syncTaskAfterCreate }) => syncTaskAfterCreate({
+            taskId: created.id,
+            title: trimmed,
+            description: description.trim() || null,
+            dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
+            assignedTo: assignee || user.id,
+          }))
+          .catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
       }
-      qc.invalidateQueries({ queryKey: ['tasks'] });
-      onOpenChange(false);
     } catch (err: any) {
       console.error('[CreateTaskFromEmail] insert failed', err);
       toast.error(err?.message || 'Could not create task');
