@@ -186,6 +186,11 @@ serve(async (req) => {
           existing_debt_items,
           data_room_url,
           key_items,
+          company_highlights,
+          financial_years,
+          financial_comments,
+          total_equity_raised,
+          visible_metrics,
           publish_as_anonymous,
           status,
           deals!inner(manager, companies:company_id(name))
@@ -207,6 +212,17 @@ serve(async (req) => {
         );
       }
       
+      // Fetch ownership for every deal in parallel so we can include cap_table.
+      const ownershipByDeal = new Map<string, Array<{ owner_name: string; ownership_percentage: number; owner_url: string | null }>>();
+      await Promise.all(allDeals.map(async (d) => {
+        const { data: ownershipRows } = await supabase
+          .from("deal_ownership")
+          .select("owner_name, ownership_percentage, owner_url")
+          .eq("deal_id", d.deal_id)
+          .order("position", { ascending: true });
+        ownershipByDeal.set(d.deal_id, (ownershipRows ?? []) as any);
+      }));
+
       // Transform deals for Flex format - include the deal_id as id
       const flexDeals = allDeals.map(d => ({
         id: d.deal_id,
@@ -222,9 +238,19 @@ serve(async (req) => {
         last_year_revenue: nonEmpty(d.last_year_revenue),
         description: nonEmpty(d.description),
         use_of_funds: nonEmpty(d.use_of_funds),
-        existing_debt: resolveExistingDebt(d.existing_debt_details, (d as any).existing_debt_items),
+        existing_debt: resolveExistingDebt(d.existing_debt_details, (d as any).existing_debt_items) ?? null,
         data_room_url: nonEmpty(d.data_room_url),
-        key_items: d.key_items || undefined,
+        key_items: (d.key_items as any) ?? [],
+        company_highlights: ((d as any).company_highlights as any) ?? [],
+        financial_years: ((d as any).financial_years as any) ?? [],
+        financial_comments: ((d as any).financial_comments as any) ?? [],
+        cap_table: (ownershipByDeal.get(d.deal_id) ?? []).map(o => ({
+          name: o.owner_name,
+          ownership: Number(o.ownership_percentage),
+          url: o.owner_url || undefined,
+        })),
+        total_equity_raised: (d as any).total_equity_raised || null,
+        visible_metrics: (d as any).visible_metrics || undefined,
         is_published: !d.publish_as_anonymous,
         deal_manager_name: (d as any).deals?.manager || undefined,
         managing_company: ((d as any).deals?.companies?.name || '').toLowerCase().includes('5th line') ? '5th Line' : ((d as any).deals?.companies?.name || undefined),
