@@ -466,6 +466,13 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
     [deals, history, prev],
   );
 
+  // ── Qual Calls: count calendar events titled "<NAME> <> naitive" across all
+  // 5th Line teammates (same email domain) for the selected window. Pulled
+  // live from Nylas via the `naitive-qual-calls-count` edge function rather
+  // than from stage-history, since these meetings live on calendars.
+  const qualCallsCurrent = useQualCallsCount(from, to);
+  const qualCallsPrevious = useQualCallsCount(prev.from, prev.to);
+
   const buckets = useMemo(() => weeklyBuckets(deals, history), [deals, history]);
 
   // Top blocker — always uses week-of-today regardless of selected range
@@ -590,7 +597,12 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       {/* Core KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <EmptyStatCard />
-        <StatCard label="Qual Calls" value={current.qualsHeld} prev={previous.qualsHeld} />
+        <StatCard
+          label="Qual Calls"
+          value={qualCallsCurrent.data ?? 0}
+          prev={qualCallsPrevious.data ?? 0}
+          loading={qualCallsCurrent.isLoading || qualCallsPrevious.isLoading}
+        />
         <EmptyStatCard />
         <EmptyStatCard />
         <StatCard label="Trials Started" value={current.trialsStarted} prev={previous.trialsStarted} />
