@@ -482,6 +482,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   // than from stage-history, since these meetings live on calendars.
   const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
   const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
+  const [qualCallsOpen, setQualCallsOpen] = useState(false);
 
   const buckets = useMemo(() => weeklyBuckets(deals, history), [deals, history]);
 
