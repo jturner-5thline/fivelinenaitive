@@ -371,7 +371,6 @@ export function generateOccurrences(
   rangeStart: Date,
   rangeEnd: Date,
 ): string[] {
-  const dates: string[] = [];
   const cfg = entry.frequency_config || {};
   const excluded = new Set(cfg.excluded_dates || []);
   const dateOverrides = cfg.date_overrides || {};
@@ -380,7 +379,36 @@ export function generateOccurrences(
   // remapped effective date — honor both so deletions stay sticky.
   const isExcluded = (d: string) =>
     excluded.has(d) || excluded.has(remap(d));
-  const push = (d: string) => { if (!isExcluded(d)) dates.push(remap(d)); };
+
+  // Collect generated *original* dates over a scan window WIDER than the
+  // requested range so we capture occurrences that were remapped INTO the
+  // range from neighbouring weeks. We then filter on the EFFECTIVE
+  // (post-remap) date — so a moved occurrence appears in its new week and
+  // disappears from its old one.
+  const candidates: string[] = [];
+  let scanStart = new Date(rangeStart);
+  let scanEnd = new Date(rangeEnd);
+  for (const [orig, eff] of Object.entries(dateOverrides)) {
+    if (!eff) continue;
+    const effD = parseDate(eff);
+    if (effD >= rangeStart && effD <= rangeEnd) {
+      const origD = parseDate(orig);
+      if (origD < scanStart) scanStart = origD;
+      if (origD > scanEnd) scanEnd = origD;
+    }
+  }
+  const push = (d: string) => { candidates.push(d); };
+  const finalize = (): string[] => {
+    const out: string[] = [];
+    for (const d of candidates) {
+      if (isExcluded(d)) continue;
+      const eff = remap(d);
+      const effD = parseDate(eff);
+      if (effD < rangeStart || effD > rangeEnd) continue;
+      out.push(eff);
+    }
+    return out;
+  };
 
   if (entry.frequency_type === 'one_time') {
     // One-time entries are anchored ONLY by `one_time_date` (or `start_date`
@@ -391,17 +419,16 @@ export function generateOccurrences(
     // the row from disappearing from its real week.
     const target = cfg.one_time_date || entry.start_date;
     if (target) {
-      const d = parseDate(target);
-      if (d >= rangeStart && d <= rangeEnd) push(target);
+      push(target);
     }
-    return dates;
+    return finalize();
   }
 
   const start = entry.start_date ? parseDate(entry.start_date) : rangeStart;
   const end = entry.end_date ? parseDate(entry.end_date) : rangeEnd;
-  const effectiveStart = start > rangeStart ? start : rangeStart;
-  const effectiveEnd = end < rangeEnd ? end : rangeEnd;
-  if (effectiveStart > effectiveEnd) return dates;
+  const effectiveStart = start > scanStart ? start : scanStart;
+  const effectiveEnd = end < scanEnd ? end : scanEnd;
+  if (effectiveStart > effectiveEnd) return finalize();
 
   if (entry.frequency_type === 'weekly') {
     const dow = cfg.day_of_week ?? 1;
@@ -414,7 +441,7 @@ export function generateOccurrences(
       push(fmtDate(cur));
       cur.setDate(cur.getDate() + 7);
     }
-    return dates;
+    return finalize();
   }
 
   if (entry.frequency_type === 'bi_weekly') {
@@ -427,7 +454,7 @@ export function generateOccurrences(
       push(fmtDate(cur));
       cur.setDate(cur.getDate() + 14);
     }
-    return dates;
+    return finalize();
   }
 
   if (entry.frequency_type === 'monthly_first' || entry.frequency_type === 'monthly_last') {
@@ -449,7 +476,7 @@ export function generateOccurrences(
       }
       cur.setMonth(cur.getMonth() + 1);
     }
-    return dates;
+    return finalize();
   }
 
   if (entry.frequency_type === 'monthly_day') {
@@ -466,10 +493,10 @@ export function generateOccurrences(
       }
       cur.setMonth(cur.getMonth() + 1);
     }
-    return dates;
+    return finalize();
   }
 
-  return dates;
+  return finalize();
 }
 
 /**
