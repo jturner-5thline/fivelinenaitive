@@ -62,17 +62,36 @@ function nonEmpty(val: string | null | undefined): string | undefined {
   return stripped.length > 0 ? val : undefined;
 }
 
-/** Format structured existing_debt_items rows into a human-readable string for FLEx. */
+/** Escape plain text for safe HTML inclusion. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** True if string already contains HTML tags (preserve as-is). */
+function looksLikeHtml(s: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(s);
+}
+
+/**
+ * Format structured existing_debt_items rows into a styled HTML string for FLEx.
+ * Mirrors the rich-text formatting (bold lender, italic meta) used in the nAItive write-up
+ * so FLEx renders the same visual hierarchy.
+ */
 function formatExistingDebtItems(items: unknown): string | undefined {
   if (!Array.isArray(items) || items.length === 0) return undefined;
-  const lines: string[] = [];
+  const rows: string[] = [];
   for (const raw of items) {
     if (!raw || typeof raw !== 'object') continue;
     const it = raw as Record<string, unknown>;
     const lender = typeof it.lender === 'string' ? it.lender.trim() : '';
     const amount = typeof it.amount === 'string' ? it.amount.trim() : '';
     const type = typeof it.type === 'string' ? it.type.trim() : '';
-    const notes = typeof it.notes === 'string' ? it.notes.trim() : '';
+    const notesRaw = typeof it.notes === 'string' ? it.notes.trim() : '';
     let maturity = '';
     if (typeof it.maturityDate === 'string' && it.maturityDate) {
       const d = new Date(it.maturityDate);
@@ -80,13 +99,20 @@ function formatExistingDebtItems(items: unknown): string | undefined {
         maturity = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
       }
     }
-    const head = [lender, amount].filter(Boolean).join(' — ');
-    const meta = [type, maturity ? `matures ${maturity}` : ''].filter(Boolean).join(', ');
-    const parts = [head, meta].filter(Boolean).join(' (') + (meta ? ')' : '');
-    const line = [parts, notes].filter(Boolean).join('. ');
-    if (line) lines.push(`• ${line}`);
+    const headParts: string[] = [];
+    if (lender) headParts.push(`<strong>${escapeHtml(lender)}</strong>`);
+    if (amount) headParts.push(escapeHtml(amount));
+    const head = headParts.join(' — ');
+    const metaBits = [type, maturity ? `matures ${maturity}` : ''].filter(Boolean).map(escapeHtml);
+    const meta = metaBits.length > 0 ? ` <em>(${metaBits.join(', ')})</em>` : '';
+    // Preserve note HTML if present, otherwise escape plain text.
+    const notesHtml = notesRaw
+      ? (looksLikeHtml(notesRaw) ? notesRaw : escapeHtml(notesRaw))
+      : '';
+    const noteBlock = notesHtml ? `<br/>${notesHtml}` : '';
+    if (head || meta || noteBlock) rows.push(`<li>${head}${meta}${noteBlock}</li>`);
   }
-  return lines.length > 0 ? lines.join('\n') : undefined;
+  return rows.length > 0 ? `<ul>${rows.join('')}</ul>` : undefined;
 }
 
 function resolveExistingDebt(details: string | null | undefined, items: unknown): string | undefined {
