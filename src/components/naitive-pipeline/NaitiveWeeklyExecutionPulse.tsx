@@ -25,6 +25,7 @@ import type { NaitiveStageHistoryRow } from '@/hooks/useNaitiveStageHistory';
 import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
 import { ChevronDown } from 'lucide-react';
+import { useNaitiveQualCallsCount } from '@/hooks/useNaitiveQualCallsCount';
 
 type RangeKey = 'this-week' | 'last-week' | 'last-30' | 'last-90' | 'custom';
 
@@ -466,6 +467,13 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
     [deals, history, prev],
   );
 
+  // ── Qual Calls: count calendar events titled "<NAME> <> naitive" across all
+  // 5th Line teammates (same email domain) for the selected window. Pulled
+  // live from Nylas via the `naitive-qual-calls-count` edge function rather
+  // than from stage-history, since these meetings live on calendars.
+  const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
+  const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
+
   const buckets = useMemo(() => weeklyBuckets(deals, history), [deals, history]);
 
   // Top blocker — always uses week-of-today regardless of selected range
@@ -590,7 +598,11 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       {/* Core KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <EmptyStatCard />
-        <StatCard label="Qual Calls" value={current.qualsHeld} prev={previous.qualsHeld} />
+        <StatCard
+          label="Qual Calls"
+          value={qualCallsCurrent.data ?? 0}
+          prev={qualCallsPrevious.data ?? 0}
+        />
         <EmptyStatCard />
         <EmptyStatCard />
         <StatCard label="Trials Started" value={current.trialsStarted} prev={previous.trialsStarted} />
