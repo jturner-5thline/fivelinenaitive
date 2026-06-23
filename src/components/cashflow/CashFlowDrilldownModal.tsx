@@ -21,6 +21,7 @@ import {
   CASH_OUT_CATEGORIES,
   CANONICAL_TO_GRID_ROW,
   getOccurrenceAmount,
+  getOriginalOccurrenceDate,
   type ScheduledCashFlow,
   type FrequencyType,
   type FlowType,
