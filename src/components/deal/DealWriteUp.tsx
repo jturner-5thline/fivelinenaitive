@@ -900,9 +900,16 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   const DataPreviewRow = ({ label, value }: { label: string; value: string | null | undefined }) => {
     if (!value) return null;
     return (
-      <div className="flex justify-between py-1.5 border-b border-border/50 last:border-0">
-        <span className="text-muted-foreground text-sm">{label}</span>
-        <span className="text-sm font-medium text-right max-w-[60%] truncate">{value}</span>
+      <div
+        className="grid gap-3 py-1.5 border-b border-border/50 last:border-0 sm:grid-cols-[minmax(140px,220px)_minmax(0,1fr)] min-w-0"
+      >
+        <span className="text-muted-foreground text-sm min-w-0">{label}</span>
+        <span
+          className="text-sm font-medium min-w-0 max-w-full sm:text-right"
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        >
+          {value}
+        </span>
       </div>
     );
   };
@@ -1681,8 +1688,18 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
 
       {/* Push to FLEx Confirmation Dialog */}
       <AlertDialog open={showFlexConfirmDialog} onOpenChange={setShowFlexConfirmDialog}>
-        <AlertDialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <AlertDialogHeader>
+        <AlertDialogContent
+          className="!grid-cols-none !block sm:!flex flex flex-col overflow-hidden p-0 !max-w-none"
+          style={{
+            width: 'min(96vw, 1200px)',
+            maxWidth: '96vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          <AlertDialogHeader className="p-6 pb-2 shrink-0">
             <AlertDialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
               Preview Data for FLEx
@@ -1692,8 +1709,16 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
             </AlertDialogDescription>
           </AlertDialogHeader>
           
-          <ScrollArea className="flex-1 min-h-0 pr-4">
-            <div className="space-y-4">
+          <ScrollArea
+            className="px-6"
+            style={{
+              flex: '1 1 auto',
+              minHeight: 0,
+              minWidth: 0,
+              overflow: 'auto',
+            }}
+          >
+            <div className="space-y-4 min-w-0 max-w-full" style={{ overflowWrap: 'anywhere' }}>
               {/* Company Information */}
               <div className="rounded-lg border bg-muted/30 p-4">
                 <h4 className="font-semibold text-sm mb-3">
@@ -1800,7 +1825,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
             </div>
           </ScrollArea>
 
-          <AlertDialogFooter>
+          <AlertDialogFooter className="p-6 pt-2 shrink-0">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handlePushToFlex} disabled={isPushingToFlex}>
               {isPushingToFlex ? (
