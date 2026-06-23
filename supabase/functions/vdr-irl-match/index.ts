@@ -99,38 +99,39 @@ serve(async (req) => {
       let relevantChunks: Array<{ chunk_text: string; metadata: any; similarity: number }> = [];
 
       try {
-        const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "text-embedding-3-small",
-            input: searchQuery.substring(0, 8000),
-          }),
-        });
-
-        if (embResponse.ok) {
-          const embData = await embResponse.json();
-          const queryEmbedding = embData.data?.[0]?.embedding;
-
-          if (queryEmbedding) {
-            const { data: vectorResults } = await supabase.rpc("vdr_search_chunks", {
-              _deal_id: deal_id,
-              _query_embedding: JSON.stringify(queryEmbedding),
-              _match_count: 15,
-            });
-
-            if (vectorResults) {
-              relevantChunks = vectorResults.map((r: any) => ({
-                chunk_text: r.chunk_text,
-                metadata: r.metadata,
-                similarity: r.similarity,
-              }));
-            }
-          }
-        }
+        // Disabled by Lovable - model fixed; uncomment to re-enable
+        // const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+        //   method: "POST",
+        //   headers: {
+        //     Authorization: `Bearer ${lovableApiKey}`,
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify({
+        //     model: "openai/text-embedding-3-small",
+        //     input: searchQuery.substring(0, 8000),
+        //   }),
+        // });
+        //
+        // if (embResponse.ok) {
+        //   const embData = await embResponse.json();
+        //   const queryEmbedding = embData.data?.[0]?.embedding;
+        //
+        //   if (queryEmbedding) {
+        //     const { data: vectorResults } = await supabase.rpc("vdr_search_chunks", {
+        //       _deal_id: deal_id,
+        //       _query_embedding: JSON.stringify(queryEmbedding),
+        //       _match_count: 15,
+        //     });
+        //
+        //     if (vectorResults) {
+        //       relevantChunks = vectorResults.map((r: any) => ({
+        //         chunk_text: r.chunk_text,
+        //         metadata: r.metadata,
+        //         similarity: r.similarity,
+        //       }));
+        //     }
+        //   }
+        // }
       } catch (e) {
         console.error("Embedding error for request:", request.id, e);
       }

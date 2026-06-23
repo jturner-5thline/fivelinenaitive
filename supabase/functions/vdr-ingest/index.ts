@@ -174,24 +174,23 @@ serve(async (req) => {
           let embedding: number[] | null = null;
           
           try {
-            // Use Lovable AI gateway for embeddings via chat completion
-            // We'll use a structured approach to get embeddings
-            const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${lovableApiKey}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "text-embedding-3-small",
-                input: chunks[i].substring(0, 8000),
-              }),
-            });
-
-            if (embResponse.ok) {
-              const embData = await embResponse.json();
-              embedding = embData.data?.[0]?.embedding || null;
-            }
+            // Disabled by Lovable - model fixed; uncomment to re-enable
+            // const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+            //   method: "POST",
+            //   headers: {
+            //     Authorization: `Bearer ${lovableApiKey}`,
+            //     "Content-Type": "application/json",
+            //   },
+            //   body: JSON.stringify({
+            //     model: "openai/text-embedding-3-small",
+            //     input: chunks[i].substring(0, 8000),
+            //   }),
+            // });
+            //
+            // if (embResponse.ok) {
+            //   const embData = await embResponse.json();
+            //   embedding = embData.data?.[0]?.embedding || null;
+            // }
           } catch (e) {
             console.error("Embedding error for chunk", i, e);
           }
