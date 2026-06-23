@@ -26,6 +26,7 @@ import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
+import { useMyTasks } from '@/hooks/useTasks';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
@@ -62,6 +63,16 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   "My Daily Rundown": loadDailyBriefing,
   'Deal Rundown': loadDealsOverlay,
 };
+
+// Tiny hidden component that subscribes to the same React Query that
+// the Tasks page uses, so the cache is fully warm before the user
+// opens the popup. Mounted on idle (see `tasksMounted`) — when the
+// user finally opens Tasks, useMyTasks inside the page reads from
+// cache and the list paints immediately.
+function TasksPrefetcher() {
+  useMyTasks('mine');
+  return null;
+}
 import {
   canSeeNikiBriefing,
   NIKI_USER_ID,
