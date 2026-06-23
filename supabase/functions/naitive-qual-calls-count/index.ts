@@ -131,7 +131,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // All profiles in same domain (including caller).
     const { data: profiles, error: profErr } = await supabase
-      .from("profiles").select("user_id, email");
+      .from("profiles").select("user_id, email, display_name, full_name");
     if (profErr) throw profErr;
     const sameDomainIds = (profiles || [])
       .filter((p: any) => domainOf(p.email) === callerDomain)
