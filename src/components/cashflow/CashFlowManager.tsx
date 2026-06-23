@@ -1709,6 +1709,12 @@ export function CashFlowManager() {
             // The drilldown will route delete actions through onUpdateScheduledEntry
             // with excluded_dates / end_date so we never reach here for them.
             if (id.startsWith('deal:')) return false;
+            if (id.startsWith('cashin:')) {
+              const realId = id.slice('cashin:'.length);
+              await removeCashInDbItem(realId);
+              broadcastRef.current('scheduled');
+              return true;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
