@@ -12,6 +12,7 @@ import {
   Link as LinkIcon, Image as ImageIcon, Paperclip,
   X, Loader2, FileText, ExternalLink, Check,
 } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -105,6 +106,11 @@ export function InsightsNarrativeEditor({
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Attach dialog (paperclip): native picker is unreliable across browsers
+  // when triggered programmatically; the dialog gives a stable target +
+  // drag-and-drop affordance.
+  const [attachDialog, setAttachDialog] = useState<null | { mode: 'file' | 'image' }>(null);
+  const [dragOver, setDragOver] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [selAction, setSelAction] = useState<
     { text: string; left: number; top: number; host: HTMLElement } | null
@@ -427,7 +433,7 @@ export function InsightsNarrativeEditor({
           {sep}
           <TbBtn title="Add link" active={editor.isActive('link')} onClick={onPromptLink}><LinkIcon size={14} /></TbBtn>
           <TbBtn title="Insert image" onClick={() => imageInputRef.current?.click()}><ImageIcon size={14} /></TbBtn>
-          <TbBtn title="Attach file" onClick={() => fileInputRef.current?.click()}><Paperclip size={14} /></TbBtn>
+          <TbBtn title="Attach file" onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
@@ -569,6 +575,93 @@ export function InsightsNarrativeEditor({
           height: 0;
         }
       `}</style>
+      {attachDialog && typeof document !== 'undefined' && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Attach a file"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) setAttachDialog(null); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1500,
+            background: 'rgba(4,10,22,0.65)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(92vw, 460px)',
+              background: 'rgb(12,22,42)',
+              border: '1px solid rgba(120,170,255,0.28)',
+              borderRadius: 12,
+              padding: 18,
+              boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+              color: '#dde8f8',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Attach a file</div>
+              <button
+                type="button"
+                onClick={() => setAttachDialog(null)}
+                aria-label="Close"
+                style={{ background: 'transparent', border: 0, color: 'rgba(220,232,248,0.7)', cursor: 'pointer', padding: 4, display: 'inline-flex' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (!f) return;
+                setAttachDialog(null);
+                await uploadFile(f, { insertInline: f.type.startsWith('image/') });
+              }}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: `2px dashed ${dragOver ? 'rgba(120,170,255,0.7)' : 'rgba(120,170,255,0.3)'}`,
+                background: dragOver ? 'rgba(120,170,255,0.08)' : 'rgba(10,18,36,0.5)',
+                borderRadius: 10,
+                padding: '28px 16px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+                cursor: 'pointer', textAlign: 'center', transition: 'background 120ms',
+              }}
+            >
+              <UploadCloud size={26} style={{ color: 'rgba(160,200,255,0.75)' }} />
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Drag &amp; drop a file here</div>
+              <div style={{ fontSize: 12, color: 'rgba(160,200,255,0.65)' }}>
+                or <span style={{ color: 'rgb(140,190,255)', textDecoration: 'underline' }}>browse</span> from your device
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.45)', marginTop: 4 }}>
+                Max 15 MB. Images insert inline; other files attach below.
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+              <button
+                type="button"
+                onClick={() => setAttachDialog(null)}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                  background: 'transparent', color: 'rgba(220,232,248,0.8)',
+                  border: '1px solid rgba(120,170,255,0.25)', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            {uploading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, fontSize: 12, color: 'rgba(160,200,255,0.75)' }}>
+                <Loader2 size={12} className="animate-spin" /> Uploading…
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
