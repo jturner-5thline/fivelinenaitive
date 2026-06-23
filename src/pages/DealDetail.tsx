@@ -3486,17 +3486,6 @@ export default function DealDetail() {
                   </Card>
                   )}
 
-                  {/* Active Funding Sources — scannable bullet list, scoped to THIS deal only.
-                      Clicking a name opens the same lender detail dialog used by the
-                      Funding Sources tab via `setSelectedLenderName`. */}
-                  {!isSimplifiedDeal && (
-                    <ActiveLendersBulletCard
-                      lenders={deal.lenders || []}
-                      configuredStages={configuredStages}
-                      onLenderClick={setSelectedLenderName}
-                    />
-                  )}
-
                   <div className="flex justify-end">
                     <Tooltip>
                       <TooltipTrigger asChild>
