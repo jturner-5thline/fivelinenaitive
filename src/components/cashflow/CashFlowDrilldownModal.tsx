@@ -144,6 +144,10 @@ interface DrilldownRow {
   id: string;
   entryId: string;
   date: string;
+  /** Original (un-remapped) occurrence date — needed when writing
+   *  per-occurrence overrides on a recurring entry whose date the user
+   *  has previously moved. */
+  originalDate: string;
   account: string;
   category: string;
   notes: string | null;
