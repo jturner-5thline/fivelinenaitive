@@ -41,6 +41,22 @@ export function useCashInItems() {
     setItems(prev => prev.filter(i => i.id !== id));
   }, []);
 
+  const updateItem = useCallback(
+    async (id: string, patch: Partial<Pick<CashInDbItem, 'amount' | 'target_date' | 'deal_name' | 'fee_type'>>) => {
+      const { error } = await supabase
+        .from('cashflow_cash_in_items')
+        .update(patch)
+        .eq('id', id);
+      if (error) {
+        console.error('Error updating cashflow_cash_in_items', id, error);
+        return false;
+      }
+      await fetchItems();
+      return true;
+    },
+    [fetchItems],
+  );
+
   const toSidebarItems = useCallback(() => {
     return items.map(item => ({
       id: item.id,
@@ -50,5 +66,5 @@ export function useCashInItems() {
     }));
   }, [items]);
 
-  return { items, loading, fetchItems, removeItem, toSidebarItems };
+  return { items, loading, fetchItems, removeItem, updateItem, toSidebarItems };
 }

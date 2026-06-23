@@ -165,7 +165,7 @@ function CashFlowSkeleton() {
 export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
-  const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
+  const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, updateItem: updateCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem, fetchItems: refreshScheduledItems } = useScheduledCashFlows(company?.id);
   // Auto-populated entries — read-only, stacked on top of manual Configure rows.
   const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
@@ -1677,6 +1677,22 @@ export function CashFlowManager() {
               }
               return false;
             }
+            // Cash-in DB rows (id prefix `cashin:`) live in the
+            // `cashflow_cash_in_items` table (Add Cash In modal). Map the
+            // ScheduledCashFlow-shaped patch back to that table's columns.
+            if (id.startsWith('cashin:')) {
+              const realId = id.slice('cashin:'.length);
+              const cashPatch: Record<string, any> = {};
+              if (typeof patch.amount === 'number') cashPatch.amount = patch.amount;
+              if (typeof patch.start_date === 'string') cashPatch.target_date = patch.start_date;
+              if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
+              const ok = await updateCashInDbItem(realId, cashPatch);
+              if (ok) {
+                logAction(`Edited cash-in entry: $${Number(cashPatch.amount ?? 0).toLocaleString()}`);
+                broadcastRef.current('scheduled');
+              }
+              return ok;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             if (!existing) return false;
             pushUndo(`Edit entry: ${existing.category}`);
@@ -1693,6 +1709,12 @@ export function CashFlowManager() {
             // The drilldown will route delete actions through onUpdateScheduledEntry
             // with excluded_dates / end_date so we never reach here for them.
             if (id.startsWith('deal:')) return false;
+            if (id.startsWith('cashin:')) {
+              const realId = id.slice('cashin:'.length);
+              await removeCashInDbItem(realId);
+              broadcastRef.current('scheduled');
+              return true;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
