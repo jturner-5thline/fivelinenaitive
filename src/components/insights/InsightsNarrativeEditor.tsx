@@ -570,7 +570,6 @@ export function InsightsNarrativeEditor({
           role="dialog"
           aria-modal="true"
           aria-label="Attach a file"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setAttachDialog(null); }}
           style={{
             position: 'fixed', inset: 0, zIndex: 1500,
             background: 'rgba(4,10,22,0.65)', backdropFilter: 'blur(4px)',
@@ -578,7 +577,6 @@ export function InsightsNarrativeEditor({
           }}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               width: 'min(92vw, 460px)',
               background: 'rgb(12,22,42)',
@@ -611,23 +609,36 @@ export function InsightsNarrativeEditor({
                 setAttachDialog(null);
                 await uploadFile(f, { insertInline: f.type.startsWith('image/') });
               }}
-              onClick={() => fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? 'rgba(120,170,255,0.7)' : 'rgba(120,170,255,0.3)'}`,
                 background: dragOver ? 'rgba(120,170,255,0.08)' : 'rgba(10,18,36,0.5)',
                 borderRadius: 10,
                 padding: '28px 16px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
-                cursor: 'pointer', textAlign: 'center', transition: 'background 120ms',
+                textAlign: 'center', transition: 'background 120ms',
               }}
             >
               <UploadCloud size={26} style={{ color: 'rgba(160,200,255,0.75)' }} />
               <div style={{ fontSize: 13, fontWeight: 600 }}>Drag &amp; drop a file here</div>
-              <div style={{ fontSize: 12, color: 'rgba(160,200,255,0.65)' }}>
-                or <span style={{ color: 'rgb(140,190,255)', textDecoration: 'underline' }}>browse</span> from your device
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = fileInputRef.current;
+                  if (!input) return;
+                  pendingFileModeRef.current = 'file';
+                  input.accept = '';
+                  input.click();
+                }}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                  background: 'rgba(120,170,255,0.16)', color: 'rgb(210,230,255)',
+                  border: '1px solid rgba(120,170,255,0.35)', cursor: 'pointer',
+                }}
+              >
+                Browse files
+              </button>
               <div style={{ fontSize: 11, color: 'rgba(160,200,255,0.45)', marginTop: 4 }}>
-                Max 15 MB. Images insert inline; other files attach below.
+                Max 15 MB. Files attach below the narrative.
               </div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
