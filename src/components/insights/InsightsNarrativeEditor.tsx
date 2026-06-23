@@ -335,12 +335,12 @@ export function InsightsNarrativeEditor({
     );
   }
 
-  const TbBtn = ({ onClick, active, title, children }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) => (
+  const TbBtn = ({ onClick, active, title, children, preserveFocus = true }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
     <button
       type="button"
       title={title}
       aria-label={title}
-      onMouseDown={e => e.preventDefault()}
+      onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
       onClick={onClick}
       className={cn(
         'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
@@ -431,8 +431,14 @@ export function InsightsNarrativeEditor({
           <TbBtn title="Blockquote" active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()}><Quote size={14} /></TbBtn>
           {sep}
           <TbBtn title="Add link" active={editor.isActive('link')} onClick={onPromptLink}><LinkIcon size={14} /></TbBtn>
-          <TbBtn title="Insert image" onClick={() => imageInputRef.current?.click()}><ImageIcon size={14} /></TbBtn>
-          <TbBtn title="Attach file" onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
+          <TbBtn title="Insert image" preserveFocus={false} onClick={() => {
+            const input = fileInputRef.current;
+            if (!input) return;
+            pendingFileModeRef.current = 'image';
+            input.accept = 'image/*';
+            input.click();
+          }}><ImageIcon size={14} /></TbBtn>
+          <TbBtn title="Attach file" preserveFocus={false} onClick={() => setAttachDialog({ mode: 'file' })}><Paperclip size={14} /></TbBtn>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
@@ -443,28 +449,7 @@ export function InsightsNarrativeEditor({
         </div>
       )}
 
-      {/*
-        File pickers: keep these mounted (even when the chromeless toolbar
-        is hidden) and use an off-screen style instead of the `hidden`
-        attribute. Some Chromium builds refuse to open the native file
-        picker when `.click()` is called on a `display: none` input, which
-        is why the paperclip button appeared to do nothing.
-      */}
-      <input
-        ref={imageInputRef}
-        type="file"
-        accept="image/*"
-        tabIndex={-1}
-        aria-hidden="true"
-        style={{
-          position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
-          overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
-        }}
-        onChange={async e => {
-          const f = e.target.files?.[0]; e.target.value = '';
-          if (f) await uploadFile(f, { insertInline: true });
-        }}
-      />
+      {/* Persistent file picker: always mounted and never display:none. */}
       <input
         ref={fileInputRef}
         type="file"
@@ -475,8 +460,14 @@ export function InsightsNarrativeEditor({
           overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
         }}
         onChange={async e => {
-          const f = e.target.files?.[0]; e.target.value = '';
-          if (f) await uploadFile(f, { insertInline: false });
+          const f = e.target.files?.[0];
+          e.target.value = '';
+          e.currentTarget.accept = '';
+          if (!f) return;
+          const mode = pendingFileModeRef.current;
+          pendingFileModeRef.current = 'file';
+          setAttachDialog(null);
+          await uploadFile(f, { insertInline: mode === 'image' || (mode === 'auto' && f.type.startsWith('image/')) });
         }}
       />
 
