@@ -8,6 +8,7 @@ import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealB
 import { LenderFlagIndicator, LenderNotesPopover } from '@/components/lenders/LenderNotesPopover';
 import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { DealLenderContactPicker } from '@/components/deal/DealLenderContactPicker';
+import { ActiveLendersBulletCard } from '@/components/deal/ActiveLendersBulletCard';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { useRequestStatusChange } from '@/components/deal/StatusChangeGate';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
@@ -3484,6 +3485,17 @@ export default function DealDetail() {
                       />
                     </CardContent>
                   </Card>
+                  )}
+
+                  {/* Active Funding Sources — scannable bullet list, scoped to THIS deal only.
+                      Clicking a name opens the same lender detail dialog used by the
+                      Funding Sources tab via `setSelectedLenderName`. */}
+                  {!isSimplifiedDeal && (
+                    <ActiveLendersBulletCard
+                      lenders={deal.lenders || []}
+                      configuredStages={configuredStages}
+                      onLenderClick={setSelectedLenderName}
+                    />
                   )}
 
                   <div className="flex justify-end">
