@@ -438,11 +438,23 @@ export function InsightsNarrativeEditor({
         </div>
       )}
 
+      {/*
+        File pickers: keep these mounted (even when the chromeless toolbar
+        is hidden) and use an off-screen style instead of the `hidden`
+        attribute. Some Chromium builds refuse to open the native file
+        picker when `.click()` is called on a `display: none` input, which
+        is why the paperclip button appeared to do nothing.
+      */}
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
-        hidden
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{
+          position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+          overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+        }}
         onChange={async e => {
           const f = e.target.files?.[0]; e.target.value = '';
           if (f) await uploadFile(f, { insertInline: true });
@@ -451,7 +463,12 @@ export function InsightsNarrativeEditor({
       <input
         ref={fileInputRef}
         type="file"
-        hidden
+        tabIndex={-1}
+        aria-hidden="true"
+        style={{
+          position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+          overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0,
+        }}
         onChange={async e => {
           const f = e.target.files?.[0]; e.target.value = '';
           if (f) await uploadFile(f, { insertInline: false });
