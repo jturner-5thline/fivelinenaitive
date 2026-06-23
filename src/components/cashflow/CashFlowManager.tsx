@@ -1677,6 +1677,22 @@ export function CashFlowManager() {
               }
               return false;
             }
+            // Cash-in DB rows (id prefix `cashin:`) live in the
+            // `cashflow_cash_in_items` table (Add Cash In modal). Map the
+            // ScheduledCashFlow-shaped patch back to that table's columns.
+            if (id.startsWith('cashin:')) {
+              const realId = id.slice('cashin:'.length);
+              const cashPatch: Record<string, any> = {};
+              if (typeof patch.amount === 'number') cashPatch.amount = patch.amount;
+              if (typeof patch.start_date === 'string') cashPatch.target_date = patch.start_date;
+              if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
+              const ok = await updateCashInDbItem(realId, cashPatch);
+              if (ok) {
+                logAction(`Edited cash-in entry: $${Number(cashPatch.amount ?? 0).toLocaleString()}`);
+                broadcastRef.current('scheduled');
+              }
+              return ok;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             if (!existing) return false;
             pushUndo(`Edit entry: ${existing.category}`);
