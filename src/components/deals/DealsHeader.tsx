@@ -597,6 +597,7 @@ export function DealsHeader() {
         instead of refetching every time. The OverlayLoadingShell only
         ever shows on the very first click before the chunk hydrates.
       */}
+      {tasksMounted && <TasksPrefetcher />}
       {(tasksMounted || isTasksOpen) && (
         <Suspense fallback={isTasksOpen ? <OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} /> : null}>
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
