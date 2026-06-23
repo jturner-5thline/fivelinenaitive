@@ -127,6 +127,28 @@ export function DealsHeader() {
   }, [location.pathname, location.search]);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
+  // Once Tasks has been opened (or pre-mounted on idle), keep the
+  // overlay mounted so subsequent opens are instant — the chunk is
+  // already executed, the React tree is intact, and the underlying
+  // React Query cache for `['my-tasks', …]` stays warm. Mirrors the
+  // InboxDialog pattern above.
+  const [tasksMounted, setTasksMounted] = useState(false);
+  useEffect(() => {
+    if (isTasksOpen || isTasksListOpen) setTasksMounted(true);
+  }, [isTasksOpen, isTasksListOpen]);
+  useEffect(() => {
+    const idle =
+      (window as unknown as {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
+    const handle = idle(() => setTasksMounted(true), { timeout: 3000 });
+    return () => {
+      const cancel =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+      if (cancel) cancel(handle as number);
+      else window.clearTimeout(handle as number);
+    };
+  }, []);
   const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
   const { data: dealAccessRequests = [] } = useDealAccessRequests();
