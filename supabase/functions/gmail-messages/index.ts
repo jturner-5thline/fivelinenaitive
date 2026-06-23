@@ -652,10 +652,18 @@ serve(async (req: Request): Promise<Response> => {
       }
       if (userError || !userData?.user?.id) {
         console.error("[gmail-messages] auth error:", claimsError?.message || userError?.message || "no claims");
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        // Return 200 with a retryable envelope so the client doesn't blank-screen
+        // when the user's access token expired mid-session. The client should
+        // refresh the session and retry.
+        return new Response(
+          JSON.stringify({
+            error: "auth_expired",
+            message: "Session expired. Please refresh and try again.",
+            retryable: true,
+            fallback: true,
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
       userId = userData.user.id;
     }
