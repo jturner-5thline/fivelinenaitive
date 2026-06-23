@@ -136,7 +136,12 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
         source_email_received_at: email.receivedAt || null,
       } as any).select('id').single();
       if (error) throw error;
+      // Close the modal as soon as the local task exists. Follow-up backlink
+      // and external sync work can be slow, so neither owns the submit spinner.
       toast.success('Task created from email');
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      onOpenChange(false);
+
       // Unified deal follow-up backlink (idempotent) — links the task
       // to the originating email so it surfaces on the deal calendar
       // with provenance.
@@ -160,11 +165,6 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
           console.warn('[CreateTaskFromEmail] backlink failed:', e);
         }
       }
-      // Close the modal as soon as the local task exists. External sync can be
-      // slow, so it runs in the background and never owns the submit spinner.
-      toast.success('Task created from email');
-      qc.invalidateQueries({ queryKey: ['tasks'] });
-      onOpenChange(false);
 
       // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
       if (created?.id) {

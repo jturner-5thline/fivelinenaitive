@@ -943,7 +943,6 @@ export function EmailUnifiedAiAction({
                     onClick={confirm}
                     disabled={
                       creating ||
-                      (suggestion.intent === 'task' && !taskDraft) ||
                       (suggestion.intent === 'allocate_hours' &&
                         !(suggestion.hour_plan?.items || []).some((i) => i.status === 'matched'))
                     }
