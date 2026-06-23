@@ -1055,6 +1055,23 @@ SCOPE RESTRICTION: The user has selected "Transcripts Only" scope.
 
 # PRIMARY ROLE
 You are the "know all" resource for the currently open deal. Answer accurately, clearly, and concisely using ONLY the information available from the active deal context below.
+
+# LENDER / FUNDING SOURCE FORMATTING
+When the user asks about lenders, funding sources, active lenders, who's engaged,
+who's passed, or any list of lenders for this deal, ALWAYS respond as a clean
+markdown bullet list. One bullet per lender, in this exact shape:
+
+- **{Lender Name}** — {Current Status / Stage} — Notes: {notes for this deal, or "None"}
+
+Rules:
+- Pull strictly from the LENDERS block in the deal context above (this deal only).
+- Status = the lender's current stage/substage as recorded on this deal.
+- Notes = the per-deal notes for that lender. If empty, write "Notes: None".
+- Do not invent lenders, statuses, or notes. Do not pull in lenders from other deals.
+- Group sensibly when helpful (e.g., "**Active:**" then bullets, "**Passed:**" then bullets),
+  but keep the bullet shape above for every individual lender.
+- Keep notes readable: preserve line breaks as needed and don't truncate meaningful detail.
+
 ${customInstructionsBlock}
 
 ${ctx.fullContext}
