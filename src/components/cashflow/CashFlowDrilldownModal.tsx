@@ -504,7 +504,12 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       } else if (onUpdateEntry) {
         const cfg = row.entry.frequency_config || {};
         const existing = cfg.excluded_dates || [];
-        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        // Exclude by ORIGINAL (un-remapped) occurrence date so we only kill
+        // the specific row the user clicked. Using the effective date would
+        // also delete any *other* occurrence (e.g. a naturally-scheduled
+        // one) that happens to land on the same day after a date move.
+        const key = row.originalDate || row.date;
+        const next = existing.includes(key) ? existing : [...existing, key];
         await onUpdateEntry(row.entryId, {
           frequency_config: { ...cfg, excluded_dates: next },
         });
@@ -536,9 +541,10 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
         // record itself is not modified).
         const cfg = row.entry.frequency_config || {};
         const existing = cfg.excluded_dates || [];
-        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        const key = row.originalDate || row.date;
+        const next = existing.includes(key) ? existing : [...existing, key];
         await onUpdateEntry(row.entryId, {
-          end_date: prevDayString(row.date),
+          end_date: prevDayString(row.originalDate || row.date),
           frequency_config: { ...cfg, excluded_dates: next },
         });
       }
