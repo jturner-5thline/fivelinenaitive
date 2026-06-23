@@ -696,19 +696,6 @@ export default function NaitivePipeline() {
                     </div>
                   ) : (
                     <div className="space-y-6">
-                      <NaitivePipelineFilterBar
-                        filters={naitiveFilters.filters}
-                        options={naitiveFilters.options}
-                        activeCount={naitiveFilters.activeCount}
-                        totalCount={deals.length}
-                        matchedCount={filteredDeals.length}
-                        onSetMulti={naitiveFilters.setMulti}
-                        onSetDateRange={naitiveFilters.setDateRange}
-                        onSetDateField={naitiveFilters.setDateField}
-                        onSetActiveOnly={naitiveFilters.setActiveOnly}
-                        onClearAll={naitiveFilters.clearAll}
-                        showDateRange
-                      />
                       {naitiveFilters.activeCount > 0 && filteredDeals.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
                           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
