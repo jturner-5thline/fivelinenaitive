@@ -31,6 +31,15 @@ export interface FrequencyConfig {
    * `generateOccurrences` skips any date listed here.
    */
   excluded_dates?: string[];
+  /**
+   * Per-occurrence date remap keyed by ORIGINAL occurrence date (YYYY-MM-DD)
+   * with the new effective date as the value. Set when a user edits the date
+   * of a single occurrence via the cell drilldown. `generateOccurrences`
+   * returns the remapped (effective) date instead of the original one, which
+   * moves that single occurrence to a different week without affecting the
+   * underlying recurring schedule.
+   */
+  date_overrides?: Record<string, string>;
 }
 
 export interface ScheduledCashFlow {
@@ -302,9 +311,17 @@ export function getOccurrenceAmount(
   occDate: string,
 ): number {
   const overrides = entry.frequency_config?.amount_overrides;
-  if (overrides && Object.prototype.hasOwnProperty.call(overrides, occDate)) {
-    const v = Number(overrides[occDate]);
-    if (Number.isFinite(v)) return Math.max(0, v);
+  if (overrides) {
+    // Look up by the effective (possibly-remapped) date first, then fall
+    // back to the original date in case the amount override was written
+    // before the user remapped the occurrence's date.
+    const orig = getOriginalOccurrenceDate(entry, occDate);
+    for (const key of [occDate, orig]) {
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) {
+        const v = Number(overrides[key]);
+        if (Number.isFinite(v)) return Math.max(0, v);
+      }
+    }
   }
   const base = Number(entry.amount) || 0;
   return applyVariance(
@@ -312,6 +329,23 @@ export function getOccurrenceAmount(
     entry.frequency_config?.variance_pct,
     `${entry.id || entry.category}:${occDate}`,
   );
+}
+
+/**
+ * Resolve the ORIGINAL occurrence date for a given effective date, using
+ * `frequency_config.date_overrides` (origDate → effectiveDate). When the
+ * effective date has not been remapped, it IS the original.
+ */
+export function getOriginalOccurrenceDate(
+  entry: ScheduledCashFlow,
+  effectiveDate: string,
+): string {
+  const map = entry.frequency_config?.date_overrides;
+  if (!map) return effectiveDate;
+  for (const [orig, mapped] of Object.entries(map)) {
+    if (mapped === effectiveDate) return orig;
+  }
+  return effectiveDate;
 }
 
 function parseDate(s: string): Date {
@@ -346,7 +380,13 @@ export function generateOccurrences(
 
   const cfg = entry.frequency_config || {};
   const excluded = new Set(cfg.excluded_dates || []);
-  const push = (d: string) => { if (!excluded.has(d)) dates.push(d); };
+  const dateOverrides = cfg.date_overrides || {};
+  const remap = (d: string) => (dateOverrides[d] ? dateOverrides[d] : d);
+  // Excluded keys may refer to either the original generated date or the
+  // remapped effective date — honor both so deletions stay sticky.
+  const isExcluded = (d: string) =>
+    excluded.has(d) || excluded.has(remap(d));
+  const push = (d: string) => { if (!isExcluded(d)) dates.push(remap(d)); };
 
   if (entry.frequency_type === 'one_time') {
     if (cfg.one_time_date) {

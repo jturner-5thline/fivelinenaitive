@@ -21,6 +21,7 @@ import {
   CASH_OUT_CATEGORIES,
   CANONICAL_TO_GRID_ROW,
   getOccurrenceAmount,
+  getOriginalOccurrenceDate,
   type ScheduledCashFlow,
   type FrequencyType,
   type FlowType,
@@ -143,6 +144,10 @@ interface DrilldownRow {
   id: string;
   entryId: string;
   date: string;
+  /** Original (un-remapped) occurrence date — needed when writing
+   *  per-occurrence overrides on a recurring entry whose date the user
+   *  has previously moved. */
+  originalDate: string;
   account: string;
   category: string;
   notes: string | null;
@@ -173,9 +178,14 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
      *  the "For this Period Only" scope so we can write a per-occurrence
      *  override on `frequency_config.amount_overrides`. */
     occurrenceDate: string;
+    /** Immutable original occurrence date — the stable key used to write
+     *  per-occurrence date_overrides on recurring entries. */
+    originalOccurrenceDate: string;
     /** Editable date (YYYY-MM-DD). For one-time entries this rewrites
-     *  the entry's `start_date`, which moves the row to the corresponding
-     *  week on the weekly grid. Recurring entries ignore this field. */
+     *  the entry's `start_date`. For recurring entries this writes a
+     *  per-occurrence `date_overrides` entry — moving only that one
+     *  occurrence to a different week. Either way it updates which week
+     *  the row appears in on the weekly grid. */
     date: string;
     /** Snapshot of the original amount when edit started, used to detect
      *  whether the amount actually changed and trigger the scope prompt. */
@@ -255,6 +265,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           id: `${entry.id}-${occ}`,
           entryId: entry.id,
           date: occ,
+          originalDate: getOriginalOccurrenceDate(entry, occ),
           account: entry.account,
           category: cat,
           notes: entry.notes,
@@ -301,6 +312,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: r.entry.frequency_type,
       flow_type: r.entry.flow_type,
       occurrenceDate: r.date,
+      originalOccurrenceDate: r.originalDate,
       date: r.date,
       originalAmount: Math.abs(getOccurrenceAmount(r.entry, r.date)),
     });
@@ -319,14 +331,48 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       frequency_type: editDraft.frequency_type,
       flow_type: editDraft.flow_type,
     };
-    // Date edits only apply to one-time entries — moving a recurring
-    // series' anchor date would change every future occurrence and is
-    // out of scope for the per-row edit affordance.
+    // Date moves are supported for every entry type:
+    //   • one-time entries → rewrite `start_date` (and one_time_date config)
+    //   • recurring entries → write a per-occurrence `date_overrides`
+    //     mapping keyed by the ORIGINAL occurrence date. This moves only
+    //     this one occurrence to the new week without disturbing the
+    //     underlying recurring schedule.
     const isOneTime = editDraft.frequency_type === 'one_time';
-    const dateChanged =
-      isOneTime && /^\d{4}-\d{2}-\d{2}$/.test(editDraft.date) && editDraft.date !== editDraft.occurrenceDate;
+    const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(editDraft.date);
+    const dateChanged = dateValid && editDraft.date !== editDraft.occurrenceDate;
     if (dateChanged) {
-      otherPatch.start_date = editDraft.date;
+      if (isOneTime) {
+        otherPatch.start_date = editDraft.date;
+        otherPatch.end_date = editDraft.date;
+        const baseCfg = items.find((e) => e.id === entryId)?.frequency_config || {};
+        otherPatch.frequency_config = {
+          ...baseCfg,
+          one_time_date: editDraft.date,
+        };
+      } else {
+        const baseEntry = items.find((e) => e.id === entryId);
+        const baseCfg = baseEntry?.frequency_config || {};
+        const existingMap = baseCfg.date_overrides || {};
+        // If this occurrence's amount has a per-period override under the
+        // old effective-date key, re-key it so subsequent lookups by the
+        // new (now-effective) date keep finding it.
+        const amountMap = { ...(baseCfg.amount_overrides || {}) };
+        if (
+          Object.prototype.hasOwnProperty.call(amountMap, editDraft.occurrenceDate) &&
+          editDraft.occurrenceDate !== editDraft.date
+        ) {
+          amountMap[editDraft.date] = amountMap[editDraft.occurrenceDate];
+          delete amountMap[editDraft.occurrenceDate];
+        }
+        otherPatch.frequency_config = {
+          ...baseCfg,
+          date_overrides: {
+            ...existingMap,
+            [editDraft.originalOccurrenceDate]: editDraft.date,
+          },
+          amount_overrides: amountMap,
+        };
+      }
     }
     const amountChanged = Math.abs(amt - editDraft.originalAmount) > 0.0049;
     const isRecurring = editDraft.frequency_type !== 'one_time';
@@ -373,12 +419,20 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     let patch: Partial<ScheduledCashFlow>;
     if (scope === 'this_period') {
       const existing = entry.frequency_config?.amount_overrides || {};
+      // Merge any pending date_overrides (and other frequency_config edits)
+      // that came in via `otherPatch` so we don't clobber a same-save date move.
+      const otherCfg = (otherPatch.frequency_config as any) || {};
       patch = {
         ...otherPatch,
         // Keep recurring base amount unchanged; pin this single occurrence.
         frequency_config: {
           ...(entry.frequency_config || {}),
-          amount_overrides: { ...existing, [occurrenceDate]: newAmount },
+          ...otherCfg,
+          amount_overrides: {
+            ...existing,
+            ...(otherCfg.amount_overrides || {}),
+            [occurrenceDate]: newAmount,
+          },
         },
       };
     } else {
@@ -646,17 +700,20 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                     return (
                       <tr key={r.id} className="border-t border-border bg-muted/30">
                         <td className="px-3 py-2 whitespace-nowrap align-top">
-                          {editDraft.frequency_type === 'one_time' ? (
-                            <input
-                              type="date"
-                              value={editDraft.date}
-                              onChange={(e) => setEditDraft((d) => d && { ...d, date: e.target.value })}
-                              className="h-8 w-[140px] rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                              title="Change the date to move this entry to a different week"
-                            />
-                          ) : (
-                            <div title="Date editing is only available for one-time entries">
-                              {formatNiceDate(r.date)}
+                          <input
+                            type="date"
+                            value={editDraft.date}
+                            onChange={(e) => setEditDraft((d) => d && { ...d, date: e.target.value })}
+                            className="h-8 w-[140px] rounded-md border border-border bg-background px-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            title={
+                              editDraft.frequency_type === 'one_time'
+                                ? 'Change the date to move this entry to a different week'
+                                : 'Change the date to move only this occurrence to a different week (the recurring schedule is unchanged)'
+                            }
+                          />
+                          {editDraft.frequency_type !== 'one_time' && (
+                            <div className="mt-1 text-[10px] text-muted-foreground">
+                              Moves only this occurrence
                             </div>
                           )}
                         </td>
