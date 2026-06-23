@@ -372,12 +372,6 @@ export function generateOccurrences(
   rangeEnd: Date,
 ): string[] {
   const dates: string[] = [];
-  const start = entry.start_date ? parseDate(entry.start_date) : rangeStart;
-  const end = entry.end_date ? parseDate(entry.end_date) : rangeEnd;
-  const effectiveStart = start > rangeStart ? start : rangeStart;
-  const effectiveEnd = end < rangeEnd ? end : rangeEnd;
-  if (effectiveStart > effectiveEnd) return dates;
-
   const cfg = entry.frequency_config || {};
   const excluded = new Set(cfg.excluded_dates || []);
   const dateOverrides = cfg.date_overrides || {};
@@ -389,12 +383,25 @@ export function generateOccurrences(
   const push = (d: string) => { if (!isExcluded(d)) dates.push(remap(d)); };
 
   if (entry.frequency_type === 'one_time') {
-    if (cfg.one_time_date) {
-      const d = parseDate(cfg.one_time_date);
-      if (d >= rangeStart && d <= rangeEnd) push(cfg.one_time_date);
+    // One-time entries are anchored ONLY by `one_time_date` (or `start_date`
+    // as a fallback). We deliberately ignore `start_date`/`end_date` gating
+    // here because legacy rows sometimes drift out of sync with the explicit
+    // one_time_date (e.g. Teresa's commission has start_date 2026-07-10 but
+    // one_time_date 2026-06-26). Honoring the explicit one_time_date prevents
+    // the row from disappearing from its real week.
+    const target = cfg.one_time_date || entry.start_date;
+    if (target) {
+      const d = parseDate(target);
+      if (d >= rangeStart && d <= rangeEnd) push(target);
     }
     return dates;
   }
+
+  const start = entry.start_date ? parseDate(entry.start_date) : rangeStart;
+  const end = entry.end_date ? parseDate(entry.end_date) : rangeEnd;
+  const effectiveStart = start > rangeStart ? start : rangeStart;
+  const effectiveEnd = end < rangeEnd ? end : rangeEnd;
+  if (effectiveStart > effectiveEnd) return dates;
 
   if (entry.frequency_type === 'weekly') {
     const dow = cfg.day_of_week ?? 1;
