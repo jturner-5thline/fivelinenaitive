@@ -34,13 +34,33 @@ serve(async (req) => {
     const { action, dealId, emailData, threadData, draftType, customInstructions, optionCount, singleTone, fastModel, dealContextHint } = requestBody;
     const attachments = Array.isArray(requestBody?.attachments) ? requestBody.attachments : [];
 
-    // Validate input lengths
-    const threadStr = JSON.stringify(threadData || {});
-    if (threadStr.length > 50000) {
-      return new Response(JSON.stringify({ error: "Thread data too large" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Validate input lengths. Instead of failing the request when the
+    // thread payload is huge (long quoted history, many messages, etc.),
+    // trim it in-place so the model still gets the most recent context.
+    const MAX_THREAD_CHARS = 50000;
+    const MAX_BODY_CHARS = 4000;
+    if (threadData && Array.isArray(threadData.emails)) {
+      // Cap each message body first.
+      for (const e of threadData.emails) {
+        if (e && typeof e.body_preview === "string" && e.body_preview.length > MAX_BODY_CHARS) {
+          e.body_preview = e.body_preview.slice(0, MAX_BODY_CHARS) + "… [truncated]";
+        }
+      }
+      // Then drop oldest messages until under the size budget.
+      while (
+        JSON.stringify(threadData).length > MAX_THREAD_CHARS &&
+        threadData.emails.length > 1
+      ) {
+        threadData.emails.pop();
+      }
+      // Last resort: if a single message is still over budget, hard-truncate.
+      if (JSON.stringify(threadData).length > MAX_THREAD_CHARS && threadData.emails[0]) {
+        const only = threadData.emails[0];
+        if (typeof only.body_preview === "string") {
+          only.body_preview = only.body_preview.slice(0, MAX_BODY_CHARS) + "… [truncated]";
+        }
+        threadData.emails = [only];
+      }
     }
 
     // ─── Assemble deal context ──────────────────────────────────
