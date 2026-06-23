@@ -933,6 +933,62 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     if (hasMoreSent && !sentNextToken) setHasMoreSent(false);
     if (!inboxHasUpstreamMore && !sentHasUpstreamMore && !canCacheFallback) return;
     setIsLoadingMore(true);
+
+    // ── Instant-cache path ─────────────────────────────────────────
+    // Serve older rows from the local email_cache immediately so the
+    // user sees a populated list within ~50ms instead of waiting on the
+    // Gmail/Nylas round-trip (which can take several seconds). Then
+    // kick off upstream pagination in the background to backfill any
+    // messages that aren't in the cache yet.
+    if (canCacheFallback) {
+      try {
+        const cachedOlder = await loadOlderFromCache(oldestReceivedAt, 200);
+        if (isMountedRef.current && cachedOlder.length) {
+          setInboxMessages((prev) => {
+            const next = mergeUniqueById(prev, cachedOlder);
+            useInboxCacheStore.setState({ inboxMessages: next });
+            return next;
+          });
+        } else if (isMountedRef.current && !cachedOlder.length && !inboxHasUpstreamMore && !sentHasUpstreamMore) {
+          setHasMoreCache(false);
+        }
+      } catch (err) {
+        console.error('[InboxDialog] cache load failed', err);
+      }
+      // Drop the spinner now — UI is already showing older messages.
+      if (isMountedRef.current) setIsLoadingMore(false);
+
+      // Background upstream backfill (fire-and-forget). Updates state
+      // when it returns; never re-enters the spinner path.
+      if (inboxHasUpstreamMore || sentHasUpstreamMore) {
+        void (async () => {
+          try {
+            const inboxPromise = inboxHasUpstreamMore
+              ? fetchPage({ labelIds: ['INBOX'], pageToken: inboxNextToken, maxResults: 500 })
+              : Promise.resolve(null);
+            const sentPromise = sentHasUpstreamMore
+              ? fetchPage({ labelIds: ['SENT'], pageToken: sentNextToken, maxResults: 500 })
+              : Promise.resolve(null);
+            const [inboxPage, sentPage] = await Promise.all([inboxPromise, sentPromise]);
+            if (!isMountedRef.current) return;
+            if (inboxPage && !inboxPage.rateLimited) {
+              setInboxMessages((prev) => mergeUniqueById(prev, inboxPage.messages));
+              setInboxNextToken(inboxPage.nextPageToken);
+              setHasMoreInbox(!!inboxPage.nextPageToken);
+            }
+            if (sentPage && !sentPage.rateLimited) {
+              setSentMessages((prev) => mergeUniqueById(prev, sentPage.messages));
+              setSentNextToken(sentPage.nextPageToken);
+              setHasMoreSent(!!sentPage.nextPageToken);
+            }
+          } catch (err) {
+            console.error('[InboxDialog] background backfill failed', err);
+          }
+        })();
+      }
+      return;
+    }
+
     try {
       // Fire inbox + sent in parallel (no artificial delay) and bump
       // page size to the Gmail max so each "Load more" returns far more
