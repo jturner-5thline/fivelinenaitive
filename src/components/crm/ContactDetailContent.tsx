@@ -242,22 +242,25 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
         {headerExtra && <div className="pt-3">{headerExtra}</div>}
 
-        {/* First viewport: 30 / 70 split */}
-        <div className="grid grid-cols-12 gap-6 pt-6">
-          {/* Left summary — sticky */}
-          <aside className="col-span-12 lg:col-span-4">
-            <div className="lg:sticky lg:top-32 space-y-5">
-              <div className="flex items-start gap-3">
-                <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center text-primary text-lg font-semibold flex-shrink-0">
-                  {initials || <User className="h-6 w-6" />}
+        {/* Two-column layout: compact left rail + flexible right column */}
+        <div
+          className="grid gap-5 pt-5 grid-cols-1 lg:[grid-template-columns:minmax(320px,420px)_minmax(0,1fr)] items-start"
+        >
+          {/* LEFT RAIL — contact profile, core fields, related records, additional details */}
+          <aside className="space-y-3 min-w-0 lg:sticky lg:top-32">
+            {/* Profile card with all core editable fields */}
+            <div className="rounded-lg border border-border/60 bg-card p-4 space-y-3 min-w-0">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-base font-semibold flex-shrink-0">
+                  {initials || <User className="h-5 w-5" />}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-base font-semibold leading-tight truncate">{contact.full_name || 'Unnamed Contact'}</p>
-                  {contact.job_title && <p className="text-sm text-muted-foreground truncate">{contact.job_title}</p>}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold leading-tight truncate">{contact.full_name || 'Unnamed Contact'}</p>
+                  {contact.job_title && <p className="text-xs text-muted-foreground truncate">{contact.job_title}</p>}
                   {crmCompany?.name && (
                     <button
                       onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
-                      className="text-sm text-primary hover:underline truncate block"
+                      className="text-xs text-primary hover:underline truncate block"
                     >
                       {crmCompany.name}
                     </button>
@@ -265,124 +268,184 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 </div>
               </div>
 
-              <dl className="space-y-1.5">
-                <SummaryRow label="Preferred" value={contact.preferred_channel} />
-                <SummaryRow label="Email" value={contact.email} href={contact.email ? `mailto:${contact.email}` : undefined} />
-                <SummaryRow label="Phone" value={phonePrimary} href={phonePrimary ? `tel:${phonePrimary}` : undefined} />
-                <SummaryRow label="Location" value={location} icon={MapPin} />
-                <SummaryRow label="Owner" value={ownerName} />
-                {contact.linkedin_url && <SummaryRow label="LinkedIn" value="View profile" href={contact.linkedin_url} icon={Linkedin} />}
-                {contact.website_url && <SummaryRow label="Website" value={contact.website_url.replace(/^https?:\/\//, '')} href={contact.website_url} icon={Globe} />}
-              </dl>
-
               {contact.tags && contact.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {contact.tags.map(tag => <Badge key={tag} variant="outline" className="text-[10px] font-normal">{tag}</Badge>)}
                 </div>
               )}
 
-              <div>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Linked</p>
-                <ul className="space-y-1">
-                  {crmCompany && (
-                    <li>
-                      <button
-                        onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
-                        className="flex items-center gap-2 w-full text-left py-1 text-sm hover:text-primary"
-                      >
-                        <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="truncate">{crmCompany.name}</span>
-                      </button>
-                    </li>
+              <Separator />
+
+              {/* Core editable fields — single column for tight rail */}
+              <div className="space-y-2 text-sm min-w-0">
+                <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
+                <EditableField label="Last Name" type="text" value={contact.last_name} onSave={(v) => handleQuickUpdate('last_name', v)} />
+                <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+
+                {/* Company link (read-only display; managed via Related Records) */}
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Company</p>
+                  {crmCompany ? (
+                    <button
+                      onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
+                      className="text-sm text-primary hover:underline truncate text-left w-full"
+                    >
+                      {crmCompany.name}
+                    </button>
+                  ) : (
+                    <button onClick={() => setShowLinkCompany(true)} className="text-xs text-muted-foreground hover:text-primary">
+                      Link a company
+                    </button>
                   )}
-                  {contactDeals.slice(0, 4).map((cd: any) => (
-                    <li key={cd.id}>
-                      <button
-                        onClick={() => navigate(`/deal/${cd.deal?.id}`)}
-                        className="flex items-center justify-between w-full gap-2 text-left py-1 text-sm hover:text-primary"
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <Briefcase className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                          <span className="truncate">{cd.deal?.company || 'Deal'}</span>
-                        </span>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">{cd.deal?.stage || ''}</span>
-                      </button>
-                    </li>
-                  ))}
-                  {!crmCompany && contactDeals.length === 0 && (
-                    <li className="text-xs text-muted-foreground">No linked records</li>
-                  )}
-                </ul>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
+                  <Select
+                    value={contact.owner_user_id || 'unassigned'}
+                    onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <EditableField label="Preferred Channel" type="text" value={contact.preferred_channel} onSave={(v) => handleQuickUpdate('preferred_channel', v)} />
+                <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
+                <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
+                <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Location</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
+                    <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
+                  </div>
+                  <div className="mt-2">
+                    <EditableField label="Country" type="text" value={(contact as any).country} onSave={(v) => handleQuickUpdate('country', v)} />
+                  </div>
+                </div>
+
+                <EditableField label="Website" type="url" asLink value={contact.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
+
+                <LabeledSelect label="Lifecycle Stage" value={contact.lifecycle_stage} onChange={v => handleQuickUpdate('lifecycle_stage', v)} options={LIFECYCLE_STAGES} />
+                <LabeledSelect label="Status" value={contact.status} onChange={v => handleQuickUpdate('status', v)} options={CONTACT_STATUSES} />
+                <LabeledSelect label="Buying Role" value={contact.buying_role || ''} onChange={v => handleQuickUpdate('buying_role', v)} options={BUYING_ROLES} placeholder="Select role" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
+                  <ContactTypeSelect value={(contact as any).contact_type} onChange={(v) => handleQuickUpdate('contact_type', v)} triggerClassName="h-8 text-xs" />
+                </div>
               </div>
+            </div>
+
+            {/* Related Records — compact card */}
+            <div className="rounded-lg border border-border/60 bg-card p-3 space-y-3 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Users className="h-3 w-3" /> Related Records
+                </p>
+              </div>
+
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Company</p>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkCompany(true)}>
+                    <Plus className="h-3 w-3 mr-0.5" /> {crmCompany ? 'Change' : 'Link'}
+                  </Button>
+                </div>
+                {crmCompany ? (
+                  <button
+                    onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
+                    className="w-full flex items-center justify-between p-2 rounded-md border border-border/60 hover:bg-muted/30 text-left transition-colors min-w-0"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-primary truncate">{crmCompany.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{crmCompany.industry || crmCompany.domain || ''}</p>
+                    </div>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); unlinkFromCompany.mutate({ contactId: contact.id, companyId: crmCompany.id }); }}
+                      className="h-5 w-5 flex items-center justify-center rounded hover:bg-muted flex-shrink-0"
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                  </button>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">No company linked</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Deals ({contactDeals.length})</p>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkDeal(true)}>
+                    <Plus className="h-3 w-3 mr-0.5" /> Link
+                  </Button>
+                </div>
+                {contactDeals.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">No associated deals</p>
+                ) : (
+                  <ul className="divide-y divide-border/60 border border-border/60 rounded-md overflow-hidden">
+                    {contactDeals.map((cd: any) => (
+                      <li key={cd.id} className="flex items-center justify-between gap-2 p-2 hover:bg-muted/30 transition-colors min-w-0">
+                        <button onClick={() => navigate(`/deal/${cd.deal?.id}`)} className="flex-1 min-w-0 text-left">
+                          <p className="text-xs font-medium text-primary truncate">{cd.deal?.company || 'Deal'}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {cd.deal?.stage || '—'}{cd.deal?.value ? ` · $${Number(cd.deal.value).toLocaleString()}` : ''}
+                          </p>
+                        </button>
+                        <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => unlinkFromDeal.mutate({ contactId: contact.id, dealId: cd.deal?.id })}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Details — accordion */}
+            <div className="rounded-lg border border-border/60 bg-card px-3 py-1 min-w-0">
+              <DetailGroup title="Additional Details">
+                <div className="space-y-3 text-sm min-w-0">
+                  <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
+                  <EditableField label="LinkedIn URL" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
+                  <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
+                  <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
+                  <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
+                  {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
+                    <div className="space-y-2 pt-1 border-t border-border/40">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Custom Fields</p>
+                      {Object.entries(contact.custom_fields).map(([key, value]) => (
+                        <EditableField
+                          key={key}
+                          label={key}
+                          type="text"
+                          value={value == null ? '' : String(value)}
+                          onSave={(v) => handleQuickUpdate('custom_fields', { ...(contact.custom_fields || {}), [key]: v })}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <div className="pt-1 border-t border-border/40">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Internal Metadata</p>
+                    <DynamicFieldRenderer
+                      objectType="contact"
+                      record={contact}
+                      onFieldUpdate={(field, value) => handleQuickUpdate(field, value)}
+                    />
+                  </div>
+                </div>
+              </DetailGroup>
             </div>
           </aside>
 
-          {/* Right overview: what matters now */}
-          <section className="col-span-12 lg:col-span-8 space-y-4">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">What matters now</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <OverviewBlock
-                title="Latest activity"
-                empty="No activity logged yet"
-                onClick={() => goAnchor('activity-timeline')}
-              >
-                {latestActivity && (
-                  <>
-                    <p className="text-sm font-medium truncate">{latestActivity.subject || latestActivity.activity_type}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(latestActivity.occurred_at), 'MMM d, yyyy · h:mm a')}
-                    </p>
-                  </>
-                )}
-              </OverviewBlock>
-
-              <OverviewBlock
-                title="Next step"
-                empty="No upcoming follow-up"
-                onClick={() => setShowCreateTask(true)}
-              >
-                <p className="text-sm text-muted-foreground">Open tasks below — add a follow-up to surface it here.</p>
-              </OverviewBlock>
-
-              <OverviewBlock
-                title={activeDeal ? 'Active deal' : 'Linked company'}
-                empty={crmCompany ? undefined : 'No company or deal linked'}
-                onClick={() => {
-                  if (activeDeal?.deal?.id) navigate(`/deal/${activeDeal.deal.id}`);
-                  else if (crmCompany?.id) navigate(`/crm-companies/${crmCompany.id}`);
-                }}
-              >
-                {activeDeal ? (
-                  <>
-                    <p className="text-sm font-medium truncate">{activeDeal.deal?.company}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {activeDeal.deal?.stage}{activeDeal.deal?.value ? ` · $${Number(activeDeal.deal.value).toLocaleString()}` : ''}
-                    </p>
-                  </>
-                ) : crmCompany ? (
-                  <>
-                    <p className="text-sm font-medium truncate">{crmCompany.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{crmCompany.industry || crmCompany.domain || ''}</p>
-                  </>
-                ) : null}
-              </OverviewBlock>
-
-              <OverviewBlock
-                title="Recent note"
-                empty="No notes yet"
-                onClick={() => goAnchor('notes')}
-              >
-                {latestNote && (
-                  <>
-                    <p className="text-sm line-clamp-2">{latestNote.body || latestNote.subject}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      {format(new Date(latestNote.occurred_at), 'MMM d, yyyy')}
-                    </p>
-                  </>
-                )}
-              </OverviewBlock>
-            </div>
-
+          {/* RIGHT COLUMN — activity, tasks, notes, attachments, AI */}
+          <section className="space-y-4 min-w-0">
             <ContactTasksCard
               contactId={contact.id}
               contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Contact'}
@@ -392,233 +455,76 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             />
 
             <ContactFieldSuggestions contactId={contact.id} companyId={(contact as any)?.org_company_id} />
-          </section>
-        </div>
 
-        {/* Full-width anchored sections */}
-        <div className="pt-10 space-y-10">
-          {/* Contact Info */}
-          <Section id="contact-info" title="Contact Info" icon={User}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-              <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
-              <EditableField label="Last Name" type="text" value={contact.last_name} onSave={(v) => handleQuickUpdate('last_name', v)} />
-              <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
-              <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
-              <EditableField label="Work Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
-              <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
-              <EditableField label="Office Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
-              <EditableField label="Preferred Channel" type="text" value={contact.preferred_channel} onSave={(v) => handleQuickUpdate('preferred_channel', v)} />
-            </div>
-
-            <Collapsible open={showMoreContactInfo} onOpenChange={setShowMoreContactInfo} className="mt-3">
-              <CollapsibleTrigger className="text-xs text-primary hover:underline flex items-center gap-1">
-                <ChevronDown className={cn('h-3 w-3 transition-transform', showMoreContactInfo && 'rotate-180')} />
-                {showMoreContactInfo ? 'Show less' : 'Show more'}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                  <EditableField label="Website / Domain" type="url" asLink value={contact.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
-                  <EditableField label="LinkedIn URL" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
-                  <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
-                  <EditableField label="City" type="text" value={(contact as any).city} onSave={(v) => handleQuickUpdate('city', v)} />
-                  <EditableField label="State" type="text" value={(contact as any).state} onSave={(v) => handleQuickUpdate('state', v)} />
-                  <EditableField label="Country" type="text" value={(contact as any).country} onSave={(v) => handleQuickUpdate('country', v)} />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </Section>
-
-          {/* Related Records */}
-          <Section id="related-records" title="Related Records" icon={Users}>
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Company {(contact as any)?.org_company_id === 'c4753066-0da9-4d87-8858-7eb1adecd173' && (
-                      <span className="font-normal" title="Company auto-linked based on email domain.">(auto-linked)</span>
-                    )}
-                  </p>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowLinkCompany(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> {crmCompany ? 'Change' : 'Link'}
-                  </Button>
-                </div>
-                {crmCompany ? (
-                  <button
-                    onClick={() => navigate(`/crm-companies/${crmCompany.id}`)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-md border border-border/60 hover:bg-muted/30 text-left transition-colors"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-primary truncate">{crmCompany.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{crmCompany.industry || crmCompany.domain || ''}</p>
-                    </div>
-                    <Button asChild variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={(e) => { e.stopPropagation(); unlinkFromCompany.mutate({ contactId: contact.id, companyId: crmCompany.id }); }}>
-                      <span><X className="h-3 w-3" /></span>
-                    </Button>
-                  </button>
-                ) : (
-                  <p className="text-xs text-muted-foreground py-2">No company linked</p>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-muted-foreground">Deals ({contactDeals.length})</p>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowLinkDeal(true)}>
-                    <Plus className="h-3 w-3 mr-1" /> Link
-                  </Button>
-                </div>
-                {contactDeals.length === 0 ? (
-                  <p className="text-xs text-muted-foreground py-2">No associated deals</p>
-                ) : (
-                  <ul className="divide-y divide-border/60 border border-border/60 rounded-md overflow-hidden">
-                    {contactDeals.map((cd: any) => (
-                      <li key={cd.id} className="flex items-center justify-between gap-3 p-2.5 hover:bg-muted/30 transition-colors">
-                        <button onClick={() => navigate(`/deal/${cd.deal?.id}`)} className="flex-1 min-w-0 text-left">
-                          <p className="text-sm font-medium text-primary truncate">{cd.deal?.company || 'Deal'}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {cd.deal?.stage || '—'}{cd.deal?.value ? ` · $${Number(cd.deal.value).toLocaleString()}` : ''}
-                          </p>
-                        </button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0" onClick={() => unlinkFromDeal.mutate({ contactId: contact.id, dealId: cd.deal?.id })}>
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </Section>
-
-          {/* Activity Timeline */}
-          <Section
-            id="activity-timeline"
-            title="Activity Timeline"
-            icon={ActivityIcon}
-            right={
-              <Select value={activityFilter} onValueChange={setActivityFilter}>
-                <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="email">Email</SelectItem>
-                  <SelectItem value="call">Call</SelectItem>
-                  <SelectItem value="meeting">Meeting</SelectItem>
-                  <SelectItem value="note">Note</SelectItem>
-                  <SelectItem value="task">Task</SelectItem>
-                </SelectContent>
-              </Select>
-            }
-          >
-            {filteredActivities.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No activities yet</p>
-            ) : (
-              <div className="space-y-6">
-                <ActivityGroup label="Today" items={grouped.today} ownerName={ownerName} />
-                <ActivityGroup label="This Week" items={grouped.thisWeek} ownerName={ownerName} />
-                <ActivityGroup label="Earlier" items={grouped.earlier} ownerName={ownerName} />
-              </div>
-            )}
-            <ClaapCallsSection entityType="contact" entityId={contact.id} entityEmail={contact.email} />
-          </Section>
-
-          {/* Notes */}
-          <Section id="notes" title="Notes" icon={MessageSquare}>
-            <div className="flex gap-2">
-              <Textarea
-                placeholder="Add a note…"
-                value={newNote}
-                onChange={e => setNewNote(e.target.value)}
-                className="text-sm min-h-[64px]"
-              />
-              <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="mt-4 space-y-3">
-              {contact.description && (
-                <EditableField
-                  label="Pinned"
-                  type="textarea"
-                  value={contact.description}
-                  placeholder="Add notes about this contact…"
-                  onSave={(v) => handleQuickUpdate('description', v)}
-                />
-              )}
-              {activities.filter((a: any) => a.activity_type === 'note').length === 0 && !contact.description ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No notes yet</p>
+            {/* Activity Timeline */}
+            <Section
+              id="activity-timeline"
+              title="Activity Timeline"
+              icon={ActivityIcon}
+              right={
+                <Select value={activityFilter} onValueChange={setActivityFilter}>
+                  <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="call">Call</SelectItem>
+                    <SelectItem value="meeting">Meeting</SelectItem>
+                    <SelectItem value="note">Note</SelectItem>
+                    <SelectItem value="task">Task</SelectItem>
+                  </SelectContent>
+                </Select>
+              }
+            >
+              {filteredActivities.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">No activities yet</p>
               ) : (
-                <NotesList notes={activities.filter((a: any) => a.activity_type === 'note')} ownerName={ownerName} />
-              )}
-            </div>
-          </Section>
-
-          {/* Attachments */}
-          <Section id="attachments" title="Attachments" icon={Paperclip}>
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              No attachments linked to this contact.
-            </p>
-          </Section>
-
-          {/* Additional Details */}
-          <Section id="additional-details" title="Additional Details">
-            <div className="space-y-2">
-              <DetailGroup title="Lifecycle & Ownership" defaultOpen>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                  <LabeledSelect label="Lifecycle Stage" value={contact.lifecycle_stage} onChange={v => handleQuickUpdate('lifecycle_stage', v)} options={LIFECYCLE_STAGES} />
-                  <LabeledSelect label="Status" value={contact.status} onChange={v => handleQuickUpdate('status', v)} options={CONTACT_STATUSES} />
-                  <LabeledSelect label="Buying Role" value={contact.buying_role || ''} onChange={v => handleQuickUpdate('buying_role', v)} options={BUYING_ROLES} placeholder="Select role" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
-                    <ContactTypeSelect value={(contact as any).contact_type} onChange={(v) => handleQuickUpdate('contact_type', v)} triggerClassName="h-8 text-xs" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
-                    <Select
-                      value={contact.owner_user_id || 'unassigned'}
-                      onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
-                    >
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-6">
+                  <ActivityGroup label="Today" items={grouped.today} ownerName={ownerName} />
+                  <ActivityGroup label="This Week" items={grouped.thisWeek} ownerName={ownerName} />
+                  <ActivityGroup label="Earlier" items={grouped.earlier} ownerName={ownerName} />
                 </div>
-              </DetailGroup>
-
-              <DetailGroup title="Source">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                  <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
-                  <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
-                </div>
-              </DetailGroup>
-
-              {contact.custom_fields && Object.keys(contact.custom_fields).length > 0 && (
-                <DetailGroup title="Custom Fields">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                    {Object.entries(contact.custom_fields).map(([key, value]) => (
-                      <EditableField
-                        key={key}
-                        label={key}
-                        type="text"
-                        value={value == null ? '' : String(value)}
-                        onSave={(v) => handleQuickUpdate('custom_fields', { ...(contact.custom_fields || {}), [key]: v })}
-                      />
-                    ))}
-                  </div>
-                </DetailGroup>
               )}
+              <ClaapCallsSection entityType="contact" entityId={contact.id} entityEmail={contact.email} />
+            </Section>
 
-              <DetailGroup title="Internal Metadata">
-                <DynamicFieldRenderer
-                  objectType="contact"
-                  record={contact}
-                  onFieldUpdate={(field, value) => handleQuickUpdate(field, value)}
+            {/* Notes */}
+            <Section id="notes" title="Notes" icon={MessageSquare}>
+              <div className="flex gap-2">
+                <Textarea
+                  placeholder="Add a note…"
+                  value={newNote}
+                  onChange={e => setNewNote(e.target.value)}
+                  className="text-sm min-h-[64px]"
                 />
-              </DetailGroup>
-            </div>
-          </Section>
+                <Button size="sm" onClick={handleAddNote} disabled={!newNote.trim()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="mt-4 space-y-3">
+                {contact.description && (
+                  <EditableField
+                    label="Pinned"
+                    type="textarea"
+                    value={contact.description}
+                    placeholder="Add notes about this contact…"
+                    onSave={(v) => handleQuickUpdate('description', v)}
+                  />
+                )}
+                {activities.filter((a: any) => a.activity_type === 'note').length === 0 && !contact.description ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No notes yet</p>
+                ) : (
+                  <NotesList notes={activities.filter((a: any) => a.activity_type === 'note')} ownerName={ownerName} />
+                )}
+              </div>
+            </Section>
+
+            {/* Attachments */}
+            <Section id="attachments" title="Attachments" icon={Paperclip}>
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                No attachments linked to this contact.
+              </p>
+            </Section>
+          </section>
         </div>
       </div>
 
