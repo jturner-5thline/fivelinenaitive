@@ -405,15 +405,24 @@ function ReasonPie({ data, emptyText, onSliceClick }: {
   );
 }
 
-function StatCard({ label, value, prev, isPercent }: {
-  label: string; value: number; prev: number; isPercent?: boolean;
+function StatCard({ label, value, prev, isPercent, onClick }: {
+  label: string; value: number; prev: number; isPercent?: boolean; onClick?: () => void;
 }) {
   const delta = value - prev;
   const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
   const color = delta > 0 ? 'text-green-600' : delta < 0 ? 'text-destructive' : 'text-muted-foreground';
   const fmt = (n: number) => (isPercent ? `${n}%` : `${n}`);
   return (
-    <Card className="bg-card border-border">
+    <Card
+      className={cn(
+        'bg-card border-border',
+        onClick && 'cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors',
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+    >
       <CardContent className="p-4">
         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">
           {label}
@@ -600,8 +609,9 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         <EmptyStatCard />
         <StatCard
           label="Qual Calls"
-          value={qualCallsCurrent.data ?? 0}
-          prev={qualCallsPrevious.data ?? 0}
+          value={qualCallsCurrent.data?.count ?? 0}
+          prev={qualCallsPrevious.data?.count ?? 0}
+          onClick={() => setQualCallsOpen(true)}
         />
         <EmptyStatCard />
         <EmptyStatCard />
