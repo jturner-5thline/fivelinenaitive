@@ -345,12 +345,23 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
       }
     }
     setBusyId(entryId);
-    const ok = await onUpdateEntry(entryId, {
-      ...otherPatch,
-      amount: amt,
-    });
-    setBusyId(null);
-    if (ok) cancelEdit();
+    try {
+      const ok = await onUpdateEntry(entryId, {
+        ...otherPatch,
+        amount: amt,
+      });
+      if (ok) {
+        toast.success(dateChanged ? 'Entry updated — moved to new week' : 'Entry updated');
+        cancelEdit();
+      } else {
+        toast.error('Could not save changes');
+      }
+    } catch (err) {
+      console.error('[CashFlowDrilldownModal] saveEdit failed', err);
+      toast.error('Could not save changes');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   /** Resolve the pending scope prompt by writing the patch through the same
