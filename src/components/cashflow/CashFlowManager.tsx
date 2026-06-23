@@ -165,7 +165,7 @@ function CashFlowSkeleton() {
 export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
-  const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
+  const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, updateItem: updateCashInDbItem, toSidebarItems } = useCashInItems();
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem, fetchItems: refreshScheduledItems } = useScheduledCashFlows(company?.id);
   // Auto-populated entries — read-only, stacked on top of manual Configure rows.
   const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
