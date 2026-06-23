@@ -1681,7 +1681,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
 
       {/* Push to FLEx Confirmation Dialog */}
       <AlertDialog open={showFlexConfirmDialog} onOpenChange={setShowFlexConfirmDialog}>
-        <AlertDialogContent className="max-w-2xl">
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <Eye className="h-5 w-5" />
@@ -1692,7 +1692,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
             </AlertDialogDescription>
           </AlertDialogHeader>
           
-          <ScrollArea className="max-h-[60vh] pr-4">
+          <ScrollArea className="flex-1 min-h-0 pr-4">
             <div className="space-y-4">
               {/* Company Information */}
               <div className="rounded-lg border bg-muted/30 p-4">
