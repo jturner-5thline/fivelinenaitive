@@ -26,6 +26,7 @@ import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
+import { useMyTasks } from '@/hooks/useTasks';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
@@ -54,6 +55,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Dashboard: loadDashboard,
   Calendar: loadCalendar,
   Mail: loadMail,
+  Tasks: loadTasks,
   'Approval Queue': loadTasks,
   'Daily Rundown': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
@@ -61,6 +63,16 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   "My Daily Rundown": loadDailyBriefing,
   'Deal Rundown': loadDealsOverlay,
 };
+
+// Tiny hidden component that subscribes to the same React Query that
+// the Tasks page uses, so the cache is fully warm before the user
+// opens the popup. Mounted on idle (see `tasksMounted`) — when the
+// user finally opens Tasks, useMyTasks inside the page reads from
+// cache and the list paints immediately.
+function TasksPrefetcher() {
+  useMyTasks('mine');
+  return null;
+}
 import {
   canSeeNikiBriefing,
   NIKI_USER_ID,
@@ -126,6 +138,28 @@ export function DealsHeader() {
   }, [location.pathname, location.search]);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
+  // Once Tasks has been opened (or pre-mounted on idle), keep the
+  // overlay mounted so subsequent opens are instant — the chunk is
+  // already executed, the React tree is intact, and the underlying
+  // React Query cache for `['my-tasks', …]` stays warm. Mirrors the
+  // InboxDialog pattern above.
+  const [tasksMounted, setTasksMounted] = useState(false);
+  useEffect(() => {
+    if (isTasksOpen || isTasksListOpen) setTasksMounted(true);
+  }, [isTasksOpen, isTasksListOpen]);
+  useEffect(() => {
+    const idle =
+      (window as unknown as {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1500));
+    const handle = idle(() => setTasksMounted(true), { timeout: 3000 });
+    return () => {
+      const cancel =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+      if (cancel) cancel(handle as number);
+      else window.clearTimeout(handle as number);
+    };
+  }, []);
   const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
   const { data: dealAccessRequests = [] } = useDealAccessRequests();
@@ -557,13 +591,20 @@ export function DealsHeader() {
           />
         </Suspense>
       )}
-      {isTasksOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} />}>
+      {/*
+        Tasks overlays are kept mounted after first open (or after the
+        idle pre-mount) so the popup paints with already-loaded tasks
+        instead of refetching every time. The OverlayLoadingShell only
+        ever shows on the very first click before the chunk hydrates.
+      */}
+      {tasksMounted && <TasksPrefetcher />}
+      {(tasksMounted || isTasksOpen) && (
+        <Suspense fallback={isTasksOpen ? <OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} /> : null}>
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
         </Suspense>
       )}
-      {isTasksListOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksListOpen(false)} />}>
+      {(tasksMounted || isTasksListOpen) && (
+        <Suspense fallback={isTasksListOpen ? <OverlayLoadingShell kind="tasks" onClose={() => setIsTasksListOpen(false)} /> : null}>
           <TasksOverlay open={isTasksListOpen} onOpenChange={setIsTasksListOpen} />
         </Suspense>
       )}
