@@ -604,6 +604,39 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
     return () => { cancelled = true; };
   }, [ready, dealId]);
   const cadence = useDealClientCadence(deferredDealId, dealMeta.contactEmail);
+
+  // Names of lenders attached to THIS deal. Used to turn `**Lender Name**`
+  // mentions in AI responses into clickable triggers that open the same
+  // funding-source modal used on the Funding Sources tab (via a window
+  // CustomEvent listened to by DealDetail). Strictly scoped to this deal,
+  // so cross-deal lender mentions never become clickable here.
+  const [dealLenderNames, setDealLenderNames] = useState<string[]>([]);
+  useEffect(() => {
+    if (!ready || !dealId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deal_lenders')
+        .select('name')
+        .eq('deal_id', dealId);
+      if (cancelled) return;
+      const names = Array.from(
+        new Set((data || []).map((r: { name: string | null }) => (r.name || '').trim()).filter(Boolean)),
+      );
+      setDealLenderNames(names);
+    })();
+    return () => { cancelled = true; };
+  }, [ready, dealId]);
+  const lenderNameLookup = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of dealLenderNames) m.set(n.toLowerCase(), n);
+    return m;
+  }, [dealLenderNames]);
+  const openLenderModal = useCallback((name: string) => {
+    window.dispatchEvent(
+      new CustomEvent('naitive:open-lender', { detail: { name } }),
+    );
+  }, []);
   const cadenceVisible =
     cadence.isStale &&
     !!dealMeta.contactEmail &&
