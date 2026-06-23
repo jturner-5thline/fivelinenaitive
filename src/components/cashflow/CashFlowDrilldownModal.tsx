@@ -419,12 +419,20 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     let patch: Partial<ScheduledCashFlow>;
     if (scope === 'this_period') {
       const existing = entry.frequency_config?.amount_overrides || {};
+      // Merge any pending date_overrides (and other frequency_config edits)
+      // that came in via `otherPatch` so we don't clobber a same-save date move.
+      const otherCfg = (otherPatch.frequency_config as any) || {};
       patch = {
         ...otherPatch,
         // Keep recurring base amount unchanged; pin this single occurrence.
         frequency_config: {
           ...(entry.frequency_config || {}),
-          amount_overrides: { ...existing, [occurrenceDate]: newAmount },
+          ...otherCfg,
+          amount_overrides: {
+            ...existing,
+            ...(otherCfg.amount_overrides || {}),
+            [occurrenceDate]: newAmount,
+          },
         },
       };
     } else {
