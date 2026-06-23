@@ -380,7 +380,13 @@ export function generateOccurrences(
 
   const cfg = entry.frequency_config || {};
   const excluded = new Set(cfg.excluded_dates || []);
-  const push = (d: string) => { if (!excluded.has(d)) dates.push(d); };
+  const dateOverrides = cfg.date_overrides || {};
+  const remap = (d: string) => (dateOverrides[d] ? dateOverrides[d] : d);
+  // Excluded keys may refer to either the original generated date or the
+  // remapped effective date — honor both so deletions stay sticky.
+  const isExcluded = (d: string) =>
+    excluded.has(d) || excluded.has(remap(d));
+  const push = (d: string) => { if (!isExcluded(d)) dates.push(remap(d)); };
 
   if (entry.frequency_type === 'one_time') {
     if (cfg.one_time_date) {
