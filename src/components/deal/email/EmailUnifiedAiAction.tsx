@@ -369,6 +369,8 @@ export function EmailUnifiedAiAction({
             toast.error('Task created, but Asana sync failed', {
               description: syncResult.error || 'You can retry sync from the task later.',
             });
+          }).catch((e) => {
+            console.warn('[EmailUnifiedAiAction] Asana sync failed', e);
           });
           toast.success(`Task created: "${draftToCreate.title}"`, {
             action: {
