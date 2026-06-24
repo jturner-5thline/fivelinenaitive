@@ -485,14 +485,24 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 </div>
               )}
 
-              {filtered.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {filtered.map((item) => (
-                    <QueueRow
-                      key={item.id}
-                      item={item}
-                      selected={selectedId === item.id}
-                      onSelect={() => setSelectedId(item.id)}
+              {groups.length > 0 ? (
+                <ul className="space-y-2">
+                  {groups.map((g) => (
+                    <DealGroupCard
+                      key={g.key}
+                      group={g}
+                      expanded={expandedDealKey === g.key}
+                      selectedId={selectedId}
+                      onToggle={() => toggleDeal(g.key)}
+                      onSelect={(id) => setSelectedId(id)}
+                      onApproveLowRisk={async () => {
+                        const low = g.items.filter((i) => riskOf(i) === 'low');
+                        if (low.length === 0) return;
+                        await approveAll(low);
+                      }}
+                      onRejectAll={async () => {
+                        await dismissMany(g.items.map((i) => i.id));
+                      }}
                     />
                   ))}
                 </ul>
@@ -510,8 +520,21 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               <DetailPane
                 key={selected.id}
                 item={selected}
-                onApprove={(opts) => approve(selected, opts)}
-                onReject={() => dismiss(selected.id)}
+                groupName={expandedGroup?.dealName ?? ''}
+                index={selectedIndex}
+                total={currentGroupItems.length}
+                canPrev={selectedIndex > 0}
+                canNext={selectedIndex >= 0 && selectedIndex < currentGroupItems.length - 1}
+                onPrev={goPrev}
+                onNext={goNext}
+                onApprove={async (opts) => {
+                  advanceAfterAction();
+                  return approve(selected, opts);
+                }}
+                onReject={async () => {
+                  advanceAfterAction();
+                  return dismiss(selected.id);
+                }}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-[#ecedf4]/45 gap-3 px-6">
