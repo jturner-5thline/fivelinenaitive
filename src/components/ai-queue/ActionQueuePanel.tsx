@@ -512,7 +512,7 @@ function QueueRow({
               className="text-[10.5px] text-[#ecedf4]/55 truncate mt-0.5"
               style={{ ...FONT_MONO, letterSpacing: '0.04em' }}
             >
-              {(meta?.label ?? 'Action').toUpperCase()} · {item.deal_name || 'Unassigned'}
+              {item.deal_name || 'Unassigned'}
             </p>
           </div>
           <span
