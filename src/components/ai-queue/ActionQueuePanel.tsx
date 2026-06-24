@@ -994,6 +994,25 @@ function DetailPane({
     return { stages, pipelines: pipelinesMap };
   }, [pipelines]);
   const dealId = (item as any).deal_id as string | undefined;
+  // If this action targets a contact, fetch their team-wide "last contact at"
+  // so reviewers see recency at a glance.
+  const contactTargetId =
+    item.target_object_type === 'contact'
+      ? ((item as any).target_object_id as string | undefined)
+      : undefined;
+  const { data: contactLastContact } = useQuery({
+    queryKey: ['contact-last-contact-at', contactTargetId],
+    enabled: !!contactTargetId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('contacts')
+        .select('last_contact_at')
+        .eq('id', contactTargetId!)
+        .maybeSingle();
+      return (data?.last_contact_at as string | null) ?? null;
+    },
+  });
   const isFundingSource =
     item.action_type === 'update_funding_source' ||
     item.target_object_type === 'deal_lender' ||
@@ -1107,6 +1126,17 @@ function DetailPane({
                 <span className="text-[#ecedf4]/65">
                   Suggested {formatDistanceToNow(new Date(item.created_at))} ago
                 </span>
+                {contactTargetId && (
+                  <>
+                    <span className="text-[#ecedf4]/40">·</span>
+                    <span className="text-[#ecedf4]/65">
+                      Last contact at:{' '}
+                      {contactLastContact
+                        ? `${new Date(contactLastContact).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${formatDistanceToNow(new Date(contactLastContact))} ago)`
+                        : 'no activity yet'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <div className="shrink-0 flex items-center gap-2">
