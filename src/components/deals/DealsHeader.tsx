@@ -672,7 +672,7 @@ export function DealsHeader() {
         </Suspense>
       )}
       <Dialog open={isActionQueueOpen} onOpenChange={setIsActionQueueOpen}>
-        <DialogContent className="sm:max-w-[1240px] w-[96vw] p-0 overflow-hidden flex flex-col max-h-[88vh] rounded-[22px] border-white/[0.08] bg-[#06060a]/95 backdrop-blur-xl">
+        <DialogContent className="sm:max-w-[1240px] w-[96vw] p-0 overflow-hidden flex flex-col h-[88vh] rounded-[22px] border-white/[0.08] bg-[#06060a]/95 backdrop-blur-xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Approval Queue</DialogTitle>
           </DialogHeader>
