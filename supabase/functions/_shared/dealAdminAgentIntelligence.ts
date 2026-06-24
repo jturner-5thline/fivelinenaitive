@@ -1681,11 +1681,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (stageValidated.kept.length === 0) continue;
 
+      // Deterministic guardrail: rewrite any update_funding_source proposal
+      // moving a lender to on-hold/pause when the evidence doesn't actually
+      // quote explicit pause language. Silence/no-response is "unresponsive",
+      // never "on-hold". Runs before gating so the rewritten value flows
+      // through every downstream check.
+      const holdNormalized = normalizeHoldVsUnresponsive(stageValidated.kept);
+      if (holdNormalized.rewritten > 0) {
+        console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
+      }
+
       // Gate `update_funding_source` proposals: only allow them when the
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(stageValidated.kept, bundle.funding_sources);
+      const lenderGated = filterFundingSourceProposals(holdNormalized.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
