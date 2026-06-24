@@ -195,6 +195,16 @@ export function DealClientContactField({
                 {chip.email && (
                   <p className="text-xs text-muted-foreground">{chip.email}</p>
                 )}
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Last contact:{' '}
+                  {chip.lastContactAt
+                    ? new Date(chip.lastContactAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'no activity yet'}
+                </p>
                 {chip.isPreferred ? (
                   <p className="text-[11px] mt-1">
                     Preferred — emails, reminders & lender submissions use this contact.
