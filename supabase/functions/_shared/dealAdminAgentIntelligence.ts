@@ -703,6 +703,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
         subject: m.subject,
         snippet: trim(m.snippet, 320),
+        body_excerpt: trim(m.body_text, 1200),
         received_at: m.received_at,
       })),
     })),
