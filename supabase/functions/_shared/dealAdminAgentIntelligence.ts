@@ -864,6 +864,63 @@ async function filterInvalidStageProposals(
 }
 
 function dedupeAndMerge(
+/**
+ * Drop `update_funding_source` candidates that lack a clear pass / terms /
+ * hold signal. A lender simply emailing the deal manager (intro, scheduling,
+ * diligence question) must NOT trigger a funding-source update card.
+ */
+function filterFundingSourceProposals(
+  candidates: CandidateItem[],
+): { kept: CandidateItem[]; dropped: number } {
+  // Keywords that justify an update_funding_source action.
+  const SIGNAL_RE =
+    /\b(pass(?:ing|ed)?|declin(?:e|ed|ing)|not\s+a\s+fit|outside\s+(?:our\s+)?mandate|term\s*sheet|termsheet|\bIOI\b|indication\s+of\s+interest|\bLOI\b|letter\s+of\s+intent|proposal|pricing|hold|paus(?:e|ing|ed)|postpone(?:d|ment)?|on\s+hold|park(?:ed|ing)?\s+(?:this|the\s+deal)|circle\s+back\s+later)\b/i;
+
+  // Status-field values that imply a pass / hold and are inherently OK.
+  const STATUS_SIGNAL_RE = /pass|declin|hold|paus|withdraw|dead|lost|term|ioi|loi|indication/i;
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "update_funding_source") return true;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const cv = (c.current_values ?? {}) as Record<string, any>;
+
+    // Allow when the proposed change itself is a status transition into
+    // pass/hold/terms (tracking_status / stage / substage).
+    const statusFields = [pv.tracking_status, pv.stage, pv.substage]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+    const prevStatusFields = [cv.tracking_status, cv.stage, cv.substage]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+    if (statusFields && STATUS_SIGNAL_RE.test(statusFields) && statusFields !== prevStatusFields) {
+      return true;
+    }
+
+    // Otherwise require the supporting text (notes / rationale / evidence
+    // snippets / evidence summary) to contain explicit pass/terms/hold
+    // language. A neutral inbound email is not enough.
+    const textBlob = [
+      pv.notes,
+      pv.note,
+      pv.reason,
+      c.rationale_summary,
+      c.evidence_summary,
+      ...(Array.isArray(c.evidence_references)
+        ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label])
+        : []),
+    ]
+      .filter((s) => typeof s === "string")
+      .join("\n");
+
+    if (SIGNAL_RE.test(textBlob)) return true;
+    dropped++;
+    return false;
+  });
+  return { kept, dropped };
+}
+
+function dedupeAndMerge(
   candidates: CandidateItem[],
   existingKeys: Set<string>,
 ): { kept: CandidateItem[]; merged: number; filtered: number } {
