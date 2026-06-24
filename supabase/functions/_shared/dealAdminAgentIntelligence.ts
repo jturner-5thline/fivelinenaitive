@@ -151,6 +151,8 @@ export interface AnalyzeResult {
   queue_rows_inserted: number;
   queue_ids: string[];
   errors: string[];
+  /** Pending items removed because the underlying action was already taken. */
+  auto_resolved_pending?: number;
   /** Populated when dryRun=true — the rows that WOULD have been inserted. */
   preview_rows?: any[];
 }
