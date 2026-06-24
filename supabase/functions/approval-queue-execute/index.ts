@@ -375,12 +375,32 @@ Deno.serve(async (req) => {
       }
       case 'update_funding_source':
       case 'update_lender_status': {
-        const dlId = (merged.deal_lender_id ?? payload.deal_lender_id) as string | undefined;
+        // The deal-lender id can arrive as deal_lender_id in proposed_values
+        // OR as the queue item's target_object_id (when target_object_type
+        // is 'deal_lender'). Accept either.
+        const dlId = (
+          merged.deal_lender_id ??
+          payload.deal_lender_id ??
+          (item.target_object_type === 'deal_lender' ? item.target_object_id : undefined)
+        ) as string | undefined;
+        // Accept stage OR substage OR new_status as the destination value —
+        // the agent now proposes stage="unresponsive" / "passed" / "not_a_fit"
+        // directly, not just substage.
+        const stage = (merged.stage ?? payload.stage) as string | undefined;
         const substage = (merged.substage ?? merged.new_status ?? payload.substage ?? payload.new_status) as string | undefined;
         const tracking = (merged.tracking_status ?? payload.tracking_status) as string | undefined;
-        if (!dlId || !substage) return recordFailure('Missing funding source id or status');
-        const upd: Record<string, unknown> = { substage };
+        const passReason = (merged.pass_reason ?? payload.pass_reason) as string | undefined;
+        const notes = (merged.notes ?? payload.notes) as string | undefined;
+        if (!dlId || (!stage && !substage && tracking === undefined)) {
+          return recordFailure('Missing funding source id or status');
+        }
+        const upd: Record<string, unknown> = {};
+        if (stage !== undefined) upd.stage = stage;
+        if (substage !== undefined) upd.substage = substage;
         if (tracking !== undefined) upd.tracking_status = tracking;
+        if (passReason !== undefined) upd.pass_reason = passReason;
+        if (notes !== undefined) upd.notes = notes;
+        upd.last_status_change_at = new Date().toISOString();
         const { error } = await admin.from('deal_lenders').update(upd as any).eq('id', dlId);
         if (error) return recordFailure(error.message);
         break;
