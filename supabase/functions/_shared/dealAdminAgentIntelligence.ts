@@ -550,6 +550,14 @@ EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
 - Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
 - Implicit next step from the deal manager ("let me check and get back to you", "I'll circle back") → create_followup_task on the deal manager.
 
+FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
+- ONLY propose update_funding_source when the lender's own communication clearly indicates ONE of:
+    (a) PASS / DECLINE / not-a-fit on this deal,
+    (b) TERM SHEET / IOI / indication / proposal / pricing terms issued or revised,
+    (c) HOLD / PAUSE / postpone / "circle back later" / "park this" on the deal.
+- A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
+- Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. If you cannot quote that language, do not emit the action.
+
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
 - Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
