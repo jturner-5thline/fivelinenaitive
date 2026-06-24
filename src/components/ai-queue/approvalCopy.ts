@@ -17,7 +17,7 @@ export function buildOutcomeSentence(item: QueuedAiAction): string {
       return `Update ${lender} on ${target} to "${stage}".`;
     }
     case 'create_milestone':
-      return `Create milestone on ${target}.`;
+      return `Add milestone on ${target}.`;
     case 'update_milestone':
       return `Update milestone on ${target}.`;
     case 'create_followup_task':
