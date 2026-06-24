@@ -726,6 +726,134 @@ function QueueRow({
 /* ─────────────────────────────────────────────────────────────────────────
    Access request row
    ──────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   Deal group card (collapsed-first accordion)
+   ──────────────────────────────────────────────────────────────────────── */
+function DealGroupCard({
+  group,
+  expanded,
+  selectedId,
+  onToggle,
+  onSelect,
+  onApproveLowRisk,
+  onRejectAll,
+}: {
+  group: {
+    key: string;
+    dealId: string | null;
+    dealName: string;
+    items: QueuedAiAction[];
+    escalated: boolean;
+  };
+  expanded: boolean;
+  selectedId: string | null;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+  onApproveLowRisk: () => Promise<unknown> | void;
+  onRejectAll: () => Promise<unknown> | void;
+}) {
+  const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const count = group.items.length;
+  const lowCount = useMemo(
+    () => group.items.filter((i) => riskOf(i) === 'low').length,
+    [group.items],
+  );
+  return (
+    <li
+      className={`rounded-[14px] border transition-colors ${
+        expanded
+          ? 'border-white/[0.12] bg-white/[0.035]'
+          : 'border-white/[0.06] bg-white/[0.018] hover:bg-white/[0.03]'
+      }`}
+    >
+      <div className="flex items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] rounded-md"
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-[#ecedf4]/60 transition-transform ${
+              expanded ? '' : '-rotate-90'
+            }`}
+          />
+          {group.escalated && (
+            <span
+              className="h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ background: '#f58aa0', boxShadow: '0 0 8px #f58aa066' }}
+              aria-label="Escalated"
+            />
+          )}
+          <p
+            className="text-[12.5px] text-[#ecedf4] truncate"
+            style={FONT_BODY}
+            title={group.dealName}
+          >
+            {group.dealName}
+          </p>
+          <span
+            className="ml-auto inline-flex items-center h-4 px-1.5 rounded-full text-[10px] bg-white/[0.06] text-[#ecedf4]/80 shrink-0"
+            style={FONT_MONO}
+          >
+            {count}
+          </span>
+        </button>
+      </div>
+      {expanded && (
+        <>
+          <div className="flex items-center gap-1.5 px-3 pb-2">
+            <button
+              type="button"
+              disabled={busy !== null || lowCount === 0}
+              onClick={async () => {
+                setBusy('a');
+                await onApproveLowRisk();
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={FONT_BODY}
+              title={lowCount === 0 ? 'No low-risk items in this deal' : `Approve ${lowCount} low-risk`}
+            >
+              {busy === 'a' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Approve all low-risk
+              {lowCount > 0 && (
+                <span className="text-[#ecedf4]/55" style={FONT_MONO}>
+                  {lowCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={async () => {
+                setBusy('r');
+                await onRejectAll();
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-[#f58aa0]/25 text-[#f58aa0] hover:bg-[#f58aa0]/10 disabled:opacity-40"
+              style={FONT_BODY}
+            >
+              {busy === 'r' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Reject all
+            </button>
+          </div>
+          <ul className="space-y-1 px-2 pb-2">
+            {group.items.map((item) => (
+              <QueueRow
+                key={item.id}
+                item={item}
+                selected={selectedId === item.id}
+                onSelect={() => onSelect(item.id)}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+    </li>
+  );
+}
+
 function AccessRequestRow({
   req,
   onApprove,
