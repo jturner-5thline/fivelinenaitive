@@ -1177,10 +1177,10 @@ function DetailPane({
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-1.5 pb-3">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
-          className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-6 space-y-4"
+          className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 space-y-3"
         >
           {/* Header: title/meta left, actions top-right */}
           <div className="flex items-start justify-between gap-4">
