@@ -899,17 +899,37 @@ function useMyManagedDealIds(enabled: boolean) {
         .select('first_name,last_name,display_name,email')
         .eq('id', user!.id)
         .maybeSingle();
-      const names = new Set<string>();
-      if (prof?.display_name) names.add(prof.display_name);
-      if (prof?.first_name && prof?.last_name) names.add(`${prof.first_name} ${prof.last_name}`);
-      if (prof?.email) names.add(prof.email.split('@')[0]);
-      if (!names.size) return new Set();
-      const ors = Array.from(names)
-        .map((n) => `manager.ilike.%${n.replace(/[,()]/g, '')}%`)
-        .join(',');
-      const { data, error } = await supabase.from('deals').select('id').or(ors);
+      // Build candidate name tokens (first, last, full, display, email-prefix)
+      const tokens = new Set<string>();
+      const add = (v?: string | null) => {
+        const t = (v ?? '').trim();
+        if (t && t.length >= 2) tokens.add(t.toLowerCase());
+      };
+      add(prof?.display_name);
+      add(prof?.first_name);
+      add(prof?.last_name);
+      if (prof?.first_name && prof?.last_name) add(`${prof.first_name} ${prof.last_name}`);
+      if (prof?.email) add(prof.email.split('@')[0]);
+      add(user?.email?.split('@')[0]);
+      add((user?.user_metadata as any)?.full_name);
+      add((user?.user_metadata as any)?.name);
+      if (!tokens.size) return new Set();
+      // Fetch all visible deals (RLS-scoped) and match client-side so that
+      // multi-name managers like "Alice, Bob" or "Alice & Bob" all resolve.
+      const { data, error } = await supabase.from('deals').select('id,manager');
       if (error) return new Set();
-      return new Set((data || []).map((d: any) => d.id as string));
+      const matched = new Set<string>();
+      for (const row of (data || []) as Array<{ id: string; manager: string | null }>) {
+        const m = (row.manager ?? '').toLowerCase();
+        if (!m) continue;
+        for (const t of tokens) {
+          if (m.includes(t)) {
+            matched.add(row.id);
+            break;
+          }
+        }
+      }
+      return matched;
     },
   });
 }
