@@ -283,7 +283,8 @@ export function FiltersPopover({
 // Export filter configs for use in quick filters
 export function useFilterConfigs() {
   const { deals } = useDealsContext();
-  
+  const { options: sourcedViaSource } = useDealSourcedViaOptions();
+
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -339,7 +340,7 @@ export function useFilterConfigs() {
     label: referrer.name,
   }));
 
-  const sourcedViaOptions = DEAL_SOURCED_VIA_OPTIONS.map((option) => ({
+  const sourcedViaOptions = sourcedViaSource.map((option) => ({
     value: option,
     label: option,
   }));
