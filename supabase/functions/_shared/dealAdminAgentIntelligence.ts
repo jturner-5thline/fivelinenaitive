@@ -960,6 +960,87 @@ function filterFundingSourceProposals(
 }
 
 /**
+ * Deterministic guardrail: an `update_funding_source` proposal that moves a
+ * lender to "on-hold" (or any hold/pause-shaped value) is ONLY valid when the
+ * evidence explicitly cites lender language for pausing the deal — "revisit",
+ * "table", "pause", "postpone", "circle back later", "park this", "shelve",
+ * "put on hold", etc. When the only signal is silence / no response / stale
+ * cadence, the lender is unresponsive, not on hold. We rewrite the proposal
+ * to stage="unresponsive" so the AI's classification mistake can't reach the
+ * approval queue.
+ *
+ * Applied to ALL update_funding_source candidates, regardless of which prompt
+ * path produced them.
+ */
+function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
+  kept: CandidateItem[];
+  rewritten: number;
+} {
+  // Explicit pause/hold language a lender must actually have used.
+  const EXPLICIT_HOLD_RE =
+    /\b(revisit|table\s+(?:this|it|the\s+deal)|paus(?:e|ing|ed)|postpone(?:d|ment)?|circle\s+back\s+(?:later|in\s+\w+)|park(?:ed|ing)?\s+(?:this|the\s+deal|it)|shelv(?:e|ed|ing)|put\s+(?:this|it|the\s+deal)\s+on\s+hold|on\s+hold|come\s+back\s+to\s+this|hold\s+(?:off|on)\s+(?:this|for))\b/i;
+  // Silence / no-response markers — these alone never justify an on-hold move.
+  const SILENCE_ONLY_RE =
+    /\b(no\s+response|hasn'?t\s+respond|haven'?t\s+heard|gone\s+silent|stopped\s+responding|unresponsive|ghost(?:ed|ing)?|stale|crickets|no\s+reply|awaiting\s+response|days?\s+since\s+last\s+contact|business\s+days?\s+since)\b/i;
+  // What "hold-shaped" stage/status values look like in proposed_values.
+  const HOLD_VALUE_RE = /(^|[\s_-])(on[\s_-]?hold|hold|paus(?:e|ed)|postpone)/i;
+
+  let rewritten = 0;
+  const kept = candidates.map((c) => {
+    if (c.action_type !== "update_funding_source") return c;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const stage = typeof pv.stage === "string" ? pv.stage : "";
+    const substage = typeof pv.substage === "string" ? pv.substage : "";
+    const tracking = typeof pv.tracking_status === "string" ? pv.tracking_status : "";
+    const proposingHold =
+      HOLD_VALUE_RE.test(stage) || HOLD_VALUE_RE.test(substage) || HOLD_VALUE_RE.test(tracking);
+    if (!proposingHold) return c;
+
+    const evidenceText = [
+      pv.notes,
+      pv.note,
+      pv.reason,
+      c.rationale_summary,
+      c.evidence_summary,
+      ...(Array.isArray(c.evidence_references)
+        ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label])
+        : []),
+    ]
+      .filter((s) => typeof s === "string")
+      .join("\n");
+
+    const hasExplicitHold = EXPLICIT_HOLD_RE.test(evidenceText);
+    if (hasExplicitHold) return c; // legitimate hold — leave it alone.
+
+    const hasSilenceSignal = SILENCE_ONLY_RE.test(evidenceText);
+    // If there's neither explicit hold language nor an obvious silence signal,
+    // we still rewrite — the AI shouldn't be proposing on-hold without quoted
+    // lender language, and unresponsive is the safer default.
+    rewritten++;
+    const nextPv: Record<string, any> = { ...pv };
+    if (HOLD_VALUE_RE.test(stage)) nextPv.stage = "unresponsive";
+    if (HOLD_VALUE_RE.test(substage)) nextPv.substage = "";
+    if (HOLD_VALUE_RE.test(tracking)) nextPv.tracking_status = "active";
+    const reasonSuffix = hasSilenceSignal
+      ? "Reclassified hold→unresponsive: only silence in evidence, no explicit pause language."
+      : "Reclassified hold→unresponsive: no explicit lender pause language in evidence.";
+    nextPv.notes =
+      typeof nextPv.notes === "string" && nextPv.notes.trim().length
+        ? `${nextPv.notes}\n\n${reasonSuffix}`
+        : reasonSuffix;
+    return {
+      ...c,
+      proposed_values: nextPv,
+      rationale_summary: c.rationale_summary
+        ? `${c.rationale_summary} (auto-normalized: hold→unresponsive)`
+        : "Auto-normalized hold→unresponsive — no explicit pause language in evidence.",
+    } as CandidateItem;
+  });
+
+  return { kept, rewritten };
+}
+
+/**
  * Drop `create_followup_task` candidates whose task is a vague
  * "update funding sources" reminder. Funding-source updates are surfaced
  * via the dedicated update_funding_source action (gated above) — we don't
@@ -1600,11 +1681,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (stageValidated.kept.length === 0) continue;
 
+      // Deterministic guardrail: rewrite any update_funding_source proposal
+      // moving a lender to on-hold/pause when the evidence doesn't actually
+      // quote explicit pause language. Silence/no-response is "unresponsive",
+      // never "on-hold". Runs before gating so the rewritten value flows
+      // through every downstream check.
+      const holdNormalized = normalizeHoldVsUnresponsive(stageValidated.kept);
+      if (holdNormalized.rewritten > 0) {
+        console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
+      }
+
       // Gate `update_funding_source` proposals: only allow them when the
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(stageValidated.kept, bundle.funding_sources);
+      const lenderGated = filterFundingSourceProposals(holdNormalized.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
