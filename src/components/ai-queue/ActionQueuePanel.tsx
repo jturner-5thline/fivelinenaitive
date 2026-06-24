@@ -117,6 +117,51 @@ const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof Chec
   reassign_deal: { label: 'Reassign', icon: Briefcase },
 };
 
+/* Humanize technical field keys into readable labels. */
+const FIELD_LABELS: Record<string, string> = {
+  owner_user_id: 'Deal owner',
+  owner_id: 'Deal owner',
+  assignee_id: 'Assignee',
+  assigned_to: 'Assignee',
+  reason: 'Reason for change',
+  stage_id: 'Stage',
+  status: 'Status',
+  pipeline_id: 'Pipeline',
+  deal_name: 'Deal name',
+  deal_type: 'Deal type',
+  due_date: 'Due date',
+  amount: 'Amount',
+  notes: 'Notes',
+  description: 'Description',
+  title: 'Title',
+  priority: 'Priority',
+  funding_source_id: 'Funding source',
+  lender_id: 'Lender',
+  company_id: 'Company',
+  contact_id: 'Contact',
+};
+function humanizeFieldKey(key: string): string {
+  if (FIELD_LABELS[key]) return FIELD_LABELS[key];
+  return key
+    .replace(/_id$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+/* Convert internal tokens into friendly display strings. */
+const VALUE_TOKEN_LABELS: Record<string, string> = {
+  '[REQUIRES_MANUAL_SELECTION]': 'Select owner during approval',
+  '[NEEDS_MANUAL_INPUT]': 'Provide during approval',
+  '[PENDING]': 'Pending',
+};
+function formatProposedValue(v: any): string {
+  if (v == null || v === '') return '';
+  const s = typeof v === 'string' ? v : JSON.stringify(v);
+  if (VALUE_TOKEN_LABELS[s]) return VALUE_TOKEN_LABELS[s];
+  return s;
+}
+
 function expiryDaysLabel(item: QueuedAiAction): string {
   const ms = new Date(item.expires_at).getTime() - Date.now();
   if (ms <= 0) return 'expired';
