@@ -1,4 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -142,16 +146,35 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Admin-only scope filter: "All" vs "Me" (deals where current user is manager).
+  const { isAdmin } = useAdminRole();
+  const [scope, setScope] = useState<'all' | 'me'>('all');
+  const { data: myDealIds } = useMyManagedDealIds(isAdmin);
+
+  const scopeActive = isAdmin && scope === 'me';
+
+  const scopedItems = useMemo(() => {
+    if (!scopeActive) return items;
+    const ids = myDealIds ?? new Set<string>();
+    return items.filter((it) => it.deal_id && ids.has(it.deal_id));
+  }, [items, scopeActive, myDealIds]);
+
+  const scopedAccessRequests = useMemo(() => {
+    if (!scopeActive) return accessRequests;
+    const ids = myDealIds ?? new Set<string>();
+    return accessRequests.filter((r) => r.deal_id && ids.has(r.deal_id));
+  }, [accessRequests, scopeActive, myDealIds]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return items.filter((it) => {
+    return scopedItems.filter((it) => {
       if (q) {
         const hay = `${it.title} ${it.deal_name ?? ''} ${it.description ?? ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [items, query]);
+  }, [scopedItems, query]);
 
   // Keep selection if visible; otherwise pick first.
   useEffect(() => {
@@ -164,7 +187,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     [filtered, selectedId],
   );
 
-  const totalCount = items.length + accessRequests.length;
+  const totalCount = scopedItems.length + scopedAccessRequests.length;
 
   return (
     <div
@@ -232,6 +255,28 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             <div className="px-4 pt-3 pb-2 space-y-3 shrink-0">
               <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
 
+              {isAdmin && (
+                <div className="flex items-center gap-1.5">
+                  <FilterChip
+                    label="All"
+                    count={items.length + accessRequests.length}
+                    active={scope === 'all'}
+                    onClick={() => setScope('all')}
+                  />
+                  <FilterChip
+                    label="Me"
+                    count={
+                      (myDealIds
+                        ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
+                          accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                        : 0)
+                    }
+                    active={scope === 'me'}
+                    onClick={() => setScope('me')}
+                  />
+                </div>
+              )}
+
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#ecedf4]/40" />
@@ -248,7 +293,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
             {/* Scrollable row list */}
             <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3 space-y-3">
-              {accessRequests.length > 0 && (
+              {scopedAccessRequests.length > 0 && (
                 <div className="space-y-1">
                   <p
                     className="px-1 pt-1 text-[9.5px] uppercase text-[#ecedf4]/45"
@@ -256,7 +301,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   >
                     Access requests
                   </p>
-                  {accessRequests.map((req) => (
+                  {scopedAccessRequests.map((req) => (
                     <AccessRequestRow
                       key={req.id}
                       req={req}
