@@ -87,7 +87,7 @@ export function DealClientContactField({
       const name = formatPickedContactName(c);
       const newList = [
         ...linkedContacts,
-        { id: c.id, name, email: c.email ?? null, role: null, createdAt: null },
+        { id: c.id, name, email: c.email ?? null, role: null, createdAt: null, lastContactAt: null },
       ];
       syncLegacyFromList(newList);
     } finally {
