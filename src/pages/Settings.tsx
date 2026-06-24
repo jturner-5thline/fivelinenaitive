@@ -44,6 +44,7 @@ import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettin
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
+import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
