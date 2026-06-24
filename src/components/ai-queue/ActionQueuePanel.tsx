@@ -745,32 +745,6 @@ function DetailPane({
             </p>
         </div>
 
-        {/* Sources */}
-        {evidence.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {evidence.map((e, i) => {
-              const inner = (
-                <>
-                  <LinkIcon className="h-3 w-3" />
-                  <span className="truncate max-w-[260px]">{e.label}</span>
-                  {e.url && <ExternalLink className="h-3 w-3 opacity-60" />}
-                </>
-              );
-              const cls =
-                'inline-flex items-center gap-1.5 h-6 px-2 rounded-full border border-white/[0.10] bg-white/[0.035] text-[10.5px] text-[#ecedf4]/85 hover:bg-white/[0.07] transition-colors';
-              return e.url ? (
-                <a key={i} href={e.url} target="_blank" rel="noreferrer" className={cls} style={FONT_MONO}>
-                  {inner}
-                </a>
-              ) : (
-                <span key={i} className={cls} style={FONT_MONO}>
-                  {inner}
-                </span>
-              );
-            })}
-          </div>
-        )}
-
         {/* Proposed changes — always visible; editable when editMode is on */}
         {fieldKeys.length > 0 && (
           <div className="mt-3">
