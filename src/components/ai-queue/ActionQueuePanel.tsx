@@ -748,31 +748,29 @@ function DetailPane({
         {/* Proposed changes — always visible; editable when editMode is on */}
         {fieldKeys.length > 0 && (
           <div className="mt-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <p
                 className="text-[10px] uppercase text-[#ecedf4]/55"
                 style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
               >
                 Proposed changes
               </p>
-              <div className="flex items-center gap-2">
-                {editMode && editedCount > 0 && (
-                  <span
-                    className="text-[10px] uppercase text-[#f3c969]"
-                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-                  >
-                    {editedCount} edited
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setEditMode((v) => !v)}
-                  className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.05] border border-white/[0.08]"
-                  style={FONT_BODY}
+              <button
+                type="button"
+                onClick={() => setEditMode((v) => !v)}
+                className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.05] border border-white/[0.08]"
+                style={FONT_BODY}
+              >
+                <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
+              </button>
+              {editMode && editedCount > 0 && (
+                <span
+                  className="text-[10px] uppercase text-[#f3c969]"
+                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
                 >
-                  <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
-                </button>
-              </div>
+                  {editedCount} edited
+                </span>
+              )}
             </div>
             <div className="mt-1.5 rounded-[10px] border border-white/[0.08] overflow-hidden">
               <div
