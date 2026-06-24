@@ -1118,8 +1118,9 @@ async function reconcileStalePendingApprovals(
     const tot = row.target_object_type as string | null;
     const toid = row.target_object_id as string | null;
     if (!tot || !toid) continue;
-    // Never auto-resolve text-only items (draft_email, add_status_note,
-    // create_milestone) — those don't have a stable target row to compare.
+    // draft_email / add_status_note / create_milestone are handled below
+    // by deal-scoped activity checks (status notes table, milestones
+    // table, sent emails) — skip the generic target_table comparison.
     if (
       row.action_type === "draft_email" ||
       row.action_type === "add_status_note" ||
@@ -1164,11 +1165,13 @@ async function reconcileStalePendingApprovals(
     const lenderIds = Array.from(new Set(lenderItems.map((p) => p.target_object_id as string)));
     const { data: lenders } = await supabase
       .from("deal_lenders")
-      .select("id, name, deal_id")
+      .select("id, name, deal_id, master_lender_id")
       .in("id", lenderIds);
-    const nameById = new Map<string, { name: string; deal_id: string }>();
+    const nameById = new Map<string, { name: string; deal_id: string; master_lender_id: string | null }>();
     for (const l of (lenders ?? []) as any[]) {
-      if (l?.id && l?.name) nameById.set(l.id, { name: l.name, deal_id: l.deal_id });
+      if (l?.id && l?.name) nameById.set(l.id, {
+        name: l.name, deal_id: l.deal_id, master_lender_id: l.master_lender_id ?? null,
+      });
     }
     const dealIds = Array.from(new Set(lenderItems.map((p) => p.deal_id as string)));
     const { data: threads } = await supabase
@@ -1177,19 +1180,166 @@ async function reconcileStalePendingApprovals(
       .in("matched_deal_id", dealIds)
       .order("latest_message_at", { ascending: false })
       .limit(500);
+
+    // Build a map: master_lender_id -> emails[] from lender_contacts so we
+    // can also catch threads whose subject doesn't carry the lender name
+    // but the from/to includes a known lender contact.
+    const masterIds = Array.from(
+      new Set(Array.from(nameById.values()).map((m) => m.master_lender_id).filter((v): v is string => !!v)),
+    );
+    const emailsByMaster = new Map<string, Set<string>>();
+    if (masterIds.length > 0) {
+      const { data: lcs } = await supabase
+        .from("lender_contacts")
+        .select("lender_id, email")
+        .in("lender_id", masterIds);
+      for (const lc of (lcs ?? []) as any[]) {
+        const e = (lc.email as string | null)?.toLowerCase();
+        if (!e || !lc.lender_id) continue;
+        const set = emailsByMaster.get(lc.lender_id) ?? new Set<string>();
+        set.add(e);
+        emailsByMaster.set(lc.lender_id, set);
+      }
+    }
+
+    // Pull recent gmail messages tied to matched deal threads. We re-use
+    // email_threads.thread_id to scope gmail_messages by thread_id.
+    const allThreadIds = Array.from(
+      new Set(((threads ?? []) as any[])
+        .map((t) => (t as any).thread_id ?? null)
+        .filter((v): v is string => !!v)),
+    );
+    let gmailByThread = new Map<string, Array<{ from: string; to: string[]; received_at: string }>>();
+    if (allThreadIds.length > 0) {
+      const { data: gmails } = await supabase
+        .from("gmail_messages")
+        .select("thread_id, from_email, to_emails, received_at")
+        .in("thread_id", allThreadIds)
+        .order("received_at", { ascending: false })
+        .limit(2000);
+      for (const g of (gmails ?? []) as any[]) {
+        const tid = g.thread_id as string;
+        if (!tid) continue;
+        const arr = gmailByThread.get(tid) ?? [];
+        arr.push({
+          from: (g.from_email ?? "").toLowerCase(),
+          to: Array.isArray(g.to_emails) ? g.to_emails.map((s: string) => (s ?? "").toLowerCase()) : [],
+          received_at: g.received_at,
+        });
+        gmailByThread.set(tid, arr);
+      }
+    }
+
     for (const item of lenderItems) {
       if (toResolve.includes(item.id)) continue;
       const meta = nameById.get(item.target_object_id);
       if (!meta) continue;
       const needle = meta.name.toLowerCase();
       const createdMs = new Date(item.created_at).getTime();
-      const hit = (threads ?? []).some((t: any) => {
+      const lenderEmails = meta.master_lender_id
+        ? (emailsByMaster.get(meta.master_lender_id) ?? new Set<string>())
+        : new Set<string>();
+      // (a) Thread subject mentions the lender name and has fresh activity.
+      const subjectHit = (threads ?? []).some((t: any) => {
         if (t.matched_deal_id !== item.deal_id) return false;
         if (!t.latest_message_at) return false;
         if (new Date(t.latest_message_at).getTime() <= createdMs) return false;
         return typeof t.subject === "string" && t.subject.toLowerCase().includes(needle);
       });
-      if (hit) toResolve.push(item.id);
+      // (b) A known lender contact appears on a fresh inbound/outbound
+      // message tied to any thread matched to this deal.
+      const contactHit = lenderEmails.size > 0 && ((threads ?? []) as any[]).some((t: any) => {
+        if (t.matched_deal_id !== item.deal_id) return false;
+        const tid = (t as any).thread_id;
+        if (!tid) return false;
+        const msgs = gmailByThread.get(tid) ?? [];
+        return msgs.some((m) => {
+          if (new Date(m.received_at).getTime() <= createdMs) return false;
+          if (m.from && lenderEmails.has(m.from)) return true;
+          if (m.to.some((e) => lenderEmails.has(e))) return true;
+          return false;
+        });
+      });
+      if (subjectHit || contactHit) toResolve.push(item.id);
+    }
+  }
+
+  // Extra signal: deal-scoped activity satisfying common action types.
+  const dealScopeItems = (pending as any[]).filter(
+    (p) =>
+      p.deal_id &&
+      (p.action_type === "update_deal_stage" ||
+        p.action_type === "update_deal_status" ||
+        p.action_type === "add_status_note" ||
+        p.action_type === "create_milestone"),
+  );
+  if (dealScopeItems.length > 0) {
+    const dealIds = Array.from(new Set(dealScopeItems.map((p) => p.deal_id as string)));
+    // Stage history → resolves update_deal_stage / update_deal_status.
+    const { data: stageHist } = await supabase
+      .from("deal_stage_history")
+      .select("deal_id, changed_at")
+      .in("deal_id", dealIds)
+      .order("changed_at", { ascending: false })
+      .limit(500);
+    const lastStageByDeal = new Map<string, number>();
+    for (const h of (stageHist ?? []) as any[]) {
+      if (!h.deal_id || !h.changed_at) continue;
+      const ms = new Date(h.changed_at).getTime();
+      if (!lastStageByDeal.has(h.deal_id) || lastStageByDeal.get(h.deal_id)! < ms) {
+        lastStageByDeal.set(h.deal_id, ms);
+      }
+    }
+    // Status notes → resolves add_status_note.
+    const { data: notes } = await supabase
+      .from("deal_status_notes")
+      .select("deal_id, created_at")
+      .in("deal_id", dealIds)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const lastNoteByDeal = new Map<string, number>();
+    for (const n of (notes ?? []) as any[]) {
+      if (!n.deal_id || !n.created_at) continue;
+      const ms = new Date(n.created_at).getTime();
+      if (!lastNoteByDeal.has(n.deal_id) || lastNoteByDeal.get(n.deal_id)! < ms) {
+        lastNoteByDeal.set(n.deal_id, ms);
+      }
+    }
+    // Milestones → resolves create_milestone (any new milestone).
+    const { data: ms } = await supabase
+      .from("deal_milestones")
+      .select("deal_id, created_at")
+      .in("deal_id", dealIds)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const lastMilestoneByDeal = new Map<string, number>();
+    for (const m of (ms ?? []) as any[]) {
+      if (!m.deal_id || !m.created_at) continue;
+      const t = new Date(m.created_at).getTime();
+      if (!lastMilestoneByDeal.has(m.deal_id) || lastMilestoneByDeal.get(m.deal_id)! < t) {
+        lastMilestoneByDeal.set(m.deal_id, t);
+      }
+    }
+
+    for (const item of dealScopeItems) {
+      if (toResolve.includes(item.id)) continue;
+      const createdMs = new Date(item.created_at).getTime() + 60_000;
+      const dealId = item.deal_id as string;
+      if (
+        (item.action_type === "update_deal_stage" || item.action_type === "update_deal_status") &&
+        (lastStageByDeal.get(dealId) ?? 0) > createdMs
+      ) {
+        toResolve.push(item.id);
+        continue;
+      }
+      if (item.action_type === "add_status_note" && (lastNoteByDeal.get(dealId) ?? 0) > createdMs) {
+        toResolve.push(item.id);
+        continue;
+      }
+      if (item.action_type === "create_milestone" && (lastMilestoneByDeal.get(dealId) ?? 0) > createdMs) {
+        toResolve.push(item.id);
+        continue;
+      }
     }
   }
 

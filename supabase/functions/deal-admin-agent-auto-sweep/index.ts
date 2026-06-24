@@ -123,6 +123,7 @@ Deno.serve(async (req) => {
       perCompany.filtered = intel.candidates_filtered;
       perCompany.merged = intel.candidates_merged;
       perCompany.inserted = intel.queue_rows_inserted;
+      perCompany.auto_resolved = intel.auto_resolved_pending ?? 0;
       if (intel.errors?.length) {
         (perCompany as any).errors = intel.errors.slice(0, 5);
       }
