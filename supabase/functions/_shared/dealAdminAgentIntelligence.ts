@@ -1062,7 +1062,19 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       result.candidates_filtered += raw.length - valid.length;
       if (valid.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(valid, existingKeys);
+      // Validate any update_deal_stage proposals against the deal's actual
+      // pipeline. The model has historically hallucinated stage ids
+      // (e.g. "nda-signed-diligence") that don't exist in the workspace's
+      // pipeline configuration — those rows are unexecutable and confuse
+      // the approver, so drop them at the source.
+      const stageValidated = await filterInvalidStageProposals(supabase, d, valid);
+      if (stageValidated.dropped > 0) {
+        result.candidates_filtered += stageValidated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${stageValidated.dropped} update_deal_stage proposal(s) for deal=${d.id} — proposed stage not in pipeline`);
+      }
+      if (stageValidated.kept.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(stageValidated.kept, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
