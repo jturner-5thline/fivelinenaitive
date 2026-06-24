@@ -27,7 +27,7 @@ import {
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
+import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
 
 
 export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'dealOwner' | 'lender' | 'referredBy' | 'sourcedVia';
@@ -60,7 +60,8 @@ export function FiltersPopover({
 }: FiltersPopoverProps) {
   const [open, setOpen] = useState(false);
   const { deals } = useDealsContext();
-  
+  const { options: sourcedViaSource } = useDealSourcedViaOptions();
+
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -117,7 +118,7 @@ export function FiltersPopover({
     label: referrer.name,
   }));
 
-  const sourcedViaOptions = DEAL_SOURCED_VIA_OPTIONS.map((option) => ({
+  const sourcedViaOptions = sourcedViaSource.map((option) => ({
     value: option,
     label: option,
   }));
@@ -282,7 +283,8 @@ export function FiltersPopover({
 // Export filter configs for use in quick filters
 export function useFilterConfigs() {
   const { deals } = useDealsContext();
-  
+  const { options: sourcedViaSource } = useDealSourcedViaOptions();
+
   const stageOptions = Object.entries(STAGE_CONFIG).map(([key, { label }]) => ({
     value: key,
     label,
@@ -338,7 +340,7 @@ export function useFilterConfigs() {
     label: referrer.name,
   }));
 
-  const sourcedViaOptions = DEAL_SOURCED_VIA_OPTIONS.map((option) => ({
+  const sourcedViaOptions = sourcedViaSource.map((option) => ({
     value: option,
     label: option,
   }));

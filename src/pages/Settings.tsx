@@ -44,6 +44,7 @@ import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettin
 import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
+import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
@@ -186,6 +187,13 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         description: 'Manage referral sources used for attribution.',
         keywords: ['referral', 'sources', 'source', 'referrer'],
         render: ({ isAdmin }) => <ReferralSourcesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'sourced-via',
+        label: 'Sourced Via',
+        description: 'Configure the "Sourced Via" dropdown options for new deals and filters.',
+        keywords: ['sourced', 'via', 'source', 'origin', 'channel', 'dropdown'],
+        render: ({ isAdmin }) => <SourcedViaSettings isAdmin={isAdmin} />,
       },
       {
         id: 'data-room-checklist',

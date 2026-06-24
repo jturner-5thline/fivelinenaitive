@@ -49,7 +49,7 @@ import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
-import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
+import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
 import { isOverlayClickSuppressed, shouldIgnoreOverlayOriginEvent } from '@/lib/overlayClickSuppression';
 import { useDealInfoFieldOrder } from '@/hooks/useDealInfoFieldOrder';
 import type { ContactPickerValue } from '@/components/contacts/ContactPickerField';
@@ -133,6 +133,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
   const [sourcedVia, setSourcedVia] = useState('');
+  const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
   const [dealTypesOpen, setDealTypesOpen] = useState(false);
@@ -579,7 +580,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">
                       <SelectItem value="__none__">None</SelectItem>
-                      {DEAL_SOURCED_VIA_OPTIONS.map((option) => (
+                      {sourcedViaOptions.map((option) => (
                         <SelectItem key={option} value={option}>{option}</SelectItem>
                       ))}
                     </SelectContent>
