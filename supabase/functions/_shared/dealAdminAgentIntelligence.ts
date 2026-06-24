@@ -274,6 +274,35 @@ async function gatherSignalsForDeal(
       if (!threadMessages[tid]) threadMessages[tid] = [];
       if (threadMessages[tid].length < 4) threadMessages[tid].push(m);
     }
+    // ALSO pull from email_cache (the real synced-emails table for Gmail).
+    // email_cache has body_text, which gives the agent enough context to
+    // detect "we're going to pass", "not a fit", etc. instead of relying on
+    // the truncated snippet only.
+    const { data: ecThread } = await supabase
+      .from("email_cache")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, received_at")
+      .in("thread_id", threadIds)
+      .order("received_at", { ascending: false })
+      .limit(80);
+    for (const m of ecThread ?? []) {
+      const tid = (m as any).thread_id as string;
+      if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Skip duplicates by gmail_message_id; otherwise add up to 6 per thread.
+      const exists = threadMessages[tid].some(
+        (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
+      );
+      if (!exists && threadMessages[tid].length < 6) {
+        threadMessages[tid].push(m);
+      } else if (exists) {
+        // Merge body_text into the existing entry so downstream sees it.
+        const idx = threadMessages[tid].findIndex(
+          (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
+        );
+        if (idx >= 0 && !(threadMessages[tid][idx] as any).body_text) {
+          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: (m as any).body_text };
+        }
+      }
+    }
   }
   const enrichedThreads = threadRows.map((t) => ({
     ...t,
