@@ -170,6 +170,33 @@ function formatProposedValue(v: any): string {
   return s;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Format a field value with awareness of its key — resolves UUIDs to friendly
+ *  names using the provided lookup tables and never returns a raw UUID. */
+function formatFieldValue(
+  key: string,
+  v: any,
+  lookups: { stages?: Record<string, string>; pipelines?: Record<string, string> },
+): string {
+  const base = formatProposedValue(v);
+  if (!base) return '';
+  // Stage / pipeline lookups
+  if ((key === 'stage_id' || key === 'stage') && lookups.stages?.[base]) {
+    return lookups.stages[base];
+  }
+  if (key === 'pipeline_id' && lookups.pipelines?.[base]) {
+    return lookups.pipelines[base];
+  }
+  // Generic UUID fallback — never show raw IDs to the user.
+  if (UUID_RE.test(base)) {
+    if (lookups.stages?.[base]) return lookups.stages[base];
+    if (lookups.pipelines?.[base]) return lookups.pipelines[base];
+    return '—';
+  }
+  return base;
+}
+
 function expiryDaysLabel(item: QueuedAiAction): string {
   const ms = new Date(item.expires_at).getTime() - Date.now();
   if (ms <= 0) return 'expired';
