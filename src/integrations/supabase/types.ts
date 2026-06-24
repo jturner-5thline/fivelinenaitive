@@ -5155,6 +5155,7 @@ export type Database = {
           data_room_default_checklists: Json | null
           deal_info_layout: Json | null
           deal_panel_layout: Json | null
+          deal_sourced_via_options: Json | null
           deal_stages: Json | null
           deal_types: Json | null
           deals_special_widgets: Json | null
@@ -5176,6 +5177,7 @@ export type Database = {
           data_room_default_checklists?: Json | null
           deal_info_layout?: Json | null
           deal_panel_layout?: Json | null
+          deal_sourced_via_options?: Json | null
           deal_stages?: Json | null
           deal_types?: Json | null
           deals_special_widgets?: Json | null
@@ -5197,6 +5199,7 @@ export type Database = {
           data_room_default_checklists?: Json | null
           deal_info_layout?: Json | null
           deal_panel_layout?: Json | null
+          deal_sourced_via_options?: Json | null
           deal_stages?: Json | null
           deal_types?: Json | null
           deals_special_widgets?: Json | null
