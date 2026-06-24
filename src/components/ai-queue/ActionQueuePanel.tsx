@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,9 @@ import {
   Pencil,
   Eye,
   ClipboardCheck,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
@@ -34,6 +37,7 @@ import {
   useApproveAiAction,
   useApproveAllAiActions,
   useDismissAiAction,
+  useDismissManyAiActions,
 } from '@/hooks/useAiActionQueue';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
@@ -225,16 +229,136 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     });
   }, [scopedItems, query]);
 
-  // Keep selection if visible; otherwise pick first.
+  // Group filtered items by deal_id (preserving original order within group).
+  type DealGroup = {
+    key: string;
+    dealId: string | null;
+    dealName: string;
+    items: QueuedAiAction[];
+    escalated: boolean;
+  };
+  const groups = useMemo<DealGroup[]>(() => {
+    const map = new Map<string, DealGroup>();
+    for (const it of filtered) {
+      const key = it.deal_id || '__unassigned__';
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          key,
+          dealId: it.deal_id ?? null,
+          dealName: it.deal_name || (it.deal_id ? 'Untitled deal' : 'Unassigned'),
+          items: [],
+          escalated: false,
+        };
+        map.set(key, g);
+      }
+      g.items.push(it);
+      if (it.priority === 'high' || it.risk_level === 'high' || it.action_type === 'escalate') {
+        g.escalated = true;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+  }, [filtered]);
+
+  const [expandedDealKey, setExpandedDealKey] = useState<string | null>(null);
+
+  // Maintain a valid expanded group + selection as data changes.
   useEffect(() => {
-    if (selectedId && filtered.some((it) => it.id === selectedId)) return;
-    setSelectedId(filtered[0]?.id ?? null);
-  }, [filtered, selectedId]);
+    if (groups.length === 0) {
+      if (expandedDealKey !== null) setExpandedDealKey(null);
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+    const currentGroup = expandedDealKey
+      ? groups.find((g) => g.key === expandedDealKey)
+      : null;
+    if (!currentGroup) {
+      // Prefer the group containing the currently selected item; else first.
+      const groupForSelected = selectedId
+        ? groups.find((g) => g.items.some((i) => i.id === selectedId))
+        : null;
+      const next = groupForSelected ?? groups[0];
+      setExpandedDealKey(next.key);
+      setSelectedId(next.items[0]?.id ?? null);
+      return;
+    }
+    // Group still exists — ensure selection points to one of its items.
+    if (!selectedId || !currentGroup.items.some((i) => i.id === selectedId)) {
+      setSelectedId(currentGroup.items[0]?.id ?? null);
+    }
+  }, [groups, expandedDealKey, selectedId]);
+
+  // When the search query changes, auto-expand the top matching deal group.
+  const lastQueryRef = useRef(query);
+  useEffect(() => {
+    if (lastQueryRef.current === query) return;
+    lastQueryRef.current = query;
+    if (groups.length > 0) {
+      setExpandedDealKey(groups[0].key);
+      setSelectedId(groups[0].items[0]?.id ?? null);
+    }
+  }, [query, groups]);
+
+  const expandedGroup = useMemo(
+    () => groups.find((g) => g.key === expandedDealKey) ?? null,
+    [groups, expandedDealKey],
+  );
+  const currentGroupItems = expandedGroup?.items ?? [];
+  const selectedIndex = selectedId
+    ? currentGroupItems.findIndex((i) => i.id === selectedId)
+    : -1;
 
   const selected = useMemo(
-    () => filtered.find((it) => it.id === selectedId) || null,
-    [filtered, selectedId],
+    () => (selectedIndex >= 0 ? currentGroupItems[selectedIndex] : null),
+    [currentGroupItems, selectedIndex],
   );
+
+  const goPrev = useCallback(() => {
+    if (selectedIndex > 0) setSelectedId(currentGroupItems[selectedIndex - 1].id);
+  }, [selectedIndex, currentGroupItems]);
+  const goNext = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < currentGroupItems.length - 1) {
+      setSelectedId(currentGroupItems[selectedIndex + 1].id);
+    }
+  }, [selectedIndex, currentGroupItems]);
+
+  // Step to next sibling after approve/reject without rolling into another deal.
+  const advanceAfterAction = useCallback(() => {
+    if (selectedIndex < 0) return;
+    const next = currentGroupItems[selectedIndex + 1] ?? currentGroupItems[selectedIndex - 1] ?? null;
+    // If next === current item (just-acted), it will fall out on refresh; pick neighbor by id.
+    const currentId = currentGroupItems[selectedIndex]?.id;
+    const candidate = next && next.id !== currentId ? next : null;
+    setSelectedId(candidate?.id ?? null);
+  }, [selectedIndex, currentGroupItems]);
+
+  // Keyboard: ↑/↓ or J/K navigate the open deal's items.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (t && t.isContentEditable)) return;
+      if (e.key === 'ArrowDown' || e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === 'ArrowUp' || e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [goPrev, goNext]);
+
+  const dismissMany = useDismissManyAiActions();
+  const toggleDeal = useCallback((key: string) => {
+    setExpandedDealKey((curr) => {
+      if (curr === key) return null;
+      const g = groups.find((gr) => gr.key === key);
+      if (g) setSelectedId(g.items[0]?.id ?? null);
+      return key;
+    });
+  }, [groups]);
 
   const totalCount = scopedItems.length + scopedAccessRequests.length;
 
@@ -361,14 +485,24 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 </div>
               )}
 
-              {filtered.length > 0 ? (
-                <ul className="space-y-1.5">
-                  {filtered.map((item) => (
-                    <QueueRow
-                      key={item.id}
-                      item={item}
-                      selected={selectedId === item.id}
-                      onSelect={() => setSelectedId(item.id)}
+              {groups.length > 0 ? (
+                <ul className="space-y-2">
+                  {groups.map((g) => (
+                    <DealGroupCard
+                      key={g.key}
+                      group={g}
+                      expanded={expandedDealKey === g.key}
+                      selectedId={selectedId}
+                      onToggle={() => toggleDeal(g.key)}
+                      onSelect={(id) => setSelectedId(id)}
+                      onApproveLowRisk={async () => {
+                        const low = g.items.filter((i) => riskOf(i) === 'low');
+                        if (low.length === 0) return;
+                        await approveAll(low);
+                      }}
+                      onRejectAll={async () => {
+                        await dismissMany(g.items.map((i) => i.id));
+                      }}
                     />
                   ))}
                 </ul>
@@ -386,8 +520,21 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
               <DetailPane
                 key={selected.id}
                 item={selected}
-                onApprove={(opts) => approve(selected, opts)}
-                onReject={() => dismiss(selected.id)}
+                groupName={expandedGroup?.dealName ?? ''}
+                index={selectedIndex}
+                total={currentGroupItems.length}
+                canPrev={selectedIndex > 0}
+                canNext={selectedIndex >= 0 && selectedIndex < currentGroupItems.length - 1}
+                onPrev={goPrev}
+                onNext={goNext}
+                onApprove={async (opts) => {
+                  advanceAfterAction();
+                  return approve(selected, opts);
+                }}
+                onReject={async () => {
+                  advanceAfterAction();
+                  return dismiss(selected.id);
+                }}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-[#ecedf4]/45 gap-3 px-6">
@@ -579,6 +726,134 @@ function QueueRow({
 /* ─────────────────────────────────────────────────────────────────────────
    Access request row
    ──────────────────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────────────────
+   Deal group card (collapsed-first accordion)
+   ──────────────────────────────────────────────────────────────────────── */
+function DealGroupCard({
+  group,
+  expanded,
+  selectedId,
+  onToggle,
+  onSelect,
+  onApproveLowRisk,
+  onRejectAll,
+}: {
+  group: {
+    key: string;
+    dealId: string | null;
+    dealName: string;
+    items: QueuedAiAction[];
+    escalated: boolean;
+  };
+  expanded: boolean;
+  selectedId: string | null;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+  onApproveLowRisk: () => Promise<unknown> | void;
+  onRejectAll: () => Promise<unknown> | void;
+}) {
+  const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const count = group.items.length;
+  const lowCount = useMemo(
+    () => group.items.filter((i) => riskOf(i) === 'low').length,
+    [group.items],
+  );
+  return (
+    <li
+      className={`rounded-[14px] border transition-colors ${
+        expanded
+          ? 'border-white/[0.12] bg-white/[0.035]'
+          : 'border-white/[0.06] bg-white/[0.018] hover:bg-white/[0.03]'
+      }`}
+    >
+      <div className="flex items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] rounded-md"
+        >
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-[#ecedf4]/60 transition-transform ${
+              expanded ? '' : '-rotate-90'
+            }`}
+          />
+          {group.escalated && (
+            <span
+              className="h-1.5 w-1.5 rounded-full shrink-0"
+              style={{ background: '#f58aa0', boxShadow: '0 0 8px #f58aa066' }}
+              aria-label="Escalated"
+            />
+          )}
+          <p
+            className="text-[12.5px] text-[#ecedf4] truncate"
+            style={FONT_BODY}
+            title={group.dealName}
+          >
+            {group.dealName}
+          </p>
+          <span
+            className="ml-auto inline-flex items-center h-4 px-1.5 rounded-full text-[10px] bg-white/[0.06] text-[#ecedf4]/80 shrink-0"
+            style={FONT_MONO}
+          >
+            {count}
+          </span>
+        </button>
+      </div>
+      {expanded && (
+        <>
+          <div className="flex items-center gap-1.5 px-3 pb-2">
+            <button
+              type="button"
+              disabled={busy !== null || lowCount === 0}
+              onClick={async () => {
+                setBusy('a');
+                await onApproveLowRisk();
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+              style={FONT_BODY}
+              title={lowCount === 0 ? 'No low-risk items in this deal' : `Approve ${lowCount} low-risk`}
+            >
+              {busy === 'a' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Approve all low-risk
+              {lowCount > 0 && (
+                <span className="text-[#ecedf4]/55" style={FONT_MONO}>
+                  {lowCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={async () => {
+                setBusy('r');
+                await onRejectAll();
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-[#f58aa0]/25 text-[#f58aa0] hover:bg-[#f58aa0]/10 disabled:opacity-40"
+              style={FONT_BODY}
+            >
+              {busy === 'r' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+              Reject all
+            </button>
+          </div>
+          <ul className="space-y-1 px-2 pb-2">
+            {group.items.map((item) => (
+              <QueueRow
+                key={item.id}
+                item={item}
+                selected={selectedId === item.id}
+                onSelect={() => onSelect(item.id)}
+              />
+            ))}
+          </ul>
+        </>
+      )}
+    </li>
+  );
+}
+
 function AccessRequestRow({
   req,
   onApprove,
@@ -642,10 +917,24 @@ function AccessRequestRow({
    ──────────────────────────────────────────────────────────────────────── */
 function DetailPane({
   item,
+  groupName,
+  index,
+  total,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext,
   onApprove,
   onReject,
 }: {
   item: QueuedAiAction;
+  groupName?: string;
+  index?: number;
+  total?: number;
+  canPrev?: boolean;
+  canNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
   onApprove: (opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
   onReject: () => Promise<unknown>;
 }) {
@@ -698,6 +987,37 @@ function DetailPane({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {typeof total === 'number' && total > 0 && (
+        <div className="flex items-center justify-between gap-2 px-6 pt-4 pb-2 border-b border-white/[0.06] shrink-0">
+          <p
+            className="text-[11px] uppercase tracking-[0.10em] text-[#ecedf4]/55 truncate"
+            style={FONT_MONO}
+          >
+            Item {Math.max(0, (index ?? 0)) + 1} of {total}
+            {groupName ? ` — ${groupName}` : ''}
+          </p>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={!canPrev}
+              aria-label="Previous item (↑/K)"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!canNext}
+              aria-label="Next item (↓/J)"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
