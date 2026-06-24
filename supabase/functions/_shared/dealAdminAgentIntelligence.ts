@@ -1081,6 +1081,97 @@ async function insertCandidates(
 /*  Main entry                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Mark pending deal_admin_agent approval items as dismissed when the
+ * underlying object has already been updated by a user after the queue
+ * item was created. This is how the agent "removes" stale cards on its
+ * regular sweep — if the deal manager has handled the lender, milestone,
+ * stage, etc. themselves, we don't keep asking for approval.
+ */
+async function reconcileStalePendingApprovals(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<number> {
+  // Map target_object_type -> source table + timestamp column to compare.
+  const TARGET_TABLE: Record<string, { table: string; ts: string }> = {
+    deal: { table: "deals", ts: "updated_at" },
+    deal_lender: { table: "deal_lenders", ts: "updated_at" },
+    deal_milestone: { table: "deal_milestones", ts: "updated_at" },
+    referral_source: { table: "referral_sources", ts: "updated_at" },
+    contact: { table: "contacts", ts: "updated_at" },
+  };
+
+  const { data: pending, error } = await supabase
+    .from("ai_action_queue")
+    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source")
+    .eq("status", "pending")
+    .filter("source->>origin", "eq", "deal_admin_agent")
+    .filter("source->>company_id", "eq", companyId)
+    .limit(500);
+  if (error || !pending || pending.length === 0) return 0;
+
+  const toResolve: string[] = [];
+
+  // Batch by table to minimize round-trips.
+  const byTable = new Map<string, Array<{ id: string; created_at: string; target_id: string }>>();
+  for (const row of pending as any[]) {
+    const tot = row.target_object_type as string | null;
+    const toid = row.target_object_id as string | null;
+    if (!tot || !toid) continue;
+    // Never auto-resolve text-only items (draft_email, add_status_note,
+    // create_milestone) — those don't have a stable target row to compare.
+    if (
+      row.action_type === "draft_email" ||
+      row.action_type === "add_status_note" ||
+      row.action_type === "create_milestone"
+    ) continue;
+    const def = TARGET_TABLE[tot];
+    if (!def) continue;
+    const arr = byTable.get(def.table) ?? [];
+    arr.push({ id: row.id as string, created_at: row.created_at as string, target_id: toid });
+    byTable.set(def.table, arr);
+  }
+
+  for (const [table, rows] of byTable) {
+    const ids = Array.from(new Set(rows.map((r) => r.target_id)));
+    if (ids.length === 0) continue;
+    const { data: targets } = await supabase
+      .from(table)
+      .select("id, updated_at")
+      .in("id", ids);
+    const tsById = new Map<string, string>();
+    for (const t of (targets ?? []) as any[]) {
+      if (t?.id && t?.updated_at) tsById.set(t.id, t.updated_at);
+    }
+    for (const r of rows) {
+      const ts = tsById.get(r.target_id);
+      if (!ts) continue;
+      // Add a 60s buffer so we don't race the agent's own insert.
+      if (new Date(ts).getTime() > new Date(r.created_at).getTime() + 60_000) {
+        toResolve.push(r.id);
+      }
+    }
+  }
+
+  if (toResolve.length === 0) return 0;
+
+  const nowIso = new Date().toISOString();
+  const { error: updErr } = await supabase
+    .from("ai_action_queue")
+    .update({
+      status: "dismissed",
+      dismissed_at: nowIso,
+      rejection_reason: "auto_resolved_user_already_acted",
+    })
+    .in("id", toResolve)
+    .eq("status", "pending");
+  if (updErr) {
+    console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
+    return 0;
+  }
+  return toResolve.length;
+}
+
 export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<AnalyzeResult> {
   const {
     supabase,
