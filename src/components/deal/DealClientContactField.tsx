@@ -48,6 +48,7 @@ export function DealClientContactField({
     name: string;
     email: string | null;
     isPreferred: boolean;
+    lastContactAt: string | null;
   }> =
     linkedContacts.length > 0
       ? (() => {
@@ -60,10 +61,11 @@ export function DealClientContactField({
             name: c.name,
             email: c.email,
             isPreferred: c.id === preferredId,
+            lastContactAt: c.lastContactAt,
           }));
         })()
       : resolved.name
-        ? [{ id: null, name: resolved.name, email: resolved.info, isPreferred: true }]
+        ? [{ id: null, name: resolved.name, email: resolved.info, isPreferred: true, lastContactAt: null }]
         : [];
 
   const linkedIds = new Set(linkedContacts.map((c) => c.id));
@@ -87,7 +89,7 @@ export function DealClientContactField({
       const name = formatPickedContactName(c);
       const newList = [
         ...linkedContacts,
-        { id: c.id, name, email: c.email ?? null, role: null, createdAt: null },
+        { id: c.id, name, email: c.email ?? null, role: null, createdAt: null, lastContactAt: null },
       ];
       syncLegacyFromList(newList);
     } finally {
@@ -193,6 +195,16 @@ export function DealClientContactField({
                 {chip.email && (
                   <p className="text-xs text-muted-foreground">{chip.email}</p>
                 )}
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Last contact:{' '}
+                  {chip.lastContactAt
+                    ? new Date(chip.lastContactAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })
+                    : 'no activity yet'}
+                </p>
                 {chip.isPreferred ? (
                   <p className="text-[11px] mt-1">
                     Preferred — emails, reminders & lender submissions use this contact.

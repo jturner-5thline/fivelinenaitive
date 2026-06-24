@@ -6135,6 +6135,7 @@ export type Database = {
           industry: string | null
           job_title: string | null
           last_activity_date: string | null
+          last_contact_at: string | null
           last_contacted_date: string | null
           last_inbound_activity_date: string | null
           last_match_run_at: string | null
@@ -6626,6 +6627,7 @@ export type Database = {
           industry?: string | null
           job_title?: string | null
           last_activity_date?: string | null
+          last_contact_at?: string | null
           last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
           last_match_run_at?: string | null
@@ -7117,6 +7119,7 @@ export type Database = {
           industry?: string | null
           job_title?: string | null
           last_activity_date?: string | null
+          last_contact_at?: string | null
           last_contacted_date?: string | null
           last_inbound_activity_date?: string | null
           last_match_run_at?: string | null
@@ -28051,6 +28054,14 @@ export type Database = {
           p_org_company_id: string
         }
         Returns: Json
+      }
+      bump_contact_last_contact: {
+        Args: { _at: string; _emails: string[] }
+        Returns: undefined
+      }
+      bump_contact_last_contact_by_id: {
+        Args: { _at: string; _contact_id: string }
+        Returns: undefined
       }
       calculate_next_schedule: {
         Args: { cron_expression: string; timezone?: string }
