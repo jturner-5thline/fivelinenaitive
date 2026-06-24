@@ -553,12 +553,14 @@ EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
 - Implicit next step from the deal manager ("let me check and get back to you", "I'll circle back") → create_followup_task on the deal manager.
 
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
-- ONLY propose update_funding_source when the lender's own communication clearly indicates ONE of:
-    (a) PASS / DECLINE / not-a-fit on this deal,
-    (b) TERM SHEET / IOI / indication / proposal / pricing terms issued or revised,
-    (c) HOLD / PAUSE / postpone / "circle back later" / "park this" on the deal.
-- A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
-- Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. If you cannot quote that language, do not emit the action.
+- ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
+    (a) PASS / DECLINE / not-a-fit on this deal → propose stage="passed" (or "not_a_fit").
+    (b) TERM SHEET / IOI / indication / proposal / pricing terms issued or revised → propose the matching terms stage.
+    (c) HOLD / PAUSE on the deal — ONLY when the lender EXPLICITLY says so. Trigger language: "revisit", "table this", "pause", "postpone", "circle back later", "park this", "put on hold", "shelve", "come back to this in <N> weeks". Propose stage="on-hold".
+        Do NOT infer hold from silence, slow replies, missed deadlines, or your own assumption that the lender is "probably busy". Those are unresponsive, not on hold.
+    (d) UNRESPONSIVE — lender has gone silent after we engaged them (multiple unanswered nudges, no reply past a committed date, or business_days_since_last_contact materially exceeds normal cadence) and there is NO explicit hold/pause language anywhere in the thread. Propose stage="unresponsive". This is the correct status whenever the only signal is absence of a response — never collapse this into "on-hold".
+- A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient on its own — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
+- Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. For an UNRESPONSIVE proposal, cite the most recent outbound nudge plus the funding_source's business_days_since_last_contact as evidence (kind="funding_source") — never invent lender wording that isn't in the thread.
 - NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
 - NEVER emit a create_followup_task whose title/description is a generic "update stage" reminder (e.g. "Update Stage for {Deal}"). Stage moves belong on update_deal_stage with a concrete proposed stage and evidence.
 - NEVER emit a create_followup_task whose title/description is a generic "follow up" / "follow-up" reminder (e.g. "Follow up on {Deal}", "Follow-up task", "Create follow-up task"). Tasks must describe the concrete action — who does what by when. Vague "follow up" cards are noise.
@@ -879,10 +881,10 @@ function filterFundingSourceProposals(
 ): { kept: CandidateItem[]; dropped: number } {
   // Keywords that justify an update_funding_source action.
   const SIGNAL_RE =
-    /\b(pass(?:ing|ed)?|declin(?:e|ed|ing)|not\s+a\s+fit|outside\s+(?:our\s+)?mandate|term\s*sheet|termsheet|\bIOI\b|indication\s+of\s+interest|\bLOI\b|letter\s+of\s+intent|proposal|pricing|hold|paus(?:e|ing|ed)|postpone(?:d|ment)?|on\s+hold|park(?:ed|ing)?\s+(?:this|the\s+deal)|circle\s+back\s+later)\b/i;
+    /\b(pass(?:ing|ed)?|declin(?:e|ed|ing)|not\s+a\s+fit|outside\s+(?:our\s+)?mandate|term\s*sheet|termsheet|\bIOI\b|indication\s+of\s+interest|\bLOI\b|letter\s+of\s+intent|proposal|pricing|hold|paus(?:e|ing|ed)|postpone(?:d|ment)?|on\s+hold|park(?:ed|ing)?\s+(?:this|the\s+deal)|circle\s+back\s+later|revisit|table\s+(?:this|it)|shelve|unresponsive|no\s+response|gone\s+silent|stopped\s+responding|ghost(?:ed|ing)?|stale|days?\s+since\s+last\s+contact)\b/i;
 
   // Status-field values that imply a pass / hold and are inherently OK.
-  const STATUS_SIGNAL_RE = /pass|declin|hold|paus|withdraw|dead|lost|term|ioi|loi|indication/i;
+  const STATUS_SIGNAL_RE = /pass|declin|hold|paus|withdraw|dead|lost|term|ioi|loi|indication|unresponsive|no[\s_-]?response/i;
 
   // Terminal lender states — if the lender is already in one of these, there's
   // nothing left to update on the funding source. Suppress the card entirely.
