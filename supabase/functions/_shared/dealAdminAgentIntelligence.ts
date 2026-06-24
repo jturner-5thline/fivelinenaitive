@@ -801,6 +801,60 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
   return true;
 }
 
+/**
+ * Drop any `update_deal_stage` candidates whose proposed `stage` is not in
+ * the deal's actual pipeline. Other action types pass through unchanged.
+ * Prevents the AI from queueing un-executable stage moves like
+ * "nda-signed-diligence" that the approver cannot apply.
+ */
+async function filterInvalidStageProposals(
+  supabase: SupabaseClient,
+  deal: { id: string; pipeline_id?: string | null },
+  candidates: CandidateItem[],
+): Promise<{ kept: CandidateItem[]; dropped: number }> {
+  const hasStageProposal = candidates.some((c) => c.action_type === "update_deal_stage");
+  if (!hasStageProposal) return { kept: candidates, dropped: 0 };
+
+  let validStageIds: Set<string> | null = null;
+  if (deal.pipeline_id) {
+    const { data } = await supabase
+      .from("deal_pipelines")
+      .select("stages")
+      .eq("id", deal.pipeline_id)
+      .maybeSingle();
+    const stages = (data as any)?.stages;
+    if (Array.isArray(stages)) {
+      validStageIds = new Set(
+        stages
+          .map((s: any) => (typeof s?.id === "string" ? s.id : null))
+          .filter((x: string | null): x is string => !!x),
+      );
+    }
+  }
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "update_deal_stage") return true;
+    const proposed = (c.proposed_values as any)?.stage;
+    if (typeof proposed !== "string" || !proposed) {
+      dropped++;
+      return false;
+    }
+    // If we couldn't resolve the pipeline, fail closed — better to drop than
+    // queue an un-executable card.
+    if (!validStageIds || validStageIds.size === 0) {
+      dropped++;
+      return false;
+    }
+    if (!validStageIds.has(proposed)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
 function dedupeAndMerge(
   candidates: CandidateItem[],
   existingKeys: Set<string>,
@@ -1062,7 +1116,19 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       result.candidates_filtered += raw.length - valid.length;
       if (valid.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(valid, existingKeys);
+      // Validate any update_deal_stage proposals against the deal's actual
+      // pipeline. The model has historically hallucinated stage ids
+      // (e.g. "nda-signed-diligence") that don't exist in the workspace's
+      // pipeline configuration — those rows are unexecutable and confuse
+      // the approver, so drop them at the source.
+      const stageValidated = await filterInvalidStageProposals(supabase, d, valid);
+      if (stageValidated.dropped > 0) {
+        result.candidates_filtered += stageValidated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${stageValidated.dropped} update_deal_stage proposal(s) for deal=${d.id} — proposed stage not in pipeline`);
+      }
+      if (stageValidated.kept.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(stageValidated.kept, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
