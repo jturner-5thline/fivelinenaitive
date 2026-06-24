@@ -274,6 +274,35 @@ async function gatherSignalsForDeal(
       if (!threadMessages[tid]) threadMessages[tid] = [];
       if (threadMessages[tid].length < 4) threadMessages[tid].push(m);
     }
+    // ALSO pull from email_cache (the real synced-emails table for Gmail).
+    // email_cache has body_text, which gives the agent enough context to
+    // detect "we're going to pass", "not a fit", etc. instead of relying on
+    // the truncated snippet only.
+    const { data: ecThread } = await supabase
+      .from("email_cache")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, received_at")
+      .in("thread_id", threadIds)
+      .order("received_at", { ascending: false })
+      .limit(80);
+    for (const m of ecThread ?? []) {
+      const tid = (m as any).thread_id as string;
+      if (!threadMessages[tid]) threadMessages[tid] = [];
+      // Skip duplicates by gmail_message_id; otherwise add up to 6 per thread.
+      const exists = threadMessages[tid].some(
+        (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
+      );
+      if (!exists && threadMessages[tid].length < 6) {
+        threadMessages[tid].push(m);
+      } else if (exists) {
+        // Merge body_text into the existing entry so downstream sees it.
+        const idx = threadMessages[tid].findIndex(
+          (x: any) => x.gmail_message_id === (m as any).gmail_message_id,
+        );
+        if (idx >= 0 && !(threadMessages[tid][idx] as any).body_text) {
+          threadMessages[tid][idx] = { ...threadMessages[tid][idx], body_text: (m as any).body_text };
+        }
+      }
+    }
   }
   const enrichedThreads = threadRows.map((t) => ({
     ...t,
@@ -674,6 +703,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
         subject: m.subject,
         snippet: trim(m.snippet, 320),
+        body_excerpt: trim(m.body_text, 1200),
         received_at: m.received_at,
       })),
     })),
@@ -1083,6 +1113,134 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
       ...c,
       proposed_values: nextPv,
       rationale_summary: nextRationale,
+    } as CandidateItem;
+  });
+
+  return { kept, rewritten };
+}
+
+/**
+ * Deterministic guardrail: distinguish "Passed" from "Not a Fit" based on the
+ * actual lender language in evidence, and ensure a pass_reason is populated
+ * when the lender quoted one. The AI's prompt covers this, but this rewrite
+ * is the safety net so a "not a fit" email never lands as a generic "passed"
+ * (or vice versa) when the evidence text is unambiguous.
+ */
+function normalizePassVsNotAFit(candidates: CandidateItem[]): {
+  kept: CandidateItem[];
+  rewritten: number;
+} {
+  // Lender said the deal isn't a fit for them — a softer signal than an outright pass.
+  const NOT_A_FIT_RE =
+    /\b(not\s+a\s+fit|not\s+for\s+us|doesn'?t\s+fit\s+(?:our\s+)?(?:box|mandate|criteria|wheelhouse|profile)|outside\s+(?:our\s+)?(?:credit\s+)?(?:box|mandate|criteria|wheelhouse|profile|appetite)|not\s+in\s+our\s+(?:wheelhouse|box|mandate)|isn'?t\s+a\s+fit)\b/i;
+  // Explicit pass/decline language.
+  const PASS_RE =
+    /\b(we'?ll?\s+pass|we\s+are\s+passing|going\s+to\s+pass|have\s+to\s+pass|gonna\s+pass|taking\s+a\s+pass|it'?s\s+a\s+pass|we\s+pass\b|passing\s+on\s+(?:this|the\s+deal|it)|decline(?:d|ing)?(?:\s+to\s+(?:participate|move\s+forward|proceed))?|we'?re\s+out|we'?ll?\s+have\s+to\s+take\s+a\s+pass)\b/i;
+  // Stage values that look like pass/not-a-fit.
+  const PASS_VALUE_RE = /\b(pass(?:ed)?|declin(?:ed|ing))\b/i;
+  const NOT_FIT_VALUE_RE = /\b(not[_\s-]?a[_\s-]?fit|not_fit|notafit)\b/i;
+
+  let rewritten = 0;
+  const kept = candidates.map((c) => {
+    if (c.action_type !== "update_funding_source") return c;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const stage = typeof pv.stage === "string" ? pv.stage : "";
+    const substage = typeof pv.substage === "string" ? pv.substage : "";
+    const tracking = typeof pv.tracking_status === "string" ? pv.tracking_status : "";
+    const isPassStage =
+      PASS_VALUE_RE.test(stage) || PASS_VALUE_RE.test(substage) || PASS_VALUE_RE.test(tracking);
+    const isNotFitStage =
+      NOT_FIT_VALUE_RE.test(stage) || NOT_FIT_VALUE_RE.test(substage) || NOT_FIT_VALUE_RE.test(tracking);
+    if (!isPassStage && !isNotFitStage) return c;
+
+    // Gather all available evidence text the agent had to work from.
+    const evidenceText = [
+      pv.notes,
+      pv.note,
+      pv.reason,
+      pv.pass_reason,
+      c.rationale_summary,
+      c.evidence_summary,
+      ...(Array.isArray(c.evidence_references)
+        ? c.evidence_references.flatMap((e) => [e?.snippet, e?.label, (e as any)?.body_excerpt])
+        : []),
+    ]
+      .filter((s) => typeof s === "string")
+      .join("\n");
+
+    const evidenceSaysNotAFit = NOT_A_FIT_RE.test(evidenceText);
+    const evidenceSaysPass = PASS_RE.test(evidenceText);
+
+    const nextPv: Record<string, any> = { ...pv };
+    let mutated = false;
+    let rewriteNote = "";
+
+    // (1) Agent proposed "passed" but the lender's words are "not a fit" only.
+    if (isPassStage && evidenceSaysNotAFit && !evidenceSaysPass) {
+      if (PASS_VALUE_RE.test(stage)) nextPv.stage = "not_a_fit";
+      if (PASS_VALUE_RE.test(substage)) nextPv.substage = "not_a_fit";
+      mutated = true;
+      rewriteNote = "Reclassified passed→not_a_fit: evidence quotes \"not a fit\" / \"not for us\" language, not an outright pass.";
+    }
+    // (2) Agent proposed "not_a_fit" but the lender clearly said "pass".
+    else if (isNotFitStage && evidenceSaysPass && !evidenceSaysNotAFit) {
+      if (NOT_FIT_VALUE_RE.test(stage)) nextPv.stage = "passed";
+      if (NOT_FIT_VALUE_RE.test(substage)) nextPv.substage = "passed";
+      mutated = true;
+      rewriteNote = "Reclassified not_a_fit→passed: evidence quotes explicit pass/decline language.";
+    }
+
+    // (3) Ensure pass_reason is populated for both Passed and Not a Fit when
+    //     evidence contains a reasonable reason phrase the agent failed to set.
+    if ((isPassStage || isNotFitStage) && !pv.pass_reason) {
+      // Try to lift a short reason phrase from the evidence (60-160 chars).
+      const trimmed = evidenceText.replace(/\s+/g, " ").trim();
+      if (trimmed.length > 0) {
+        // Prefer sentences containing the trigger language.
+        const sentences = trimmed.split(/(?<=[.!?])\s+/);
+        const triggerSentence =
+          sentences.find((s) => PASS_RE.test(s) || NOT_A_FIT_RE.test(s)) ?? sentences[0];
+        if (triggerSentence && triggerSentence.length > 0) {
+          nextPv.pass_reason = triggerSentence.length > 200
+            ? triggerSentence.slice(0, 200) + "…"
+            : triggerSentence;
+          mutated = true;
+        }
+      }
+      if (!nextPv.pass_reason) {
+        nextPv.pass_reason = "No reason provided";
+        mutated = true;
+      }
+    }
+
+    if (!mutated) return c;
+    rewritten++;
+
+    if (rewriteNote) {
+      nextPv.notes =
+        typeof nextPv.notes === "string" && nextPv.notes.trim().length
+          ? `${nextPv.notes}\n\n${rewriteNote}`
+          : rewriteNote;
+    }
+
+    // Sync rationale wording with the corrected stage.
+    let nextRationale = typeof c.rationale_summary === "string" ? c.rationale_summary : "";
+    if (rewriteNote.includes("passed→not_a_fit") && nextRationale) {
+      nextRationale = nextRationale
+        .replace(/\b(is\s+)?passing\s+on\b/gi, "$1said it's not a fit on")
+        .replace(/\bupdating\s+to\s+passed\b/gi, "updating to Not a Fit")
+        .replace(/\bcorrect\s+status\s+is\s+Passed\b/gi, "correct status is Not a Fit");
+    } else if (rewriteNote.includes("not_a_fit→passed") && nextRationale) {
+      nextRationale = nextRationale
+        .replace(/\bsaid\s+(?:the\s+deal\s+)?is\s+not\s+a\s+fit\b/gi, "is passing")
+        .replace(/\bupdating\s+to\s+Not\s+a\s+Fit\b/gi, "updating to Passed")
+        .replace(/\bcorrect\s+status\s+is\s+Not\s+a\s+Fit\b/gi, "correct status is Passed");
+    }
+
+    return {
+      ...c,
+      proposed_values: nextPv,
+      rationale_summary: nextRationale || c.rationale_summary,
     } as CandidateItem;
   });
 
@@ -1785,11 +1943,18 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
 
+      // Normalize pass vs not-a-fit and populate pass_reason from evidence
+      // when the agent forgot. Keeps stage labels honest to lender wording.
+      const passNormalized = normalizePassVsNotAFit(holdNormalized.kept);
+      if (passNormalized.rewritten > 0) {
+        console.log(`[deal-admin-agent] REWROTE ${passNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — pass/not_a_fit reclassification + pass_reason backfill`);
+      }
+
       // Gate `update_funding_source` proposals: only allow them when the
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(holdNormalized.kept, bundle.funding_sources);
+      const lenderGated = filterFundingSourceProposals(passNormalized.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
