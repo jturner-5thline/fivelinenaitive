@@ -857,15 +857,6 @@ function DetailPane({
 
       {/* Fixed action bar */}
       <div className="shrink-0 border-t border-white/[0.08] px-5 py-3 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
-        <button
-          type="button"
-          onClick={() => setEditMode((v) => !v)}
-          disabled={fieldKeys.length === 0}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.04] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          style={FONT_BODY}
-        >
-          <Pencil className="h-3.5 w-3.5" /> {editMode ? 'Done editing' : 'Edit'}
-        </button>
         <div className="flex-1" />
         <button
           type="button"
