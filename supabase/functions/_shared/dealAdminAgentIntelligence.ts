@@ -875,6 +875,7 @@ async function filterInvalidStageProposals(
  */
 function filterFundingSourceProposals(
   candidates: CandidateItem[],
+  fundingSources?: any[],
 ): { kept: CandidateItem[]; dropped: number } {
   // Keywords that justify an update_funding_source action.
   const SIGNAL_RE =
@@ -883,11 +884,43 @@ function filterFundingSourceProposals(
   // Status-field values that imply a pass / hold and are inherently OK.
   const STATUS_SIGNAL_RE = /pass|declin|hold|paus|withdraw|dead|lost|term|ioi|loi|indication/i;
 
+  // Terminal lender states — if the lender is already in one of these, there's
+  // nothing left to update on the funding source. Suppress the card entirely.
+  const TERMINAL_LENDER_RE = /pass|declin|withdraw|dead|lost|reject|kill|no[\s_-]*go/i;
+  const fsById = new Map<string, any>();
+  for (const f of fundingSources ?? []) {
+    if (f?.id) fsById.set(String(f.id), f);
+  }
+
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "update_funding_source") return true;
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const cv = (c.current_values ?? {}) as Record<string, any>;
+
+    // Hard gate: if the targeted lender is already in a terminal/passed state
+    // on this deal, no funding-source update is needed. The user has already
+    // resolved this lender.
+    const targetId = c.target_object_id ? String(c.target_object_id) : "";
+    const fs = targetId ? fsById.get(targetId) : null;
+    if (fs) {
+      const currentState = [fs.tracking_status, fs.stage, fs.substage]
+        .map((v) => (typeof v === "string" ? v : ""))
+        .join(" ");
+      if (TERMINAL_LENDER_RE.test(currentState)) {
+        // Allow ONLY if the proposal is moving the lender OUT of the terminal
+        // state (e.g. re-engaging a previously passed lender). Otherwise drop.
+        const proposedState = [pv.tracking_status, pv.stage, pv.substage]
+          .map((v) => (typeof v === "string" ? v : ""))
+          .join(" ");
+        const proposingNonTerminal =
+          proposedState.trim().length > 0 && !TERMINAL_LENDER_RE.test(proposedState);
+        if (!proposingNonTerminal) {
+          dropped++;
+          return false;
+        }
+      }
+    }
 
     // Allow when the proposed change itself is a status transition into
     // pass/hold/terms (tracking_status / stage / substage).
@@ -1165,14 +1198,33 @@ async function reconcileStalePendingApprovals(
     const lenderIds = Array.from(new Set(lenderItems.map((p) => p.target_object_id as string)));
     const { data: lenders } = await supabase
       .from("deal_lenders")
-      .select("id, name, deal_id, master_lender_id")
+      .select("id, name, deal_id, master_lender_id, tracking_status, stage, substage")
       .in("id", lenderIds);
     const nameById = new Map<string, { name: string; deal_id: string; master_lender_id: string | null }>();
+    const stateById = new Map<string, string>();
     for (const l of (lenders ?? []) as any[]) {
       if (l?.id && l?.name) nameById.set(l.id, {
         name: l.name, deal_id: l.deal_id, master_lender_id: l.master_lender_id ?? null,
       });
+      if (l?.id) {
+        stateById.set(
+          l.id,
+          [l.tracking_status, l.stage, l.substage].filter((v) => typeof v === "string").join(" "),
+        );
+      }
     }
+
+    // Auto-dismiss any update_funding_source items whose targeted lender is
+    // already in a terminal/passed state — there is nothing left for the
+    // user to update on that lender.
+    const TERMINAL_LENDER_RE = /pass|declin|withdraw|dead|lost|reject|kill|no[\s_-]*go/i;
+    for (const p of lenderItems) {
+      const state = stateById.get(p.target_object_id as string) ?? "";
+      if (state && TERMINAL_LENDER_RE.test(state)) {
+        toResolve.push(p.id);
+      }
+    }
+
     const dealIds = Array.from(new Set(lenderItems.map((p) => p.deal_id as string)));
     const { data: threads } = await supabase
       .from("email_threads")
@@ -1533,7 +1585,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(stageValidated.kept);
+      const lenderGated = filterFundingSourceProposals(stageValidated.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
