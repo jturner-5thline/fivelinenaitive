@@ -1153,6 +1153,46 @@ async function reconcileStalePendingApprovals(
     }
   }
 
+  // Extra signal for update_funding_source: a recent email thread on the
+  // deal whose subject mentions the lender name. The lender row itself
+  // rarely gets touched when the deal manager simply replies to an email,
+  // but a fresh thread message means the manager is already handling it.
+  const lenderItems = (pending as any[]).filter(
+    (p) => p.action_type === "update_funding_source" && p.deal_id && p.target_object_id,
+  );
+  if (lenderItems.length > 0) {
+    const lenderIds = Array.from(new Set(lenderItems.map((p) => p.target_object_id as string)));
+    const { data: lenders } = await supabase
+      .from("deal_lenders")
+      .select("id, name, deal_id")
+      .in("id", lenderIds);
+    const nameById = new Map<string, { name: string; deal_id: string }>();
+    for (const l of (lenders ?? []) as any[]) {
+      if (l?.id && l?.name) nameById.set(l.id, { name: l.name, deal_id: l.deal_id });
+    }
+    const dealIds = Array.from(new Set(lenderItems.map((p) => p.deal_id as string)));
+    const { data: threads } = await supabase
+      .from("email_threads")
+      .select("matched_deal_id, subject, latest_message_at")
+      .in("matched_deal_id", dealIds)
+      .order("latest_message_at", { ascending: false })
+      .limit(500);
+    for (const item of lenderItems) {
+      if (toResolve.includes(item.id)) continue;
+      const meta = nameById.get(item.target_object_id);
+      if (!meta) continue;
+      const needle = meta.name.toLowerCase();
+      const createdMs = new Date(item.created_at).getTime();
+      const hit = (threads ?? []).some((t: any) => {
+        if (t.matched_deal_id !== item.deal_id) return false;
+        if (!t.latest_message_at) return false;
+        if (new Date(t.latest_message_at).getTime() <= createdMs) return false;
+        return typeof t.subject === "string" && t.subject.toLowerCase().includes(needle);
+      });
+      if (hit) toResolve.push(item.id);
+    }
+  }
+
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
