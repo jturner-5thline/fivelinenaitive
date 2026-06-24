@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminRole } from '@/hooks/useAdminRole';
@@ -463,6 +464,22 @@ function QueueRow({
   const Icon = meta?.icon ?? CheckSquare;
   const risk = riskOf(item);
   const dot = RISK[risk].hex;
+  const navigate = useNavigate();
+  const dealId = (item as any).deal_id as string | undefined;
+  const isFundingSource =
+    item.action_type === 'update_funding_source' ||
+    item.target_object_type === 'deal_lender';
+  const openDeal = (e: { preventDefault: () => void; stopPropagation: () => void }, tab?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!dealId) return;
+    const qs = new URLSearchParams();
+    qs.set('deal', dealId);
+    if (tab) qs.set('tab', tab);
+    navigate(`/deals?${qs.toString()}`);
+  };
+  const linkCls =
+    'underline-offset-2 hover:underline hover:text-[#5ecdf5] focus-visible:underline focus-visible:text-[#5ecdf5] cursor-pointer rounded-sm';
 
   return (
     <li>
@@ -500,19 +517,50 @@ function QueueRow({
                 className="h-1.5 w-1.5 rounded-full shrink-0"
                 style={{ background: dot, boxShadow: `0 0 8px ${dot}66` }}
               />
-              <p
-                className="text-[12.5px] text-[#ecedf4] truncate"
-                style={FONT_BODY}
-                title={item.title}
-              >
-                {item.title}
-              </p>
+              {isFundingSource && dealId ? (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => openDeal(e, 'lenders')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') openDeal(e as any, 'lenders');
+                  }}
+                  className={`text-[12.5px] text-[#ecedf4] truncate ${linkCls}`}
+                  style={FONT_BODY}
+                  title={`${item.title} — open funding sources`}
+                >
+                  {item.title}
+                </span>
+              ) : (
+                <p
+                  className="text-[12.5px] text-[#ecedf4] truncate"
+                  style={FONT_BODY}
+                  title={item.title}
+                >
+                  {item.title}
+                </p>
+              )}
             </div>
             <p
               className="text-[10.5px] text-[#ecedf4]/55 truncate mt-0.5"
               style={{ ...FONT_MONO, letterSpacing: '0.04em' }}
             >
-              {item.deal_name || 'Unassigned'}
+              {item.deal_name && dealId ? (
+                <span
+                  role="link"
+                  tabIndex={0}
+                  onClick={(e) => openDeal(e)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') openDeal(e as any);
+                  }}
+                  className={linkCls}
+                  title={`Open ${item.deal_name}`}
+                >
+                  {item.deal_name}
+                </span>
+              ) : (
+                item.deal_name || 'Unassigned'
+              )}
             </p>
           </div>
           <span
