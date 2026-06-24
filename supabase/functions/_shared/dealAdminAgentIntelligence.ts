@@ -1198,14 +1198,33 @@ async function reconcileStalePendingApprovals(
     const lenderIds = Array.from(new Set(lenderItems.map((p) => p.target_object_id as string)));
     const { data: lenders } = await supabase
       .from("deal_lenders")
-      .select("id, name, deal_id, master_lender_id")
+      .select("id, name, deal_id, master_lender_id, tracking_status, stage, substage")
       .in("id", lenderIds);
     const nameById = new Map<string, { name: string; deal_id: string; master_lender_id: string | null }>();
+    const stateById = new Map<string, string>();
     for (const l of (lenders ?? []) as any[]) {
       if (l?.id && l?.name) nameById.set(l.id, {
         name: l.name, deal_id: l.deal_id, master_lender_id: l.master_lender_id ?? null,
       });
+      if (l?.id) {
+        stateById.set(
+          l.id,
+          [l.tracking_status, l.stage, l.substage].filter((v) => typeof v === "string").join(" "),
+        );
+      }
     }
+
+    // Auto-dismiss any update_funding_source items whose targeted lender is
+    // already in a terminal/passed state — there is nothing left for the
+    // user to update on that lender.
+    const TERMINAL_LENDER_RE = /pass|declin|withdraw|dead|lost|reject|kill|no[\s_-]*go/i;
+    for (const p of lenderItems) {
+      const state = stateById.get(p.target_object_id as string) ?? "";
+      if (state && TERMINAL_LENDER_RE.test(state)) {
+        toResolve.push(p.id);
+      }
+    }
+
     const dealIds = Array.from(new Set(lenderItems.map((p) => p.deal_id as string)));
     const { data: threads } = await supabase
       .from("email_threads")
