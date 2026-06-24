@@ -660,7 +660,8 @@ function DetailPane({
   const dealId = (item as any).deal_id as string | undefined;
   const isFundingSource =
     item.action_type === 'update_funding_source' ||
-    item.target_object_type === 'deal_lender';
+    item.target_object_type === 'deal_lender' ||
+    item.target_object_type === 'funding_source';
   const openDeal = (tab?: string) => {
     if (!dealId) return;
     const qs = new URLSearchParams();
