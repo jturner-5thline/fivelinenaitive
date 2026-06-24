@@ -8,6 +8,7 @@ export interface DealClientContact {
   email: string | null;
   role: string | null;
   createdAt: string | null;
+  lastContactAt: string | null;
 }
 
 function composeName(c: {
@@ -49,7 +50,7 @@ export function useDealClientContacts(dealId: string | null | undefined) {
       const ids = rows.map((r) => r.contact_id).filter(Boolean);
       const { data: contacts, error: contactsError } = await supabase
         .from('contacts')
-        .select('id, first_name, last_name, full_name, email')
+        .select('id, first_name, last_name, full_name, email, last_contact_at')
         .in('id', ids);
       if (contactsError) throw contactsError;
       const byId = new Map((contacts || []).map((c: any) => [c.id, c]));
@@ -71,6 +72,7 @@ export function useDealClientContacts(dealId: string | null | undefined) {
           email: c.email ?? null,
           role: row.role ?? null,
           createdAt: row.created_at,
+          lastContactAt: c.last_contact_at ?? null,
         });
       }
       return out;
