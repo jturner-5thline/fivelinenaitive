@@ -789,10 +789,24 @@ function AccessRequestRow({
    ──────────────────────────────────────────────────────────────────────── */
 function DetailPane({
   item,
+  groupName,
+  index,
+  total,
+  canPrev,
+  canNext,
+  onPrev,
+  onNext,
   onApprove,
   onReject,
 }: {
   item: QueuedAiAction;
+  groupName?: string;
+  index?: number;
+  total?: number;
+  canPrev?: boolean;
+  canNext?: boolean;
+  onPrev?: () => void;
+  onNext?: () => void;
   onApprove: (opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
   onReject: () => Promise<unknown>;
 }) {
