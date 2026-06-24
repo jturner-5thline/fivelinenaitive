@@ -784,7 +784,21 @@ function DetailPane({
               </button>
             </div>
 
-            <div className="mt-1.5 divide-y divide-white/[0.06]">
+            <div className="mt-1.5">
+              <div
+                className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 pb-1 border-b border-white/[0.06]"
+              >
+                {['Field', 'Current', 'Proposed'].map((h) => (
+                  <p
+                    key={h}
+                    className="text-[10px] uppercase text-[#ecedf4]/45"
+                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                  >
+                    {h}
+                  </p>
+                ))}
+              </div>
+              <div className="divide-y divide-white/[0.06]">
               {fieldKeys.map((k) => {
                 const oldV = oldValues[k];
                 const proposedRaw = edits[k] ?? newValues[k];
@@ -794,7 +808,7 @@ function DetailPane({
                 return (
                   <div
                     key={k}
-                    className="py-2 grid grid-cols-[minmax(7rem,auto)_1fr] gap-x-3 gap-y-0.5 items-baseline"
+                    className="py-1.5 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 items-baseline"
                   >
                     <p
                       className="text-[11px] uppercase text-[#ecedf4]/55"
@@ -802,37 +816,35 @@ function DetailPane({
                     >
                       {humanizeFieldKey(k)}
                     </p>
-                    <div className="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span
+                      className="min-w-0 text-[12.5px] text-[#ecedf4]/50 break-words"
+                      style={FONT_BODY}
+                    >
+                      {isOldEmpty ? 'No current value' : oldDisplay}
+                    </span>
+                    {editMode ? (
+                      <Input
+                        value={proposedRaw == null ? '' : String(proposedRaw)}
+                        onChange={(e) =>
+                          setEdits((p) => ({ ...p, [k]: e.target.value }))
+                        }
+                        className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
+                        style={FONT_BODY}
+                      />
+                    ) : (
                       <span
-                        className="text-[12.5px] text-[#ecedf4]/50 break-words"
+                        className="min-w-0 text-[12.5px] font-medium text-[#ecedf4] break-words"
                         style={FONT_BODY}
                       >
-                        {isOldEmpty ? 'No current value' : oldDisplay}
+                        {proposedDisplay || (
+                          <span className="text-[#ecedf4]/50 font-normal">—</span>
+                        )}
                       </span>
-                      <ArrowRight className="h-3 w-3 text-[#ecedf4]/35 shrink-0 translate-y-[1px]" />
-                      {editMode ? (
-                        <Input
-                          value={proposedRaw == null ? '' : String(proposedRaw)}
-                          onChange={(e) =>
-                            setEdits((p) => ({ ...p, [k]: e.target.value }))
-                          }
-                          className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 flex-1 min-w-[10rem]"
-                          style={FONT_BODY}
-                        />
-                      ) : (
-                        <span
-                          className="text-[12.5px] font-medium text-[#ecedf4] break-words"
-                          style={FONT_BODY}
-                        >
-                          {proposedDisplay || (
-                            <span className="text-[#ecedf4]/50 font-normal">—</span>
-                          )}
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         )}
