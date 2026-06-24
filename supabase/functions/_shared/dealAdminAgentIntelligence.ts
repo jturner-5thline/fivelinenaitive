@@ -1099,7 +1099,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     queue_rows_inserted: 0,
     queue_ids: [],
     errors: [],
+    auto_resolved_pending: 0,
   };
+
+  // 0) Reconcile: clear pending deal_admin_agent approval items where the
+  //    user has already acted on the underlying object (e.g. lender updated,
+  //    milestone marked complete, deal stage changed, status note added).
+  try {
+    const resolved = await reconcileStalePendingApprovals(supabase, companyId);
+    result.auto_resolved_pending = resolved;
+    if (resolved > 0) {
+      console.log(`[deal-admin-agent] auto-resolved ${resolved} pending approval items for company=${companyId}`);
+    }
+  } catch (e) {
+    result.errors.push(`reconcile_pending: ${(e as Error)?.message ?? "unknown"}`);
+  }
 
   // 1) Load target deals.
   // Scope: deals where the Deal Manager (deal_owner_user_id) is an
