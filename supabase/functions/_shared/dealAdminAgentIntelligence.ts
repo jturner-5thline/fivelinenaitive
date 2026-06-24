@@ -1229,7 +1229,17 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (lenderGated.kept.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(lenderGated.kept, existingKeys);
+      // Suppress generic "Update Funding Sources for X" follow-up tasks —
+      // those are noise; real lender-status updates flow through
+      // update_funding_source.
+      const taskGated = filterFundingSourceTaskProposals(lenderGated.kept);
+      if (taskGated.dropped > 0) {
+        result.candidates_filtered += taskGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${taskGated.dropped} "update funding sources" task proposal(s) for deal=${d.id}`);
+      }
+      if (taskGated.kept.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(taskGated.kept, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
