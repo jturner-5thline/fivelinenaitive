@@ -1148,13 +1148,12 @@ function DetailPane({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {typeof total === 'number' && total > 0 && (
-        <div className="flex items-center justify-between gap-2 px-6 pt-4 pb-2 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between gap-2 px-6 pt-1.5 pb-1.5 border-b border-white/[0.06] shrink-0">
           <p
             className="text-[11px] uppercase tracking-[0.10em] text-[#ecedf4]/55 truncate"
             style={FONT_MONO}
           >
-            Item {Math.max(0, (index ?? 0)) + 1} of {total}
-            {groupName ? ` — ${groupName}` : ''}
+            {Math.max(0, (index ?? 0)) + 1} / {total}
           </p>
           <div className="flex items-center gap-1 shrink-0">
             <button
@@ -1178,7 +1177,7 @@ function DetailPane({
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-0 overflow-y-auto p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-6">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
           className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-6 space-y-4"
