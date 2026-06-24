@@ -88,6 +88,9 @@ export function approveButtonLabel(item: QueuedAiAction, edited = false): string
 export function targetSummary(item: QueuedAiAction): string {
   const t = item.target_object_type;
   const deal = item.deal_name;
+  // For funding-source (deal_lender) cards, show the deal title as the
+  // target chip — the lender name is already in the item title.
+  if (t === 'deal_lender' && deal) return deal;
   const map: Record<string, string> = {
     deal: 'Deal',
     deal_stage: 'Stage',

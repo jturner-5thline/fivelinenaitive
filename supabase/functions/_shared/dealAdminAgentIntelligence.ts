@@ -1048,16 +1048,33 @@ function buildCandidateRows(
   const ownerAllowed = owner && (!opts.activatedUserIds || opts.activatedUserIds.has(owner));
   const assignedTo = ownerAllowed ? (owner as string) : opts.attributionUserId;
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const fundingNameById = new Map<string, string>();
+  for (const f of bundle.funding_sources ?? []) {
+    if (f?.id && f?.name) fundingNameById.set(String(f.id), String(f.name));
+  }
   return candidates.map((c) => {
     const risk = c.risk_level ?? RISK_BY_TYPE[c.action_type];
     const priority = computePriority({ ...c, risk_level: risk }, bundle.current.is_flagged);
+    // For funding-source updates, normalize the queue title to
+    // "Update {Lender Name}". The deal name is already shown via
+    // deal_name / target chip — don't repeat it in the title.
+    let title = c.item_title;
+    if (c.action_type === "update_funding_source") {
+      const lenderName =
+        (c.target_object_id ? fundingNameById.get(String(c.target_object_id)) : null) ||
+        c.linked_entity_label ||
+        (c.proposed_values as any)?.lender_name ||
+        (c.current_values as any)?.lender_name ||
+        "lender";
+      title = `Update ${lenderName}`;
+    }
     return {
       user_id: opts.attributionUserId,
       assigned_to: assignedTo,
       deal_id: bundle.deal_id,
       deal_name: bundle.deal_name,
       action_type: c.action_type,
-      title: c.item_title,
+      title,
       description: c.rationale_summary,
       priority,
       risk_level: risk,
