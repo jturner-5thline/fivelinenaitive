@@ -1,5 +1,38 @@
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 
+function daysSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+
+function buildFundingSourceRationale(item: QueuedAiAction, target: string, cited: string): string {
+  const nv = (item.new_values || {}) as Record<string, any>;
+  const ov = (item.old_values || {}) as Record<string, any>;
+  const lender = nv.lender_name || ov.lender_name || nv.funding_source_name || 'This funding source';
+  const toStage = String(nv.substage ?? nv.new_status ?? nv.status ?? '').trim();
+  const fromStage = String(ov.substage ?? ov.new_status ?? ov.status ?? '').trim();
+  const lastContact = ov.last_contact_at ?? nv.last_contact_at ?? null;
+  const days = daysSince(lastContact);
+  const toLower = toStage.toLowerCase();
+
+  const inactiveStage = /unresponsive|stale|no\s*response|cold|dormant|passed|pass/.test(toLower);
+
+  if (inactiveStage && days !== null) {
+    return `${lender} hasn't had any activity on ${target} in ${days} day${days === 1 ? '' : 's'}, so it makes sense to move them to "${toStage}".${cited}`;
+  }
+  if (inactiveStage) {
+    return `${lender} has gone quiet on ${target} with no recent replies or diligence movement, so it makes sense to move them to "${toStage}".${cited}`;
+  }
+  if (toStage) {
+    const fromPart = fromStage ? ` from "${fromStage}"` : '';
+    const recency = days !== null ? ` (last contact ${days} day${days === 1 ? '' : 's'} ago)` : '';
+    return `Recent activity with ${lender} on ${target}${recency} indicates their status has shifted${fromPart} to "${toStage}".${cited}`;
+  }
+  return `${lender} on ${target} has new activity that warrants a sub-stage update so the deal page reflects reality.${cited}`;
+}
+
 /** One-sentence summary of what changes if the reviewer approves. */
 export function buildOutcomeSentence(item: QueuedAiAction): string {
   const target = item.deal_name || 'this record';
@@ -111,7 +144,7 @@ export function buildRationaleFallback(item: QueuedAiAction): string {
       return `New context surfaced on ${target} that isn't yet captured in the status log. Logging it preserves the history for future reviewers.${cited}`;
     case 'update_funding_source':
     case 'update_lender_status':
-      return `A funding source on ${target} has new activity (a reply, a pass, an indication, or new diligence). Naitive recommends moving the lender to the matching sub-stage so the deal page reflects reality.${cited}`;
+      return buildFundingSourceRationale(item, target, cited);
     case 'create_milestone':
       return `Naitive detected a meaningful event on ${target} that isn't tracked as a milestone yet. Adding it keeps the timeline complete.${cited}`;
     case 'update_milestone':
