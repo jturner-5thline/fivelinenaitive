@@ -930,7 +930,7 @@ function filterFundingSourceProposals(
 function filterFundingSourceTaskProposals(
   candidates: CandidateItem[],
 ): { kept: CandidateItem[]; dropped: number } {
-  const TASK_TITLE_RE = /update\s+funding\s+sources?\b/i;
+  const TASK_TITLE_RE = /update\s+(?:funding\s+sources?|stage)\b/i;
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "create_followup_task") return true;
