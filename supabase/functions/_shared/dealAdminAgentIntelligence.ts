@@ -1588,7 +1588,6 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     result.errors.push(`deals query: ${dealErr.message}`);
     return result;
   }
-  console.log(`[deal-admin-agent] DEBUG company=${companyId} activatedArr=${JSON.stringify(activatedArr)} activePipelineId=${activePipelineId} dealIds=${JSON.stringify(dealIds ?? null)} deals_returned=${(deals ?? []).length}`);
 
   // Build a name→user_id lookup over activated users so we can resolve the
   // text `manager` / `deal_owner` columns when `deal_owner_user_id` is null.
@@ -1634,15 +1633,11 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (name.startsWith("test ")) return false;
     // Gate by Deal Manager (resolved). Drop deals with no activated manager.
     const mgr = resolveManagerUserId(d);
-    if (!mgr) {
-      console.log(`[deal-admin-agent] DEBUG drop deal=${d.id} ${d.company} — no activated manager (manager=${JSON.stringify(d.manager)}, deal_owner=${JSON.stringify(d.deal_owner)}, owner_uid=${d.deal_owner_user_id})`);
-      return false;
-    }
+    if (!mgr) return false;
     // Stash resolved manager for downstream attribution & fingerprint lookup.
     (d as any).deal_owner_user_id = mgr;
     return true;
   }).slice(0, maxDeals);
-  console.log(`[deal-admin-agent] DEBUG dealList.length=${dealList.length} after gating; profiles_loaded=${activatedProfiles.size}`);
 
   // Pre-fetch a per-manager style fingerprint from recent approval edits.
   const fingerprintByUser = new Map<string, string>();
