@@ -1008,7 +1008,18 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
     const tracking = typeof pv.tracking_status === "string" ? pv.tracking_status : "";
     const proposingHold =
       HOLD_VALUE_RE.test(stage) || HOLD_VALUE_RE.test(substage) || HOLD_VALUE_RE.test(tracking);
-    if (!proposingHold) return c;
+
+    // Even when proposed_values don't mention hold, the AI sometimes writes
+    // a rationale that RECOMMENDS on-hold ("may warrant on-hold status",
+    // "consider putting on hold"). Scrub that wording so reviewers see
+    // "Unresponsive" as the recommendation, matching the gate above.
+    const rationaleText = typeof c.rationale_summary === "string" ? c.rationale_summary : "";
+    const RATIONALE_HOLD_RE = /\b(on[\s-]?hold|put\s+(?:on|it\s+on)\s+hold|warrant\s+(?:an?\s+)?on[\s-]?hold|consider\s+on[\s-]?hold|hold\s+status)\b/i;
+    const RATIONALE_SILENCE_RE = /\b(no\s+(?:response|reply)|multiple\s+follow[\s-]?ups?|followed\s+up|hasn'?t\s+respond|haven'?t\s+heard|gone\s+silent|stopped\s+responding|unresponsive|ghost(?:ed|ing)?|stale|crickets|awaiting\s+response|days?\s+since\s+last\s+contact|business\s+days?\s+since|no\s+substage)\b/i;
+    const rationaleSuggestsHoldOnSilence =
+      RATIONALE_HOLD_RE.test(rationaleText) && RATIONALE_SILENCE_RE.test(rationaleText);
+
+    if (!proposingHold && !rationaleSuggestsHoldOnSilence) return c;
 
     const evidenceText = [
       pv.notes,
@@ -1042,12 +1053,24 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
       typeof nextPv.notes === "string" && nextPv.notes.trim().length
         ? `${nextPv.notes}\n\n${reasonSuffix}`
         : reasonSuffix;
+
+    // Rewrite the rationale wording so reviewers don't see an "on-hold"
+    // recommendation for what is actually an unresponsive pattern.
+    let nextRationale = rationaleText;
+    if (nextRationale) {
+      nextRationale = nextRationale
+        .replace(/\bmay\s+warrant\s+(?:an?\s+)?on[\s-]?hold(?:\s+status)?\b/gi, "means the correct status is Unresponsive")
+        .replace(/\b(?:should|could|might)\s+(?:be\s+)?(?:put\s+|moved\s+)?on[\s-]?hold\b/gi, "should be moved to Unresponsive")
+        .replace(/\bon[\s-]?hold\s+status\b/gi, "Unresponsive status")
+        .replace(/\bon[\s-]?hold\b/gi, "Unresponsive");
+    } else {
+      nextRationale = "Multiple follow-ups with no response from the funding source — the correct status is Unresponsive (not on-hold, which requires explicit lender pause language).";
+    }
+
     return {
       ...c,
       proposed_values: nextPv,
-      rationale_summary: c.rationale_summary
-        ? `${c.rationale_summary} (auto-normalized: hold→unresponsive)`
-        : "Auto-normalized hold→unresponsive — no explicit pause language in evidence.",
+      rationale_summary: nextRationale,
     } as CandidateItem;
   });
 
