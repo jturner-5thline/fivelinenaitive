@@ -261,6 +261,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   }, [filtered]);
 
   const [expandedDealKey, setExpandedDealKey] = useState<string | null>(null);
+  // Tracks whether the user intentionally collapsed the open group, so the
+  // auto-expand effect below doesn't immediately re-open it.
+  const userCollapsedRef = useRef(false);
+  const hasAutoExpandedRef = useRef(false);
 
   // Maintain a valid expanded group + selection as data changes.
   useEffect(() => {
@@ -273,6 +277,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       ? groups.find((g) => g.key === expandedDealKey)
       : null;
     if (!currentGroup) {
+      // Respect an explicit user collapse — don't auto-reopen.
+      if (expandedDealKey === null && userCollapsedRef.current && hasAutoExpandedRef.current) {
+        return;
+      }
       // Prefer the group containing the currently selected item; else first.
       const groupForSelected = selectedId
         ? groups.find((g) => g.items.some((i) => i.id === selectedId))
@@ -280,6 +288,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       const next = groupForSelected ?? groups[0];
       setExpandedDealKey(next.key);
       setSelectedId(next.items[0]?.id ?? null);
+      hasAutoExpandedRef.current = true;
       return;
     }
     // Group still exists — ensure selection points to one of its items.
@@ -294,6 +303,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     if (lastQueryRef.current === query) return;
     lastQueryRef.current = query;
     if (groups.length > 0) {
+      userCollapsedRef.current = false;
       setExpandedDealKey(groups[0].key);
       setSelectedId(groups[0].items[0]?.id ?? null);
     }
@@ -353,7 +363,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const dismissMany = useDismissManyAiActions();
   const toggleDeal = useCallback((key: string) => {
     setExpandedDealKey((curr) => {
-      if (curr === key) return null;
+      if (curr === key) {
+        userCollapsedRef.current = true;
+        setSelectedId(null);
+        return null;
+      }
+      userCollapsedRef.current = false;
       const g = groups.find((gr) => gr.key === key);
       if (g) setSelectedId(g.items[0]?.id ?? null);
       return key;
