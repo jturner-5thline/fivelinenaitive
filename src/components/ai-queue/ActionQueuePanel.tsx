@@ -649,12 +649,12 @@ function DetailPane({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 min-h-0 overflow-y-auto px-7 py-6">
+      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
         {/* Title row */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <h3
-              className="text-[24px] leading-[1.2] tracking-tight text-[#ecedf4]"
+              className="text-[19px] leading-[1.2] tracking-tight text-[#ecedf4]"
               style={FONT_DISPLAY}
             >
               {isFundingSource && dealId ? (
@@ -670,7 +670,7 @@ function DetailPane({
                 item.title
               )}
             </h3>
-            <p className="mt-1 text-[12.5px] text-[#ecedf4]/58" style={FONT_BODY}>
+            <p className="mt-0.5 text-[12px] text-[#ecedf4]/58" style={FONT_BODY}>
               {dealId && item.deal_name ? (
                 <button
                   type="button"
@@ -688,7 +688,7 @@ function DetailPane({
         </div>
 
         {/* Metadata row */}
-        <div className="mt-5 grid grid-cols-3 gap-4">
+        <div className="mt-3 grid grid-cols-3 gap-3">
           <MetaCell label="Object" value={meta?.label ?? '—'} />
           <MetaCell
             label="Suggested"
@@ -696,50 +696,50 @@ function DetailPane({
           />
           <MetaCell label="Expires" value={expires} />
         </div>
-        <div className="mt-5 h-px bg-white/[0.06]" />
+        <div className="mt-3 h-px bg-white/[0.06]" />
 
         {/* On approve callout */}
         <div
-          className="mt-5 rounded-[14px] border p-4 flex items-start gap-3"
+          className="mt-3 rounded-[12px] border px-3 py-2.5 flex items-start gap-2.5"
           style={{
             borderColor: 'rgba(94,205,245,0.28)',
             background:
               'linear-gradient(110deg, rgba(94,205,245,0.10) 0%, rgba(155,111,212,0.06) 100%)',
           }}
         >
-          <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#5ecdf5]/15 ring-1 ring-inset ring-[#5ecdf5]/40 shrink-0">
-            <ArrowRight className="h-4 w-4 text-[#5ecdf5]" />
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-[8px] bg-[#5ecdf5]/15 ring-1 ring-inset ring-[#5ecdf5]/40 shrink-0 mt-0.5">
+            <ArrowRight className="h-3.5 w-3.5 text-[#5ecdf5]" />
           </span>
           <div className="min-w-0">
             <p
-              className="text-[10.5px] uppercase text-[#5ecdf5]"
+              className="text-[10px] uppercase text-[#5ecdf5]"
               style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
             >
               What happens on approve
             </p>
             <p
-              className="mt-1 text-[13.5px] leading-[1.55] text-[#ecedf4]"
+              className="mt-0.5 text-[12.5px] leading-[1.45] text-[#ecedf4]"
               style={FONT_BODY}
             >
               {onApproveSentence}
             </p>
-            <p className="mt-1 text-[12px] text-[#ecedf4]/58" style={FONT_BODY}>
+            <p className="mt-0.5 text-[11.5px] leading-[1.4] text-[#ecedf4]/58" style={FONT_BODY}>
               {outcome}
             </p>
           </div>
         </div>
 
         {/* Why naitive suggests this — always rendered */}
-        <div className="mt-6">
+        <div className="mt-3">
             <p
-              className="text-[10.5px] uppercase text-[#9b6fd4]"
+              className="text-[10px] uppercase text-[#9b6fd4]"
               style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
             >
               Why naitive suggests this
             </p>
             <p
-              className="mt-2 text-[13.5px] text-[#ecedf4]/90 max-w-[64ch]"
-              style={{ ...FONT_BODY, lineHeight: 1.6 }}
+              className="mt-1 text-[12.5px] text-[#ecedf4]/90 max-w-[72ch]"
+              style={{ ...FONT_BODY, lineHeight: 1.45 }}
             >
               {item.rationale || buildRationaleFallback(item)}
             </p>
@@ -747,7 +747,7 @@ function DetailPane({
 
         {/* Sources */}
         {evidence.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-1.5">
             {evidence.map((e, i) => {
               const inner = (
                 <>
@@ -757,7 +757,7 @@ function DetailPane({
                 </>
               );
               const cls =
-                'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-white/[0.10] bg-white/[0.035] text-[11px] text-[#ecedf4]/85 hover:bg-white/[0.07] transition-colors';
+                'inline-flex items-center gap-1.5 h-6 px-2 rounded-full border border-white/[0.10] bg-white/[0.035] text-[10.5px] text-[#ecedf4]/85 hover:bg-white/[0.07] transition-colors';
               return e.url ? (
                 <a key={i} href={e.url} target="_blank" rel="noreferrer" className={cls} style={FONT_MONO}>
                   {inner}
@@ -773,10 +773,10 @@ function DetailPane({
 
         {/* Proposed changes — always visible; editable when editMode is on */}
         {fieldKeys.length > 0 && (
-          <div className="mt-6">
+          <div className="mt-3">
             <div className="flex items-center justify-between">
               <p
-                className="text-[10.5px] uppercase text-[#ecedf4]/55"
+                className="text-[10px] uppercase text-[#ecedf4]/55"
                 style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
               >
                 Proposed changes
@@ -790,14 +790,14 @@ function DetailPane({
                 </span>
               )}
             </div>
-            <div className="mt-2 rounded-[12px] border border-white/[0.08] overflow-hidden">
+            <div className="mt-1.5 rounded-[10px] border border-white/[0.08] overflow-hidden">
               <div
-                className="grid grid-cols-[120px_1fr_1fr] text-[10.5px] uppercase text-[#ecedf4]/55 border-b border-white/[0.06] bg-white/[0.02]"
+                className="grid grid-cols-[110px_1fr_1fr] text-[10px] uppercase text-[#ecedf4]/55 border-b border-white/[0.06] bg-white/[0.02]"
                 style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
               >
-                <div className="px-3 py-1.5">Field</div>
-                <div className="px-3 py-1.5">Current</div>
-                <div className="px-3 py-1.5">Proposed</div>
+                <div className="px-2.5 py-1">Field</div>
+                <div className="px-2.5 py-1">Current</div>
+                <div className="px-2.5 py-1">Proposed</div>
               </div>
               {fieldKeys.map((k, idx) => {
                 const oldV = oldValues[k];
@@ -805,24 +805,24 @@ function DetailPane({
                 return (
                   <div
                     key={k}
-                    className={`grid grid-cols-[120px_1fr_1fr] text-[12px] ${
+                    className={`grid grid-cols-[110px_1fr_1fr] text-[11.5px] ${
                       idx === fieldKeys.length - 1 ? '' : 'border-b border-white/[0.05]'
                     }`}
                   >
-                    <div className="px-3 py-2 text-[#ecedf4]/85" style={FONT_BODY}>
+                    <div className="px-2.5 py-1.5 text-[#ecedf4]/85" style={FONT_BODY}>
                       {k}
                     </div>
-                    <div className="px-3 py-2 text-[#ecedf4]/45 line-through" style={FONT_BODY}>
+                    <div className="px-2.5 py-1.5 text-[#ecedf4]/45 line-through" style={FONT_BODY}>
                       {oldV == null || oldV === '' ? '—' : String(oldV)}
                     </div>
-                    <div className="px-3 py-2" style={FONT_BODY}>
+                    <div className="px-2.5 py-1.5" style={FONT_BODY}>
                       {editMode ? (
                         <Input
                           value={proposed == null ? '' : String(proposed)}
                           onChange={(e) =>
                             setEdits((p) => ({ ...p, [k]: e.target.value }))
                           }
-                          className="h-7 text-[12px] px-2 bg-white/[0.04] border-white/[0.10] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                          className="h-6 text-[11.5px] px-2 bg-white/[0.04] border-white/[0.10] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                           style={FONT_BODY}
                         />
                       ) : (
@@ -839,14 +839,14 @@ function DetailPane({
         )}
 
         {item.execution_error && (
-          <p className="mt-4 text-[12px] text-[#f58aa0]" style={FONT_BODY}>
+          <p className="mt-3 text-[11.5px] text-[#f58aa0]" style={FONT_BODY}>
             Last execution failed: {item.execution_error}
           </p>
         )}
       </div>
 
       {/* Fixed action bar */}
-      <div className="shrink-0 border-t border-white/[0.08] px-6 py-4 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
+      <div className="shrink-0 border-t border-white/[0.08] px-5 py-3 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
         {item.deal_id && (
           <a
             href={`/deals/${item.deal_id}`}
