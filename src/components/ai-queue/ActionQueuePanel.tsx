@@ -859,6 +859,37 @@ function DetailPane({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
+      {typeof total === 'number' && total > 0 && (
+        <div className="flex items-center justify-between gap-2 px-6 pt-4 pb-2 border-b border-white/[0.06] shrink-0">
+          <p
+            className="text-[11px] uppercase tracking-[0.10em] text-[#ecedf4]/55 truncate"
+            style={FONT_MONO}
+          >
+            Item {Math.max(0, (index ?? 0)) + 1} of {total}
+            {groupName ? ` — ${groupName}` : ''}
+          </p>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={!canPrev}
+              aria-label="Previous item (↑/K)"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!canNext}
+              aria-label="Next item (↓/J)"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
