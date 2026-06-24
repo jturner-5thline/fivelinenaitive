@@ -81,7 +81,7 @@ export function buildOnApproveSentence(item: QueuedAiAction): string {
 /** CTA label for the primary approve button. */
 export function approveButtonLabel(item: QueuedAiAction, edited = false): string {
   if (item.action_type === 'draft_email') return edited ? 'Edit & Stage' : 'Approve & Stage';
-  return edited ? 'Edit & Approve' : 'Approve & Apply';
+  return edited ? 'Edit & Approve' : 'Approve';
 }
 
 /** Short label describing the target object (e.g. "Funding Source · Censys"). */
