@@ -88,14 +88,18 @@ export function approveButtonLabel(item: QueuedAiAction, edited = false): string
 export function targetSummary(item: QueuedAiAction): string {
   const t = item.target_object_type;
   const deal = item.deal_name;
-  // For funding-source (deal_lender) cards, show the deal title as the
-  // target chip — the lender name is already in the item title.
-  if (t === 'deal_lender' && deal) return deal;
+  // For funding-source cards (legacy `deal_lender` or current
+  // `funding_source` target type), show the deal title as the target chip —
+  // the lender name is already in the item title, so prefixing with
+  // "Funding Source · {deal}" misleads the reviewer into thinking the deal
+  // IS the funding source.
+  if ((t === 'deal_lender' || t === 'funding_source') && deal) return `Deal · ${deal}`;
   const map: Record<string, string> = {
     deal: 'Deal',
     deal_stage: 'Stage',
     deal_status_note: 'Status Note',
     deal_lender: 'Funding Source',
+    funding_source: 'Funding Source',
     deal_milestone: 'Milestone',
     task: 'Task',
     contact: 'Contact',
