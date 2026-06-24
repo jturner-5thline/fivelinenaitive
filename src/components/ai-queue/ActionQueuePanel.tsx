@@ -698,23 +698,31 @@ function DetailPane({
         {/* Title row */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <h3
-              className="text-[19px] leading-[1.2] tracking-tight text-[#ecedf4]"
-              style={FONT_DISPLAY}
-            >
-              {isFundingSource && dealId ? (
-                <button
-                  type="button"
-                  onClick={() => openDeal('lenders')}
-                  className={`text-left ${linkCls}`}
-                  title="Open funding sources on this deal"
-                >
-                  {item.title}
-                </button>
-              ) : (
-                item.title
-              )}
-            </h3>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h3
+                className="text-[19px] leading-[1.2] tracking-tight text-[#ecedf4]"
+                style={FONT_DISPLAY}
+              >
+                {isFundingSource && dealId ? (
+                  <button
+                    type="button"
+                    onClick={() => openDeal('lenders')}
+                    className={`text-left ${linkCls}`}
+                    title="Open funding sources on this deal"
+                  >
+                    {item.title}
+                  </button>
+                ) : (
+                  item.title
+                )}
+              </h3>
+              <span
+                className="text-[11px] text-[#ecedf4]/50"
+                style={FONT_BODY}
+              >
+                Suggested {formatDistanceToNow(new Date(item.created_at))} ago
+              </span>
+            </div>
             <p className="mt-0.5 text-[12px] text-[#ecedf4]/58" style={FONT_BODY}>
               {dealId && item.deal_name ? (
                 <button
@@ -732,13 +740,6 @@ function DetailPane({
           </div>
         </div>
 
-        {/* Metadata row */}
-        <div className="mt-3 grid grid-cols-1 gap-3">
-          <MetaCell
-            label="Suggested"
-            value={`${formatDistanceToNow(new Date(item.created_at))} ago`}
-          />
-        </div>
         <div className="mt-3 h-px bg-white/[0.06]" />
 
         {/* On approve callout */}
