@@ -235,7 +235,7 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
   // expiry so a full week of inbox time is always available.
   const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-  const queueRows = enqueueable.map((sel: any) => {
+  const queueRowsAll = enqueueable.map((sel: any) => {
     const meta = sel.deal_id ? dealMeta[sel.deal_id] : null;
     const dealName = meta?.name ?? "Untitled Deal";
     const fieldLabel = FIELD_LABEL[sel.field] ?? sel.field;
@@ -314,6 +314,17 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       expires_at: expiresAt,
     };
   });
+
+  // Hard rule: NEVER create approval cards whose underlying action is
+  // "create a task" (action_type create_task / create_followup_task, or
+  // target_object_type === 'task'). Those become noise; concrete next
+  // steps belong on stage / status / funding-source / note actions.
+  const queueRows = queueRowsAll.filter((r: any) => {
+    if (r.action_type === "create_task" || r.action_type === "create_followup_task") return false;
+    if (typeof r.target_object_type === "string" && r.target_object_type.toLowerCase() === "task") return false;
+    return true;
+  });
+  if (queueRows.length === 0) return result;
 
   const { data: insertedQueue, error: qErr } = await supabase
     .from("ai_action_queue")
