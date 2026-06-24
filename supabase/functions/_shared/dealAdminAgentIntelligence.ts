@@ -1566,7 +1566,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(stageValidated.kept);
+      const lenderGated = filterFundingSourceProposals(stageValidated.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
