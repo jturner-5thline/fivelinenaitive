@@ -554,12 +554,24 @@ EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
 
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
-    (a) PASS / DECLINE / not-a-fit on this deal → propose stage="passed" (or "not_a_fit").
+    (a) PASS / DECLINE on this deal — lender says they are "passing", "going to pass", "we'll pass", "it's a pass", "have to pass", "going to have to take a pass", "decline", or any clear variation. Propose stage="passed" AND populate proposed_values.pass_reason with the lender's actual stated reason quoted/paraphrased from the email thread (e.g. "leverage too high", "outside credit box", "industry concentration"). If no reason is given, set pass_reason="No reason provided" — do NOT invent one.
+    (a2) NOT A FIT — lender says the deal is "not a fit", "not for us", "doesn't fit our box/mandate", "outside our criteria", "not in our wheelhouse", or similar. Propose stage="not_a_fit" (NOT "passed") and capture the fit reason in proposed_values.pass_reason.
     (b) TERM SHEET / IOI / indication / proposal / pricing terms issued or revised → propose the matching terms stage.
     (c) HOLD / PAUSE on the deal — ONLY when the lender EXPLICITLY says so. Trigger language: "revisit", "table this", "pause", "postpone", "circle back later", "park this", "put on hold", "shelve", "come back to this in <N> weeks". Propose stage="on-hold".
         Do NOT infer hold from silence, slow replies, missed deadlines, or your own assumption that the lender is "probably busy". Those are unresponsive, not on hold.
-    (d) UNRESPONSIVE — lender has gone silent after we engaged them (multiple unanswered nudges, no reply past a committed date, or business_days_since_last_contact materially exceeds normal cadence) and there is NO explicit hold/pause language anywhere in the thread. Propose stage="unresponsive". This is the correct status whenever the only signal is absence of a response — never collapse this into "on-hold".
-- RATIONALE WORDING for update_funding_source: rationale_summary must name the lender's actual situation. When the signal is "only 'followed up' with no reply", "multiple follow-ups without a response", "gone quiet", "no substage detail", or any other silence pattern, the rationale MUST say the correct move is "Unresponsive" — NEVER "on-hold", "on hold", or "may warrant on-hold". On-hold is only correct when you can quote the lender pausing the deal. Phrase it like: "{Lender} has had {N} follow-ups with no response on {Deal}, so the correct status is Unresponsive."
+    (d) UNRESPONSIVE — multiple follow-ups with no response from the funding source (multiple unanswered nudges, no reply past a committed date, or business_days_since_last_contact materially exceeds normal cadence) and there is NO explicit hold/pause language anywhere in the thread. Propose stage="unresponsive". This is the correct status whenever the only signal is absence of a response — never collapse this into "on-hold", "passed", or "not_a_fit".
+- STAGE DISAMBIGUATION (apply in this exact order):
+    1. Silence only (no reply, multiple unanswered follow-ups) → "unresponsive".
+    2. Lender quoted saying "not a fit" / "not for us" / "outside our box" → "not_a_fit" + pass_reason.
+    3. Lender quoted saying "pass" / "passing" / "going to pass" / "decline" → "passed" + pass_reason (quote the reason from the same email if present).
+    4. Lender quoted explicitly pausing the deal → "on-hold".
+    Never substitute one for another, and never collapse silence into passed/not_a_fit/on-hold.
+- RATIONALE WORDING for update_funding_source:
+    • Silence pattern → "{Lender} has had {N} follow-ups with no response on {Deal}, so the correct status is Unresponsive."
+    • Not-a-fit pattern → "{Lender} said the deal is not a fit ({short reason quoted from their email}), so the correct status is Not a Fit."
+    • Pass pattern → "{Lender} is passing on {Deal} — reason: {short reason quoted from their email}. Updating to Passed with that reason."
+    • On-hold pattern → quote the explicit pause language from the lender.
+    Never recommend "on-hold" from a silence pattern, and never recommend "passed" from a not-a-fit pattern (or vice versa).
 - A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient on its own — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
 - Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. For an UNRESPONSIVE proposal, cite the most recent outbound nudge plus the funding_source's business_days_since_last_contact as evidence (kind="funding_source") — never invent lender wording that isn't in the thread.
 - NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
