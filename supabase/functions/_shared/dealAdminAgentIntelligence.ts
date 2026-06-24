@@ -1247,12 +1247,12 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // "create a task" approval cards. Concrete next-steps flow through
       // other action types (update_deal_stage, update_funding_source,
       // draft_email, add_status_note, etc.).
-      const taskDroppedCount = lenderGated.kept.filter(
-        (c) => c.action_type === "create_followup_task",
-      ).length;
-      const taskFiltered = lenderGated.kept.filter(
-        (c) => c.action_type !== "create_followup_task",
-      );
+      const isTaskCandidate = (c: CandidateItem) =>
+        c.action_type === "create_followup_task" ||
+        (typeof c.target_object_type === "string" &&
+          c.target_object_type.toLowerCase() === "task");
+      const taskDroppedCount = lenderGated.kept.filter(isTaskCandidate).length;
+      const taskFiltered = lenderGated.kept.filter((c) => !isTaskCandidate(c));
       if (taskDroppedCount > 0) {
         result.candidates_filtered += taskDroppedCount;
         console.log(`[deal-admin-agent] DROPPED ${taskDroppedCount} create_followup_task proposal(s) for deal=${d.id} — task-creation approval cards are disabled`);
