@@ -172,6 +172,37 @@ function formatProposedValue(v: any): string {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function formatDateDisplay(value: string | null | undefined): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${formatDistanceToNow(date)} ago)`;
+}
+
+function isDateField(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return normalized.endsWith('_at') || normalized.endsWith('_date') || normalized.includes('date');
+}
+
+function latestDate(values: Array<string | null | undefined>): string | null {
+  let latest: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    if (!value) continue;
+    const ms = new Date(value).getTime();
+    if (!Number.isNaN(ms) && ms > latestMs) {
+      latestMs = ms;
+      latest = value;
+    }
+  }
+  return latest;
+}
+
+function emailDomain(email: string | null | undefined): string | null {
+  const match = email?.trim().toLowerCase().match(/@([^@\s>]+)$/);
+  return match?.[1] ?? null;
+}
+
 /** Format a field value with awareness of its key — resolves UUIDs to friendly
  *  names using the provided lookup tables and never returns a raw UUID. */
 function formatFieldValue(
@@ -181,6 +212,9 @@ function formatFieldValue(
 ): string {
   const base = formatProposedValue(v);
   if (!base) return '';
+  if (isDateField(key)) {
+    return formatDateDisplay(base) || base;
+  }
   // Stage / pipeline lookups
   if ((key === 'stage_id' || key === 'stage') && lookups.stages?.[base]) {
     return lookups.stages[base];
@@ -994,11 +1028,16 @@ function DetailPane({
     return { stages, pipelines: pipelinesMap };
   }, [pipelines]);
   const dealId = (item as any).deal_id as string | undefined;
+  const targetObjectId = (item as any).target_object_id as string | undefined;
+  const isFundingSource =
+    item.action_type === 'update_funding_source' ||
+    item.target_object_type === 'deal_lender' ||
+    item.target_object_type === 'funding_source';
   // If this action targets a contact, fetch their team-wide "last contact at"
   // so reviewers see recency at a glance.
   const contactTargetId =
     item.target_object_type === 'contact'
-      ? ((item as any).target_object_id as string | undefined)
+      ? targetObjectId
       : undefined;
   const { data: contactLastContact } = useQuery({
     queryKey: ['contact-last-contact-at', contactTargetId],
@@ -1013,10 +1052,65 @@ function DetailPane({
       return (data?.last_contact_at as string | null) ?? null;
     },
   });
-  const isFundingSource =
-    item.action_type === 'update_funding_source' ||
-    item.target_object_type === 'deal_lender' ||
-    item.target_object_type === 'funding_source';
+  const fundingSourceTargetId = isFundingSource ? targetObjectId : undefined;
+  const { data: fundingSourceLastContact } = useQuery({
+    queryKey: ['funding-source-last-contact-at', fundingSourceTargetId],
+    enabled: !!fundingSourceTargetId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: lender } = await (supabase as any)
+        .from('deal_lenders')
+        .select('last_contact_at, selected_contact_id, master_lender_id')
+        .eq('id', fundingSourceTargetId!)
+        .maybeSingle();
+
+      const dates: Array<string | null | undefined> = [lender?.last_contact_at];
+
+      if (lender?.selected_contact_id) {
+        const { data: selectedContact } = await supabase
+          .from('contacts')
+          .select('last_contact_at')
+          .eq('id', lender.selected_contact_id)
+          .maybeSingle();
+        dates.push(selectedContact?.last_contact_at as string | null | undefined);
+      }
+
+      let lenderEmail: string | null = null;
+      if (lender?.master_lender_id) {
+        const { data: masterLender } = await (supabase as any)
+          .from('master_lenders')
+          .select('email')
+          .eq('id', lender.master_lender_id)
+          .maybeSingle();
+        lenderEmail = typeof masterLender?.email === 'string' ? masterLender.email : null;
+      }
+
+      if (lenderEmail) {
+        const { data: exactContact } = await supabase
+          .from('contacts')
+          .select('last_contact_at')
+          .ilike('email', lenderEmail)
+          .order('last_contact_at', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+        dates.push(exactContact?.last_contact_at as string | null | undefined);
+
+        const domain = emailDomain(lenderEmail);
+        if (domain) {
+          const { data: domainContacts } = await supabase
+            .from('contacts')
+            .select('last_contact_at')
+            .ilike('email', `%@${domain}`)
+            .order('last_contact_at', { ascending: false, nullsFirst: false })
+            .limit(1);
+          dates.push(domainContacts?.[0]?.last_contact_at as string | null | undefined);
+        }
+      }
+
+      return latestDate(dates);
+    },
+  });
+  const resolvedLastContactAt = fundingSourceLastContact ?? contactLastContact ?? null;
   const openDeal = (tab?: string) => {
     if (!dealId) return;
     const qs = new URLSearchParams();
@@ -1245,8 +1339,12 @@ function DetailPane({
                 <div className="divide-y divide-white/[0.06]">
                   {fieldKeys.map((k) => {
                     const oldV = oldValues[k];
+                    const effectiveOldV =
+                      k === 'last_contact_at' && !oldV && resolvedLastContactAt
+                        ? resolvedLastContactAt
+                        : oldV;
                     const proposedRaw = edits[k] ?? newValues[k];
-                    const oldDisplay = formatFieldValue(k, oldV, lookups);
+                    const oldDisplay = formatFieldValue(k, effectiveOldV, lookups);
                     const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
                     const isOldEmpty = oldDisplay === '';
                     return (
