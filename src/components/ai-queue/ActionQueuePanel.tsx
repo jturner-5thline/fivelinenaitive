@@ -982,6 +982,17 @@ function DetailPane({
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const navigate = useNavigate();
+  // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
+  const { pipelines } = usePipelineContext();
+  const lookups = useMemo(() => {
+    const stages: Record<string, string> = {};
+    const pipelinesMap: Record<string, string> = {};
+    for (const p of pipelines ?? []) {
+      pipelinesMap[p.id] = p.name;
+      for (const s of p.stages ?? []) stages[s.id] = s.label;
+    }
+    return { stages, pipelines: pipelinesMap };
+  }, [pipelines]);
   const dealId = (item as any).deal_id as string | undefined;
   const isFundingSource =
     item.action_type === 'update_funding_source' ||
@@ -1205,8 +1216,8 @@ function DetailPane({
                   {fieldKeys.map((k) => {
                     const oldV = oldValues[k];
                     const proposedRaw = edits[k] ?? newValues[k];
-                    const oldDisplay = formatProposedValue(oldV);
-                    const proposedDisplay = formatProposedValue(proposedRaw);
+                    const oldDisplay = formatFieldValue(k, oldV, lookups);
+                    const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
                     const isOldEmpty = oldDisplay === '';
                     return (
                       <div
