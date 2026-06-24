@@ -48,6 +48,7 @@ export function DealClientContactField({
     name: string;
     email: string | null;
     isPreferred: boolean;
+    lastContactAt: string | null;
   }> =
     linkedContacts.length > 0
       ? (() => {
@@ -60,10 +61,11 @@ export function DealClientContactField({
             name: c.name,
             email: c.email,
             isPreferred: c.id === preferredId,
+            lastContactAt: c.lastContactAt,
           }));
         })()
       : resolved.name
-        ? [{ id: null, name: resolved.name, email: resolved.info, isPreferred: true }]
+        ? [{ id: null, name: resolved.name, email: resolved.info, isPreferred: true, lastContactAt: null }]
         : [];
 
   const linkedIds = new Set(linkedContacts.map((c) => c.id));
