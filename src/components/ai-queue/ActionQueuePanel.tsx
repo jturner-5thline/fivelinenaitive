@@ -792,7 +792,8 @@ function DetailPane({
 
         {/* Proposed changes — always visible; editable when editMode is on */}
         {fieldKeys.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-4">
+            {/* Header */}
             <div className="flex items-center gap-2">
               <p
                 className="text-[10px] uppercase text-[#ecedf4]/55"
@@ -803,7 +804,7 @@ function DetailPane({
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.05] border border-white/[0.08]"
+                className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/55 hover:text-[#ecedf4]/85 hover:bg-white/[0.04]"
                 style={FONT_BODY}
               >
                 <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
@@ -817,46 +818,87 @@ function DetailPane({
                 </span>
               )}
             </div>
-            <div className="mt-1.5 rounded-[10px] border border-white/[0.08] overflow-hidden">
-              <div
-                className="grid grid-cols-[110px_1fr_1fr] text-[10px] uppercase text-[#ecedf4]/55 border-b border-white/[0.06] bg-white/[0.02]"
-                style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-              >
-                <div className="px-2.5 py-1">Field</div>
-                <div className="px-2.5 py-1">Current</div>
-                <div className="px-2.5 py-1">Proposed</div>
-              </div>
-              {fieldKeys.map((k, idx) => {
+
+            {/* Bordered card containing stacked diff rows */}
+            <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.06]">
+              {fieldKeys.map((k) => {
                 const oldV = oldValues[k];
-                const proposed = edits[k] ?? newValues[k];
+                const proposedRaw = edits[k] ?? newValues[k];
+                const oldDisplay = formatProposedValue(oldV);
+                const proposedDisplay = formatProposedValue(proposedRaw);
+                const isOldEmpty = oldDisplay === '';
                 return (
-                  <div
-                    key={k}
-                    className={`grid grid-cols-[110px_1fr_1fr] text-[11.5px] ${
-                      idx === fieldKeys.length - 1 ? '' : 'border-b border-white/[0.05]'
-                    }`}
-                  >
-                    <div className="px-2.5 py-1.5 text-[#ecedf4]/85" style={FONT_BODY}>
-                      {k}
-                    </div>
-                    <div className="px-2.5 py-1.5 text-[#ecedf4]/45 line-through" style={FONT_BODY}>
-                      {oldV == null || oldV === '' ? '—' : String(oldV)}
-                    </div>
-                    <div className="px-2.5 py-1.5" style={FONT_BODY}>
-                      {editMode ? (
-                        <Input
-                          value={proposed == null ? '' : String(proposed)}
-                          onChange={(e) =>
-                            setEdits((p) => ({ ...p, [k]: e.target.value }))
-                          }
-                          className="h-6 text-[11.5px] px-2 bg-white/[0.04] border-white/[0.10] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
-                          style={FONT_BODY}
-                        />
-                      ) : (
-                        <span className="text-[#ecedf4]">
-                          {proposed == null || proposed === '' ? '—' : String(proposed)}
-                        </span>
-                      )}
+                  <div key={k} className="px-3.5 py-3">
+                    {/* Field label */}
+                    <p
+                      className="text-[12px] font-semibold uppercase text-[#ecedf4]/80"
+                      style={{ ...FONT_BODY, letterSpacing: '0.04em' }}
+                    >
+                      {humanizeFieldKey(k)}
+                    </p>
+
+                    {/* 2-up grid: Current / Proposed (collapses on narrow) */}
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Current */}
+                      <div className="rounded-[8px] border border-white/[0.06] bg-white/[0.025] p-2.5">
+                        <p
+                          className="text-[11px] text-[#ecedf4]/50"
+                          style={FONT_MONO}
+                        >
+                          Current
+                        </p>
+                        {isOldEmpty ? (
+                          <span
+                            className="mt-1 inline-flex items-center h-5 px-2 rounded-full text-[10.5px] bg-white/[0.05] text-[#ecedf4]/55 border border-white/[0.06]"
+                            style={FONT_BODY}
+                          >
+                            No current value
+                          </span>
+                        ) : (
+                          <p
+                            className="mt-1 text-[14px] text-[#ecedf4]/70 break-words whitespace-pre-wrap"
+                            style={{ ...FONT_BODY, lineHeight: 1.45 }}
+                          >
+                            {oldDisplay}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Proposed */}
+                      <div
+                        className="rounded-[8px] border p-2.5"
+                        style={{
+                          borderColor: 'rgba(111,227,176,0.28)',
+                          background:
+                            'linear-gradient(140deg, rgba(111,227,176,0.10) 0%, rgba(94,205,245,0.06) 100%)',
+                        }}
+                      >
+                        <p
+                          className="text-[11px] text-[#6fe3b0]/85"
+                          style={FONT_MONO}
+                        >
+                          Proposed
+                        </p>
+                        {editMode ? (
+                          <Input
+                            value={proposedRaw == null ? '' : String(proposedRaw)}
+                            onChange={(e) =>
+                              setEdits((p) => ({ ...p, [k]: e.target.value }))
+                            }
+                            className="mt-1 h-8 text-[14px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                            style={FONT_BODY}
+                          />
+                        ) : (
+                          <p
+                            className="mt-1 text-[14px] font-medium text-[#ecedf4] break-words whitespace-pre-wrap"
+                            style={{ ...FONT_BODY, lineHeight: 1.45 }}
+                          >
+                            {proposedDisplay || (
+                              <span className="text-[#ecedf4]/50 font-normal">—</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
