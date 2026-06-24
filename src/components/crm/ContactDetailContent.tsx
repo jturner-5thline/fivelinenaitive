@@ -19,6 +19,7 @@ import {
   useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
 } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
+import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
 import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
@@ -198,6 +199,9 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <p className="text-sm text-muted-foreground mt-0.5 truncate">
                 {[contact.job_title, crmCompany?.name].filter(Boolean).join(' · ') || 'No title'}
               </p>
+              <div className="mt-1">
+                <LastContactChip value={(contact as any).last_contact_at} />
+              </div>
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
