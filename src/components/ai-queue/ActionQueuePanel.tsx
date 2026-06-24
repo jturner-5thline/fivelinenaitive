@@ -229,16 +229,136 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     });
   }, [scopedItems, query]);
 
-  // Keep selection if visible; otherwise pick first.
+  // Group filtered items by deal_id (preserving original order within group).
+  type DealGroup = {
+    key: string;
+    dealId: string | null;
+    dealName: string;
+    items: QueuedAiAction[];
+    escalated: boolean;
+  };
+  const groups = useMemo<DealGroup[]>(() => {
+    const map = new Map<string, DealGroup>();
+    for (const it of filtered) {
+      const key = it.deal_id || '__unassigned__';
+      let g = map.get(key);
+      if (!g) {
+        g = {
+          key,
+          dealId: it.deal_id ?? null,
+          dealName: it.deal_name || (it.deal_id ? 'Untitled deal' : 'Unassigned'),
+          items: [],
+          escalated: false,
+        };
+        map.set(key, g);
+      }
+      g.items.push(it);
+      if (it.priority === 'high' || it.risk_level === 'high' || it.action_type === 'escalate') {
+        g.escalated = true;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+  }, [filtered]);
+
+  const [expandedDealKey, setExpandedDealKey] = useState<string | null>(null);
+
+  // Maintain a valid expanded group + selection as data changes.
   useEffect(() => {
-    if (selectedId && filtered.some((it) => it.id === selectedId)) return;
-    setSelectedId(filtered[0]?.id ?? null);
-  }, [filtered, selectedId]);
+    if (groups.length === 0) {
+      if (expandedDealKey !== null) setExpandedDealKey(null);
+      if (selectedId !== null) setSelectedId(null);
+      return;
+    }
+    const currentGroup = expandedDealKey
+      ? groups.find((g) => g.key === expandedDealKey)
+      : null;
+    if (!currentGroup) {
+      // Prefer the group containing the currently selected item; else first.
+      const groupForSelected = selectedId
+        ? groups.find((g) => g.items.some((i) => i.id === selectedId))
+        : null;
+      const next = groupForSelected ?? groups[0];
+      setExpandedDealKey(next.key);
+      setSelectedId(next.items[0]?.id ?? null);
+      return;
+    }
+    // Group still exists — ensure selection points to one of its items.
+    if (!selectedId || !currentGroup.items.some((i) => i.id === selectedId)) {
+      setSelectedId(currentGroup.items[0]?.id ?? null);
+    }
+  }, [groups, expandedDealKey, selectedId]);
+
+  // When the search query changes, auto-expand the top matching deal group.
+  const lastQueryRef = useRef(query);
+  useEffect(() => {
+    if (lastQueryRef.current === query) return;
+    lastQueryRef.current = query;
+    if (groups.length > 0) {
+      setExpandedDealKey(groups[0].key);
+      setSelectedId(groups[0].items[0]?.id ?? null);
+    }
+  }, [query, groups]);
+
+  const expandedGroup = useMemo(
+    () => groups.find((g) => g.key === expandedDealKey) ?? null,
+    [groups, expandedDealKey],
+  );
+  const currentGroupItems = expandedGroup?.items ?? [];
+  const selectedIndex = selectedId
+    ? currentGroupItems.findIndex((i) => i.id === selectedId)
+    : -1;
 
   const selected = useMemo(
-    () => filtered.find((it) => it.id === selectedId) || null,
-    [filtered, selectedId],
+    () => (selectedIndex >= 0 ? currentGroupItems[selectedIndex] : null),
+    [currentGroupItems, selectedIndex],
   );
+
+  const goPrev = useCallback(() => {
+    if (selectedIndex > 0) setSelectedId(currentGroupItems[selectedIndex - 1].id);
+  }, [selectedIndex, currentGroupItems]);
+  const goNext = useCallback(() => {
+    if (selectedIndex >= 0 && selectedIndex < currentGroupItems.length - 1) {
+      setSelectedId(currentGroupItems[selectedIndex + 1].id);
+    }
+  }, [selectedIndex, currentGroupItems]);
+
+  // Step to next sibling after approve/reject without rolling into another deal.
+  const advanceAfterAction = useCallback(() => {
+    if (selectedIndex < 0) return;
+    const next = currentGroupItems[selectedIndex + 1] ?? currentGroupItems[selectedIndex - 1] ?? null;
+    // If next === current item (just-acted), it will fall out on refresh; pick neighbor by id.
+    const currentId = currentGroupItems[selectedIndex]?.id;
+    const candidate = next && next.id !== currentId ? next : null;
+    setSelectedId(candidate?.id ?? null);
+  }, [selectedIndex, currentGroupItems]);
+
+  // Keyboard: ↑/↓ or J/K navigate the open deal's items.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (t && t.isContentEditable)) return;
+      if (e.key === 'ArrowDown' || e.key === 'j' || e.key === 'J') {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === 'ArrowUp' || e.key === 'k' || e.key === 'K') {
+        e.preventDefault();
+        goPrev();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [goPrev, goNext]);
+
+  const dismissMany = useDismissManyAiActions();
+  const toggleDeal = useCallback((key: string) => {
+    setExpandedDealKey((curr) => {
+      if (curr === key) return null;
+      const g = groups.find((gr) => gr.key === key);
+      if (g) setSelectedId(g.items[0]?.id ?? null);
+      return key;
+    });
+  }, [groups]);
 
   const totalCount = scopedItems.length + scopedAccessRequests.length;
 
