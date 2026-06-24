@@ -559,6 +559,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
     (c) HOLD / PAUSE on the deal — ONLY when the lender EXPLICITLY says so. Trigger language: "revisit", "table this", "pause", "postpone", "circle back later", "park this", "put on hold", "shelve", "come back to this in <N> weeks". Propose stage="on-hold".
         Do NOT infer hold from silence, slow replies, missed deadlines, or your own assumption that the lender is "probably busy". Those are unresponsive, not on hold.
     (d) UNRESPONSIVE — lender has gone silent after we engaged them (multiple unanswered nudges, no reply past a committed date, or business_days_since_last_contact materially exceeds normal cadence) and there is NO explicit hold/pause language anywhere in the thread. Propose stage="unresponsive". This is the correct status whenever the only signal is absence of a response — never collapse this into "on-hold".
+- RATIONALE WORDING for update_funding_source: rationale_summary must name the lender's actual situation. When the signal is "only 'followed up' with no reply", "multiple follow-ups without a response", "gone quiet", "no substage detail", or any other silence pattern, the rationale MUST say the correct move is "Unresponsive" — NEVER "on-hold", "on hold", or "may warrant on-hold". On-hold is only correct when you can quote the lender pausing the deal. Phrase it like: "{Lender} has had {N} follow-ups with no response on {Deal}, so the correct status is Unresponsive."
 - A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient on its own — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
 - Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. For an UNRESPONSIVE proposal, cite the most recent outbound nudge plus the funding_source's business_days_since_last_contact as evidence (kind="funding_source") — never invent lender wording that isn't in the thread.
 - NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
@@ -1007,7 +1008,18 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
     const tracking = typeof pv.tracking_status === "string" ? pv.tracking_status : "";
     const proposingHold =
       HOLD_VALUE_RE.test(stage) || HOLD_VALUE_RE.test(substage) || HOLD_VALUE_RE.test(tracking);
-    if (!proposingHold) return c;
+
+    // Even when proposed_values don't mention hold, the AI sometimes writes
+    // a rationale that RECOMMENDS on-hold ("may warrant on-hold status",
+    // "consider putting on hold"). Scrub that wording so reviewers see
+    // "Unresponsive" as the recommendation, matching the gate above.
+    const rationaleText = typeof c.rationale_summary === "string" ? c.rationale_summary : "";
+    const RATIONALE_HOLD_RE = /\b(on[\s-]?hold|put\s+(?:on|it\s+on)\s+hold|warrant\s+(?:an?\s+)?on[\s-]?hold|consider\s+on[\s-]?hold|hold\s+status)\b/i;
+    const RATIONALE_SILENCE_RE = /\b(no\s+(?:response|reply)|multiple\s+follow[\s-]?ups?|followed\s+up|hasn'?t\s+respond|haven'?t\s+heard|gone\s+silent|stopped\s+responding|unresponsive|ghost(?:ed|ing)?|stale|crickets|awaiting\s+response|days?\s+since\s+last\s+contact|business\s+days?\s+since|no\s+substage)\b/i;
+    const rationaleSuggestsHoldOnSilence =
+      RATIONALE_HOLD_RE.test(rationaleText) && RATIONALE_SILENCE_RE.test(rationaleText);
+
+    if (!proposingHold && !rationaleSuggestsHoldOnSilence) return c;
 
     const evidenceText = [
       pv.notes,
@@ -1041,12 +1053,24 @@ function normalizeHoldVsUnresponsive(candidates: CandidateItem[]): {
       typeof nextPv.notes === "string" && nextPv.notes.trim().length
         ? `${nextPv.notes}\n\n${reasonSuffix}`
         : reasonSuffix;
+
+    // Rewrite the rationale wording so reviewers don't see an "on-hold"
+    // recommendation for what is actually an unresponsive pattern.
+    let nextRationale = rationaleText;
+    if (nextRationale) {
+      nextRationale = nextRationale
+        .replace(/\bmay\s+warrant\s+(?:an?\s+)?on[\s-]?hold(?:\s+status)?\b/gi, "means the correct status is Unresponsive")
+        .replace(/\b(?:should|could|might)\s+(?:be\s+)?(?:put\s+|moved\s+)?on[\s-]?hold\b/gi, "should be moved to Unresponsive")
+        .replace(/\bon[\s-]?hold\s+status\b/gi, "Unresponsive status")
+        .replace(/\bon[\s-]?hold\b/gi, "Unresponsive");
+    } else {
+      nextRationale = "Multiple follow-ups with no response from the funding source — the correct status is Unresponsive (not on-hold, which requires explicit lender pause language).";
+    }
+
     return {
       ...c,
       proposed_values: nextPv,
-      rationale_summary: c.rationale_summary
-        ? `${c.rationale_summary} (auto-normalized: hold→unresponsive)`
-        : "Auto-normalized hold→unresponsive — no explicit pause language in evidence.",
+      rationale_summary: nextRationale,
     } as CandidateItem;
   });
 
