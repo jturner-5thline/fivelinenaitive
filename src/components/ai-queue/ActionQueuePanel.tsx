@@ -793,13 +793,6 @@ function DealGroupCard({
               expanded ? '' : '-rotate-90'
             }`}
           />
-          {group.escalated && (
-            <span
-              className="h-1.5 w-1.5 rounded-full shrink-0"
-              style={{ background: '#f58aa0', boxShadow: '0 0 8px #f58aa066' }}
-              aria-label="Escalated"
-            />
-          )}
           <p
             className="text-[12.5px] text-[#ecedf4] truncate"
             style={FONT_BODY}
