@@ -863,7 +863,6 @@ async function filterInvalidStageProposals(
   return { kept, dropped };
 }
 
-function dedupeAndMerge(
 /**
  * Drop `update_funding_source` candidates that lack a clear pass / terms /
  * hold signal. A lender simply emailing the deal manager (intro, scheduling,
