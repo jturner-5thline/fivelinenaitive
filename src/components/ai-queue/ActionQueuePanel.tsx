@@ -608,6 +608,20 @@ function DetailPane({
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
+  const navigate = useNavigate();
+  const dealId = (item as any).deal_id as string | undefined;
+  const isFundingSource =
+    item.action_type === 'update_funding_source' ||
+    item.target_object_type === 'deal_lender';
+  const openDeal = (tab?: string) => {
+    if (!dealId) return;
+    const qs = new URLSearchParams();
+    qs.set('deal', dealId);
+    if (tab) qs.set('tab', tab);
+    navigate(`/deals?${qs.toString()}`);
+  };
+  const linkCls =
+    'underline-offset-2 hover:underline hover:text-[#5ecdf5] focus-visible:underline focus-visible:text-[#5ecdf5] cursor-pointer rounded-sm';
 
   // Reset edits whenever a different item is selected.
   useEffect(() => {
@@ -643,10 +657,32 @@ function DetailPane({
               className="text-[24px] leading-[1.2] tracking-tight text-[#ecedf4]"
               style={FONT_DISPLAY}
             >
-              {item.title}
+              {isFundingSource && dealId ? (
+                <button
+                  type="button"
+                  onClick={() => openDeal('lenders')}
+                  className={`text-left ${linkCls}`}
+                  title="Open funding sources on this deal"
+                >
+                  {item.title}
+                </button>
+              ) : (
+                item.title
+              )}
             </h3>
             <p className="mt-1 text-[12.5px] text-[#ecedf4]/58" style={FONT_BODY}>
-              {target}
+              {dealId && item.deal_name ? (
+                <button
+                  type="button"
+                  onClick={() => openDeal()}
+                  className={linkCls}
+                  title={`Open ${item.deal_name}`}
+                >
+                  {target}
+                </button>
+              ) : (
+                target
+              )}
             </p>
           </div>
         </div>
