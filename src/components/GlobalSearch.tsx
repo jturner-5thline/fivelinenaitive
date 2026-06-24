@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/command";
 import { useDealsContext } from "@/contexts/DealsContext";
 import { useLenders } from "@/contexts/LendersContext";
+import { usePipelineContext } from "@/contexts/PipelineContext";
 
 const quickActions = [
   { name: "Dashboard", icon: Briefcase, path: "/deals" },
@@ -27,6 +28,7 @@ export function GlobalSearch() {
   const navigate = useNavigate();
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
+  const { pipelines } = usePipelineContext();
 
   // Keyboard shortcut
   useEffect(() => {
@@ -53,6 +55,19 @@ export function GlobalSearch() {
       notation: "compact",
       maximumFractionDigits: 1,
     }).format(value);
+  };
+
+  // Resolve a deal's stage label using its assigned pipeline so overloaded
+  // stage IDs (e.g. `closed-won` in the "In Development" pipeline means
+  // "Indication of Interest") render with the correct human label.
+  const resolveStageLabel = (stage: string, pipelineId?: string) => {
+    const pipeline = pipelineId
+      ? pipelines.find((p) => p.id === pipelineId)
+      : undefined;
+    const match = pipeline?.stages?.find(
+      (s) => s.id === stage || s.label === stage,
+    );
+    return match?.label ?? formatSlug(stage);
   };
 
   return (
@@ -104,7 +119,7 @@ export function GlobalSearch() {
                   <div className="flex flex-1 items-center justify-between">
                     <span>{deal.company}</span>
                     <span className="text-xs text-muted-foreground">
-                      {formatCurrency(deal.value)} • {formatSlug(deal.stage)}
+                      {formatCurrency(deal.value)} • {resolveStageLabel(deal.stage, deal.pipelineId)}
                     </span>
                   </div>
                 </CommandItem>
