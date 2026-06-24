@@ -740,144 +740,171 @@ function DetailPane({
           </div>
         </div>
 
-        {/* Unified approval summary card */}
-        {(() => {
-          const rationaleSource = (item.rationale || buildRationaleFallback(item) || '').trim();
-          const rationaleBullets = rationaleSource
-            ? rationaleSource
-                .split(/\n+|(?<=[.!?])\s+(?=[A-Z])/)
-                .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
-                .filter(Boolean)
-            : [];
-          return (
-            <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.025] overflow-hidden">
-              {/* Outcome */}
-              <div className="px-4 py-3">
-                <p
-                  className="text-[10.5px] font-semibold uppercase text-[#ecedf4]/55"
+        <div className="mt-3 h-px bg-white/[0.06]" />
+
+        {/* On approve callout */}
+        <div
+          className="mt-3 rounded-[12px] border px-3 py-2.5 flex items-start gap-2.5"
+          style={{
+            borderColor: 'rgba(94,205,245,0.28)',
+            background:
+              'linear-gradient(110deg, rgba(94,205,245,0.10) 0%, rgba(155,111,212,0.06) 100%)',
+          }}
+        >
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-[8px] bg-[#5ecdf5]/15 ring-1 ring-inset ring-[#5ecdf5]/40 shrink-0 mt-0.5">
+            <ArrowRight className="h-3.5 w-3.5 text-[#5ecdf5]" />
+          </span>
+          <div className="min-w-0">
+            <p
+              className="text-[10px] uppercase text-[#5ecdf5]"
+              style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
+            >
+              What happens on approve
+            </p>
+            <p
+              className="mt-0.5 text-[12.5px] leading-[1.45] text-[#ecedf4]"
+              style={FONT_BODY}
+            >
+              {onApproveSentence}
+            </p>
+            <p className="mt-0.5 text-[11.5px] leading-[1.4] text-[#ecedf4]/58" style={FONT_BODY}>
+              {outcome}
+            </p>
+          </div>
+        </div>
+
+        {/* Why naitive suggests this — always rendered */}
+        <div className="mt-3">
+            <p
+              className="text-[10px] uppercase text-[#9b6fd4]"
+              style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
+            >
+              Why naitive suggests this
+            </p>
+            <p
+              className="mt-1 text-[12.5px] text-[#ecedf4]/90 max-w-[72ch]"
+              style={{ ...FONT_BODY, lineHeight: 1.45 }}
+            >
+              {item.rationale || buildRationaleFallback(item)}
+            </p>
+        </div>
+
+        {/* Proposed changes — always visible; editable when editMode is on */}
+        {fieldKeys.length > 0 && (
+          <div className="mt-4">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <p
+                className="text-[10px] uppercase text-[#ecedf4]/55"
+                style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
+              >
+                Proposed changes
+              </p>
+              <button
+                type="button"
+                onClick={() => setEditMode((v) => !v)}
+                className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/55 hover:text-[#ecedf4]/85 hover:bg-white/[0.04]"
+                style={FONT_BODY}
+              >
+                <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
+              </button>
+              {editMode && editedCount > 0 && (
+                <span
+                  className="text-[10px] uppercase text-[#f3c969]"
                   style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
                 >
-                  Outcome
-                </p>
-                <p
-                  className="mt-1.5 text-[13.5px] text-[#ecedf4]"
-                  style={{ ...FONT_BODY, lineHeight: 1.45 }}
-                >
-                  {onApproveSentence}
-                </p>
-              </div>
-
-              {/* Why */}
-              <div className="px-4 py-3 border-t border-white/[0.06]">
-                <p
-                  className="text-[10.5px] font-semibold uppercase text-[#ecedf4]/55"
-                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-                >
-                  Why
-                </p>
-                {rationaleBullets.length > 1 ? (
-                  <ul
-                    className="mt-1.5 pl-4 list-disc space-y-1 text-[13.5px] text-[#ecedf4]/90 marker:text-[#ecedf4]/35"
-                    style={{ ...FONT_BODY, lineHeight: 1.45 }}
-                  >
-                    {rationaleBullets.map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p
-                    className="mt-1.5 text-[13.5px] text-[#ecedf4]/90"
-                    style={{ ...FONT_BODY, lineHeight: 1.45 }}
-                  >
-                    {rationaleBullets[0] || outcome}
-                  </p>
-                )}
-              </div>
-
-              {/* Changes */}
-              {fieldKeys.length > 0 && (
-                <div className="px-4 py-3 border-t border-white/[0.06]">
-                  <div className="flex items-center justify-between gap-3 mb-2">
-                    <p
-                      className="text-[10.5px] font-semibold uppercase text-[#ecedf4]/55"
-                      style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-                    >
-                      Changes
-                    </p>
-                    <div className="flex items-center gap-2">
-                      {editMode && editedCount > 0 && (
-                        <span
-                          className="text-[10px] uppercase text-[#f3c969]"
-                          style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
-                        >
-                          {editedCount} edited
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setEditMode((v) => !v)}
-                        className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/55 hover:text-[#ecedf4]/85 hover:bg-white/[0.04]"
-                        style={FONT_BODY}
-                      >
-                        <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="divide-y divide-dashed divide-white/[0.06]">
-                    {fieldKeys.map((k) => {
-                      const oldV = oldValues[k];
-                      const proposedRaw = edits[k] ?? newValues[k];
-                      const oldDisplay = formatProposedValue(oldV);
-                      const proposedDisplay = formatProposedValue(proposedRaw);
-                      const isOldEmpty = oldDisplay === '';
-                      return (
-                        <div
-                          key={k}
-                          className="grid grid-cols-[110px_1fr] gap-2.5 py-2 first:pt-0 last:pb-0"
-                        >
-                          <div
-                            className="text-[12px] font-semibold text-[#ecedf4]/85 pt-0.5"
-                            style={FONT_BODY}
-                          >
-                            {humanizeFieldKey(k)}
-                          </div>
-                          <div
-                            className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13.5px]"
-                            style={{ ...FONT_BODY, lineHeight: 1.45 }}
-                          >
-                            {isOldEmpty ? (
-                              <span className="text-[#ecedf4]/45 italic">No current value</span>
-                            ) : (
-                              <span className="text-[#ecedf4]/70 break-words">{oldDisplay}</span>
-                            )}
-                            <ArrowRight className="h-3 w-3 text-[#ecedf4]/35 shrink-0" />
-                            {editMode ? (
-                              <Input
-                                value={proposedRaw == null ? '' : String(proposedRaw)}
-                                onChange={(e) =>
-                                  setEdits((p) => ({ ...p, [k]: e.target.value }))
-                                }
-                                className="flex-1 min-w-[140px] h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
-                                style={FONT_BODY}
-                              />
-                            ) : proposedDisplay ? (
-                              <span className="font-semibold text-[#ecedf4] break-words">
-                                {proposedDisplay}
-                              </span>
-                            ) : (
-                              <span className="text-[#ecedf4]/50">—</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  {editedCount} edited
+                </span>
               )}
             </div>
-          );
-        })()}
+
+            {/* Bordered card containing stacked diff rows */}
+            <div className="mt-3 rounded-[12px] border border-white/[0.08] bg-white/[0.02] divide-y divide-white/[0.06]">
+              {fieldKeys.map((k) => {
+                const oldV = oldValues[k];
+                const proposedRaw = edits[k] ?? newValues[k];
+                const oldDisplay = formatProposedValue(oldV);
+                const proposedDisplay = formatProposedValue(proposedRaw);
+                const isOldEmpty = oldDisplay === '';
+                return (
+                  <div key={k} className="px-3.5 py-3">
+                    {/* Field label */}
+                    <p
+                      className="text-[12px] font-semibold uppercase text-[#ecedf4]/80"
+                      style={{ ...FONT_BODY, letterSpacing: '0.04em' }}
+                    >
+                      {humanizeFieldKey(k)}
+                    </p>
+
+                    {/* 2-up grid: Current / Proposed (collapses on narrow) */}
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Current */}
+                      <div className="rounded-[8px] border border-white/[0.06] bg-white/[0.025] p-2.5">
+                        <p
+                          className="text-[11px] text-[#ecedf4]/50"
+                          style={FONT_MONO}
+                        >
+                          Current
+                        </p>
+                        {isOldEmpty ? (
+                          <span
+                            className="mt-1 inline-flex items-center h-5 px-2 rounded-full text-[10.5px] bg-white/[0.05] text-[#ecedf4]/55 border border-white/[0.06]"
+                            style={FONT_BODY}
+                          >
+                            No current value
+                          </span>
+                        ) : (
+                          <p
+                            className="mt-1 text-[14px] text-[#ecedf4]/70 break-words whitespace-pre-wrap"
+                            style={{ ...FONT_BODY, lineHeight: 1.45 }}
+                          >
+                            {oldDisplay}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Proposed */}
+                      <div
+                        className="rounded-[8px] border p-2.5"
+                        style={{
+                          borderColor: 'rgba(111,227,176,0.28)',
+                          background:
+                            'linear-gradient(140deg, rgba(111,227,176,0.10) 0%, rgba(94,205,245,0.06) 100%)',
+                        }}
+                      >
+                        <p
+                          className="text-[11px] text-[#6fe3b0]/85"
+                          style={FONT_MONO}
+                        >
+                          Proposed
+                        </p>
+                        {editMode ? (
+                          <Input
+                            value={proposedRaw == null ? '' : String(proposedRaw)}
+                            onChange={(e) =>
+                              setEdits((p) => ({ ...p, [k]: e.target.value }))
+                            }
+                            className="mt-1 h-8 text-[14px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                            style={FONT_BODY}
+                          />
+                        ) : (
+                          <p
+                            className="mt-1 text-[14px] font-medium text-[#ecedf4] break-words whitespace-pre-wrap"
+                            style={{ ...FONT_BODY, lineHeight: 1.45 }}
+                          >
+                            {proposedDisplay || (
+                              <span className="text-[#ecedf4]/50 font-normal">—</span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {item.execution_error && (
           <p className="mt-3 text-[11.5px] text-[#f58aa0]" style={FONT_BODY}>
