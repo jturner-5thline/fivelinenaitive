@@ -741,6 +741,39 @@ function DetailPane({
               )}
             </p>
           </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={async () => {
+                setBusy('r');
+                await onReject();
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/25 disabled:opacity-60"
+              style={FONT_BODY}
+            >
+              {busy === 'r' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+              Reject
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={async () => {
+                setBusy('a');
+                await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
+                setBusy(null);
+              }}
+              className="inline-flex items-center gap-2 h-8 px-4 rounded-lg text-[12px] font-semibold text-[#0a0a14] shadow-[0_8px_30px_-8px_rgba(94,205,245,0.55)] hover:brightness-110 transition-all disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
+              style={{
+                ...FONT_BODY,
+                background: 'linear-gradient(110deg, #5ecdf5 0%, #9b6fd4 100%)',
+              }}
+            >
+              {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              {approveButtonLabel(item, editedCount > 0)}
+            </button>
+          </div>
         </div>
 
         {/* Unified decision summary: action + rationale */}
@@ -859,41 +892,7 @@ function DetailPane({
         )}
       </div>
 
-      {/* Fixed action bar */}
-      <div className="shrink-0 border-t border-white/[0.08] px-5 py-3 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
-        <div className="flex-1" />
-        <button
-          type="button"
-          disabled={busy !== null}
-          onClick={async () => {
-            setBusy('r');
-            await onReject();
-            setBusy(null);
-          }}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/25 disabled:opacity-60"
-          style={FONT_BODY}
-        >
-          {busy === 'r' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-          Reject
-        </button>
-        <button
-          type="button"
-          disabled={busy !== null}
-          onClick={async () => {
-            setBusy('a');
-            await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
-            setBusy(null);
-          }}
-          className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-[12px] font-semibold text-[#0a0a14] shadow-[0_8px_30px_-8px_rgba(94,205,245,0.55)] hover:brightness-110 transition-all disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
-          style={{
-            ...FONT_BODY,
-            background: 'linear-gradient(110deg, #5ecdf5 0%, #9b6fd4 100%)',
-          }}
-        >
-          {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          {approveButtonLabel(item, editedCount > 0)}
-        </button>
-      </div>
+      {/* Action buttons moved to top-right of the detail header. */}
     </div>
   );
 }
