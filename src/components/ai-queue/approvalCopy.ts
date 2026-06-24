@@ -88,28 +88,11 @@ export function approveButtonLabel(item: QueuedAiAction, edited = false): string
 export function targetSummary(item: QueuedAiAction): string {
   const t = item.target_object_type;
   const deal = item.deal_name;
-  // For funding-source cards (legacy `deal_lender` or current
-  // `funding_source` target type), show the deal title as the target chip —
-  // the lender name is already in the item title, so prefixing with
-  // "Funding Source · {deal}" misleads the reviewer into thinking the deal
-  // IS the funding source.
-  if ((t === 'deal_lender' || t === 'funding_source') && deal) return `Deal · ${deal}`;
-  const map: Record<string, string> = {
-    deal: 'Deal',
-    deal_stage: 'Stage',
-    deal_status_note: 'Status Note',
-    deal_lender: 'Funding Source',
-    funding_source: 'Funding Source',
-    deal_milestone: 'Milestone',
-    task: 'Task',
-    contact: 'Contact',
-    company: 'Company',
-    email_draft: 'Email Draft',
-  };
-  const label = t ? map[t] || t : null;
-  if (label && deal) return `${label} · ${deal}`;
-  if (label) return label;
-  return deal || 'Unlinked';
+  // Header meta should just be the linked record name — no type prefix.
+  // The item title already conveys what kind of change is being proposed,
+  // so chips like "Deal ·" or "Funding Source ·" just add noise.
+  if (deal) return deal;
+  return 'Unlinked';
 }
 
 /** Fallback reasoning when an item has no `rationale` field set. */
