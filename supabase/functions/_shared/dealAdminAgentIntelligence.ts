@@ -1243,17 +1243,23 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (lenderGated.kept.length === 0) continue;
 
-      // Suppress generic "Update Funding Sources for X" follow-up tasks —
-      // those are noise; real lender-status updates flow through
-      // update_funding_source.
-      const taskGated = filterFundingSourceTaskProposals(lenderGated.kept);
-      if (taskGated.dropped > 0) {
-        result.candidates_filtered += taskGated.dropped;
-        console.log(`[deal-admin-agent] DROPPED ${taskGated.dropped} "update funding sources" task proposal(s) for deal=${d.id}`);
+      // Suppress ALL create_followup_task proposals — we don't surface
+      // "create a task" approval cards. Concrete next-steps flow through
+      // other action types (update_deal_stage, update_funding_source,
+      // draft_email, add_status_note, etc.).
+      const taskDroppedCount = lenderGated.kept.filter(
+        (c) => c.action_type === "create_followup_task",
+      ).length;
+      const taskFiltered = lenderGated.kept.filter(
+        (c) => c.action_type !== "create_followup_task",
+      );
+      if (taskDroppedCount > 0) {
+        result.candidates_filtered += taskDroppedCount;
+        console.log(`[deal-admin-agent] DROPPED ${taskDroppedCount} create_followup_task proposal(s) for deal=${d.id} — task-creation approval cards are disabled`);
       }
-      if (taskGated.kept.length === 0) continue;
+      if (taskFiltered.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(taskGated.kept, existingKeys);
+      const { kept, merged, filtered } = dedupeAndMerge(taskFiltered, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
