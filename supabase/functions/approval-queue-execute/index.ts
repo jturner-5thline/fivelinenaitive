@@ -296,7 +296,19 @@ Deno.serve(async (req) => {
     // proposal (deal_admin_agent origin) for text-bearing action types.
     try {
       const origin = (item.source as any)?.origin ?? null;
-      const trackable = ['draft_email', 'add_status_note', 'create_followup_task'];
+      // Expanded trackable set: also learn from structured-field corrections
+      // (stage / status / funding-source moves, reassignments) so the engine
+      // biases future proposals toward the approver's preferences, not just
+      // their tone on free-text drafts.
+      const trackable = [
+        'draft_email',
+        'add_status_note',
+        'create_followup_task',
+        'update_deal_stage',
+        'update_deal_status',
+        'update_funding_source',
+        'reassign_deal',
+      ];
       if (
         wasEdited &&
         origin === 'deal_admin_agent' &&
