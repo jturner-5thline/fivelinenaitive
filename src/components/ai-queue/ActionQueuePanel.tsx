@@ -469,7 +469,7 @@ function QueueRow({
   const isFundingSource =
     item.action_type === 'update_funding_source' ||
     item.target_object_type === 'deal_lender';
-  const openDeal = (e: React.MouseEvent, tab?: string) => {
+  const openDeal = (e: { preventDefault: () => void; stopPropagation: () => void }, tab?: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (!dealId) return;
