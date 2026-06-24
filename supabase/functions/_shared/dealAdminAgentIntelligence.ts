@@ -788,16 +788,24 @@ function synthesizeTitle(it: any): string {
   const t = it?.action_type ?? "Update";
   const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
   const map: Record<string, string> = {
-    add_status_note: "Add status note",
-    update_funding_source: "Update funding source",
-    create_followup_task: "Create follow-up task",
-    create_milestone: "Create milestone",
-    draft_email: "Draft email",
-    update_deal_field: "Update deal field",
-    update_contact_field: "Update contact",
+    add_status_note: "Add Status Note",
+    update_funding_source: "Update Funding Source",
+    create_followup_task: "Create Follow-up Task",
+    create_milestone: "Add Milestone",
+    update_milestone: "Update Milestone",
+    update_deal_stage: "Update Deal Stage",
+    update_deal_status: "Update Deal Status",
+    update_contact: "Update Contact",
+    update_company: "Update Company",
+    reassign_deal: "Reassign Deal",
+    draft_email: "Draft Email",
+    update_deal_field: "Update Deal Field",
+    update_contact_field: "Update Contact",
     escalate: "Escalate",
   };
-  const base = map[t] ?? t.replace(/_/g, " ");
+  const base = map[t] ?? t
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c: string) => c.toUpperCase());
   return label ? `${base} — ${label}` : base;
 }
 
