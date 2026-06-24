@@ -304,7 +304,8 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                 <TableHead><SortHeader field="hs_contact_status">Lead Status</SortHeader></TableHead>
                 <TableHead><SortHeader field="hs_contact_type">Contact Type</SortHeader></TableHead>
                 <TableHead><SortHeader field="created_at">Create Date</SortHeader></TableHead>
-                <TableHead><SortHeader field="hs_notes_last_contacted">Last Contacted</SortHeader></TableHead>
+                <TableHead><SortHeader field="last_contact_at">Last Contact</SortHeader></TableHead>
+                <TableHead><SortHeader field="hs_notes_last_contacted">HubSpot Last Contacted</SortHeader></TableHead>
                 <TableHead><SortHeader field="hs_industry">Industry</SortHeader></TableHead>
                 <TableHead><SortHeader field="job_title">Job Title</SortHeader></TableHead>
                 <TableHead><SortHeader field="hs_hs_email_optout">Opted out: One to One</SortHeader></TableHead>
@@ -353,6 +354,15 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {contact.created_at ? format(new Date(contact.created_at), 'MMM d, yyyy') : '—'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {c.last_contact_at
+                      ? (
+                          <span title={format(new Date(c.last_contact_at), 'PPpp')}>
+                            {format(new Date(c.last_contact_at), 'MMM d, yyyy')}
+                          </span>
+                        )
+                      : <span className="italic text-muted-foreground/70">No activity</span>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {c.hs_notes_last_contacted ? format(new Date(c.hs_notes_last_contacted), 'MMM d, yyyy') : '—'}
