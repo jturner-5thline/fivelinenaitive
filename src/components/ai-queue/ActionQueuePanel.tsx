@@ -42,6 +42,7 @@ import {
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { StagedDraftsPanel } from './StagedDraftsPanel';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   buildOutcomeSentence,
   buildOnApproveSentence,
