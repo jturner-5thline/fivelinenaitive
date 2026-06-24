@@ -60,9 +60,12 @@ import {
    - Risk: low #6fe3b0 · review #f3c969 · needs-you #f58aa0
    - Type: Syne (display) · Inter (body) · DM Mono (labels/meta)
    ──────────────────────────────────────────────────────────────────────── */
-const FONT_DISPLAY = { fontFamily: '"Syne", "Inter", system-ui, sans-serif' };
-const FONT_MONO = { fontFamily: '"DM Mono", ui-monospace, SFMono-Regular, monospace' };
-const FONT_BODY = { fontFamily: '"Inter", system-ui, sans-serif' };
+// Inherit the app's global typography (Figtree via font-sans) so the popup
+// matches the rest of the platform. Kept as named exports so existing call
+// sites continue to compile without churn.
+const FONT_DISPLAY = { fontFamily: 'inherit' };
+const FONT_MONO = { fontFamily: 'inherit' };
+const FONT_BODY = { fontFamily: 'inherit' };
 
 const RISK = {
   low: { hex: '#6fe3b0', label: 'Low risk' },
@@ -237,8 +240,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   return (
     <div
-      className="relative flex flex-col h-full min-h-0 max-h-[88vh] text-[#ecedf4] motion-reduce:transform-none"
-      style={{ ...FONT_BODY, background: '#06060a' }}
+      className="relative flex flex-col h-full min-h-0 max-h-[88vh] font-sans text-[#ecedf4] motion-reduce:transform-none"
+      style={{ background: '#06060a' }}
     >
       {/* Ambient glows */}
       <div
