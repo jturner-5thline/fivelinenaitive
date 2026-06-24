@@ -4,7 +4,9 @@
  *
  * Triggers the executable-action intelligence pass for a workspace
  * (or a single deal). Writes ai_action_queue rows that conform to the
- * executable Approval Queue contract.
+ * executable Approval Queue contract. Deal scope is gated by the
+ * resolved Deal Manager (deals.manager text → profiles), so deals
+ * managed by a plain-text name still flow through the agent.
  *
  * Body: { company_id?: string, deal_id?: string, deal_ids?: string[],
  *         max_deals?: number, max_queue_rows?: number, min_confidence?: number }

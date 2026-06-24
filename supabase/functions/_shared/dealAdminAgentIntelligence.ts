@@ -1549,9 +1549,15 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   }
 
   // 1) Load target deals.
-  // Scope: deals where the Deal Manager (deal_owner_user_id) is an
-  // activated Admin Agent user. For the 5th Line workspace, additionally
-  // restrict to the default ("Active Pipeline") pipeline.
+  // Scope: deals whose **Deal Manager** is an activated Admin Agent user.
+  // The Deal Manager is the source of truth for reminders/agent tasks
+  // (Memory: deal-manager-email-resolution). We resolve the manager via,
+  // in priority order:
+  //   (a) deals.deal_owner_user_id (when set)
+  //   (b) deals.manager (text) → profiles by display_name/first_name/full_name
+  //   (c) deals.deal_owner (text, legacy) → profiles same way
+  // For the 5th Line workspace, additionally restrict to the default
+  // ("Active Pipeline") pipeline.
   const activatedArr = Array.from(opts.activatedUserIds ?? new Set<string>());
   if (activatedArr.length === 0) {
     result.errors.push("no activated users — nothing in scope");
@@ -1571,11 +1577,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
 
   let dealQ = supabase
     .from("deals")
-    .select("id, company, stage, status, deal_owner_user_id, is_flagged, updated_at, company_id, pipeline_id, referral_source_id")
+    .select("id, company, stage, status, deal_owner_user_id, manager, deal_owner, is_flagged, updated_at, company_id, pipeline_id, referral_source_id")
     .eq("company_id", companyId)
-    .in("deal_owner_user_id", activatedArr)
     .order("updated_at", { ascending: false })
-    .limit(maxDeals);
+    .limit(Math.max(maxDeals, 200));
   if (activePipelineId) dealQ = dealQ.eq("pipeline_id", activePipelineId);
   if (dealIds && dealIds.length > 0) dealQ = dealQ.in("id", dealIds);
   const { data: deals, error: dealErr } = await dealQ;
@@ -1583,16 +1588,56 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     result.errors.push(`deals query: ${dealErr.message}`);
     return result;
   }
+
+  // Build a name→user_id lookup over activated users so we can resolve the
+  // text `manager` / `deal_owner` columns when `deal_owner_user_id` is null.
+  const activatedProfiles = new Map<string, { id: string; names: string[] }>();
+  {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("id, display_name, first_name, last_name, full_name")
+      .in("id", activatedArr);
+    for (const p of (profs ?? []) as any[]) {
+      const names: string[] = [];
+      for (const k of ["display_name", "full_name", "first_name", "last_name"]) {
+        const v = (p as any)[k];
+        if (typeof v === "string" && v.trim()) names.push(v.trim().toLowerCase());
+      }
+      if (typeof p.first_name === "string" && typeof p.last_name === "string") {
+        names.push(`${p.first_name} ${p.last_name}`.trim().toLowerCase());
+      }
+      activatedProfiles.set(p.id, { id: p.id, names: Array.from(new Set(names)) });
+    }
+  }
+  function resolveManagerUserId(d: any): string | null {
+    if (d.deal_owner_user_id && activatedArr.includes(d.deal_owner_user_id)) {
+      return d.deal_owner_user_id;
+    }
+    const candidates: string[] = [];
+    if (typeof d.manager === "string" && d.manager.trim()) candidates.push(d.manager.trim().toLowerCase());
+    if (typeof d.deal_owner === "string" && d.deal_owner.trim()) candidates.push(d.deal_owner.trim().toLowerCase());
+    for (const c of candidates) {
+      for (const [uid, prof] of activatedProfiles) {
+        if (prof.names.some((n) => n && (n === c || c.includes(n) || n.includes(c)))) return uid;
+      }
+    }
+    return null;
+  }
+
   const dealList = (deals ?? []).filter((d: any) => {
     const name = (d.company ?? "").toLowerCase();
     const status = (d.status ?? "").toLowerCase();
     const stage = (d.stage ?? "").toLowerCase();
     if (status === "archived" || status === "archive" || stage === "archived") return false;
-    if (!name) return true;
     if (name === "test-niki's store" || name === "example deal") return false;
     if (name.startsWith("test ")) return false;
+    // Gate by Deal Manager (resolved). Drop deals with no activated manager.
+    const mgr = resolveManagerUserId(d);
+    if (!mgr) return false;
+    // Stash resolved manager for downstream attribution & fingerprint lookup.
+    (d as any).deal_owner_user_id = mgr;
     return true;
-  });
+  }).slice(0, maxDeals);
 
   // Pre-fetch a per-manager style fingerprint from recent approval edits.
   const fingerprintByUser = new Map<string, string>();
