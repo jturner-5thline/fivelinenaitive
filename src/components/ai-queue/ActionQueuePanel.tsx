@@ -847,17 +847,6 @@ function DetailPane({
 
       {/* Fixed action bar */}
       <div className="shrink-0 border-t border-white/[0.08] px-5 py-3 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
-        {item.deal_id && (
-          <a
-            href={`/deals/${item.deal_id}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.04] border border-transparent"
-            style={FONT_BODY}
-          >
-            <Eye className="h-3.5 w-3.5" /> Review
-          </a>
-        )}
         <button
           type="button"
           onClick={() => setEditMode((v) => !v)}
