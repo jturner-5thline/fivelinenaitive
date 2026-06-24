@@ -1192,7 +1192,18 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (stageValidated.kept.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(stageValidated.kept, existingKeys);
+      // Gate `update_funding_source` proposals: only allow them when the
+      // lender communication carries an actionable pass / terms / hold
+      // signal. Neutral inbound emails (intros, scheduling, diligence
+      // questions) must not generate funding-source update cards.
+      const lenderGated = filterFundingSourceProposals(stageValidated.kept);
+      if (lenderGated.dropped > 0) {
+        result.candidates_filtered += lenderGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
+      }
+      if (lenderGated.kept.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(lenderGated.kept, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
