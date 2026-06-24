@@ -787,26 +787,31 @@ async function callModelForCandidates(
 function synthesizeTitle(it: any): string {
   const t = it?.action_type ?? "Update";
   const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
-  const map: Record<string, string> = {
-    add_status_note: "Add Status Note",
-    update_funding_source: "Update Funding Source",
-    create_followup_task: "Create Follow-up Task",
-    create_milestone: "Add Milestone",
-    update_milestone: "Update Milestone",
-    update_deal_stage: "Update Deal Stage",
-    update_deal_status: "Update Deal Status",
-    update_contact: "Update Contact",
-    update_company: "Update Company",
-    reassign_deal: "Reassign Deal",
-    draft_email: "Draft Email",
-    update_deal_field: "Update Deal Field",
-    update_contact_field: "Update Contact",
-    escalate: "Escalate",
+  // Deal-name-first title templates: read naturally as
+  // "Update Acorn Learning Group Status" rather than
+  // "Add Status Note — Acorn Learning Group".
+  const dealTemplates: Record<string, (name: string) => string> = {
+    add_status_note: (n) => `Update ${n} Status`,
+    update_deal_status: (n) => `Update ${n} Status`,
+    update_deal_stage: (n) => `Update ${n} Stage`,
+    update_deal_field: (n) => `Update ${n} Details`,
+    update_funding_source: (n) => `Update ${n} Funding Source`,
+    create_followup_task: (n) => `Add ${n} Follow-up Task`,
+    create_milestone: (n) => `Add ${n} Milestone`,
+    update_milestone: (n) => `Update ${n} Milestone`,
+    reassign_deal: (n) => `Reassign ${n}`,
+    draft_email: (n) => `Draft ${n} Email Reply`,
+    escalate: (n) => `Escalate ${n}`,
+    update_contact: (n) => `Update ${n} Contact`,
+    update_contact_field: (n) => `Update ${n} Contact`,
+    update_company: (n) => `Update ${n} Company`,
   };
-  const base = map[t] ?? t
+  const fallbackLabel = t
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c: string) => c.toUpperCase());
-  return label ? `${base} — ${label}` : base;
+  const tpl = dealTemplates[t];
+  if (tpl && label) return tpl(label);
+  return label ? `${fallbackLabel} — ${label}` : fallbackLabel;
 }
 
 function isValidCandidate(c: CandidateItem, minConf: number): boolean {
