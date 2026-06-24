@@ -557,6 +557,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
     (c) HOLD / PAUSE / postpone / "circle back later" / "park this" on the deal.
 - A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
 - Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. If you cannot quote that language, do not emit the action.
+- NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
 
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
@@ -919,6 +920,32 @@ function filterFundingSourceProposals(
   return { kept, dropped };
 }
 
+/**
+ * Drop `create_followup_task` candidates whose task is a vague
+ * "update funding sources" reminder. Funding-source updates are surfaced
+ * via the dedicated update_funding_source action (gated above) — we don't
+ * want generic task cards mirroring that.
+ */
+function filterFundingSourceTaskProposals(
+  candidates: CandidateItem[],
+): { kept: CandidateItem[]; dropped: number } {
+  const TASK_TITLE_RE = /update\s+funding\s+sources?\b/i;
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "create_followup_task") return true;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const haystack = [c.item_title, pv.title, pv.name, pv.description]
+      .filter((s) => typeof s === "string")
+      .join(" \n ");
+    if (TASK_TITLE_RE.test(haystack)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
 function dedupeAndMerge(
   candidates: CandidateItem[],
   existingKeys: Set<string>,
@@ -1203,7 +1230,17 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (lenderGated.kept.length === 0) continue;
 
-      const { kept, merged, filtered } = dedupeAndMerge(lenderGated.kept, existingKeys);
+      // Suppress generic "Update Funding Sources for X" follow-up tasks —
+      // those are noise; real lender-status updates flow through
+      // update_funding_source.
+      const taskGated = filterFundingSourceTaskProposals(lenderGated.kept);
+      if (taskGated.dropped > 0) {
+        result.candidates_filtered += taskGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${taskGated.dropped} "update funding sources" task proposal(s) for deal=${d.id}`);
+      }
+      if (taskGated.kept.length === 0) continue;
+
+      const { kept, merged, filtered } = dedupeAndMerge(taskGated.kept, existingKeys);
       result.candidates_merged += merged;
       result.candidates_filtered += filtered;
       if (kept.length === 0) continue;
