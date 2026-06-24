@@ -189,6 +189,13 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         render: ({ isAdmin }) => <ReferralSourcesSettings isAdmin={isAdmin} />,
       },
       {
+        id: 'sourced-via',
+        label: 'Sourced Via',
+        description: 'Configure the "Sourced Via" dropdown options for new deals and filters.',
+        keywords: ['sourced', 'via', 'source', 'origin', 'channel', 'dropdown'],
+        render: ({ isAdmin }) => <SourcedViaSettings isAdmin={isAdmin} />,
+      },
+      {
         id: 'data-room-checklist',
         label: 'Data Room',
         description: 'Document checklist templates by deal type.',
