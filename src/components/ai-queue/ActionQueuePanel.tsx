@@ -781,14 +781,24 @@ function DetailPane({
               >
                 Proposed changes
               </p>
-              {editMode && editedCount > 0 && (
-                <span
-                  className="text-[10px] uppercase text-[#f3c969]"
-                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+              <div className="flex items-center gap-2">
+                {editMode && editedCount > 0 && (
+                  <span
+                    className="text-[10px] uppercase text-[#f3c969]"
+                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                  >
+                    {editedCount} edited
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEditMode((v) => !v)}
+                  className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[11px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.05] border border-white/[0.08]"
+                  style={FONT_BODY}
                 >
-                  {editedCount} edited
-                </span>
-              )}
+                  <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
+                </button>
+              </div>
             </div>
             <div className="mt-1.5 rounded-[10px] border border-white/[0.08] overflow-hidden">
               <div
@@ -847,15 +857,6 @@ function DetailPane({
 
       {/* Fixed action bar */}
       <div className="shrink-0 border-t border-white/[0.08] px-5 py-3 flex items-center gap-2 bg-[#06060a]/60 backdrop-blur">
-        <button
-          type="button"
-          onClick={() => setEditMode((v) => !v)}
-          disabled={fieldKeys.length === 0}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-[12px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.04] disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          style={FONT_BODY}
-        >
-          <Pencil className="h-3.5 w-3.5" /> {editMode ? 'Done editing' : 'Edit'}
-        </button>
         <div className="flex-1" />
         <button
           type="button"
