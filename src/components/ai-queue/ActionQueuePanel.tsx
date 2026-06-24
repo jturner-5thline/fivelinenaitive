@@ -733,13 +733,11 @@ function DetailPane({
         </div>
 
         {/* Metadata row */}
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <MetaCell label="Object" value={meta?.label ?? '—'} />
+        <div className="mt-3 grid grid-cols-1 gap-3">
           <MetaCell
             label="Suggested"
             value={`${formatDistanceToNow(new Date(item.created_at))} ago`}
           />
-          <MetaCell label="Expires" value={expires} />
         </div>
         <div className="mt-3 h-px bg-white/[0.06]" />
 
