@@ -151,6 +151,8 @@ export interface AnalyzeResult {
   queue_rows_inserted: number;
   queue_ids: string[];
   errors: string[];
+  /** Pending items removed because the underlying action was already taken. */
+  auto_resolved_pending?: number;
   /** Populated when dryRun=true — the rows that WOULD have been inserted. */
   preview_rows?: any[];
 }
@@ -1079,6 +1081,137 @@ async function insertCandidates(
 /*  Main entry                                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Mark pending deal_admin_agent approval items as dismissed when the
+ * underlying object has already been updated by a user after the queue
+ * item was created. This is how the agent "removes" stale cards on its
+ * regular sweep — if the deal manager has handled the lender, milestone,
+ * stage, etc. themselves, we don't keep asking for approval.
+ */
+async function reconcileStalePendingApprovals(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<number> {
+  // Map target_object_type -> source table + timestamp column to compare.
+  const TARGET_TABLE: Record<string, { table: string; ts: string }> = {
+    deal: { table: "deals", ts: "updated_at" },
+    deal_lender: { table: "deal_lenders", ts: "updated_at" },
+    deal_milestone: { table: "deal_milestones", ts: "updated_at" },
+    referral_source: { table: "referral_sources", ts: "updated_at" },
+    contact: { table: "contacts", ts: "updated_at" },
+  };
+
+  const { data: pending, error } = await supabase
+    .from("ai_action_queue")
+    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source")
+    .eq("status", "pending")
+    .filter("source->>origin", "eq", "deal_admin_agent")
+    .filter("source->>company_id", "eq", companyId)
+    .limit(500);
+  if (error || !pending || pending.length === 0) return 0;
+
+  const toResolve: string[] = [];
+
+  // Batch by table to minimize round-trips.
+  const byTable = new Map<string, Array<{ id: string; created_at: string; target_id: string }>>();
+  for (const row of pending as any[]) {
+    const tot = row.target_object_type as string | null;
+    const toid = row.target_object_id as string | null;
+    if (!tot || !toid) continue;
+    // Never auto-resolve text-only items (draft_email, add_status_note,
+    // create_milestone) — those don't have a stable target row to compare.
+    if (
+      row.action_type === "draft_email" ||
+      row.action_type === "add_status_note" ||
+      row.action_type === "create_milestone"
+    ) continue;
+    const def = TARGET_TABLE[tot];
+    if (!def) continue;
+    const arr = byTable.get(def.table) ?? [];
+    arr.push({ id: row.id as string, created_at: row.created_at as string, target_id: toid });
+    byTable.set(def.table, arr);
+  }
+
+  for (const [table, rows] of byTable) {
+    const ids = Array.from(new Set(rows.map((r) => r.target_id)));
+    if (ids.length === 0) continue;
+    const { data: targets } = await supabase
+      .from(table)
+      .select("id, updated_at")
+      .in("id", ids);
+    const tsById = new Map<string, string>();
+    for (const t of (targets ?? []) as any[]) {
+      if (t?.id && t?.updated_at) tsById.set(t.id, t.updated_at);
+    }
+    for (const r of rows) {
+      const ts = tsById.get(r.target_id);
+      if (!ts) continue;
+      // Add a 60s buffer so we don't race the agent's own insert.
+      if (new Date(ts).getTime() > new Date(r.created_at).getTime() + 60_000) {
+        toResolve.push(r.id);
+      }
+    }
+  }
+
+  // Extra signal for update_funding_source: a recent email thread on the
+  // deal whose subject mentions the lender name. The lender row itself
+  // rarely gets touched when the deal manager simply replies to an email,
+  // but a fresh thread message means the manager is already handling it.
+  const lenderItems = (pending as any[]).filter(
+    (p) => p.action_type === "update_funding_source" && p.deal_id && p.target_object_id,
+  );
+  if (lenderItems.length > 0) {
+    const lenderIds = Array.from(new Set(lenderItems.map((p) => p.target_object_id as string)));
+    const { data: lenders } = await supabase
+      .from("deal_lenders")
+      .select("id, name, deal_id")
+      .in("id", lenderIds);
+    const nameById = new Map<string, { name: string; deal_id: string }>();
+    for (const l of (lenders ?? []) as any[]) {
+      if (l?.id && l?.name) nameById.set(l.id, { name: l.name, deal_id: l.deal_id });
+    }
+    const dealIds = Array.from(new Set(lenderItems.map((p) => p.deal_id as string)));
+    const { data: threads } = await supabase
+      .from("email_threads")
+      .select("matched_deal_id, subject, latest_message_at")
+      .in("matched_deal_id", dealIds)
+      .order("latest_message_at", { ascending: false })
+      .limit(500);
+    for (const item of lenderItems) {
+      if (toResolve.includes(item.id)) continue;
+      const meta = nameById.get(item.target_object_id);
+      if (!meta) continue;
+      const needle = meta.name.toLowerCase();
+      const createdMs = new Date(item.created_at).getTime();
+      const hit = (threads ?? []).some((t: any) => {
+        if (t.matched_deal_id !== item.deal_id) return false;
+        if (!t.latest_message_at) return false;
+        if (new Date(t.latest_message_at).getTime() <= createdMs) return false;
+        return typeof t.subject === "string" && t.subject.toLowerCase().includes(needle);
+      });
+      if (hit) toResolve.push(item.id);
+    }
+  }
+
+  if (toResolve.length === 0) return 0;
+
+  const nowIso = new Date().toISOString();
+  const { error: updErr } = await supabase
+    .from("ai_action_queue")
+    .update({
+      status: "dismissed",
+      dismissed_at: nowIso,
+      rejection_reason: "auto_resolved_user_already_acted",
+    })
+    .in("id", toResolve)
+    .eq("status", "pending");
+  if (updErr) {
+    console.log(`[deal-admin-agent] reconcile update failed: ${updErr.message}`);
+    return 0;
+  }
+  return toResolve.length;
+}
+
 export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<AnalyzeResult> {
   const {
     supabase,
@@ -1097,7 +1230,21 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     queue_rows_inserted: 0,
     queue_ids: [],
     errors: [],
+    auto_resolved_pending: 0,
   };
+
+  // 0) Reconcile: clear pending deal_admin_agent approval items where the
+  //    user has already acted on the underlying object (e.g. lender updated,
+  //    milestone marked complete, deal stage changed, status note added).
+  try {
+    const resolved = await reconcileStalePendingApprovals(supabase, companyId);
+    result.auto_resolved_pending = resolved;
+    if (resolved > 0) {
+      console.log(`[deal-admin-agent] auto-resolved ${resolved} pending approval items for company=${companyId}`);
+    }
+  } catch (e) {
+    result.errors.push(`reconcile_pending: ${(e as Error)?.message ?? "unknown"}`);
+  }
 
   // 1) Load target deals.
   // Scope: deals where the Deal Manager (deal_owner_user_id) is an
