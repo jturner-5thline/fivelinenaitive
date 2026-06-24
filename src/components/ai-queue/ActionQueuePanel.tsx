@@ -42,6 +42,7 @@ import {
 import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { StagedDraftsPanel } from './StagedDraftsPanel';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   buildOutcomeSentence,
   buildOnApproveSentence,
@@ -167,6 +168,33 @@ function formatProposedValue(v: any): string {
   const s = typeof v === 'string' ? v : JSON.stringify(v);
   if (VALUE_TOKEN_LABELS[s]) return VALUE_TOKEN_LABELS[s];
   return s;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Format a field value with awareness of its key — resolves UUIDs to friendly
+ *  names using the provided lookup tables and never returns a raw UUID. */
+function formatFieldValue(
+  key: string,
+  v: any,
+  lookups: { stages?: Record<string, string>; pipelines?: Record<string, string> },
+): string {
+  const base = formatProposedValue(v);
+  if (!base) return '';
+  // Stage / pipeline lookups
+  if ((key === 'stage_id' || key === 'stage') && lookups.stages?.[base]) {
+    return lookups.stages[base];
+  }
+  if (key === 'pipeline_id' && lookups.pipelines?.[base]) {
+    return lookups.pipelines[base];
+  }
+  // Generic UUID fallback — never show raw IDs to the user.
+  if (UUID_RE.test(base)) {
+    if (lookups.stages?.[base]) return lookups.stages[base];
+    if (lookups.pipelines?.[base]) return lookups.pipelines[base];
+    return '—';
+  }
+  return base;
 }
 
 function expiryDaysLabel(item: QueuedAiAction): string {
@@ -954,6 +982,17 @@ function DetailPane({
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
   const [edits, setEdits] = useState<Record<string, any>>({});
   const navigate = useNavigate();
+  // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
+  const { pipelines } = usePipelineContext();
+  const lookups = useMemo(() => {
+    const stages: Record<string, string> = {};
+    const pipelinesMap: Record<string, string> = {};
+    for (const p of pipelines ?? []) {
+      pipelinesMap[p.id] = p.name;
+      for (const s of p.stages ?? []) stages[s.id] = s.label;
+    }
+    return { stages, pipelines: pipelinesMap };
+  }, [pipelines]);
   const dealId = (item as any).deal_id as string | undefined;
   const isFundingSource =
     item.action_type === 'update_funding_source' ||
@@ -1177,8 +1216,8 @@ function DetailPane({
                   {fieldKeys.map((k) => {
                     const oldV = oldValues[k];
                     const proposedRaw = edits[k] ?? newValues[k];
-                    const oldDisplay = formatProposedValue(oldV);
-                    const proposedDisplay = formatProposedValue(proposedRaw);
+                    const oldDisplay = formatFieldValue(k, oldV, lookups);
+                    const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
                     const isOldEmpty = oldDisplay === '';
                     return (
                       <div
