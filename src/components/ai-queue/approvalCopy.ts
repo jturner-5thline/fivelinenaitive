@@ -111,7 +111,7 @@ export function buildRationaleFallback(item: QueuedAiAction): string {
       return `New context surfaced on ${target} that isn't yet captured in the status log. Logging it preserves the history for future reviewers.${cited}`;
     case 'update_funding_source':
     case 'update_lender_status':
-      return `A funding source on ${target} has new activity (a reply, a pass, an indication, or new diligence). Naitive recommends moving the lender to the matching sub-stage so the deal page reflects reality.${cited}`;
+      return buildFundingSourceRationale(item, target, cited);
     case 'create_milestone':
       return `Naitive detected a meaningful event on ${target} that isn't tracked as a milestone yet. Adding it keeps the timeline complete.${cited}`;
     case 'update_milestone':
