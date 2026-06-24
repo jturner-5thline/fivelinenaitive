@@ -919,6 +919,32 @@ function filterFundingSourceProposals(
   return { kept, dropped };
 }
 
+/**
+ * Drop `create_followup_task` candidates whose task is a vague
+ * "update funding sources" reminder. Funding-source updates are surfaced
+ * via the dedicated update_funding_source action (gated above) — we don't
+ * want generic task cards mirroring that.
+ */
+function filterFundingSourceTaskProposals(
+  candidates: CandidateItem[],
+): { kept: CandidateItem[]; dropped: number } {
+  const TASK_TITLE_RE = /update\s+funding\s+sources?\b/i;
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "create_followup_task") return true;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const haystack = [c.item_title, pv.title, pv.name, pv.description]
+      .filter((s) => typeof s === "string")
+      .join(" \n ");
+    if (TASK_TITLE_RE.test(haystack)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
 function dedupeAndMerge(
   candidates: CandidateItem[],
   existingKeys: Set<string>,
