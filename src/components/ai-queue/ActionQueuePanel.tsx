@@ -863,7 +863,7 @@ function DealGroupCard({
             {group.dealName}
           </p>
           <span
-            className="ml-auto inline-flex items-center h-4 px-1.5 rounded-full text-[10px] bg-white/[0.06] text-[#ecedf4]/80 shrink-0"
+            className="ml-auto inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full text-[12px] font-semibold bg-[#ef4444] text-white shrink-0"
             style={FONT_MONO}
           >
             {count}
