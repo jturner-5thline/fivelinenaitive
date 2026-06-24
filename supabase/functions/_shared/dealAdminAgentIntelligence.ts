@@ -559,6 +559,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. If you cannot quote that language, do not emit the action.
 - NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
 - NEVER emit a create_followup_task whose title/description is a generic "update stage" reminder (e.g. "Update Stage for {Deal}"). Stage moves belong on update_deal_stage with a concrete proposed stage and evidence.
+- NEVER emit a create_followup_task whose title/description is a generic "follow up" / "follow-up" reminder (e.g. "Follow up on {Deal}", "Follow-up task", "Create follow-up task"). Tasks must describe the concrete action — who does what by when. Vague "follow up" cards are noise.
 
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
@@ -931,6 +932,10 @@ function filterFundingSourceTaskProposals(
   candidates: CandidateItem[],
 ): { kept: CandidateItem[]; dropped: number } {
   const TASK_TITLE_RE = /update\s+(?:funding\s+sources?|stage)\b/i;
+  // Generic "follow up" / "follow-up" titles with no concrete action are noise.
+  // Matches: "follow up", "follow-up", "followup", "create follow-up task",
+  // "follow up on {Deal}", "follow-up task", etc. when that's the substantive content.
+  const VAGUE_FOLLOWUP_RE = /^\s*(?:create\s+)?follow[-\s]?up(?:\s+task)?(?:\s+(?:on|with|for|re|regarding|about)\s+[^.\n]{0,80})?\s*\.?\s*$/i;
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "create_followup_task") return true;
@@ -939,6 +944,13 @@ function filterFundingSourceTaskProposals(
       .filter((s) => typeof s === "string")
       .join(" \n ");
     if (TASK_TITLE_RE.test(haystack)) {
+      dropped++;
+      return false;
+    }
+    // Drop if every text field is just a vague "follow up" phrase.
+    const titles = [c.item_title, pv.title, pv.name, pv.description]
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+    if (titles.length > 0 && titles.every((s) => VAGUE_FOLLOWUP_RE.test(s))) {
       dropped++;
       return false;
     }
