@@ -558,6 +558,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - A generic inbound inquiry, intro pleasantry, scheduling note, materials request, diligence question, or any other neutral lender email is NOT sufficient — do NOT propose update_funding_source for those. Use add_status_note instead if anything is worth recording.
 - Cite the specific email (kind="email") whose excerpt contains the pass/terms/hold language as evidence. If you cannot quote that language, do not emit the action.
 - NEVER emit a create_followup_task whose title/description is a generic "update funding sources" reminder (e.g. "Update Funding Sources for {Deal}"). Those are noise; real lender movements belong on update_funding_source with a citation.
+- NEVER emit a create_followup_task whose title/description is a generic "update stage" reminder (e.g. "Update Stage for {Deal}"). Stage moves belong on update_deal_stage with a concrete proposed stage and evidence.
 
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
