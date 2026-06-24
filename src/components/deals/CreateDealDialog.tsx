@@ -133,6 +133,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
   const [sourcedVia, setSourcedVia] = useState('');
+  const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
   const [dealTypesOpen, setDealTypesOpen] = useState(false);
