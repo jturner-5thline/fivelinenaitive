@@ -697,13 +697,13 @@ function DetailPane({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-6">
         {/* Title row */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2 flex-wrap">
               <h3
-                className="text-[19px] leading-[1.2] tracking-tight text-[#ecedf4]"
+                className="text-[18px] font-semibold leading-[1.2] tracking-tight text-[#f7f8fc]"
                 style={FONT_DISPLAY}
               >
                 {isFundingSource && dealId ? (
@@ -720,13 +720,13 @@ function DetailPane({
                 )}
               </h3>
               <span
-                className="text-[11px] text-[#ecedf4]/50"
+                className="text-[11px] text-[#ecedf4]/70"
                 style={FONT_BODY}
               >
                 Suggested {formatDistanceToNow(new Date(item.created_at))} ago
               </span>
             </div>
-            <p className="mt-0.5 text-[12px] text-[#ecedf4]/58" style={FONT_BODY}>
+            <p className="mt-1 text-[12px] text-[#ecedf4]/75" style={FONT_BODY}>
               {dealId && item.deal_name ? (
                 <button
                   type="button"
@@ -750,7 +750,7 @@ function DetailPane({
                 await onReject();
                 setBusy(null);
               }}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/25 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/30 disabled:opacity-60"
               style={FONT_BODY}
             >
               {busy === 'r' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
@@ -764,11 +764,8 @@ function DetailPane({
                 await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
                 setBusy(null);
               }}
-              className="inline-flex items-center gap-2 h-8 px-4 rounded-lg text-[12px] font-semibold text-[#0a0a14] shadow-[0_8px_30px_-8px_rgba(94,205,245,0.55)] hover:brightness-110 transition-all disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
-              style={{
-                ...FONT_BODY,
-                background: 'linear-gradient(110deg, #5ecdf5 0%, #9b6fd4 100%)',
-              }}
+              className="inline-flex items-center gap-2 h-8 px-4 rounded-md text-[12px] font-semibold text-[#0a0a14] bg-[#5ecdf5] hover:bg-[#74d4f7] transition-colors disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
+              style={FONT_BODY}
             >
               {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
               {approveButtonLabel(item, editedCount > 0)}
@@ -776,110 +773,128 @@ function DetailPane({
           </div>
         </div>
 
-        {/* Unified decision summary: action + rationale */}
-        <div className="mt-3">
-          <p
-            className="text-[13px] leading-[1.45] text-[#ecedf4]"
-            style={FONT_BODY}
-          >
-            {onApproveSentence}
-          </p>
-          <p
-            className="mt-1 text-[12px] leading-[1.45] text-[#ecedf4]/65 max-w-[72ch]"
-            style={FONT_BODY}
-          >
-            {item.rationale || buildRationaleFallback(item)}
-          </p>
+        {/* On-approve summary strip */}
+        <div
+          className="mt-4 rounded-md border border-white/[0.08] bg-white/[0.035] px-3.5 py-2.5"
+        >
+          <div className="flex items-baseline gap-2">
+            <span
+              className="text-[10px] uppercase tracking-[0.12em] text-[#5ecdf5]/85 font-medium"
+              style={FONT_BODY}
+            >
+              On approve
+            </span>
+            <p
+              className="text-[13px] leading-[1.45] text-[#f7f8fc]"
+              style={FONT_BODY}
+            >
+              {onApproveSentence}
+            </p>
+          </div>
         </div>
 
-        {/* Proposed changes — compact inline diff rows */}
+        {/* Rationale */}
+        <p
+          className="mt-4 text-[12.5px] leading-[1.55] text-[#ecedf4]/80 max-w-[72ch]"
+          style={FONT_BODY}
+        >
+          {item.rationale || buildRationaleFallback(item)}
+        </p>
+
+        {/* Proposed changes — full-width balanced table */}
         {fieldKeys.length > 0 && (
-          <div className="mt-3.5">
-            <div className="flex items-center justify-between gap-2">
-              <p
-                className="text-[10px] uppercase text-[#ecedf4]/55"
-                style={{ ...FONT_MONO, letterSpacing: '0.12em' }}
-              >
-                Proposed changes
+          <div className="mt-5">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-baseline gap-2">
+                <p
+                  className="text-[11px] font-medium uppercase tracking-[0.10em] text-[#ecedf4]/80"
+                  style={FONT_BODY}
+                >
+                  Proposed changes
+                </p>
                 {editMode && editedCount > 0 && (
                   <span
-                    className="ml-2 text-[10px] uppercase text-[#f3c969]"
-                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                    className="text-[10px] uppercase tracking-[0.10em] text-[#f3c969]"
+                    style={FONT_BODY}
                   >
                     {editedCount} edited
                   </span>
                 )}
-              </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setEditMode((v) => !v)}
-                className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[10.5px] text-[#ecedf4]/55 hover:text-[#ecedf4]/85 hover:bg-white/[0.04]"
+                className="inline-flex items-center gap-1 h-6 px-1.5 rounded text-[11px] text-[#ecedf4]/70 hover:text-[#ecedf4] hover:bg-white/[0.05] transition-colors"
                 style={FONT_BODY}
               >
                 <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
               </button>
             </div>
 
-            <div className="mt-1.5">
+            <div className="rounded-md border border-white/[0.08] overflow-hidden">
               <div
-                className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 pb-1 border-b border-white/[0.06]"
+                className="grid grid-cols-[minmax(8rem,1fr)_minmax(0,1.4fr)_minmax(0,1.4fr)] gap-x-4 px-3.5 py-2 bg-white/[0.04] border-b border-white/[0.08]"
               >
                 {['Field', 'Current', 'Proposed'].map((h) => (
                   <p
                     key={h}
-                    className="text-[10px] uppercase text-[#ecedf4]/45"
-                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                    className="text-[10.5px] font-medium uppercase tracking-[0.10em] text-[#ecedf4]/75"
+                    style={FONT_BODY}
                   >
                     {h}
                   </p>
                 ))}
               </div>
               <div className="divide-y divide-white/[0.06]">
-              {fieldKeys.map((k) => {
-                const oldV = oldValues[k];
-                const proposedRaw = edits[k] ?? newValues[k];
-                const oldDisplay = formatProposedValue(oldV);
-                const proposedDisplay = formatProposedValue(proposedRaw);
-                const isOldEmpty = oldDisplay === '';
-                return (
-                  <div
-                    key={k}
-                    className="py-1.5 grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)_minmax(0,1fr)] gap-x-3 items-baseline"
-                  >
-                    <p
-                      className="text-[11px] uppercase text-[#ecedf4]/55"
-                      style={{ ...FONT_MONO, letterSpacing: '0.08em' }}
+                {fieldKeys.map((k) => {
+                  const oldV = oldValues[k];
+                  const proposedRaw = edits[k] ?? newValues[k];
+                  const oldDisplay = formatProposedValue(oldV);
+                  const proposedDisplay = formatProposedValue(proposedRaw);
+                  const isOldEmpty = oldDisplay === '';
+                  return (
+                    <div
+                      key={k}
+                      className="grid grid-cols-[minmax(8rem,1fr)_minmax(0,1.4fr)_minmax(0,1.4fr)] gap-x-4 px-3.5 py-2.5 items-baseline"
                     >
-                      {humanizeFieldKey(k)}
-                    </p>
-                    <span
-                      className="min-w-0 text-[12.5px] text-[#ecedf4]/50 break-words"
-                      style={FONT_BODY}
-                    >
-                      {isOldEmpty ? 'No current value' : oldDisplay}
-                    </span>
-                    {editMode ? (
-                      <Input
-                        value={proposedRaw == null ? '' : String(proposedRaw)}
-                        onChange={(e) =>
-                          setEdits((p) => ({ ...p, [k]: e.target.value }))
-                        }
-                        className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#ecedf4] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
-                        style={FONT_BODY}
-                      />
-                    ) : (
-                      <span
-                        className="min-w-0 text-[12.5px] font-medium text-[#ecedf4] break-words"
+                      <p
+                        className="text-[12px] text-[#ecedf4]/85"
                         style={FONT_BODY}
                       >
-                        {proposedDisplay || (
-                          <span className="text-[#ecedf4]/50 font-normal">—</span>
-                        )}
+                        {humanizeFieldKey(k)}
+                      </p>
+                      <span
+                        className={`min-w-0 text-[12.5px] break-words ${
+                          isOldEmpty
+                            ? 'text-[#ecedf4]/55 italic'
+                            : 'text-[#ecedf4]/85'
+                        }`}
+                        style={FONT_BODY}
+                      >
+                        {isOldEmpty ? 'No current value' : oldDisplay}
                       </span>
-                    )}
-                  </div>
-                );
-              })}
+                      {editMode ? (
+                        <Input
+                          value={proposedRaw == null ? '' : String(proposedRaw)}
+                          onChange={(e) =>
+                            setEdits((p) => ({ ...p, [k]: e.target.value }))
+                          }
+                          className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
+                          style={FONT_BODY}
+                        />
+                      ) : (
+                        <span
+                          className="min-w-0 text-[12.5px] font-medium text-[#f7f8fc] break-words"
+                          style={FONT_BODY}
+                        >
+                          {proposedDisplay || (
+                            <span className="text-[#ecedf4]/55 font-normal">—</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
