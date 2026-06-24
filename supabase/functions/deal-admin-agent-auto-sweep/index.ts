@@ -4,7 +4,9 @@
  *
  * Runs the cross-source intelligence pass (runDealAdminAgentAnalysis)
  * for every workspace that has the Admin Agent enabled and at least one
- * activated user. Designed to be invoked by pg_cron every couple of
+ * activated user. Deal scope is gated by **Deal Manager** (resolved
+ * via deals.manager text → profiles), not deal_owner_user_id alone.
+ * Designed to be invoked by pg_cron every couple of
  * hours so Approval Queue items appear automatically — users never need
  * to click "Analyze now".
  *
