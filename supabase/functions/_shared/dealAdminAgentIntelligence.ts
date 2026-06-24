@@ -1943,11 +1943,18 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
 
+      // Normalize pass vs not-a-fit and populate pass_reason from evidence
+      // when the agent forgot. Keeps stage labels honest to lender wording.
+      const passNormalized = normalizePassVsNotAFit(holdNormalized.kept);
+      if (passNormalized.rewritten > 0) {
+        console.log(`[deal-admin-agent] REWROTE ${passNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — pass/not_a_fit reclassification + pass_reason backfill`);
+      }
+
       // Gate `update_funding_source` proposals: only allow them when the
       // lender communication carries an actionable pass / terms / hold
       // signal. Neutral inbound emails (intros, scheduling, diligence
       // questions) must not generate funding-source update cards.
-      const lenderGated = filterFundingSourceProposals(holdNormalized.kept, bundle.funding_sources);
+      const lenderGated = filterFundingSourceProposals(passNormalized.kept, bundle.funding_sources);
       if (lenderGated.dropped > 0) {
         result.candidates_filtered += lenderGated.dropped;
         console.log(`[deal-admin-agent] DROPPED ${lenderGated.dropped} update_funding_source proposal(s) for deal=${d.id} — no pass/terms/hold signal in evidence`);
