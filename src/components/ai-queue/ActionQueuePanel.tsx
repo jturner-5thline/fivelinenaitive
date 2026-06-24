@@ -884,6 +884,37 @@ function MetaCell({ label, value }: { label: string; value: string }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Hook: deal IDs where the current user is tagged as the deal manager.
+   Used by the admin-only "Me" filter in the Approval Queue.
+   ──────────────────────────────────────────────────────────────────────── */
+function useMyManagedDealIds(enabled: boolean) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['approval-queue', 'my-managed-deal-ids', user?.id],
+    enabled: !!user?.id && enabled,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Set<string>> => {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('first_name,last_name,display_name,email')
+        .eq('id', user!.id)
+        .maybeSingle();
+      const names = new Set<string>();
+      if (prof?.display_name) names.add(prof.display_name);
+      if (prof?.first_name && prof?.last_name) names.add(`${prof.first_name} ${prof.last_name}`);
+      if (prof?.email) names.add(prof.email.split('@')[0]);
+      if (!names.size) return new Set();
+      const ors = Array.from(names)
+        .map((n) => `manager.ilike.%${n.replace(/[,()]/g, '')}%`)
+        .join(',');
+      const { data, error } = await supabase.from('deals').select('id').or(ors);
+      if (error) return new Set();
+      return new Set((data || []).map((d: any) => d.id as string));
+    },
+  });
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Empty state
    ──────────────────────────────────────────────────────────────────────── */
 function EmptyState() {
