@@ -57,7 +57,7 @@ export function ActionQueueBadge() {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[1240px] max-w-[96vw] p-0 h-[88vh] overflow-hidden flex flex-col rounded-[22px] border border-white/[0.08] bg-[#06060a]/95 backdrop-blur-xl shadow-[0_50px_120px_-20px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)]"
+        className="popup-shell-surface dark w-[1240px] max-w-[96vw] p-0 h-[88vh] overflow-hidden flex flex-col rounded-[22px]"
         align="end"
         sideOffset={8}
       >
