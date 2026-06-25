@@ -1758,3 +1758,84 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface .queue-item:hover {
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   GLOBAL OVERLAY SURFACE STANDARDIZATION
+   Every Radix overlay surface (Dialog, AlertDialog, Popover, DropdownMenu,
+   Select, ContextMenu, Menubar, HoverCard, Command) inherits the exact
+   Deal Details pop-up gradient/border treatment. Tooltips are excluded so
+   they remain lightweight. This guarantees no overlay renders with a
+   lighter "glass/lens" fill anywhere in the app.
+   ───────────────────────────────────────────────────────────────────────── */
+[data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
+[role="dialog"][data-state],
+[role="alertdialog"][data-state],
+[data-radix-select-content],
+[data-radix-menu-content],
+[data-radix-dropdown-menu-content],
+[data-radix-context-menu-content],
+[data-radix-popover-content],
+[data-radix-hover-card-content],
+[cmdk-root][role="dialog"] {
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  background-color: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: hsl(0 0% 98%) !important;
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.65),
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+/* Neutralize any lighter nested surface tokens inside these overlays so
+   inner cards/rows/panels match the parent gradient rather than punching
+   through with the old lighter glass/lens fill. */
+:is(
+  [data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
+  [role="dialog"][data-state],
+  [role="alertdialog"][data-state]
+) :is(
+  [class*="bg-card"],
+  [class*="bg-popover"],
+  [class*="bg-muted"],
+  [class*="bg-background"],
+  [class*="bg-secondary"],
+  [class*="bg-accent"],
+  [class*="bg-slate-"],
+  [class*="bg-zinc-"],
+  [class*="bg-gray-"],
+  [class*="bg-neutral-"],
+  .bg-white\/5,
+  .bg-white\/10,
+  .bg-white\/15,
+  .bg-white\/20,
+  .glass-surface,
+  .glass-card,
+  .glass-panel,
+  .liquid-glass
+) {
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Restore minimal contrast for interactive rows/cards inside overlays. */
+:is(
+  [data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
+  [role="dialog"][data-state],
+  [role="alertdialog"][data-state]
+) :is(.card, [data-card], [role="listitem"], .task-row, .queue-item) {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+:is(
+  [data-radix-popper-content-wrapper] > *:not([role="tooltip"]):not([data-tooltip]),
+  [role="dialog"][data-state],
+  [role="alertdialog"][data-state]
+) :is(.card:hover, [data-card]:hover, .task-row:hover, .queue-item:hover) {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
