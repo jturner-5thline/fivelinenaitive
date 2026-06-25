@@ -314,46 +314,84 @@ export function DealsFlyoutMenu() {
               onOpenAutoFocus={(e) => e.preventDefault()}
               onCloseAutoFocus={(e) => e.preventDefault()}
             >
-              <div role="menu" aria-label="Recently opened deals">
-                <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-                    Recently opened
-                  </span>
-                  <span className="text-[10px] text-muted-foreground/70 truncate max-w-[110px]" title={activePipeline?.name || ''}>
-                    Last {activeDeals.length}
-                  </span>
+              {isFifthLine ? (
+                <div role="menu" aria-label="Deal segments">
+                  <div className="flex items-center px-2 pb-1.5 pt-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                      Segments
+                    </span>
+                  </div>
+                  <div className="pr-0.5">
+                    {fifthLineLinks.map((link, index) => {
+                      const isFocused = focusedIndex === index;
+                      const isCurrent = location.pathname === link.to;
+                      const Icon = link.Icon;
+                      return (
+                        <button
+                          key={link.id}
+                          ref={(el) => (itemRefs.current[index] = el)}
+                          role="menuitem"
+                          tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
+                          onClick={() => handleFifthLineLinkClick(link.to)}
+                          onKeyDown={(e) => handleSubItemKeyDown(e, index)}
+                          onMouseEnter={() => setFocusedIndex(index)}
+                          title={link.label}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                            'hover:bg-accent hover:text-accent-foreground',
+                            'focus-visible:bg-accent focus-visible:text-accent-foreground',
+                            isCurrent && 'bg-accent text-accent-foreground font-medium',
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
+                          <span className="truncate text-left flex-1">{link.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                {/* Scrollable list — caps height so long pipelines don't
-                    overflow the viewport. */}
-                <div className="max-h-[60vh] overflow-y-auto pr-0.5">
-                  {activeDeals.map((d, index) => {
-                    const isActive = selectedDealId === d.id;
-                    const isFocused = focusedIndex === index;
-                    const label = d.company || d.name;
-                    return (
-                      <button
-                        key={d.id}
-                        ref={(el) => (itemRefs.current[index] = el)}
-                        role="menuitem"
-                        tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
-                        onClick={() => handleSubItemClick(d.id)}
-                        onKeyDown={(e) => handleSubItemKeyDown(e, index)}
-                        onMouseEnter={() => setFocusedIndex(index)}
-                        title={label}
-                        className={cn(
-                          'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
-                          'hover:bg-accent hover:text-accent-foreground',
-                          'focus-visible:bg-accent focus-visible:text-accent-foreground',
-                          isActive && 'bg-accent text-accent-foreground font-medium',
-                        )}
-                      >
-                        <Briefcase className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
-                        <span className="truncate text-left flex-1">{label}</span>
-                      </button>
-                    );
-                  })}
+              ) : (
+                <div role="menu" aria-label="Recently opened deals">
+                  <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                      Recently opened
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/70 truncate max-w-[110px]" title={activePipeline?.name || ''}>
+                      Last {recentDeals.length}
+                    </span>
+                  </div>
+                  {/* Scrollable list — caps height so long pipelines don't
+                      overflow the viewport. */}
+                  <div className="max-h-[60vh] overflow-y-auto pr-0.5">
+                    {recentDeals.map((d, index) => {
+                      const isActive = selectedDealId === d.id;
+                      const isFocused = focusedIndex === index;
+                      const label = d.company || d.name;
+                      return (
+                        <button
+                          key={d.id}
+                          ref={(el) => (itemRefs.current[index] = el)}
+                          role="menuitem"
+                          tabIndex={isFocused || (focusedIndex < 0 && index === 0) ? 0 : -1}
+                          onClick={() => handleSubItemClick(d.id)}
+                          onKeyDown={(e) => handleSubItemKeyDown(e, index)}
+                          onMouseEnter={() => setFocusedIndex(index)}
+                          title={label}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                            'hover:bg-accent hover:text-accent-foreground',
+                            'focus-visible:bg-accent focus-visible:text-accent-foreground',
+                            isActive && 'bg-accent text-accent-foreground font-medium',
+                          )}
+                        >
+                          <Briefcase className="h-3.5 w-3.5 shrink-0 text-popover-foreground/60" />
+                          <span className="truncate text-left flex-1">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
             </PopoverContent>
           </Popover>
         )}
