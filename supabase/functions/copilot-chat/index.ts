@@ -666,6 +666,24 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "resolve_deals_batch",
+      description: "BATCH deal-name resolver for write actions that target multiple deals at once (especially weekly-hours logging, bulk hours updates, or any 'add/log/update X to deals A, B, C, D' request). REQUIRED FIRST CALL whenever the user names two or more deals in a single write request — do NOT loop find_entity/search_deals one-by-one. Returns three buckets: `auto_resolved` (single survivor after the active>recency>owner priority filter — use these IDs DIRECTLY in write tools, no confirmation needed before the write tool's own card), `ambiguous` (2+ survivors — render ONE grouped picker showing every candidate's stage, status, owner, and value so the user can disambiguate them all in a single pass; never ask the user to paste a deal_id), and `not_found`. After this call, emit one update_deal_fields call per auto_resolved deal in the SAME turn, then present the grouped ambiguity picker if any remain. NEVER force one-by-one disambiguation messages.",
+      parameters: {
+        type: "object",
+        properties: {
+          queries: {
+            type: "array",
+            description: "Free-text deal names the user mentioned. Pass them verbatim, one per intended deal.",
+            items: { type: "string" },
+          },
+        },
+        required: ["queries"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal",
       description: "Get details about a specific deal by ID or by searching company name.",
       parameters: {
