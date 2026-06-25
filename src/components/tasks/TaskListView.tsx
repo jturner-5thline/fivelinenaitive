@@ -52,9 +52,9 @@ import {
  * reveal more columns from the toolbar.
  */
 export const OPTIONAL_TASK_COLUMNS = [
+  { id: 'deal',     label: 'Deal',          template: '180px' },
   { id: 'owner',    label: 'Owner',         template: '140px' },
   { id: 'collab',   label: 'Collaborators', template: '60px'  },
-  { id: 'deal',     label: 'Deal',          template: '180px' },
   { id: 'due',      label: 'Due date',      template: '120px' },
   { id: 'priority', label: 'Priority',      template: '100px' },
   { id: 'status',   label: 'Status',        template: '120px' },
@@ -65,7 +65,7 @@ export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 /** Default columns shown to first-time users — fast triage view. */
 export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['deal', 'owner', 'due'];
 
-const LEADING_TEMPLATE = '20px 20px 20px 20px minmax(240px,1fr)';
+const LEADING_TEMPLATE = '32px minmax(280px,1fr)';
 const TRAILING_TEMPLATE = '32px';
 
 /** Build the gridTemplateColumns CSS value from the active column set. */
@@ -83,7 +83,7 @@ function getVisibleColumns(visible: Set<TaskColumnId>) {
 }
 
 /** Locked row height — every data row, header row, and add-row uses this. */
-const TASK_ROW_MIN_H = 'min-h-[44px]';
+const TASK_ROW_MIN_H = 'min-h-[62px]';
 /** Pill column constants (kept as className tokens). */
 const PRIORITY_PILL_MIN_W = 'min-w-[72px]';
 const STATUS_PILL_MIN_W = 'min-w-[96px]';
@@ -286,17 +286,14 @@ export function TaskListView({
         <div
           className={cn(
             'grid',
-            'gap-2 items-center px-4 min-h-[36px]',
+            'gap-3 items-center px-4 min-h-[40px]',
             'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
-            'bg-background/90 backdrop-blur-md border-b border-border/40 text-muted-foreground',
+            'backdrop-blur-md border-b text-muted-foreground',
           )}
-          style={gridStyle}
+          style={{ ...gridStyle, backgroundColor: 'rgba(15,23,42,0.34)', borderColor: 'rgba(148,163,184,0.12)' }}
         >
           <div aria-hidden />
-          <div aria-hidden />
-          <div aria-hidden />
-          <div aria-hidden />
-          <div className="truncate">Task name</div>
+          <div className="truncate">Task</div>
           {cols.map(c => (
             <div
               key={c.id}
@@ -307,7 +304,7 @@ export function TaskListView({
                 c.id === 'collab' && 'sr-only',
               )}
             >
-              {c.id === 'collab' ? '' : c.label}
+              {c.id === 'collab' ? '' : c.id === 'due' ? 'Due' : c.label}
             </div>
           ))}
           <div aria-hidden />
@@ -360,16 +357,12 @@ export function TaskListView({
                     gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center gap-1">
                     {isCollapsed
                       ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                  </div>
-                  <div className="flex items-center justify-center">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
                   </div>
-                  <div aria-hidden />
-                  <div aria-hidden />
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#cfd5e0' }}>
                       {group.label}
@@ -452,8 +445,8 @@ export function TaskListView({
                               className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
                               style={gridStyle}
                             >
-                              {/* 4 leading utility columns */}
-                              <div /><div /><div /><div />
+                              {/* leading complete-toggle column */}
+                              <div />
                               {/* Title input occupies the task-name column */}
                               <Input
                                 ref={newTaskRef as any}
@@ -542,16 +535,12 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center gap-1">
           {collapsed
             ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} />
             : <ChevronDown className="h-3 w-3" style={{ color: '#e57373' }} />}
-        </div>
-        <div className="flex items-center justify-center">
           <AlertTriangle className="h-3 w-3" style={{ color: '#e57373' }} />
         </div>
-        <div aria-hidden />
-        <div aria-hidden />
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#e57373' }}>
             Overdue
@@ -759,9 +748,9 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         // cells regardless of which sub-label / pill content the row holds.
         'grid',
         TASK_ROW_MIN_H,
-        'gap-2 items-center px-3 py-1 cursor-pointer group rounded-lg border transition-all duration-150',
-        'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
-        'hover:bg-white/[0.045] hover:border-white/[0.10]',
+        'gap-3 items-center px-4 py-2.5 cursor-pointer group rounded-lg border transition-all duration-150',
+        'bg-white/[0.035] dark:bg-white/[0.035] border-white/[0.07] backdrop-blur-md',
+        'hover:bg-white/[0.06] hover:border-white/[0.12]',
         'shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]',
         isSelected && '!bg-[rgba(99,102,241,0.10)] !border-[rgba(99,102,241,0.35)] !border-l-[3px] !border-l-[#6366f1]',
         isMultiSelected && '!bg-[rgba(126,184,247,0.06)] !border-[rgba(126,184,247,0.2)]',
@@ -782,16 +771,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         onSelect();
       }}
     >
-      {/* Drag handle */}
-      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
-        <GripVertical className="h-3 w-3" style={{ color: '#7a8194' }} />
-      </div>
-
-      {/* Multi-select */}
-      <div className={cn('flex items-center justify-center transition-opacity', showSelectCheckbox ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')} onClick={e => e.stopPropagation()}>
-        <Checkbox checked={isMultiSelected} onCheckedChange={() => onToggleSelect?.()} className="h-4 w-4" />
-      </div>
-
       {/* Complete checkbox */}
       <div className="flex items-center justify-center">
         <TaskCompletionCheckbox
@@ -800,13 +779,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           onChange={onToggleComplete}
           className="w-6 h-6 -m-1"
         />
-      </div>
-
-      {/* Star */}
-      <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <button className={cn('transition-colors', task.is_starred ? 'text-amber-500' : 'text-transparent group-hover:text-[#8b92a5]/40 hover:!text-amber-500')} onClick={() => onToggleStar?.()} title="Star task">
-          <Star className={cn('h-3.5 w-3.5', task.is_starred && 'fill-amber-500')} />
-        </button>
       </div>
 
       {/* Title + sub-label stack — vertically centered to row centerline */}
@@ -818,6 +790,10 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         ) : (
           <>
             <div className="flex items-center gap-1.5 min-w-0">
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing shrink-0" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
+                <GripVertical className="h-3 w-3" style={{ color: '#7a8194' }} />
+              </span>
+              {task.is_starred && <Star className="h-3 w-3 fill-amber-500 text-amber-500 shrink-0" />}
               <span
                 title={task.title}
                 className={cn(
@@ -881,31 +857,9 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
               );
               })()}
             </div>
-            {/* Single-line, ellipsis-clipped sub-label. Uses the uniform
-                "text-xs text-muted-foreground" treatment per spec. */}
-            {(subLabel || (task.status === 'blocked' && blockerNote)) && (
-              <div className="min-w-0 truncate">
-                {subLabel ? (
-                  <Link
-                    to={subLabel.href}
-                    title={subLabel.text}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <subLabel.icon className="h-2.5 w-2.5 shrink-0" />
-                    <span className="truncate">{subLabel.text}</span>
-                  </Link>
-                ) : (
-                  <span
-                    className="text-xs italic truncate block"
-                    style={{ color: '#e57373' }}
-                    title={blockerNote}
-                  >
-                    {blockerNote}
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="min-w-0 truncate text-xs" style={{ color: '#94a3b8' }} title={task.description || blockerNote || subLabel?.text || ''}>
+              {task.description || blockerNote || subLabel?.text || 'No description'}
+            </div>
           </>
         )}
       </div>
@@ -915,13 +869,13 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
         {task.assignee_profile ? (
           <>
-            <Avatar className="h-4 w-4">
+            <Avatar className="h-5 w-5">
               {task.assignee_profile.avatar_url && <AvatarImage src={task.assignee_profile.avatar_url} />}
               <AvatarFallback className="text-[8px]" style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
                 {task.assignee_profile.display_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[11px] truncate" style={{ color: '#7a8194' }} title={task.assignee_profile.display_name || ''}>
+            <span className="text-[11px] truncate" style={{ color: '#cbd5e1' }} title={task.assignee_profile.display_name || ''}>
               {task.assignee_profile.display_name?.split(' ')[0]}
             </span>
           </>
@@ -957,6 +911,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {visibleSet.has('deal') && (
       <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
         <TaskAssociationChips task={task} />
+        {!subLabel && <span className="text-[11px]" style={{ color: '#94a3b8' }}>— No deal</span>}
       </div>
       )}
 

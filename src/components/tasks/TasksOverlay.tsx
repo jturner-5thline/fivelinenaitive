@@ -46,7 +46,7 @@ export function TasksOverlay({ open, onOpenChange }: Props) {
                 </div>
               }
             >
-              <TasksPage />
+              <TasksPage overlayMode />
             </Suspense>
           </TasksErrorBoundary>
         </div>
