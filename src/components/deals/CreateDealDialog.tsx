@@ -707,7 +707,6 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     >
                       <div className="border-b p-2">
                         <Input
-                          autoFocus
                           placeholder="Search companies…"
                           value={companySearch}
                           onChange={(e) => setCompanySearch(e.target.value)}
