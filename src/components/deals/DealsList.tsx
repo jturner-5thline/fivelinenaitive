@@ -52,6 +52,10 @@ interface DealsListProps {
   onToggleSort?: (field: SortField) => void;
   filters?: DealFilters;
   onFiltersChange?: (next: Partial<DealFilters>) => void;
+  /** When true, the right-side detail panel is open: collapse the list to
+   *  only Deal Name (company) + Deal Amount (value) and hide the Actions
+   *  column so the remaining row reads cleanly beside the panel. */
+  detailPanelOpen?: boolean;
 }
 
 /** Map a column id to the SortField it should drive (or null if not sortable). */
