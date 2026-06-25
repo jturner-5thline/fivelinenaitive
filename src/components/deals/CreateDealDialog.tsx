@@ -788,7 +788,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                             setContactInfo(first?.email || '');
                           }}
                           placeholder="New contact name…"
-                          invalid={clientContacts.length === 0 && showClientContact}
+                          invalid={false}
                         />
                       </div>
                     </div>
