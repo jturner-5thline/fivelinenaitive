@@ -235,41 +235,23 @@ export default function Dashboard() {
   // downward by that amount. The offset is clamped so deals near the
   // bottom of the list don't push the panel into excessive blank space.
   const inlineSelectedDealId = overlaySearchParams.get('deal');
+  // The inline detail aside is always anchored to the top of the shared
+  // flex container so opening any deal — top, middle, or bottom of the
+  // list — produces the exact same starting position. When switching
+  // between deals we also reset the aside's internal scroll so each
+  // newly opened deal starts from the same vertical origin.
   useLayoutEffect(() => {
-    if (!inlineSelectedDealId) {
-      setDetailOffset(0);
-      return;
+    setDetailOffset(0);
+    if (!inlineSelectedDealId) return;
+    const aside = detailAsideRef.current;
+    if (aside) {
+      // Reset both the aside itself and any scrollable descendants so the
+      // newly opened deal always renders from the top.
+      aside.scrollTop = 0;
+      aside.querySelectorAll<HTMLElement>('[data-scroll-root], .overflow-y-auto, .overflow-auto')
+        .forEach((el) => { el.scrollTop = 0; });
     }
-    const measure = () => {
-      const container = boardScrollContainerRef.current;
-      const aside = detailAsideRef.current;
-      if (!container || !aside) return;
-      const row = container.querySelector<HTMLElement>(
-        `[data-deal-open-id="${CSS.escape(inlineSelectedDealId)}"]`
-      );
-      if (!row) return;
-      const containerTop = container.getBoundingClientRect().top;
-      // Align the panel's TOP edge with the clicked tile's TOP edge so
-      // the panel sits level with the selected row.
-      const rowRect = row.getBoundingClientRect();
-      const rawOffset = rowRect.top - containerTop;
-      // Clamp so the aside never extends past the bottom of the left list.
-      const maxOffset = Math.max(
-        0,
-        container.offsetHeight - aside.offsetHeight,
-      );
-      const next = Math.max(0, Math.min(rawOffset, maxOffset));
-      setDetailOffset(next);
-    };
-    // Defer one frame so the aside has rendered and we get accurate
-    // height measurements for the clamp.
-    const raf = requestAnimationFrame(measure);
-    window.addEventListener('resize', measure);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', measure);
-    };
-  }, [inlineSelectedDealId, allDeals.length, viewMode, isLoading]);
+  }, [inlineSelectedDealId]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
 
