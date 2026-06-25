@@ -111,7 +111,7 @@ function SortableFilterableHead({
   const isActiveSort = !!sortField_ && sortField === sortField_;
 
   return (
-    <TableHead ref={setNodeRef} style={style} className="text-[#9697a6] text-center text-[10px] font-mono uppercase tracking-[0.14em]">
+    <TableHead ref={setNodeRef} style={style} className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]">
       <div className="inline-flex items-center gap-1 whitespace-nowrap">
         <span
           {...attributes}
@@ -406,7 +406,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             {activeChips.map((c) => (
               <span
                 key={c.key}
-                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[11px] font-mono"
+                className="inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[11px]"
                 style={{
                   color: '#b79bf0',
                   background: 'rgba(155,111,212,.14)',
@@ -427,7 +427,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             <button
               type="button"
               onClick={() => onFiltersChange(clearAllColumnFilters())}
-              className="ml-1 text-[11px] font-mono text-[#9697a6] hover:text-[#f4f4f7] underline-offset-2 hover:underline"
+              className="ml-1 text-[11px] text-[#9697a6] hover:text-[#f4f4f7] underline-offset-2 hover:underline"
             >
               Clear all
             </button>
@@ -462,7 +462,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     ))}
                   </SortableContext>
                   {!detailPanelOpen && (
-                    <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
+                    <TableHead className="w-[100px] text-[10px] uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
                   )}
                 </TableRow>
               </TableHeader>
