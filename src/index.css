@@ -1668,3 +1668,37 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact label {
   font-size: 0.75rem;
 }
+
+/* Dark surface treatment for Create New Deal dialog — matches popup-shell-surface */
+.create-deal-compact {
+  color: rgba(255,255,255,0.92);
+}
+.create-deal-compact label,
+.create-deal-compact [data-radix-dialog-title] {
+  color: rgba(255,255,255,0.88);
+}
+.create-deal-compact .text-muted-foreground {
+  color: rgba(255,255,255,0.55) !important;
+}
+.create-deal-compact input,
+.create-deal-compact textarea,
+.create-deal-compact button[role="combobox"],
+.create-deal-compact [data-slot="select-trigger"] {
+  background-color: rgba(255,255,255,0.04) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  color: rgba(255,255,255,0.95) !important;
+}
+.create-deal-compact input::placeholder,
+.create-deal-compact textarea::placeholder {
+  color: rgba(255,255,255,0.4) !important;
+}
+.create-deal-compact input:focus,
+.create-deal-compact textarea:focus,
+.create-deal-compact button[role="combobox"]:focus,
+.create-deal-compact [data-slot="select-trigger"]:focus {
+  border-color: rgba(255,255,255,0.28) !important;
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
+}
+.create-deal-compact svg {
+  color: rgba(255,255,255,0.6);
+}
