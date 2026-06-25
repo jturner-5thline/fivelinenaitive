@@ -26,6 +26,7 @@ import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
 import { ChevronDown } from 'lucide-react';
 import { useNaitiveQualCallsCount, usePrefetchNaitiveQualCalls } from '@/hooks/useNaitiveQualCallsCount';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type RangeKey = 'this-week' | 'last-week' | 'last-30' | 'last-90' | 'custom';
 
@@ -937,7 +938,13 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
               {format(from, 'MMM d')} – {format(to, 'MMM d, yyyy')}.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+          <Tabs defaultValue="events" className="w-full">
+            <TabsList>
+              <TabsTrigger value="events">Events</TabsTrigger>
+              <TabsTrigger value="trend">Weekly Trend</TabsTrigger>
+            </TabsList>
+            <TabsContent value="events">
+              <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
             {qualCallsCurrent.isLoading ? (
               <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
             ) : qualCallsCurrent.data && qualCallsCurrent.data.events.length > 0 ? (
@@ -984,10 +991,62 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                 No qual calls in this window.
               </p>
             )}
-          </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="trend">
+              <QualCallsWeeklyTrend />
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+function QualCallsWeeklyTrend() {
+  const weeks = useMemo(() => {
+    const arr: { from: Date; to: Date; label: string }[] = [];
+    const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    for (let i = 5; i >= 0; i--) {
+      const ws = subWeeks(thisWeekStart, i);
+      const we = endOfWeek(ws, { weekStartsOn: 1 });
+      arr.push({ from: ws, to: we, label: format(ws, 'MMM d') });
+    }
+    return arr;
+  }, []);
+
+  // Fixed length of 6 — hook order is stable.
+  const w0 = useNaitiveQualCallsCount(weeks[0].from, weeks[0].to);
+  const w1 = useNaitiveQualCallsCount(weeks[1].from, weeks[1].to);
+  const w2 = useNaitiveQualCallsCount(weeks[2].from, weeks[2].to);
+  const w3 = useNaitiveQualCallsCount(weeks[3].from, weeks[3].to);
+  const w4 = useNaitiveQualCallsCount(weeks[4].from, weeks[4].to);
+  const w5 = useNaitiveQualCallsCount(weeks[5].from, weeks[5].to);
+  const results = [w0, w1, w2, w3, w4, w5];
+
+  const data = weeks.map((w, i) => ({
+    week: w.label,
+    count: results[i].data?.count ?? 0,
+  }));
+  const anyLoading = results.some((r) => r.isLoading);
+
+  return (
+    <div className="pt-2">
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="week" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+            <Bar dataKey="count" name="Qual Calls" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="text-[11px] text-muted-foreground text-center mt-2">
+        {anyLoading ? 'Loading weekly counts…' : 'Qual call count per week, past 6 weeks (Mon–Sun).'}
+      </p>
+    </div>
   );
 }
 
