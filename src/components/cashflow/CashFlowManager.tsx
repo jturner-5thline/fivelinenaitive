@@ -1814,7 +1814,7 @@ export function CashFlowManager() {
             return ok;
           }}
           onOpenCashInPanel={() => setCashInDialogOpen(true)}
-          cashInNext8WTotal={computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks}
+          cashInNext8WTotal={computeCashInTotal(rawSidebar, sidebarDbItems)}
         />
       )}
       {addCashInOpen && (
