@@ -525,7 +525,7 @@ export function ScheduledCashFlowsModal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="w-[min(96vw,1800px)] max-w-[1800px] h-[min(92dvh,980px)] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl flex flex-col"
+        className="w-[min(96vw,1800px)] max-w-[1800px] h-[min(92dvh,980px)] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl flex flex-col [&>button.absolute]:hidden"
       >
         {/* Header */}
         <DialogHeader className="px-6 py-5 border-b border-border bg-card sticky top-0 z-10">
