@@ -304,7 +304,11 @@ function InlineFilterSelect<T extends string>({
   );
 }
 
-export default function Tasks() {
+interface TasksProps {
+  overlayMode?: boolean;
+}
+
+export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const queryClient = useQueryClient();
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
@@ -461,15 +465,6 @@ export default function Tasks() {
   const [dealFilterQuery, setDealFilterQuery] = useState('');
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
-
-  // Auto-select the first visible task so the right-pane detail panel is
-  // always populated (per redesign spec — no empty "No task selected"
-  // placeholder when there's a task to show).
-  useEffect(() => {
-    if (!selectedTaskId && tasks.length > 0) {
-      setSelectedTaskId(tasks[0].id);
-    }
-  }, [selectedTaskId, tasks]);
 
   // ── URL query-param persistence ──────────────────────────────────────
   // Sync status / due / priority / deal filters with the URL so links are
@@ -675,6 +670,22 @@ export default function Tasks() {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
     });
+
+  const effectiveVisibleTaskColumns = overlayMode
+    ? DEFAULT_TASK_COLUMNS
+    : visibleTaskColumns;
+
+  // Auto-select the first visible task so the right-pane detail panel is
+  // always populated with a row from the current list, not a stale hidden task.
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedTaskId) setSelectedTaskId(null);
+      return;
+    }
+    if (!selectedTaskId || !filtered.some(t => t.id === selectedTaskId)) {
+      setSelectedTaskId(filtered[0].id);
+    }
+  }, [filtered, selectedTaskId]);
 
   const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
   const [taskNameWarning, setTaskNameWarning] = useState('');
@@ -1101,7 +1112,7 @@ export default function Tasks() {
         of the platform. Keeping `flex flex-col h-full` preserves the
         existing internal layout/scroll behavior unchanged.
       */}
-      <div className="flex flex-col h-full bg-transparent">
+      <div className={cn("flex flex-col h-full bg-transparent", overlayMode && "tasks-reference-popup")}>
         {/*
           Header — title + muted summary + primary navigation.
           Layout zones (left | center-right tabs | reserved right gutter):
@@ -1198,7 +1209,7 @@ export default function Tasks() {
           horizontal scroll) so controls reflow on narrow widths instead of
           disappearing behind a scroll affordance.
         */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
+        <div className="flex items-center gap-2 px-6 py-2.5 border-y flex-nowrap overflow-x-auto pr-4" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.012)' }}>
           {/* Primary navigation tabs — List / Board */}
           <div
             className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
@@ -1588,7 +1599,7 @@ export default function Tasks() {
                 onSelectAll={handleSelectAll}
                 onToggleStar={handleToggleStar}
                 focusedTaskIndex={focusedTaskIndex}
-                visibleColumnIds={visibleTaskColumns}
+                visibleColumnIds={effectiveVisibleTaskColumns}
               />
             )}
             {viewMode === 'board' && (

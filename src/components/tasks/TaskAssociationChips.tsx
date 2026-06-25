@@ -26,12 +26,17 @@ export function TaskAssociationChips({ task, className, size = 'xs', showPlaceho
       to={to}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-muted/30 hover:bg-muted/60 max-w-[140px]',
+        'inline-flex items-center gap-1.5 px-2 py-1 rounded-md border max-w-[160px] transition-colors',
         textCls,
       )}
+      style={{
+        backgroundColor: 'rgba(15,23,42,0.42)',
+        borderColor: 'rgba(148,163,184,0.22)',
+        color: '#cbd5e1',
+      }}
       title={label}
     >
-      <Icon className={cn(iconCls, 'flex-shrink-0 text-muted-foreground')} />
+      <Icon className={cn(iconCls, 'flex-shrink-0')} style={{ color: '#94a3b8' }} />
       <span className="truncate">{label}</span>
     </Link>
   );
