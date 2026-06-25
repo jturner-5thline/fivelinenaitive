@@ -1,58 +1,61 @@
-## Goal
+# Claap aiFields Compliance
 
-Show "Last Contact At" — the most recent date anyone on your team interacted with a contact — across the app.
+Goal: every Claap Get Recording call requests `returnAiFields=true`, `aiFields` stays the primary parsing path, legacy `insightTemplates` remains as a temporary fallback, and we log enough to verify aiFields presence in both REST and webhook payloads. No matching logic touched.
 
-## Where it will appear
+## Findings
 
-1. **Contact detail page** — header field next to phone/email.
-2. **CRM contacts list/table** — new sortable, filterable column.
-3. **Deal detail → Contacts panel** — small badge under each contact row.
-4. **Approval queue → right-hand details column** — shown in the contact target block so reviewers see recency at a glance.
+Get Recording call sites today:
 
-## What counts as "contact"
+- `supabase/functions/_shared/claap-api.ts:84` — shared `claapGetRecording` helper. **Missing** `returnAiFields=true`. Used by:
+  - `supabase/functions/claap-bulk-sync/index.ts:47`
+  - `supabase/functions/claap-backfill-summaries/index.ts:44`
+  - `supabase/functions/claap-sync-recording-content/index.ts:59`
+- `supabase/functions/claap-recordings/index.ts:241-242` — single-recording GET. Already sets `returnAiFields=true`.
+- `supabase/functions/claap-recordings/index.ts:158-163` — list endpoint. Already sets `returnAiFields=true`.
+- Transcript endpoints (`/transcript?format=text`) — unaffected, no change.
 
-Any team-wide activity touching the contact's email:
-- Inbound or outbound email (Gmail + Microsoft synced messages, sent messages)
-- Calendar event the contact attended
-- Claap meeting the contact attended
-- Note logged against the contact
-- Task whose assignee/follower link references the contact
+Parsing paths already prefer `aiFields` over `insightTemplates`:
 
-The latest timestamp across all of these wins. Scope = entire workspace/company, not just the current user.
+- `supabase/functions/claap-recordings/index.ts:77-100` (`extractClaapInsights`)
+- `supabase/functions/claap-webhook/index.ts:72-102` (`extractClaapInsights`)
+- `supabase/functions/_shared/claap-api.ts:138-207` (`normalizeRecording`) — does NOT currently read `aiFields`; it only parses `outlines`, `actionItems`, `keyTakeaways`. This is fine for the summary/action-item normalization it owns, but it means callers of `claapGetRecording` cannot see aiFields downstream. We will pass the raw `aiFields` through on the normalized object as an opaque field for parity with the recordings function.
 
-## How it will be computed
+## Changes
 
-A single Postgres function `public.get_contact_last_contact_at(contact_id uuid) → timestamptz` that takes the `MAX(created_at/sent_at/started_at)` across:
+### 1. `supabase/functions/_shared/claap-api.ts`
+- Update `claapGetRecording` (line 84) to build the URL with `returnAiFields=true`:
+  ```
+  const url = new URL(`${CLAAP_API_BASE}/recordings/${encodeURIComponent(externalId)}`);
+  url.searchParams.set("returnAiFields", "true");
+  ```
+- After parsing JSON, add a single-line console log indicating aiFields presence and count, e.g.
+  `console.log("[claap] getRecording", externalId, "aiFields=", Array.isArray(r?.aiFields) ? r.aiFields.length : "absent", "insightTemplates=", Array.isArray(r?.insightTemplates) ? r.insightTemplates.length : "absent")`
+- Extend `NormalizedClaapRecording` with optional `ai_fields?: Array<{key,label,value,type}>` and `insight_templates_present?: boolean` so downstream callers can confirm rollout, and populate them in `normalizeRecording`. Leave existing summary/action-item logic untouched (aiFields stays primary for insight rendering via the existing `extractClaapInsights`).
+- Also apply the same `returnAiFields=true` query param to `claapListRecordings` (line 212) for consistency.
 
-- `gmail_messages` (any user in the same company) where the contact's email is in to/from/cc
-- `ms_synced_emails` (same)
-- `gmail_sent_messages`
-- `calendar_events` where the contact email is in attendees
-- `claap_meeting_participants` joined to `claap_meetings`
-- `contact_activities`
-- `tasks` linked via `task_associations` to the contact
+### 2. `supabase/functions/claap-recordings/index.ts`
+- Already sets `returnAiFields=true` on list (line 163) and get (line 242). No URL changes.
+- Add concise logging right after each successful Claap response parse:
+  - list: log count of recordings + how many include `aiFields`.
+  - get: log `aiFields` length / `insightTemplates` length for the requested recording id.
 
-To keep reads fast we add a denormalized column `contacts.last_contact_at timestamptz` plus an index, and a backfill + lightweight triggers on the source tables that bump the contact row when new activity arrives. The function above is the recompute primitive used by the backfill and the triggers.
+### 3. `supabase/functions/claap-webhook/index.ts`
+- No parsing change (`extractClaapInsights` already prefers `aiFields`).
+- At the top of the webhook handler, after JSON-parsing the incoming payload, log a single line:
+  `console.log("[claap] webhook", payload.event, payload.data?.id, "aiFields=", Array.isArray(payload.data?.aiFields) ? payload.data.aiFields.length : "absent", "insightTemplates=", Array.isArray(payload.data?.insightTemplates) ? payload.data.insightTemplates.length : "absent")`
 
-## UI changes
+### 4. Not changed
+- `claap-backfill`, `claap-deal-analyze`, `claap-webhook-ingest`, `claap-bulk-sync`, `claap-backfill-summaries`, `claap-sync-recording-content` — they all funnel Get Recording through the shared `claapGetRecording`, so the helper fix in #1 covers them automatically. Transcript endpoints stay untouched.
+- All Claap matching/scoring/routing logic (`claap-score-recording`, `claap-rank-recordings-for-meeting`, `claap-suggest-matches`, `claap-webhook` deal-matching block) is untouched.
 
-- **`src/pages/ContactDetail.tsx`** — add "Last contact" row in the header card. Format: `Jun 14, 2026 · 10 days ago` (em dash if null: "No activity yet").
-- **CRM contacts table** (column registry + table component under `src/components/crm/`) — add `last_contact_at` column, sortable, default visible, with the same relative-time chip.
-- **Deal contacts panel** (under `src/components/deal/`) — show "Last contact: 10d ago" under each contact name.
-- **Approval queue** (`src/components/ai-queue/ActionQueuePanel.tsx`) — when the action target is a contact (`target_object_type === 'contact'`), render a "Last contact at" line in the existing meta block of the right-hand details pane.
+## Verification after deploy
 
-A shared `useContactLastContact(contactIds: string[])` hook batches lookups via the denormalized column, so all surfaces render with one query.
+- Edge logs for `claap-recordings` and `_shared` helper should print `aiFields=<n>` on every fetch.
+- Edge logs for `claap-webhook` should show `aiFields=<n>` on inbound events.
+- If any log shows `aiFields=absent` while `insightTemplates=<n>`, that confirms the legacy fallback is still doing work and should remain until rollout completes.
 
-## Technical details
+## Reported file/line changes (final summary will list exact line numbers post-edit)
 
-- Migration 1: add `contacts.last_contact_at timestamptz`, index `(company_id, last_contact_at desc)`.
-- Migration 2: create `public.get_contact_last_contact_at(uuid)` (security definer, search_path = public), and `public.refresh_contact_last_contact(uuid)` that updates the column.
-- Migration 3: one-time backfill (`UPDATE contacts SET last_contact_at = public.get_contact_last_contact_at(id)`).
-- Migration 4: lightweight `AFTER INSERT` triggers on `gmail_messages`, `gmail_sent_messages`, `ms_synced_emails`, `calendar_events`, `claap_meeting_participants`, `contact_activities`, `tasks` that call `refresh_contact_last_contact` for any contact whose email matches.
-- Frontend: one `useContactLastContact` hook in `src/hooks/`, one `<LastContactChip />` component in `src/components/contacts/`, reused everywhere.
-
-## Out of scope
-
-- No new permissions surface — RLS on `contacts` already governs visibility.
-- No backfill of historical activity beyond what's already in those tables.
-- Per-user "last contact by me" — only the team-wide view, as requested.
+- `supabase/functions/_shared/claap-api.ts` — `claapGetRecording` URL + log + `NormalizedClaapRecording` fields + `normalizeRecording` population; `claapListRecordings` URL.
+- `supabase/functions/claap-recordings/index.ts` — add log statements after list and get responses (no URL change).
+- `supabase/functions/claap-webhook/index.ts` — add inbound payload log (no parsing change).

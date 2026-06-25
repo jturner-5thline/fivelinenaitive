@@ -212,6 +212,11 @@ Deno.serve(async (req) => {
       const data = await response.json();
       let recordings = data.result?.recordings || [];
 
+      const withAi = Array.isArray(recordings)
+        ? recordings.filter((r: any) => Array.isArray(r?.aiFields) && r.aiFields.length > 0).length
+        : 0;
+      console.log("[claap] list recordings", recordings.length, "withAiFields=", withAi);
+
       // Cache the full unfiltered list before applying search.
       listCache.set(cacheKey, { at: Date.now(), recordings: [...recordings] });
 
@@ -278,6 +283,16 @@ Deno.serve(async (req) => {
 
       const data = await response.json();
       const recording = data.result?.recording;
+      if (recording) {
+        console.log(
+          "[claap] get recording",
+          recordingId,
+          "aiFields=",
+          Array.isArray((recording as any)?.aiFields) ? (recording as any).aiFields.length : "absent",
+          "insightTemplates=",
+          Array.isArray((recording as any)?.insightTemplates) ? (recording as any).insightTemplates.length : "absent",
+        );
+      }
       if (recording) {
         getCache.set(recordingId, { at: Date.now(), recording });
       }

@@ -503,6 +503,15 @@ Deno.serve(async (req) => {
   }
 
   const eventTypePreview = payload?.event;
+  console.log(
+    "[claap] webhook",
+    eventTypePreview,
+    payload?.data?.id,
+    "aiFields=",
+    Array.isArray(payload?.data?.aiFields) ? payload.data.aiFields.length : "absent",
+    "insightTemplates=",
+    Array.isArray(payload?.data?.insightTemplates) ? payload.data.insightTemplates.length : "absent",
+  );
   const authHeader = req.headers.get("Authorization");
   let authenticatedUserId: string | null = null;
 
