@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const SECTION_LINKS = [
   { key: "dashboards", label: "Dashboards", icon: BarChart3 },
@@ -56,13 +57,12 @@ function FinanceHeader() {
           document.body,
         )}
       <DropdownMenu>
-        <DropdownMenuTrigger
-          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors shrink-0 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 focus:outline-none focus:ring-2 focus:ring-primary/30"
-          aria-label="Finance section"
-        >
-          <ActiveIcon className="h-3 w-3" />
-          {activeLink.label}
-          <ChevronDown className="h-3 w-3 opacity-70" />
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" aria-label="Finance section">
+            <ActiveIcon className="h-3.5 w-3.5" />
+            {activeLink.label}
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="min-w-[180px]">
           {SECTION_LINKS.map((s) => {
