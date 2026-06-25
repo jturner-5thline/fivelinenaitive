@@ -561,6 +561,16 @@ export function ScheduledCashFlowsModal({
                 <Plus className="h-4 w-4" />
                 Add Entry
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                aria-label="Close"
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </DialogHeader>
