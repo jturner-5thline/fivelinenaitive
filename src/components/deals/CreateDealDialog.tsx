@@ -141,6 +141,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [checklistPreview, setChecklistPreview] = useState<ChecklistPreview | null>(null);
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
+  // Visual-only state for the new Company combobox row in the redesigned
+  // layout. The submission still uses `dealName` as the company string —
+  // this field is presentational and does not change createDeal payloads.
+  const [companyNameVisual, setCompanyNameVisual] = useState('');
+  const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
+
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? onOpenChange! : setInternalOpen;
