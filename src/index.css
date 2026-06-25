@@ -1876,3 +1876,65 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    variant treatment — the Button component sets explicit gradient styles
    so the rules above don't apply to it (no .bg-card on buttons). Inputs
    and form fields keep their existing dark token styles. */
+
+/* =========================================================================
+   Sales & BD page — surface standardization
+   Force all KPI cards, panels, toolbars, insight wrappers, and summary blocks
+   on the Sales & BD page to use the same dark gradient as the Deal Details
+   popup (.popup-shell-surface). Scoped to .sales-bd-page so other dashboards
+   are unaffected.
+   ========================================================================= */
+.sales-bd-page .glass-module,
+.sales-bd-page .glass-module-interactive {
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+.sales-bd-page .glass-module::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
+}
+.sales-bd-page .glass-module-interactive:hover {
+  border-color: rgba(126, 184, 247, 0.30) !important;
+}
+
+/* Sub-navigation/filter toolbars (Channels / Companies / Referral Sources,
+   Partners & Referrals Insights source filter) */
+.sales-bd-page [class*="bg-muted/40"],
+.sales-bd-page [class*="bg-muted/30"],
+.sales-bd-page [class*="bg-background/60"] {
+  background:
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+.sales-bd-page [class*="hover\\:bg-background/30"]:hover,
+.sales-bd-page [class*="hover\\:bg-muted/40"]:hover {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Partner Insights Feed wrapper (uses inline bg-card + dark:bg variant) */
+.sales-bd-page .bg-card {
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* Nested chips/badges using bg-muted should drop to a subtle translucent tint
+   rather than the bright unified .bg-muted override above. */
+.sales-bd-page .bg-muted\/40,
+.sales-bd-page .bg-muted\/30,
+.sales-bd-page .bg-accent\/20,
+.sales-bd-page .bg-accent\/40 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Tables nested inside Sales & BD glass cards */
+.sales-bd-page table tr.border-b {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+.sales-bd-page table thead tr {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
