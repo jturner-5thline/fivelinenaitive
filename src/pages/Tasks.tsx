@@ -1190,12 +1190,6 @@ export default function Tasks() {
           disappearing behind a scroll affordance.
         */}
         <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
-          {/* Search — far left, flexes to fill available space */}
-          <div className="relative flex-1 min-w-[160px] max-w-[280px] order-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
-            <Input value={taskFilters.search} onChange={e => patchFilters({ search: e.target.value })} placeholder="Search tasks or deals…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6] w-full" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
-          </div>
-
           {/* Primary navigation tabs — List / Board */}
           <div
             className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
