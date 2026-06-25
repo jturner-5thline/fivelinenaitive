@@ -484,6 +484,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
   const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
   const [qualCallsOpen, setQualCallsOpen] = useState(false);
+  const [demosStartedOpen, setDemosStartedOpen] = useState(false);
 
   // Warm the cache for every standard timeframe (and its prior-period
   // comparison) so the user can flip between This Week / Last Week / 30 / 90
@@ -634,7 +635,12 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         />
         <EmptyStatCard />
         <EmptyStatCard />
-        <StatCard label="Demos Started" value={current.trialsStarted} prev={previous.trialsStarted} />
+        <StatCard
+          label="Demos Started"
+          value={current.trialsStarted}
+          prev={previous.trialsStarted}
+          onClick={() => setDemosStartedOpen(true)}
+        />
         <StatCard label="Converted" value={current.converted} prev={previous.converted} />
       </div>
 
