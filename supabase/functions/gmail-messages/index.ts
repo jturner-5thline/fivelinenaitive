@@ -297,7 +297,7 @@ async function nylasFetch(
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await nylasFetch(input, { ...init, signal: controller.signal });
+    return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(t);
   }
