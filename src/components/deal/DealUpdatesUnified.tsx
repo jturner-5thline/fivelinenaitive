@@ -75,11 +75,32 @@ export function DealUpdatesUnified({
     return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
   };
 
-  const lenderUpdateTypes = ['lender_added', 'lender_stage_change', 'lender_removed', 'lender_substage_change'];
-  const recentActivities = activities.filter(a =>
-    lenderUpdateTypes.includes(a.activity_type) ||
-    a.description.toLowerCase().includes('milestone changed')
-  ).slice(0, 20);
+  // Show all activity types in "Latest Updates" — lender changes, stage moves,
+  // task completion, milestones, manager/field edits, uploads, memos, etc.
+  const recentActivities = activities.slice(0, 50);
+
+  // "Status History" merges manual status notes with stage transition events
+  // so users see a chronological record of where the deal has been.
+  const statusHistoryItems = [
+    ...statusNotes.map((n) => ({
+      kind: 'note' as const,
+      id: `note-${n.id}`,
+      noteId: n.id,
+      created_at: n.created_at,
+      note: n.note,
+    })),
+    ...activities
+      .filter((a) => a.activity_type === 'stage_change' || a.activity_type === 'lender_stage_change')
+      .map((a) => ({
+        kind: 'stage' as const,
+        id: `stage-${a.id}`,
+        created_at: a.created_at,
+        description: a.description,
+        user_display_name: a.user_display_name,
+        activity_type: a.activity_type,
+        metadata: a.metadata,
+      })),
+  ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 
   const dealId = activities[0]?.deal_id;
   const storageKey = dealId ? `${SEEN_KEY_PREFIX}${dealId}` : null;
@@ -215,29 +236,54 @@ export function DealUpdatesUnified({
 
           <TabsContent value="history" className="mt-0">
             <ScrollArea className="max-h-72">
-              {statusNotes.length === 0 ? (
+              {statusHistoryItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No status history</p>
               ) : (
                 <div className="p-2 space-y-2">
-                  {statusNotes.map((item) => (
-                    <div
-                      key={item.id}
-                      className="text-sm p-3 bg-muted/50 rounded-lg group relative"
-                    >
-                      <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden text-xs">
-                        {htmlToPlainText(item.note)}
-                      </p>
-                      <p className="text-xs text-muted-foreground/70 mt-1">
-                        {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
-                      </p>
-                      <button
-                        onClick={() => onDeleteNote(item.id)}
-                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                  {statusHistoryItems.map((item) => {
+                    if (item.kind === 'note') {
+                      return (
+                        <div
+                          key={item.id}
+                          className="text-sm p-3 bg-muted/50 rounded-lg group relative"
+                        >
+                          <p className="text-muted-foreground pr-6 break-words whitespace-pre-wrap overflow-hidden text-xs">
+                            {htmlToPlainText(item.note)}
+                          </p>
+                          <p className="text-xs text-muted-foreground/70 mt-1">
+                            {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
+                          </p>
+                          <button
+                            onClick={() => onDeleteNote(item.noteId)}
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    }
+                    const displayDescription = formatLenderActivity({
+                      activityType: item.activity_type,
+                      description: item.description,
+                      metadata: item.metadata,
+                    });
+                    return (
+                      <div key={item.id} className="text-sm p-3 bg-muted/30 rounded-lg flex items-start gap-2">
+                        <ArrowRight className="h-3.5 w-3.5 text-blue-500 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-foreground text-xs break-words">{displayDescription}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {item.user_display_name && (
+                              <span className="text-[11px] text-primary font-medium">{item.user_display_name}</span>
+                            )}
+                            <span className="text-[11px] text-muted-foreground/70">
+                              {format(new Date(item.created_at), 'MMM d, yyyy')} at {format(new Date(item.created_at), 'h:mm a')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </ScrollArea>
