@@ -72,11 +72,10 @@ export function BookmarkableViews({ currentModule, currentState, onRestoreView }
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+        <Button variant="outline" size="icon" className="h-8 w-8 relative" aria-label="Views" title="Views">
           <Bookmark className="h-3.5 w-3.5" />
-          Views
           {views.length > 0 && (
-            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">{views.length}</Badge>
+            <Badge variant="secondary" className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[9px]">{views.length}</Badge>
           )}
         </Button>
       </PopoverTrigger>
