@@ -462,6 +462,15 @@ export default function Tasks() {
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
+  // Auto-select the first visible task so the right-pane detail panel is
+  // always populated (per redesign spec — no empty "No task selected"
+  // placeholder when there's a task to show).
+  useEffect(() => {
+    if (!selectedTaskId && tasks.length > 0) {
+      setSelectedTaskId(tasks[0].id);
+    }
+  }, [selectedTaskId, tasks]);
+
   // ── URL query-param persistence ──────────────────────────────────────
   // Sync status / due / priority / deal filters with the URL so links are
   // shareable and refresh-safe. Read once on mount, then write on change.
