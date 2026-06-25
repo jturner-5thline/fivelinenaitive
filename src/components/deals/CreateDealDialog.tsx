@@ -84,6 +84,32 @@ interface CreateDealDialogProps {
   initialValues?: CreateDealInitialValues;
 }
 
+function LabelWithBadge({
+  children,
+  htmlFor,
+  required,
+  badge,
+}: {
+  children: React.ReactNode;
+  htmlFor?: string;
+  required?: boolean;
+  badge?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label htmlFor={htmlFor} className="text-sm">
+        {children}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </Label>
+      {badge ? (
+        <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {badge}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, initialValues }: CreateDealDialogProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
