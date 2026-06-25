@@ -1652,3 +1652,19 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   outline: 2px solid hsl(var(--ring));
   outline-offset: -1px;
 }
+
+/* Compact spacing for Create New Deal dialog so fields fit without scrolling */
+.create-deal-compact input,
+.create-deal-compact button[role="combobox"],
+.create-deal-compact [data-radix-popper-content-wrapper] button {
+  height: 2rem;
+  min-height: 2rem;
+  font-size: 0.8125rem;
+}
+.create-deal-compact textarea {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+}
+.create-deal-compact label {
+  font-size: 0.75rem;
+}

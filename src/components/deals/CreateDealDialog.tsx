@@ -457,18 +457,15 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
-          <DialogHeader>
-            <DialogTitle>Create New Deal</DialogTitle>
-            <DialogDescription>
-              Enter the details for the new deal.
-            </DialogDescription>
+        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[720px] max-h-[95vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20 p-4 create-deal-compact`}>
+          <DialogHeader className="space-y-0 pb-1">
+            <DialogTitle className="text-base">Create New Deal</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-3 py-3">
+            <div className="grid gap-2 py-1">
               {/* Row 1: Deal name | Deal amount */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
                   <LabelWithBadge htmlFor="dealName" required>Deal name</LabelWithBadge>
                   <Input
                     id="dealName"
@@ -478,7 +475,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     className="rounded-lg"
                   />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-1">
                   <LabelWithBadge htmlFor="dealAmount" required>Deal amount</LabelWithBadge>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
@@ -496,9 +493,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Row 2: Deal type | Pipeline */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {showType ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     <LabelWithBadge required>Deal type</LabelWithBadge>
                     <Popover modal open={dealTypesOpen} onOpenChange={setDealTypesOpen}>
                       <PopoverTrigger asChild>
@@ -563,7 +560,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Popover>
                   </div>
                 ) : <div />}
-                <div className="grid gap-1.5">
+                <div className="grid gap-1">
                   <LabelWithBadge>Pipeline</LabelWithBadge>
                   <Select value={selectedPipelineId} onValueChange={(val) => {
                     setSelectedPipelineId(val);
@@ -585,9 +582,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Row 3: Deal owner | Deal originator (referral source) */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {showOwner ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     <LabelWithBadge htmlFor="dealOwner" badge="renamed">Deal owner</LabelWithBadge>
                     <Select value={dealOwner} onValueChange={setDealOwner}>
                       <SelectTrigger className="rounded-lg">
@@ -602,7 +599,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </div>
                 ) : <div />}
                 {showReferral ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
                     <Popover modal>
                       <PopoverTrigger asChild>
@@ -616,11 +613,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
-                        <div className="grid gap-1.5">
+                        <div className="grid gap-1">
                           <Label htmlFor="referralName" className="text-xs">Name</Label>
                           <Input id="referralName" value={referralName} onChange={(e) => setReferralName(e.target.value)} placeholder="e.g., John Smith" />
                         </div>
-                        <div className="grid gap-1.5">
+                        <div className="grid gap-1">
                           <Label htmlFor="referralEmail" className="text-xs">Email</Label>
                           <Input id="referralEmail" type="email" value={referralEmail} onChange={(e) => setReferralEmail(e.target.value)} placeholder="e.g., john@example.com" />
                         </div>
@@ -631,8 +628,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Row 4: Deal stage | Deal status */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
                   <LabelWithBadge htmlFor="dealStage" required badge="grouped">Deal stage</LabelWithBadge>
                   <Select value={dealStage} onValueChange={setDealStage} required>
                     <SelectTrigger className="rounded-lg">
@@ -649,7 +646,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-1">
                   <LabelWithBadge htmlFor="dealStatusNote" required badge="grouped">Deal status</LabelWithBadge>
                   <Input
                     id="dealStatusNote"
@@ -664,7 +661,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
 
               {/* Row 5: Deal narrative (full width) */}
               {showNarrative && (
-                <div className="grid gap-1.5">
+                <div className="grid gap-1">
                   <LabelWithBadge htmlFor="narrative">Deal narrative</LabelWithBadge>
                   <textarea
                     id="narrative"
@@ -678,8 +675,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               )}
 
               {/* Row 6: Company name | Contact name */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-1">
                   <LabelWithBadge badge="new">Company name</LabelWithBadge>
                   <Popover modal open={companyPickerOpen} onOpenChange={setCompanyPickerOpen}>
                     <PopoverTrigger asChild>
@@ -776,7 +773,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </Popover>
                 </div>
                 {showClientContact ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     <LabelWithBadge htmlFor="clientContact" required badge="merged">Contact name</LabelWithBadge>
                     <div className="relative">
                       <UserIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
@@ -800,9 +797,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
               </div>
 
               {/* Row 7: Sourced via | (right side reserved for checklist preview in footer) */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 {showSourcedVia ? (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-1">
                     <LabelWithBadge required badge="moved">Sourced via</LabelWithBadge>
                     <Select value={sourcedVia} onValueChange={setSourcedVia}>
                       <SelectTrigger className="rounded-lg">
@@ -861,7 +858,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               )}
             </div>
-            <DialogFooter className="flex items-center justify-between sm:justify-between gap-3">
+            <DialogFooter className="flex items-center justify-between sm:justify-between gap-3 pt-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
                 {checklistPreview && checklistPreview.items.length > 0 ? (
                   <>
