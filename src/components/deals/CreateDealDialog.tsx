@@ -40,7 +40,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
 import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
 import { useProfile } from '@/hooks/useProfile';
@@ -175,6 +175,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
   const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
+  const createCrmCompany = useCreateCrmCompany();
   const crmCompaniesList = crmCompaniesResult?.data ?? [];
   const filteredCrmCompanies = companySearch.trim()
     ? crmCompaniesList.filter((c: any) => c.name?.toLowerCase().includes(companySearch.toLowerCase())).slice(0, 5)
@@ -748,15 +749,26 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         {companySearch.trim() && !filteredCrmCompanies.some((c) => c.name.toLowerCase() === companySearch.trim().toLowerCase()) && (
                           <button
                             type="button"
+                            disabled={createCrmCompany.isPending}
                             className="flex w-full items-center gap-2 border-t px-3 py-2 text-sm text-primary hover:bg-accent"
-                            onClick={() => {
-                              setCompanyNameVisual(companySearch.trim());
-                              if (!dealName.trim()) setDealName(companySearch.trim());
-                              setCompanyPickerOpen(false);
-                              setCompanySearch('');
+                            onClick={async () => {
+                              const name = companySearch.trim();
+                              try {
+                                const created = await createCrmCompany.mutateAsync({ name } as any);
+                                setCompanyNameVisual(created?.name || name);
+                                if (!dealName.trim()) setDealName(created?.name || name);
+                                toast.success(`Added "${name}" to companies`);
+                              } catch (err: any) {
+                                toast.error(err?.message || 'Failed to add company');
+                                return;
+                              } finally {
+                                setCompanyPickerOpen(false);
+                                setCompanySearch('');
+                              }
                             }}
                           >
-                            <Plus className="h-4 w-4" /> Use "{companySearch.trim()}"
+                            <Plus className="h-4 w-4" />
+                            {createCrmCompany.isPending ? 'Adding…' : `Add "${companySearch.trim()}" as new company`}
                           </button>
                         )}
                       </div>
