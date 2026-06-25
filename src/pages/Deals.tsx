@@ -826,49 +826,7 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                {/*
-                  Notifications & Tasks tri-state segmented controls.
-                  Each pill group is All / Has / No, styled to match the
-                  existing glassy cyan toolbar buttons (see Bell toggle
-                  history). Combines with all other filters via AND logic
-                  in the `deals` memo above.
-                */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {(() => {
-                        const notifActive =
-                          filters.hasNotificationsOnly ||
-                          (filters.notificationsFilter ?? 'all') === 'has';
-                        return (
-                          <button
-                            type="button"
-                            aria-pressed={notifActive}
-                            onClick={() => {
-                              const next: 'all' | 'has' = notifActive ? 'all' : 'has';
-                              updateFilters({
-                                notificationsFilter: next,
-                                hasNotificationsOnly: false,
-                                ...(next === 'has' ? { staleOnly: false, flaggedOnly: false } : {}),
-                              });
-                              setSavedViewWarningDismissed(false);
-                            }}
-                            className={`h-8 w-8 inline-flex items-center justify-center rounded-md border backdrop-blur-md transition-colors ${
-                              notifActive
-                                ? 'border-cyan-500/40 bg-cyan-500/25 text-cyan-300'
-                                : 'border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-teal-600/5 text-cyan-400/70 hover:text-cyan-300'
-                            }`}
-                          >
-                            <Bell className="h-3.5 w-3.5" />
-                          </button>
-                        );
-                      })()}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Show only deals with notifications</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Notifications tri-state removed: merged into the Flag toggle above. */}
 
                 {is5thLine && (
                 <TooltipProvider>
