@@ -510,6 +510,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
           />
         </div>
       </TableCell>
+      )}
     </TableRow>
   );
 }
