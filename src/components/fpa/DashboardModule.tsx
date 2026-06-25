@@ -177,6 +177,27 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
 
       {/* Top-right header actions — portaled into the Finance page header. */}
       <HeaderActionsPortal>
+        {e.comparisonFilter && (
+          <Select value={comparisonMode} onValueChange={(v) => setComparisonMode(v as any)}>
+            <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="prior_year">vs Prior Year</SelectItem>
+              <SelectItem value="prior_period">vs Prior Period</SelectItem>
+              <SelectItem value="budget">vs Budget</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        {e.dateRangeFilter && (
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3m">Last 3M</SelectItem>
+              <SelectItem value="6m">Last 6M</SelectItem>
+              <SelectItem value="12m">Last 12M</SelectItem>
+              <SelectItem value="ytd">YTD</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
         {e.chartConfigButton && (
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setChartConfigOpen(true)} aria-label="Charts" title="Charts">
             <Settings2 className="h-3.5 w-3.5" />
@@ -266,29 +287,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
             )}
           </TabsList>
         </Tabs>
-        <div className="flex items-center gap-2">
-          {e.comparisonFilter && (
-            <Select value={comparisonMode} onValueChange={(v) => setComparisonMode(v as any)}>
-              <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="prior_year">vs Prior Year</SelectItem>
-                <SelectItem value="prior_period">vs Prior Period</SelectItem>
-                <SelectItem value="budget">vs Budget</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-          {e.dateRangeFilter && (
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="3m">Last 3M</SelectItem>
-                <SelectItem value="6m">Last 6M</SelectItem>
-                <SelectItem value="12m">Last 12M</SelectItem>
-                <SelectItem value="ytd">YTD</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </div>
       </div>
 
       {showAccessDenied ? (
