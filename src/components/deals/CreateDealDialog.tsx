@@ -457,15 +457,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20`}>
-          <DialogHeader>
-            <DialogTitle>Create New Deal</DialogTitle>
-            <DialogDescription>
-              Enter the details for the new deal.
-            </DialogDescription>
+        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[720px] max-h-[95vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20 p-4 create-deal-compact`}>
+          <DialogHeader className="space-y-0 pb-1">
+            <DialogTitle className="text-base">Create New Deal</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-3 py-3">
+            <div className="grid gap-2 py-1">
               {/* Row 1: Deal name | Deal amount */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
