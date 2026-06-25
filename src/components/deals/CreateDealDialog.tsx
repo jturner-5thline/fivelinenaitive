@@ -172,6 +172,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   // this field is presentational and does not change createDeal payloads.
   const [companyNameVisual, setCompanyNameVisual] = useState('');
   const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState('');
+  const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
+  const crmCompaniesList = crmCompaniesResult?.data ?? [];
+  const filteredCrmCompanies = companySearch.trim()
+    ? crmCompaniesList.filter((c: any) => c.name?.toLowerCase().includes(companySearch.toLowerCase()))
+    : crmCompaniesList.slice(0, 50);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
