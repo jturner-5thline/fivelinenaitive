@@ -9600,6 +9600,9 @@ export type Database = {
           resolved: boolean
           resolved_at: string | null
           resolved_by: string | null
+          source: string | null
+          source_created_at: string | null
+          source_ref: string | null
           user_id: string | null
         }
         Insert: {
@@ -9610,6 +9613,9 @@ export type Database = {
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
+          source?: string | null
+          source_created_at?: string | null
+          source_ref?: string | null
           user_id?: string | null
         }
         Update: {
@@ -9620,6 +9626,9 @@ export type Database = {
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
+          source?: string | null
+          source_created_at?: string | null
+          source_ref?: string | null
           user_id?: string | null
         }
         Relationships: [
