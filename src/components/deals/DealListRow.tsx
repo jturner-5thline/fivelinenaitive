@@ -45,12 +45,15 @@ interface DealListRowProps {
   onToggleFlag?: (dealId: string, isFlagged: boolean, flagNotes?: string) => Promise<void>;
   flexEngagement?: DealFlexEngagement;
   columnOrder?: DealListColumnId[];
+  /** When true, omit the Actions trailing cell so the table stays at the
+   *  compact 2-column layout used while the detail panel is open. */
+  hideActionsColumn?: boolean;
   notificationCount?: number;
   isSelected?: boolean;
   onToggleSelect?: (dealId: string) => void;
 }
 
-function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
+function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect, hideActionsColumn = false }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   // See DealCard: active flag notes are the source of truth once loaded.
   // Legacy `deal.isFlagged` is only a pre-load seed.
