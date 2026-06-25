@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ import {
 import { Plus } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
+import { useDealManagerId } from '@/hooks/useDealManagerId';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -26,12 +28,23 @@ interface CreateTaskButtonProps {
 export function CreateTaskButton({ dealId, dealName }: CreateTaskButtonProps) {
   const { createTask } = useDealTasks(dealId);
   const teamMembers = useTeamMembers();
+  const dealManagerId = useDealManagerId(dealId);
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Default task owner to the deal's Deal Manager (fallback: self) when
+  // the create dialog opens and no assignee has been manually picked yet.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (assignedTo) return;
+    const fallback = dealManagerId || user?.id || '';
+    if (fallback) setAssignedTo(fallback);
+  }, [isOpen, dealManagerId, user?.id, assignedTo]);
 
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
