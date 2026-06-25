@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { createPortal } from "react-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,16 +45,9 @@ function FinanceHeader() {
 
   return (
     <div className="flex items-center gap-4 flex-nowrap min-w-0">
-      {typeof document !== "undefined" &&
-        createPortal(
-          <h1
-            className="fixed top-[27px] left-[101px] z-[1001] text-[21px] font-semibold leading-none text-foreground pointer-events-none"
-            aria-label="Finance"
-          >
-            Finance
-          </h1>,
-          document.body,
-        )}
+      <h1 className="text-[21px] font-semibold leading-none text-foreground shrink-0">
+        Finance
+      </h1>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" aria-label="Finance section">
