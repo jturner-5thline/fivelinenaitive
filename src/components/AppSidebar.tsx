@@ -112,7 +112,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]" data-tour="sidebar">
-      <SidebarHeader className="relative overflow-hidden px-2 py-3 rounded-t-[11px] rounded-b-lg border-b border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]">
+      {/* NOTE: avoid `backdrop-blur` here — it re-samples and blurs the
+          entire underlying layer on every animation frame, which made the
+          sidebar slide-in/out janky and slowed the whole app. Use a solid
+          translucent fill + gradient overlay instead. */}
+      <SidebarHeader className="relative overflow-hidden px-2 py-3 rounded-t-[11px] rounded-b-lg border-b border-[rgba(126,184,247,0.35)] bg-[rgba(33,52,82,0.92)] text-foreground shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.18)_0%,transparent_55%)]">
         <div className="relative z-[1] flex items-center gap-2">
           <button 
             onClick={toggleSidebar} 
