@@ -24,15 +24,27 @@ export function WeeklyRundownReadOnlyCashflow() {
            when each chart can render with at least ~360px, otherwise
            stack so nothing is clipped. */
         .weekly-rundown-readonly-cashflow .cf-charts-row {
-          grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important;
+          /* Drop the side-by-side threshold so two charts only render
+             alongside each other when both can fit; otherwise stack. */
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
           min-width: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         .weekly-rundown-readonly-cashflow .cf-chart-card {
           min-width: 0 !important;
+          max-width: 100% !important;
           overflow: hidden;
+          box-sizing: border-box;
+        }
+        .weekly-rundown-readonly-cashflow .cf-chart-card > div {
+          min-width: 0 !important;
+          max-width: 100% !important;
         }
         .weekly-rundown-readonly-cashflow .cf-chart-card canvas {
           max-width: 100% !important;
+          width: 100% !important;
+          display: block;
         }
         /* ───────── HARD-REMOVE all editing affordances inside the cashflow grid ─────────
            The grid must be VIEW-ONLY in the Weekly Rundown carousel — values come
