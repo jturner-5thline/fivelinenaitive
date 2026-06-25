@@ -26,6 +26,7 @@ import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
 import { ChevronDown } from 'lucide-react';
 import { useNaitiveQualCallsCount, usePrefetchNaitiveQualCalls } from '@/hooks/useNaitiveQualCallsCount';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 type RangeKey = 'this-week' | 'last-week' | 'last-30' | 'last-90' | 'custom';
 
