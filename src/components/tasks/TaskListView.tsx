@@ -286,17 +286,14 @@ export function TaskListView({
         <div
           className={cn(
             'grid',
-            'gap-2 items-center px-4 min-h-[36px]',
+            'gap-3 items-center px-4 min-h-[40px]',
             'text-[11px] font-medium uppercase tracking-wide sticky top-0 z-10',
-            'bg-background/90 backdrop-blur-md border-b border-border/40 text-muted-foreground',
+            'backdrop-blur-md border-b text-muted-foreground',
           )}
-          style={gridStyle}
+          style={{ ...gridStyle, backgroundColor: 'rgba(15,23,42,0.34)', borderColor: 'rgba(148,163,184,0.12)' }}
         >
           <div aria-hidden />
-          <div aria-hidden />
-          <div aria-hidden />
-          <div aria-hidden />
-          <div className="truncate">Task name</div>
+          <div className="truncate">Task</div>
           {cols.map(c => (
             <div
               key={c.id}
@@ -307,7 +304,7 @@ export function TaskListView({
                 c.id === 'collab' && 'sr-only',
               )}
             >
-              {c.id === 'collab' ? '' : c.label}
+              {c.id === 'collab' ? '' : c.id === 'due' ? 'Due' : c.label}
             </div>
           ))}
           <div aria-hidden />
