@@ -245,7 +245,7 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               {isTabVisible('cashflow', t.cashflow) && (
                 <TabsTrigger
                   value="cashflow"
-                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                  className="h-8 px-2.5 text-xs rounded-md"
                 >
                   Cash Flow
                 </TabsTrigger>
@@ -253,7 +253,7 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               {isTabVisible('salesBdRoi') && (
                 <TabsTrigger
                   value="salesBdRoi"
-                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                  className="h-8 px-2.5 text-xs rounded-md"
                 >
                   Sales & BD ROI
                 </TabsTrigger>
@@ -261,7 +261,7 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               {isTabVisible('salesModel') && (
                 <TabsTrigger
                   value="salesModel"
-                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                  className="h-8 px-2.5 text-xs rounded-md"
                 >
                   Sales Model
                 </TabsTrigger>
