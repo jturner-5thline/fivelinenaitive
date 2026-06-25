@@ -1708,3 +1708,53 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .popup-shell-surface.dark button:hover {
   background-color: rgba(255,255,255,0.06);
 }
+
+/* ─── Unified dark surface inside popup-shell modals ──────────────────────
+   Removes lighter washes, glass overlays, and tinted card surfaces inside
+   any popup that uses .popup-shell-surface so nested cards/rows/items
+   match the Deal Details pop-up background instead of standing out. */
+.popup-shell-surface [class*="bg-card"],
+.popup-shell-surface [class*="bg-popover"],
+.popup-shell-surface [class*="bg-muted"],
+.popup-shell-surface [class*="bg-background"],
+.popup-shell-surface [class*="bg-secondary"],
+.popup-shell-surface [class*="bg-accent"],
+.popup-shell-surface .bg-white\/5,
+.popup-shell-surface .bg-white\/10,
+.popup-shell-surface .bg-white\/15,
+.popup-shell-surface .bg-white\/20,
+.popup-shell-surface [class*="bg-slate-"],
+.popup-shell-surface [class*="bg-zinc-"],
+.popup-shell-surface [class*="bg-gray-"],
+.popup-shell-surface [class*="bg-neutral-"] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+.popup-shell-surface .glass-surface,
+.popup-shell-surface .glass-card,
+.popup-shell-surface .glass-panel,
+.popup-shell-surface .liquid-glass,
+.popup-shell-surface [class*="backdrop-blur"],
+.popup-shell-surface [class*="backdrop-filter"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+/* Restore minimal contrast for interactive rows/cards so they remain
+   readable on the dark popup background. */
+.popup-shell-surface .card,
+.popup-shell-surface [data-card],
+.popup-shell-surface [role="listitem"],
+.popup-shell-surface li > .group,
+.popup-shell-surface .task-row,
+.popup-shell-surface .queue-item {
+  background-color: rgba(255, 255, 255, 0.025) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.popup-shell-surface .card:hover,
+.popup-shell-surface [data-card]:hover,
+.popup-shell-surface .task-row:hover,
+.popup-shell-surface .queue-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
