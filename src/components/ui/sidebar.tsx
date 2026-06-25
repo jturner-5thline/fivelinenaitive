@@ -230,7 +230,7 @@ const Sidebar = React.forwardRef<
       {/* Spacer div - expands on hover OR click so content shifts over */}
       <div
         className={cn(
-          "relative h-svh bg-transparent transition-[width] duration-200 ease-out",
+          "relative h-svh bg-transparent transition-[width] duration-150 ease-out",
           "group-data-[collapsible=offcanvas]:w-0",
           "group-data-[side=right]:rotate-180",
           // Use effectiveState to determine width (includes hover)
@@ -243,7 +243,7 @@ const Sidebar = React.forwardRef<
       {/* Actual sidebar container - expands on hover */}
       <div
         className={cn(
-          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-200 ease-out md:flex",
+          "fixed inset-y-0 z-10 hidden h-svh transition-[left,right,width] duration-150 ease-out md:flex",
           effectiveState === "expanded" ? "w-[--sidebar-width]" : "",
           state === "collapsed" && !isHovering
             ? variant === "floating" || variant === "inset"
@@ -257,13 +257,14 @@ const Sidebar = React.forwardRef<
           className,
         )}
         style={{
-          background: 'rgba(10, 12, 20, 0.19)',
-          backdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
-          WebkitBackdropFilter: 'blur(28px) saturate(1.3) brightness(0.95)',
+          // Avoid backdrop-filter here: this element changes width during
+          // sidebar open/close, and blurring behind it forces expensive
+          // per-frame re-sampling of the full app surface.
+          background: 'rgba(10, 12, 20, 0.94)',
           borderRadius: '12px',
-            willChange: 'width',
-            transform: 'translateZ(0)',
-            contain: 'layout paint',
+          willChange: 'width',
+          transform: 'translateZ(0)',
+          contain: 'layout paint',
         }}
         {...props}
       >

@@ -58,9 +58,9 @@ function MainContent({
         overflowX: 'hidden',
         scrollbarWidth: 'thin',
         scrollbarColor: 'rgba(255,255,255,0.15) transparent',
-        background: 'rgba(8, 10, 18, 0.10)',
-        backdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
-        WebkitBackdropFilter: 'blur(20px) saturate(1.25) brightness(0.98)',
+        // Keep the main shell cheap to composite while the sidebar width
+        // animates; backdrop blur here repaints the largest app surface.
+        background: 'rgba(8, 10, 18, 0.28)',
         borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         borderLeft: '1px solid rgba(255, 255, 255, 0.06)',
         borderRight: '1px solid rgba(255, 255, 255, 0.04)',
