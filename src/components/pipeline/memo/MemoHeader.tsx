@@ -8,7 +8,7 @@ import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToC
 import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2, Pencil, X } from 'lucide-react';
 import { ArrowUpRight } from 'lucide-react';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
@@ -20,6 +20,10 @@ interface MemoHeaderProps {
   /** Opens the full deal details drawer/page. The card itself is no
    *  longer a click target — only this header button navigates. */
   onOpenDeal?: () => void;
+  /** Optional close handler — when provided, renders an X button on the
+   *  right edge of the header actions row (used by the inline detail
+   *  panel on the Deals page). */
+  onClose?: () => void;
 }
 
 function formatAmount(value: number | undefined | null): string {
@@ -34,7 +38,7 @@ function formatAmount(value: number | undefined | null): string {
  * deal size, engagement type and asset class, and a "Live deal" status
  * indicator on the right edge.
  */
-export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderProps) {
+export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: MemoHeaderProps) {
   const amountLabel = formatAmount(deal.value);
   const structureLabel = deal.engagementType
     ? deal.engagementType.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -201,6 +205,18 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderP
             >
               <ArrowUpRight className="h-3.5 w-3.5" />
               Open details
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 shrink-0 text-[#9697a6] hover:text-[#f4f4f7]"
+              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              aria-label="Close deal summary"
+            >
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>

@@ -29,6 +29,7 @@ interface PipelineMemoCardProps {
   /** Show the pulsing live-deal dot. Disabled for off-screen / bulk renders. */
   showLiveDot?: boolean;
   onOpenDeal?: (dealId: string) => void;
+  onClose?: () => void;
 }
 
 /**
@@ -51,6 +52,7 @@ function PipelineMemoCardImpl({
   isDigestLoading,
   showLiveDot = true,
   onOpenDeal,
+  onClose,
 }: PipelineMemoCardProps) {
   const handleOpen = () => onOpenDeal?.(deal.id);
 
@@ -74,7 +76,7 @@ function PipelineMemoCardImpl({
       // into view. `contain: layout paint` is safe and keeps repaints scoped.
       style={{ contain: 'paint' } as React.CSSProperties}
     >
-      <MemoHeader deal={deal} showLiveDot={showLiveDot} onOpenDeal={handleOpen} />
+      <MemoHeader deal={deal} showLiveDot={showLiveDot} onOpenDeal={handleOpen} onClose={onClose} />
 
       <NextBestActionRow deal={deal} tasks={tasks} rawDigest={rawDigest} />
 
@@ -123,6 +125,7 @@ export const PipelineMemoCard = memo(PipelineMemoCardImpl, (prev, next) => {
     prev.milestones === next.milestones &&
     prev.isDigestLoading === next.isDigestLoading &&
     prev.showLiveDot === next.showLiveDot &&
-    prev.onOpenDeal === next.onOpenDeal
+    prev.onOpenDeal === next.onOpenDeal &&
+    prev.onClose === next.onClose
   );
 });

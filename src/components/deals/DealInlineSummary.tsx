@@ -7,6 +7,7 @@ import { usePipelineDealMilestones } from '@/hooks/usePipelineDealMilestones';
 interface DealInlineSummaryProps {
   deal: Deal;
   onOpenDeal?: (dealId: string) => void;
+  onClose?: () => void;
 }
 
 /**
@@ -14,7 +15,7 @@ interface DealInlineSummaryProps {
  * Renders only the canonical Deal Rundown detail card (PipelineMemoCard)
  * without the master list / filter chips that PipelineMemoView ships with.
  */
-export function DealInlineSummary({ deal, onOpenDeal }: DealInlineSummaryProps) {
+export function DealInlineSummary({ deal, onOpenDeal, onClose }: DealInlineSummaryProps) {
   const deals = [deal];
   const { digestMap, rawByDeal, isLoading } = usePipelineDigests(deals, true);
   const { data: tasksByDeal } = usePipelineDealTasks([deal.id], true);
@@ -31,6 +32,7 @@ export function DealInlineSummary({ deal, onOpenDeal }: DealInlineSummaryProps) 
         isDigestLoading={isLoading}
         showLiveDot
         onOpenDeal={onOpenDeal}
+        onClose={onClose}
       />
     </div>
   );

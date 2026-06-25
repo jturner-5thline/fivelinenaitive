@@ -1255,18 +1255,11 @@ export default function Dashboard() {
                   className="hidden lg:flex flex-col absolute right-0 w-[clamp(380px,44vw,720px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl z-10"
                   aria-label="Selected deal summary"
                 >
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
-                    <div className="text-[11px] font-mono uppercase tracking-[0.18em] text-[#9697a6] truncate">
-                      {(selectedDeal.company || 'Deal summary').toUpperCase()}
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={closeDetail} aria-label="Close deal summary" className="text-[#9697a6] hover:text-[#f4f4f7]">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
                     <DealRundownMemoView
                       deal={selectedDeal as any}
                       onOpenDeal={(id) => setForceOverlayDealId(id)}
+                      onClose={closeDetail}
                     />
                   </div>
                 </aside>
