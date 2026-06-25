@@ -938,6 +938,36 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
 }
 
 /**
+ * Drop create_milestone proposals that don't match the workspace's
+ * curated milestone taxonomy (default_milestones) — and proposals for
+ * milestones the deal already has. Milestones are user-configured, not
+ * AI-invented.
+ */
+function filterUnconfiguredMilestones(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const hasCreate = candidates.some((c) => c.action_type === "create_milestone");
+  if (!hasCreate) return { kept: candidates, dropped: 0 };
+  const norm = (s: unknown) => (typeof s === "string" ? s.trim().toLowerCase() : "");
+  const allowed = new Set((bundle.configured_milestone_titles ?? []).map(norm).filter(Boolean));
+  const existing = new Set((bundle.milestones ?? []).map((m: any) => norm(m?.title)).filter(Boolean));
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "create_milestone") return true;
+    const title = norm(
+      (c.proposed_values as any)?.title ?? c.linked_entity_label ?? c.item_title,
+    );
+    if (!title || !allowed.has(title) || existing.has(title)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
  * Drop any `update_deal_stage` candidates whose proposed `stage` is not in
  * the deal's actual pipeline. Other action types pass through unchanged.
  * Prevents the AI from queueing un-executable stage moves like
