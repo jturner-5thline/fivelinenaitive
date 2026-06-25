@@ -33,9 +33,12 @@ function FinanceHeader() {
   };
 
   return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <h1 className="text-2xl font-bold leading-none">Finance</h1>
-      <nav className="flex items-center gap-1 flex-wrap" aria-label="Finance sections">
+    <div className="flex items-center gap-4 flex-nowrap min-w-0">
+      <h1 className="text-xl font-semibold leading-none shrink-0">Finance</h1>
+      <nav
+        className="flex items-center gap-1 flex-nowrap overflow-x-auto min-w-0"
+        aria-label="Finance sections"
+      >
         {SECTION_LINKS.map((s) => {
           const isActive = active === s.key;
           const Icon = s.icon;
@@ -45,7 +48,7 @@ function FinanceHeader() {
               type="button"
               onClick={() => go(s.key)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors shrink-0",
                 isActive
                   ? "bg-primary/10 text-primary border border-primary/20"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
@@ -59,7 +62,10 @@ function FinanceHeader() {
         })}
       </nav>
       {/* Portal target — DashboardModule renders Charts/Export/Team Config/Views here */}
-      <div id="finance-header-actions" className="ml-auto flex items-center gap-2 flex-wrap" />
+      <div
+        id="finance-header-actions"
+        className="ml-auto flex items-center gap-2 flex-nowrap shrink-0"
+      />
     </div>
   );
 }
