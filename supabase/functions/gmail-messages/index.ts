@@ -227,7 +227,7 @@ async function fetchThreadMessagesFallback(baseUrl: string, headers: Record<stri
   ];
 
   for (const url of attempts) {
-    const response = await fetch(url, { headers });
+    const response = await nylasFetch(url, { headers });
     const data = await response.json();
     if (!response.ok) continue;
 
@@ -297,7 +297,7 @@ async function nylasFetch(
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(input, { ...init, signal: controller.signal });
+    return await nylasFetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(t);
   }
@@ -967,7 +967,7 @@ serve(async (req: Request): Promise<Response> => {
                   EdgeRuntime.waitUntil(
                     (async () => {
                       try {
-                        const r = await fetch(`${baseUrl}/messages/${message_id}`, { headers });
+                        const r = await nylasFetch(`${baseUrl}/messages/${message_id}`, { headers });
                         if (!r.ok) return;
                         const j = await r.json();
                         const m = j.data || j;
@@ -1030,7 +1030,7 @@ serve(async (req: Request): Promise<Response> => {
 
         let msgResponse: Response;
         try {
-          msgResponse = await fetch(`${baseUrl}/messages/${message_id}`, { headers });
+          msgResponse = await nylasFetch(`${baseUrl}/messages/${message_id}`, { headers });
         } catch (netErr) {
           // Network-level failure (DNS, connection reset, fetch abort). Never
           // let this bubble — surface a soft fallback so the viewer renders a
@@ -1172,7 +1172,7 @@ serve(async (req: Request): Promise<Response> => {
 
         let threadResponse: Response;
         try {
-          threadResponse = await fetch(`${baseUrl}/threads/${thread_id}`, { headers });
+          threadResponse = await nylasFetch(`${baseUrl}/threads/${thread_id}`, { headers });
         } catch (netErr) {
           console.warn(
             `[gmail-messages:get_thread] network error for ${thread_id}: ${(netErr as Error)?.message}`,
@@ -1368,7 +1368,7 @@ serve(async (req: Request): Promise<Response> => {
           sendBody.reply_to_message_id = reply_to_message_id;
         }
 
-        const sendResponse = await fetch(
+        const sendResponse = await nylasFetch(
           `${baseUrl}/messages/send`,
           {
             method: "POST",
@@ -1507,7 +1507,7 @@ serve(async (req: Request): Promise<Response> => {
         if (typeof reply_to_message_id === "string" && reply_to_message_id.length > 0) {
           draftBody.reply_to_message_id = reply_to_message_id;
         }
-        const draftResponse = await fetch(`${baseUrl}/drafts`, {
+        const draftResponse = await nylasFetch(`${baseUrl}/drafts`, {
           method: "POST",
           headers,
           body: JSON.stringify(draftBody),
@@ -1537,7 +1537,7 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const updateResponse = await fetch(
+        const updateResponse = await nylasFetch(
           `${baseUrl}/messages/${message_id}`,
           {
             method: "PUT",
@@ -1577,7 +1577,7 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const updateResponse = await fetch(
+        const updateResponse = await nylasFetch(
           `${baseUrl}/messages/${message_id}`,
           {
             method: "PUT",
@@ -1614,7 +1614,7 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         // Nylas v3: Move to trash by updating folders
-        const trashResponse = await fetch(
+        const trashResponse = await nylasFetch(
           `${baseUrl}/messages/${message_id}`,
           {
             method: "PUT",
@@ -1647,7 +1647,7 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const deleteResponse = await fetch(
+        const deleteResponse = await nylasFetch(
           `${baseUrl}/messages/${message_id}`,
           {
             method: "DELETE",
@@ -1693,7 +1693,7 @@ serve(async (req: Request): Promise<Response> => {
 
         async function fetchOne(id: string) {
           try {
-            const r = await fetch(`${baseUrl}/messages/${id}?fields=standard`, { headers });
+            const r = await nylasFetch(`${baseUrl}/messages/${id}?fields=standard`, { headers });
             if (r.status === 404) {
               states.push({ id, is_read: true, is_starred: false, folders: [], missing: true });
               return;
@@ -1758,7 +1758,7 @@ serve(async (req: Request): Promise<Response> => {
         }
 
         // Nylas v3: download attachment binary; we proxy as base64 + content-type
-        const attResponse = await fetch(
+        const attResponse = await nylasFetch(
           `${baseUrl}/attachments/${attachment_id}/download?message_id=${encodeURIComponent(message_id)}`,
           { headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "*/*" } }
         );
