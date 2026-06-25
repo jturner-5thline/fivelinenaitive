@@ -33,7 +33,7 @@ import { NotificationConsentModal } from '@/components/notifications/Notificatio
 import { FlaggedDealsPanel } from '@/components/deals/FlaggedDealsPanel';
 
 import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
-import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
+// NotificationsDropdown removed: notifications are merged into the Flag system.
 import { FlaggedDealsCarousel } from '@/components/deals/FlaggedDealsCarousel';
 import { CreateCompanyBanner } from '@/components/deals/CreateCompanyBanner';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
@@ -671,7 +671,6 @@ export default function Dashboard() {
               </TooltipTrigger>
               <TooltipContent>Customize widgets</TooltipContent>
             </Tooltip>
-            <NotificationsDropdown />
             <LatestUpdatesDropdown />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
