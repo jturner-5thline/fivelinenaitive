@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
-import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
-import { isDealNotificationSuppressedById } from '@/utils/dealNotificationSuppression';
 import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 let instanceCounter = 0;
 
@@ -15,69 +12,46 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
+/**
+ * Returns a map of deal_id -> count of unresolved flag notes.
+ *
+ * Flex notifications are now merged into the Flag system via a DB
+ * trigger (`flex_notification_to_flag`) that creates a `deal_flag_notes`
+ * row for every new notification. This hook therefore reads the merged
+ * surface so the per-row badge keeps reflecting attention items without
+ * a separate Notifications subsystem.
+ */
 export function useDealNotificationCounts(dealIds: string[]) {
-  const { canSeeFlexSync } = useCanSeeFlexSync();
   const [flexCounts, setFlexCounts] = useState<Record<string, number>>({});
   const dealIdsKey = dealIds.join(',');
   const instanceId = useRef(++instanceCounter);
 
   const fetchCounts = useCallback(async () => {
-    if (dealIds.length === 0 || !canSeeFlexSync) {
+    if (dealIds.length === 0) {
       setFlexCounts({});
       return;
     }
 
     try {
-      // Batch deal ID lookups in chunks of 50 to avoid URL length limits
-      const dealChunks = chunk(dealIds, 50);
-      const allActiveDeals: { id: string; stage: string; status: string; pipeline_id: string | null }[] = [];
-
-      for (const ids of dealChunks) {
-        const { data: activeDeals } = await supabase
-          .from('deals')
-          .select('id, stage, status, pipeline_id')
-          .in('id', ids);
-        if (activeDeals) allActiveDeals.push(...(activeDeals as any[]));
-      }
-
-      // Filter out suppressed deals
-      const nonSuppressedDeals = allActiveDeals.filter(
-        (deal) => !isDealNotificationSuppressedById(deal)
-      );
-
-      const activeDealIds = nonSuppressedDeals
-        .filter((deal) => isPostSubmissionDealStage(deal.stage))
-        .map((deal) => deal.id);
-      if (activeDealIds.length === 0) {
-        setFlexCounts({});
-        return;
-      }
-
-      // Batch notification lookups too
-      const notifChunks = chunk(activeDealIds, 50);
-      const allNotifs: { deal_id: string }[] = [];
-
-      for (const ids of notifChunks) {
+      const idChunks = chunk(dealIds, 100);
+      const counts: Record<string, number> = {};
+      for (const ids of idChunks) {
         const { data, error } = await supabase
-          .from('flex_info_notifications')
-          .select('deal_id, status')
+          .from('deal_flag_notes')
+          .select('deal_id')
           .in('deal_id', ids)
-          .in('status', ['pending', 'read']);
-
+          .eq('resolved', false);
         if (error) {
-          console.error('Error fetching deal notification counts:', error);
+          console.error('Error fetching deal flag note counts:', error);
           continue;
         }
-        if (data) allNotifs.push(...(data as { deal_id: string }[]));
+        (data as { deal_id: string }[] | null)?.forEach((row) => {
+          counts[row.deal_id] = (counts[row.deal_id] || 0) + 1;
+        });
       }
-
-      const counts: Record<string, number> = {};
-      allNotifs.forEach((row) => {
-        counts[row.deal_id] = (counts[row.deal_id] || 0) + 1;
-      });
       setFlexCounts(counts);
     } catch (err) {
-      console.error('Error fetching deal notification counts:', err);
+      console.error('Error fetching deal flag note counts:', err);
     }
   }, [dealIdsKey]);
 
@@ -90,13 +64,13 @@ export function useDealNotificationCounts(dealIds: string[]) {
     if (dealIds.length === 0) return;
 
     const channel = supabase
-      .channel(`deal-notif-counts-${instanceId.current}`)
+      .channel(`deal-flag-counts-${instanceId.current}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'flex_info_notifications',
+          table: 'deal_flag_notes',
         },
         () => {
           fetchCounts();
