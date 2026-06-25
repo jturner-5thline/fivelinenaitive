@@ -446,8 +446,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
-                  <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
-                    {activeColumns.map((colId) => (
+                  <SortableContext items={renderedActiveColumns} strategy={horizontalListSortingStrategy}>
+                    {renderedActiveColumns.map((colId) => (
                       <SortableFilterableHead
                         key={colId}
                         id={colId}
@@ -461,7 +461,9 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                       />
                     ))}
                   </SortableContext>
-                  <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
+                  {!detailPanelOpen && (
+                    <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,10 +476,11 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     onMarkReviewed={onMarkReviewed}
                     onToggleFlag={onToggleFlag}
                     flexEngagement={flexEngagementScores?.get(deal.id)}
-                    columnOrder={activeColumns}
+                    columnOrder={renderedActiveColumns}
                     notificationCount={flexNotificationCounts[deal.id] || 0}
                     isSelected={selectedDealIds.has(deal.id)}
                     onToggleSelect={toggleSelectDeal}
+                    hideActionsColumn={detailPanelOpen}
                   />
                 ))}
               </TableBody>
