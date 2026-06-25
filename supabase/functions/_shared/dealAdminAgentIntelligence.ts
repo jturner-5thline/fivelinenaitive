@@ -449,7 +449,36 @@ async function gatherSignalsForDeal(
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
     referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
+    configured_milestone_titles: await gatherConfiguredMilestoneTitles(supabase, companyId),
   };
+}
+
+/**
+ * Load the workspace's configured default milestone titles. The Deal
+ * Admin Agent is only allowed to propose create_milestone for titles
+ * that exactly match one of these — milestones are a curated taxonomy
+ * set by the company, not free-form AI suggestions.
+ */
+const CONFIGURED_MILESTONE_CACHE = new Map<string, { ts: number; titles: string[] }>();
+async function gatherConfiguredMilestoneTitles(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<string[]> {
+  const cached = CONFIGURED_MILESTONE_CACHE.get(companyId);
+  if (cached && Date.now() - cached.ts < 5 * 60_000) return cached.titles;
+  const { data } = await supabase
+    .from("default_milestones")
+    .select("title")
+    .eq("company_id", companyId);
+  const titles = Array.from(
+    new Set(
+      (data ?? [])
+        .map((r: any) => (typeof r?.title === "string" ? r.title.trim() : ""))
+        .filter((t: string) => t.length > 0),
+    ),
+  );
+  CONFIGURED_MILESTONE_CACHE.set(companyId, { ts: Date.now(), titles });
+  return titles;
 }
 
 /**
