@@ -149,7 +149,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
               </Tooltip>
             </TooltipProvider>
           )}
-          <span className="truncate max-w-[200px] text-[#f4f4f7] font-semibold tracking-tight" style={{ fontFamily: "'Syne', ui-sans-serif, system-ui, sans-serif" }}>
+          <span className="truncate max-w-[200px] text-[#f4f4f7] font-semibold tracking-tight">
             {deal.company}
           </span>
           {notificationCount > 0 && deal.status !== 'archived' && deal.stage !== 'closed-lost' && (
@@ -189,10 +189,10 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
         {(() => {
           const formatted = formatCurrencyValue(deal.value);
           const m = /^([^\d-]*)([\d,.\s-]+)([A-Za-z]*)$/.exec(formatted);
-          if (!m) return <span className="font-semibold text-[#f4f4f7] font-mono">{formatted}</span>;
+          if (!m) return <span className="font-semibold text-[#f4f4f7] tabular-nums">{formatted}</span>;
           const [, prefix, num, suffix] = m;
           return (
-            <span className="font-semibold text-[#f4f4f7] font-mono">
+            <span className="font-semibold text-[#f4f4f7] tabular-nums">
               {prefix}{num}
               {suffix && <span className="text-[#9697a6]">{suffix}</span>}
             </span>
@@ -231,7 +231,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
             <div className="flex items-center gap-2 text-sm text-[#c3c4d0]">
               {initials ? (
                 <span
-                  className="inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,.18),0_1px_2px_rgba(0,0,0,.4)]"
                   style={{ background: 'linear-gradient(135deg, #9b6fd4, #5f3f9e)' }}
                 >
                   {initials}
@@ -249,7 +249,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       <TableCell key="type" className="text-center">
         <Badge
           variant="outline"
-          className="text-[10px] font-mono uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#9697a6]"
+          className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#9697a6]"
         >
           {ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || '—')}
         </Badge>
@@ -264,13 +264,13 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
                 <Badge
                   key={index}
                   variant="outline"
-                  className="text-[10px] font-mono uppercase tracking-wider rounded-md border-white/10 bg-white/[0.03] text-[#9697a6]"
+                  className="text-[10px] uppercase tracking-wider rounded-md border-white/10 bg-white/[0.03] text-[#9697a6]"
                 >
                   {label}
                 </Badge>
               ))}
               {dealTypeLabels.length > 1 && (
-                <span className="text-[10px] font-mono text-[#5f606e] border-l border-white/10 pl-1.5 ml-0.5">
+                <span className="text-[10px] text-[#5f606e] border-l border-white/10 pl-1.5 ml-0.5">
                   +{dealTypeLabels.length - 1}
                 </span>
               )}
@@ -283,7 +283,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     ),
     totalFee: (
       <TableCell key="totalFee" className="text-center tabular-nums">
-        <span className="text-sm font-medium text-[#f4f4f7] font-mono">
+        <span className="text-sm font-medium text-[#f4f4f7] tabular-nums">
           {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
         </span>
       </TableCell>
@@ -323,7 +323,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       <TableCell key="updated">
         {timeAgoData.text === 'Over 30 Days' ? (
           <div
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-mono"
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px]"
             style={{
               color: '#f47272',
               background: 'rgba(244,114,114,.13)',
@@ -334,7 +334,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
             <span>{timeAgoData.text}</span>
           </div>
         ) : (
-          <div className={`flex items-center gap-1.5 text-xs text-[#9697a6] font-mono ${timeAgoData.highlightClass}`}>
+          <div className={`flex items-center gap-1.5 text-xs text-[#9697a6] ${timeAgoData.highlightClass}`}>
             <Clock className="h-3 w-3" />
             <span>{timeAgoData.text}</span>
           </div>
