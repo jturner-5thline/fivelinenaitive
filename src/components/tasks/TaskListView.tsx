@@ -535,16 +535,12 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center gap-1">
           {collapsed
             ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} />
             : <ChevronDown className="h-3 w-3" style={{ color: '#e57373' }} />}
-        </div>
-        <div className="flex items-center justify-center">
           <AlertTriangle className="h-3 w-3" style={{ color: '#e57373' }} />
         </div>
-        <div aria-hidden />
-        <div aria-hidden />
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#e57373' }}>
             Overdue
