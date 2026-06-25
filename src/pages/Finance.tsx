@@ -8,6 +8,13 @@ import { DashboardPage } from "@/components/layout/DashboardPage";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { createPortal } from "react-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, Check } from "lucide-react";
 
 const SECTION_LINKS = [
   { key: "dashboards", label: "Dashboards", icon: BarChart3 },
@@ -33,6 +40,9 @@ function FinanceHeader() {
     setActive(key);
   };
 
+  const activeLink = SECTION_LINKS.find((s) => s.key === active) ?? SECTION_LINKS[0];
+  const ActiveIcon = activeLink.icon;
+
   return (
     <div className="flex items-center gap-4 flex-nowrap min-w-0">
       {typeof document !== "undefined" &&
@@ -45,32 +55,34 @@ function FinanceHeader() {
           </h1>,
           document.body,
         )}
-      <nav
-        className="flex items-center gap-1 flex-nowrap overflow-x-auto min-w-0"
-        aria-label="Finance sections"
-      >
-        {SECTION_LINKS.map((s) => {
-          const isActive = active === s.key;
-          const Icon = s.icon;
-          return (
-            <button
-              key={s.key}
-              type="button"
-              onClick={() => go(s.key)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors shrink-0",
-                isActive
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
-              )}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <Icon className="h-3 w-3" />
-              {s.label}
-            </button>
-          );
-        })}
-      </nav>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors shrink-0 bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 focus:outline-none focus:ring-2 focus:ring-primary/30"
+          aria-label="Finance section"
+        >
+          <ActiveIcon className="h-3 w-3" />
+          {activeLink.label}
+          <ChevronDown className="h-3 w-3 opacity-70" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[180px]">
+          {SECTION_LINKS.map((s) => {
+            const Icon = s.icon;
+            const isActive = active === s.key;
+            return (
+              <DropdownMenuItem
+                key={s.key}
+                onSelect={() => go(s.key)}
+                className={cn("gap-2 text-xs", isActive && "text-primary")}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="flex-1">{s.label}</span>
+                {isActive && <Check className="h-3.5 w-3.5" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
       {/* Portal target — DashboardModule renders Charts/Export/Team Config/Views here */}
       <div
         id="finance-header-actions"
