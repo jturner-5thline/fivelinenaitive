@@ -55,66 +55,67 @@ export const CashInPanel = memo(function CashInPanel({
       <div className="cf-sidebar-total">{fmtShort(total)}</div>
 
       {dbEntries.map((item) => (
-        <div key={item.id} className="cf-pipeline-item grid grid-cols-[20px_minmax(0,1fr)] items-start gap-3">
+        <div
+          key={item.id}
+          className="grid items-start gap-3 py-1 text-left"
+          style={{ gridTemplateColumns: '16px minmax(0,1fr) auto auto' }}
+        >
           {isAdmin && item.id ? (
             <button
-              className="cf-row-remove shrink-0 self-start leading-none"
-              style={{ opacity: 1, fontSize: '14px', position: 'static', margin: 0, padding: 0, background: 'transparent', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer' }}
+              type="button"
               onClick={() => onRemoveDbItem(item.id!)}
               aria-label="Remove"
+              className="shrink-0 self-start leading-none text-left"
+              style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, color: '#ef4444', fontSize: '16px', fontWeight: 700, cursor: 'pointer' }}
             >×</button>
           ) : (
             <span />
           )}
-          <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="cf-pipeline-name" style={{ fontSize: 'var(--text-xs)', fontWeight: 500, flex: '1 1 auto', minWidth: 0 }}>
-              {item.name}
-            </span>
-            <span className="cf-pipeline-amount" style={{ position: 'static' }}>{fmtShort(item.amount)}</span>
-            <span className="cf-pipeline-date" style={{ position: 'static', width: '100%' }}>
-              {new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          </div>
+          <span className="truncate text-left" style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text)' }}>
+            {item.name}
+          </span>
+          <span className="text-left whitespace-nowrap" style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)' }}>
+            {fmtShort(item.amount)}
+          </span>
+          <span className="text-left whitespace-nowrap" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+            {new Date(item.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
         </div>
       ))}
 
       {cashInItems.map((item, i) => (
-        <div key={`manual-${i}`} className="cf-pipeline-item grid grid-cols-[20px_minmax(0,1fr)] items-start gap-3">
+        <div
+          key={`manual-${i}`}
+          className="grid items-start gap-3 py-1 text-left"
+          style={{ gridTemplateColumns: '16px minmax(0,1fr) auto auto' }}
+        >
           {isAdmin ? (
             <button
-              className="cf-row-remove shrink-0 self-start leading-none"
-              style={{ opacity: 1, fontSize: '14px', position: 'static', margin: 0, padding: 0, background: 'transparent', border: 'none', color: 'var(--color-text-faint)', cursor: 'pointer' }}
+              type="button"
               onClick={() => onRemoveItem(i)}
               aria-label="Remove"
+              className="shrink-0 self-start leading-none text-left"
+              style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, color: '#ef4444', fontSize: '16px', fontWeight: 700, cursor: 'pointer' }}
             >×</button>
           ) : (
             <span />
           )}
-          <div className="flex-1 min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            {isAdmin ? (
-              <input
-                className="cf-pipeline-name"
-                value={item.name}
-                onChange={e => onEditItem(i, 'name', e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--color-text)',
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 500,
-                  padding: 0,
-                  flex: '1 1 auto',
-                  minWidth: 0,
-                }}
-              />
-            ) : (
-              <span className="cf-pipeline-name" style={{ flex: '1 1 auto', minWidth: 0 }}>{item.name}</span>
-            )}
-            <span className="cf-pipeline-amount" style={{ position: 'static' }}>{fmtShort(item.amount)}</span>
-            <span className="cf-pipeline-date" style={{ position: 'static', width: '100%' }}>
-              {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-          </div>
+          {isAdmin ? (
+            <input
+              value={item.name}
+              onChange={e => onEditItem(i, 'name', e.target.value)}
+              className="text-left truncate"
+              style={{ background: 'transparent', border: 'none', color: 'var(--color-text)', fontSize: 'var(--text-xs)', fontWeight: 500, padding: 0, minWidth: 0, width: '100%' }}
+            />
+          ) : (
+            <span className="truncate text-left" style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text)' }}>{item.name}</span>
+          )}
+          <span className="text-left whitespace-nowrap" style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)' }}>
+            {fmtShort(item.amount)}
+          </span>
+          <span className="text-left whitespace-nowrap" style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)' }}>
+            {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </span>
         </div>
       ))}
 
