@@ -11,7 +11,7 @@ import { useCopilotStore } from '@/stores/copilotStore';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenders } from '@/contexts/LendersContext';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
 import { useAiDealFilterStore } from '@/stores/aiDealFilterStore';
 import { naturalLanguageToDealFilter } from '@/lib/naturalLanguageToDealFilter';
@@ -102,7 +102,7 @@ export function CopilotToggleButton() {
   const navigate = useNavigate();
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
-  const { stages } = useDealStages();
+  const { pipelines } = usePipelineContext();
   const dealTypesCtx = (() => { try { return useDealTypes(); } catch { return null; } })();
   const location = useLocation();
   const setRules = useAiDealFilterStore((s) => s.setRules);
@@ -342,6 +342,16 @@ export function CopilotToggleButton() {
     if (!q) return [];
     const out: Suggestion[] = [];
 
+    const resolveStageLabel = (stage: string, pipelineId?: string | null) => {
+      const pipeline = pipelineId
+        ? pipelines.find((p) => p.id === pipelineId)
+        : undefined;
+      const match = pipeline?.stages?.find(
+        (s) => s.id === stage || s.label === stage,
+      );
+      return match?.label ?? stage;
+    };
+
     if (deals?.length) {
       let count = 0;
       for (const d of deals) {
@@ -352,7 +362,7 @@ export function CopilotToggleButton() {
             kind: 'deal',
             id: d.id,
             label: d.company,
-            sublabel: d.stage,
+            sublabel: resolveStageLabel(d.stage, d.pipelineId),
             path: `/deal/${d.id}`,
           });
           count += 1;
@@ -386,7 +396,7 @@ export function CopilotToggleButton() {
     }
 
     return out.slice(0, 10);
-  }, [value, deals, lenders]);
+  }, [value, deals, lenders, pipelines]);
 
   useEffect(() => {
     setActiveIndex(0);
