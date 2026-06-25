@@ -49,7 +49,7 @@ function SalesBDInner() {
       <Helmet>
         <title>Sales & BD | 5thLine</title>
       </Helmet>
-      <div className="bg-transparent">
+      <div className="sales-bd-page bg-transparent">
         <DashboardPage
           padding="sm"
           wrapper={(children) => (
