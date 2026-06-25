@@ -38,7 +38,7 @@ function FinanceHeader() {
       {typeof document !== "undefined" &&
         createPortal(
           <h1
-            className="fixed top-[18px] left-[101px] z-[1001] text-[21px] font-semibold leading-none text-foreground pointer-events-none"
+            className="fixed top-[27px] left-[101px] z-[1001] text-[21px] font-semibold leading-none text-foreground pointer-events-none"
             aria-label="Finance"
           >
             Finance
