@@ -48,12 +48,12 @@ function TabSkeleton() {
  * (`#finance-header-actions`). Falls back to inline rendering if the slot
  * isn't mounted (e.g. DashboardModule used outside the Finance shell).
  */
-function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+function HeaderPortal({ children, slotId }: { children: React.ReactNode; slotId: string }) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
     let cancelled = false;
     const find = () => {
-      const el = document.getElementById('finance-header-actions');
+      const el = document.getElementById(slotId);
       if (el) {
         if (!cancelled) setTarget(el);
         return true;
@@ -71,9 +71,16 @@ function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, []);
+  }, [slotId]);
   if (!target) return null;
   return createPortal(<>{children}</>, target);
+}
+
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  return <HeaderPortal slotId="finance-header-actions">{children}</HeaderPortal>;
+}
+function HeaderTabsPortal({ children }: { children: React.ReactNode }) {
+  return <HeaderPortal slotId="finance-header-tabs">{children}</HeaderPortal>;
 }
 
 // Smart default: pick date range based on current month
