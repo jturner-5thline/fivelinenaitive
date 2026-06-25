@@ -666,6 +666,24 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "resolve_deals_batch",
+      description: "BATCH deal-name resolver for write actions that target multiple deals at once (especially weekly-hours logging, bulk hours updates, or any 'add/log/update X to deals A, B, C, D' request). REQUIRED FIRST CALL whenever the user names two or more deals in a single write request — do NOT loop find_entity/search_deals one-by-one. Returns three buckets: `auto_resolved` (single survivor after the active>recency>owner priority filter — use these IDs DIRECTLY in write tools, no confirmation needed before the write tool's own card), `ambiguous` (2+ survivors — render ONE grouped picker showing every candidate's stage, status, owner, and value so the user can disambiguate them all in a single pass; never ask the user to paste a deal_id), and `not_found`. After this call, emit one update_deal_fields call per auto_resolved deal in the SAME turn, then present the grouped ambiguity picker if any remain. NEVER force one-by-one disambiguation messages.",
+      parameters: {
+        type: "object",
+        properties: {
+          queries: {
+            type: "array",
+            description: "Free-text deal names the user mentioned. Pass them verbatim, one per intended deal.",
+            items: { type: "string" },
+          },
+        },
+        required: ["queries"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal",
       description: "Get details about a specific deal by ID or by searching company name.",
       parameters: {
@@ -991,7 +1009,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_fields",
-      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type, AND tracked hours (pre_signing_hours, post_signing_hours).\n\nHours fields: use the *_delta variant to ADD/SUBTRACT hours (e.g. user says \"add 0.5 Post Signing hours\" → post_signing_hours_delta: 0.5). Use the absolute *_hours field only when the user explicitly sets a total (e.g. \"set post signing to 4 hours\"). NEVER call this tool without at least one writable field populated — value, closing_date, is_flagged, stage, manager, deal_owner, narrative, deal_type, engagement_type, pre_signing_hours[_delta], or post_signing_hours[_delta]. Calling it with only {deal_id, deal_name} is invalid and will be rejected.\n\nExample — 'Add 0.5 Post Signing hours to Upflex': { deal_id: '<uuid>', deal_name: 'Upflex', post_signing_hours_delta: 0.5 }. For multiple deals, emit ONE tool call per deal with the same shape.\n\nHIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card. Hours and value/date/flag updates render an auto-confirm card.",
+      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type, AND tracked hours (pre_signing_hours, post_signing_hours).\n\nHours fields: use the *_delta variant to ADD/SUBTRACT hours (e.g. user says \"add 0.5 Post Signing hours\" → post_signing_hours_delta: 0.5). Use the absolute *_hours field only when the user explicitly sets a total (e.g. \"set post signing to 4 hours\"). NEVER call this tool without at least one writable field populated.\n\nBATCH RESOLUTION: When the user names TWO OR MORE deals in one request (e.g. 'add 1 hour to Worthy, Vispero, Gabb Wireless, Upflex'), you MUST first call `resolve_deals_batch` with every name in one shot. Then emit ONE update_deal_fields call per `auto_resolved` entry IN THE SAME TURN, using the returned deal.id. For any `ambiguous` queries, present a single grouped picker showing every candidate's stage/status/owner/value — never loop one deal at a time, and never ask the user to paste a deal_id. For a single-deal request, you may still use search_deals/find_entity directly.\n\nExample — 'Add 0.5 Post Signing hours to Upflex': { deal_id: '<uuid>', deal_name: 'Upflex', post_signing_hours_delta: 0.5 }.\n\nHIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card. Hours and value/date/flag updates render an auto-confirm card.",
       parameters: {
         type: "object",
         properties: {
@@ -2768,6 +2786,134 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           : needsDisambiguation
             ? `Confidence is below 0.8 or multiple candidates returned. STOP and ask the user to pick from these ${candidates.length} candidate(s): ${candidates.map((c) => `${c.display_name} (${c.confidence})`).join(", ")}. Do NOT call any write tool until the user picks.`
             : `Single high-confidence match (${top.confidence}). Safe to use ${top.id}.`,
+      };
+    }
+    case "resolve_deals_batch": {
+      const rawQueries: any[] = Array.isArray(args.queries) ? args.queries : [];
+      const queries: string[] = rawQueries
+        .map((q: any) => (typeof q === "string" ? q.trim() : ""))
+        .filter((q: string) => q.length > 0);
+      if (queries.length === 0) {
+        return { error: "resolve_deals_batch requires a non-empty `queries` array." };
+      }
+
+      // Resolve current user's display name once so we can score ownership.
+      let currentUserName = "";
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("display_name, first_name, last_name, email")
+          .eq("user_id", userId)
+          .maybeSingle();
+        currentUserName = String(
+          prof?.display_name
+            || [prof?.first_name, prof?.last_name].filter(Boolean).join(" ")
+            || prof?.email
+            || "",
+        ).trim().toLowerCase();
+      } catch (_) { /* non-fatal */ }
+
+      // Pull a broad candidate pool ONCE across all statuses, then fuzzy-rank
+      // per-query in memory. Stays inside the chat scope unless out-of-scope
+      // candidates are needed (we always search broadly here because hours
+      // logging legitimately targets on-hold / closed deals too).
+      const { data: allRows } = await supabase
+        .from("deals")
+        .select("id, company, value, stage, status, deal_type, manager, deal_owner, updated_at, pipeline_id")
+        .is("merged_into", null)
+        .limit(2000);
+      const pool = (allRows || []).filter((d: any) => !isGloballyExcludedDealName(d.company));
+
+      const INACTIVE_STATUSES = new Set(["closed", "on-hold", "archived", "closed-won", "closed-lost"]);
+      const INACTIVE_STAGES = new Set(["closed-won", "closed-lost", "on-hold"]);
+      const isActive = (d: any) =>
+        !INACTIVE_STATUSES.has(String(d.status || "").toLowerCase())
+        && !INACTIVE_STAGES.has(String(d.stage || "").toLowerCase());
+      const ownedByMe = (d: any) => {
+        if (!currentUserName) return false;
+        const m = String(d.manager || "").toLowerCase();
+        const o = String(d.deal_owner || "").toLowerCase();
+        return m.includes(currentUserName) || o.includes(currentUserName);
+      };
+      const decorate = (d: any, score: number) => ({
+        id: d.id,
+        company: d.company,
+        stage: d.stage,
+        status: d.status,
+        value: d.value,
+        owner: d.deal_owner || d.manager || null,
+        manager: d.manager || null,
+        deal_type: d.deal_type || null,
+        updated_at: d.updated_at,
+        is_active: isActive(d),
+        owned_by_current_user: ownedByMe(d),
+        similarity: Number(score.toFixed(3)),
+      });
+
+      const auto_resolved: any[] = [];
+      const ambiguous: any[] = [];
+      const not_found: any[] = [];
+
+      for (const query of queries) {
+        const ranked = rankDealsByQuery(pool as any[], query, 0.55).slice(0, 12);
+        if (ranked.length === 0) {
+          not_found.push({ query });
+          continue;
+        }
+        // Single fuzzy hit → done.
+        if (ranked.length === 1) {
+          auto_resolved.push({ query, deal: decorate(ranked[0], ranked[0]._score), reason: "single_match" });
+          continue;
+        }
+        // Priority filter (a): active over inactive.
+        let pool1 = ranked.filter((d: any) => isActive(d));
+        if (pool1.length === 0) pool1 = ranked; // all inactive — keep all
+        if (pool1.length === 1) {
+          auto_resolved.push({ query, deal: decorate(pool1[0], pool1[0]._score), reason: "active_filter" });
+          continue;
+        }
+        // Priority (b): clearly most-recently-updated wins (>=30d gap to runner-up).
+        const byRecency = [...pool1].sort((a: any, b: any) =>
+          new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
+        );
+        const topTs = new Date(byRecency[0]?.updated_at || 0).getTime();
+        const nextTs = new Date(byRecency[1]?.updated_at || 0).getTime();
+        if (topTs && (topTs - nextTs) >= 30 * 24 * 60 * 60 * 1000) {
+          auto_resolved.push({ query, deal: decorate(byRecency[0], byRecency[0]._score), reason: "most_recently_updated" });
+          continue;
+        }
+        // Priority (c): exactly one is owned by the current user.
+        const owned = pool1.filter((d: any) => ownedByMe(d));
+        if (owned.length === 1) {
+          auto_resolved.push({ query, deal: decorate(owned[0], owned[0]._score), reason: "owned_by_current_user" });
+          continue;
+        }
+        // Still ambiguous — surface ALL surviving candidates with full context.
+        ambiguous.push({
+          query,
+          candidates: pool1.slice(0, 6).map((d: any) => decorate(d, d._score)),
+        });
+      }
+
+      const guidance = [
+        `Resolved ${auto_resolved.length}/${queries.length} deal name(s) automatically.`,
+        auto_resolved.length > 0
+          ? "For each auto_resolved entry, emit ONE update_deal_fields call this same turn using deal.id — do NOT re-ask the user."
+          : "",
+        ambiguous.length > 0
+          ? `Present the ${ambiguous.length} ambiguous query(ies) as ONE grouped picker. For each query, list every candidate inline with company · stage · status · owner · value so the user can pick them all in a single pass. NEVER ask the user to paste a deal_id.`
+          : "",
+        not_found.length > 0
+          ? `For not_found entries (${not_found.map((n) => `"${n.query}"`).join(", ")}), ask the user to confirm the spelling — do NOT silently drop them.`
+          : "",
+      ].filter(Boolean).join(" ");
+
+      return {
+        count: queries.length,
+        auto_resolved,
+        ambiguous,
+        not_found,
+        guidance,
       };
     }
     case "search_deals": {
