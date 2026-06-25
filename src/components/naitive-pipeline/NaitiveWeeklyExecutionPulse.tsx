@@ -484,6 +484,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const qualCallsCurrent = useNaitiveQualCallsCount(from, to);
   const qualCallsPrevious = useNaitiveQualCallsCount(prev.from, prev.to);
   const [qualCallsOpen, setQualCallsOpen] = useState(false);
+  const [demosStartedOpen, setDemosStartedOpen] = useState(false);
 
   // Warm the cache for every standard timeframe (and its prior-period
   // comparison) so the user can flip between This Week / Last Week / 30 / 90
@@ -634,7 +635,12 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         />
         <EmptyStatCard />
         <EmptyStatCard />
-        <StatCard label="Demos Started" value={current.trialsStarted} prev={previous.trialsStarted} />
+        <StatCard
+          label="Demos Started"
+          value={current.trialsStarted}
+          prev={previous.trialsStarted}
+          onClick={() => setDemosStartedOpen(true)}
+        />
         <StatCard label="Converted" value={current.converted} prev={previous.converted} />
       </div>
 
@@ -999,7 +1005,145 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      <DemosStartedDialog
+        open={demosStartedOpen}
+        onOpenChange={setDemosStartedOpen}
+        deals={deals}
+        history={history}
+        from={from}
+        to={to}
+        currentCount={current.trialsStarted}
+      />
     </section>
+  );
+}
+
+function DemosStartedDialog({
+  open, onOpenChange, deals, history, from, to, currentCount,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  deals: Deal[];
+  history: NaitiveStageHistoryRow[];
+  from: Date;
+  to: Date;
+  currentCount: number;
+}) {
+  const dealMap = useMemo(() => {
+    const m = new Map<string, Deal>();
+    deals.forEach((d) => m.set(d.id, d));
+    return m;
+  }, [deals]);
+
+  const events = useMemo(() => {
+    return history
+      .filter((h) => {
+        if (h.toStage !== 'demo-access' || h.fromStage === 'demo-access') return false;
+        const t = new Date(h.changedAt).getTime();
+        return t >= from.getTime() && t <= to.getTime();
+      })
+      .sort((a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime());
+  }, [history, from, to]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-base">
+            Demos Started · {currentCount} {currentCount === 1 ? 'demo' : 'demos'}
+          </DialogTitle>
+          <DialogDescription>
+            Deals that entered the Demo Access stage (typically via the admin "Create Demo Access" flow),{' '}
+            {format(from, 'MMM d')} – {format(to, 'MMM d, yyyy')}.
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs defaultValue="events" className="w-full">
+          <TabsList>
+            <TabsTrigger value="events">Events</TabsTrigger>
+            <TabsTrigger value="trend">Weekly Trend</TabsTrigger>
+          </TabsList>
+          <TabsContent value="events">
+            <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+              {events.length > 0 ? (
+                <ul className="divide-y divide-border">
+                  {events.map((ev) => {
+                    const d = dealMap.get(ev.dealId);
+                    const name = d?.name || 'Unknown deal';
+                    return (
+                      <li key={ev.id} className="py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              to={`/deals/${ev.dealId}`}
+                              className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                            >
+                              {name}
+                            </Link>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {ev.fromStage ? `From ${ev.fromStage} → Demo Access` : 'Entered Demo Access'}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums text-right">
+                            {format(new Date(ev.changedAt), 'MMM d, h:mma')}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground py-6 text-center">
+                  No demos started in this window.
+                </p>
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="trend">
+            <DemosStartedWeeklyTrend history={history} />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DemosStartedWeeklyTrend({ history }: { history: NaitiveStageHistoryRow[] }) {
+  const data = useMemo(() => {
+    const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const weeks: { from: Date; to: Date; label: string }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const ws = subWeeks(thisWeekStart, i);
+      const we = endOfWeek(ws, { weekStartsOn: 1 });
+      weeks.push({ from: ws, to: we, label: format(ws, 'MMM d') });
+    }
+    return weeks.map((w) => {
+      const count = history.filter((h) => {
+        if (h.toStage !== 'demo-access' || h.fromStage === 'demo-access') return false;
+        const t = new Date(h.changedAt).getTime();
+        return t >= w.from.getTime() && t <= w.to.getTime();
+      }).length;
+      return { week: w.label, count };
+    });
+  }, [history]);
+
+  return (
+    <div className="pt-2">
+      <div className="h-64 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="week" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} />
+            <Bar dataKey="count" name="Demos Started" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="text-[11px] text-muted-foreground text-center mt-2">
+        Demos started per week, past 6 weeks (Mon–Sun).
+      </p>
+    </div>
   );
 }
 
