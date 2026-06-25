@@ -695,30 +695,33 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       align="start"
                       onOpenAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="border-b px-2 py-1.5">
-                        <button
-                          type="button"
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary hover:bg-accent"
-                          onClick={() => setCompanyPickerOpen(false)}
-                        >
-                          <Plus className="h-4 w-4" /> Add new company
-                        </button>
+                      <div className="border-b p-2">
+                        <Input
+                          autoFocus
+                          placeholder="Search companies…"
+                          value={companySearch}
+                          onChange={(e) => setCompanySearch(e.target.value)}
+                          className="h-8"
+                        />
                       </div>
                       <div className="max-h-56 overflow-y-auto py-1">
-                        {[
-                          { name: 'Vota', category: 'Beverage' },
-                          { name: 'Titan Industries', category: 'Manufacturing' },
-                          { name: 'Evernu', category: 'Materials' },
-                        ].map((c) => {
-                          const initials = c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                        {filteredCrmCompanies.length === 0 && (
+                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">
+                            {companiesLoading ? 'Loading…' : 'No companies found'}
+                          </p>
+                        )}
+                        {filteredCrmCompanies.map((c) => {
+                          const initials = c.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
                           return (
                             <button
-                              key={c.name}
+                              key={c.id}
                               type="button"
                               className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-sm hover:bg-accent"
                               onClick={() => {
                                 setCompanyNameVisual(c.name);
+                                if (!dealName.trim()) setDealName(c.name);
                                 setCompanyPickerOpen(false);
+                                setCompanySearch('');
                               }}
                             >
                               <span className="flex items-center gap-2 min-w-0">
@@ -727,10 +730,26 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                                 </span>
                                 <span className="truncate">{c.name}</span>
                               </span>
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">{c.category}</span>
+                              {c.industry && (
+                                <span className="text-xs text-muted-foreground whitespace-nowrap">{c.industry}</span>
+                              )}
                             </button>
                           );
                         })}
+                        {companySearch.trim() && !filteredCrmCompanies.some((c) => c.name.toLowerCase() === companySearch.trim().toLowerCase()) && (
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 border-t px-3 py-2 text-sm text-primary hover:bg-accent"
+                            onClick={() => {
+                              setCompanyNameVisual(companySearch.trim());
+                              if (!dealName.trim()) setDealName(companySearch.trim());
+                              setCompanyPickerOpen(false);
+                              setCompanySearch('');
+                            }}
+                          >
+                            <Plus className="h-4 w-4" /> Use "{companySearch.trim()}"
+                          </button>
+                        )}
                       </div>
                     </PopoverContent>
                   </Popover>
