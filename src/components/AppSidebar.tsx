@@ -207,43 +207,9 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {hasNaitivePipelineAccess && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive("/naitive-pipeline")}
-                    tooltip="naitive Pipeline"
-                  >
-                    <NavLink 
-                      to="/naitive-pipeline" 
-                      className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <Handshake className="h-4 w-4" />
-                      {showExpanded && <span>naitive Pipeline</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-
-              {hasNaitivePipelineAccess && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={isActive("/finserv")}
-                    tooltip="FinServ"
-                  >
-                    <NavLink 
-                      to="/finserv" 
-                      className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <Landmark className="h-4 w-4" />
-                      {showExpanded && <span>FinServ</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              {/* For 5th Line accounts (hasNaitivePipelineAccess), the
+                  naitive Pipeline and FinServ links are surfaced via the
+                  Deals flyout submenu (Debt / FinServ / naitive). */}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
