@@ -9,9 +9,9 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        /* PRIMARY — liquid glass blue gradient */
+        /* PRIMARY — standardized to match the "+ New Deal" liquid-glass button */
         default:
-          "relative overflow-hidden font-semibold border border-[rgba(168,208,255,0.35)] text-white shadow-[0_0_20px_rgba(126,184,247,0.2),inset_0_1px_0_rgba(255,255,255,0.25),inset_0_-1px_0_rgba(0,0,0,0.15)] bg-[linear-gradient(135deg,rgba(126,184,247,0.85),rgba(74,144,217,0.9))] backdrop-blur-[8px] [backdrop-filter:blur(8px)_saturate(1.4)] hover:bg-[linear-gradient(135deg,rgba(148,200,255,0.95),rgba(90,160,235,0.95))] hover:shadow-[0_0_28px_rgba(126,184,247,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:-translate-y-px active:scale-[0.98]",
+          "relative overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]",
         /* SECONDARY — ghost glass blue */
         outline:
           "bg-[rgba(126,184,247,0.06)] backdrop-blur-[8px] border border-[rgba(126,184,247,0.22)] text-[#A8D0FF] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:bg-[rgba(126,184,247,0.12)] hover:border-[rgba(126,184,247,0.4)] hover:shadow-[0_0_16px_rgba(126,184,247,0.15),inset_0_1px_0_rgba(255,255,255,0.08)] active:scale-[0.98]",
