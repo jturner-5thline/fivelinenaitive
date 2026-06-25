@@ -1938,3 +1938,58 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .sales-bd-page table thead tr {
   background: rgba(255, 255, 255, 0.03) !important;
 }
+
+/* =========================================================================
+   naitive Pipeline page — surface standardization
+   Same Deal-Details dark gradient applied to KPI cards, chart wrappers,
+   narrative modules, blocker/accelerator panels, and control bars.
+   ========================================================================= */
+.naitive-pipeline-page .glass-module,
+.naitive-pipeline-page .glass-module-interactive {
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+.naitive-pipeline-page .glass-module::before {
+  background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.00) 60%) !important;
+}
+.naitive-pipeline-page .glass-module-interactive:hover {
+  border-color: rgba(126, 184, 247, 0.30) !important;
+}
+
+.naitive-pipeline-page .bg-card,
+.naitive-pipeline-page [class*="bg-card"] {
+  background:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+.naitive-pipeline-page [class*="bg-muted/40"],
+.naitive-pipeline-page [class*="bg-muted/30"],
+.naitive-pipeline-page [class*="bg-background/60"],
+.naitive-pipeline-page [class*="bg-background/40"] {
+  background:
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+.naitive-pipeline-page .bg-muted\/40,
+.naitive-pipeline-page .bg-muted\/30,
+.naitive-pipeline-page .bg-muted\/20,
+.naitive-pipeline-page .bg-accent\/20,
+.naitive-pipeline-page .bg-accent\/40 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Select / dropdown triggers on this page */
+.naitive-pipeline-page [data-radix-select-trigger],
+.naitive-pipeline-page button[role="combobox"] {
+  background:
+    linear-gradient(135deg, #050d1f 0%, #02080f 50%, #040008 100%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: rgb(226, 232, 240) !important;
+}
