@@ -767,6 +767,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         id: n.id, created_at: n.created_at, note: trim(n.note, 200),
       })),
     })),
+    configured_milestone_titles: bundle.configured_milestone_titles ?? [],
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
