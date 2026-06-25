@@ -126,8 +126,8 @@ export default function Finance() {
       <DashboardPage
         padding="md"
         container={false}
-        bodySpacing="space-y-4"
-        headerClassName="!bg-transparent !backdrop-blur-none !border-b-0 !py-2"
+        bodySpacing="space-y-2"
+        headerClassName="!bg-transparent !backdrop-blur-none !border-b-0 !py-1 !pb-0"
         header={<FinanceHeader />}
       >
         <FPAWorkspace />
