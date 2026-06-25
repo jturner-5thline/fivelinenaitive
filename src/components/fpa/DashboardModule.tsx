@@ -219,11 +219,38 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
       {/* Global Filters */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Tabs value={activeTab} onValueChange={setDashboardTab}>
+          <HeaderTabsPortal>
+            <TabsList className="h-8 bg-transparent p-0 gap-1">
+              {isTabVisible('cashflow', t.cashflow) && (
+                <TabsTrigger
+                  value="cashflow"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Cash Flow
+                </TabsTrigger>
+              )}
+              {isTabVisible('salesBdRoi') && (
+                <TabsTrigger
+                  value="salesBdRoi"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Sales & BD ROI
+                </TabsTrigger>
+              )}
+              {isTabVisible('salesModel') && (
+                <TabsTrigger
+                  value="salesModel"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Sales Model
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </HeaderTabsPortal>
           <TabsList>
             {isTabVisible('overview', t.overview) && <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>}
             {isTabVisible('pnl', t.pnl) && <TabsTrigger value="pnl" className="text-xs">P&L</TabsTrigger>}
             {isTabVisible('balance', t.balance) && <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>}
-            {isTabVisible('cashflow', t.cashflow) && <TabsTrigger value="cashflow" className="text-xs">Cash Flow</TabsTrigger>}
             {isTabVisible('scenarios', t.scenarios) && <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>}
             {isTabVisible('collaborate', t.collaborate) && (
               <TabsTrigger value="collaborate" className="text-xs gap-1.5 relative">
@@ -237,8 +264,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
                 Board Pack
               </TabsTrigger>
             )}
-            {isTabVisible('salesBdRoi') && <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>}
-            {isTabVisible('salesModel') && <TabsTrigger value="salesModel" className="text-xs">Sales Model</TabsTrigger>}
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
