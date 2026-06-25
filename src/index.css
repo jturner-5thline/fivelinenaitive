@@ -2027,3 +2027,18 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   border-color: rgba(255, 255, 255, 0.12) !important;
   color: rgb(226, 232, 240) !important;
 }
+
+/* Finance page: flatten Card and cashflow surfaces so charts and the
+   cashflow table sit directly on the page background. Borders and spacing
+   are preserved; only fill/shadow are removed. */
+.finance-flat-surfaces .bg-card,
+.finance-flat-surfaces [class*="rounded-lg"].border.bg-card {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+.finance-flat-surfaces .cf-root,
+.finance-flat-surfaces .cf-root[data-theme="dark"],
+.finance-flat-surfaces .cf-root[data-theme="light"] {
+  background: transparent !important;
+}
