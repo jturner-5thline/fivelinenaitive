@@ -22,6 +22,7 @@ import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown
 import { useDealTasks } from '@/hooks/useDealTasks';
 import { isTaskCompleted, TASK_STATUS_COMPLETE, TASK_STATUS_REOPENED } from '@/lib/taskCache';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
+import { useDealManagerId } from '@/hooks/useDealManagerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -35,6 +36,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const { user } = useAuth();
   const { tasks, isLoading, createTask, updateTaskStatus, deleteTask } = useDealTasks(dealId);
   const teamMembers = useTeamMembers();
+  const dealManagerId = useDealManagerId(dealId);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
@@ -76,6 +78,15 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Default task owner to the deal's Deal Manager (fallback: self) when
+  // the create dialog opens and no assignee has been manually picked yet.
+  useEffect(() => {
+    if (!isCreateOpen) return;
+    if (assignedTo) return;
+    const fallback = dealManagerId || user?.id || '';
+    if (fallback) setAssignedTo(fallback);
+  }, [isCreateOpen, dealManagerId, user?.id, assignedTo]);
   
   const memberMap = useMemo(() => {
     const map = new Map<string, TeamMember>();
