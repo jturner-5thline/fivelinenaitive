@@ -788,7 +788,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                             setContactInfo(first?.email || '');
                           }}
                           placeholder="New contact name…"
-                          invalid={clientContacts.length === 0 && showClientContact}
+                          invalid={false}
                         />
                       </div>
                     </div>
@@ -880,7 +880,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </Button>
                 ) : <span />}
               </div>
-              <Button type="submit" variant="gradient" disabled={isCreating || isLoadingFormData}>
+              <Button type="submit" variant="liquid-glass" size="sm" className="gap-2" disabled={isCreating || isLoadingFormData}>
                 {isCreating ? 'Creating...' : isLoadingFormData ? 'Loading…' : 'Create Deal'}
               </Button>
             </DialogFooter>
