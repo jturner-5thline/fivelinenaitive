@@ -268,24 +268,31 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               )}
             </TabsList>
           </HeaderTabsPortal>
-          <TabsList>
-            {isTabVisible('overview', t.overview) && <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>}
-            {isTabVisible('pnl', t.pnl) && <TabsTrigger value="pnl" className="text-xs">P&L</TabsTrigger>}
-            {isTabVisible('balance', t.balance) && <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>}
-            {isTabVisible('scenarios', t.scenarios) && <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>}
-            {isTabVisible('collaborate', t.collaborate) && (
-              <TabsTrigger value="collaborate" className="text-xs gap-1.5 relative">
-                Collaborate
-                <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px] font-bold">3</Badge>
-              </TabsTrigger>
-            )}
-            {isTabVisible('export', t.export) && (
-              <TabsTrigger value="export" className="text-xs gap-1.5">
-                <FileText className="h-3.5 w-3.5" />
-                Board Pack
-              </TabsTrigger>
-            )}
-          </TabsList>
+          {(isTabVisible('overview', t.overview) ||
+            isTabVisible('pnl', t.pnl) ||
+            isTabVisible('balance', t.balance) ||
+            isTabVisible('scenarios', t.scenarios) ||
+            isTabVisible('collaborate', t.collaborate) ||
+            isTabVisible('export', t.export)) && (
+            <TabsList>
+              {isTabVisible('overview', t.overview) && <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>}
+              {isTabVisible('pnl', t.pnl) && <TabsTrigger value="pnl" className="text-xs">P&L</TabsTrigger>}
+              {isTabVisible('balance', t.balance) && <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>}
+              {isTabVisible('scenarios', t.scenarios) && <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>}
+              {isTabVisible('collaborate', t.collaborate) && (
+                <TabsTrigger value="collaborate" className="text-xs gap-1.5 relative">
+                  Collaborate
+                  <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[9px] font-bold">3</Badge>
+                </TabsTrigger>
+              )}
+              {isTabVisible('export', t.export) && (
+                <TabsTrigger value="export" className="text-xs gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Board Pack
+                </TabsTrigger>
+              )}
+            </TabsList>
+          )}
         </Tabs>
       </div>
 
