@@ -373,7 +373,8 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       )}
       {columnOrder.map(colId => columnCells[colId])}
 
-      {/* Actions - always last */}
+      {/* Actions - always last (suppressed when in compact detail-panel mode) */}
+      {!hideActionsColumn && (
       <TableCell>
         <div className="flex items-center gap-1">
           {onToggleFlag && (
