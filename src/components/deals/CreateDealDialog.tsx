@@ -177,8 +177,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
   const crmCompaniesList = crmCompaniesResult?.data ?? [];
   const filteredCrmCompanies = companySearch.trim()
-    ? crmCompaniesList.filter((c: any) => c.name?.toLowerCase().includes(companySearch.toLowerCase()))
-    : crmCompaniesList.slice(0, 50);
+    ? crmCompaniesList.filter((c: any) => c.name?.toLowerCase().includes(companySearch.toLowerCase())).slice(0, 5)
+    : crmCompaniesList.slice(0, 5);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -700,6 +700,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       container={dialogContentRef.current}
                       className="w-[var(--radix-popover-trigger-width)] p-0"
                       align="start"
+                      side="bottom"
+                      sideOffset={4}
+                      avoidCollisions={false}
                       onOpenAutoFocus={(e) => e.preventDefault()}
                     >
                       <div className="border-b p-2">
