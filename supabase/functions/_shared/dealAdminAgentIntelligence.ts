@@ -95,6 +95,7 @@ interface DealSignalBundle {
   claap_recordings: any[];
   email_threads: any[];
   referral_sources: any[];
+  configured_milestone_titles: string[];
 }
 
 interface CandidateItem {
@@ -448,7 +449,36 @@ async function gatherSignalsForDeal(
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
     referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
+    configured_milestone_titles: await gatherConfiguredMilestoneTitles(supabase, companyId),
   };
+}
+
+/**
+ * Load the workspace's configured default milestone titles. The Deal
+ * Admin Agent is only allowed to propose create_milestone for titles
+ * that exactly match one of these — milestones are a curated taxonomy
+ * set by the company, not free-form AI suggestions.
+ */
+const CONFIGURED_MILESTONE_CACHE = new Map<string, { ts: number; titles: string[] }>();
+async function gatherConfiguredMilestoneTitles(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<string[]> {
+  const cached = CONFIGURED_MILESTONE_CACHE.get(companyId);
+  if (cached && Date.now() - cached.ts < 5 * 60_000) return cached.titles;
+  const { data } = await supabase
+    .from("default_milestones")
+    .select("title")
+    .eq("company_id", companyId);
+  const titles = Array.from(
+    new Set(
+      (data ?? [])
+        .map((r: any) => (typeof r?.title === "string" ? r.title.trim() : ""))
+        .filter((t: string) => t.length > 0),
+    ),
+  );
+  CONFIGURED_MILESTONE_CACHE.set(companyId, { ts: Date.now(), titles });
+  return titles;
 }
 
 /**
@@ -621,6 +651,13 @@ MILESTONE UPDATE GATE — apply strictly
     evidence_references citing the calendar event (kind="calendar") that justifies completion.
 - Never confuse an intro/discovery/scoping/first call with a kick-off. Different meeting → no kick-off proposal.
 
+CREATE MILESTONE GATE — apply strictly
+- Milestones are a CURATED TAXONOMY set by the workspace. The bundle includes configured_milestone_titles (the company's allowed milestone titles from default_milestones). NEVER invent new milestone titles.
+- Do NOT propose create_milestone unless proposed_values.title EXACTLY matches (case-insensitive, trimmed) one of configured_milestone_titles AND that milestone does not already exist on this deal (check the deal's existing milestones[]).
+- If configured_milestone_titles is empty, NEVER propose create_milestone for this deal under any circumstance.
+- Do NOT propose create_milestone from emails, claap recordings, intro/discovery/feasibility/assessment/term-sheet language, or any signal — unless the exact configured title applies AND is missing on the deal.
+- If a real workflow event matters but no matching configured milestone exists, use add_status_note (or create_followup_task) instead — never invent a milestone.
+
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
 - Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
@@ -737,6 +774,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         id: n.id, created_at: n.created_at, note: trim(n.note, 200),
       })),
     })),
+    configured_milestone_titles: bundle.configured_milestone_titles ?? [],
   };
   const fp = fingerprint && fingerprint.trim().length > 0
     ? `\nuser_style_fingerprint (recent edits this user made to the agent's drafts — mimic their voice):\n${fingerprint.trim()}\n`
@@ -897,6 +935,36 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
   if (needsId && !c.target_object_id) return false;
   if (!Array.isArray(c.evidence_references) || c.evidence_references.length === 0) return false;
   return true;
+}
+
+/**
+ * Drop create_milestone proposals that don't match the workspace's
+ * curated milestone taxonomy (default_milestones) — and proposals for
+ * milestones the deal already has. Milestones are user-configured, not
+ * AI-invented.
+ */
+function filterUnconfiguredMilestones(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const hasCreate = candidates.some((c) => c.action_type === "create_milestone");
+  if (!hasCreate) return { kept: candidates, dropped: 0 };
+  const norm = (s: unknown) => (typeof s === "string" ? s.trim().toLowerCase() : "");
+  const allowed = new Set((bundle.configured_milestone_titles ?? []).map(norm).filter(Boolean));
+  const existing = new Set((bundle.milestones ?? []).map((m: any) => norm(m?.title)).filter(Boolean));
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "create_milestone") return true;
+    const title = norm(
+      (c.proposed_values as any)?.title ?? c.linked_entity_label ?? c.item_title,
+    );
+    if (!title || !allowed.has(title) || existing.has(title)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
 }
 
 /**
@@ -1960,12 +2028,22 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (stageValidated.kept.length === 0) continue;
 
+      // Drop create_milestone proposals whose title isn't in the workspace's
+      // configured milestone taxonomy (default_milestones), or that already
+      // exist on the deal. Milestones are curated, not free-form AI ideas.
+      const milestoneFiltered = filterUnconfiguredMilestones(stageValidated.kept, bundle);
+      if (milestoneFiltered.dropped > 0) {
+        result.candidates_filtered += milestoneFiltered.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${milestoneFiltered.dropped} create_milestone proposal(s) for deal=${d.id} — title not in configured default_milestones (or already exists)`);
+      }
+      if (milestoneFiltered.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
       // never "on-hold". Runs before gating so the rewritten value flows
       // through every downstream check.
-      const holdNormalized = normalizeHoldVsUnresponsive(stageValidated.kept);
+      const holdNormalized = normalizeHoldVsUnresponsive(milestoneFiltered.kept);
       if (holdNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
