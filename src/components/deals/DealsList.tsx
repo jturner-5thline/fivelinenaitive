@@ -261,7 +261,7 @@ function clearAllColumnFilters(): Partial<DealFilters> {
   };
 }
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange, detailPanelOpen = false }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
@@ -293,6 +293,12 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   }, [collapseAllSignal]);
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
+  // When the right-hand detail panel is open, collapse the table to just
+  // Deal Name (company) + Deal Amount (value) so it stays clean and the
+  // selected row remains fully visible in the reduced left pane.
+  const renderedActiveColumns = detailPanelOpen
+    ? (activeColumns.filter((c) => c === 'company' || c === 'value') as typeof activeColumns)
+    : activeColumns;
   
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
