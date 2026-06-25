@@ -95,6 +95,7 @@ interface DealSignalBundle {
   claap_recordings: any[];
   email_threads: any[];
   referral_sources: any[];
+  configured_milestone_titles: string[];
 }
 
 interface CandidateItem {
