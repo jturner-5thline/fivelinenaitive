@@ -1233,6 +1233,7 @@ export default function Dashboard() {
                   onToggleSort={toggleSort}
                   filters={filters}
                   onFiltersChange={updateFilters}
+                  detailPanelOpen={showInlineDetail}
                 />
               )}
               </div>
