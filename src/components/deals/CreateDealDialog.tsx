@@ -40,7 +40,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
 import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
 import { useProfile } from '@/hooks/useProfile';
@@ -175,6 +175,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState('');
   const { data: crmCompaniesResult, isLoading: companiesLoading } = useCrmCompanies({ pageSize: 1000 });
+  const createCrmCompany = useCreateCrmCompany();
   const crmCompaniesList = crmCompaniesResult?.data ?? [];
   const filteredCrmCompanies = companySearch.trim()
     ? crmCompaniesList.filter((c: any) => c.name?.toLowerCase().includes(companySearch.toLowerCase())).slice(0, 5)
