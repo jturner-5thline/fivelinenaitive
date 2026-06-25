@@ -1998,6 +1998,16 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (stageValidated.kept.length === 0) continue;
 
+      // Drop create_milestone proposals whose title isn't in the workspace's
+      // configured milestone taxonomy (default_milestones), or that already
+      // exist on the deal. Milestones are curated, not free-form AI ideas.
+      const milestoneFiltered = filterUnconfiguredMilestones(stageValidated.kept, bundle);
+      if (milestoneFiltered.dropped > 0) {
+        result.candidates_filtered += milestoneFiltered.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${milestoneFiltered.dropped} create_milestone proposal(s) for deal=${d.id} — title not in configured default_milestones (or already exists)`);
+      }
+      if (milestoneFiltered.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
