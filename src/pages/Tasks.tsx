@@ -1491,49 +1491,20 @@ export default function Tasks() {
             />
           )}
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 w-8 p-0" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)', color: '#b3bccc' }}>
-                <MoreVertical className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
-              <DropdownMenuLabel className="text-xs text-muted-foreground flex items-center gap-2">
-                <Columns3 className="h-3.5 w-3.5" /> Columns
-              </DropdownMenuLabel>
-              {OPTIONAL_TASK_COLUMNS.map(c => {
-                const checked = visibleTaskColumns.includes(c.id);
-                return (
-                  <DropdownMenuItem
-                    key={c.id}
-                    className="text-xs gap-2"
-                    onSelect={(e) => { e.preventDefault(); toggleTaskColumn(c.id); }}
-                  >
-                    <Checkbox checked={checked} className="h-3.5 w-3.5" />
-                    {c.label}
-                  </DropdownMenuItem>
-                );
-              })}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs gap-2" onClick={handleExportCSV}>
-                <FileDown className="h-3.5 w-3.5" /> Export CSV
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
-                <BookmarkPlus className="h-3.5 w-3.5" /> Save current as preset
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Templates</DropdownMenuLabel>
-              {templates.map(t => (
-                <DropdownMenuItem key={t.id} className="text-xs gap-2" onClick={() => applyTemplate.mutate(t.id)}>
-                  <ClipboardList className="h-3.5 w-3.5" /> {t.name}
-                </DropdownMenuItem>
-              ))}
-              {templates.length === 0 && (
-                <DropdownMenuItem disabled className="text-xs text-muted-foreground">No templates yet</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        </div>
+
+        {/* Search row — full-width, just below the toolbar (per redesign spec) */}
+        <div className="px-6 pt-2 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#94a3b8' }} />
+            <Input
+              value={taskFilters.search}
+              onChange={e => patchFilters({ search: e.target.value })}
+              placeholder="Search tasks or deals…"
+              className="h-9 text-[12px] pl-9 text-white placeholder:text-[#94a3b8] w-full rounded-lg"
+              style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}
+            />
+          </div>
         </div>
 
         {/* Main content */}
