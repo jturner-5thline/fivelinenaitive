@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flag, Calendar, ChevronDown, ListChecks } from 'lucide-react';
+import { Plus, Flag, Calendar, ChevronDown, ListChecks, Building2, User as UserIcon, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
