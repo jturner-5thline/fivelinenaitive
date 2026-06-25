@@ -127,7 +127,7 @@ function computeMetrics(
     if (movedForwardOutOfQual(h.fromStage, h.toStage)) out.qualsHeld++;
     if (h.fromStage === 'demo-access' && h.toStage !== 'demo-access') out.demosHeld++;
     if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') out.demosBooked++;
-    if (h.toStage === 'pilot-agreed' && h.fromStage !== 'pilot-agreed') out.trialsStarted++;
+    if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') out.trialsStarted++;
     if (h.toStage === 'active' && h.fromStage !== 'active') out.converted++;
   }
 
@@ -180,7 +180,7 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
     if (movedForwardOutOfQual(h.fromStage, h.toStage)) row.qualsHeld++;
     if (h.fromStage === 'demo-access' && h.toStage !== 'demo-access') row.demosHeld++;
     if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') row.demosBooked++;
-    if (h.toStage === 'pilot-agreed' && h.fromStage !== 'pilot-agreed') row.trialsStarted++;
+    if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') row.trialsStarted++;
     if (h.toStage === 'active' && h.fromStage !== 'active') row.converted++;
   });
 
@@ -634,7 +634,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         />
         <EmptyStatCard />
         <EmptyStatCard />
-        <StatCard label="Trials Started" value={current.trialsStarted} prev={previous.trialsStarted} />
+        <StatCard label="Demos Started" value={current.trialsStarted} prev={previous.trialsStarted} />
         <StatCard label="Converted" value={current.converted} prev={previous.converted} />
       </div>
 
