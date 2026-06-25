@@ -423,9 +423,9 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </button>
           </div>
         )}
-        <div className="px-0 py-1 pr-1 min-w-0 max-w-full overflow-x-auto">
+        <div className="px-0 py-1 min-w-0 max-w-full overflow-hidden">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <Table className="border-separate border-spacing-y-2">
+            <Table className="border-separate border-spacing-y-2 table-fixed w-full">
               <TableHeader>
                 <TableRow
                   className="rounded-xl [&>th:first-child]:rounded-l-xl [&>th:last-child]:rounded-r-xl hover:bg-transparent [&>th]:border-y [&>th]:border-white/[0.06] [&>th:first-child]:border-l [&>th:last-child]:border-r [&>th]:bg-[linear-gradient(180deg,rgba(22,22,31,0.85),rgba(16,16,24,0.85))] [&>th]:backdrop-blur-md [&>th]:h-11"
