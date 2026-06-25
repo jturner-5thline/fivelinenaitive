@@ -858,7 +858,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               )}
             </div>
-            <DialogFooter className="flex items-center justify-between sm:justify-between gap-3">
+            <DialogFooter className="flex items-center justify-between sm:justify-between gap-3 pt-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
                 {checklistPreview && checklistPreview.items.length > 0 ? (
                   <>
