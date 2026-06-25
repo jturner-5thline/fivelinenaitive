@@ -955,7 +955,7 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-9 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md">
+                  <SelectTrigger className="h-9 w-9 p-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground">
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
@@ -991,14 +991,14 @@ export default function Dashboard() {
                   </SelectContent>
                 </Select>
                 <Button
-                  size="sm"
-                  variant="liquid-glass"
+                  size="icon"
+                  variant="outline"
                   className="h-9 w-9 p-0 shrink-0 rounded-md"
                   onClick={() => setShowMilestones(!showMilestones)}
                   aria-label="Milestones"
                   title="Milestones"
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1" strokeLinejoin="round">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round">
                     <path d="M12 2L22 12L12 22L2 12L12 2Z" />
                   </svg>
                 </Button>
