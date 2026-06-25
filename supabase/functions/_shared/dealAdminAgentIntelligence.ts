@@ -607,6 +607,20 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - NEVER emit a create_followup_task whose title/description is a generic "update stage" reminder (e.g. "Update Stage for {Deal}"). Stage moves belong on update_deal_stage with a concrete proposed stage and evidence.
 - NEVER emit a create_followup_task whose title/description is a generic "follow up" / "follow-up" reminder (e.g. "Follow up on {Deal}", "Follow-up task", "Create follow-up task"). Tasks must describe the concrete action — who does what by when. Vague "follow up" cards are noise.
 
+MILESTONE UPDATE GATE — apply strictly
+- Do NOT propose update_milestone (or create_milestone) for a "Kick-Off" / "Kickoff" / "Kick Off" milestone based on emails, claap recordings, intro/discovery/scoping calls, or any meeting that is merely scheduled. An intro call is NEVER a kick-off.
+- ONLY propose update_milestone for a Kick-Off milestone when ALL of these are true:
+    1. The calendar (deal_calendar_items) contains an event whose title clearly reads as a kick-off for THIS deal — matches /kick[\\s-]?off/i (e.g. "{Deal} Kick Off", "Kickoff Call", "Deal Kick-Off").
+    2. That calendar event's date (and time, if present) is already in the past relative to "now" — the meeting has actually occurred, not just been scheduled.
+    3. The deal has an existing Kick-Off milestone that is not already completed.
+  If any of these is missing, emit NOTHING for the Kick-Off milestone — no update_milestone, no create_milestone, no generic "update milestone" follow-up task.
+- When all three conditions ARE met, emit a single update_milestone with:
+    item_title = "Check off {Deal Name} Kick-Off Milestone"
+    target_object_type = "deal_milestone", target_object_id = the kick-off milestone id
+    proposed_values = { completed: true, status: "completed", completed_at: <calendar event end ISO> }
+    evidence_references citing the calendar event (kind="calendar") that justifies completion.
+- Never confuse an intro/discovery/scoping/first call with a kick-off. Different meeting → no kick-off proposal.
+
 CLAAP RECORDING MAPPING
 - For every Claap recording in the bundle that does NOT already have a matching status_note within 48h: emit one add_status_note synthesizing what happened, who was on it, decisions reached, and next step.
 - Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
@@ -830,6 +844,19 @@ async function callModelForCandidates(
 function synthesizeTitle(it: any): string {
   const t = it?.action_type ?? "Update";
   const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
+  // Kick-off milestone gets a more specific, action-oriented title.
+  if (t === "update_milestone") {
+    const explicit = typeof it?.item_title === "string" ? it.item_title.trim() : "";
+    if (explicit) return explicit;
+    const proposed = it?.proposed_values ?? {};
+    const milestoneTitle: string =
+      (typeof proposed.title === "string" && proposed.title) ||
+      (typeof it?.milestone_title === "string" && it.milestone_title) ||
+      "";
+    if (/kick[\s-]?off/i.test(milestoneTitle) || /kick[\s-]?off/i.test(label)) {
+      return label ? `Check off ${label} Kick-Off Milestone` : "Check off Kick-Off Milestone";
+    }
+  }
   // Deal-name-first title templates: read naturally as
   // "Update Acorn Learning Group Status" rather than
   // "Add Status Note — Acorn Learning Group".
