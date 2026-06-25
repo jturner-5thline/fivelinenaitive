@@ -249,11 +249,10 @@ export default function Dashboard() {
       );
       if (!row) return;
       const containerTop = container.getBoundingClientRect().top;
-      // Align the panel's TOP edge with the clicked tile's BOTTOM edge so
-      // the panel sits BELOW the tile (vertically) rather than overlapping
-      // its right half.
+      // Align the panel's TOP edge with the clicked tile's TOP edge so
+      // the panel sits level with the selected row.
       const rowRect = row.getBoundingClientRect();
-      const rawOffset = rowRect.bottom - containerTop + 12;
+      const rawOffset = rowRect.top - containerTop;
       // Clamp so the aside never extends past the bottom of the left list.
       const maxOffset = Math.max(
         0,
