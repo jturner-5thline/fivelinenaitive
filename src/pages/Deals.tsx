@@ -1161,12 +1161,12 @@ export default function Dashboard() {
                   showInlineDetail && 'relative',
                 )}
                 style={{
-                  animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
-                  paddingRight: showInlineDetail
-                    ? 'calc(clamp(546px, 49.4vw, 832px) + 1.25rem)'
-                    : undefined,
-                  transition: 'padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
+                   animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
+                   paddingRight: showInlineDetail
+                     ? 'calc(clamp(380px, 44vw, 720px) + 1.25rem)'
+                     : undefined,
+                   transition: 'padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                 }}
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
@@ -1251,7 +1251,7 @@ export default function Dashboard() {
                     transition: 'top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
                     background: 'linear-gradient(180deg, #13131c, #0e0e15)',
                   }}
-                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(546px,49.4vw,832px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl z-10"
+                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(380px,44vw,720px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl z-10"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.06]">
