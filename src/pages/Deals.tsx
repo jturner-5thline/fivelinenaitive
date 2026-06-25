@@ -1104,7 +1104,6 @@ export default function Dashboard() {
                    paddingRight: showInlineDetail
                      ? 'calc(clamp(640px, 70%, 1280px) + 1.25rem)'
                      : undefined,
-                   transition: 'padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
                  }}
               >
               <div
@@ -1188,10 +1187,10 @@ export default function Dashboard() {
                   ref={detailAsideRef}
                   style={{
                     top: `${detailOffset}px`,
-                    transition: 'top 350ms cubic-bezier(0.4, 0, 0.2, 1)',
                     background: 'linear-gradient(180deg, #13131c, #0e0e15)',
+                    willChange: 'transform, opacity',
                   }}
-                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(640px,70%,1280px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl z-10"
+                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(640px,70%,1280px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] z-10"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
