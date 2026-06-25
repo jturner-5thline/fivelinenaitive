@@ -357,16 +357,12 @@ export function TaskListView({
                     gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center gap-1">
                     {isCollapsed
                       ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
                       : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
-                  </div>
-                  <div className="flex items-center justify-center">
                     <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accentColor }} />
                   </div>
-                  <div aria-hidden />
-                  <div aria-hidden />
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-[11px] font-semibold uppercase tracking-wide truncate" style={{ color: '#cfd5e0' }}>
                       {group.label}
@@ -449,8 +445,8 @@ export function TaskListView({
                               className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
                               style={gridStyle}
                             >
-                              {/* 4 leading utility columns */}
-                              <div /><div /><div /><div />
+                              {/* leading complete-toggle column */}
+                              <div />
                               {/* Title input occupies the task-name column */}
                               <Input
                                 ref={newTaskRef as any}
