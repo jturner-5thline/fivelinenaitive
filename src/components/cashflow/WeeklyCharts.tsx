@@ -286,7 +286,11 @@ export const WeeklyCharts = memo(function WeeklyCharts({
         const ro = new ResizeObserver(() => {
           if (!wrap.isConnected || !canvas.isConnected) return;
           try {
-            chart.resize();
+            // Pass explicit parent dimensions so the canvas tracks the
+            // wrapper width even when responsive:false. Without this, the
+            // canvas keeps its initial intrinsic width and visually overflows
+            // when the container shrinks (e.g. narrower Daily Rundown panel).
+            chart.resize(wrap.clientWidth, wrap.clientHeight);
           } catch {
             /* swallow: chart may be torn down or detached */
           }
