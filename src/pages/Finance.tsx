@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { createPortal } from "react-dom";
 
 const SECTION_LINKS = [
   { key: "dashboards", label: "Dashboards", icon: BarChart3 },
@@ -34,7 +35,16 @@ function FinanceHeader() {
 
   return (
     <div className="flex items-center gap-4 flex-nowrap min-w-0">
-      <h1 className="text-xl font-semibold leading-none shrink-0">Finance</h1>
+      {typeof document !== "undefined" &&
+        createPortal(
+          <h1
+            className="fixed top-[22px] left-[80px] z-[1001] text-base font-semibold leading-none text-foreground pointer-events-none"
+            aria-label="Finance"
+          >
+            Finance
+          </h1>,
+          document.body,
+        )}
       <nav
         className="flex items-center gap-1 flex-nowrap overflow-x-auto min-w-0"
         aria-label="Finance sections"
