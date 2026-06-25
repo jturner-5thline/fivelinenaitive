@@ -696,7 +696,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </PopoverTrigger>
                     <PopoverContent
                       container={dialogContentRef.current}
-                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      className="w-[var(--radix-popover-trigger-width)] p-0 popup-shell-surface dark text-foreground border-white/10"
                       align="start"
                       side="bottom"
                       sideOffset={4}
