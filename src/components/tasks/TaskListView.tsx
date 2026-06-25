@@ -63,7 +63,7 @@ export const OPTIONAL_TASK_COLUMNS = [
 export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 
 /** Default columns shown to first-time users — fast triage view. */
-export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
+export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['deal', 'owner', 'due'];
 
 const LEADING_TEMPLATE = '20px 20px 20px 20px minmax(240px,1fr)';
 const TRAILING_TEMPLATE = '32px';
@@ -293,17 +293,7 @@ export function TaskListView({
           style={gridStyle}
         >
           <div aria-hidden />
-          <div
-            className="cursor-pointer flex items-center justify-center"
-            onClick={onSelectAll}
-            title="Select all (Ctrl+A)"
-          >
-            <Checkbox
-              checked={selectedTaskIds && selectedTaskIds.size > 0 && selectedTaskIds.size === tasks.length}
-              onCheckedChange={() => onSelectAll?.()}
-              className="h-3.5 w-3.5"
-            />
-          </div>
+          <div aria-hidden />
           <div aria-hidden />
           <div aria-hidden />
           <div className="truncate">Task name</div>
@@ -773,7 +763,7 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         'bg-white/[0.025] dark:bg-white/[0.025] border-white/[0.06] backdrop-blur-md',
         'hover:bg-white/[0.045] hover:border-white/[0.10]',
         'shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset]',
-        isSelected && '!bg-[rgba(126,184,247,0.09)] !border-[rgba(126,184,247,0.25)]',
+        isSelected && '!bg-[rgba(99,102,241,0.10)] !border-[rgba(99,102,241,0.35)] !border-l-[3px] !border-l-[#6366f1]',
         isMultiSelected && '!bg-[rgba(126,184,247,0.06)] !border-[rgba(126,184,247,0.2)]',
         isFocused && 'ring-1 ring-[rgba(126,184,247,0.35)]',
         'focus:outline-none focus-visible:ring-1 focus-visible:ring-[rgba(126,184,247,0.45)]',
