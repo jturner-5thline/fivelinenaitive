@@ -1163,7 +1163,7 @@ export default function Dashboard() {
                 style={{
                    animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
                    paddingRight: showInlineDetail
-                     ? 'calc(clamp(380px, 44vw, 720px) + 1.25rem)'
+                     ? 'calc(clamp(640px, 70%, 1280px) + 1.25rem)'
                      : undefined,
                    transition: 'padding-right 300ms cubic-bezier(0.4, 0, 0.2, 1)',
                  }}
