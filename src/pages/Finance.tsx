@@ -83,6 +83,11 @@ function FinanceHeader() {
           })}
         </DropdownMenuContent>
       </DropdownMenu>
+      {/* Portal target — DashboardModule renders Cash Flow / Sales & BD ROI / Sales Model tabs here */}
+      <div
+        id="finance-header-tabs"
+        className="flex items-center gap-1 flex-nowrap shrink-0"
+      />
       {/* Portal target — DashboardModule renders Charts/Export/Team Config/Views here */}
       <div
         id="finance-header-actions"

@@ -48,12 +48,12 @@ function TabSkeleton() {
  * (`#finance-header-actions`). Falls back to inline rendering if the slot
  * isn't mounted (e.g. DashboardModule used outside the Finance shell).
  */
-function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+function HeaderPortal({ children, slotId }: { children: React.ReactNode; slotId: string }) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
     let cancelled = false;
     const find = () => {
-      const el = document.getElementById('finance-header-actions');
+      const el = document.getElementById(slotId);
       if (el) {
         if (!cancelled) setTarget(el);
         return true;
@@ -71,9 +71,16 @@ function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, []);
+  }, [slotId]);
   if (!target) return null;
   return createPortal(<>{children}</>, target);
+}
+
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  return <HeaderPortal slotId="finance-header-actions">{children}</HeaderPortal>;
+}
+function HeaderTabsPortal({ children }: { children: React.ReactNode }) {
+  return <HeaderPortal slotId="finance-header-tabs">{children}</HeaderPortal>;
 }
 
 // Smart default: pick date range based on current month
@@ -212,11 +219,38 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
       {/* Global Filters */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Tabs value={activeTab} onValueChange={setDashboardTab}>
+          <HeaderTabsPortal>
+            <TabsList className="h-8 bg-transparent p-0 gap-1">
+              {isTabVisible('cashflow', t.cashflow) && (
+                <TabsTrigger
+                  value="cashflow"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Cash Flow
+                </TabsTrigger>
+              )}
+              {isTabVisible('salesBdRoi') && (
+                <TabsTrigger
+                  value="salesBdRoi"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Sales & BD ROI
+                </TabsTrigger>
+              )}
+              {isTabVisible('salesModel') && (
+                <TabsTrigger
+                  value="salesModel"
+                  className="h-8 px-2.5 text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20 border border-transparent rounded-md"
+                >
+                  Sales Model
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </HeaderTabsPortal>
           <TabsList>
             {isTabVisible('overview', t.overview) && <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>}
             {isTabVisible('pnl', t.pnl) && <TabsTrigger value="pnl" className="text-xs">P&L</TabsTrigger>}
             {isTabVisible('balance', t.balance) && <TabsTrigger value="balance" className="text-xs">Balance Sheet</TabsTrigger>}
-            {isTabVisible('cashflow', t.cashflow) && <TabsTrigger value="cashflow" className="text-xs">Cash Flow</TabsTrigger>}
             {isTabVisible('scenarios', t.scenarios) && <TabsTrigger value="scenarios" className="text-xs">Scenarios</TabsTrigger>}
             {isTabVisible('collaborate', t.collaborate) && (
               <TabsTrigger value="collaborate" className="text-xs gap-1.5 relative">
@@ -230,8 +264,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
                 Board Pack
               </TabsTrigger>
             )}
-            {isTabVisible('salesBdRoi') && <TabsTrigger value="salesBdRoi" className="text-xs">Sales & BD ROI</TabsTrigger>}
-            {isTabVisible('salesModel') && <TabsTrigger value="salesModel" className="text-xs">Sales Model</TabsTrigger>}
           </TabsList>
         </Tabs>
         <div className="flex items-center gap-2">
