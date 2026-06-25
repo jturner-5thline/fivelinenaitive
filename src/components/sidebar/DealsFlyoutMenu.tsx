@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { Briefcase, ChevronRight } from 'lucide-react';
+import { Briefcase, ChevronRight, Landmark, Handshake } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenuItem,
@@ -15,6 +15,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { useRecentDealIds } from '@/hooks/useRecentDeals';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import type { Deal } from '@/types/deal';
 
 const OPEN_DELAY = 120;
@@ -41,6 +42,7 @@ export function DealsFlyoutMenu() {
   const { deals } = useDealsContext();
   const { activePipelineId, activePipeline } = usePipelineContext();
   const recentDealIds = useRecentDealIds();
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
 
   const [open, setOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
@@ -56,10 +58,22 @@ export function DealsFlyoutMenu() {
   const showExpanded = state === 'expanded' || (state === 'collapsed' && isHovering);
   const isDealsRoute = location.pathname === '/deals';
 
+  /** 5th Line accounts get a fixed 3-link flyout (Debt / FinServ / naitive)
+   *  instead of the "recently opened deals" list. */
+  type FifthLineLink = { id: string; label: string; to: string; Icon: typeof Briefcase };
+  const fifthLineLinks: FifthLineLink[] = useMemo(
+    () => [
+      { id: 'debt', label: 'Debt', to: '/deals', Icon: Briefcase },
+      { id: 'finserv', label: 'FinServ', to: '/finserv', Icon: Landmark },
+      { id: 'naitive', label: 'naitive', to: '/naitive-pipeline', Icon: Handshake },
+    ],
+    [],
+  );
+
   /** The user's 5 most recently opened deals (most recent first), resolved
    *  against the loaded deals list. Excluded test deals and deals the user
    *  no longer has access to are skipped. */
-  const activeDeals = useMemo<Deal[]>(() => {
+  const recentDeals = useMemo<Deal[]>(() => {
     if (!recentDealIds.length || !deals?.length) return [];
     const byId = new Map(deals.map((d) => [d.id, d]));
     const out: Deal[] = [];
@@ -73,7 +87,8 @@ export function DealsFlyoutMenu() {
     return out;
   }, [recentDealIds, deals]);
 
-  const hasDeals = activeDeals.length > 0;
+  const itemCount = isFifthLine ? fifthLineLinks.length : recentDeals.length;
+  const hasDeals = itemCount > 0;
 
   const clearTimers = () => {
     if (openTimer.current) clearTimeout(openTimer.current);
@@ -95,8 +110,8 @@ export function DealsFlyoutMenu() {
   }, [location.pathname, searchParams]);
 
   useEffect(() => {
-    itemRefs.current = itemRefs.current.slice(0, activeDeals.length);
-  }, [activeDeals.length]);
+    itemRefs.current = itemRefs.current.slice(0, itemCount);
+  }, [itemCount]);
 
   useEffect(() => {
     if (!open) {
@@ -104,14 +119,16 @@ export function DealsFlyoutMenu() {
       return;
     }
     if (openedViaKeyboardRef.current) {
-      const activeIdx = activeDeals.findIndex((d) => d.id === selectedDealId);
+      const activeIdx = isFifthLine
+        ? -1
+        : recentDeals.findIndex((d) => d.id === selectedDealId);
       const startIdx = activeIdx >= 0 ? activeIdx : 0;
       setFocusedIndex(startIdx);
       requestAnimationFrame(() => {
         itemRefs.current[startIdx]?.focus();
       });
     }
-  }, [open, activeDeals, selectedDealId]);
+  }, [open, recentDeals, selectedDealId, isFifthLine]);
 
   useEffect(() => {
     if (!open || focusedIndex < 0) return;
@@ -168,6 +185,13 @@ export function DealsFlyoutMenu() {
     navigate(`/deal/${dealId}`);
   };
 
+  const handleFifthLineLinkClick = (to: string) => {
+    clearTimers();
+    openedViaKeyboardRef.current = false;
+    flushSync(() => setOpen(false));
+    navigate(to);
+  };
+
   const handleSubItemKeyDown = (
     e: KeyboardEvent<HTMLButtonElement>,
     index: number,
@@ -175,11 +199,11 @@ export function DealsFlyoutMenu() {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setFocusedIndex((index + 1) % activeDeals.length);
+        setFocusedIndex((index + 1) % itemCount);
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setFocusedIndex((index - 1 + activeDeals.length) % activeDeals.length);
+        setFocusedIndex((index - 1 + itemCount) % itemCount);
         break;
       case 'Home':
         e.preventDefault();
@@ -187,7 +211,7 @@ export function DealsFlyoutMenu() {
         break;
       case 'End':
         e.preventDefault();
-        setFocusedIndex(activeDeals.length - 1);
+        setFocusedIndex(itemCount - 1);
         break;
       case 'ArrowLeft':
       case 'Escape':
