@@ -284,6 +284,25 @@ function nylasHeaders() {
   };
 }
 
+/**
+ * Wrap fetch with an AbortController-based timeout so a single hung Nylas
+ * request can't pin the edge function until the 150s platform IDLE_TIMEOUT.
+ * Default 25s mirrors the existing list-action ceiling.
+ */
+async function nylasFetch(
+  input: string | URL,
+  init: RequestInit = {},
+  timeoutMs = 25_000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function getGrantId(supabase: any, userId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from("gmail_tokens")
