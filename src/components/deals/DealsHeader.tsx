@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles, UserRound } from 'lucide-react';
 
-import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
+// HeaderNotificationPreview removed: notifications are merged into the Flag system.
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -576,9 +576,6 @@ export function DealsHeader() {
           </div>
         </div>
       </div>
-      {!isHeaderOverlayOpen && (
-        <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
-      )}
       {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
           <DashboardModal
