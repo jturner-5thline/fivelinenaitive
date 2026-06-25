@@ -65,7 +65,7 @@ export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 /** Default columns shown to first-time users — fast triage view. */
 export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['deal', 'owner', 'due'];
 
-const LEADING_TEMPLATE = '20px 20px 20px 20px minmax(240px,1fr)';
+const LEADING_TEMPLATE = '32px minmax(280px,1fr)';
 const TRAILING_TEMPLATE = '32px';
 
 /** Build the gridTemplateColumns CSS value from the active column set. */
@@ -83,7 +83,7 @@ function getVisibleColumns(visible: Set<TaskColumnId>) {
 }
 
 /** Locked row height — every data row, header row, and add-row uses this. */
-const TASK_ROW_MIN_H = 'min-h-[44px]';
+const TASK_ROW_MIN_H = 'min-h-[62px]';
 /** Pill column constants (kept as className tokens). */
 const PRIORITY_PILL_MIN_W = 'min-w-[72px]';
 const STATUS_PILL_MIN_W = 'min-w-[96px]';
