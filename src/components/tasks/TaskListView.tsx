@@ -52,9 +52,9 @@ import {
  * reveal more columns from the toolbar.
  */
 export const OPTIONAL_TASK_COLUMNS = [
+  { id: 'deal',     label: 'Deal',          template: '180px' },
   { id: 'owner',    label: 'Owner',         template: '140px' },
   { id: 'collab',   label: 'Collaborators', template: '60px'  },
-  { id: 'deal',     label: 'Deal',          template: '180px' },
   { id: 'due',      label: 'Due date',      template: '120px' },
   { id: 'priority', label: 'Priority',      template: '100px' },
   { id: 'status',   label: 'Status',        template: '120px' },
