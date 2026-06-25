@@ -457,7 +457,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
         <DialogTrigger asChild>
           {trigger || defaultTrigger}
         </DialogTrigger>
-        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} sm:max-w-[720px] max-h-[95vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20 p-4 create-deal-compact`}>
+        <DialogContent ref={dialogContentRef} className={`${useCarouselSwipeClass()} popup-shell-surface dark sm:max-w-[720px] max-h-[95vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20 p-4 create-deal-compact text-foreground`}>
           <DialogHeader className="space-y-0 pb-1">
             <DialogTitle className="text-base">Create New Deal</DialogTitle>
           </DialogHeader>
