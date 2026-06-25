@@ -44,6 +44,8 @@ export interface NormalizedClaapRecording {
   recording_url: string | null;
   chapters: unknown[];
   raw: unknown;
+  ai_fields?: Array<{ key: string; label: string; value: string; type: string }>;
+  insight_templates_present?: boolean;
 }
 
 /**
@@ -81,7 +83,11 @@ export function extractClaapExternalId(input: string | null | undefined): string
 export async function claapGetRecording(externalId: string): Promise<NormalizedClaapRecording | null> {
   const token = getClaapToken();
   if (!token) throw new Error("CLAAP_API_TOKEN not configured");
-  const resp = await fetch(`${CLAAP_API_BASE}/recordings/${encodeURIComponent(externalId)}`, {
+  // Opt into the new flat aiFields format. Legacy insightTemplates is still
+  // returned alongside during the rollout window.
+  const url = new URL(`${CLAAP_API_BASE}/recordings/${encodeURIComponent(externalId)}`);
+  url.searchParams.set("returnAiFields", "true");
+  const resp = await fetch(url.toString(), {
     headers: authHeaders(token),
   });
   if (resp.status === 404) {
@@ -95,6 +101,14 @@ export async function claapGetRecording(externalId: string): Promise<NormalizedC
   const json = await resp.json();
   const r = json?.result?.recording ?? json?.recording ?? json;
   if (!r || typeof r !== "object") return null;
+  console.log(
+    "[claap] getRecording",
+    externalId,
+    "aiFields=",
+    Array.isArray((r as any)?.aiFields) ? (r as any).aiFields.length : "absent",
+    "insightTemplates=",
+    Array.isArray((r as any)?.insightTemplates) ? (r as any).insightTemplates.length : "absent",
+  );
   return normalizeRecording(r);
 }
 
@@ -203,6 +217,8 @@ function normalizeRecording(r: any): NormalizedClaapRecording {
     recording_url,
     chapters,
     raw: r,
+    ai_fields: Array.isArray(r?.aiFields) ? r.aiFields : undefined,
+    insight_templates_present: Array.isArray(r?.insightTemplates) && r.insightTemplates.length > 0,
   };
 }
 
@@ -212,6 +228,7 @@ export async function claapListRecordings(opts: { since?: string; limit?: number
   const url = new URL(`${CLAAP_API_BASE}/recordings`);
   if (opts.since) url.searchParams.set("since", opts.since);
   if (opts.limit) url.searchParams.set("limit", String(opts.limit));
+  url.searchParams.set("returnAiFields", "true");
   const resp = await fetch(url.toString(), { headers: authHeaders(token) });
   if (!resp.ok) {
     const body = await resp.text();
