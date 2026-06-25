@@ -52,6 +52,10 @@ interface DealsListProps {
   onToggleSort?: (field: SortField) => void;
   filters?: DealFilters;
   onFiltersChange?: (next: Partial<DealFilters>) => void;
+  /** When true, the right-side detail panel is open: collapse the list to
+   *  only Deal Name (company) + Deal Amount (value) and hide the Actions
+   *  column so the remaining row reads cleanly beside the panel. */
+  detailPanelOpen?: boolean;
 }
 
 /** Map a column id to the SortField it should drive (or null if not sortable). */
@@ -257,7 +261,7 @@ function clearAllColumnFilters(): Partial<DealFilters> {
   };
 }
 
-export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange }: DealsListProps) {
+export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, groupBy = 'status', sortField, sortDirection, viewMode = 'grid', expandAllSignal, collapseAllSignal, collapsedGroups: collapsedGroupsProp, onCollapsedGroupsChange, onToggleSort, filters, onFiltersChange, detailPanelOpen = false }: DealsListProps) {
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const isControlled = collapsedGroupsProp !== undefined;
   const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
@@ -289,6 +293,12 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
   }, [collapseAllSignal]);
   const [selectedDealIds, setSelectedDealIds] = useState<Set<string>>(new Set());
   const { columnOrder, activeColumns, visibleColumns, updateColumnOrder, toggleColumnVisibility } = useDealListColumnOrder();
+  // When the right-hand detail panel is open, collapse the table to just
+  // Deal Name (company) + Deal Amount (value) so it stays clean and the
+  // selected row remains fully visible in the reduced left pane.
+  const renderedActiveColumns = detailPanelOpen
+    ? (activeColumns.filter((c) => c === 'company' || c === 'value') as typeof activeColumns)
+    : activeColumns;
   
   // Fetch FLEx engagement scores for all visible deals
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
@@ -436,8 +446,8 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                       onCheckedChange={toggleSelectAll}
                     />
                   </TableHead>
-                  <SortableContext items={activeColumns} strategy={horizontalListSortingStrategy}>
-                    {activeColumns.map((colId) => (
+                  <SortableContext items={renderedActiveColumns} strategy={horizontalListSortingStrategy}>
+                    {renderedActiveColumns.map((colId) => (
                       <SortableFilterableHead
                         key={colId}
                         id={colId}
@@ -451,7 +461,9 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                       />
                     ))}
                   </SortableContext>
-                  <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
+                  {!detailPanelOpen && (
+                    <TableHead className="w-[100px] text-[10px] font-mono uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -464,10 +476,11 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
                     onMarkReviewed={onMarkReviewed}
                     onToggleFlag={onToggleFlag}
                     flexEngagement={flexEngagementScores?.get(deal.id)}
-                    columnOrder={activeColumns}
+                    columnOrder={renderedActiveColumns}
                     notificationCount={flexNotificationCounts[deal.id] || 0}
                     isSelected={selectedDealIds.has(deal.id)}
                     onToggleSelect={toggleSelectDeal}
+                    hideActionsColumn={detailPanelOpen}
                   />
                 ))}
               </TableBody>
