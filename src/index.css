@@ -1839,3 +1839,38 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 ) :is(.card:hover, [data-card]:hover, .task-row:hover, .queue-item:hover) {
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PLATFORM-WIDE LIGHT-GREY SURFACE STANDARDIZATION
+   Any in-page surface that previously rendered as a light/washed grey
+   (cards, panels, toolbars, headers, list shells, table wrappers, etc.)
+   is rebased onto the same Deal Details pop-up dark gradient. Scoped to
+   common shadcn / Tailwind light-surface utility classes so we do not
+   touch typography, layout, spacing, or non-surface visuals.
+   ───────────────────────────────────────────────────────────────────────── */
+.bg-card,
+.bg-muted,
+.bg-secondary,
+.bg-accent,
+.bg-popover,
+.bg-background,
+.bg-slate-50, .bg-slate-100, .bg-slate-200,
+.bg-gray-50, .bg-gray-100, .bg-gray-200,
+.bg-zinc-50, .bg-zinc-100, .bg-zinc-200,
+.bg-neutral-50, .bg-neutral-100, .bg-neutral-200,
+.bg-stone-50, .bg-stone-100, .bg-stone-200 {
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+  color: hsl(0 0% 96%);
+}
+
+/* Subtle borders on these surfaces so they don't visually collapse. */
+.bg-card, .bg-muted, .bg-secondary, .bg-accent, .bg-popover {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Buttons that intentionally use these utility tints must keep their own
+   variant treatment — the Button component sets explicit gradient styles
+   so the rules above don't apply to it (no .bg-card on buttons). Inputs
+   and form fields keep their existing dark token styles. */
