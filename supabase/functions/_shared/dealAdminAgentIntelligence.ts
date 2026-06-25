@@ -844,6 +844,19 @@ async function callModelForCandidates(
 function synthesizeTitle(it: any): string {
   const t = it?.action_type ?? "Update";
   const label = it?.linked_entity_label || it?.entity_label || it?.label || "";
+  // Kick-off milestone gets a more specific, action-oriented title.
+  if (t === "update_milestone") {
+    const explicit = typeof it?.item_title === "string" ? it.item_title.trim() : "";
+    if (explicit) return explicit;
+    const proposed = it?.proposed_values ?? {};
+    const milestoneTitle: string =
+      (typeof proposed.title === "string" && proposed.title) ||
+      (typeof it?.milestone_title === "string" && it.milestone_title) ||
+      "";
+    if (/kick[\s-]?off/i.test(milestoneTitle) || /kick[\s-]?off/i.test(label)) {
+      return label ? `Check off ${label} Kick-Off Milestone` : "Check off Kick-Off Milestone";
+    }
+  }
   // Deal-name-first title templates: read naturally as
   // "Update Acorn Learning Group Status" rather than
   // "Add Status Note — Acorn Learning Group".
