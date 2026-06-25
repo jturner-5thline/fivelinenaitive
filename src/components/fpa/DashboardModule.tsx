@@ -171,15 +171,17 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
       {/* Top-right header actions — portaled into the Finance page header. */}
       <HeaderActionsPortal>
         {e.chartConfigButton && (
-          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setChartConfigOpen(true)}>
-            <Settings2 className="h-3.5 w-3.5" /> Charts
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setChartConfigOpen(true)} aria-label="Charts" title="Charts">
+            <Settings2 className="h-3.5 w-3.5" />
           </Button>
         )}
         {e.exportButton && (
           <Button
             variant="outline"
-            size="sm"
-            className="h-8 gap-1 text-xs"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Export"
+            title="Export"
             onClick={() => {
               // On the Cash Flow tab, this becomes the SUPERSET export (KPI
               // row + filters line + two charts + weekly cash-flow table).
@@ -189,14 +191,14 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               }
             }}
           >
-            <Download className="h-3.5 w-3.5" /> Export
+            <Download className="h-3.5 w-3.5" />
           </Button>
         )}
         {isAdmin && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setTeamConfigOpen(true)}>
-                <Shield className="h-3.5 w-3.5" /> Team Config
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setTeamConfigOpen(true)} aria-label="Team Config" title="Team Config">
+                <Shield className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
