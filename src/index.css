@@ -1702,3 +1702,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact svg {
   color: rgba(255,255,255,0.6);
 }
+
+/* Company dropdown panel matches dark modal */
+.create-deal-compact ~ [data-radix-popper-content-wrapper] .popup-shell-surface button:hover,
+.popup-shell-surface.dark button:hover {
+  background-color: rgba(255,255,255,0.06);
+}
