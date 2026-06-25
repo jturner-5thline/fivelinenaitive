@@ -1686,6 +1686,13 @@ serve(async (req: Request): Promise<Response> => {
         const capped = ids.slice(0, 200);
         const stateFetchedAt = new Date().toISOString();
 
+        // Hard overall deadline so sync_state can never pin the function
+        // until the 150s platform IDLE_TIMEOUT. Per-call timeout is also
+        // tightened from the default 25s to 8s — these are cheap metadata
+        // reads and slow ones are better skipped than blocking the batch.
+        const SYNC_DEADLINE_MS = 60_000;
+        const deadline = Date.now() + SYNC_DEADLINE_MS;
+
         // Fetch each message's metadata in parallel with a small concurrency
         // limit so we don't overwhelm Nylas.
         const CONCURRENCY = 8;
@@ -1693,7 +1700,8 @@ serve(async (req: Request): Promise<Response> => {
 
         async function fetchOne(id: string) {
           try {
-            const r = await nylasFetch(`${baseUrl}/messages/${id}?fields=standard`, { headers });
+            if (Date.now() > deadline) return;
+            const r = await nylasFetch(`${baseUrl}/messages/${id}?fields=standard`, { headers }, 8_000);
             if (r.status === 404) {
               states.push({ id, is_read: true, is_starred: false, folders: [], missing: true });
               return;
