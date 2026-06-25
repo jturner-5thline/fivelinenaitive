@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flag, Calendar, ChevronDown, ListChecks } from 'lucide-react';
+import { Plus, Flag, Calendar, ChevronDown, ListChecks, Building2, User as UserIcon, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,6 +84,32 @@ interface CreateDealDialogProps {
   initialValues?: CreateDealInitialValues;
 }
 
+function LabelWithBadge({
+  children,
+  htmlFor,
+  required,
+  badge,
+}: {
+  children: React.ReactNode;
+  htmlFor?: string;
+  required?: boolean;
+  badge?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label htmlFor={htmlFor} className="text-sm">
+        {children}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </Label>
+      {badge ? (
+        <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          {badge}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, initialValues }: CreateDealDialogProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -140,6 +166,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [showChecklistPreview, setShowChecklistPreview] = useState(false);
   const [checklistPreview, setChecklistPreview] = useState<ChecklistPreview | null>(null);
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
+
+  // Visual-only state for the new Company combobox row in the redesigned
+  // layout. The submission still uses `dealName` as the company string —
+  // this field is presentational and does not change createDeal payloads.
+  const [companyNameVisual, setCompanyNameVisual] = useState('');
+  const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
 
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
@@ -426,19 +458,20 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-3 py-3">
-              {/* Row 1: Deal Name + Deal Amount */}
+              {/* Row 1: Deal name | Deal amount */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="dealName">Deal Name <span className="text-destructive">*</span></Label>
+                  <LabelWithBadge htmlFor="dealName" required>Deal name</LabelWithBadge>
                   <Input
                     id="dealName"
                     value={dealName}
                     onChange={(e) => setDealName(e.target.value)}
                     placeholder="Enter deal name"
+                    className="rounded-lg"
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="dealAmount">Deal Amount <span className="text-destructive">*</span></Label>
+                  <LabelWithBadge htmlFor="dealAmount" required>Deal amount</LabelWithBadge>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                     <Input
@@ -448,89 +481,153 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       value={dealAmount}
                       onChange={handleAmountChange}
                       placeholder="0"
-                      className="pl-7"
+                      className="pl-7 rounded-lg"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Row 2: Deal Type + Deal Stage */}
-              <div className={`grid gap-3 ${showType ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {showType && (
-                <div className="grid gap-1.5">
-                  <Label>Deal Type <span className="text-destructive">*</span></Label>
-                  <Popover modal open={dealTypesOpen} onOpenChange={setDealTypesOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        className={`w-full justify-between font-normal h-9 ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
-                      >
-                        {selectedDealTypes.length > 0 ? (
-                          <span className="flex flex-wrap gap-1 overflow-hidden">
-                            {selectedDealTypes.map(typeId => {
-                              const typeConfig = availableDealTypes.find(t => t.id === typeId);
-                              return typeConfig ? (
-                                <Badge key={typeId} variant="secondary" className="text-xs">
-                                  {typeConfig.label}
-                                </Badge>
-                              ) : null;
-                            })}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">Select types</span>
-                        )}
-                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      container={dialogContentRef.current}
-                      className=" w-[var(--radix-popover-trigger-width)] p-0"
-                      align="start"
-                      onOpenAutoFocus={(e) => e.preventDefault()}
-                    >
-                      <Command>
-                        <CommandList>
-                          {isLoadingDealTypes && availableDealTypes.length === 0 ? (
-                            <div className="px-3 py-2 text-xs text-muted-foreground">
-                              Loading deal types…
-                            </div>
-                          ) : availableDealTypes.length === 0 ? (
-                            <CommandEmpty className="py-3 text-xs text-muted-foreground">
-                              No deal types available — contact an admin.
-                            </CommandEmpty>
-                          ) : (
-                            <CommandGroup>
-                              {availableDealTypes.map((type) => {
-                                const isSelected = selectedDealTypes.includes(type.id);
-                                return (
-                                  <CommandItem
-                                    key={type.id}
-                                    value={type.label}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                    }}
-                                    onSelect={() => handleDealTypeSelect(type.id)}
-                                    className="gap-2"
-                                  >
-                                    <Checkbox checked={isSelected} className="pointer-events-none" />
-                                    <span>{type.label}</span>
-                                  </CommandItem>
-                                );
+              {/* Row 2: Deal type | Pipeline */}
+              <div className="grid grid-cols-2 gap-3">
+                {showType ? (
+                  <div className="grid gap-1.5">
+                    <LabelWithBadge required>Deal type</LabelWithBadge>
+                    <Popover modal open={dealTypesOpen} onOpenChange={setDealTypesOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          type="button"
+                          className={`w-full justify-between font-normal h-9 rounded-lg ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
+                        >
+                          {selectedDealTypes.length > 0 ? (
+                            <span className="flex flex-wrap gap-1 overflow-hidden">
+                              {selectedDealTypes.map(typeId => {
+                                const typeConfig = availableDealTypes.find(t => t.id === typeId);
+                                return typeConfig ? (
+                                  <Badge key={typeId} variant="secondary" className="text-xs">
+                                    {typeConfig.label}
+                                  </Badge>
+                                ) : null;
                               })}
-                            </CommandGroup>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">Select types</span>
                           )}
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                )}
+                          <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        container={dialogContentRef.current}
+                        className=" w-[var(--radix-popover-trigger-width)] p-0"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                      >
+                        <Command>
+                          <CommandList>
+                            {isLoadingDealTypes && availableDealTypes.length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-muted-foreground">Loading deal types…</div>
+                            ) : availableDealTypes.length === 0 ? (
+                              <CommandEmpty className="py-3 text-xs text-muted-foreground">
+                                No deal types available — contact an admin.
+                              </CommandEmpty>
+                            ) : (
+                              <CommandGroup>
+                                {availableDealTypes.map((type) => {
+                                  const isSelected = selectedDealTypes.includes(type.id);
+                                  return (
+                                    <CommandItem
+                                      key={type.id}
+                                      value={type.label}
+                                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                      onSelect={() => handleDealTypeSelect(type.id)}
+                                      className="gap-2"
+                                    >
+                                      <Checkbox checked={isSelected} className="pointer-events-none" />
+                                      <span>{type.label}</span>
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            )}
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ) : <div />}
                 <div className="grid gap-1.5">
-                  <Label htmlFor="dealStage">Deal Stage <span className="text-destructive">*</span></Label>
+                  <LabelWithBadge>Pipeline</LabelWithBadge>
+                  <Select value={selectedPipelineId} onValueChange={(val) => {
+                    setSelectedPipelineId(val);
+                    const pipeline = pipelines.find(p => p.id === val);
+                    if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
+                      setDealStage(pipeline.stages[0]?.id || '');
+                    }
+                  }}>
+                    <SelectTrigger className="rounded-lg">
+                      <SelectValue placeholder="Select pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Row 3: Deal owner | Deal originator (referral source) */}
+              <div className="grid grid-cols-2 gap-3">
+                {showOwner ? (
+                  <div className="grid gap-1.5">
+                    <LabelWithBadge htmlFor="dealOwner" badge="renamed">Deal owner</LabelWithBadge>
+                    <Select value={dealOwner} onValueChange={setDealOwner}>
+                      <SelectTrigger className="rounded-lg">
+                        <SelectValue placeholder="Select owner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : <div />}
+                {showReferral ? (
+                  <div className="grid gap-1.5">
+                    <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
+                    <Popover modal>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between font-normal rounded-lg" type="button">
+                          <span className={referralName.trim() ? 'text-foreground' : 'text-muted-foreground'}>
+                            {referralName.trim()
+                              ? `${referralName}${referralEmail.trim() ? ` · ${referralEmail}` : ''}`
+                              : 'Select originator (optional)'}
+                          </span>
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="referralName" className="text-xs">Name</Label>
+                          <Input id="referralName" value={referralName} onChange={(e) => setReferralName(e.target.value)} placeholder="e.g., John Smith" />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label htmlFor="referralEmail" className="text-xs">Email</Label>
+                          <Input id="referralEmail" type="email" value={referralEmail} onChange={(e) => setReferralEmail(e.target.value)} placeholder="e.g., john@example.com" />
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                ) : <div />}
+              </div>
+
+              {/* Row 4: Deal stage | Deal status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <LabelWithBadge htmlFor="dealStage" required badge="grouped">Deal stage</LabelWithBadge>
                   <Select value={dealStage} onValueChange={setDealStage} required>
-                    <SelectTrigger>
+                    <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Select stage" />
                     </SelectTrigger>
                     <SelectContent>
@@ -538,194 +635,151 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
                         const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
                         return stages.map(stage => (
-                          <SelectItem key={stage.id} value={stage.id}>
-                            {stage.label}
-                          </SelectItem>
+                          <SelectItem key={stage.id} value={stage.id}>{stage.label}</SelectItem>
                         ));
                       })()}
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid gap-1.5">
+                  <LabelWithBadge htmlFor="dealStatusNote" required badge="grouped">Deal status</LabelWithBadge>
+                  <Input
+                    id="dealStatusNote"
+                    value={dealStatusNote}
+                    onChange={(e) => setDealStatusNote(e.target.value)}
+                    placeholder="e.g., Client kickoff call to intro lenders"
+                    className="rounded-lg"
+                    required
+                  />
+                </div>
               </div>
 
-              {/* Pipeline + Sourced Via */}
-              <div className={`grid gap-3 ${pipelines.length > 1 && showSourcedVia ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {pipelines.length > 1 && (
+              {/* Row 5: Deal narrative (full width) */}
+              {showNarrative && (
+                <div className="grid gap-1.5">
+                  <LabelWithBadge htmlFor="narrative">Deal narrative</LabelWithBadge>
+                  <textarea
+                    id="narrative"
+                    value={narrative}
+                    onChange={(e) => setNarrative(e.target.value)}
+                    placeholder="Summary of the business, business model, what they're looking for, and key financial information..."
+                    className="flex min-h-[100px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    rows={4}
+                  />
+                </div>
+              )}
+
+              {/* Row 6: Company name | Contact name */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <LabelWithBadge badge="new">Company name</LabelWithBadge>
+                  <Popover modal open={companyPickerOpen} onOpenChange={setCompanyPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="w-full justify-between font-normal rounded-lg h-9"
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className={`truncate ${companyNameVisual ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {companyNameVisual || 'New company name…'}
+                          </span>
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      container={dialogContentRef.current}
+                      className="w-[var(--radix-popover-trigger-width)] p-0"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
+                      <div className="border-b px-2 py-1.5">
+                        <button
+                          type="button"
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-primary hover:bg-accent"
+                          onClick={() => setCompanyPickerOpen(false)}
+                        >
+                          <Plus className="h-4 w-4" /> Add new company
+                        </button>
+                      </div>
+                      <div className="max-h-56 overflow-y-auto py-1">
+                        {[
+                          { name: 'Vota', category: 'Beverage' },
+                          { name: 'Titan Industries', category: 'Manufacturing' },
+                          { name: 'Evernu', category: 'Materials' },
+                        ].map((c) => {
+                          const initials = c.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                          return (
+                            <button
+                              key={c.name}
+                              type="button"
+                              className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-sm hover:bg-accent"
+                              onClick={() => {
+                                setCompanyNameVisual(c.name);
+                                setCompanyPickerOpen(false);
+                              }}
+                            >
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                                  {initials}
+                                </span>
+                                <span className="truncate">{c.name}</span>
+                              </span>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">{c.category}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {showClientContact ? (
                   <div className="grid gap-1.5">
-                    <Label>Pipeline</Label>
-                    <Select value={selectedPipelineId} onValueChange={(val) => {
-                      setSelectedPipelineId(val);
-                      const pipeline = pipelines.find(p => p.id === val);
-                      if (pipeline?.stages?.length && !pipeline.stages.find(s => s.id === dealStage)) {
-                        setDealStage(pipeline.stages[0]?.id || '');
-                      }
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select pipeline" />
+                    <LabelWithBadge htmlFor="clientContact" required badge="merged">Contact name</LabelWithBadge>
+                    <div className="relative">
+                      <UserIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                      <div className="[&_input]:pl-8 [&_button]:pl-8">
+                        <MultiContactPickerField
+                          id="clientContact"
+                          value={clientContacts}
+                          onChange={(list) => {
+                            setClientContacts(list);
+                            const first = list[0];
+                            setContactName(first?.name || '');
+                            setContactInfo(first?.email || '');
+                          }}
+                          placeholder="New contact name…"
+                          invalid={clientContacts.length === 0 && showClientContact}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : <div />}
+              </div>
+
+              {/* Row 7: Sourced via | (right side reserved for checklist preview in footer) */}
+              <div className="grid grid-cols-2 gap-3">
+                {showSourcedVia ? (
+                  <div className="grid gap-1.5">
+                    <LabelWithBadge required badge="moved">Sourced via</LabelWithBadge>
+                    <Select value={sourcedVia} onValueChange={setSourcedVia}>
+                      <SelectTrigger className="rounded-lg">
+                        <SelectValue placeholder="Select source" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {pipelines.map(p => (
-                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      <SelectContent side="bottom" align="start">
+                        <SelectItem value="__none__">None</SelectItem>
+                        {sourcedViaOptions.map((option) => (
+                          <SelectItem key={option} value={option}>{option}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-                {showSourcedVia && (
-                <div className="grid gap-1.5">
-                  <Label>Sourced Via <span className="text-destructive">*</span></Label>
-                  <Select value={sourcedVia} onValueChange={setSourcedVia}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
-                    <SelectContent side="bottom" align="start">
-                      <SelectItem value="__none__">None</SelectItem>
-                      {sourcedViaOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                )}
+                ) : <div />}
+                <div />
               </div>
 
-              {/* Row 3: Deal Manager + Deal Owner */}
-              {(showManager || showOwner) && (
-              <div className={`grid gap-3 ${showManager && showOwner ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {showManager && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="dealManager">Deal Manager</Label>
-                  <Select value={dealManager} onValueChange={setDealManager}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select manager" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {memberOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                )}
-                {showOwner && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="dealOwner">Deal Owner</Label>
-                  <Select value={dealOwner} onValueChange={setDealOwner}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select owner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {memberOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                )}
-              </div>
-              )}
-
-              {/* Row 4: Client Contact (sourced from Contacts) */}
-              {showClientContact && (
-              <div className="grid gap-1.5">
-                <Label htmlFor="clientContact">
-                  Client Contact <span className="text-destructive">*</span>
-                </Label>
-                <MultiContactPickerField
-                  id="clientContact"
-                  value={clientContacts}
-                  onChange={(list) => {
-                    setClientContacts(list);
-                    // Mirror the first contact into the legacy contact /
-                    // contactInfo fields so downstream code that still reads
-                    // those single-string fields keeps working.
-                    const first = list[0];
-                    setContactName(first?.name || '');
-                    setContactInfo(first?.email || '');
-                  }}
-                  placeholder="Search Contacts or create new…"
-                  invalid={clientContacts.length === 0 && showClientContact}
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  Add one or more contacts from the Contacts database, or create new contacts inline.
-                </p>
-              </div>
-              )}
-
-              {/* Row 5: Deal Status (full width) */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="dealStatusNote">Deal Status <span className="text-destructive">*</span></Label>
-                <Input
-                  id="dealStatusNote"
-                  value={dealStatusNote}
-                  onChange={(e) => setDealStatusNote(e.target.value)}
-                  placeholder="e.g., Client kickoff call to intro lenders"
-                  required
-                />
-              </div>
-
-              {/* Deal Narrative */}
-              {showNarrative && (
-              <div className="grid gap-1.5">
-                <Label htmlFor="narrative">Deal Narrative</Label>
-                <textarea
-                  id="narrative"
-                  value={narrative}
-                  onChange={(e) => setNarrative(e.target.value)}
-                  placeholder="Summary of the business, business model, what they're looking for, and key financial information..."
-                  className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  rows={4}
-                />
-              </div>
-              )}
-
-              {/* Row 6: Referral Source (popover) */}
-              {showReferral && (
-              <div className="grid gap-1.5">
-                <Label>Referral Source</Label>
-                 <Popover modal>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-between font-normal"
-                      type="button"
-                    >
-                      <span className={referralName.trim() ? 'text-foreground' : 'text-muted-foreground'}>
-                        {referralName.trim()
-                          ? `${referralName}${referralEmail.trim() ? ` · ${referralEmail}` : ''}`
-                          : 'Add referral source...'}
-                      </span>
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="referralName" className="text-xs">Name</Label>
-                      <Input
-                        id="referralName"
-                        value={referralName}
-                        onChange={(e) => setReferralName(e.target.value)}
-                        placeholder="e.g., John Smith"
-                      />
-                    </div>
-                    <div className="grid gap-1.5">
-                      <Label htmlFor="referralEmail" className="text-xs">Email</Label>
-                      <Input
-                        id="referralEmail"
-                        type="email"
-                        value={referralEmail}
-                        onChange={(e) => setReferralEmail(e.target.value)}
-                        placeholder="e.g., john@example.com"
-                      />
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              )}
               {sortedMilestones.length > 0 && (
                 <Collapsible open={showMilestonesPreview} onOpenChange={setShowMilestonesPreview}>
                   <CollapsibleTrigger asChild>
@@ -754,41 +808,41 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </CollapsibleContent>
                 </Collapsible>
               )}
-              {checklistPreview && checklistPreview.items.length > 0 && (
-                <Collapsible open={showChecklistPreview} onOpenChange={setShowChecklistPreview}>
-                  <CollapsibleTrigger asChild>
-                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
-                      <span className="flex items-center gap-2">
-                        <ListChecks className="h-4 w-4" />
-                       {checklistPreview.items.length} outstanding item{checklistPreview.items.length !== 1 ? 's' : ''} will be added ({checklistPreview.sourceLabel})
+              {checklistPreview && checklistPreview.items.length > 0 && showChecklistPreview && (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 max-h-56 overflow-y-auto">
+                  {checklistPreview.items.map((it, idx) => (
+                    <div key={`${it.label}-${idx}`} className="flex items-center justify-between text-sm gap-3">
+                      <span className="font-medium truncate">{it.label}</span>
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">
+                        {it.category || ''}{it.required ? (it.category ? ' · Required' : 'Required') : ''}
                       </span>
-                      <span className="text-xs">{showChecklistPreview ? 'Hide' : 'Preview'}</span>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <p className="px-2 text-[11px] text-muted-foreground">
-                    Showing Phase 1 initial items. Additional items can be added as the deal progresses.
-                  </p>
-                  <CollapsibleContent className="mt-2">
-                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 max-h-56 overflow-y-auto">
-                      {checklistPreview.items.map((it, idx) => (
-                        <div key={`${it.label}-${idx}`} className="flex items-center justify-between text-sm gap-3">
-                          <span className="font-medium truncate">{it.label}</span>
-                          <span className="text-muted-foreground text-xs whitespace-nowrap">
-                            {it.category || ''}{it.required ? (it.category ? ' · Required' : 'Required') : ''}
-                          </span>
-                        </div>
-                      ))}
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                  ))}
+                </div>
               )}
             </div>
-            <DialogFooter className="flex items-center justify-between sm:justify-between">
-              {initialValues?.onDismiss ? (
-                <Button type="button" variant="ghost" size="sm" onClick={initialValues.onDismiss} className="text-muted-foreground">
-                  Dismiss task
-                </Button>
-              ) : <div />}
+            <DialogFooter className="flex items-center justify-between sm:justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+                {checklistPreview && checklistPreview.items.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowChecklistPreview((v) => !v)}
+                      className="text-primary hover:underline"
+                    >
+                      {showChecklistPreview ? 'Hide' : 'Preview'}
+                    </button>
+                    <span className="flex items-center gap-1.5 truncate">
+                      <ListChecks className="h-3.5 w-3.5" />
+                      <span className="truncate">…Checklist – Phase 1</span>
+                    </span>
+                  </>
+                ) : initialValues?.onDismiss ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={initialValues.onDismiss} className="text-muted-foreground">
+                    Dismiss task
+                  </Button>
+                ) : <span />}
+              </div>
               <Button type="submit" variant="gradient" disabled={isCreating || isLoadingFormData}>
                 {isCreating ? 'Creating...' : isLoadingFormData ? 'Loading…' : 'Create Deal'}
               </Button>
