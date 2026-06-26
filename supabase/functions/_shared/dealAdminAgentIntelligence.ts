@@ -934,6 +934,45 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
   const needsId = !["create_followup_task", "create_milestone", "draft_email"].includes(c.action_type);
   if (needsId && !c.target_object_id) return false;
   if (!Array.isArray(c.evidence_references) || c.evidence_references.length === 0) return false;
+  // Reject candidates whose proposed_values are missing the concrete target
+  // field required for that action type. Prevents "update from X to —" cards.
+  const pv = c.proposed_values as Record<string, unknown>;
+  const nonEmpty = (v: unknown) =>
+    typeof v === "string"
+      ? v.trim().length > 0 && v.trim() !== "—" && v.trim() !== "-"
+      : v !== null && v !== undefined && v !== "";
+  switch (c.action_type) {
+    case "update_deal_stage":
+      if (!nonEmpty(pv.stage)) return false;
+      break;
+    case "update_deal_status":
+      if (!nonEmpty(pv.status)) return false;
+      break;
+    case "update_funding_source":
+      if (!nonEmpty(pv.stage) && !nonEmpty(pv.status) && !nonEmpty((pv as any).substage)) return false;
+      break;
+    case "update_lender_status":
+      if (!nonEmpty((pv as any).substage) && !nonEmpty((pv as any).new_status) && !nonEmpty(pv.status)) return false;
+      break;
+    case "add_status_note":
+      if (!nonEmpty((pv as any).note)) return false;
+      break;
+    case "create_milestone":
+      if (!nonEmpty((pv as any).title)) return false;
+      break;
+    case "create_followup_task":
+      if (!nonEmpty((pv as any).title)) return false;
+      break;
+    case "draft_email": {
+      if (!nonEmpty((pv as any).subject) || !nonEmpty((pv as any).body)) return false;
+      const to = (pv as any).to;
+      if (!Array.isArray(to) || to.filter((x) => typeof x === "string" && x.trim()).length === 0) return false;
+      break;
+    }
+    case "update_milestone":
+      if (!nonEmpty((pv as any).status) && (pv as any).completed === undefined) return false;
+      break;
+  }
   return true;
 }
 
