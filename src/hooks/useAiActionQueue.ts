@@ -131,10 +131,12 @@ function useAiActionQueueRealtime() {
     };
 
     const channel = supabase
-      .channel(`ai-action-queue-${user.id}`)
+      .channel(`ai-action-queue-shared`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'ai_action_queue', filter: `user_id=eq.${user.id}` },
+        // No user_id filter: the queue is shared across teammates, so
+        // approve/reject by any user should live-update every viewer's panel.
+        { event: '*', schema: 'public', table: 'ai_action_queue' },
         () => {
           if (timerRef.current) clearTimeout(timerRef.current);
           timerRef.current = setTimeout(flush, REALTIME_DEBOUNCE_MS);
