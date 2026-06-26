@@ -135,7 +135,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
   // Column cell renderers
   const columnCells: Record<DealListColumnId, ReactNode> = {
     company: (
-      <TableCell key="company" className="font-medium">
+      <TableCell key="company" data-deal-col="company" className="font-medium">
         <div className="flex items-center gap-2">
           {timeAgoData.isStale && (
             <TooltipProvider>
@@ -185,7 +185,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     value: (
-      <TableCell key="value" className="text-center tabular-nums">
+      <TableCell key="value" data-deal-col="value" className="text-center tabular-nums">
         {(() => {
           const formatted = formatCurrencyValue(deal.value);
           const m = /^([^\d-]*)([\d,.\s-]+)([A-Za-z]*)$/.exec(formatted);
@@ -201,7 +201,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     status: (
-      <TableCell key="status" className="text-center">
+      <TableCell key="status" data-deal-col="status" className="text-center">
         <InlineStatusDropdown
           dealId={deal.id}
           status={deal.status}
@@ -211,7 +211,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     stage: (
-      <TableCell key="stage" className="text-center">
+      <TableCell key="stage" data-deal-col="stage" className="text-center">
         <InlineStageDropdown
           dealId={deal.id}
           stage={deal.stage}
@@ -221,7 +221,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     manager: (
-      <TableCell key="manager">
+      <TableCell key="manager" data-deal-col="manager">
         {(() => {
           const name = deal.manager || '';
           const initials = name
@@ -246,7 +246,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     type: (
-      <TableCell key="type" className="text-center">
+      <TableCell key="type" data-deal-col="type" className="text-center">
         <Badge
           variant="outline"
           className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-[#9697a6]"
@@ -256,7 +256,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     dealType: (
-      <TableCell key="dealType">
+      <TableCell key="dealType" data-deal-col="dealType">
         <div className="flex flex-nowrap items-center gap-1 overflow-hidden">
           {dealTypeLabels.length > 0 ? (
             <>
@@ -282,7 +282,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       </TableCell>
     ),
     totalFee: (
-      <TableCell key="totalFee" className="text-center tabular-nums">
+      <TableCell key="totalFee" data-deal-col="totalFee" className="text-center tabular-nums">
         <span className="text-sm font-medium text-[#f4f4f7] tabular-nums">
           {deal.totalFee ? `$${deal.totalFee.toLocaleString()}` : '—'}
         </span>
@@ -291,7 +291,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     totalHours: (() => {
       const total = (deal.preSigningHours || 0) + (deal.postSigningHours || 0);
       return (
-        <TableCell key="totalHours">
+        <TableCell key="totalHours" data-deal-col="totalHours">
           <span className="text-sm text-foreground">{total > 0 ? total : '—'}</span>
         </TableCell>
       );
@@ -300,7 +300,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       const totalHours = (deal.preSigningHours || 0) + (deal.postSigningHours || 0);
       const rpm = totalHours > 0 && deal.totalFee ? deal.totalFee / totalHours : null;
       return (
-        <TableCell key="revenuePerHour">
+        <TableCell key="revenuePerHour" data-deal-col="revenuePerHour">
           <span className="text-sm text-foreground">{rpm !== null ? `$${Math.round(rpm).toLocaleString()}` : '—'}</span>
         </TableCell>
       );
@@ -308,7 +308,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     lateMilestones: (() => {
       const late = (deal.milestones || []).filter(m => !m.completed && m.dueDate && isPast(new Date(m.dueDate)) && !isToday(new Date(m.dueDate)));
       return (
-        <TableCell key="lateMilestones">
+        <TableCell key="lateMilestones" data-deal-col="lateMilestones">
           {late.length > 0 ? (
             <Badge variant="outline" className="text-xs rounded-lg border-destructive text-destructive">
               {late.length} late
@@ -320,7 +320,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
       );
     })(),
     updated: (
-      <TableCell key="updated">
+      <TableCell key="updated" data-deal-col="updated">
         {timeAgoData.text === 'Over 30 Days' ? (
           <div
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px]"
