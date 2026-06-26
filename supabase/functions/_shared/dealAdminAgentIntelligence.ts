@@ -2191,7 +2191,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // deal_id at this stage. Add the target-only variant too so old pending
       // cards suppress re-created cards even when the prior row used a
       // different target_object_type label.
-      existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
+      if ((e as any).target_object_id) {
+        existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
+      }
     }
   }
 
