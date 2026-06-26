@@ -125,6 +125,35 @@ const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof Chec
   reassign_deal: { label: 'Reassign', icon: Briefcase },
 };
 
+/* Grouping order within a deal accordion: funding-source items first, then
+ * deal-level updates, then tasks/follow-ups, then communications, then
+ * meeting/escalation items. Lower number = appears first. */
+const ACTION_TYPE_GROUP_ORDER: Partial<Record<AiActionType, number>> = {
+  update_funding_source: 10,
+  update_lender_status: 11,
+  update_deal_stage: 20,
+  update_deal_status: 21,
+  add_status_note: 22,
+  deal_update: 23,
+  reassign_deal: 24,
+  update_milestone: 30,
+  create_milestone: 31,
+  create_task: 40,
+  create_followup_task: 41,
+  draft_email: 50,
+  update_contact: 60,
+  update_company: 61,
+  log_note: 70,
+  save_to_data_room: 71,
+  claap_recording_review: 80,
+  claap_action_items: 81,
+  escalate: 90,
+};
+
+function actionTypeRank(t: AiActionType): number {
+  return ACTION_TYPE_GROUP_ORDER[t] ?? 999;
+}
+
 /* Humanize technical field keys into readable labels. */
 const FIELD_LABELS: Record<string, string> = {
   owner_user_id: 'Deal owner',
@@ -301,7 +330,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   };
   const groups = useMemo<DealGroup[]>(() => {
     const map = new Map<string, DealGroup>();
-    for (const it of filtered) {
+    filtered.forEach((it, idx) => {
       const key = it.deal_id || '__unassigned__';
       let g = map.get(key);
       if (!g) {
@@ -314,10 +343,19 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         };
         map.set(key, g);
       }
-      g.items.push(it);
+      (g.items as any).push(Object.assign(it, { __order: idx }));
       if (it.priority === 'high' || it.risk_level === 'high' || it.action_type === 'escalate') {
         g.escalated = true;
       }
+    });
+    // Sort items inside each group by action type rank, preserving original
+    // order as a tiebreaker so behavior is stable.
+    for (const g of map.values()) {
+      g.items.sort((a, b) => {
+        const rankDiff = actionTypeRank(a.action_type) - actionTypeRank(b.action_type);
+        if (rankDiff !== 0) return rankDiff;
+        return ((a as any).__order ?? 0) - ((b as any).__order ?? 0);
+      });
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
   }, [filtered]);
