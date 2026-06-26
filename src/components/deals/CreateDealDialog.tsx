@@ -260,8 +260,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     const blank: string[] = [];
     if (showManager && !dealManager) blank.push('Deal Manager');
     if (showOwner && !dealOwner) blank.push('Deal Owner');
-    if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
-    if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
+    if (is5thLine) {
+      if (!dealManager) blank.push('Deal Manager');
+    } else {
+      if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
+      if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
+    }
     return blank;
   };
 
@@ -587,7 +591,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               </div>
 
-              {/* Row 3: Deal owner | Deal originator (referral source) */}
+              {/* Row 3: Deal owner | Deal originator (referral source) — 5th Line shows Deal Manager instead */}
               <div className="grid grid-cols-2 gap-2">
                 {showOwner ? (
                   <div className="grid gap-1">
@@ -604,7 +608,21 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 ) : <div />}
-                {showReferral ? (
+                {is5thLine ? (
+                  <div className="grid gap-1">
+                    <LabelWithBadge htmlFor="dealManager">Deal Manager</LabelWithBadge>
+                    <Select value={dealManager} onValueChange={setDealManager}>
+                      <SelectTrigger className="rounded-lg">
+                        <SelectValue placeholder="Select manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : showReferral ? (
                   <div className="grid gap-1">
                     <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
                     <Popover modal>
