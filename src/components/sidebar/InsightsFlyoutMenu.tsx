@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { BarChart3, ChevronRight, Users } from 'lucide-react';
+import { BarChart3, ChevronRight, Users, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   SidebarMenuItem,
@@ -19,13 +19,14 @@ type SubItem = { id: string; label: string; url: string; icon: typeof BarChart3 
 
 interface Props {
   showSalesBd: boolean;
+  showReports: boolean;
 }
 
 /**
  * Sidebar item for "Insights" with a flyout submenu listing Insights and
  * Sales & BD destinations. The parent label still navigates to /insights.
  */
-export function InsightsFlyoutMenu({ showSalesBd }: Props) {
+export function InsightsFlyoutMenu({ showSalesBd, showReports }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, isHovering } = useSidebar();
@@ -35,6 +36,9 @@ export function InsightsFlyoutMenu({ showSalesBd }: Props) {
     { id: 'insights', label: 'Insights', url: '/insights', icon: BarChart3 },
     ...(showSalesBd
       ? [{ id: 'sales-bd', label: 'Sales & BD', url: '/sales-bd', icon: Users } as SubItem]
+      : []),
+    ...(showReports
+      ? [{ id: 'reports', label: 'Reports', url: '/reports', icon: FileText } as SubItem]
       : []),
   ];
 
