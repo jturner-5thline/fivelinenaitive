@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_action_queue REPLICA IDENTITY FULL;
