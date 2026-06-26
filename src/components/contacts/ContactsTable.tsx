@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { contactTypeBadgeClass } from './contactTypeBadge';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -357,7 +358,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                   </TableCell>
                   <TableCell className="text-sm">
                     {(c.hs_contact_type || c.contact_type) ? (
-                      <Badge variant="outline" className="text-[10px]">{c.hs_contact_type || c.contact_type}</Badge>
+                      <span className={contactTypeBadgeClass(c.hs_contact_type || c.contact_type)}>
+                        {c.hs_contact_type || c.contact_type}
+                      </span>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
