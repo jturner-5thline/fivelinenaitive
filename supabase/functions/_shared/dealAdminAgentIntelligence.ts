@@ -1048,6 +1048,15 @@ function filterFundingSourceProposals(
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "update_funding_source") return true;
+    // Hard gate: a funding-source update MUST point at a specific lender on
+    // this deal. Generic "Update funding sources on {Deal}" cards (no
+    // resolvable target_object_id, or an id that doesn't match a current
+    // funding source on the deal) are noise — drop them.
+    const tid = c.target_object_id ? String(c.target_object_id) : "";
+    if (!tid || !fsById.has(tid)) {
+      dropped++;
+      return false;
+    }
     const pv = (c.proposed_values ?? {}) as Record<string, any>;
     const cv = (c.current_values ?? {}) as Record<string, any>;
 
