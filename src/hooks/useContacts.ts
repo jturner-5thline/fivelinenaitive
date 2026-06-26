@@ -89,6 +89,7 @@ export interface PaginatedResult<T> {
 export function useContacts(params: ContactsListParams = {}) {
   const { company } = useCompany();
   const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
+  const hasSearch = !!search?.trim();
 
   return useQuery<PaginatedResult<Contact>>({
     queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
@@ -101,7 +102,7 @@ export function useContacts(params: ContactsListParams = {}) {
       // directly, which is effectively free.
       let query = supabase
         .from('contacts')
-        .select(LIST_COLUMNS, { count: 'planned' })
+        .select(LIST_COLUMNS, { count: hasSearch ? undefined : 'planned' })
         .eq('org_company_id', company!.id);
 
       // Server-side search
@@ -168,13 +169,13 @@ export function useContacts(params: ContactsListParams = {}) {
         .range(from, to);
 
       if (error) throw error;
-      const totalCount = count ?? 0;
+      const totalCount = hasSearch ? (data?.length ?? 0) : (count ?? 0);
       return {
         data: (data || []) as unknown as Contact[],
         totalCount,
         page,
         pageSize,
-        totalPages: Math.ceil(totalCount / pageSize),
+        totalPages: hasSearch ? 1 : Math.ceil(totalCount / pageSize),
       };
     },
     enabled: !!company?.id,
