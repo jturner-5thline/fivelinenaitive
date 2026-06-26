@@ -60,7 +60,7 @@ export function CalendarDayView({ date, events, onEventEdit }: CalendarDayViewPr
                 <div
                   key={event.id}
                   onClick={() => onEventEdit(event)}
-                  className="text-xs py-1 px-2 bg-primary/25 border-l-4 border-l-primary rounded-[2px] cursor-pointer hover:bg-primary/35 truncate transition-all"
+                  className="text-xs py-1 px-2 bg-gradient-to-br from-[#01696f] to-[#0c4e54] text-white border-l-4 border-l-[#7ed0d6] rounded-[2px] cursor-pointer hover:brightness-110 truncate transition-all"
                 >
                   {event.summary}
                 </div>

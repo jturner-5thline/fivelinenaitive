@@ -143,14 +143,17 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
 const MIN_EVENT_HEIGHT = 24;
 
+// Opaque gradient palette — calendar event chips must never be transparent.
+// Each entry is a solid two-stop gradient so chips remain fully readable
+// regardless of background, hover, or selected state.
 const EVENT_PALETTE = [
-  { bg: 'bg-primary/25 border-primary/30', text: 'text-foreground', dot: 'bg-primary', label: 'Default', glow: '' },
-  { bg: 'bg-emerald-600/25 border-emerald-500/30', text: 'text-foreground', dot: 'bg-emerald-600', label: 'Green', glow: '' },
-  { bg: 'bg-amber-600/25 border-amber-500/30', text: 'text-foreground', dot: 'bg-amber-600', label: 'Amber', glow: '' },
-  { bg: 'bg-rose-600/25 border-rose-500/30', text: 'text-foreground', dot: 'bg-rose-600', label: 'Rose', glow: '' },
-  { bg: 'bg-violet-600/25 border-violet-500/30', text: 'text-foreground', dot: 'bg-violet-600', label: 'Violet', glow: '' },
-  { bg: 'bg-cyan-600/25 border-cyan-500/30', text: 'text-foreground', dot: 'bg-cyan-600', label: 'Cyan', glow: '' },
-  { bg: 'bg-indigo-600/25 border-indigo-500/30', text: 'text-foreground', dot: 'bg-indigo-600', label: 'Indigo', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#01696f] to-[#0c4e54] border-white/10', text: 'text-white', dot: 'bg-[#0c8a93]', label: 'Default', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#0f766e] to-[#134e4a] border-white/10', text: 'text-white', dot: 'bg-emerald-500', label: 'Green', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#b45309] to-[#78350f] border-white/10', text: 'text-white', dot: 'bg-amber-500', label: 'Amber', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#9f1239] to-[#5f0a22] border-white/10', text: 'text-white', dot: 'bg-rose-500', label: 'Rose', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#6d28d9] to-[#3b1568] border-white/10', text: 'text-white', dot: 'bg-violet-500', label: 'Violet', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#0e7490] to-[#155e75] border-white/10', text: 'text-white', dot: 'bg-cyan-500', label: 'Cyan', glow: '' },
+  { bg: 'bg-gradient-to-br from-[#4338ca] to-[#1e1b4b] border-white/10', text: 'text-white', dot: 'bg-indigo-500', label: 'Indigo', glow: '' },
 ];
 
 // ─── Google Calendar color resolution ────────────────────────
@@ -173,6 +176,17 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+function darkenHex(hex: string, amount: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(n => Number.isNaN(n))) return '#0c4e54';
+  const f = 1 - Math.min(Math.max(amount, 0), 1);
+  return `rgb(${Math.round(r * f)}, ${Math.round(g * f)}, ${Math.round(b * f)})`;
+}
+
 /** Inline style derived from the event's owning calendar's Google hex color. */
 export function getEventColorStyle(
   event: CalendarEvent,
@@ -182,9 +196,15 @@ export function getEventColorStyle(
   if (!info?.background) return null;
   const bg = info.background;
   return {
-    backgroundColor: hexToRgba(bg, 0.28),
-    borderColor: hexToRgba(bg, 0.45),
-    color: 'hsl(var(--foreground))',
+    // Opaque gradient — never transparent. Mirrors the teal palette
+    // treatment while preserving the user's per-calendar color identity.
+    background: `linear-gradient(135deg, ${bg} 0%, ${darkenHex(bg, 0.45)} 100%)`,
+    backgroundColor: bg,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    color: '#ffffff',
+    opacity: 1,
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
   };
 }
 
@@ -590,7 +610,7 @@ function TimeGridEvent({
             onClick={onClick}
             className={cn(
               'absolute left-1 right-1 rounded-[2px] px-2 py-1 text-left overflow-hidden cursor-pointer transition-all z-[2]',
-              'backdrop-blur-md border shadow-lg',
+              'border shadow-lg',
               'hover:shadow-xl hover:scale-[1.02] hover:brightness-110',
               !colorStyle && colorClass,
             )}
