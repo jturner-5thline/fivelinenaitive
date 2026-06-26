@@ -169,7 +169,7 @@ export function useAiActionQueue() {
     // Safety net: realtime postgres_changes can drop events under RLS or
     // socket reconnects. Poll every 10s so cross-user approve/reject updates
     // always converge quickly even if a realtime event is missed.
-    refetchInterval: 10_000,
+    refetchInterval: 1_000,
     refetchIntervalInBackground: false,
     queryFn: async (): Promise<QueuedAiAction[]> => {
       const visible = (await fetchVisibleQueueRows()).filter(r => !isStale(r));
@@ -217,7 +217,7 @@ export function useAiActionQueueCount(): number {
     enabled: !!user,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
-    refetchInterval: 10_000,
+    refetchInterval: 1_000,
     refetchIntervalInBackground: false,
     queryFn: async (): Promise<number> => {
       const now = Date.now();
