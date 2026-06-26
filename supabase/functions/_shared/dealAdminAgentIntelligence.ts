@@ -1449,6 +1449,56 @@ function queueSemanticKey(row: {
   return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
 }
 
+function normalizeComparableText(v: unknown): string {
+  if (Array.isArray(v)) return v.map(normalizeComparableText).join(" ").toLowerCase();
+  if (v && typeof v === "object") return Object.values(v as Record<string, unknown>).map(normalizeComparableText).join(" ").toLowerCase();
+  return typeof v === "string" ? v.toLowerCase() : "";
+}
+
+function inferFundingSourceId(c: CandidateItem, bundle: DealSignalBundle): string | null {
+  const haystack = normalizeComparableText([
+    c.item_title,
+    c.linked_entity_label,
+    c.target_field_paths,
+    c.current_values,
+    c.proposed_values,
+    c.rationale_summary,
+    c.evidence_summary,
+  ]);
+  if (!haystack) return null;
+  const matches = (bundle.funding_sources ?? [])
+    .filter((f: any) => f?.id && f?.name && haystack.includes(String(f.name).toLowerCase()))
+    .sort((a: any, b: any) => String(b.name).length - String(a.name).length);
+  return matches[0]?.id ? String(matches[0].id) : null;
+}
+
+function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSignalBundle): CandidateItem[] {
+  return candidates.map((c) => {
+    const normalizedType = normalizeQueueTargetType(c.action_type, c.target_object_type);
+    if (c.action_type === "update_funding_source") {
+      return {
+        ...c,
+        target_object_type: "deal_lender",
+        target_object_id: c.target_object_id ?? inferFundingSourceId(c, bundle),
+      };
+    }
+
+    if (c.action_type === "draft_email") {
+      const explicitFundingTarget = normalizedType === "deal_lender";
+      const inferredLenderId = c.target_object_id ?? inferFundingSourceId(c, bundle);
+      if (explicitFundingTarget || inferredLenderId) {
+        return {
+          ...c,
+          target_object_type: "deal_lender",
+          target_object_id: inferredLenderId,
+        };
+      }
+    }
+
+    return { ...c, target_object_type: normalizedType };
+  });
+}
+
 const PRIORITY_RANK: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
 const RISK_RANK: Record<string, number> = { low: 0, medium: 1, high: 2 };
 
