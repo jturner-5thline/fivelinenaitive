@@ -101,7 +101,6 @@ export function useContacts(params: ContactsListParams = {}) {
     queryFn: async ({ signal }) => {
       if (canUseFastSearch) {
         const { data, error } = await (supabase.rpc as any)('search_contacts_fast', {
-          _company_id: company!.id,
           _search: search!.trim(),
           _limit: pageSize,
           _offset: page * pageSize,
