@@ -111,7 +111,12 @@ function SortableFilterableHead({
   const isActiveSort = !!sortField_ && sortField === sortField_;
 
   return (
-    <TableHead ref={setNodeRef} style={style} className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]">
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      data-deal-col={id}
+      className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]"
+    >
       <div className="inline-flex items-center gap-1 whitespace-nowrap">
         <span
           {...attributes}
