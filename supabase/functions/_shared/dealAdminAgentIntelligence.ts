@@ -1418,7 +1418,7 @@ function normalizeQueueTargetType(actionType: string, targetType?: string | null
   // agent cannot create duplicate "Update Trinity Capital" cards just because
   // one run used target_object_type="funding_source" and another used
   // "deal_lender".
-  if (raw === "funding_source" || raw === "lender") return "deal_lender";
+  if (raw === "funding_source" || raw === "lender" || raw === "deal_funding_source") return "deal_lender";
   return raw;
 }
 
