@@ -235,7 +235,7 @@ export function DealUpdatesUnified({
           </TabsContent>
 
           <TabsContent value="history" className="mt-0">
-            <ScrollArea className="max-h-72">
+            <div className="max-h-72 overflow-y-auto">
               {statusHistoryItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">No status history</p>
               ) : (
@@ -286,7 +286,7 @@ export function DealUpdatesUnified({
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </TabsContent>
         </Tabs>
       </PopoverContent>
