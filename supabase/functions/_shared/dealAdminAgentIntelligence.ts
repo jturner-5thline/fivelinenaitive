@@ -1993,8 +1993,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   //    user has already acted on the underlying object (e.g. lender updated,
   //    milestone marked complete, deal stage changed, status note added).
   try {
+    const collapsed = await collapseDuplicatePendingApprovals(supabase, companyId);
+    if (collapsed > 0) {
+      result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsed;
+      console.log(`[deal-admin-agent] collapsed ${collapsed} duplicate pending approval items for company=${companyId}`);
+    }
     const resolved = await reconcileStalePendingApprovals(supabase, companyId);
-    result.auto_resolved_pending = resolved;
+    result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + resolved;
     if (resolved > 0) {
       console.log(`[deal-admin-agent] auto-resolved ${resolved} pending approval items for company=${companyId}`);
     }
@@ -2121,13 +2126,17 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status")
+      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved"]);
     for (const e of existing ?? []) {
-      existingKeys.add(
-        `${(e as any).action_type}::${(e as any).target_object_type ?? ""}::${(e as any).target_object_id ?? ""}`,
-      );
+      const key = queueSemanticKey(e as any);
+      existingKeys.add(key);
+      // Candidate keys are deal-local while candidate objects don't carry
+      // deal_id at this stage. Add the target-only variant too so old pending
+      // cards suppress re-created cards even when the prior row used a
+      // different target_object_type label.
+      existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
     }
   }
 
@@ -2255,9 +2264,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         result.queue_rows_inserted += preview.length;
         totalInserted += preview.length;
         for (const c of slice) {
-          existingKeys.add(
-            `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
-          );
+          existingKeys.add(queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any));
         }
         continue;
       }
@@ -2271,9 +2278,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       console.log(`[deal-admin-agent] INSERTED deal=${d.id} count=${ids.length} valid=${valid.length} kept=${kept.length}`);
       // Track inserted keys so subsequent deals don't re-propose the same target.
       for (const c of slice) {
-        existingKeys.add(
-          `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
-        );
+        existingKeys.add(queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any));
       }
       result.queue_ids.push(...ids);
       result.queue_rows_inserted += ids.length;
