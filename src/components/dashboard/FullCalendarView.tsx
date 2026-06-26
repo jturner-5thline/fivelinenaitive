@@ -143,7 +143,6 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
 const MIN_EVENT_HEIGHT = 24;
 
-const EVENT_PALETTE = [
 // Opaque gradient palette — calendar event chips must never be transparent.
 // Each entry is a solid two-stop gradient so chips remain fully readable
 // regardless of background, hover, or selected state.
