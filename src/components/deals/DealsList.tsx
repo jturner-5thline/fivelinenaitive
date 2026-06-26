@@ -111,7 +111,12 @@ function SortableFilterableHead({
   const isActiveSort = !!sortField_ && sortField === sortField_;
 
   return (
-    <TableHead ref={setNodeRef} style={style} className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]">
+    <TableHead
+      ref={setNodeRef}
+      style={style}
+      data-deal-col={id}
+      className="text-[#9697a6] text-center text-[10px] uppercase tracking-[0.14em]"
+    >
       <div className="inline-flex items-center gap-1 whitespace-nowrap">
         <span
           {...attributes}
@@ -433,7 +438,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </button>
           </div>
         )}
-        <div className="px-0 py-1 min-w-0 max-w-full overflow-hidden">
+        <div className="px-0 py-1 min-w-0 max-w-full overflow-x-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-2 table-fixed w-full">
               <TableHeader>
