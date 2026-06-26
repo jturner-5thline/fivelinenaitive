@@ -438,7 +438,7 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </button>
           </div>
         )}
-        <div className="px-0 py-1 min-w-0 max-w-full overflow-hidden">
+        <div className="px-0 py-1 min-w-0 max-w-full overflow-x-auto">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <Table className="border-separate border-spacing-y-2 table-fixed w-full">
               <TableHeader>
