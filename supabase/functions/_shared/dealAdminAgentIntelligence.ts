@@ -1481,7 +1481,7 @@ async function collapseDuplicatePendingApprovals(
 ): Promise<number> {
   const { data: pending, error } = await supabase
     .from("ai_action_queue")
-    .select("id, deal_id, action_type, title, description, rationale, priority, risk_level, target_object_type, target_object_id, created_at, payload, source, evidence")
+    .select("id, deal_id, action_type, title, description, rationale, priority, risk_level, target_object_type, target_object_id, created_at, payload, source, evidence, new_values")
     .eq("status", "pending")
     .filter("source->>origin", "eq", "deal_admin_agent")
     .filter("source->>company_id", "eq", companyId)
@@ -1508,7 +1508,11 @@ async function collapseDuplicatePendingApprovals(
   for (const rows of byKey.values()) {
     if (rows.length < 2) continue;
     const sorted = [...rows].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    const keeper = sorted.find((r) => r.action_type !== "escalate") ?? sorted[0];
+    const nonEscalates = sorted.filter((r) => r.action_type !== "escalate");
+    const keeper =
+      nonEscalates.find((r) => String(r.target_object_type ?? "").toLowerCase() === normalizeQueueTargetType(r.action_type, r.target_object_type)) ??
+      nonEscalates[0] ??
+      sorted[0];
     const duplicates = sorted.filter((r) => r.id !== keeper.id);
     if (duplicates.length === 0) continue;
 
@@ -1535,6 +1539,7 @@ async function collapseDuplicatePendingApprovals(
       .update({
         priority,
         risk_level: risk,
+        target_object_type: normalizeQueueTargetType(keeper.action_type, keeper.target_object_type),
         evidence,
         payload: {
           ...keeperPayload,
