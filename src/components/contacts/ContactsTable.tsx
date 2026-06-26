@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { contactTypeBadgeClass } from './contactTypeBadge';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
