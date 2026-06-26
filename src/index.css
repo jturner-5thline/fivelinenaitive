@@ -1244,20 +1244,53 @@ button[role="combobox"] {
 
 /* Card surfaces — only inside the dark theme, only inside the skin */
 .dark .insights-glass-skin [data-slot="card"] {
-  /* Match Deal Details surface treatment: dark translucent panel on the
-     app shell gradient, with a soft blue hairline border. */
-  background: hsl(220 40% 12% / 0.55) !important;
-  border: 1px solid hsl(220 70% 55% / 0.18) !important;
+  /* Match the Deal Details `.deal-glass` surface verbatim so Insights chart
+     containers visually read as the same dark glass family — no lighter
+     gray tint, near-flat dark fill with a thin cool-blue rim. */
+  background:
+    linear-gradient(180deg,
+      rgba(150, 195, 245, 0.070) 0%,
+      rgba(150, 195, 245, 0.062) 100%
+    ) !important;
+  border: 1px solid rgba(150, 195, 245, 0.26) !important;
   border-radius: 12px !important;
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 12px 32px -16px rgba(0, 0, 0, 0.62) !important;
   position: relative;
   overflow: hidden;
 }
 .dark .insights-glass-skin [data-slot="card"]:hover {
-  border-color: hsl(220 70% 60% / 0.28) !important;
-  box-shadow: 0 14px 36px -18px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  background:
+    linear-gradient(180deg,
+      rgba(160, 205, 250, 0.095) 0%,
+      rgba(160, 205, 250, 0.085) 100%
+    ) !important;
+  border-color: rgba(165, 210, 252, 0.38) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(200, 225, 255, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.36),
+    0 18px 40px -16px rgba(0, 0, 0, 0.70) !important;
+}
+/* Scrub any lingering light-gray inner surfaces inside chart containers
+   (muted backgrounds, light card fills) so chart bodies sit flat on the
+   dark Deal Details surface — no nested pale panels. */
+.dark .insights-glass-skin [data-slot="card"] [class*="bg-muted"],
+.dark .insights-glass-skin [data-slot="card"] [class*="bg-card"],
+.dark .insights-glass-skin [data-slot="card"] [class*="bg-white/"] {
+  background-color: transparent !important;
+}
+/* Recharts cartesian/area background rects sometimes render with the
+   default `--background` token which can read as a light gray on the dark
+   shell — keep them transparent. */
+.dark .insights-glass-skin .recharts-cartesian-grid-bg,
+.dark .insights-glass-skin .recharts-layer > rect[fill="#fff"],
+.dark .insights-glass-skin .recharts-layer > rect[fill="#FFFFFF"],
+.dark .insights-glass-skin .recharts-layer > rect[fill="white"] {
+  fill: transparent !important;
 }
 /* Diagonal sheen highlight matching <GlassCard /> */
 .dark .insights-glass-skin [data-slot="card"]::before {
