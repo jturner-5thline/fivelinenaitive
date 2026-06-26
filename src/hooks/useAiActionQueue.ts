@@ -166,6 +166,11 @@ export function useAiActionQueue() {
     enabled: !!user,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    // Safety net: realtime postgres_changes can drop events under RLS or
+    // socket reconnects. Poll every 10s so cross-user approve/reject updates
+    // always converge quickly even if a realtime event is missed.
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     queryFn: async (): Promise<QueuedAiAction[]> => {
       const visible = (await fetchVisibleQueueRows()).filter(r => !isStale(r));
       // De-duplicate: the same recommendation can be enqueued multiple
@@ -212,6 +217,8 @@ export function useAiActionQueueCount(): number {
     enabled: !!user,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
     queryFn: async (): Promise<number> => {
       const now = Date.now();
       const live = (await fetchVisibleQueueRows()).filter(
