@@ -663,7 +663,8 @@ CLAAP RECORDING MAPPING
 - Each distinct action_item from the recording becomes a separate create_followup_task assigned to the deal manager, with due_date set to the action item's deadline if present.
 
 LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
-- Rule L1: funding_sources[].business_days_since_last_contact >= 3 AND tracking_status is active/engaged (not "passed"/"closed") → draft_email to that lender (requires_send_ui=true) gently nudging for an update. Cite the funding_source id as target_object_id and as evidence (kind="funding_source").
+- TERMINAL LENDER GUARD (applies to ALL rules below): NEVER propose any lender nudge / draft_email / follow-up for a funding source whose tracking_status, stage, or substage matches any of: "not_a_fit", "not a fit", "passed", "pass", "declined", "withdraw(n)", "dead", "lost", "rejected", "closed", "no_go", "unresponsive", "on_hold", "on hold", "paused". These lenders are RESOLVED — there is nothing to nudge. If the lender is in any of these states, emit nothing for them under any rule.
+- Rule L1: funding_sources[].business_days_since_last_contact >= 3 AND tracking_status is active/engaged (NOT any terminal state listed above) → draft_email to that lender (requires_send_ui=true) gently nudging for an update. Cite the funding_source id as target_object_id and as evidence (kind="funding_source").
 - Rule L2: An outbound email to a lender contact reads as urgent (deadline language, escalation, "ASAP", calling out timing) AND no inbound reply has arrived → draft_email re-pinging that lender. Reference the email id in evidence (kind="email"). Tone: still semi-formal, do not blame.
 - Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
@@ -1154,6 +1155,49 @@ function filterFundingSourceProposals(
     if (SIGNAL_RE.test(textBlob)) return true;
     dropped++;
     return false;
+  });
+  return { kept, dropped };
+}
+
+/**
+ * Drop draft_email / follow-up candidates that target a funding source whose
+ * current state is terminal (not_a_fit, passed, declined, unresponsive,
+ * on-hold, withdrawn, dead, lost, rejected, closed, no-go). These lenders
+ * are resolved — nudging them is never appropriate, regardless of last
+ * contact recency. Applies universally to ALL draft_email lender proposals,
+ * not just the deal that triggered the rule.
+ */
+function filterLenderDraftEmails(
+  candidates: CandidateItem[],
+  fundingSources?: any[],
+): { kept: CandidateItem[]; dropped: number } {
+  const TERMINAL_LENDER_RE =
+    /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+  const fsById = new Map<string, any>();
+  for (const f of fundingSources ?? []) {
+    if (f?.id) fsById.set(String(f.id), f);
+  }
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "draft_email") return true;
+    const targetType = (c.target_object_type ?? "").toString().toLowerCase();
+    // Only gate lender-targeted drafts. Referral/client/other drafts unchanged.
+    const isLenderTarget =
+      targetType === "funding_source" ||
+      targetType === "deal_lender" ||
+      targetType === "lender";
+    if (!isLenderTarget) return true;
+    const tid = c.target_object_id ? String(c.target_object_id) : "";
+    const fs = tid ? fsById.get(tid) : null;
+    if (!fs) return true;
+    const stateBlob = [fs.tracking_status, fs.stage, fs.substage, fs.status]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+    if (TERMINAL_LENDER_RE.test(stateBlob)) {
+      dropped++;
+      return false;
+    }
+    return true;
   });
   return { kept, dropped };
 }
@@ -2332,6 +2376,16 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (lenderGated.kept.length === 0) continue;
 
+      // Drop draft_email lender nudges targeting funding sources that are
+      // already in a terminal state (not_a_fit, passed, unresponsive, etc.).
+      // Universal: nothing to nudge once the lender is resolved.
+      const lenderEmailGated = filterLenderDraftEmails(lenderGated.kept, bundle.funding_sources);
+      if (lenderEmailGated.dropped > 0) {
+        result.candidates_filtered += lenderEmailGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${lenderEmailGated.dropped} draft_email lender-nudge proposal(s) for deal=${d.id} — lender is in terminal state (not_a_fit/passed/unresponsive/on-hold/declined)`);
+      }
+      if (lenderEmailGated.kept.length === 0) continue;
+
       // Suppress ALL create_followup_task proposals — we don't surface
       // "create a task" approval cards. Concrete next-steps flow through
       // other action types (update_deal_stage, update_funding_source,
@@ -2340,8 +2394,8 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         c.action_type === "create_followup_task" ||
         (typeof c.target_object_type === "string" &&
           c.target_object_type.toLowerCase() === "task");
-      const taskDroppedCount = lenderGated.kept.filter(isTaskCandidate).length;
-      const taskFiltered = lenderGated.kept.filter((c) => !isTaskCandidate(c));
+      const taskDroppedCount = lenderEmailGated.kept.filter(isTaskCandidate).length;
+      const taskFiltered = lenderEmailGated.kept.filter((c) => !isTaskCandidate(c));
       if (taskDroppedCount > 0) {
         result.candidates_filtered += taskDroppedCount;
         console.log(`[deal-admin-agent] DROPPED ${taskDroppedCount} create_followup_task proposal(s) for deal=${d.id} — task-creation approval cards are disabled`);
