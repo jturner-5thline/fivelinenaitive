@@ -28573,12 +28573,7 @@ export type Database = {
         Returns: undefined
       }
       search_contacts_fast: {
-        Args: {
-          _company_id: string
-          _limit?: number
-          _offset?: number
-          _search: string
-        }
+        Args: { _limit?: number; _offset?: number; _search: string }
         Returns: {
           contact_score: number
           contact_type: string
