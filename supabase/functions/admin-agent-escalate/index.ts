@@ -4,9 +4,9 @@
  *
  * Finds pending Approval Queue items originated by `deal_admin_agent`
  * that have sat untouched for > 4 US business days. For each one we
- * insert a single `escalate` Approval Queue row assigned to the company
- * admin and stamp `payload.escalated_at` on the original so it isn't
- * re-escalated on the next run.
+ * UPDATE the existing row in place — bumping priority/risk, reassigning
+ * to the company admin, and stamping `payload.escalated_at` so it isn't
+ * re-escalated on the next run. We do NOT create a new queue item.
  *
  * Idempotent. Designed to be hit by pg_cron once per business day.
  */
@@ -84,46 +84,28 @@ Deno.serve(async (req) => {
     const adminId = await resolveAdmin(companyId);
     if (!adminId) continue;
 
-    const { error: insErr } = await supabase.from("ai_action_queue").insert({
-      user_id: adminId,
-      assigned_to: adminId,
-      deal_id: row.deal_id,
-      deal_name: row.deal_name,
-      action_type: "escalate",
-      title: `Escalation: ${row.title}`,
-      description:
-        `This Admin Agent proposal has been pending for more than ${ESCALATION_BD} business days without approval or rejection.\n\nOriginal rationale: ${row.rationale ?? row.description ?? "—"}`,
-      priority: "urgent",
-      risk_level: "high",
-      target_object_type: "deal",
-      target_object_id: row.deal_id,
-      old_values: {},
-      new_values: { escalate_to: adminId, source_queue_id: row.id },
-      evidence: [{ kind: "approval_queue_item", ref_id: row.id, label: row.title }],
-      rationale: `Auto-escalated after ${ESCALATION_BD} business days of inactivity.`,
-      payload: {
-        source_queue_id: row.id,
-        escalated_from: row.assigned_to ?? row.user_id,
-        on_approve_execution_type: "create_task",
-      },
-      source: {
-        origin: "deal_admin_agent",
-        trigger: "escalation",
-        company_id: companyId,
-        source_queue_id: row.id,
-      },
-    });
-    if (insErr) {
-      errors.push(`row ${row.id}: ${insErr.message}`);
-      continue;
-    }
-
-    await supabase
+    const escalationNote = `Auto-escalated after ${ESCALATION_BD} business days of inactivity. Original rationale: ${row.rationale ?? row.description ?? "—"}`;
+    const { error: updErr } = await supabase
       .from("ai_action_queue")
       .update({
-        payload: { ...(row.payload ?? {}), escalated_at: now.toISOString() },
+        assigned_to: adminId,
+        priority: "urgent",
+        risk_level: "high",
+        rationale: escalationNote,
+        payload: {
+          ...(row.payload ?? {}),
+          escalated_at: now.toISOString(),
+          escalated_to: adminId,
+          escalated_from: row.assigned_to ?? row.user_id,
+          original_rationale: row.rationale ?? row.description ?? null,
+        },
       })
-      .eq("id", row.id);
+      .eq("id", row.id)
+      .eq("status", "pending");
+    if (updErr) {
+      errors.push(`row ${row.id}: ${updErr.message}`);
+      continue;
+    }
     escalated++;
   }
 
