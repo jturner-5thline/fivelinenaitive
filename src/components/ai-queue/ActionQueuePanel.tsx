@@ -330,7 +330,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   };
   const groups = useMemo<DealGroup[]>(() => {
     const map = new Map<string, DealGroup>();
-    for (const it of filtered) {
+    filtered.forEach((it, idx) => {
       const key = it.deal_id || '__unassigned__';
       let g = map.get(key);
       if (!g) {
@@ -343,10 +343,19 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         };
         map.set(key, g);
       }
-      g.items.push(it);
+      (g.items as any).push(Object.assign(it, { __order: idx }));
       if (it.priority === 'high' || it.risk_level === 'high' || it.action_type === 'escalate') {
         g.escalated = true;
       }
+    });
+    // Sort items inside each group by action type rank, preserving original
+    // order as a tiebreaker so behavior is stable.
+    for (const g of map.values()) {
+      g.items.sort((a, b) => {
+        const rankDiff = actionTypeRank(a.action_type) - actionTypeRank(b.action_type);
+        if (rankDiff !== 0) return rankDiff;
+        return ((a as any).__order ?? 0) - ((b as any).__order ?? 0);
+      });
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
   }, [filtered]);
