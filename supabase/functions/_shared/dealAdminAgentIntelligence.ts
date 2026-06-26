@@ -2376,6 +2376,16 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (lenderGated.kept.length === 0) continue;
 
+      // Drop draft_email lender nudges targeting funding sources that are
+      // already in a terminal state (not_a_fit, passed, unresponsive, etc.).
+      // Universal: nothing to nudge once the lender is resolved.
+      const lenderEmailGated = filterLenderDraftEmails(lenderGated.kept, bundle.funding_sources);
+      if (lenderEmailGated.dropped > 0) {
+        result.candidates_filtered += lenderEmailGated.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${lenderEmailGated.dropped} draft_email lender-nudge proposal(s) for deal=${d.id} — lender is in terminal state (not_a_fit/passed/unresponsive/on-hold/declined)`);
+      }
+      if (lenderEmailGated.kept.length === 0) continue;
+
       // Suppress ALL create_followup_task proposals — we don't surface
       // "create a task" approval cards. Concrete next-steps flow through
       // other action types (update_deal_stage, update_funding_source,
@@ -2384,8 +2394,8 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         c.action_type === "create_followup_task" ||
         (typeof c.target_object_type === "string" &&
           c.target_object_type.toLowerCase() === "task");
-      const taskDroppedCount = lenderGated.kept.filter(isTaskCandidate).length;
-      const taskFiltered = lenderGated.kept.filter((c) => !isTaskCandidate(c));
+      const taskDroppedCount = lenderEmailGated.kept.filter(isTaskCandidate).length;
+      const taskFiltered = lenderEmailGated.kept.filter((c) => !isTaskCandidate(c));
       if (taskDroppedCount > 0) {
         result.candidates_filtered += taskDroppedCount;
         console.log(`[deal-admin-agent] DROPPED ${taskDroppedCount} create_followup_task proposal(s) for deal=${d.id} — task-creation approval cards are disabled`);
