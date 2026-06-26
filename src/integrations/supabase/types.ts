@@ -28572,6 +28572,49 @@ export type Database = {
         Args: { _company_id: string; _config_key: string; _config_value: Json }
         Returns: undefined
       }
+      search_contacts_fast: {
+        Args: {
+          _company_id: string
+          _limit?: number
+          _offset?: number
+          _search: string
+        }
+        Returns: {
+          contact_score: number
+          contact_type: string
+          created_at: string
+          crm_company_id: string
+          crm_company_name: string
+          email: string
+          email_domain_normalized: string
+          first_name: string
+          full_name: string
+          hs_city: string
+          hs_company_name: string
+          hs_contact_status: string
+          hs_contact_type: string
+          hs_hs_email_optout: boolean
+          hs_industry: string
+          hs_notes_last_contacted: string
+          hs_state: string
+          hubspot_contact_id: string
+          id: string
+          job_title: string
+          last_activity_date: string
+          last_contact_at: string
+          last_name: string
+          lead_source: string
+          lifecycle_stage: string
+          linkedin_url: string
+          owner_user_id: string
+          phone_mobile: string
+          phone_work: string
+          primary_company_id: string
+          status: string
+          synced_with_hubspot: boolean
+          updated_at: string
+        }[]
+      }
       search_lenders_keyword: {
         Args: { _limit?: number; _offset?: number; _search_query: string }
         Returns: {
