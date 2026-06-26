@@ -133,6 +133,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const showNarrative = isFieldVisible('narrative');
   const showManager = isFieldVisible('dealManager');
   const showOwner = isFieldVisible('dealOwner');
+
+  // 5th Line account replaces the "Deal Originator" (referral) field on the
+  // Create Deal form with an internal "Deal Manager" user select. The Deal
+  // Owner field is unchanged.
+  const is5thLine = company?.id === FIFTH_LINE_COMPANY_ID;
   
   // Use active pipeline's stages if available, otherwise use global stages
   const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
