@@ -17,6 +17,7 @@ const PopoverContent = React.forwardRef<
   }
 >(({ className, align = "center", sideOffset = 4, container, ...props }, ref) => {
   const overlayContainer = React.useContext(OverlayContainerContext);
+  const usesExplicitSurface = typeof className === "string" && className.includes("create-deal-dropdown-content");
 
   return (
     <PopoverPortal container={container ?? overlayContainer ?? undefined}>
@@ -28,7 +29,8 @@ const PopoverContent = React.forwardRef<
           // Sits above Dialog (z-1310) AND the floating Ask nAItive chat bar
           // (z-[2147483000]) so popovers opened from inside dialogs remain
           // visible. Radix portals to <body>; only z-stacking matters here.
-          "pointer-events-auto z-[2147483100] w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "pointer-events-auto z-[2147483100] w-72 rounded-md border p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          !usesExplicitSurface && "bg-popover",
           className,
         )}
         {...props}
