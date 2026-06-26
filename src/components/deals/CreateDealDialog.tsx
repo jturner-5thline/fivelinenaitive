@@ -582,7 +582,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Select pipeline" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-create-deal-popover>
                       {pipelines.map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                       ))}
@@ -600,7 +600,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       <SelectTrigger className="rounded-lg">
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-create-deal-popover>
                         {memberOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -615,7 +615,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       <SelectTrigger className="rounded-lg">
                         <SelectValue placeholder="Select manager" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent data-create-deal-popover>
                         {memberOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -659,7 +659,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <SelectTrigger className="rounded-lg">
                       <SelectValue placeholder="Select stage" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-create-deal-popover>
                       {(() => {
                         const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
                         const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
@@ -829,7 +829,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       <SelectTrigger className="rounded-lg">
                         <SelectValue placeholder="Select source" />
                       </SelectTrigger>
-                      <SelectContent side="bottom" align="start">
+                      <SelectContent data-create-deal-popover side="bottom" align="start">
                         <SelectItem value="__none__">None</SelectItem>
                         {sourcedViaOptions.map((option) => (
                           <SelectItem key={option} value={option}>{option}</SelectItem>
