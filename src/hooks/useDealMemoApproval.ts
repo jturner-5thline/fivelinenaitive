@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { syncTaskAfterCreate } from '@/lib/asana/syncTaskAfterCreate';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
