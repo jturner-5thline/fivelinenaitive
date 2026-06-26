@@ -18,6 +18,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
+import { InsightsFlyoutMenu } from "@/components/sidebar/InsightsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
 
 
@@ -135,6 +136,14 @@ export function AppSidebar() {
               {visibleMenuItems.map((item) => {
                 if (item.url === "/deals") {
                   return <DealsFlyoutMenu key={item.title} />;
+                }
+                if (item.url === "/insights") {
+                  const showSalesBd = visibleMenuItems.some((i) => i.url === "/sales-bd");
+                  return <InsightsFlyoutMenu key={item.title} showSalesBd={showSalesBd} />;
+                }
+                // Sales & BD is now surfaced via the Insights flyout submenu.
+                if (item.url === "/sales-bd") {
+                  return null;
                 }
                 const slug = item.url.replace(/^\//, '').split('?')[0] || 'home';
                 return (
