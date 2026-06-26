@@ -2132,10 +2132,13 @@ function MetricsInner() {
                 {/* Dashboard Selector Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
+                    <Button
+                      variant="ghost"
+                      className="h-auto p-0 bg-transparent hover:bg-transparent focus:bg-transparent focus-visible:bg-transparent data-[state=open]:bg-transparent"
+                    >
                       <div className="flex items-center gap-2">
                         <LayoutDashboard className="h-6 w-6 text-primary" />
-                        <h1 className="text-3xl font-bold tracking-tight">
+                        <h1 className="text-3xl font-bold tracking-tight bg-transparent text-foreground">
                           {allDashboardOptions.find(d => d.id === selectedDashboard)?.name || 'Dashboard'}
                         </h1>
                         <ChevronDown className="h-5 w-5 text-muted-foreground" />
