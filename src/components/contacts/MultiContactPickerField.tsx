@@ -97,6 +97,10 @@ export function MultiContactPickerField({
         <PopoverContent
           className="w-80 p-3 create-deal-dropdown-content"
           align="start"
+          side="bottom"
+          sideOffset={6}
+          avoidCollisions={false}
+          collisionPadding={8}
         >
           <div className="space-y-2">
             <label className="text-sm font-medium">Add client contact</label>
