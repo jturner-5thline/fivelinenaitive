@@ -32,13 +32,9 @@ export default function Contacts() {
   const [search, setSearch] = useState('');
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
-  // Longer debounce for the server fetch — the table filters the
-  // currently-loaded page client-side as the user types, so typing
-  // feels instant and we only hit the network after they pause.
-  // Short debounce so the server query fires almost immediately while still
-  // coalescing rapid keystrokes. Combined with the table's "Searching…" empty
-  // state, this makes contact search feel instant.
-  const debouncedSearch = useDebouncedValue(search, 120);
+  const normalizedSearch = search.trim();
+  const searchableTerm = normalizedSearch.length >= 3 ? normalizedSearch : '';
+  const debouncedSearch = useDebouncedValue(searchableTerm, 40);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
@@ -124,6 +120,7 @@ export default function Contacts() {
   const contacts = result?.data ?? [];
   const totalCount = result?.totalCount ?? 0;
   const totalPages = result?.totalPages ?? 0;
+  const isSearchPending = searchableTerm.length > 0 && (isFetching || debouncedSearch !== searchableTerm);
 
   const handleQuickFilterChange = (value: string) => {
     setQuickFilter(value);
@@ -210,7 +207,7 @@ export default function Contacts() {
                   contacts={contacts}
                   search={search}
                   onSearchChange={handleSearchChange}
-                  isFetching={isFetching}
+                  isFetching={isSearchPending}
                   toolbarExtras={
                     <AdvancedFilterBuilder
                       availableFields={CONTACT_CORE_FIELDS}
