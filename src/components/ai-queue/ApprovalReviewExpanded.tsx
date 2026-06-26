@@ -132,18 +132,35 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
             {fieldKeys.map((k) => {
               const oldV = (oldValues as any)[k];
               const proposed = edits[k] ?? (newValues as any)[k];
+              const isoRe = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}/;
+              const looksDate = /(_at|_date|date|completed)$/i.test(k);
+              const proposedStr = proposed == null ? '' : String(proposed);
+              const oldStr = oldV == null ? '—' : String(oldV);
+              const isoMatch = proposedStr.match(isoRe);
+              const isDateField = looksDate || !!isoMatch;
+              const dateVal = isoMatch ? `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}` : proposedStr;
+              const oldIso = typeof oldV === 'string' ? oldV.match(isoRe) : null;
+              const oldDisplay = oldIso ? `${oldIso[1]}-${oldIso[2]}-${oldIso[3]}` : oldStr;
               return (
                 <div key={k} className="contents">
                   <div className="px-2 py-1.5 border-b border-white/5 text-foreground">{k}</div>
                   <div className="px-2 py-1.5 border-b border-white/5 text-muted-foreground line-through">
-                    {oldV == null ? '—' : String(oldV)}
+                    {oldDisplay}
                   </div>
                   <div className="px-2 py-1.5 border-b border-white/5">
                     <Input
-                      value={proposed == null ? '' : String(proposed)}
-                      onChange={(e) =>
-                        setEdits((p) => ({ ...p, [k]: e.target.value }))
-                      }
+                      type={isDateField ? 'date' : 'text'}
+                      value={isDateField ? dateVal : proposedStr}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (isDateField && v) {
+                          // Store as ISO at start of UTC day so execute path
+                          // continues to receive a parseable timestamp.
+                          setEdits((p) => ({ ...p, [k]: `${v}T00:00:00.000Z` }));
+                        } else {
+                          setEdits((p) => ({ ...p, [k]: v }));
+                        }
+                      }}
                       className="h-6 text-[11px] px-1.5"
                     />
                   </div>
