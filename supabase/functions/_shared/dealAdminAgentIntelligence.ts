@@ -1387,7 +1387,7 @@ function dedupeAndMerge(
   let merged = 0;
   let filtered = 0;
   for (const c of candidates) {
-    const k = `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`;
+    const k = queueSemanticKey(c as any);
     if (existingKeys.has(k)) {
       filtered++;
       continue;
@@ -1615,7 +1615,7 @@ function buildCandidateRows(
       description: c.rationale_summary,
       priority,
       risk_level: risk,
-      target_object_type: c.target_object_type ?? TARGET_TYPE_BY_ACTION[c.action_type],
+      target_object_type: normalizeQueueTargetType(c.action_type, c.target_object_type),
       target_object_id: c.target_object_id ?? null,
       old_values: c.current_values ?? {},
       new_values: c.proposed_values ?? {},
@@ -1631,7 +1631,7 @@ function buildCandidateRows(
         on_approve_execution_type:
           c.action_type === "draft_email" ? "stage_email_for_send" : "execute_mutation",
         on_approve_execution_payload: {
-          target_object_type: c.target_object_type,
+          target_object_type: normalizeQueueTargetType(c.action_type, c.target_object_type),
           target_object_id: c.target_object_id,
           new_values: c.proposed_values,
         },
