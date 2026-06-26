@@ -1387,7 +1387,7 @@ function dedupeAndMerge(
   let merged = 0;
   let filtered = 0;
   for (const c of candidates) {
-    const k = `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`;
+    const k = queueSemanticKey(c as any);
     if (existingKeys.has(k)) {
       filtered++;
       continue;
@@ -1408,6 +1408,213 @@ function dedupeAndMerge(
     }
   }
   return { kept: Array.from(byTarget.values()), merged, filtered };
+}
+
+function normalizeQueueTargetType(actionType: string, targetType?: string | null): string {
+  const fallback = TARGET_TYPE_BY_ACTION[actionType as AdminActionType] ?? "";
+  const raw = String(targetType ?? fallback).trim().toLowerCase();
+  // The UI/user-facing copy calls these "funding sources", but the executable
+  // object is the deal_lenders row. Treat both labels as the same target so the
+  // agent cannot create duplicate "Update Trinity Capital" cards just because
+  // one run used target_object_type="funding_source" and another used
+  // "deal_lender".
+  if (raw === "funding_source" || raw === "lender") return "deal_lender";
+  return raw;
+}
+
+function semanticActionGroup(actionType: string, normalizedTargetType: string, targetId?: string | null): string {
+  // For a specific lender/funding source, status/stage updates and follow-up
+  // email drafts are the same reviewer decision: this lender needs attention.
+  // Keep one queue item per (deal, lender) instead of piling up Update + Draft +
+  // Escalation cards for the same thing.
+  if (
+    targetId &&
+    normalizedTargetType === "deal_lender" &&
+    (actionType === "update_funding_source" || actionType === "draft_email")
+  ) {
+    return "funding_source_attention";
+  }
+  return actionType;
+}
+
+function queueSemanticKey(row: {
+  action_type?: string | null;
+  target_object_type?: string | null;
+  target_object_id?: string | null;
+  deal_id?: string | null;
+}): string {
+  const actionType = row.action_type ?? "";
+  const targetType = normalizeQueueTargetType(actionType, row.target_object_type);
+  const group = semanticActionGroup(actionType, targetType, row.target_object_id ?? null);
+  return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
+}
+
+function normalizeComparableText(v: unknown): string {
+  if (Array.isArray(v)) return v.map(normalizeComparableText).join(" ").toLowerCase();
+  if (v && typeof v === "object") return Object.values(v as Record<string, unknown>).map(normalizeComparableText).join(" ").toLowerCase();
+  return typeof v === "string" ? v.toLowerCase() : "";
+}
+
+function inferFundingSourceId(c: CandidateItem, bundle: DealSignalBundle): string | null {
+  const haystack = normalizeComparableText([
+    c.item_title,
+    c.linked_entity_label,
+    c.target_field_paths,
+    c.current_values,
+    c.proposed_values,
+    c.rationale_summary,
+    c.evidence_summary,
+  ]);
+  if (!haystack) return null;
+  const matches = (bundle.funding_sources ?? [])
+    .filter((f: any) => f?.id && f?.name && haystack.includes(String(f.name).toLowerCase()))
+    .sort((a: any, b: any) => String(b.name).length - String(a.name).length);
+  return matches[0]?.id ? String(matches[0].id) : null;
+}
+
+function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSignalBundle): CandidateItem[] {
+  return candidates.map((c) => {
+    const normalizedType = normalizeQueueTargetType(c.action_type, c.target_object_type);
+    if (c.action_type === "update_funding_source") {
+      return {
+        ...c,
+        target_object_type: "deal_lender",
+        target_object_id: c.target_object_id ?? inferFundingSourceId(c, bundle),
+      };
+    }
+
+    if (c.action_type === "draft_email") {
+      const explicitFundingTarget = normalizedType === "deal_lender";
+      const inferredLenderId = c.target_object_id ?? inferFundingSourceId(c, bundle);
+      if (explicitFundingTarget || inferredLenderId) {
+        return {
+          ...c,
+          target_object_type: "deal_lender",
+          target_object_id: inferredLenderId,
+        };
+      }
+    }
+
+    return { ...c, target_object_type: normalizedType };
+  });
+}
+
+const PRIORITY_RANK: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
+const RISK_RANK: Record<string, number> = { low: 0, medium: 1, high: 2 };
+
+function maxRankedValue<T extends string>(a: T | null | undefined, b: T | null | undefined, ranks: Record<string, number>, fallback: T): T {
+  const av = a ?? fallback;
+  const bv = b ?? fallback;
+  return (ranks[bv] ?? 0) > (ranks[av] ?? 0) ? bv : av;
+}
+
+function asObject(v: unknown): Record<string, any> {
+  return v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, any> : {};
+}
+
+function mergeEvidence(existing: unknown, incoming: unknown): any[] {
+  const out: any[] = [];
+  const seen = new Set<string>();
+  for (const ev of [...(Array.isArray(existing) ? existing : []), ...(Array.isArray(incoming) ? incoming : [])]) {
+    const key = `${ev?.kind ?? ""}::${ev?.ref_id ?? ""}::${ev?.label ?? ""}::${ev?.snippet ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(ev);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
+async function collapseDuplicatePendingApprovals(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<number> {
+  const { data: pending, error } = await supabase
+    .from("ai_action_queue")
+    .select("id, deal_id, action_type, title, description, rationale, priority, risk_level, target_object_type, target_object_id, created_at, payload, source, evidence, new_values")
+    .eq("status", "pending")
+    .filter("source->>origin", "eq", "deal_admin_agent")
+    .filter("source->>company_id", "eq", companyId)
+    .limit(1000);
+  if (error || !pending || pending.length === 0) return 0;
+
+  const idToKey = new Map<string, string>();
+  for (const row of pending as any[]) {
+    if (row.action_type !== "escalate") idToKey.set(row.id, queueSemanticKey(row));
+  }
+
+  const byKey = new Map<string, any[]>();
+  for (const row of pending as any[]) {
+    const sourceQueueId = row.payload?.source_queue_id ?? row.source?.source_queue_id ?? null;
+    const key = row.action_type === "escalate" && sourceQueueId
+      ? (idToKey.get(sourceQueueId) ?? queueSemanticKey(row))
+      : queueSemanticKey(row);
+    const arr = byKey.get(key) ?? [];
+    arr.push(row);
+    byKey.set(key, arr);
+  }
+
+  let collapsed = 0;
+  for (const rows of byKey.values()) {
+    if (rows.length < 2) continue;
+    const sorted = [...rows].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const nonEscalates = sorted.filter((r) => r.action_type !== "escalate");
+    const keeper =
+      nonEscalates.find((r) => String(r.target_object_type ?? "").toLowerCase() === normalizeQueueTargetType(r.action_type, r.target_object_type)) ??
+      nonEscalates[0] ??
+      sorted[0];
+    const duplicates = sorted.filter((r) => r.id !== keeper.id);
+    if (duplicates.length === 0) continue;
+
+    let priority = keeper.priority ?? "normal";
+    let risk = keeper.risk_level ?? "medium";
+    let evidence: any[] = Array.isArray(keeper.evidence) ? keeper.evidence : [];
+    let escalatedAt: string | null = keeper.payload?.escalated_at ?? null;
+    let escalatedTo: string | null = keeper.payload?.escalated_to ?? null;
+
+    for (const row of duplicates) {
+      priority = maxRankedValue(priority, row.priority, PRIORITY_RANK, "normal");
+      risk = maxRankedValue(risk, row.risk_level, RISK_RANK, "medium");
+      evidence = mergeEvidence(evidence, row.evidence);
+      const p = asObject(row.payload);
+      if (row.action_type === "escalate" || p.escalated_at) {
+        escalatedAt = escalatedAt ?? p.escalated_at ?? new Date().toISOString();
+        escalatedTo = escalatedTo ?? p.escalated_to ?? row.new_values?.escalate_to ?? null;
+      }
+    }
+
+    const keeperPayload = asObject(keeper.payload);
+    const { error: keepErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        priority,
+        risk_level: risk,
+        target_object_type: normalizeQueueTargetType(keeper.action_type, keeper.target_object_type),
+        evidence,
+        payload: {
+          ...keeperPayload,
+          escalated_at: escalatedAt ?? keeperPayload.escalated_at,
+          escalated_to: escalatedTo ?? keeperPayload.escalated_to,
+          duplicate_suppressed_count: Number(keeperPayload.duplicate_suppressed_count ?? 0) + duplicates.length,
+          duplicate_suppressed_at: new Date().toISOString(),
+        },
+      })
+      .eq("id", keeper.id)
+      .eq("status", "pending");
+    if (keepErr) continue;
+
+    const { error: dupErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: new Date().toISOString(),
+        rejection_reason: "auto_resolved_duplicate_pending_item",
+      })
+      .in("id", duplicates.map((r) => r.id))
+      .eq("status", "pending");
+    if (!dupErr) collapsed += duplicates.length;
+  }
+  return collapsed;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1463,7 +1670,7 @@ function buildCandidateRows(
       description: c.rationale_summary,
       priority,
       risk_level: risk,
-      target_object_type: c.target_object_type ?? TARGET_TYPE_BY_ACTION[c.action_type],
+      target_object_type: normalizeQueueTargetType(c.action_type, c.target_object_type),
       target_object_id: c.target_object_id ?? null,
       old_values: c.current_values ?? {},
       new_values: c.proposed_values ?? {},
@@ -1479,7 +1686,7 @@ function buildCandidateRows(
         on_approve_execution_type:
           c.action_type === "draft_email" ? "stage_email_for_send" : "execute_mutation",
         on_approve_execution_payload: {
-          target_object_type: c.target_object_type,
+          target_object_type: normalizeQueueTargetType(c.action_type, c.target_object_type),
           target_object_id: c.target_object_id,
           new_values: c.proposed_values,
         },
@@ -1841,8 +2048,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   //    user has already acted on the underlying object (e.g. lender updated,
   //    milestone marked complete, deal stage changed, status note added).
   try {
+    const collapsed = await collapseDuplicatePendingApprovals(supabase, companyId);
+    if (collapsed > 0) {
+      result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsed;
+      console.log(`[deal-admin-agent] collapsed ${collapsed} duplicate pending approval items for company=${companyId}`);
+    }
     const resolved = await reconcileStalePendingApprovals(supabase, companyId);
-    result.auto_resolved_pending = resolved;
+    result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + resolved;
     if (resolved > 0) {
       console.log(`[deal-admin-agent] auto-resolved ${resolved} pending approval items for company=${companyId}`);
     }
@@ -1969,13 +2181,19 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status")
+      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved"]);
     for (const e of existing ?? []) {
-      existingKeys.add(
-        `${(e as any).action_type}::${(e as any).target_object_type ?? ""}::${(e as any).target_object_id ?? ""}`,
-      );
+      const key = queueSemanticKey(e as any);
+      existingKeys.add(key);
+      // Candidate keys are deal-local while candidate objects don't carry
+      // deal_id at this stage. Add the target-only variant too so old pending
+      // cards suppress re-created cards even when the prior row used a
+      // different target_object_type label.
+      if ((e as any).target_object_id) {
+        existingKeys.add(key.replace(`${(e as any).deal_id ?? ""}::`, "::"));
+      }
     }
   }
 
@@ -2002,7 +2220,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
-      const raw = await callModelForCandidates(bundle, fingerprint);
+      const raw = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint), bundle);
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
@@ -2103,9 +2321,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         result.queue_rows_inserted += preview.length;
         totalInserted += preview.length;
         for (const c of slice) {
-          existingKeys.add(
-            `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
-          );
+          existingKeys.add(queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any));
         }
         continue;
       }
@@ -2119,9 +2335,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       console.log(`[deal-admin-agent] INSERTED deal=${d.id} count=${ids.length} valid=${valid.length} kept=${kept.length}`);
       // Track inserted keys so subsequent deals don't re-propose the same target.
       for (const c of slice) {
-        existingKeys.add(
-          `${c.action_type}::${c.target_object_type}::${c.target_object_id ?? ""}`,
-        );
+        existingKeys.add(queueSemanticKey({ ...c, deal_id: bundle.deal_id } as any));
       }
       result.queue_ids.push(...ids);
       result.queue_rows_inserted += ids.length;
