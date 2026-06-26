@@ -2077,3 +2077,30 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .finance-flat-surfaces .cf-root[data-theme="light"] {
   background: transparent !important;
 }
+
+/* Deals list — responsive column priority.
+   Company + Value are always visible; secondary columns hide at smaller
+   breakpoints so the table never overflows or squashes on tablet/mobile.
+   The list wrapper also allows horizontal scroll as a safety net. */
+@media (max-width: 1279px) {
+  [data-deal-col="type"],
+  [data-deal-col="dealType"],
+  [data-deal-col="totalHours"],
+  [data-deal-col="revenuePerHour"],
+  [data-deal-col="lateMilestones"] {
+    display: none !important;
+  }
+}
+@media (max-width: 1023px) {
+  [data-deal-col="manager"],
+  [data-deal-col="totalFee"] {
+    display: none !important;
+  }
+}
+@media (max-width: 767px) {
+  [data-deal-col="status"],
+  [data-deal-col="stage"],
+  [data-deal-col="updated"] {
+    display: none !important;
+  }
+}
