@@ -532,6 +532,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent
+                        data-create-deal-popover
                         container={dialogContentRef.current}
                         className=" w-[var(--radix-popover-trigger-width)] p-0"
                         align="start"
@@ -636,7 +637,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                           <ChevronDown className="h-4 w-4 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <PopoverContent data-create-deal-popover container={dialogContentRef.current} className="w-[var(--radix-popover-trigger-width)] p-3 space-y-3" align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <div className="grid gap-1">
                           <Label htmlFor="referralName" className="text-xs">Name</Label>
                           <Input id="referralName" value={referralName} onChange={(e) => setReferralName(e.target.value)} placeholder="e.g., John Smith" />
@@ -719,6 +720,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
+                      data-create-deal-popover
                       container={dialogContentRef.current}
                       className="w-[var(--radix-popover-trigger-width)] p-0 popup-shell-surface dark text-foreground border-white/10"
                       align="start"
