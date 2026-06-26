@@ -2227,3 +2227,64 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   background-color: rgba(255, 255, 255, 0.10) !important;
   color: #fff !important;
 }
+
+/* ============================================================
+   App-wide opaque dark gradient surface for ALL dropdown panels
+   (Radix Select / Popover / DropdownMenu / Command portals).
+
+   Applied by default from the shared shadcn components in
+   src/components/ui/{select,popover,dropdown-menu,command}.tsx
+   so every dropdown inherits the same dark gradient treatment
+   automatically — no transparency, no backdrop blur, strong
+   white-text contrast.
+   ============================================================ */
+.app-dropdown-surface,
+[data-radix-popper-content-wrapper] .app-dropdown-surface {
+  background-color: #060b18 !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+.app-dropdown-surface [data-radix-select-viewport],
+.app-dropdown-surface [cmdk-list],
+.app-dropdown-surface [cmdk-group],
+.app-dropdown-surface [cmdk-root],
+.app-dropdown-surface [cmdk-input-wrapper] {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.app-dropdown-surface [cmdk-input] {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.app-dropdown-surface [data-slot="select-item"],
+.app-dropdown-surface [role="option"],
+.app-dropdown-surface [role="menuitem"],
+.app-dropdown-surface [role="menuitemcheckbox"],
+.app-dropdown-surface [role="menuitemradio"],
+.app-dropdown-surface [cmdk-item],
+.app-dropdown-surface button {
+  color: rgba(255, 255, 255, 0.92) !important;
+  background: transparent !important;
+}
+.app-dropdown-surface [data-slot="select-item"][data-highlighted],
+.app-dropdown-surface [role="option"][data-highlighted],
+.app-dropdown-surface [role="option"]:hover,
+.app-dropdown-surface [role="menuitem"][data-highlighted],
+.app-dropdown-surface [role="menuitem"]:hover,
+.app-dropdown-surface [role="menuitemcheckbox"][data-highlighted],
+.app-dropdown-surface [role="menuitemradio"][data-highlighted],
+.app-dropdown-surface [cmdk-item][data-selected="true"],
+.app-dropdown-surface button:hover {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  color: #fff !important;
+}
+.app-dropdown-surface [data-radix-dropdown-menu-separator],
+.app-dropdown-surface .bg-muted,
+.app-dropdown-surface [role="separator"] {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+}
