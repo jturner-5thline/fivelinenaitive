@@ -139,10 +139,11 @@ export function AppSidebar() {
                 }
                 if (item.url === "/insights") {
                   const showSalesBd = visibleMenuItems.some((i) => i.url === "/sales-bd");
-                  return <InsightsFlyoutMenu key={item.title} showSalesBd={showSalesBd} />;
+                  const showReports = visibleMenuItems.some((i) => i.url === "/reports");
+                  return <InsightsFlyoutMenu key={item.title} showSalesBd={showSalesBd} showReports={showReports} />;
                 }
-                // Sales & BD is now surfaced via the Insights flyout submenu.
-                if (item.url === "/sales-bd") {
+                // Sales & BD and Reports are surfaced via the Insights flyout submenu.
+                if (item.url === "/sales-bd" || item.url === "/reports") {
                   return null;
                 }
                 const slug = item.url.replace(/^\//, '').split('?')[0] || 'home';
