@@ -1720,9 +1720,20 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact input,
 .create-deal-compact textarea,
 .create-deal-compact button[role="combobox"],
-.create-deal-compact [data-slot="select-trigger"] {
+.create-deal-compact [data-slot="select-trigger"],
+.create-deal-compact .create-deal-dropdown-trigger {
   background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
+  color: rgba(255,255,255,0.95) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 2px rgba(0,0,0,0.3) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.create-deal-compact .create-deal-dropdown-trigger::before {
+  display: none !important;
+}
+.create-deal-compact .create-deal-dropdown-trigger > span,
+.create-deal-compact [data-slot="select-trigger"] > span {
   color: rgba(255,255,255,0.95) !important;
 }
 .create-deal-compact input::placeholder,
@@ -1730,13 +1741,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact button[role="combobox"][data-placeholder],
 .create-deal-compact [data-slot="select-trigger"][data-placeholder],
 .create-deal-compact button[role="combobox"] [data-placeholder],
-.create-deal-compact [data-slot="select-trigger"] [data-placeholder] {
+.create-deal-compact [data-slot="select-trigger"] [data-placeholder],
+.create-deal-compact .create-deal-dropdown-trigger .text-muted-foreground {
   color: rgba(255,255,255,0.4) !important;
 }
 .create-deal-compact input:focus,
 .create-deal-compact textarea:focus,
 .create-deal-compact button[role="combobox"]:focus,
-.create-deal-compact [data-slot="select-trigger"]:focus {
+.create-deal-compact [data-slot="select-trigger"]:focus,
+.create-deal-compact .create-deal-dropdown-trigger:focus {
   border-color: rgba(255,255,255,0.28) !important;
   box-shadow: 0 0 0 2px rgba(99,102,241,0.35) !important;
 }
@@ -1750,10 +1763,13 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
    matching popper wrappers. This guarantees a solid surface with a visible
    border and readable items regardless of theme tokens. */
 [data-radix-popper-content-wrapper] [data-create-deal-popover],
-[data-radix-popper-content-wrapper] [data-create-deal-popover] * {
+[data-radix-popper-content-wrapper] [data-create-deal-popover] *,
+.create-deal-dropdown-content,
+.create-deal-dropdown-content * {
   color: rgba(255,255,255,0.95);
 }
 [data-create-deal-popover],
+.create-deal-dropdown-content,
 [data-radix-popper-content-wrapper]:has(> [data-create-deal-popover]) > * {
   background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
@@ -1762,10 +1778,25 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   -webkit-backdrop-filter: none !important;
   color: rgba(255,255,255,0.95) !important;
 }
+[data-create-deal-popover] [data-slot="select-item"],
+[data-create-deal-popover] [role="option"],
+.create-deal-dropdown-content [data-slot="select-item"],
+.create-deal-dropdown-content [role="option"],
+.create-deal-dropdown-content [cmdk-item],
+.create-deal-dropdown-content button {
+  background: transparent !important;
+  color: rgba(255,255,255,0.92) !important;
+}
 [data-create-deal-popover] [role="option"]:hover,
 [data-create-deal-popover] [role="option"][data-highlighted],
 [data-create-deal-popover] [role="option"][data-state="checked"],
-[data-create-deal-popover] [data-radix-select-item][data-highlighted] {
+[data-create-deal-popover] [data-radix-select-item][data-highlighted],
+[data-create-deal-popover] [data-slot="select-item"][data-highlighted],
+.create-deal-dropdown-content [data-slot="select-item"][data-highlighted],
+.create-deal-dropdown-content [role="option"]:hover,
+.create-deal-dropdown-content [role="option"][data-highlighted],
+.create-deal-dropdown-content [cmdk-item][data-selected="true"],
+.create-deal-dropdown-content button:hover {
   background-color: rgba(255,255,255,0.08) !important;
   color: #fff !important;
 }
@@ -2133,4 +2164,66 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   [data-deal-col="updated"] {
     display: none !important;
   }
+}
+
+/* Create Deal modal dropdowns — final source-level override.
+   This intentionally sits after the global transparent-field and popup-shell
+   flattening rules so the actual rendered Radix Select triggers/content and
+   Popover/Command controls stay opaque inside CreateDealDialog. */
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger,
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger[role="combobox"],
+.popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger,
+.popup-shell-surface.create-deal-compact [data-radix-select-trigger].create-deal-dropdown-trigger {
+  background-color: #060b18 !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger::before {
+  display: none !important;
+}
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger > span,
+.popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger > span {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger[data-placeholder] > span,
+.popup-shell-surface.create-deal-compact [data-slot="select-trigger"].create-deal-dropdown-trigger[data-placeholder] > span,
+.popup-shell-surface.create-deal-compact button.create-deal-dropdown-trigger .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.48) !important;
+}
+.create-deal-dropdown-content,
+.create-deal-dropdown-content[data-radix-popper-content-wrapper],
+[data-radix-popper-content-wrapper] .create-deal-dropdown-content,
+.popup-shell-surface.create-deal-compact .create-deal-dropdown-content {
+  background-color: #060b18 !important;
+  background-image: linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.create-deal-dropdown-content [data-radix-select-viewport],
+.create-deal-dropdown-content [cmdk-list],
+.create-deal-dropdown-content [cmdk-group],
+.create-deal-dropdown-content [cmdk-root] {
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+.create-deal-dropdown-content [data-slot="select-item"],
+.create-deal-dropdown-content [role="option"],
+.create-deal-dropdown-content [cmdk-item],
+.create-deal-dropdown-content button {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+.create-deal-dropdown-content [data-slot="select-item"][data-highlighted],
+.create-deal-dropdown-content [role="option"][data-highlighted],
+.create-deal-dropdown-content [role="option"]:hover,
+.create-deal-dropdown-content [cmdk-item][data-selected="true"],
+.create-deal-dropdown-content button:hover {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  color: #fff !important;
 }

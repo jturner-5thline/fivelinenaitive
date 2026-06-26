@@ -18,6 +18,7 @@ const SelectTrigger = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
+    data-slot="select-trigger"
     className={cn(
       "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className,
@@ -67,18 +68,21 @@ const SelectContent = React.forwardRef<
   }
 >(({ className, children, position = "popper", container, ...props }, ref) => {
   const overlayContainer = React.useContext(OverlayContainerContext);
+  const usesExplicitSurface = typeof className === "string" && className.includes("create-deal-dropdown-content");
 
   return (
     <SelectPortal container={container ?? overlayContainer ?? undefined}>
       <SelectPrimitive.Content
         ref={ref}
+        data-slot="select-content"
         className={cn(
           // Must sit above Dialog/Sheet overlay (z-1300) + content (z-1310)
           // AND above the floating Ask nAItive chat bar (z-[2147483000] in
           // CopilotToggleButton.tsx). Radix portals the menu to <body>, so
           // z-stacking — not portal scope — determines visibility. An active
           // dropdown must always be readable, so we sit just above the bar.
-          "pointer-events-auto relative z-[2147483100] max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "pointer-events-auto relative z-[2147483100] max-h-96 min-w-[8rem] overflow-hidden rounded-md border text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          !usesExplicitSurface && "bg-popover",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,
@@ -117,6 +121,7 @@ const SelectItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
+    data-slot="select-item"
     className={cn(
       "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground",
       className,
