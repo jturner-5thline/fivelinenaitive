@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Flag, Calendar, ChevronDown, ListChecks, Building2, User as UserIcon, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -114,6 +114,18 @@ function LabelWithBadge({
 
 const createDealDropdownTriggerClass = 'create-deal-dropdown-trigger rounded-lg h-9';
 const createDealDropdownContentClass = 'create-deal-dropdown-content';
+const createDealDropdownSurfaceStyle: CSSProperties = {
+  backgroundColor: '#060b18',
+  backgroundImage: 'linear-gradient(135deg, #0a1224 0%, #060b18 52%, #04060f 100%)',
+  border: '1px solid rgba(255, 255, 255, 0.20)',
+  color: 'rgba(255, 255, 255, 0.95)',
+  boxShadow: '0 18px 44px rgba(0,0,0,0.62), inset 0 1px 0 rgba(255,255,255,0.07)',
+  backdropFilter: 'none',
+};
+const createDealDropdownTriggerStyle: CSSProperties = {
+  ...createDealDropdownSurfaceStyle,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.35)',
+};
 
 export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, initialValues }: CreateDealDialogProps) {
   const navigate = useNavigate();
@@ -516,6 +528,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                           variant="outline"
                           type="button"
                           className={`${createDealDropdownTriggerClass} w-full justify-between font-normal ${selectedDealTypes.length === 0 ? 'border-destructive/40' : ''}`}
+                          style={createDealDropdownTriggerStyle}
                         >
                           {selectedDealTypes.length > 0 ? (
                             <span className="flex flex-wrap gap-1 overflow-hidden">
@@ -538,6 +551,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         data-create-deal-popover
                         container={dialogContentRef.current}
                         className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-0`}
+                        style={createDealDropdownSurfaceStyle}
                         align="start"
                         onOpenAutoFocus={(e) => e.preventDefault()}
                       >
@@ -583,10 +597,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       setDealStage(pipeline.stages[0]?.id || '');
                     }
                   }}>
-                    <SelectTrigger className={createDealDropdownTriggerClass}>
+                    <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
                       <SelectValue placeholder="Select pipeline" />
                     </SelectTrigger>
-                    <SelectContent data-create-deal-popover className={createDealDropdownContentClass}>
+                    <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
                       {pipelines.map(p => (
                         <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                       ))}
@@ -601,10 +615,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   <div className="grid gap-1">
                     <LabelWithBadge htmlFor="dealOwner" badge="renamed">Deal owner</LabelWithBadge>
                     <Select value={dealOwner} onValueChange={setDealOwner}>
-                      <SelectTrigger className={createDealDropdownTriggerClass}>
+                      <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
                         <SelectValue placeholder="Select owner" />
                       </SelectTrigger>
-                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass}>
+                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
                         {memberOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -616,10 +630,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   <div className="grid gap-1">
                     <LabelWithBadge htmlFor="dealManager">Deal Manager</LabelWithBadge>
                     <Select value={dealManager} onValueChange={setDealManager}>
-                      <SelectTrigger className={createDealDropdownTriggerClass}>
+                      <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
                         <SelectValue placeholder="Select manager" />
                       </SelectTrigger>
-                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass}>
+                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
                         {memberOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                         ))}
@@ -631,7 +645,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
                     <Popover modal>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`} type="button">
+                        <Button variant="outline" className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`} style={createDealDropdownTriggerStyle} type="button">
                           <span className={referralName.trim() ? 'text-foreground' : 'text-muted-foreground'}>
                             {referralName.trim()
                               ? `${referralName}${referralEmail.trim() ? ` · ${referralEmail}` : ''}`
@@ -640,7 +654,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                           <ChevronDown className="h-4 w-4 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent data-create-deal-popover container={dialogContentRef.current} className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-3 space-y-3`} align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
+                      <PopoverContent data-create-deal-popover container={dialogContentRef.current} className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-3 space-y-3`} style={createDealDropdownSurfaceStyle} align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <div className="grid gap-1">
                           <Label htmlFor="referralName" className="text-xs">Name</Label>
                           <Input id="referralName" value={referralName} onChange={(e) => setReferralName(e.target.value)} placeholder="e.g., John Smith" />
@@ -660,10 +674,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 <div className="grid gap-1">
                   <LabelWithBadge htmlFor="dealStage" required badge="grouped">Deal stage</LabelWithBadge>
                   <Select value={dealStage} onValueChange={setDealStage} required>
-                    <SelectTrigger className={createDealDropdownTriggerClass}>
+                    <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
                       <SelectValue placeholder="Select stage" />
                     </SelectTrigger>
-                    <SelectContent data-create-deal-popover className={createDealDropdownContentClass}>
+                    <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle}>
                       {(() => {
                         const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
                         const stages = selectedPipeline?.stages?.length ? selectedPipeline.stages : effectiveStages;
@@ -712,6 +726,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         variant="outline"
                         type="button"
                         className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`}
+                        style={createDealDropdownTriggerStyle}
                       >
                         <span className="flex items-center gap-2 min-w-0">
                           <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -726,6 +741,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                       data-create-deal-popover
                       container={dialogContentRef.current}
                       className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-0 popup-shell-surface dark text-foreground border-white/10`}
+                      style={createDealDropdownSurfaceStyle}
                       align="start"
                       side="bottom"
                       sideOffset={4}
@@ -831,10 +847,10 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   <div className="grid gap-1">
                     <LabelWithBadge required badge="moved">Sourced via</LabelWithBadge>
                     <Select value={sourcedVia} onValueChange={setSourcedVia}>
-                      <SelectTrigger className={createDealDropdownTriggerClass}>
+                      <SelectTrigger className={createDealDropdownTriggerClass} style={createDealDropdownTriggerStyle}>
                         <SelectValue placeholder="Select source" />
                       </SelectTrigger>
-                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass} side="bottom" align="start">
+                      <SelectContent data-create-deal-popover className={createDealDropdownContentClass} style={createDealDropdownSurfaceStyle} side="bottom" align="start">
                         <SelectItem value="__none__">None</SelectItem>
                         {sourcedViaOptions.map((option) => (
                           <SelectItem key={option} value={option}>{option}</SelectItem>
