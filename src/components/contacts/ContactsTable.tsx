@@ -357,7 +357,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                   </TableCell>
                   <TableCell className="text-sm">
                     {(c.hs_contact_type || c.contact_type) ? (
-                      <Badge variant="outline" className="text-[10px]">{c.hs_contact_type || c.contact_type}</Badge>
+                      <span className={contactTypeBadgeClass(c.hs_contact_type || c.contact_type)}>
+                        {c.hs_contact_type || c.contact_type}
+                      </span>
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
