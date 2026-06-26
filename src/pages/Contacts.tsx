@@ -34,7 +34,7 @@ export default function Contacts() {
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const normalizedSearch = search.trim();
   const searchableTerm = normalizedSearch;
-  const debouncedSearch = searchableTerm;
+  const debouncedSearch = useDebouncedValue(searchableTerm, 80);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
