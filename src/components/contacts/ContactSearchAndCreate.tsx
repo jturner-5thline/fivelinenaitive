@@ -111,7 +111,6 @@ export function ContactSearchAndCreate({ open, onSelect, selectedName, autoFocus
       const created = await createContact.mutateAsync({
         first_name: first || null,
         last_name: last || null,
-        full_name: [first, last].filter(Boolean).join(' ').trim() || email || null,
         email: email || null,
       } as never);
       onSelect({
