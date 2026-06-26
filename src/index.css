@@ -1721,8 +1721,7 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact textarea,
 .create-deal-compact button[role="combobox"],
 .create-deal-compact [data-slot="select-trigger"] {
-  background-color: hsl(222 35% 11%) !important;
-  background-image: none !important;
+  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   color: rgba(255,255,255,0.95) !important;
 }
@@ -1754,9 +1753,9 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 [data-radix-popper-content-wrapper] [data-create-deal-popover] * {
   color: rgba(255,255,255,0.95);
 }
-[data-create-deal-popover] {
-  background-color: hsl(222 35% 11%) !important;
-  background-image: none !important;
+[data-create-deal-popover],
+[data-radix-popper-content-wrapper]:has(> [data-create-deal-popover]) > * {
+  background: linear-gradient(135deg, #0a1224 0%, #060b18 50%, #04060f 100%) !important;
   border: 1px solid rgba(255,255,255,0.18) !important;
   box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
   backdrop-filter: none !important;
