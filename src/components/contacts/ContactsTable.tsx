@@ -277,8 +277,14 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       <div className="border rounded-lg overflow-hidden" style={{ height: 56 + 25 * 31 }}>
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-            <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No contacts found</p>
+            {isFetching && search.trim() ? (
+              <p className="text-sm">Searching…</p>
+            ) : (
+              <>
+                <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">No contacts found</p>
+              </>
+            )}
           </div>
         ) : (
           <TableVirtuoso
