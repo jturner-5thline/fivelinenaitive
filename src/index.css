@@ -1721,12 +1721,17 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 .create-deal-compact textarea,
 .create-deal-compact button[role="combobox"],
 .create-deal-compact [data-slot="select-trigger"] {
-  background-color: rgba(255,255,255,0.04) !important;
-  border-color: rgba(255,255,255,0.12) !important;
+  background-color: hsl(222 35% 11%) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
   color: rgba(255,255,255,0.95) !important;
 }
 .create-deal-compact input::placeholder,
-.create-deal-compact textarea::placeholder {
+.create-deal-compact textarea::placeholder,
+.create-deal-compact button[role="combobox"][data-placeholder],
+.create-deal-compact [data-slot="select-trigger"][data-placeholder],
+.create-deal-compact button[role="combobox"] [data-placeholder],
+.create-deal-compact [data-slot="select-trigger"] [data-placeholder] {
   color: rgba(255,255,255,0.4) !important;
 }
 .create-deal-compact input:focus,
@@ -1738,6 +1743,32 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 .create-deal-compact svg {
   color: rgba(255,255,255,0.6);
+}
+
+/* Opaque dropdown panels for any Select/Combobox/Popover opened from the
+   Create New Deal dialog. Radix portals these to <body>, so we tag them via
+   a marker attribute set on the dialog and target descendants of the
+   matching popper wrappers. This guarantees a solid surface with a visible
+   border and readable items regardless of theme tokens. */
+[data-radix-popper-content-wrapper] [data-create-deal-popover],
+[data-radix-popper-content-wrapper] [data-create-deal-popover] * {
+  color: rgba(255,255,255,0.95);
+}
+[data-create-deal-popover] {
+  background-color: hsl(222 35% 11%) !important;
+  background-image: none !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.55) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: rgba(255,255,255,0.95) !important;
+}
+[data-create-deal-popover] [role="option"]:hover,
+[data-create-deal-popover] [role="option"][data-highlighted],
+[data-create-deal-popover] [role="option"][data-state="checked"],
+[data-create-deal-popover] [data-radix-select-item][data-highlighted] {
+  background-color: rgba(255,255,255,0.08) !important;
+  color: #fff !important;
 }
 
 /* Company dropdown panel matches dark modal */
