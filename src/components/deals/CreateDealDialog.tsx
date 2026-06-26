@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
 import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
@@ -132,6 +133,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const showNarrative = isFieldVisible('narrative');
   const showManager = isFieldVisible('dealManager');
   const showOwner = isFieldVisible('dealOwner');
+
+  // 5th Line account replaces the "Deal Originator" (referral) field on the
+  // Create Deal form with an internal "Deal Manager" user select. The Deal
+  // Owner field is unchanged.
+  const is5thLine = company?.id === FIFTH_LINE_COMPANY_ID;
   
   // Use active pipeline's stages if available, otherwise use global stages
   const effectiveStages = activePipeline?.stages && activePipeline.stages.length > 0 
@@ -254,8 +260,12 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     const blank: string[] = [];
     if (showManager && !dealManager) blank.push('Deal Manager');
     if (showOwner && !dealOwner) blank.push('Deal Owner');
-    if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
-    if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
+    if (is5thLine) {
+      if (!dealManager) blank.push('Deal Manager');
+    } else {
+      if (showReferral && !referralName.trim()) blank.push('Referral Source Name');
+      if (showReferral && !referralEmail.trim()) blank.push('Referral Source Email');
+    }
     return blank;
   };
 
@@ -581,7 +591,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 </div>
               </div>
 
-              {/* Row 3: Deal owner | Deal originator (referral source) */}
+              {/* Row 3: Deal owner | Deal originator (referral source) — 5th Line shows Deal Manager instead */}
               <div className="grid grid-cols-2 gap-2">
                 {showOwner ? (
                   <div className="grid gap-1">
@@ -598,7 +608,21 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 ) : <div />}
-                {showReferral ? (
+                {is5thLine ? (
+                  <div className="grid gap-1">
+                    <LabelWithBadge htmlFor="dealManager">Deal Manager</LabelWithBadge>
+                    <Select value={dealManager} onValueChange={setDealManager}>
+                      <SelectTrigger className="rounded-lg">
+                        <SelectValue placeholder="Select manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {memberOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : showReferral ? (
                   <div className="grid gap-1">
                     <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
                     <Popover modal>
