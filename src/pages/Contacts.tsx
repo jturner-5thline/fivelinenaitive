@@ -33,8 +33,8 @@ export default function Contacts() {
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
   const [matchMode, setMatchMode] = useState<MatchMode>('all');
   const normalizedSearch = search.trim();
-  const searchableTerm = normalizedSearch.length >= 3 ? normalizedSearch : '';
-  const debouncedSearch = useDebouncedValue(searchableTerm, 40);
+  const searchableTerm = normalizedSearch;
+  const debouncedSearch = useDebouncedValue(searchableTerm, 80);
   const debouncedFilters = useDebouncedValue(advancedFilters, 500);
   const queryClient = useQueryClient();
   const { company } = useCompany();
@@ -120,7 +120,7 @@ export default function Contacts() {
   const contacts = result?.data ?? [];
   const totalCount = result?.totalCount ?? 0;
   const totalPages = result?.totalPages ?? 0;
-  const isSearchPending = searchableTerm.length > 0 && (isFetching || debouncedSearch !== searchableTerm);
+  const isSearchPending = searchableTerm.length > 0 && isFetching;
 
   const handleQuickFilterChange = (value: string) => {
     setQuickFilter(value);
@@ -202,7 +202,7 @@ export default function Contacts() {
             <>
               {/* Never block pointer events during background fetches —
                   doing so freezes the search input mid-keystroke. */}
-              <div className={isFetching ? 'opacity-70 transition-opacity' : ''}>
+              <div>
                 <ContactsTable
                   contacts={contacts}
                   search={search}

@@ -59,6 +59,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const [localSearch, setLocalSearch] = useState('');
   const search = controlledSearch ?? localSearch;
   const setSearch = onSearchChange ?? setLocalSearch;
+  const isServerSearch = controlledSearch !== undefined;
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [contactTypeFilter, setContactTypeFilter] = useState<string>('all');
@@ -88,7 +89,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
   const filtered = useMemo(() => {
     let result = [...contacts];
 
-    if (search.trim()) {
+    if (search.trim() && !isServerSearch) {
       const q = search.toLowerCase();
       result = result.filter(c =>
         (c.full_name || '').toLowerCase().includes(q) ||
@@ -124,7 +125,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
     }
 
     return result;
-  }, [contacts, search, lifecycleFilter, statusFilter, contactTypeFilter, ownerFilter, sortField, sortDir]);
+  }, [contacts, search, isServerSearch, lifecycleFilter, statusFilter, contactTypeFilter, ownerFilter, sortField, sortDir]);
 
   // Stable ref so the virtualized row component can navigate without forcing remounts.
   const filteredRef = useRef(filtered);

@@ -65,7 +65,7 @@ export interface Contact {
   ae_owner?: { display_name: string | null; avatar_url: string | null } | null;
 }
 
-const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, phone_mobile, job_title, contact_type, linkedin_url, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id, owner_user_id, hs_city, hs_state, hs_industry, hs_contact_status, hs_contact_type, hs_company_name, hs_notes_last_contacted, hs_hs_email_optout, email_domain_normalized, crm_company:crm_companies!crm_company_id(id, name)';
+const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, phone_mobile, job_title, contact_type, linkedin_url, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, last_contact_at, created_at, updated_at, hubspot_contact_id, synced_with_hubspot, crm_company_id, owner_user_id, hs_city, hs_state, hs_industry, hs_contact_status, hs_contact_type, hs_company_name, hs_notes_last_contacted, hs_hs_email_optout, email_domain_normalized, crm_company:crm_companies!crm_company_id(id, name)';
 
 export interface ContactsListParams {
   page?: number;
@@ -90,10 +90,40 @@ export function useContacts(params: ContactsListParams = {}) {
   const { company } = useCompany();
   const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
   const hasSearch = !!search?.trim();
+  const canUseFastSearch = hasSearch
+    && advancedFilters.length === 0
+    && (!quickFilter || quickFilter === 'all')
+    && (!lifecycleStage || lifecycleStage === 'all')
+    && (!status || status === 'all');
 
   return useQuery<PaginatedResult<Contact>>({
     queryKey: ['contacts', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
+      if (canUseFastSearch) {
+        const { data, error } = await (supabase.rpc as any)('search_contacts_fast', {
+          _search: search!.trim(),
+          _limit: pageSize,
+          _offset: page * pageSize,
+        }).abortSignal(signal);
+
+        if (error) throw error;
+
+        const mapped = ((data || []) as any[]).map(({ crm_company_name, ...contact }) => ({
+          ...contact,
+          crm_company: contact.crm_company_id && crm_company_name
+            ? { id: contact.crm_company_id, name: crm_company_name, industry: null }
+            : null,
+        })) as Contact[];
+
+        return {
+          data: mapped,
+          totalCount: mapped.length,
+          page,
+          pageSize,
+          totalPages: 1,
+        };
+      }
+
       // Use the planner's row-count estimate instead of an exact COUNT(*).
       // PostgREST's default 'exact' (and 'estimated' when the planner row
       // estimate is below 1000) runs the filtered query a second time
@@ -166,7 +196,8 @@ export function useContacts(params: ContactsListParams = {}) {
       const { data, error, count } = await query
         .order('updated_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
-        .range(from, to);
+        .range(from, to)
+        .abortSignal(signal);
 
       if (error) throw error;
       const totalCount = hasSearch ? (data?.length ?? 0) : (count ?? 0);
