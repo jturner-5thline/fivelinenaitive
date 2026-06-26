@@ -1244,18 +1244,20 @@ button[role="combobox"] {
 
 /* Card surfaces — only inside the dark theme, only inside the skin */
 .dark .insights-glass-skin [data-slot="card"] {
-  background: rgba(26, 42, 72, 0.78) !important;
-  border: 0.5px solid rgba(110, 170, 255, 0.24) !important;
+  /* Match Deal Details surface treatment: dark translucent panel on the
+     app shell gradient, with a soft blue hairline border. */
+  background: hsl(220 40% 12% / 0.55) !important;
+  border: 1px solid hsl(220 70% 55% / 0.18) !important;
   border-radius: 12px !important;
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
   position: relative;
   overflow: hidden;
 }
 .dark .insights-glass-skin [data-slot="card"]:hover {
-  border-color: rgba(120, 170, 255, 0.28) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  border-color: hsl(220 70% 60% / 0.28) !important;
+  box-shadow: 0 14px 36px -18px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 /* Diagonal sheen highlight matching <GlassCard /> */
 .dark .insights-glass-skin [data-slot="card"]::before {
