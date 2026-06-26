@@ -301,7 +301,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
               TableBody: TableBody as any,
             }}
             fixedHeaderContent={() => (
-              <TableRow className="bg-muted/30">
+              <TableRow className="contacts-thead-row border-b border-primary/15 bg-[hsl(var(--card))]/85 backdrop-blur-md hover:bg-[hsl(var(--card))]/85 [&>th]:h-9 [&>th]:py-0 [&>th]:text-[11px] [&>th]:font-semibold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-muted-foreground/80">
                 <TableHead className="w-10">
                   <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                 </TableHead>
