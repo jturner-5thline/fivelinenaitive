@@ -13,7 +13,10 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground",
+      // Inherit opaque dark gradient from parent surface when embedded in a
+      // portaled Popover / Dialog. Falls back to bg-popover only when used
+      // standalone (rare).
+      "app-dropdown-surface flex h-full w-full flex-col overflow-hidden rounded-md text-popover-foreground",
       className,
     )}
     {...props}
