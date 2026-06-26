@@ -74,7 +74,7 @@ export function InlineStatusDropdown({ dealId, status, onStatusChange, className
             </Badge>
           ) : (
             <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium border border-border/60 bg-muted/40 text-muted-foreground cursor-pointer hover:bg-muted/60 transition-colors ${className}`}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium border border-white/15 bg-white/10 text-foreground/80 dark:!text-[#c3c4d0] cursor-pointer hover:bg-white/15 transition-colors ${className}`}
             >
               <CircleDashed className="h-3 w-3" />
               No status
