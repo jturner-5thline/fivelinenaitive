@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
+import { syncTaskAfterCreate } from '@/lib/asana/syncTaskAfterCreate';
 import { useQueryClient } from '@tanstack/react-query';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
 const ADMIN_EMAIL = 'jturner@5thline.co';
@@ -341,12 +342,32 @@ export function useDealMemoApproval(
         toast.error('Deal memo submitted but review task could not be created. Please notify your admin.');
       }
 
+      // Mirror the primary approval task to Asana (best-effort).
+      if (taskData?.id) {
+        try {
+          await syncTaskAfterCreate({
+            taskId: taskData.id,
+            title: reviewTitle,
+            description: `Please review and approve the Deal Memo for ${companyName}.`,
+            dueDate: today,
+            assignedTo: nextApprover.userId,
+            companyId: membership?.company_id || deal?.company_id || null,
+          });
+        } catch (e) {
+          console.error('[MemoApproval] Asana sync (primary task) failed:', e);
+        }
+      }
+
       // 5th Line specific: Create a review task for James Turner when a memo is submitted
       // Only fires for deals in the 5th Line org and avoids duplicates
       const orgCompanyId = membership?.company_id || deal?.company_id || null;
       let jamesTaskCreated = false;
       if (orgCompanyId === FIFTH_LINE_COMPANY_ID) {
-        // Duplicate check: skip if an open task with same title already exists for this deal
+        // If the primary approver task was already assigned to James (e.g. the
+        // submitter is the Deal Manager and admin = James), don't insert a
+        // duplicate — but still ensure the Asana mirror + email/notification
+        // for James happen below using that existing task id.
+        const primaryGoesToJames = nextApprover.userId === JAMES_TURNER_USER_ID;
         const { data: existingTasks } = await supabase
           .from('tasks')
           .select('id')
@@ -356,7 +377,9 @@ export function useDealMemoApproval(
           .in('status', ['not_started', 'in_progress'])
           .limit(1);
 
-        if (!existingTasks || existingTasks.length === 0) {
+        const hasOtherOpen = (existingTasks || []).some(t => t.id !== taskData?.id);
+
+        if (!primaryGoesToJames && !hasOtherOpen) {
           // Per spec: due date = same calendar day the task is created.
           const dueToday = today;
           const description = `Please review the deal memo for ${companyName} and provide your approval.\n\nView Deal: ${companyName} — ${dealUrl}`;
@@ -426,19 +449,61 @@ export function useDealMemoApproval(
             // Asana mirror — same sync path used by every other naitive task.
             // Best-effort: never block the in-app submission on Asana errors.
             try {
-              const asanaCtx = await getAsanaSyncContext(orgCompanyId);
-              if (asanaCtx && jamesTaskRow?.id) {
-                await syncTaskToAsana(asanaCtx, {
-                  id: jamesTaskRow.id,
+              if (jamesTaskRow?.id) {
+                await syncTaskAfterCreate({
+                  taskId: jamesTaskRow.id,
                   title: reviewTitle,
                   description,
-                  due_date: dueToday,
-                  assignee_email: ADMIN_EMAIL,
+                  dueDate: dueToday,
+                  assignedTo: JAMES_TURNER_USER_ID,
+                  assigneeEmail: ADMIN_EMAIL,
+                  companyId: orgCompanyId,
                 });
               }
             } catch (asanaErr) {
               console.error('[MemoApproval] Asana mirror failed:', asanaErr);
             }
+          }
+        } else if (primaryGoesToJames) {
+          // Primary task already goes to James — flag as created for messaging.
+          jamesTaskCreated = true;
+          try {
+            await supabase.from('flex_notifications').insert({
+              user_id: JAMES_TURNER_USER_ID,
+              deal_id: dealId,
+              alert_type: 'deal_memo_review',
+              title: `Memo ready for review: ${companyName}`,
+              message: `A Deal Memo for ${companyName} has been submitted and is ready for your review.`,
+              action_url: dealUrl,
+            } as any);
+          } catch (e) {
+            console.error('[MemoApproval] flex_notifications insert failed:', e);
+          }
+          try {
+            const { data: submitterProfile } = await supabase
+              .from('profiles')
+              .select('display_name, email')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            const submittedBy = submitterProfile?.display_name || submitterProfile?.email || user.email || 'A teammate';
+            await supabase.functions.invoke('send-notification-email', {
+              body: {
+                type: 'task_assigned',
+                user_id: JAMES_TURNER_USER_ID,
+                deal_id: dealId,
+                deal_name: companyName,
+                changed_by: submittedBy,
+                metadata: {
+                  task_title: reviewTitle,
+                  priority: 'urgent',
+                  action_url: dealUrl,
+                  deal_name: companyName,
+                  description: `${submittedBy} submitted the Deal Memo for ${companyName} and it's ready for your review.`,
+                },
+              },
+            });
+          } catch (emailErr) {
+            console.error('[MemoApproval] Failed to email James Turner:', emailErr);
           }
         }
       }
