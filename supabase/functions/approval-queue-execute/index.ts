@@ -381,7 +381,7 @@ Deno.serve(async (req) => {
         const dlId = (
           merged.deal_lender_id ??
           payload.deal_lender_id ??
-          (item.target_object_type === 'deal_lender' ? item.target_object_id : undefined)
+          (item.target_object_type === 'deal_lender' || item.target_object_type === 'funding_source' ? item.target_object_id : undefined)
         ) as string | undefined;
         // Accept stage OR substage OR new_status as the destination value —
         // the agent now proposes stage="unresponsive" / "passed" / "not_a_fit"
