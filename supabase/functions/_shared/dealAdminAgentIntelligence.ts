@@ -1160,6 +1160,49 @@ function filterFundingSourceProposals(
 }
 
 /**
+ * Drop draft_email / follow-up candidates that target a funding source whose
+ * current state is terminal (not_a_fit, passed, declined, unresponsive,
+ * on-hold, withdrawn, dead, lost, rejected, closed, no-go). These lenders
+ * are resolved — nudging them is never appropriate, regardless of last
+ * contact recency. Applies universally to ALL draft_email lender proposals,
+ * not just the deal that triggered the rule.
+ */
+function filterLenderDraftEmails(
+  candidates: CandidateItem[],
+  fundingSources?: any[],
+): { kept: CandidateItem[]; dropped: number } {
+  const TERMINAL_LENDER_RE =
+    /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+  const fsById = new Map<string, any>();
+  for (const f of fundingSources ?? []) {
+    if (f?.id) fsById.set(String(f.id), f);
+  }
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "draft_email") return true;
+    const targetType = (c.target_object_type ?? "").toString().toLowerCase();
+    // Only gate lender-targeted drafts. Referral/client/other drafts unchanged.
+    const isLenderTarget =
+      targetType === "funding_source" ||
+      targetType === "deal_lender" ||
+      targetType === "lender";
+    if (!isLenderTarget) return true;
+    const tid = c.target_object_id ? String(c.target_object_id) : "";
+    const fs = tid ? fsById.get(tid) : null;
+    if (!fs) return true;
+    const stateBlob = [fs.tracking_status, fs.stage, fs.substage, fs.status]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+    if (TERMINAL_LENDER_RE.test(stateBlob)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
  * Deterministic guardrail: an `update_funding_source` proposal that moves a
  * lender to "on-hold" (or any hold/pause-shaped value) is ONLY valid when the
  * evidence explicitly cites lender language for pausing the deal — "revisit",
