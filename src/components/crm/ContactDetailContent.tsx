@@ -19,6 +19,7 @@ import {
   useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
 } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
+import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
 import {
@@ -340,7 +341,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 <LabeledSelect label="Buying Role" value={contact.buying_role || ''} onChange={v => handleQuickUpdate('buying_role', v)} options={BUYING_ROLES} placeholder="Select role" />
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
-                  <ContactTypeSelect value={(contact as any).contact_type} onChange={(v) => handleQuickUpdate('contact_type', v)} triggerClassName="h-8 text-xs" />
+                  <ContactTypeMultiSelect
+                    value={(contact as any).contact_type}
+                    onChange={(v) => handleQuickUpdate('contact_type', v)}
+                  />
                 </div>
               </div>
             </div>
