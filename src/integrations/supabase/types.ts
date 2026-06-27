@@ -266,6 +266,27 @@ export type Database = {
         }
         Relationships: []
       }
+      _import_5thline_stage: {
+        Row: {
+          contact_type: string | null
+          email: string
+          last_name_lc: string | null
+          lead_status: string | null
+        }
+        Insert: {
+          contact_type?: string | null
+          email: string
+          last_name_lc?: string | null
+          lead_status?: string | null
+        }
+        Update: {
+          contact_type?: string | null
+          email?: string
+          last_name_lc?: string | null
+          lead_status?: string | null
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           activity_type: string
