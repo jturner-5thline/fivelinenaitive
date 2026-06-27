@@ -1672,6 +1672,7 @@ function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: 
 // ── Tab icons & labels ─────────────────────────────────────────
 const ALL_TABS = [
   { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { value: 'daily_rundown', label: 'Daily Rundown', icon: Sunrise },
   { value: 'agenda', label: 'Agenda', icon: CalendarDays },
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
