@@ -1823,7 +1823,9 @@ function DailyRundownTab({
                 </div>
                 <p className="text-[10px] text-muted-foreground/70 mb-2">Toggle visibility and reorder.</p>
                 <ul className="space-y-1">
-                  {pref.order.map((k, idx) => {
+                  {pref.order
+                    .filter(k => k !== 'financial' || canSeeFinancialSub)
+                    .map((k, idx) => {
                     const meta = DAILY_RUNDOWN_SUBS.find(s => s.key === k)!;
                     const Icon = meta.icon;
                     const isHidden = pref.hidden.includes(k);
