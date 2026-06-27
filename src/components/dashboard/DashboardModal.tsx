@@ -398,15 +398,9 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     return sortDir === 'asc' ? ' ▲' : ' ▼';
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="popup-shell-surface p-0 gap-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 h-[92vh] sm:h-[92vh] w-[94vw] max-w-none sm:max-w-none max-h-none min-h-0 overflow-hidden box-border"
-        style={{ width: '94vw' }}
-        overlayClassName="bg-black/80"
-        aria-label="Deal Pipeline"
-      >
-        <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
+  const body = (
+    <>
+      <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
