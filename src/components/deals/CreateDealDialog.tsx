@@ -832,7 +832,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                             setContactName(first?.name || '');
                             setContactInfo(first?.email || '');
                           }}
-                          placeholder="New contact name…"
+                          placeholder=""
                           invalid={false}
                         />
                       </div>
