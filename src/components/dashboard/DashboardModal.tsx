@@ -66,7 +66,8 @@ const NikiPerformanceTab = lazy(() =>
   import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
 );
 
-export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
+export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
+  const open = embedded ? true : openProp;
   const { user } = useAuth();
   const canSeePerformance =
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
