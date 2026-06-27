@@ -340,7 +340,6 @@ export function DealsHeader() {
     { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: approvalQueueEnabled },
     { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
     { label: 'Deal Rundown' as const, isOpen: isDealRundownOpen, open: () => setIsDealRundownOpen(true), close: () => setIsDealRundownOpen(false), available: true },
-    { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },
     { label: 'Daily Rundown' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: "Niki's Daily Rundown" as const, isOpen: isNikiBriefingOpen, open: () => setIsNikiBriefingOpen(true), close: () => setIsNikiBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: (isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"), isOpen: isMoffittBriefingOpen, open: () => setIsMoffittBriefingOpen(true), close: () => setIsMoffittBriefingOpen(false), available: canSeeMoffitt },

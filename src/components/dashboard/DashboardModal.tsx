@@ -35,6 +35,13 @@ interface DashboardModalProps {
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
   initialTab?: 'dashboard' | 'analytics';
+  /**
+   * When true, render the dashboard body inline (no Dialog wrapper) so the
+   * same content can be hosted as a tab inside another modal (e.g. the
+   * Daily Rundown). The `open`/`onOpenChange` props are ignored in this
+   * mode — the body always renders.
+   */
+  embedded?: boolean;
 }
 
 const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
@@ -59,7 +66,8 @@ const NikiPerformanceTab = lazy(() =>
   import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
 );
 
-export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
+export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
+  const open = embedded ? true : openProp;
   const { user } = useAuth();
   const canSeePerformance =
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
@@ -390,15 +398,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     return sortDir === 'asc' ? ' ▲' : ' ▼';
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="popup-shell-surface p-0 gap-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 h-[92vh] sm:h-[92vh] w-[94vw] max-w-none sm:max-w-none max-h-none min-h-0 overflow-hidden box-border"
-        style={{ width: '94vw' }}
-        overlayClassName="bg-black/80"
-        aria-label="Deal Pipeline"
-      >
-        <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
+  const body = (
+    <>
+      <div className="db-root flex flex-col flex-1 min-h-0 min-w-0 max-w-full overflow-hidden" style={{ borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
@@ -756,7 +758,6 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             )}
           </Tabs>
         </div>
-      </DialogContent>
       {editingPlan && (
         <KpiPlanEditDialog
           open={!!editingMetric}
@@ -768,6 +769,21 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
           onSaved={() => kpi.refetchPlans()}
         />
       )}
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="popup-shell-surface p-0 gap-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 h-[92vh] sm:h-[92vh] w-[94vw] max-w-none sm:max-w-none max-h-none min-h-0 overflow-hidden box-border"
+        style={{ width: '94vw' }}
+        overlayClassName="bg-black/80"
+        aria-label="Deal Pipeline"
+      >
+        {body}
+      </DialogContent>
     </Dialog>
   );
 }

@@ -18,7 +18,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight, Sunset, EyeOff,
+  Check, Clock, ArrowUpRight, Sunset, EyeOff, LayoutDashboard,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -37,6 +37,13 @@ import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { AddToDealCalendarProvider } from '@/components/calendar/AddToDealCalendarProvider';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+
+// Lazy: the Dashboard tab embeds the full DashboardModal body. Only
+// loaded when the Dashboard tab is first activated.
+const DashboardModal = lazy(() =>
+  import('./DashboardModal').then((m) => ({ default: m.DashboardModal })),
+);
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
@@ -114,12 +121,12 @@ interface DailyBriefingModalProps {
    * Tab values to hide from this briefing instance (e.g., ['financial']).
    * Hidden tabs do not render their content and skip data fetching entirely.
    */
-  excludeTabs?: Array<'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
+  excludeTabs?: Array<'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
   /**
    * Tab to select when the modal opens (and re-opens). If the value is
    * excluded or unknown, falls back to the first available tab.
    */
-  initialTab?: 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
+  initialTab?: 'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface
@@ -131,7 +138,7 @@ interface DailyBriefingModalProps {
 }
 
 // Initial tab to open with. Defaults to the first available tab.
-export type BriefingTabValue = 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+export type BriefingTabValue = 'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
 
 // ── Glass surface classes ──────────────────────────────────────
 // Borders are intentionally near-invisible — depth comes from translucent
@@ -1663,6 +1670,7 @@ function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: 
 
 // ── Tab icons & labels ─────────────────────────────────────────
 const ALL_TABS = [
+  { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { value: 'agenda', label: 'Agenda', icon: CalendarDays },
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
@@ -1689,14 +1697,16 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
     [],
   );
   const canSeeEndOfDay = !!currentUser?.email && END_OF_DAY_ALLOWLIST.has(currentUser.email.toLowerCase());
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const TABS = useMemo(
     () =>
       ALL_TABS.filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
+        if (t.value === 'dashboard' && !isFifthLine) return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay],
+    [excludeTabs, canSeeEndOfDay, isFifthLine],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
@@ -2028,6 +2038,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                     </div>
                   )}
                   {contentReady && activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'dashboard' && (
+                    <Suspense fallback={<TabSkeleton />}>
+                      <div className="h-[78vh] min-h-[500px] flex flex-col min-h-0 -mx-3 -my-2">
+                        <DashboardModal embedded open onOpenChange={() => {}} />
+                      </div>
+                    </Suspense>
+                  )}
                   {contentReady && activeTab === 'email' && (
                     <EmailTab
                       enabled={open}
