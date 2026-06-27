@@ -57,7 +57,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Mail: loadMail,
   Tasks: loadTasks,
   'Approval Queue': loadTasks,
-  'Daily Rundown': loadDailyBriefing,
+  'Dashboard': loadDailyBriefing,
   "Niki's Daily Rundown": loadDailyBriefing,
   "Moffitt's Daily Rundown": loadDailyBriefing,
   "My Daily Rundown": loadDailyBriefing,
@@ -340,7 +340,7 @@ export function DealsHeader() {
     { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: approvalQueueEnabled },
     { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
     { label: 'Deal Rundown' as const, isOpen: isDealRundownOpen, open: () => setIsDealRundownOpen(true), close: () => setIsDealRundownOpen(false), available: true },
-    { label: 'Daily Rundown' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
+    { label: 'Dashboard' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: "Niki's Daily Rundown" as const, isOpen: isNikiBriefingOpen, open: () => setIsNikiBriefingOpen(true), close: () => setIsNikiBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: (isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"), isOpen: isMoffittBriefingOpen, open: () => setIsMoffittBriefingOpen(true), close: () => setIsMoffittBriefingOpen(false), available: canSeeMoffitt },
   ].filter(o => o.available);
@@ -507,13 +507,12 @@ export function DealsHeader() {
                 'Tasks': ListChecks,
                 'Deal Rundown': ClipboardList,
                 'Dashboard': LayoutDashboard,
-                'Daily Rundown': Newspaper,
                 "Niki's Daily Rundown": Sparkles,
                 "Moffitt's Daily Rundown": UserRound,
                 'My Daily Rundown': UserRound,
               };
               const BADGES: Record<string, boolean> = {
-                'Daily Rundown': dailyRundownHasBadge,
+                'Dashboard': dailyRundownHasBadge,
                 "Niki's Daily Rundown": nikiRundownHasBadge,
               };
               const COUNT_BADGES: Record<string, number> = {
@@ -635,7 +634,7 @@ export function DealsHeader() {
             initialTab={briefingInitialTab as any}
             {...(isNikiMirror
               ? {
-                  title: "Daily Rundown",
+                  title: "Dashboard",
                   targetUserId: NIKI_USER_ID,
                   targetAssigneeName: NIKI_ASSIGNEE_NAME,
                   excludeTabs: ['financial'] as const as any,
