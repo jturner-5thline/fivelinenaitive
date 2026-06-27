@@ -37,6 +37,13 @@ import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { AddToDealCalendarProvider } from '@/components/calendar/AddToDealCalendarProvider';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+
+// Lazy: the Dashboard tab embeds the full DashboardModal body. Only
+// loaded when the Dashboard tab is first activated.
+const DashboardModal = lazy(() =>
+  import('./DashboardModal').then((m) => ({ default: m.DashboardModal })),
+);
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
