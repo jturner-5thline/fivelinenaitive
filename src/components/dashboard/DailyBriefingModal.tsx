@@ -1718,11 +1718,17 @@ function DailyRundownTab({
   targetAssigneeName?: string;
   briefingType?: string;
 }) {
+  const { user: rundownUser } = useAuth();
+  const canSeeFinancialSub = !!rundownUser?.email && new Set([
+    'swilliams@5thline.co',
+    'jturner@5thline.co',
+    'jmoffitt@5thline.co',
+  ]).has(rundownUser.email.toLowerCase());
   const [pref, setPref] = useState<DailyRundownPref>(() => loadDailyRundownPref());
   const [configOpen, setConfigOpen] = useState(false);
   const visible = useMemo(
-    () => pref.order.filter(k => !pref.hidden.includes(k)),
-    [pref],
+    () => pref.order.filter(k => !pref.hidden.includes(k) && (k !== 'financial' || canSeeFinancialSub)),
+    [pref, canSeeFinancialSub],
   );
   const [active, setActive] = useState<DailyRundownSubKey>(() => visible[0] ?? 'agenda');
 
