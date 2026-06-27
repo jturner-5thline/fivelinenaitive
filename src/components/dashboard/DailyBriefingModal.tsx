@@ -1718,11 +1718,17 @@ function DailyRundownTab({
   targetAssigneeName?: string;
   briefingType?: string;
 }) {
+  const { user: rundownUser } = useAuth();
+  const canSeeFinancialSub = !!rundownUser?.email && new Set([
+    'swilliams@5thline.co',
+    'jturner@5thline.co',
+    'jmoffitt@5thline.co',
+  ]).has(rundownUser.email.toLowerCase());
   const [pref, setPref] = useState<DailyRundownPref>(() => loadDailyRundownPref());
   const [configOpen, setConfigOpen] = useState(false);
   const visible = useMemo(
-    () => pref.order.filter(k => !pref.hidden.includes(k)),
-    [pref],
+    () => pref.order.filter(k => !pref.hidden.includes(k) && (k !== 'financial' || canSeeFinancialSub)),
+    [pref, canSeeFinancialSub],
   );
   const [active, setActive] = useState<DailyRundownSubKey>(() => visible[0] ?? 'agenda');
 
@@ -1817,7 +1823,9 @@ function DailyRundownTab({
                 </div>
                 <p className="text-[10px] text-muted-foreground/70 mb-2">Toggle visibility and reorder.</p>
                 <ul className="space-y-1">
-                  {pref.order.map((k, idx) => {
+                  {pref.order
+                    .filter(k => k !== 'financial' || canSeeFinancialSub)
+                    .map((k, idx) => {
                     const meta = DAILY_RUNDOWN_SUBS.find(s => s.key === k)!;
                     const Icon = meta.icon;
                     const isHidden = pref.hidden.includes(k);
@@ -1973,18 +1981,27 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   );
   const canSeeEndOfDay = !!currentUser?.email && END_OF_DAY_ALLOWLIST.has(currentUser.email.toLowerCase());
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  // Financial tab/section is restricted to a small allowlist —
+  // swilliams, jturner, jmoffitt only. Hides both the standalone
+  // Financial sidebar tab AND the Daily Rundown > Financial sub-view.
+  const FINANCIAL_ALLOWLIST = useMemo(
+    () => new Set(['swilliams@5thline.co', 'jturner@5thline.co', 'jmoffitt@5thline.co']),
+    [],
+  );
+  const canSeeFinancial = !!currentUser?.email && FINANCIAL_ALLOWLIST.has(currentUser.email.toLowerCase());
   const TABS = useMemo(
     () =>
       ALL_TABS.filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
+        if (t.value === 'financial' && !canSeeFinancial) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay, isFifthLine],
+    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
