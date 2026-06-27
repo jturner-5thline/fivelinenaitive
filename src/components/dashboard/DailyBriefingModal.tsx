@@ -2047,6 +2047,15 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                       </div>
                     </Suspense>
                   )}
+                  {contentReady && activeTab === 'daily_rundown' && (
+                    <DailyRundownTab
+                      enabled={open}
+                      onNavigate={handleNavigate}
+                      targetUserId={targetUserId}
+                      targetAssigneeName={targetAssigneeName}
+                      briefingType={briefingType}
+                    />
+                  )}
                   {contentReady && activeTab === 'email' && (
                     <EmailTab
                       enabled={open}
