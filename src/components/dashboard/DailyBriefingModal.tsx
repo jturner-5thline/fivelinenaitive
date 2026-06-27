@@ -19,6 +19,7 @@ import {
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
   Check, Clock, ArrowUpRight, Sunset, EyeOff, LayoutDashboard,
+  Settings, Sunrise, GripVertical,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -121,12 +122,12 @@ interface DailyBriefingModalProps {
    * Tab values to hide from this briefing instance (e.g., ['financial']).
    * Hidden tabs do not render their content and skip data fetching entirely.
    */
-  excludeTabs?: Array<'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
+  excludeTabs?: Array<'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
   /**
    * Tab to select when the modal opens (and re-opens). If the value is
    * excluded or unknown, falls back to the first available tab.
    */
-  initialTab?: 'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
+  initialTab?: 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational' | 'end_of_day';
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface
@@ -138,7 +139,7 @@ interface DailyBriefingModalProps {
 }
 
 // Initial tab to open with. Defaults to the first available tab.
-export type BriefingTabValue = 'dashboard' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+export type BriefingTabValue = 'dashboard' | 'daily_rundown' | 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
 
 // ── Glass surface classes ──────────────────────────────────────
 // Borders are intentionally near-invisible — depth comes from translucent
@@ -1668,9 +1669,283 @@ function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: 
   return <OperationalDashboard data={data ?? null} isLoading={isLoading} error={error as Error | null} onRefetch={refetch} />;
 }
 
+// ── Tab: Daily Rundown (combined swipe-through of sub-views) ──
+type DailyRundownSubKey = 'agenda' | 'email' | 'deals' | 'catchup' | 'financial';
+const DAILY_RUNDOWN_SUBS: { key: DailyRundownSubKey; label: string; icon: React.ElementType }[] = [
+  { key: 'agenda', label: 'Agenda', icon: CalendarDays },
+  { key: 'email', label: 'Email', icon: Mail },
+  { key: 'deals', label: 'Deals', icon: GitBranch },
+  { key: 'catchup', label: 'Catch Up & News', icon: Newspaper },
+  { key: 'financial', label: 'Financial', icon: DollarSign },
+];
+const DAILY_RUNDOWN_PREF_KEY = 'daily_rundown_subviews_v1';
+
+interface DailyRundownPref {
+  order: DailyRundownSubKey[];
+  hidden: DailyRundownSubKey[];
+}
+
+function loadDailyRundownPref(): DailyRundownPref {
+  const fallback: DailyRundownPref = {
+    order: DAILY_RUNDOWN_SUBS.map(s => s.key),
+    hidden: [],
+  };
+  if (typeof globalThis === 'undefined' || !globalThis.localStorage) return fallback;
+  try {
+    const raw = globalThis.localStorage.getItem(DAILY_RUNDOWN_PREF_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<DailyRundownPref>;
+    const valid = new Set(DAILY_RUNDOWN_SUBS.map(s => s.key));
+    const order = (parsed.order ?? []).filter((k): k is DailyRundownSubKey => valid.has(k as DailyRundownSubKey));
+    for (const k of fallback.order) if (!order.includes(k)) order.push(k);
+    const hidden = (parsed.hidden ?? []).filter((k): k is DailyRundownSubKey => valid.has(k as DailyRundownSubKey));
+    return { order, hidden };
+  } catch {
+    return fallback;
+  }
+}
+
+function DailyRundownTab({
+  enabled,
+  onNavigate,
+  targetUserId,
+  targetAssigneeName,
+  briefingType,
+}: {
+  enabled: boolean;
+  onNavigate: (path: string) => void;
+  targetUserId?: string;
+  targetAssigneeName?: string;
+  briefingType?: string;
+}) {
+  const [pref, setPref] = useState<DailyRundownPref>(() => loadDailyRundownPref());
+  const [configOpen, setConfigOpen] = useState(false);
+  const visible = useMemo(
+    () => pref.order.filter(k => !pref.hidden.includes(k)),
+    [pref],
+  );
+  const [active, setActive] = useState<DailyRundownSubKey>(() => visible[0] ?? 'agenda');
+
+  useEffect(() => {
+    if (!visible.includes(active)) setActive(visible[0] ?? 'agenda');
+  }, [visible, active]);
+
+  const savePref = useCallback((next: DailyRundownPref) => {
+    setPref(next);
+    try {
+      globalThis.localStorage?.setItem(DAILY_RUNDOWN_PREF_KEY, JSON.stringify(next));
+    } catch { /* ignore */ }
+  }, []);
+
+  const toggleHidden = (k: DailyRundownSubKey) => {
+    const isHidden = pref.hidden.includes(k);
+    const hidden = isHidden ? pref.hidden.filter(x => x !== k) : [...pref.hidden, k];
+    if (!isHidden && pref.hidden.length + 1 >= pref.order.length) return; // keep at least one
+    savePref({ ...pref, hidden });
+  };
+
+  const move = (k: DailyRundownSubKey, dir: -1 | 1) => {
+    const idx = pref.order.indexOf(k);
+    const next = idx + dir;
+    if (idx < 0 || next < 0 || next >= pref.order.length) return;
+    const order = [...pref.order];
+    [order[idx], order[next]] = [order[next], order[idx]];
+    savePref({ ...pref, order });
+  };
+
+  const currentIdx = visible.indexOf(active);
+  const canPrev = currentIdx > 0;
+  const canNext = currentIdx >= 0 && currentIdx < visible.length - 1;
+  const goPrev = () => { if (canPrev) setActive(visible[currentIdx - 1]); };
+  const goNext = () => { if (canNext) setActive(visible[currentIdx + 1]); };
+
+  const currentMeta = DAILY_RUNDOWN_SUBS.find(s => s.key === active);
+
+  return (
+    <div className="flex flex-col h-[78vh] min-h-[500px] min-w-0">
+      {/* Sub-tab strip + gear */}
+      <div className="flex items-center gap-2 mb-3 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+          {visible.map(k => {
+            const meta = DAILY_RUNDOWN_SUBS.find(s => s.key === k)!;
+            const Icon = meta.icon;
+            const isActive = k === active;
+            return (
+              <button
+                key={k}
+                onClick={() => setActive(k)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  isActive
+                    ? 'bg-primary/15 text-primary border-primary/30'
+                    : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {meta.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setConfigOpen(o => !o)}
+            aria-label="Configure Daily Rundown views"
+            className={cn(
+              'h-8 w-8 inline-flex items-center justify-center rounded-full border',
+              configOpen
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
+            )}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </button>
+          {configOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setConfigOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 z-40 w-72 rounded-lg border border-border/60 bg-popover shadow-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-foreground">Configure views</p>
+                  <button
+                    type="button"
+                    onClick={() => setConfigOpen(false)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground/70 mb-2">Toggle visibility and reorder.</p>
+                <ul className="space-y-1">
+                  {pref.order.map((k, idx) => {
+                    const meta = DAILY_RUNDOWN_SUBS.find(s => s.key === k)!;
+                    const Icon = meta.icon;
+                    const isHidden = pref.hidden.includes(k);
+                    return (
+                      <li
+                        key={k}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-white/[0.04]"
+                      >
+                        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/50" />
+                        <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className={cn('flex-1 text-xs', isHidden ? 'text-muted-foreground/50 line-through' : 'text-foreground')}>
+                          {meta.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => move(k, -1)}
+                          disabled={idx === 0}
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          aria-label={`Move ${meta.label} up`}
+                        >
+                          <ChevronLeft className="h-3 w-3 rotate-90" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => move(k, 1)}
+                          disabled={idx === pref.order.length - 1}
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                          aria-label={`Move ${meta.label} down`}
+                        >
+                          <ChevronRight className="h-3 w-3 rotate-90" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleHidden(k)}
+                          className={cn(
+                            'ml-1 inline-flex items-center justify-center h-5 w-5 rounded border',
+                            isHidden
+                              ? 'border-border/50 text-muted-foreground/50'
+                              : 'border-primary/40 bg-primary/15 text-primary',
+                          )}
+                          aria-label={isHidden ? `Show ${meta.label}` : `Hide ${meta.label}`}
+                        >
+                          {isHidden ? <EyeOff className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Sub-view body with left/right scroll arrows */}
+      <div className="relative flex-1 min-h-0 min-w-0">
+        {canPrev && (
+          <button
+            onClick={goPrev}
+            aria-label="Previous view"
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft text-muted-foreground hover:text-foreground hover:bg-white/[0.15]"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+        {canNext && (
+          <button
+            onClick={goNext}
+            aria-label="Next view"
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 h-9 w-9 flex items-center justify-center rounded-full bg-white/[0.08] backdrop-blur-md glass-border-soft text-muted-foreground hover:text-foreground hover:bg-white/[0.15]"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+
+        <div key={active} className="h-full w-full min-h-0 min-w-0 overflow-hidden flex flex-col">
+          {active === 'agenda' && (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <AgendaIntel />
+            </div>
+          )}
+          {active === 'email' && (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <EmailTab
+                enabled={enabled}
+                onNavigate={onNavigate}
+                targetUserId={targetUserId}
+                subTab="all"
+                unreadOnly
+              />
+            </div>
+          )}
+          {active === 'deals' && (
+            <AddToDealCalendarProvider>
+              <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+                <PipelineTab
+                  enabled={enabled}
+                  onNavigate={onNavigate}
+                  targetDealOwnerName={targetAssigneeName}
+                  targetUserId={targetUserId}
+                  briefingType={briefingType}
+                />
+              </div>
+            </AddToDealCalendarProvider>
+          )}
+          {active === 'catchup' && (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <CatchUpTab enabled={enabled} onNavigate={onNavigate} />
+            </div>
+          )}
+          {active === 'financial' && (
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+              <FinancialTab enabled={enabled} onNavigate={onNavigate} />
+            </div>
+          )}
+          {!currentMeta && (
+            <EmptySection message="Enable a view from the gear menu to begin." />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab icons & labels ─────────────────────────────────────────
 const ALL_TABS = [
   { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { value: 'daily_rundown', label: 'Daily Rundown', icon: Sunrise },
   { value: 'agenda', label: 'Agenda', icon: CalendarDays },
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
@@ -2044,6 +2319,15 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                         <DashboardModal embedded open onOpenChange={() => {}} />
                       </div>
                     </Suspense>
+                  )}
+                  {contentReady && activeTab === 'daily_rundown' && (
+                    <DailyRundownTab
+                      enabled={open}
+                      onNavigate={handleNavigate}
+                      targetUserId={targetUserId}
+                      targetAssigneeName={targetAssigneeName}
+                      briefingType={briefingType}
+                    />
                   )}
                   {contentReady && activeTab === 'email' && (
                     <EmailTab
