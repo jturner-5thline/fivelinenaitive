@@ -101,7 +101,11 @@ export function MultiContactPickerField({
           sideOffset={6}
           avoidCollisions={false}
           collisionPadding={8}
-          container={typeof document !== "undefined" ? document.body : undefined}
+          container={
+            typeof document !== "undefined"
+              ? ((document.querySelector('[role="dialog"]') as HTMLElement) ?? document.body)
+              : undefined
+          }
         >
           <div className="space-y-2">
             <label className="text-sm font-medium">Add client contact</label>
