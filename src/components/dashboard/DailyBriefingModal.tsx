@@ -19,6 +19,7 @@ import {
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
   Check, Clock, ArrowUpRight, Sunset, EyeOff, LayoutDashboard,
+  Settings, Sunrise, GripVertical,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
