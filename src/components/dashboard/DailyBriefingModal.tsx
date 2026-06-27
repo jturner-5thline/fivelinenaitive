@@ -1681,7 +1681,7 @@ const ALL_TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const { user: currentUser } = useAuth();
