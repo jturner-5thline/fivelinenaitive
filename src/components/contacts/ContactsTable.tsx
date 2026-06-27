@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { contactTypeBadgeClass } from './contactTypeBadge';
+import { splitContactTypes } from './ContactTypeMultiSelect';
 import { TableVirtuoso } from 'react-virtuoso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
@@ -357,11 +358,17 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                     ) : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-sm">
-                    {(c.hs_contact_type || c.contact_type) ? (
-                      <span className={contactTypeBadgeClass(c.hs_contact_type || c.contact_type)}>
-                        {c.hs_contact_type || c.contact_type}
-                      </span>
-                    ) : <span className="text-muted-foreground">—</span>}
+                    {(() => {
+                      const tags = splitContactTypes((c.hs_contact_type || c.contact_type) as string | null);
+                      if (!tags.length) return <span className="text-muted-foreground">—</span>;
+                      return (
+                        <div className="flex flex-wrap gap-1">
+                          {tags.map(t => (
+                            <span key={t} className={contactTypeBadgeClass(t)}>{t}</span>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                     {contact.created_at ? format(new Date(contact.created_at), 'MMM d, yyyy') : '—'}
