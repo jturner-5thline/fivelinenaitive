@@ -483,7 +483,7 @@ export function DealsHeader() {
             // horizontal padding on each side. Stay responsive on narrow
             // viewports so the cluster never clips.
             width: `min(${overlayRegistry.length * 40 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
-            borderRadius: 20,
+            borderRadius: 8,
             background:
               'linear-gradient(180deg, rgba(20, 34, 58, 0.72) 0%, rgba(14, 24, 42, 0.66) 100%)',
             backdropFilter: 'blur(20px) saturate(150%)',
