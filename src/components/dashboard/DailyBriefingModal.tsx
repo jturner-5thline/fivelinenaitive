@@ -1979,6 +1979,9 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
+        // Agenda, Catch Up & News, and Email are now hosted exclusively
+        // inside the Daily Rundown tab — hide them from the left sidebar.
+        if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
         return true;
       }),
     [excludeTabs, canSeeEndOfDay, isFifthLine],
