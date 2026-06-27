@@ -478,10 +478,11 @@ export function DealsHeader() {
         <div
           className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-[5px] overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]"
           style={{
-            // Match the Ask naitive AI bar's default width (432px) so the
-            // two surfaces read as one visual family. Stay responsive on
-            // narrower viewports so the icon cluster never clips.
-            width: 'min(432px, calc(100vw - 16px))',
+            // Size the bar to fit the visible icon cluster: each icon is
+            // ~40px wide (sm:w-10) with a 6px gap (gap-1.5), plus 16px of
+            // horizontal padding on each side. Stay responsive on narrow
+            // viewports so the cluster never clips.
+            width: `min(${overlayRegistry.length * 40 + Math.max(0, overlayRegistry.length - 1) * 6 + 48}px, calc(100vw - 16px))`,
             borderRadius: 20,
             background:
               'linear-gradient(180deg, rgba(20, 34, 58, 0.72) 0%, rgba(14, 24, 42, 0.66) 100%)',
