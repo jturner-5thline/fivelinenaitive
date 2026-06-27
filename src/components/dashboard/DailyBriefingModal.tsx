@@ -1697,14 +1697,16 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
     [],
   );
   const canSeeEndOfDay = !!currentUser?.email && END_OF_DAY_ALLOWLIST.has(currentUser.email.toLowerCase());
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const TABS = useMemo(
     () =>
       ALL_TABS.filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
+        if (t.value === 'dashboard' && !isFifthLine) return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay],
+    [excludeTabs, canSeeEndOfDay, isFifthLine],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
