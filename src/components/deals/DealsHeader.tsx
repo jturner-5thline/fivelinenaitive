@@ -52,7 +52,6 @@ const DailyBriefingModal = lazy(loadDailyBriefing);
 const DealsOverlay = lazy(loadDealsOverlay);
 
 const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
-  Dashboard: loadDashboard,
   Calendar: loadCalendar,
   Mail: loadMail,
   Tasks: loadTasks,
