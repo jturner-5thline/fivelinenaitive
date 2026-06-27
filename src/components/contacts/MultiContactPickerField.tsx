@@ -55,26 +55,6 @@ export function MultiContactPickerField({
         className,
       )}
     >
-      {value.length === 0 && (
-        <span className="text-sm text-muted-foreground px-1">{placeholder}</span>
-      )}
-      {value.map((c, idx) => (
-        <Badge
-          key={c.id ?? `inline-${idx}`}
-          variant="secondary"
-          className="h-6 pl-2 pr-1 gap-1 text-xs font-normal"
-        >
-          <span className="truncate max-w-[180px]">{c.name || c.email}</span>
-          <button
-            type="button"
-            aria-label={`Remove ${c.name || c.email}`}
-            className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-muted-foreground/20"
-            onClick={() => handleRemove(idx)}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </Badge>
-      ))}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -116,6 +96,26 @@ export function MultiContactPickerField({
           </div>
         </PopoverContent>
       </Popover>
+      {value.length === 0 && (
+        <span className="text-sm text-muted-foreground px-1">{placeholder}</span>
+      )}
+      {value.map((c, idx) => (
+        <Badge
+          key={c.id ?? `inline-${idx}`}
+          variant="secondary"
+          className="h-6 pl-2 pr-1 gap-1 text-xs font-normal"
+        >
+          <span className="truncate max-w-[180px]">{c.name || c.email}</span>
+          <button
+            type="button"
+            aria-label={`Remove ${c.name || c.email}`}
+            className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-muted-foreground/20"
+            onClick={() => handleRemove(idx)}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </Badge>
+      ))}
     </div>
   );
 }
