@@ -35,6 +35,13 @@ interface DashboardModalProps {
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
   initialTab?: 'dashboard' | 'analytics';
+  /**
+   * When true, render the dashboard body inline (no Dialog wrapper) so the
+   * same content can be hosted as a tab inside another modal (e.g. the
+   * Daily Rundown). The `open`/`onOpenChange` props are ignored in this
+   * mode — the body always renders.
+   */
+  embedded?: boolean;
 }
 
 const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
@@ -59,7 +66,7 @@ const NikiPerformanceTab = lazy(() =>
   import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
 );
 
-export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
+export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard', embedded = false }: DashboardModalProps) {
   const { user } = useAuth();
   const canSeePerformance =
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
