@@ -2038,6 +2038,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                     </div>
                   )}
                   {contentReady && activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
+                  {contentReady && activeTab === 'dashboard' && (
+                    <Suspense fallback={<TabSkeleton />}>
+                      <div className="h-[78vh] min-h-[500px] flex flex-col min-h-0 -mx-3 -my-2">
+                        <DashboardModal embedded open onOpenChange={() => {}} />
+                      </div>
+                    </Suspense>
+                  )}
                   {contentReady && activeTab === 'email' && (
                     <EmailTab
                       enabled={open}
