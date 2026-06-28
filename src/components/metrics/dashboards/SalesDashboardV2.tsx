@@ -16,10 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DashboardPeriodPicker,
-  useDashboardPeriod,
-} from '@/components/metrics/DashboardPeriodPicker';
+import { useDashboardPeriod } from '@/components/metrics/DashboardPeriodPicker';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import {
   Dialog,
   DialogContent,
@@ -1627,10 +1625,13 @@ function SummaryTile({ label, value, color }: { label: string; value: string; co
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
-  // Unified Month / Quarter timeframe picker — matches Weekly Rundown.
-  // Drives every chart, KPI, and the Sales Model sheet via buildView().
-  const { value: periodValue, setValue: setPeriodValue, quarterOption: selectedQuarter } =
-    useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
+  // Timeframe is driven by the shared Insights header picker
+  // (Quick Presets / Quarter / Month). Fall back to a local persisted
+  // selection only if this dashboard is ever rendered outside the
+  // InsightsTimeframeProvider.
+  const insightsTf = useInsightsTimeframeOptional();
+  const fallback = useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
+  const selectedQuarter = insightsTf?.selectedQuarter ?? fallback.quarterOption;
 
   // Live Sales Calls — fetch for the full seeded year so the per-month
   // overwrite below picks up any month that maps into the active quarter.
@@ -1757,10 +1758,7 @@ export function SalesDashboardV2() {
       <div className="relative flex">
         {/* NavRail removed per request */}
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
-          {/* Header */}
-          <div className="flex items-start justify-end flex-wrap gap-3 mb-6">
-            <DashboardPeriodPicker value={periodValue} onChange={setPeriodValue} />
-          </div>
+          {/* Timeframe lives in the shared /insights page header. */}
 
           {/* KPI strip */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
