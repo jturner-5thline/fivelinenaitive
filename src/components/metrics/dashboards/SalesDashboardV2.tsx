@@ -1666,6 +1666,25 @@ export function SalesDashboardV2() {
     dealsOnBoardQuery.byMonth,
   ]);
 
+  // Live Proposals Issued — mirrors Consolidated Debt Pipeline Board logic
+  // (Active Pipeline, stage_enter into Proposal Issued via deal_stage_history,
+  // deduped to first entry per deal, excluding test deals). Bucket by month.
+  const proposalsIssuedQuery = useProposalsIssuedByMonth(YEAR);
+  const liveProposalsIssuedActual = React.useMemo<(number | null)[]>(() => {
+    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
+    const buckets: (number | null)[] = new Array(9).fill(0);
+    for (let m = 0; m < 9; m += 1) {
+      buckets[m] = proposalsIssuedQuery.byMonth[m]?.length ?? 0;
+    }
+    return buckets;
+  }, [
+    proposalsIssuedQuery.isLoading,
+    proposalsIssuedQuery.isFetching,
+    proposalsIssuedQuery.byMonth,
+  ]);
+
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
@@ -1673,8 +1692,9 @@ export function SalesDashboardV2() {
       ...baseView.actual,
       salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
       dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
+      proposalsIssued: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveProposalsIssuedActual[idx] : null)),
     },
-  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual]);
+  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -1826,6 +1846,9 @@ export function SalesDashboardV2() {
       dealsOnBoard={dealsOnBoardQuery.deals}
       dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
       dealsOnBoardError={dealsOnBoardQuery.error}
+      proposalsIssued={proposalsIssuedQuery.deals}
+      proposalsIssuedLoading={proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching}
+      proposalsIssuedError={proposalsIssuedQuery.error}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
