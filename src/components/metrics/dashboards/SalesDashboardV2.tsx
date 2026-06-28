@@ -1830,12 +1830,6 @@ export function SalesDashboardV2() {
           {/* Header */}
           <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
             <div>
-              <div
-                className="text-[10px] font-medium uppercase mb-1"
-                style={{ color: C.periwinkle, letterSpacing: '0.12em' }}
-              >
-                5th Line · Sales Console
-              </div>
               <h1 className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
                 Pipeline Performance
               </h1>
