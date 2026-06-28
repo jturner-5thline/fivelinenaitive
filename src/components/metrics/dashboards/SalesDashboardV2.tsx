@@ -1758,10 +1758,7 @@ export function SalesDashboardV2() {
       <div className="relative flex">
         {/* NavRail removed per request */}
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
-          {/* Header */}
-          <div className="flex items-start justify-end flex-wrap gap-3 mb-6">
-            <DashboardPeriodPicker value={periodValue} onChange={setPeriodValue} />
-          </div>
+          {/* Timeframe lives in the shared /insights page header. */}
 
           {/* KPI strip */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
