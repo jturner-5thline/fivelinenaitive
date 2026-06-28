@@ -870,10 +870,12 @@ type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
+  const view = useView();
+  const E = view.elapsed;
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
-    const planV = PLAN[row.key][i];
-    const actualV = ACTUAL[row.key][i];
+    const planV = view.plan[row.key][i];
+    const actualV = view.actual[row.key][i];
     if (tab === 'Forecast') {
       return (
         <span style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
@@ -912,7 +914,7 @@ function SalesModelSheet() {
             Sales Model
           </div>
           <div className="text-[11px]" style={{ color: C.textFaint }}>
-            Monthly Forecast · 2026
+            Monthly Forecast · {view.label}
           </div>
         </div>
         <div
@@ -965,8 +967,8 @@ function SalesModelSheet() {
               >
                 Metric
               </th>
-              {MONTHS.map((m, i) => {
-                const isFuture = i >= ELAPSED;
+              {view.months.map((m, i) => {
+                const isFuture = i >= E;
                 return (
                   <th
                     key={m}
@@ -1008,8 +1010,8 @@ function SalesModelSheet() {
                     </span>
                   )}
                 </td>
-                {MONTHS.map((m, i) => {
-                  const isFuture = i >= ELAPSED;
+                {view.months.map((m, i) => {
+                  const isFuture = i >= E;
                   return (
                     <td
                       key={m}
@@ -1030,9 +1032,19 @@ function SalesModelSheet() {
       </div>
 
       <div className="mt-3 text-[11px]" style={{ color: C.textMuted }}>
-        <span style={{ color: C.cyan }}>Jan–Jun actuals tracked</span>
-        <span> · </span>
-        <span style={{ color: C.periwinkle }}>Jul–Sep forecast</span>
+        {E > 0 && (
+          <>
+            <span style={{ color: C.cyan }}>
+              {view.months[0]}–{view.months[E - 1]} actuals tracked
+            </span>
+            {E < view.months.length && <span> · </span>}
+          </>
+        )}
+        {E < view.months.length && (
+          <span style={{ color: C.periwinkle }}>
+            {view.months[E]}–{view.months[view.months.length - 1]} forecast
+          </span>
+        )}
       </div>
     </div>
   );
