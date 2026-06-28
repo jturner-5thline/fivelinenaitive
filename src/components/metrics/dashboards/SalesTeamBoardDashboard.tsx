@@ -109,10 +109,10 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
-      <CardContent className="p-4">
-        <div className="min-w-0 flex-1">
+      <CardContent className="p-4 flex flex-col items-center justify-center text-center">
+        <div className="min-w-0 w-full">
           <p className="text-[11px] text-muted-foreground font-medium leading-tight">{config.title}</p>
-          <div className="flex items-baseline gap-1.5 mt-1">
+          <div className="flex items-baseline justify-center gap-1.5 mt-1">
             {config.isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
