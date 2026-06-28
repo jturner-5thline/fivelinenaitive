@@ -922,11 +922,6 @@ function KeyStatCard({
                 fill: C.cyan,
                 stroke: C.cyan,
                 style: { cursor: 'pointer' },
-                onClick: (_e: unknown, payload: { index?: number } | undefined) => {
-                  if (payload && typeof payload.index === 'number') {
-                    drill.open(metricKey, payload.index);
-                  }
-                },
               }}
               connectNulls={false}
               isAnimationActive={false}
