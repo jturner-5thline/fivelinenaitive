@@ -1136,6 +1136,9 @@ function MetricDrilldownDialog({
   dealsOnBoard,
   dealsOnBoardLoading,
   dealsOnBoardError,
+  proposalsIssued,
+  proposalsIssuedLoading,
+  proposalsIssuedError,
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
@@ -1146,6 +1149,9 @@ function MetricDrilldownDialog({
   dealsOnBoard: DealOnBoardEntry[];
   dealsOnBoardLoading?: boolean;
   dealsOnBoardError?: Error | null;
+  proposalsIssued: ProposalIssuedEntry[];
+  proposalsIssuedLoading?: boolean;
+  proposalsIssuedError?: Error | null;
 }) {
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
