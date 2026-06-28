@@ -11,8 +11,17 @@ import {
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="glass-module relative overflow-hidden rounded-xl" style={{ ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.25),transparent)' }} />
+    <div
+      className="relative overflow-hidden"
+      style={{
+        background: 'rgba(255,255,255,0.035)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        borderRadius: 8,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
