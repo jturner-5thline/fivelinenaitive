@@ -870,7 +870,16 @@ function KeyStatCard({
       </div>
       <div style={{ height: 170 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+          <LineChart
+            data={data}
+            margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+            onClick={(state: { activeTooltipIndex?: number } | null) => {
+              if (state && typeof state.activeTooltipIndex === 'number') {
+                drill.open(metricKey, state.activeTooltipIndex);
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <CartesianGrid stroke={C.hairline} vertical={false} />
             <XAxis
               dataKey="month"
@@ -908,6 +917,17 @@ function KeyStatCard({
               stroke={C.cyan}
               strokeWidth={2}
               dot={{ r: 2.5, fill: C.cyan }}
+              activeDot={{
+                r: 5,
+                fill: C.cyan,
+                stroke: C.cyan,
+                style: { cursor: 'pointer' },
+                onClick: (_e: unknown, payload: { index?: number } | undefined) => {
+                  if (payload && typeof payload.index === 'number') {
+                    drill.open(metricKey, payload.index);
+                  }
+                },
+              }}
               connectNulls={false}
               isAnimationActive={false}
             />
