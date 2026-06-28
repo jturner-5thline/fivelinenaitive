@@ -57,11 +57,13 @@ export interface InsightsTimeframe {
 export type ReportingView = 'month' | 'quarter';
 export interface ReportingPeriod {
   view: ReportingView;
-  /** Canonical token: `2026-04` for month, `2026-Q2` for quarter. */
+  /** Canonical start token: `2026-04` for month, `2026-Q2` for quarter. */
   period: string;
+  /** Optional end token for a contiguous range. Same shape as `period`. */
+  periodEnd?: string;
   start: string; // YYYY-MM-DD inclusive
   end: string;   // YYYY-MM-DD inclusive
-  label: string; // "Apr 2026" or "Q2 2026"
+  label: string; // "Apr 2026", "Jan–Mar 2026", "Q2 2026", "Q1–Q2 2026"
 }
 
 const STORAGE_KEY = 'insights-timeframe-v1';
@@ -148,34 +150,75 @@ function monthLabel(year: number, month1: number) {
   return fmtDateFn(d, 'MMM yyyy');
 }
 
-function computeReportingPeriod(view: ReportingView, period: string): ReportingPeriod {
+function computeReportingPeriod(
+  view: ReportingView,
+  period: string,
+  periodEnd?: string,
+): ReportingPeriod {
+  // Order endpoints so period <= periodEnd (lexical ordering works for both
+  // YYYY-MM and YYYY-Qn token formats).
+  let startTok = period;
+  let endTok = periodEnd && periodEnd !== period ? periodEnd : undefined;
+  if (endTok && endTok < startTok) {
+    [startTok, endTok] = [endTok, startTok];
+  }
   if (view === 'month') {
-    const m = /^(\d{4})-(\d{2})$/.exec(period);
+    const sM = /^(\d{4})-(\d{2})$/.exec(startTok);
     const now = new Date();
-    const year = m ? parseInt(m[1], 10) : now.getFullYear();
-    const month1 = m ? parseInt(m[2], 10) : now.getMonth() + 1;
-    const start = startOfMonth(new Date(year, month1 - 1, 1));
-    const end = endOfMonth(start);
+    const sy = sM ? parseInt(sM[1], 10) : now.getFullYear();
+    const sm1 = sM ? parseInt(sM[2], 10) : now.getMonth() + 1;
+    const startDate = startOfMonth(new Date(sy, sm1 - 1, 1));
+    let endYear = sy;
+    let endMonth1 = sm1;
+    if (endTok) {
+      const eM = /^(\d{4})-(\d{2})$/.exec(endTok);
+      if (eM) {
+        endYear = parseInt(eM[1], 10);
+        endMonth1 = parseInt(eM[2], 10);
+      }
+    }
+    const endDate = endOfMonth(new Date(endYear, endMonth1 - 1, 1));
+    const label = endTok
+      ? (sy === endYear
+          ? `${fmtDateFn(startDate, 'MMM')}–${fmtDateFn(endDate, 'MMM')} ${endYear}`
+          : `${monthLabel(sy, sm1)} – ${monthLabel(endYear, endMonth1)}`)
+      : monthLabel(sy, sm1);
     return {
       view,
-      period: `${year}-${pad(month1)}`,
-      start: ymd(start),
-      end: ymd(end),
-      label: monthLabel(year, month1),
+      period: `${sy}-${pad(sm1)}`,
+      periodEnd: endTok ? `${endYear}-${pad(endMonth1)}` : undefined,
+      start: ymd(startDate),
+      end: ymd(endDate),
+      label,
     };
   }
-  const m = /^(\d{4})-Q([1-4])$/.exec(period);
+  const sM = /^(\d{4})-Q([1-4])$/.exec(startTok);
   const now = new Date();
-  const year = m ? parseInt(m[1], 10) : now.getFullYear();
-  const q = m ? parseInt(m[2], 10) : quarterFromMonth(now.getMonth());
-  const start = startOfQuarter(new Date(year, (q - 1) * 3, 1));
-  const end = endOfQuarter(start);
+  const sy = sM ? parseInt(sM[1], 10) : now.getFullYear();
+  const sq = sM ? parseInt(sM[2], 10) : quarterFromMonth(now.getMonth());
+  const startDate = startOfQuarter(new Date(sy, (sq - 1) * 3, 1));
+  let endYear = sy;
+  let endQ = sq;
+  if (endTok) {
+    const eM = /^(\d{4})-Q([1-4])$/.exec(endTok);
+    if (eM) {
+      endYear = parseInt(eM[1], 10);
+      endQ = parseInt(eM[2], 10);
+    }
+  }
+  const endDate = endOfQuarter(new Date(endYear, (endQ - 1) * 3, 1));
+  const label = endTok
+    ? (sy === endYear
+        ? `Q${sq}–Q${endQ} ${endYear}`
+        : `Q${sq} ${sy} – Q${endQ} ${endYear}`)
+    : `Q${sq} ${sy}`;
   return {
     view,
-    period: `${year}-Q${q}`,
-    start: ymd(start),
-    end: ymd(end),
-    label: `Q${q} ${year}`,
+    period: `${sy}-Q${sq}`,
+    periodEnd: endTok ? `${endYear}-Q${endQ}` : undefined,
+    start: ymd(startDate),
+    end: ymd(endDate),
+    label,
   };
 }
 
@@ -194,14 +237,15 @@ function readInitialReporting(searchParams: URLSearchParams): ReportingPeriod | 
   const view = searchParams.get('view');
   const period = searchParams.get('period');
   if ((view === 'month' || view === 'quarter') && period) {
-    return computeReportingPeriod(view, period);
+    const [p, pe] = period.split('..');
+    return computeReportingPeriod(view, p, pe);
   }
   try {
     const raw = globalThis.localStorage?.getItem(REPORTING_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if ((parsed?.view === 'month' || parsed?.view === 'quarter') && parsed?.period) {
-        return computeReportingPeriod(parsed.view, parsed.period);
+        return computeReportingPeriod(parsed.view, parsed.period, parsed.periodEnd);
       }
     }
   } catch { /* ignore */ }
@@ -285,7 +329,7 @@ export function InsightsTimeframeProvider({ children }: { children: React.ReactN
     const sp = new URLSearchParams(searchParams);
     if (next) {
       sp.set('view', next.view);
-      sp.set('period', next.period);
+      sp.set('period', next.periodEnd ? `${next.period}..${next.periodEnd}` : next.period);
     } else {
       sp.delete('view');
       sp.delete('period');
@@ -297,7 +341,10 @@ export function InsightsTimeframeProvider({ children }: { children: React.ReactN
     setReporting(next);
     try {
       if (next) {
-        globalThis.localStorage?.setItem(REPORTING_STORAGE_KEY, JSON.stringify({ view: next.view, period: next.period }));
+        globalThis.localStorage?.setItem(
+          REPORTING_STORAGE_KEY,
+          JSON.stringify({ view: next.view, period: next.period, periodEnd: next.periodEnd }),
+        );
       } else {
         globalThis.localStorage?.removeItem(REPORTING_STORAGE_KEY);
       }
