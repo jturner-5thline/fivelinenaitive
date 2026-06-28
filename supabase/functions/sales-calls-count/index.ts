@@ -42,6 +42,7 @@ function normalizeCompany(raw: string): string {
 interface ReqBody {
   time_min?: string;
   time_max?: string;
+  force_refresh?: boolean;
 }
 
 interface SalesCallEvent {
@@ -249,6 +250,33 @@ serve(async (req: Request): Promise<Response> => {
       ? FIFTH_LINE_COMPANY_ID
       : callerCompanyIds[0] || null;
 
+    // ---- Cache fast-path -----------------------------------------------
+    // The dashboard requests a full calendar year. If we have a cached
+    // payload for that (company, year), return it immediately instead of
+    // re-scanning every teammate's Nylas calendar.
+    const startD = new Date(body.time_min);
+    const endD = new Date(body.time_max);
+    const isFullYearRequest =
+      startD.getUTCFullYear() === endD.getUTCFullYear() &&
+      startD.getUTCMonth() === 0 && startD.getUTCDate() === 1 &&
+      endD.getUTCMonth() === 11 && endD.getUTCDate() === 31;
+    const requestedYear = startD.getUTCFullYear();
+
+    if (targetCompanyId && isFullYearRequest && !body.force_refresh) {
+      const { data: cached } = await supabase
+        .from("sales_calls_cache")
+        .select("payload, refreshed_at")
+        .eq("company_id", targetCompanyId)
+        .eq("year", requestedYear)
+        .maybeSingle();
+      if (cached?.payload) {
+        return new Response(
+          JSON.stringify({ ...(cached.payload as any), cached: true, refreshed_at: cached.refreshed_at }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     const { data: profiles, error: profErr } = await supabase
       .from("profiles").select("user_id, email, display_name, full_name");
     if (profErr) throw profErr;
@@ -332,14 +360,36 @@ serve(async (req: Request): Promise<Response> => {
       return ta - tb;
     });
 
+    const responsePayload = {
+      count: events.length,
+      users: grants.length,
+      source_company_id: targetCompanyId,
+      source_user_ids: targetUserIds.length,
+      events,
+    };
+
+    // Persist to cache when this is a full-year request so subsequent
+    // dashboard loads serve instantly.
+    if (targetCompanyId && isFullYearRequest) {
+      try {
+        await supabase
+          .from("sales_calls_cache")
+          .upsert(
+            {
+              company_id: targetCompanyId,
+              year: requestedYear,
+              payload: responsePayload,
+              refreshed_at: new Date().toISOString(),
+            },
+            { onConflict: "company_id,year" },
+          );
+      } catch (cacheErr) {
+        console.warn("[sales-calls-count] cache write failed:", (cacheErr as any)?.message || cacheErr);
+      }
+    }
+
     return new Response(
-      JSON.stringify({
-        count: events.length,
-        users: grants.length,
-        source_company_id: targetCompanyId,
-        source_user_ids: targetUserIds.length,
-        events,
-      }),
+      JSON.stringify({ ...responsePayload, cached: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: any) {

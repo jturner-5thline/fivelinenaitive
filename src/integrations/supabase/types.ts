@@ -22669,6 +22669,27 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_calls_cache: {
+        Row: {
+          company_id: string
+          payload: Json
+          refreshed_at: string
+          year: number
+        }
+        Insert: {
+          company_id: string
+          payload: Json
+          refreshed_at?: string
+          year: number
+        }
+        Update: {
+          company_id?: string
+          payload?: Json
+          refreshed_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       scheduled_actions: {
         Row: {
           action_config: Json

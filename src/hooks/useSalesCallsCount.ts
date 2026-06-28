@@ -31,8 +31,13 @@ export function useSalesCallsCount(from: Date, to: Date, enabled = true) {
   return useQuery<SalesCallsResult, Error>({
     queryKey: ['sales-calls-count', timeMin, timeMax],
     enabled,
-    staleTime: 10 * 60_000,
-    gcTime: 30 * 60_000,
+    // Backed by sales_calls_cache (refreshed daily by sales-calls-refresh
+    // cron). Stay fresh for 12h so page reloads serve instantly without
+    // re-invoking the edge function on every mount.
+    staleTime: 12 * 60 * 60_000,
+    gcTime: 24 * 60 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('sales-calls-count', {
