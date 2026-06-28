@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import {
   ResponsiveContainer,
   LineChart,
@@ -943,6 +944,38 @@ function SalesModelSheet() {
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
+  // Live Sales Calls — count of unique "[Company] <> 5th Line Financing
+  // Review" calendar events across every teammate's connected calendar,
+  // bucketed per month. Falls back to seed data while loading or if the
+  // calendar fan-out returns empty.
+  const YEAR = 2026;
+  const yearStart = React.useMemo(() => new Date(Date.UTC(YEAR, 0, 1)), []);
+  const yearEnd = React.useMemo(() => new Date(Date.UTC(YEAR, 11, 31, 23, 59, 59)), []);
+  const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
+  const [, forceRender] = React.useState(0);
+  React.useEffect(() => {
+    const events = salesCallsQuery.data?.events ?? [];
+    if (events.length === 0) return;
+    const buckets: (number | null)[] = new Array(9).fill(null);
+    let touched = false;
+    for (const ev of events) {
+      if (!ev.start) continue;
+      const d = new Date(ev.start);
+      if (d.getUTCFullYear() !== YEAR) continue;
+      const m = d.getUTCMonth();
+      if (m >= 9) continue; // dashboard covers Jan–Sep only
+      if (m >= ELAPSED) continue; // future months stay as plan
+      buckets[m] = (buckets[m] ?? 0) + 1;
+      touched = true;
+    }
+    if (!touched) return;
+    // Preserve forecast nulls beyond ELAPSED.
+    for (let i = 0; i < ELAPSED; i++) {
+      ACTUAL.salesCalls[i] = buckets[i] ?? 0;
+    }
+    forceRender((n) => n + 1);
+  }, [salesCallsQuery.data]);
+
   return (
     <div
       className="sales-dashboard-v2 relative w-full"
