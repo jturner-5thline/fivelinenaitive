@@ -2706,6 +2706,7 @@ function MetricsInner() {
               </div>
             )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+            {selectedDashboard === 'sales-dashboard-v2' && <SalesDashboardV2 />}
             {selectedDashboard === 'rep-scorecard' && (
               <div className="space-y-4">
                 <RepScorecardCard />
