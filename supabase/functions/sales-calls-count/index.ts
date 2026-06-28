@@ -62,23 +62,28 @@ async function fetchForGrant(
   endUnix: number,
   user: { email: string | null; name: string | null; domain: string | null },
 ): Promise<SalesCallEvent[]> {
-  const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
-  url.searchParams.set("calendar_id", "primary");
-  url.searchParams.set("start", String(startUnix));
-  url.searchParams.set("end", String(endUnix));
-  url.searchParams.set("limit", "200");
-  url.searchParams.set("expand_recurring", "true");
-  const resp = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-  });
-  if (!resp.ok) {
-    console.warn("[sales-calls-count] nylas err", grantId, resp.status);
-    return [];
-  }
-  const data = await resp.json();
-  const raw = (data?.data || []) as any[];
   const out: SalesCallEvent[] = [];
-  for (const e of raw) {
+  let pageToken: string | null = null;
+  let pagesFetched = 0;
+  const MAX_PAGES = 10; // up to 2000 events per calendar per call
+  do {
+    const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
+    url.searchParams.set("calendar_id", "primary");
+    url.searchParams.set("start", String(startUnix));
+    url.searchParams.set("end", String(endUnix));
+    url.searchParams.set("limit", "200");
+    url.searchParams.set("expand_recurring", "true");
+    if (pageToken) url.searchParams.set("page_token", pageToken);
+    const resp = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+    });
+    if (!resp.ok) {
+      console.warn("[sales-calls-count] nylas err", grantId, resp.status);
+      break;
+    }
+    const data = await resp.json();
+    const raw = (data?.data || []) as any[];
+    for (const e of raw) {
     if (e?.status === "cancelled") continue;
     const title: string = e?.title || "";
     const m = TITLE_RE.exec(title);
@@ -130,7 +135,10 @@ async function fetchForGrant(
       html_link: e.html_link || null,
       attendee_domains: Array.from(new Set(attendeeDomains)),
     });
-  }
+    }
+    pageToken = (data?.next_cursor as string | null) || null;
+    pagesFetched += 1;
+  } while (pageToken && pagesFetched < MAX_PAGES);
   return out;
 }
 
