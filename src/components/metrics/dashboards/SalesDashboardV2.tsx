@@ -1627,81 +1627,10 @@ function SummaryTile({ label, value, color }: { label: string; value: string; co
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
-  // Timeframe selector — Month / Quarter / Half / Year.
-  // Drives every chart, KPI, and the Sales Model sheet.
-  type Granularity = 'month' | 'quarter' | 'half' | 'year';
-  const periodOptionsByGranularity = React.useMemo(() => {
-    const today = new Date();
-    const y = today.getFullYear();
-    const m = today.getMonth();
-
-    // Months — last 12 (oldest → newest reversed to newest-first)
-    const months: QuarterOption[] = [];
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(y, m - i, 1);
-      const opt = buildCustomPeriod(d, d);
-      opt.label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      opt.value = `month-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      months.push(opt);
-    }
-
-    // Quarters — last 8
-    const quarters = buildQuarterOptions(8);
-
-    // Halves — last 4
-    const halves: QuarterOption[] = [];
-    const currentHalf = m < 6 ? 1 : 2;
-    for (let i = 0; i < 4; i++) {
-      let h = currentHalf - i;
-      let yr = y;
-      while (h <= 0) {
-        h += 2;
-        yr -= 1;
-      }
-      const startMonth = h === 1 ? 0 : 6;
-      const start = new Date(yr, startMonth, 1);
-      const end = new Date(yr, startMonth + 6, 0);
-      const opt = buildCustomPeriod(start, end);
-      opt.label = `H${h} ${yr}`;
-      opt.value = `half-${yr}-H${h}`;
-      halves.push(opt);
-    }
-
-    // Years — last 3
-    const years: QuarterOption[] = [];
-    for (let i = 0; i < 3; i++) {
-      const yr = y - i;
-      const start = new Date(yr, 0, 1);
-      const end = new Date(yr, 11, 31);
-      const opt = buildCustomPeriod(start, end);
-      opt.label = `${yr}`;
-      opt.value = `year-${yr}`;
-      years.push(opt);
-    }
-
-    return { month: months, quarter: quarters, half: halves, year: years } as Record<
-      Granularity,
-      QuarterOption[]
-    >;
-  }, []);
-
-  const [granularity, setGranularity] = React.useState<Granularity>('quarter');
-  const [periodValue, setPeriodValue] = React.useState<string>(
-    () => getCurrentQuarter().value,
-  );
-
-  const periodOptions = periodOptionsByGranularity[granularity];
-  const selectedQuarter: QuarterOption = React.useMemo(
-    () => periodOptions.find((p) => p.value === periodValue) ?? periodOptions[0],
-    [periodOptions, periodValue],
-  );
-
-  const handleGranularityChange = (g: Granularity) => {
-    setGranularity(g);
-    // Default to the most recent period for the new granularity.
-    const next = periodOptionsByGranularity[g][0];
-    if (next) setPeriodValue(next.value);
-  };
+  // Unified Month / Quarter timeframe picker — matches Weekly Rundown.
+  // Drives every chart, KPI, and the Sales Model sheet via buildView().
+  const { value: periodValue, setValue: setPeriodValue, quarterOption: selectedQuarter } =
+    useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
 
   // Live Sales Calls — fetch for the full seeded year so the per-month
   // overwrite below picks up any month that maps into the active quarter.
