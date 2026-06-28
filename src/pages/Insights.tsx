@@ -2145,21 +2145,25 @@ function MetricsInner() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-80 max-h-[70vh] overflow-y-auto bg-popover border border-border shadow-lg z-50">
+                  <DropdownMenuContent
+                    align="start"
+                    sideOffset={8}
+                    className="w-[22rem] max-h-[72vh] overflow-y-auto p-2 rounded-xl border border-white/[0.06] bg-[rgba(14,18,28,0.92)] backdrop-blur-xl shadow-[0_24px_48px_-24px_rgba(0,0,0,0.7)] z-50"
+                  >
                     {/* Default code-defined folders (Management Insights, Financial, Sales & BD) */}
-                    {DEFAULT_FOLDER_GROUPS.map((group) => {
+                    {DEFAULT_FOLDER_GROUPS.map((group, groupIdx) => {
                       const isExpanded = defaultFolderExpanded[group.id] ?? true;
                       const groupDashboards = group.dashboardIds
                         .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
                         .filter(Boolean) as typeof DASHBOARD_OPTIONS;
 
                       return (
-                        <div key={group.id}>
+                        <div key={group.id} className={cn(groupIdx > 0 && "mt-1")}>
                           <div
                             role="button"
                             tabIndex={0}
                             aria-expanded={isExpanded}
-                            className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer"
+                            className="flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-white/[0.04]"
                             onClick={() => toggleDefaultFolder(group.id)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
@@ -2170,33 +2174,35 @@ function MetricsInner() {
                           >
                             <div className="flex items-center gap-2">
                               {isExpanded ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
                               ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                <ChevronRight className="h-3 w-3 text-muted-foreground/70" />
                               )}
-                              <Folder className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{group.name}</span>
-                              <span className="text-xs text-muted-foreground">({groupDashboards.length})</span>
+                              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">{group.name}</span>
+                              <span className="text-[10px] font-medium text-muted-foreground/50 tabular-nums">{groupDashboards.length}</span>
                             </div>
                           </div>
-                          {isExpanded && groupDashboards.map((dashboard) => (
+                          {isExpanded && <div className="mt-0.5 space-y-0.5">{groupDashboards.map((dashboard) => (
                             <DropdownMenuItem
                               key={dashboard.id}
                               className={cn(
-                                "flex items-center justify-between py-1.5 pl-10",
-                                selectedDashboard === dashboard.id && "bg-accent"
+                                "group/item flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
+                                selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
                               onClick={() => setSelectedDashboard(dashboard.id)}
                             >
-                              <div className="flex items-center gap-2">
-                                <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm">{dashboard.name}</span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={cn(
+                                  "h-1.5 w-1.5 rounded-full shrink-0 transition-colors",
+                                  selectedDashboard === dashboard.id ? "bg-primary" : "bg-muted-foreground/30"
+                                )} />
+                                <span className="text-sm truncate">{dashboard.name}</span>
                               </div>
                               {dashboard.isFavorite && (
-                                <Star className="h-3.5 w-3.5 text-primary fill-primary" />
+                                <Star className="h-3 w-3 text-primary fill-primary shrink-0" />
                               )}
                             </DropdownMenuItem>
-                          ))}
+                          ))}</div>}
                         </div>
                       );
                     })}
@@ -2208,20 +2214,20 @@ function MetricsInner() {
                         .filter(Boolean);
                       
                       return (
-                        <div key={folder.id}>
+                        <div key={folder.id} className="mt-1">
                           <div
-                            className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm cursor-pointer group"
+                            className="flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer group transition-colors hover:bg-white/[0.04]"
                             onClick={() => toggleFolder(folder.id)}
                           >
                             <div className="flex items-center gap-2">
                               {folder.isExpanded ? (
-                                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                <ChevronDown className="h-3 w-3 text-muted-foreground/70" />
                               ) : (
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                                <ChevronRight className="h-3 w-3 text-muted-foreground/70" />
                               )}
-                              <Folder className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm font-medium">{folder.name}</span>
-                              <span className="text-xs text-muted-foreground">({folderDashboards.length})</span>
+                              <Folder className="h-3.5 w-3.5 text-muted-foreground/70" />
+                              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/80">{folder.name}</span>
+                              <span className="text-[10px] font-medium text-muted-foreground/50 tabular-nums">{folderDashboards.length}</span>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
@@ -2251,22 +2257,25 @@ function MetricsInner() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                          {folder.isExpanded && folderDashboards.map((dashboard) => dashboard && (
+                          {folder.isExpanded && <div className="mt-0.5 space-y-0.5">{folderDashboards.map((dashboard) => dashboard && (
                             <DropdownMenuSub key={dashboard.id}>
-                              <div className="flex items-center">
+                              <div className="flex items-center gap-0.5">
                                 <DropdownMenuItem
                                   className={cn(
-                                    "flex-1 flex items-center justify-between py-1.5 pl-10",
-                                    selectedDashboard === dashboard.id && "bg-accent"
+                                    "flex-1 flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
+                                    selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                                   )}
                                   onClick={() => setSelectedDashboard(dashboard.id)}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span className="text-sm">{dashboard.name}</span>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={cn(
+                                      "h-1.5 w-1.5 rounded-full shrink-0 transition-colors",
+                                      selectedDashboard === dashboard.id ? "bg-primary" : "bg-muted-foreground/30"
+                                    )} />
+                                    <span className="text-sm truncate">{dashboard.name}</span>
                                   </div>
                                 </DropdownMenuItem>
-                                <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                                <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.05]">
                                   <MoreHorizontal className="h-3.5 w-3.5" />
                                 </DropdownMenuSubTrigger>
                               </div>
@@ -2282,12 +2291,14 @@ function MetricsInner() {
                                 ))}
                               </DropdownMenuSubContent>
                             </DropdownMenuSub>
-                          ))}
+                          ))}</div>}
                         </div>
                       );
                     })}
 
-                    {folders.length > 0 && unfolderedIds.length > 0 && <DropdownMenuSeparator />}
+                    {folders.length > 0 && unfolderedIds.length > 0 && (
+                      <DropdownMenuSeparator className="my-1.5 bg-white/[0.05]" />
+                    )}
 
                     {/* Unfoldered dashboards */}
                     {unfolderedIds.map((id) => {
@@ -2295,29 +2306,32 @@ function MetricsInner() {
                       if (!dashboard) return null;
                       return (
                         <DropdownMenuSub key={dashboard.id}>
-                          <div className="flex items-center">
+                          <div className="flex items-center gap-0.5">
                             <DropdownMenuItem
                               className={cn(
-                                "flex-1 flex items-center justify-between py-2",
-                                selectedDashboard === dashboard.id && "bg-accent"
+                                "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
+                                selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
                               onClick={() => setSelectedDashboard(dashboard.id)}
                             >
-                              <div className="flex items-center gap-2">
-                                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                                <span>{dashboard.name}</span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className={cn(
+                                  "h-1.5 w-1.5 rounded-full shrink-0 transition-colors",
+                                  selectedDashboard === dashboard.id ? "bg-primary" : "bg-muted-foreground/30"
+                                )} />
+                                <span className="text-sm truncate">{dashboard.name}</span>
                               </div>
                               <Star
                                 className={cn(
-                                  "h-4 w-4",
+                                  "h-3.5 w-3.5 shrink-0",
                                   dashboard.isFavorite
                                     ? "text-primary fill-primary"
-                                    : "text-muted-foreground/40"
+                                    : "text-muted-foreground/30"
                                 )}
                               />
                             </DropdownMenuItem>
                             {folders.length > 0 && (
-                              <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                              <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.05]">
                                 <Folder className="h-3.5 w-3.5" />
                               </DropdownMenuSubTrigger>
                             )}
@@ -2337,23 +2351,25 @@ function MetricsInner() {
                     })}
 
                     {/* Custom dashboards */}
-                    {customDashboards.length > 0 && <DropdownMenuSeparator />}
+                    {customDashboards.length > 0 && (
+                      <DropdownMenuSeparator className="my-1.5 bg-white/[0.05]" />
+                    )}
                     {customDashboards.map((dash) => (
                       <DropdownMenuSub key={dash.id}>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-0.5">
                           <DropdownMenuItem
                             className={cn(
-                              "flex-1 flex items-center justify-between py-2",
-                              selectedDashboard === dash.id && "bg-accent"
+                              "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
+                              selectedDashboard === dash.id && "bg-primary/10 text-foreground"
                             )}
                             onClick={() => setSelectedDashboard(dash.id)}
                           >
-                            <div className="flex items-center gap-2">
-                              <LayoutDashboard className="h-4 w-4 text-chart-4" />
-                              <span>{dash.name}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <LayoutDashboard className="h-3.5 w-3.5 text-chart-4 shrink-0" />
+                              <span className="text-sm truncate">{dash.name}</span>
                             </div>
                           </DropdownMenuItem>
-                          <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center">
+                          <DropdownMenuSubTrigger className="h-7 w-7 p-0 flex items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-white/[0.05]">
                             <MoreHorizontal className="h-3.5 w-3.5" />
                           </DropdownMenuSubTrigger>
                         </div>
@@ -2371,20 +2387,20 @@ function MetricsInner() {
 
                     {canEditMetrics && (
                       <>
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="my-1.5 bg-white/[0.05]" />
                         <DropdownMenuItem
-                          className="flex items-center gap-2 text-primary"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-primary/90 hover:text-primary focus:bg-primary/10 hover:bg-primary/[0.08] transition-colors"
                           onClick={() => setNewFolderOpen(true)}
                         >
-                          <FolderPlus className="h-4 w-4" />
-                          <span>New Folder</span>
+                          <FolderPlus className="h-3.5 w-3.5" />
+                          <span className="text-sm font-medium">New Folder</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="flex items-center gap-2 text-primary"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-primary/90 hover:text-primary focus:bg-primary/10 hover:bg-primary/[0.08] transition-colors"
                           onClick={() => setCreateDashboardOpen(true)}
                         >
-                          <Plus className="h-4 w-4" />
-                          <span>Create New Dashboard</span>
+                          <Plus className="h-3.5 w-3.5" />
+                          <span className="text-sm font-medium">Create New Dashboard</span>
                         </DropdownMenuItem>
                       </>
                     )}
