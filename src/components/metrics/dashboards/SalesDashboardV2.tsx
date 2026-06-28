@@ -1314,7 +1314,7 @@ function MetricDrilldownDialog({
                           })
                         : '—';
                       const attendeeNames =
-                        (ev.attendees ?? [])
+                        ((ev.attendees ?? []) as { email: string | null; name: string | null }[])
                           .map((a) => a.name || (a.email ? a.email.split('@')[0] : null))
                           .filter((n): n is string => !!n)
                           .join(', ') || '—';
