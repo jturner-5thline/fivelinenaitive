@@ -1208,7 +1208,28 @@ export function SalesDashboardV2() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={quarterValue} onValueChange={setQuarterValue}>
+              <Select
+                value={granularity}
+                onValueChange={(v) => handleGranularityChange(v as Granularity)}
+              >
+                <SelectTrigger
+                  className="w-[120px] h-9 rounded-full"
+                  style={{
+                    ...glassStyle,
+                    borderRadius: 999,
+                    color: C.textPrimary,
+                  }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="half">Half-Year</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={selectedQuarter.value} onValueChange={setPeriodValue}>
                 <SelectTrigger
                   className="w-[180px] h-9 rounded-full"
                   style={{
@@ -1220,7 +1241,7 @@ export function SalesDashboardV2() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {quarterOptions.map((q) => (
+                  {periodOptions.map((q) => (
                     <SelectItem key={q.value} value={q.value}>
                       {q.label}
                     </SelectItem>
