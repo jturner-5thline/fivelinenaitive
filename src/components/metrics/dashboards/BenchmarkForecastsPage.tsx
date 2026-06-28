@@ -48,8 +48,17 @@ const p2SignR = [33, 66, 99, 144], p2SignO = [33, 66, 99, 144], p2SignC = [0, 25
 // ── Card ──
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`glass-module relative overflow-hidden rounded-xl ${className}`} style={{ ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.25),transparent)' }} />
+    <div
+      className={`relative overflow-hidden ${className}`}
+      style={{
+        background: 'rgba(255,255,255,0.035)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        borderRadius: 8,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
