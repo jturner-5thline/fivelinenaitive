@@ -32,22 +32,22 @@ type PlanRow = { plan: string; color: string; q1: string; q2: string; q3: string
 function MetricGrid({ title, rows }: { title: string; rows: PlanRow[] }) {
   return (
     <Card style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.95)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
       {/* Header */}
       <div style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 2 }}>
         {['Plan','Q1-2026','Q2-2026','Q3-2026','Q4-2026','2026'].map((h, i) => (
-          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
+          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
         ))}
       </div>
       {/* Rows */}
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', fontSize: 11 }}>
-          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.7)' }}>
+          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.95)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             {r.plan}
           </div>
           {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)' }}>{v}</div>
+            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.95)' }}>{v}</div>
           ))}
           <div style={{ textAlign: 'right', color: r.totalColor || r.color, fontWeight: 700 }}>{r.total}</div>
         </div>
@@ -59,20 +59,20 @@ function MetricGrid({ title, rows }: { title: string; rows: PlanRow[] }) {
 function MetricGridShort({ title, headers, rows }: { title: string; headers: string[]; rows: PlanRow[] }) {
   return (
     <Card style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.95)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 2 }}>
         {headers.map((h, i) => (
-          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
+          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.7)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
         ))}
       </div>
       {rows.map((r, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', fontSize: 11 }}>
-          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.7)' }}>
+          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.95)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             {r.plan}
           </div>
           {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)' }}>{v}</div>
+            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.95)' }}>{v}</div>
           ))}
           <div style={{ textAlign: 'right', color: r.totalColor || r.color, fontWeight: 700 }}>{r.total}</div>
         </div>
