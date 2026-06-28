@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useMonthlyEntityProfit, type ProfitMonthBucket } from '@/hooks/useMonthlyEntityProfit';
+import { ProfitHistoricalTrend } from './HistoricalTrendChart';
 
 const formatCurrency = (value: number) => {
   const neg = value < 0;
@@ -418,7 +419,7 @@ export function ProfitDrilldownModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-4xl max-h-[88vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
