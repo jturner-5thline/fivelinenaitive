@@ -88,11 +88,22 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
   const Icon = config.icon;
   return (
     <Card
+      onClick={config.isLoading ? undefined : onClick}
+      role="button"
+      tabIndex={config.isLoading ? -1 : 0}
+      onKeyDown={(e) => {
+        if (config.isLoading) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
         'relative group overflow-hidden transition-all duration-200',
         'glass-module',
         'hover:border-primary/40 hover:-translate-y-0.5',
         'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
+        !config.isLoading && 'cursor-pointer',
       )}
     >
       <div
@@ -112,13 +123,9 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
             {config.isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <button
-                type="button"
-                onClick={onClick}
-                className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground"
-              >
+              <span className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground">
                 {config.value}
-              </button>
+              </span>
             )}
           </div>
           {config.subtitle && (
