@@ -1806,9 +1806,7 @@ export function SalesDashboardV2() {
     <div
       className="sales-dashboard-v2 relative w-full"
       style={{
-        background: C.bg,
         color: C.textPrimary,
-        borderRadius: 16,
         overflow: 'hidden',
         minHeight: 600,
       }}
@@ -1823,7 +1821,6 @@ export function SalesDashboardV2() {
           .sales-dashboard-v2 * { transition: none !important; animation: none !important; }
         }
       `}</style>
-      <AmbientGlow />
       <div className="relative flex">
         {/* NavRail removed per request */}
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
