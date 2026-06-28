@@ -5,6 +5,8 @@ import { formatDistanceToNow } from "date-fns";
 import {
   Bar,
   BarChart,
+  Line,
+  LineChart,
   CartesianGrid,
   Legend,
   ResponsiveContainer,
@@ -14,6 +16,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import {
   Dialog,
   DialogContent,
