@@ -706,6 +706,7 @@ function BridgeBar({
 // ============================================================
 function CumulativePace() {
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
   const planCum = cumulativePlan(view.plan.dollarsFunded);
   const actualCum = cumulative(view.actual.dollarsFunded);
@@ -729,6 +730,14 @@ function CumulativePace() {
           <div className="text-[11px]" style={{ color: C.textFaint }}>
             Dollars Funded · running total
           </div>
+          <button
+            type="button"
+            onClick={() => drill.open('dollarsFunded')}
+            className="ml-2 text-[10px] px-2 py-0.5 rounded-md hover:brightness-125 focus-visible:outline-none focus-visible:ring-1"
+            style={{ background: 'rgba(157,162,245,0.10)', color: C.periwinkle, border: `1px solid ${C.surfaceBorder}` }}
+          >
+            Drill in
+          </button>
         </div>
         <div className="flex items-center gap-5 text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
           <Readout label="ACTUAL TO DATE" value={fmtMoney(actualToDate)} color={C.cyan} />
