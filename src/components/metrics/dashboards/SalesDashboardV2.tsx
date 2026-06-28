@@ -17,6 +17,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  DashboardPeriodPicker,
+  useDashboardPeriod,
+} from '@/components/metrics/DashboardPeriodPicker';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
