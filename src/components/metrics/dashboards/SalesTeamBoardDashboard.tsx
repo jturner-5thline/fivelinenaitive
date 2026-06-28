@@ -85,7 +85,6 @@ interface MetricCardConfig {
 }
 
 function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick: () => void }) {
-  const Icon = config.icon;
   return (
     <Card
       onClick={config.isLoading ? undefined : onClick}
@@ -110,13 +109,7 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
-      <CardContent className="flex items-start gap-3 p-4">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
-          style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
-        >
-          <Icon className="h-5 w-5" style={{ color: config.color }} />
-        </div>
+      <CardContent className="p-4">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground font-medium leading-tight">{config.title}</p>
           <div className="flex items-baseline gap-1.5 mt-1">
