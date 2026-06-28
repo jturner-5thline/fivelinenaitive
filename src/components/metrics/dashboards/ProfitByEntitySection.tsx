@@ -484,6 +484,11 @@ export function ProfitDrilldownModal({
         <p className="text-[11px] text-muted-foreground mt-3">
           Operating Profit = Revenue − (Expenses + Bills). QuickBooks accrual basis.
         </p>
+
+        <ProfitHistoricalTrend
+          entityName={entityName}
+          color={total < 0 ? 'hsl(354, 62%, 56%)' : 'hsl(152, 58%, 52%)'}
+        />
       </DialogContent>
     </Dialog>
   );
