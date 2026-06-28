@@ -318,7 +318,11 @@ export function InsightsTimeframeProvider({ children }: { children: React.ReactN
     });
     const nextRep = readInitialReporting(searchParams);
     setReporting(prev => {
-      if (prev?.view === nextRep?.view && prev?.period === nextRep?.period) return prev;
+      if (
+        prev?.view === nextRep?.view &&
+        prev?.period === nextRep?.period &&
+        prev?.periodEnd === nextRep?.periodEnd
+      ) return prev;
       return nextRep;
     });
   }, [searchParams]);
