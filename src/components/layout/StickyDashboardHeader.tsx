@@ -84,7 +84,16 @@ export function StickyDashboardHeader({
       className={cn(
         "sticky z-40",
         surface === "module"
-          ? "glass-module rounded-lg px-5 py-4"
+          ? cn(
+              // Match the Deal Details pop-up surface family: dark card fill
+              // with the same radial purple sheen, border, and shadow used by
+              // <DealEditDrawer> so the dashboard header reads as part of the
+              // same modal/card system instead of a flat grey strip.
+              "rounded-xl px-5 py-4 bg-card",
+              "dark:bg-[hsl(240,20%,8%)] dark:bg-[image:radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.25)_0%,_transparent_50%)]",
+              "border border-border/50 dark:border-[hsl(263,45%,40%,0.5)]",
+              "shadow-xl dark:shadow-[-4px_0_16px_hsl(263,60%,50%,0.08)]",
+            )
           : cn(
               "py-3 border-b border-white/5",
               "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
