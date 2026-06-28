@@ -1132,6 +1132,9 @@ function MetricDrilldownDialog({
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
+  dealsOnBoard,
+  dealsOnBoardLoading,
+  dealsOnBoardError,
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
@@ -1139,6 +1142,9 @@ function MetricDrilldownDialog({
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
+  dealsOnBoard: DealOnBoardEntry[];
+  dealsOnBoardLoading?: boolean;
+  dealsOnBoardError?: Error | null;
 }) {
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
@@ -1175,6 +1181,30 @@ function MetricDrilldownDialog({
       }
     }
     eventsInPeriod = eventsInPeriod.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  }
+
+  // Optional: list of underlying Deals on Board for the focused month/period
+  const showDealsOnBoard = row.key === 'dealsOnBoard';
+  let dealsInPeriod: DealOnBoardEntry[] = [];
+  if (showDealsOnBoard) {
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    dealsInPeriod = dealsOnBoard.filter((d) => {
+      const c = new Date(d.created_at);
+      return c >= start && c <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        dealsInPeriod = dealsInPeriod.filter((d) => {
+          const c = new Date(d.created_at);
+          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
+        });
+      }
+    }
+    dealsInPeriod = dealsInPeriod.sort((a, b) =>
+      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
+    );
   }
 
   const focusedMonthLabel =
