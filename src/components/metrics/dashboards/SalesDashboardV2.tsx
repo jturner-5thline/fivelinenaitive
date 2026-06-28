@@ -394,6 +394,7 @@ function KpiCard({
   mode: 'sum' | 'current';
 }) {
   const view = useView();
+  const drill = useDrilldown();
   const planArr = view.plan[metricKey];
   const actualArr = view.actual[metricKey];
   const E = view.elapsed;
@@ -414,7 +415,13 @@ function KpiCard({
   }));
 
   return (
-    <div style={glassStyle} className="relative p-4 flex flex-col gap-2 overflow-hidden">
+    <button
+      type="button"
+      onClick={() => drill.open(metricKey)}
+      style={glassStyle}
+      className="relative p-4 flex flex-col gap-2 overflow-hidden text-left cursor-pointer transition-transform hover:-translate-y-[1px] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2"
+      aria-label={`Drill into ${label}`}
+    >
       <div className="flex items-center gap-2">
         <div
           className="flex items-center justify-center rounded-lg"
@@ -481,7 +488,7 @@ function KpiCard({
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </button>
   );
 }
 
