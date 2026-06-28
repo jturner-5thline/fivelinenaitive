@@ -254,7 +254,7 @@ const glassStyle: React.CSSProperties = {
   border: `1px solid ${C.surfaceBorder}`,
   backdropFilter: 'blur(10px)',
   WebkitBackdropFilter: 'blur(10px)',
-  borderRadius: 16,
+  borderRadius: 8,
 };
 
 // ============================================================
