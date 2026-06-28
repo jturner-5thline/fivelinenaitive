@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
+import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -115,7 +116,7 @@ const PLAN: Record<MetricKey, number[]> = {
 
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
   salesCalls: pad([]),
-  dealsOnBoard: pad([9, 10, 11, 12, 11, 13]),
+  dealsOnBoard: pad([]), // overridden by live useDealsOnBoardByMonth
   dollarsOnBoard: pad([]),
   proposalsIssued: pad([6, 7, 8, 6, 7, 9]),
   dollarsProposed: pad([]),
@@ -1131,6 +1132,9 @@ function MetricDrilldownDialog({
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
+  dealsOnBoard,
+  dealsOnBoardLoading,
+  dealsOnBoardError,
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
@@ -1138,6 +1142,9 @@ function MetricDrilldownDialog({
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
+  dealsOnBoard: DealOnBoardEntry[];
+  dealsOnBoardLoading?: boolean;
+  dealsOnBoardError?: Error | null;
 }) {
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
@@ -1174,6 +1181,30 @@ function MetricDrilldownDialog({
       }
     }
     eventsInPeriod = eventsInPeriod.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  }
+
+  // Optional: list of underlying Deals on Board for the focused month/period
+  const showDealsOnBoard = row.key === 'dealsOnBoard';
+  let dealsInPeriod: DealOnBoardEntry[] = [];
+  if (showDealsOnBoard) {
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    dealsInPeriod = dealsOnBoard.filter((d) => {
+      const c = new Date(d.created_at);
+      return c >= start && c <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        dealsInPeriod = dealsInPeriod.filter((d) => {
+          const c = new Date(d.created_at);
+          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
+        });
+      }
+    }
+    dealsInPeriod = dealsInPeriod.sort((a, b) =>
+      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
+    );
   }
 
   const focusedMonthLabel =
@@ -1335,6 +1366,64 @@ function MetricDrilldownDialog({
             </div>
           </div>
         )}
+
+        {/* Deals on Board list (live data) */}
+        {showDealsOnBoard && (
+          <div className="mt-5">
+            <div
+              className="text-[10px] font-medium uppercase mb-2"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              Deals counted ({dealsInPeriod.length})
+            </div>
+            <div
+              className="max-h-64 overflow-y-auto rounded-md"
+              style={{ border: `1px solid ${C.surfaceBorder}` }}
+            >
+              {dealsInPeriod.length === 0 ? (
+                <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
+                  {dealsOnBoardLoading
+                    ? 'Loading deals…'
+                    : dealsOnBoardError
+                      ? 'Could not load deals from the Active Pipeline.'
+                      : 'No deals added to the Active Pipeline in this period.'}
+                </div>
+              ) : (
+                <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ color: C.textMuted, fontSize: 10 }}>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider">Deal</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">Added</th>
+                      <th className="text-right px-3 py-2 font-medium uppercase tracking-wider w-32">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dealsInPeriod.map((d) => {
+                      const when = new Date(d.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                      const v = d.value
+                        ? `$${(d.value / 1_000_000).toFixed(1)}MM`
+                        : '—';
+                      return (
+                        <tr
+                          key={d.id}
+                          style={{ borderTop: `1px solid ${C.hairline}`, color: C.textPrimary }}
+                        >
+                          <td className="px-3 py-2 font-medium">{d.company}</td>
+                          <td className="px-3 py-2 whitespace-nowrap" style={{ color: C.textMuted }}>{when}</td>
+                          <td className="px-3 py-2 text-right" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>{v}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -1469,14 +1558,34 @@ export function SalesDashboardV2() {
     return buckets;
   }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
+  // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
+  // (Active Pipeline, deals.created_at within range, excluding closed/lost/
+  // on-hold/archived). We fetch the full seeded year and bucket by month.
+  const dealsOnBoardQuery = useDealsOnBoardByMonth(YEAR);
+  const liveDealsOnBoardActual = React.useMemo<(number | null)[]>(() => {
+    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
+    const buckets: (number | null)[] = new Array(9).fill(0);
+    for (let m = 0; m < 9; m += 1) {
+      buckets[m] = dealsOnBoardQuery.byMonth[m]?.length ?? 0;
+    }
+    return buckets;
+  }, [
+    dealsOnBoardQuery.isLoading,
+    dealsOnBoardQuery.isFetching,
+    dealsOnBoardQuery.byMonth,
+  ]);
+
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
     actual: {
       ...baseView.actual,
       salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
+      dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
     },
-  }), [baseView, liveSalesCallsActual]);
+  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -1625,6 +1734,9 @@ export function SalesDashboardV2() {
       salesCallEvents={salesCallEvents}
       salesCallsLoading={salesCallsQuery.isLoading || salesCallsQuery.isFetching}
       salesCallsError={salesCallsQuery.error ?? null}
+      dealsOnBoard={dealsOnBoardQuery.deals}
+      dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
+      dealsOnBoardError={dealsOnBoardQuery.error}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
