@@ -1558,14 +1558,34 @@ export function SalesDashboardV2() {
     return buckets;
   }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
+  // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
+  // (Active Pipeline, deals.created_at within range, excluding closed/lost/
+  // on-hold/archived). We fetch the full seeded year and bucket by month.
+  const dealsOnBoardQuery = useDealsOnBoardByMonth(YEAR);
+  const liveDealsOnBoardActual = React.useMemo<(number | null)[]>(() => {
+    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
+    const buckets: (number | null)[] = new Array(9).fill(0);
+    for (let m = 0; m < 9; m += 1) {
+      buckets[m] = dealsOnBoardQuery.byMonth[m]?.length ?? 0;
+    }
+    return buckets;
+  }, [
+    dealsOnBoardQuery.isLoading,
+    dealsOnBoardQuery.isFetching,
+    dealsOnBoardQuery.byMonth,
+  ]);
+
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
     actual: {
       ...baseView.actual,
       salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
+      dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
     },
-  }), [baseView, liveSalesCallsActual]);
+  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -1714,6 +1734,9 @@ export function SalesDashboardV2() {
       salesCallEvents={salesCallEvents}
       salesCallsLoading={salesCallsQuery.isLoading || salesCallsQuery.isFetching}
       salesCallsError={salesCallsQuery.error ?? null}
+      dealsOnBoard={dealsOnBoardQuery.deals}
+      dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
+      dealsOnBoardError={dealsOnBoardQuery.error}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
