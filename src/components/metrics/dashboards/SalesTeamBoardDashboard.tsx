@@ -128,9 +128,6 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
               </span>
             )}
           </div>
-          {config.subtitle && (
-            <p className="text-[10px] text-muted-foreground/80 mt-1 leading-tight">{config.subtitle}</p>
-          )}
         </div>
       </CardContent>
     </Card>
@@ -138,8 +135,8 @@ function MetricKPICard({ config, onClick }: { config: MetricCardConfig; onClick:
 }
 
 function DrilldownModal({
-  open, onClose, title, deals,
-}: { open: boolean; onClose: () => void; title: string; deals: StageEntryDeal[] }) {
+  open, onClose, title, subtitle, deals,
+}: { open: boolean; onClose: () => void; title: string; subtitle?: string; deals: StageEntryDeal[] }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -149,6 +146,9 @@ function DrilldownModal({
             <Sparkles className="h-4 w-4" />
             {title}
           </DialogTitle>
+          {subtitle && (
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          )}
         </DialogHeader>
         <div className="flex items-center gap-3 mb-4">
           <Badge variant="outline" className="text-xs">
@@ -200,7 +200,7 @@ export function SalesTeamBoardDashboard() {
   );
 
   const m = useSalesTeamBoardMetrics(selectedQuarter);
-  const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
+  const [drilldown, setDrilldown] = useState<{ title: string; subtitle?: string; deals: StageEntryDeal[] } | null>(null);
 
   const cards: MetricCardConfig[] = [
     {
@@ -332,7 +332,7 @@ export function SalesTeamBoardDashboard() {
           <MetricKPICard
             key={card.id}
             config={card}
-            onClick={() => setDrilldown({ title: card.drilldownTitle, deals: card.deals })}
+            onClick={() => setDrilldown({ title: card.drilldownTitle, subtitle: card.subtitle, deals: card.deals })}
           />
         ))}
       </div>
@@ -341,6 +341,7 @@ export function SalesTeamBoardDashboard() {
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
         title={drilldown?.title ?? ''}
+        subtitle={drilldown?.subtitle}
         deals={drilldown?.deals ?? []}
       />
 
