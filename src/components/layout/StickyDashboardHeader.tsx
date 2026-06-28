@@ -67,7 +67,7 @@ export function StickyDashboardHeader({
   padding = "sm",
   paddingClassName,
   topClassName,
-  surface = "bar",
+  surface = "module",
   children,
   ...rest
 }: StickyDashboardHeaderProps) {
@@ -84,7 +84,7 @@ export function StickyDashboardHeader({
       className={cn(
         "sticky z-40",
         surface === "module"
-          ? "glass-module rounded-2xl px-5 py-4"
+          ? "glass-module rounded-lg px-5 py-4"
           : cn(
               "py-3 border-b border-white/5",
               "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
