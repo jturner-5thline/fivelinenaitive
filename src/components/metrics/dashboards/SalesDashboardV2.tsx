@@ -934,6 +934,66 @@ function KeyStatCard({
 }
 
 // ============================================================
+// CONVERSION CARD (trailing-3-month ratios)
+// ============================================================
+function ConversionCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string;
+  value: number | null;
+  subtitle?: string;
+}) {
+  const display =
+    value == null
+      ? '—'
+      : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+  return (
+    <div style={glassStyle} className="p-4 flex flex-col gap-2">
+      <div
+        className="text-[10px] font-medium uppercase"
+        style={{ color: C.textMuted, letterSpacing: '0.08em' }}
+      >
+        {title}
+      </div>
+      <div
+        className="text-3xl font-semibold leading-none"
+        style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {display}
+      </div>
+      {subtitle && (
+        <div
+          className="text-[11px]"
+          style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sum the trailing 3 buckets ending at the most recent month with data.
+// Returns null if any of those 3 buckets is null (still loading).
+function trailing3(buckets: (number | null)[]): number | null {
+  const today = new Date();
+  let endIdx: number;
+  if (today.getUTCFullYear() > 2026) endIdx = 8;
+  else if (today.getUTCFullYear() < 2026) return null;
+  else endIdx = Math.min(8, today.getUTCMonth());
+  const startIdx = Math.max(0, endIdx - 2);
+  let total = 0;
+  for (let i = startIdx; i <= endIdx; i += 1) {
+    const v = buckets[i];
+    if (v == null) return null;
+    total += v;
+  }
+  return total;
+}
+
+// ============================================================
 // SALES MODEL SHEET
 // ============================================================
 type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
