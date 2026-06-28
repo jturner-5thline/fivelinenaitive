@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
+import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
