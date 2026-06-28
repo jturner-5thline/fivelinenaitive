@@ -18,6 +18,7 @@ import {
   type QuarterOption,
 } from '@/hooks/useQBQuarterlyRevenue';
 import { useSalesTeamBoardMetrics } from '@/hooks/useSalesTeamBoardMetrics';
+import { SalesModelForecastWidget } from '@/components/insights/SalesModelForecastWidget';
 import type { StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import {
@@ -363,6 +364,9 @@ export function SalesTeamBoardDashboard() {
           </div>
         </GlassCardBody>
       </GlassCard>
+
+      {/* Sales Model — Monthly Forecast */}
+      <SalesModelForecastWidget onSave={(d) => console.log('Sales Model saved', d)} />
     </div>
   );
 }
