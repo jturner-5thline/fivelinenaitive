@@ -16,10 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DashboardPeriodPicker,
-  useDashboardPeriod,
-} from '@/components/metrics/DashboardPeriodPicker';
+import { useDashboardPeriod } from '@/components/metrics/DashboardPeriodPicker';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import {
   Dialog,
   DialogContent,
