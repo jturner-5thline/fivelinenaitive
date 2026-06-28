@@ -1055,7 +1055,14 @@ function SalesModelSheet() {
                     borderBottom: `1px solid ${C.hairline}`,
                   }}
                 >
-                  {row.label}
+                  <button
+                    type="button"
+                    onClick={() => drill.open(row.key)}
+                    className="hover:underline focus-visible:outline-none focus-visible:ring-1 rounded"
+                    style={{ color: 'inherit', fontWeight: 'inherit' }}
+                  >
+                    {row.label}
+                  </button>
                   {row.type === 'money' && (
                     <span className="ml-1 text-[10px]" style={{ color: C.textFaint }}>
                       $MM
