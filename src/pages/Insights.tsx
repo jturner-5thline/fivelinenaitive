@@ -117,7 +117,6 @@ import {
   type ManagementSnapshotEditableConfig,
   SUB_WIDGET_LABELS,
   SalesBDROIDashboard,
-  SalesTeamBoardDashboard,
   ConsolidatedDebtPipelineDashboard,
   ControllerDashboard,
   ExecutiveDashboard,
@@ -145,8 +144,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false, folder: 'financial' as const },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false, folder: 'financial' as const },
-  { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'sales-dashboard-v2', name: 'Sales Dashboard-V2', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'sales-dashboard-v2', name: 'Sales Dashboard', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
@@ -174,7 +172,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-team-board', 'sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
+    dashboardIds: ['sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
   },
 ];
 
@@ -2704,7 +2702,6 @@ function MetricsInner() {
                 </div>
               </div>
             )}
-            {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
             {selectedDashboard === 'sales-dashboard-v2' && <SalesDashboardV2 />}
             {selectedDashboard === 'rep-scorecard' && (
               <div className="space-y-4">
