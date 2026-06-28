@@ -1242,6 +1242,12 @@ button[role="combobox"] {
   font-variant-numeric: tabular-nums;
 }
 
+/* Halve corner radius for chart/widget surfaces on the Insights page. */
+.insights-glass-skin .glass-module,
+.insights-glass-skin .glass-module-interactive {
+  border-radius: 6px !important;
+}
+
 /* Card surfaces — only inside the dark theme, only inside the skin */
 .dark .insights-glass-skin [data-slot="card"] {
   /* Match the Deal Details `.deal-glass` surface verbatim so Insights chart
@@ -1253,7 +1259,7 @@ button[role="combobox"] {
       rgba(150, 195, 245, 0.062) 100%
     ) !important;
   border: 1px solid rgba(150, 195, 245, 0.26) !important;
-  border-radius: 12px !important;
+  border-radius: 6px !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   box-shadow:
