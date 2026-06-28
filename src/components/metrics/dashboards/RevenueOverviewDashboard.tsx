@@ -389,6 +389,13 @@ export function RevenueDrilldownModal({
             </table>
           </div>
         )}
+
+        {drilldown && (
+          <RevenueHistoricalTrend
+            variant={drilldown.realmIds[0] === FINSERV_REALM_ID ? 'finserv' : 'debt'}
+            color={drilldown.realmIds[0] === FINSERV_REALM_ID ? 'hsl(160, 65%, 50%)' : 'hsl(200, 80%, 55%)'}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
