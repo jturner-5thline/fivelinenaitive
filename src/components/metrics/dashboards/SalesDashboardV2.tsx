@@ -204,12 +204,13 @@ function buildView(quarter: QuarterOption): DashboardView {
     actual[k] = slice(ACTUAL[k], null);
   });
 
-  // Elapsed = months whose end-date is <= today.
+  // Elapsed = completed months plus the current month-to-date so live
+  // calendar-backed actuals and drilldown rows reconcile to the event list.
   const today = new Date();
   let elapsed = 0;
   for (const m of quarter.months) {
-    const end = new Date(m.end + 'T23:59:59');
-    if (end <= today) elapsed += 1;
+    const start = new Date(m.start + 'T00:00:00');
+    if (start <= today) elapsed += 1;
     else break;
   }
   // Clamp to at least 1 so charts render a current value
