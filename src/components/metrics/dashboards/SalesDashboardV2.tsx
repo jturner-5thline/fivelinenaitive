@@ -1111,6 +1111,240 @@ function SalesModelSheet() {
 }
 
 // ============================================================
+// METRIC DRILLDOWN DIALOG
+// ============================================================
+interface SalesCallEvent {
+  title?: string;
+  start?: string;
+  end?: string;
+  organizer?: string;
+  attendees?: string[];
+  calendar_owner?: string;
+  ical_uid?: string | null;
+}
+
+function MetricDrilldownDialog({
+  focus,
+  onClose,
+  view,
+  salesCallEvents,
+}: {
+  focus: DrilldownFocus | null;
+  onClose: () => void;
+  view: DashboardView;
+  salesCallEvents: SalesCallEvent[];
+}) {
+  if (!focus) return null;
+  const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
+  if (!row) return null;
+
+  const planArr = view.plan[row.key];
+  const actualArr = view.actual[row.key];
+  const E = view.elapsed;
+
+  const totalActual = actualArr.slice(0, E).reduce<number>((a, b) => a + (b ?? 0), 0);
+  const totalPlan = planArr.slice(0, E).reduce((a, b) => a + b, 0);
+  const variance = totalActual - totalPlan;
+  const attainment = totalPlan === 0 ? 0 : totalActual / totalPlan;
+
+  // Optional: list of underlying sales-call events for the focused month/period
+  const showCallEvents = row.key === 'salesCalls';
+  const eventsInPeriod = React.useMemo<SalesCallEvent[]>(() => {
+    if (!showCallEvents) return [];
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    let filtered = salesCallEvents.filter((ev) => {
+      if (!ev.start) return false;
+      const d = new Date(ev.start);
+      return d >= start && d <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        filtered = filtered.filter((ev) => {
+          if (!ev.start) return false;
+          const d = new Date(ev.start);
+          return d.getUTCFullYear() === SEED_YEAR && d.getUTCMonth() === idx;
+        });
+      }
+    }
+    return filtered.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  }, [showCallEvents, salesCallEvents, view, focus.monthIndex]);
+
+  const focusedMonthLabel =
+    focus.monthIndex !== undefined ? view.months[focus.monthIndex] : null;
+
+  return (
+    <Dialog open={!!focus} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="max-w-3xl"
+        style={{
+          background: 'rgba(12,12,18,0.98)',
+          border: `1px solid ${C.surfaceBorder}`,
+          color: C.textPrimary,
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ color: C.textPrimary }}>
+            {row.label}
+            {focusedMonthLabel && (
+              <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
+                · {focusedMonthLabel}
+              </span>
+            )}
+          </DialogTitle>
+          <DialogDescription style={{ color: C.textMuted }}>
+            {view.label} · breakdown of the underlying data
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Summary tiles */}
+        <div className="grid grid-cols-4 gap-3 mt-2">
+          <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
+          <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
+          <SummaryTile
+            label="Variance"
+            value={row.type === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
+            color={variance >= 0 ? C.cyan : C.rose}
+          />
+          <SummaryTile label="Attainment" value={fmtPct(attainment)} color={statusColor(attainment)} />
+        </div>
+
+        {/* Monthly breakdown */}
+        <div className="mt-4 overflow-x-auto sales-model-scroll">
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ color: C.textMuted, fontSize: 11 }}>
+                <th className="text-left px-3 py-2">Month</th>
+                <th className="text-right px-3 py-2">Plan</th>
+                <th className="text-right px-3 py-2">Actual</th>
+                <th className="text-right px-3 py-2">Variance</th>
+                <th className="text-right px-3 py-2">Attainment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.months.map((m, i) => {
+                const p = planArr[i] ?? 0;
+                const a = actualArr[i];
+                const v = a === null || a === undefined ? null : a - p;
+                const att = a === null || a === undefined || p === 0 ? null : a / p;
+                const isFocused = focus.monthIndex === i;
+                const isFuture = i >= E;
+                return (
+                  <tr
+                    key={m}
+                    style={{
+                      borderTop: `1px solid ${C.hairline}`,
+                      background: isFocused ? 'rgba(157,162,245,0.10)' : 'transparent',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: isFuture ? C.textMuted : C.textPrimary,
+                    }}
+                  >
+                    <td className="px-3 py-2">{m}</td>
+                    <td className="text-right px-3 py-2">{fmtRow(p, row.type)}</td>
+                    <td className="text-right px-3 py-2" style={{ color: a == null ? C.textFaint : C.cyan }}>
+                      {a == null ? '—' : fmtRow(a, row.type)}
+                    </td>
+                    <td
+                      className="text-right px-3 py-2"
+                      style={{ color: v == null ? C.textFaint : v >= 0 ? C.cyan : C.rose }}
+                    >
+                      {v == null
+                        ? '—'
+                        : row.type === 'money'
+                          ? fmtSignedMoney(v)
+                          : fmtSignedCount(v)}
+                    </td>
+                    <td
+                      className="text-right px-3 py-2"
+                      style={{ color: att == null ? C.textFaint : statusColor(att) }}
+                    >
+                      {att == null ? '—' : fmtPct(att)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Sales-call event list (live data) */}
+        {showCallEvents && (
+          <div className="mt-5">
+            <div
+              className="text-[10px] font-medium uppercase mb-2"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              Qualifying calendar events ({eventsInPeriod.length})
+            </div>
+            <div
+              className="max-h-64 overflow-y-auto rounded-md"
+              style={{ border: `1px solid ${C.surfaceBorder}` }}
+            >
+              {eventsInPeriod.length === 0 ? (
+                <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
+                  No qualifying "[Company] {'<>'} 5th Line Financing Review" events in this period.
+                </div>
+              ) : (
+                <ul className="divide-y" style={{ borderColor: C.hairline }}>
+                  {eventsInPeriod.map((ev, i) => {
+                    const d = ev.start ? new Date(ev.start) : null;
+                    const when = d
+                      ? d.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      : '—';
+                    return (
+                      <li
+                        key={`${ev.ical_uid ?? i}-${ev.start ?? i}`}
+                        className="px-3 py-2 text-xs"
+                        style={{ color: C.textPrimary }}
+                      >
+                        <div className="font-medium truncate">{ev.title ?? '(untitled)'}</div>
+                        <div style={{ color: C.textMuted }}>{when}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SummaryTile({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div
+      className="p-3 rounded-md"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+    >
+      <div
+        className="text-[9px] uppercase mb-1"
+        style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+      >
+        {label}
+      </div>
+      <div
+        className="text-base font-semibold"
+        style={{ color, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
