@@ -1054,10 +1054,18 @@ function SalesModelSheet() {
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
-  // Live Sales Calls — count of unique "[Company] <> 5th Line Financing
-  // Review" calendar events across every teammate's connected calendar,
-  // bucketed per month. Falls back to seed data while loading or if the
-  // calendar fan-out returns empty.
+  // Quarter selector — drives every chart, KPI, and the Sales Model sheet.
+  const quarterOptions = React.useMemo(() => buildQuarterOptions(8), []);
+  const [quarterValue, setQuarterValue] = React.useState(
+    () => getCurrentQuarter().value,
+  );
+  const selectedQuarter: QuarterOption = React.useMemo(
+    () => quarterOptions.find((q) => q.value === quarterValue) ?? quarterOptions[0],
+    [quarterOptions, quarterValue],
+  );
+
+  // Live Sales Calls — fetch for the full seeded year so the per-month
+  // overwrite below picks up any month that maps into the active quarter.
   const YEAR = 2026;
   const yearStart = React.useMemo(() => new Date(Date.UTC(YEAR, 0, 1)), []);
   const yearEnd = React.useMemo(() => new Date(Date.UTC(YEAR, 11, 31, 23, 59, 59)), []);
@@ -1074,19 +1082,28 @@ export function SalesDashboardV2() {
       if (d.getUTCFullYear() !== YEAR) continue;
       const m = d.getUTCMonth();
       if (m >= 9) continue; // dashboard covers Jan–Sep only
-      if (m >= ELAPSED) continue; // future months stay as plan
       buckets[m] = (buckets[m] ?? 0) + 1;
       touched = true;
     }
     if (!touched) return;
-    // Preserve forecast nulls beyond ELAPSED.
-    for (let i = 0; i < ELAPSED; i++) {
+    const today = new Date();
+    const currentMonth =
+      today.getUTCFullYear() === YEAR ? today.getUTCMonth() : 8;
+    const upper = Math.min(8, currentMonth);
+    for (let i = 0; i <= upper; i++) {
       ACTUAL.salesCalls[i] = buckets[i] ?? 0;
     }
     forceRender((n) => n + 1);
   }, [salesCallsQuery.data]);
 
+  const view = React.useMemo(
+    () => buildView(selectedQuarter),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedQuarter, salesCallsQuery.data],
+  );
+
   return (
+    <ViewCtx.Provider value={view}>
     <div
       className="sales-dashboard-v2 relative w-full"
       style={{
@@ -1124,17 +1141,26 @@ export function SalesDashboardV2() {
                 Pipeline Performance
               </h1>
             </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-full text-[12px]"
-              style={{
-                ...glassStyle,
-                borderRadius: 999,
-                color: C.textMuted,
-              }}
-            >
-              <Search size={12} />
-              <span>As of Jun 2026 ›</span>
-              <span style={{ color: C.cyan }}>H1 actuals</span>
+            <div className="flex items-center gap-2">
+              <Select value={quarterValue} onValueChange={setQuarterValue}>
+                <SelectTrigger
+                  className="w-[180px] h-9 rounded-full"
+                  style={{
+                    ...glassStyle,
+                    borderRadius: 999,
+                    color: C.textPrimary,
+                  }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {quarterOptions.map((q) => (
+                    <SelectItem key={q.value} value={q.value}>
+                      {q.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -1144,24 +1170,21 @@ export function SalesDashboardV2() {
               label="Sales Calls"
               Icon={Phone}
               type="count"
-              planArr={PLAN.salesCalls}
-              actualArr={ACTUAL.salesCalls}
+              metricKey="salesCalls"
               mode="sum"
             />
             <KpiCard
               label="Deals on Board"
               Icon={Layers}
               type="count"
-              planArr={PLAN.dealsOnBoard}
-              actualArr={ACTUAL.dealsOnBoard}
+              metricKey="dealsOnBoard"
               mode="current"
             />
             <KpiCard
               label="Proposals Issued"
               Icon={FileText}
               type="count"
-              planArr={PLAN.proposalsIssued}
-              actualArr={ACTUAL.proposalsIssued}
+              metricKey="proposalsIssued"
               mode="sum"
             />
           </div>
@@ -1180,9 +1203,9 @@ export function SalesDashboardV2() {
 
           {/* Key-stat line charts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <KeyStatCard title="Sales Calls" planArr={PLAN.salesCalls} actualArr={ACTUAL.salesCalls} />
-            <KeyStatCard title="Deals on Board" planArr={PLAN.dealsOnBoard} actualArr={ACTUAL.dealsOnBoard} />
-            <KeyStatCard title="Proposals Issued" planArr={PLAN.proposalsIssued} actualArr={ACTUAL.proposalsIssued} />
+            <KeyStatCard title="Sales Calls" metricKey="salesCalls" />
+            <KeyStatCard title="Deals on Board" metricKey="dealsOnBoard" />
+            <KeyStatCard title="Proposals Issued" metricKey="proposalsIssued" />
           </div>
 
           {/* Sales model sheet */}
@@ -1190,6 +1213,7 @@ export function SalesDashboardV2() {
         </div>
       </div>
     </div>
+    </ViewCtx.Provider>
   );
 }
 
