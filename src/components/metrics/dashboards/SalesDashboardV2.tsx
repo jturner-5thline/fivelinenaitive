@@ -1214,6 +1214,30 @@ function MetricDrilldownDialog({
     );
   }
 
+  // Optional: list of underlying Proposals Issued for the focused month/period
+  const showProposalsIssued = row.key === 'proposalsIssued';
+  let proposalsInPeriod: ProposalIssuedEntry[] = [];
+  if (showProposalsIssued) {
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    proposalsInPeriod = proposalsIssued.filter((d) => {
+      const c = new Date(d.entered_at);
+      return c >= start && c <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        proposalsInPeriod = proposalsInPeriod.filter((d) => {
+          const c = new Date(d.entered_at);
+          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
+        });
+      }
+    }
+    proposalsInPeriod = proposalsInPeriod.sort((a, b) =>
+      (a.entered_at ?? '').localeCompare(b.entered_at ?? ''),
+    );
+  }
+
   const focusedMonthLabel =
     focus.monthIndex !== undefined ? view.months[focus.monthIndex] : null;
 
