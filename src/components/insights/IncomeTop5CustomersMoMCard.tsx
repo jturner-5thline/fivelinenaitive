@@ -145,6 +145,7 @@ export function IncomeTop5CustomersMoMCard() {
     prior: r.prior,
   }));
   const hasAny = rows.length > 0;
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
 
   return (
     <div
