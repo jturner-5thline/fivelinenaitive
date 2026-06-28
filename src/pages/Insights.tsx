@@ -2712,6 +2712,9 @@ function MetricsInner() {
                 <RepPerformanceModelGrid />
               </div>
             )}
+            {selectedDashboard === 'sales-model' && (
+              <SalesModelForecastWidget onSave={(d) => console.log('Sales Model saved', d)} />
+            )}
             {selectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}
