@@ -12,7 +12,7 @@ import {
 
 // ── Chart defaults ──
 const setDefaults = () => {
-  ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
+  ChartJS.defaults.color = 'rgba(255,255,255,0.75)';
   ChartJS.defaults.borderColor = 'rgba(255,255,255,0.08)';
   ChartJS.defaults.font.size = 9;
   ChartJS.defaults.font.family = 'system-ui, sans-serif';
@@ -27,8 +27,8 @@ const CA = PLAN_COLORS.Actuals;      // purple
 const CF = 'rgba(34,197,94,0.12)';   // Reach area-fill tint
 const CDN = 'rgba(220,70,85,0.75)';  // negative-actuals warning red
 const Q = ['Q1','Q2','Q3','Q4'];
-const gx: any = { ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-const gy: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
+const gx: any = { ticks: { color: 'rgba(255,255,255,0.75)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+const gy: any = { ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const fmtM = (v: number) => '$' + v.toFixed(1) + 'MM';
 
@@ -65,7 +65,7 @@ function Card({ children, className = '', style }: { children: React.ReactNode; 
 }
 
 function Ct({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{children}</div>;
+  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.75)', marginBottom: 8 }}>{children}</div>;
 }
 
 function Sep() { return <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />; }
@@ -98,15 +98,15 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr>{['Metric','Q1','Q2','Q3','Q4','Total'].map(h => (
-            <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+            <th key={h} style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
           ))}</tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
+              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)', fontSize: 10 }}>{r.label}</td>
               {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-                <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.isNeg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.7)', fontSize: 11 }}>{v}</td>
+                <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.isNeg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.95)', fontSize: 11 }}>{v}</td>
               ))}
               <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, color: r.totalColor || '#e8f6ff', fontSize: 11 }}>{r.total}</td>
             </tr>
@@ -115,19 +115,19 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
       </table>
       {ttmRows && (
         <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px', marginTop: 8 }}>
-          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>TTM</div>
+          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.65)', marginBottom: 5 }}>TTM</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
             <thead>
               <tr>{['','Q1','Q2','Q3','Q4',''].map((h, i) => (
-                <th key={i} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: i === 0 ? 'left' : 'right', padding: '3px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 8 }}>{h}</th>
+                <th key={i} style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 700, textAlign: i === 0 ? 'left' : 'right', padding: '3px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 8 }}>{h}</th>
               ))}</tr>
             </thead>
             <tbody>
               {ttmRows.map((r, i) => (
                 <tr key={i}>
-                  <td style={{ textAlign: 'left', padding: '3px 6px', color: 'rgba(255,255,255,0.5)', fontSize: 9 }}>{r.label}</td>
+                  <td style={{ textAlign: 'left', padding: '3px 6px', color: 'rgba(255,255,255,0.75)', fontSize: 9 }}>{r.label}</td>
                   {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-                    <td key={j} style={{ textAlign: 'right', padding: '3px 6px', color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>{v}</td>
+                    <td key={j} style={{ textAlign: 'right', padding: '3px 6px', color: 'rgba(255,255,255,0.9)', fontSize: 10 }}>{v}</td>
                   ))}
                   <td style={{ textAlign: 'right', padding: '3px 6px', fontWeight: 700, color: '#e8f6ff' }}>—</td>
                 </tr>
@@ -181,13 +181,13 @@ function AttainmentTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr>{['Metric','Q1','Q2','Q3','Q4','Full Yr'].map(h => (
-            <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+            <th key={h} style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
           ))}</tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i}>
-              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
+              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)', fontSize: 10 }}>{r.label}</td>
               {r.vals.map((v, j) => {
                 const isNeg = r.neg?.[j];
                 const isHl = r.highlight[j];
@@ -305,7 +305,7 @@ export function BenchmarkForecastsPage({ isEditMode = false }: { isEditMode?: bo
       <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff', letterSpacing: '-.3px' }}>5th<span style={{ color: 'hsl(213,90%,70%)' }}>Line</span> Benchmark Forecasts</div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2, fontStyle: 'italic' }}>Last Updated: 12/1/2025 · By: JT · Actuals Thru: <span style={{ color: 'hsl(213,90%,70%)', fontWeight: 600 }}>Mar-26</span></div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontStyle: 'italic' }}>Last Updated: 12/1/2025 · By: JT · Actuals Thru: <span style={{ color: 'hsl(213,90%,70%)', fontWeight: 600 }}>Mar-26</span></div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Pill variant="r">Reach Plan</Pill>
@@ -376,7 +376,7 @@ export function BenchmarkForecastsPage({ isEditMode = false }: { isEditMode?: bo
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
               <thead>
                 <tr>{['Metric','Q1','Q2','Q3','Q4','Total'].map(h => (
-                  <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+                  <th key={h} style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -387,9 +387,9 @@ export function BenchmarkForecastsPage({ isEditMode = false }: { isEditMode?: bo
                   { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: PLAN_COLORS.Reach, neg: [true, true, true, false, false] },
                 ].map((r, i) => (
                   <tr key={i}>
-                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
+                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.85)', fontSize: 10 }}>{r.label}</td>
                     {r.vals.slice(0, 4).map((v, j) => (
-                      <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.neg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.7)', fontSize: 11 }}>{v}</td>
+                      <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.neg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.95)', fontSize: 11 }}>{v}</td>
                     ))}
                     <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, color: r.totalColor || '#e8f6ff' }}>{r.vals[4]}</td>
                   </tr>
