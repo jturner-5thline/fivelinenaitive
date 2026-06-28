@@ -18,6 +18,7 @@ import {
   type QuarterOption,
 } from '@/hooks/useQBQuarterlyRevenue';
 import { useSalesTeamBoardMetrics } from '@/hooks/useSalesTeamBoardMetrics';
+import { SalesModelForecastWidget } from '@/components/insights/SalesModelForecastWidget';
 import type { StageEntryDeal } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import {
