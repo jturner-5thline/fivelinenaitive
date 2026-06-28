@@ -359,28 +359,30 @@ function KpiCard({
   label,
   Icon,
   type,
-  planArr,
-  actualArr,
+  metricKey,
   mode,
 }: {
   label: string;
   Icon: LucideIcon;
   type: 'count' | 'money';
-  planArr: number[];
-  actualArr: (number | null)[];
+  metricKey: MetricKey;
   mode: 'sum' | 'current';
 }) {
-  const currentActual = actualArr[ELAPSED - 1] ?? 0;
-  const currentPlan = planArr[ELAPSED - 1];
-  const deltaPct = (currentActual - currentPlan) / currentPlan;
+  const view = useView();
+  const planArr = view.plan[metricKey];
+  const actualArr = view.actual[metricKey];
+  const E = view.elapsed;
+  const currentActual = actualArr[E - 1] ?? 0;
+  const currentPlan = planArr[E - 1] ?? 0;
+  const deltaPct = currentPlan === 0 ? 0 : (currentActual - currentPlan) / currentPlan;
   const positive = deltaPct >= 0;
 
   // sub-line uses comparison mode
-  const compareActual = mode === 'sum' ? sum(actualArr, ELAPSED) : currentActual;
-  const comparePlan = mode === 'sum' ? planArr.slice(0, ELAPSED).reduce((a, b) => a + b, 0) : currentPlan;
+  const compareActual = mode === 'sum' ? sum(actualArr, E) : currentActual;
+  const comparePlan = mode === 'sum' ? planArr.slice(0, E).reduce((a, b) => a + b, 0) : currentPlan;
   const gap = compareActual - comparePlan;
 
-  const sparkData = MONTHS.map((m, i) => ({
+  const sparkData = view.months.map((m, i) => ({
     month: m,
     plan: planArr[i],
     actual: actualArr[i],
@@ -468,9 +470,11 @@ function statusColor(att: number): string {
 }
 
 function PerformancePanel() {
-  const planYtd = PLAN.dollarsFunded.slice(0, ELAPSED).reduce((a, b) => a + b, 0);
-  const actualYtd = sum(ACTUAL.dollarsFunded, ELAPSED);
-  const attainment = actualYtd / planYtd;
+  const view = useView();
+  const E = view.elapsed;
+  const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
+  const actualYtd = sum(view.actual.dollarsFunded, E);
+  const attainment = planYtd === 0 ? 0 : actualYtd / planYtd;
   const gap = actualYtd - planYtd;
 
   // Drivers
@@ -482,15 +486,15 @@ function PerformancePanel() {
     type: 'count' | 'money';
   };
   const drivers: Driver[] = [
-    { label: 'Sales Calls', actual: sum(ACTUAL.salesCalls, ELAPSED), plan: PLAN.salesCalls.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Proposals Issued', actual: sum(ACTUAL.proposalsIssued, ELAPSED), plan: PLAN.proposalsIssued.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Deals on Board', note: '· current', actual: ACTUAL.dealsOnBoard[ELAPSED - 1] ?? 0, plan: PLAN.dealsOnBoard[ELAPSED - 1], type: 'count' },
-    { label: 'Dollars Signed', actual: sum(ACTUAL.dollarsSigned, ELAPSED), plan: PLAN.dollarsSigned.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'money' },
-    { label: 'Deals Closed', actual: sum(ACTUAL.dealsClosed, ELAPSED), plan: PLAN.dealsClosed.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Sales Calls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Proposals Issued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Deals on Board', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
+    { label: 'Dollars Signed', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'Deals Closed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'Dollars Funded', actual: actualYtd, plan: planYtd, type: 'money' },
   ];
 
-  const actualWidthPct = Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
+  const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
 
   return (
     <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] overflow-hidden">
@@ -556,7 +560,7 @@ function PerformancePanel() {
           />
           <div className="text-[11px]" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
             <span style={{ color: C.rose }}>Gap {fmtSignedMoney(gap)}</span>
-            <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through Jun</span>
+            <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through {view.months[E - 1] ?? ''}</span>
           </div>
         </div>
       </div>
@@ -665,16 +669,18 @@ function BridgeBar({
 // CUMULATIVE PACE CHART
 // ============================================================
 function CumulativePace() {
-  const planCum = cumulativePlan(PLAN.dollarsFunded);
-  const actualCum = cumulative(ACTUAL.dollarsFunded);
-  const data = MONTHS.map((m, i) => ({
+  const view = useView();
+  const E = view.elapsed;
+  const planCum = cumulativePlan(view.plan.dollarsFunded);
+  const actualCum = cumulative(view.actual.dollarsFunded);
+  const data = view.months.map((m, i) => ({
     month: m,
     plan: planCum[i],
     actual: actualCum[i],
   }));
-  const actualToDate = actualCum[ELAPSED - 1] ?? 0;
-  const planToDate = planCum[ELAPSED - 1];
-  const fyTarget = planCum[8];
+  const actualToDate = actualCum[E - 1] ?? 0;
+  const planToDate = planCum[E - 1] ?? 0;
+  const fyTarget = planCum[planCum.length - 1] ?? 0;
 
   return (
     <div style={glassStyle} className="p-5">
@@ -728,7 +734,7 @@ function CumulativePace() {
               formatter={(v: number, n: string) => [`$${v.toFixed(1)}MM`, n === 'plan' ? 'Plan' : 'Actual']}
             />
             <ReferenceLine
-              x="Jun"
+              x={view.months[E - 1] ?? ''}
               stroke={C.textFaint}
               strokeDasharray="3 3"
               label={{ value: 'today', position: 'top', fill: C.textFaint, fontSize: 10 }}
@@ -777,14 +783,15 @@ function Readout({ label, value, color }: { label: string; value: string; color:
 // ============================================================
 function KeyStatCard({
   title,
-  planArr,
-  actualArr,
+  metricKey,
 }: {
   title: string;
-  planArr: number[];
-  actualArr: (number | null)[];
+  metricKey: MetricKey;
 }) {
-  const data = MONTHS.map((m, i) => ({
+  const view = useView();
+  const planArr = view.plan[metricKey];
+  const actualArr = view.actual[metricKey];
+  const data = view.months.map((m, i) => ({
     month: m,
     plan: planArr[i],
     actual: actualArr[i],
