@@ -116,7 +116,7 @@ const PLAN: Record<MetricKey, number[]> = {
 
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
   salesCalls: pad([]),
-  dealsOnBoard: pad([9, 10, 11, 12, 11, 13]),
+  dealsOnBoard: pad([]), // overridden by live useDealsOnBoardByMonth
   dollarsOnBoard: pad([]),
   proposalsIssued: pad([6, 7, 8, 6, 7, 9]),
   dollarsProposed: pad([]),
