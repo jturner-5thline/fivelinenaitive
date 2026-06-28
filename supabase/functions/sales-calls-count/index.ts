@@ -15,6 +15,7 @@ const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
 const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const FIFTH_LINE_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
 
 function domainOf(email?: string | null): string | null {
   if (!email) return null;
@@ -50,10 +51,40 @@ interface SalesCallEvent {
   company: string;
   start: string | null;
   end: string | null;
+  calendar_id: string | null;
+  calendar_name: string | null;
   user_email: string | null;
   user_name: string | null;
   html_link: string | null;
   attendee_domains: string[];
+}
+
+interface NylasCalendar {
+  id: string;
+  name: string | null;
+  read_only?: boolean;
+}
+
+async function fetchCalendarsForGrant(grantId: string): Promise<NylasCalendar[]> {
+  const resp = await fetch(`${NYLAS_API_URI}/v3/grants/${grantId}/calendars`, {
+    headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+  });
+  if (!resp.ok) {
+    console.warn("[sales-calls-count] calendar list err", grantId, resp.status);
+    return [{ id: "primary", name: "Primary" }];
+  }
+
+  const data = await resp.json();
+  const raw = Array.isArray(data?.data) ? data.data : [];
+  const calendars = raw
+    .map((c: any) => ({
+      id: String(c?.id || c?.calendar_id || "").trim(),
+      name: c?.name || c?.summary || c?.display_name || null,
+      read_only: !!c?.read_only,
+    }))
+    .filter((c: NylasCalendar) => !!c.id);
+
+  return calendars.length > 0 ? calendars : [{ id: "primary", name: "Primary" }];
 }
 
 async function fetchForGrant(
@@ -63,82 +94,88 @@ async function fetchForGrant(
   user: { email: string | null; name: string | null; domain: string | null },
 ): Promise<SalesCallEvent[]> {
   const out: SalesCallEvent[] = [];
-  let pageToken: string | null = null;
-  let pagesFetched = 0;
-  const MAX_PAGES = 10; // up to 2000 events per calendar per call
-  do {
-    const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
-    url.searchParams.set("calendar_id", "primary");
-    url.searchParams.set("start", String(startUnix));
-    url.searchParams.set("end", String(endUnix));
-    url.searchParams.set("limit", "200");
-    url.searchParams.set("expand_recurring", "true");
-    if (pageToken) url.searchParams.set("page_token", pageToken);
-    const resp = await fetch(url.toString(), {
-      headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-    });
-    if (!resp.ok) {
-      console.warn("[sales-calls-count] nylas err", grantId, resp.status);
-      break;
+  const calendars = await fetchCalendarsForGrant(grantId);
+
+  for (const calendar of calendars) {
+    let pageToken: string | null = null;
+    let pagesFetched = 0;
+    const MAX_PAGES = 10; // up to 2000 events per calendar per call
+    do {
+      const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
+      url.searchParams.set("calendar_id", calendar.id);
+      url.searchParams.set("start", String(startUnix));
+      url.searchParams.set("end", String(endUnix));
+      url.searchParams.set("limit", "200");
+      url.searchParams.set("expand_recurring", "true");
+      if (pageToken) url.searchParams.set("page_token", pageToken);
+      const resp = await fetch(url.toString(), {
+        headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+      });
+      if (!resp.ok) {
+        console.warn("[sales-calls-count] nylas err", grantId, calendar.id, resp.status);
+        break;
+      }
+      const data = await resp.json();
+      const raw = (data?.data || []) as any[];
+      for (const e of raw) {
+        if (e?.status === "cancelled") continue;
+        const title: string = e?.title || "";
+        const m = TITLE_RE.exec(title);
+        if (!m) continue;
+        const companyRaw = (m[1] || "").trim();
+        const companyNorm = normalizeCompany(companyRaw);
+        if (!companyNorm || companyNorm === "5th line") continue;
+
+        const w = e?.when || {};
+        const startIso = w.start_time
+          ? new Date(w.start_time * 1000).toISOString()
+          : (w.start_date || null);
+        const endIso = w.end_time
+          ? new Date(w.end_time * 1000).toISOString()
+          : (w.end_date || null);
+
+        // Exclude internal-only meetings: every attendee shares the caller's
+        // domain (no external "client" present). If there are no attendees
+        // recorded at all, keep the event — the title alone qualifies it.
+        const attendees = (e?.participants || e?.attendees || []) as any[];
+        const attendeeDomains = attendees
+          .map((a) => domainOf(a?.email))
+          .filter((d): d is string => !!d);
+        if (
+          user.domain &&
+          attendeeDomains.length > 0 &&
+          attendeeDomains.every((d) => d === user.domain)
+        ) {
+          continue;
+        }
+
+        // Dedupe: prefer Nylas ical_uid / master_event_id (stable across all
+        // attendees' calendars). Fall back to a normalized composite of
+        // title + start + end + company.
+        const icalUid: string | null = e?.ical_uid || e?.master_event_id || null;
+        const dedupe_key = icalUid
+          ? `uid:${icalUid}`
+          : `cx:${companyNorm}|${title.trim().toLowerCase().replace(/\s+/g, " ")}|${startIso || ""}|${endIso || ""}`;
+
+        out.push({
+          id: String(e.id),
+          dedupe_key,
+          title,
+          company: companyRaw,
+          start: startIso,
+          end: endIso,
+          calendar_id: calendar.id,
+          calendar_name: calendar.name,
+          user_email: user.email,
+          user_name: user.name,
+          html_link: e.html_link || null,
+          attendee_domains: Array.from(new Set(attendeeDomains)),
+        });
+      }
+      pageToken = (data?.next_cursor as string | null) || null;
+      pagesFetched += 1;
+    } while (pageToken && pagesFetched < MAX_PAGES);
     }
-    const data = await resp.json();
-    const raw = (data?.data || []) as any[];
-    for (const e of raw) {
-    if (e?.status === "cancelled") continue;
-    const title: string = e?.title || "";
-    const m = TITLE_RE.exec(title);
-    if (!m) continue;
-    const companyRaw = (m[1] || "").trim();
-    const companyNorm = normalizeCompany(companyRaw);
-    if (!companyNorm || companyNorm === "5th line") continue;
-
-    const w = e?.when || {};
-    const startIso = w.start_time
-      ? new Date(w.start_time * 1000).toISOString()
-      : (w.start_date || null);
-    const endIso = w.end_time
-      ? new Date(w.end_time * 1000).toISOString()
-      : (w.end_date || null);
-
-    // Exclude internal-only meetings: every attendee shares the caller's
-    // domain (no external "client" present). If there are no attendees
-    // recorded at all, keep the event — the title alone qualifies it.
-    const attendees = (e?.participants || e?.attendees || []) as any[];
-    const attendeeDomains = attendees
-      .map((a) => domainOf(a?.email))
-      .filter((d): d is string => !!d);
-    if (
-      user.domain &&
-      attendeeDomains.length > 0 &&
-      attendeeDomains.every((d) => d === user.domain)
-    ) {
-      continue;
-    }
-
-    // Dedupe: prefer Nylas ical_uid / master_event_id (stable across all
-    // attendees' calendars). Fall back to a normalized composite of
-    // title + start + end + company.
-    const icalUid: string | null = e?.ical_uid || e?.master_event_id || null;
-    const dedupe_key = icalUid
-      ? `uid:${icalUid}`
-      : `cx:${companyNorm}|${title.trim().toLowerCase().replace(/\s+/g, " ")}|${startIso || ""}|${endIso || ""}`;
-
-    out.push({
-      id: String(e.id),
-      dedupe_key,
-      title,
-      company: companyRaw,
-      start: startIso,
-      end: endIso,
-      user_email: user.email,
-      user_name: user.name,
-      html_link: e.html_link || null,
-      attendee_domains: Array.from(new Set(attendeeDomains)),
-    });
-    }
-    pageToken = (data?.next_cursor as string | null) || null;
-    pagesFetched += 1;
-  } while (pageToken && pagesFetched < MAX_PAGES);
   return out;
 }
 
@@ -188,20 +225,48 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
+    const { data: callerMemberships, error: membershipErr } = await supabase
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", callerId);
+    if (membershipErr) throw membershipErr;
+
+    const callerCompanyIds = ((callerMemberships || []) as any[])
+      .map((m) => m.company_id)
+      .filter(Boolean);
+    const targetCompanyId = callerCompanyIds.includes(FIFTH_LINE_COMPANY_ID)
+      ? FIFTH_LINE_COMPANY_ID
+      : callerCompanyIds[0] || null;
+
     const { data: profiles, error: profErr } = await supabase
       .from("profiles").select("user_id, email, display_name, full_name");
     if (profErr) throw profErr;
-    const sameDomainIds = (profiles || [])
-      .filter((p: any) => domainOf(p.email) === callerDomain)
-      .map((p: any) => p.user_id);
-    if (sameDomainIds.length === 0) {
+
+    let targetUserIds: string[] = [];
+    if (targetCompanyId) {
+      const { data: members, error: membersErr } = await supabase
+        .from("company_members")
+        .select("user_id")
+        .eq("company_id", targetCompanyId);
+      if (membersErr) throw membersErr;
+      targetUserIds = ((members || []) as any[]).map((m) => m.user_id).filter(Boolean);
+    }
+
+    // Fallback for older records/memberships: same company email domain.
+    if (targetUserIds.length === 0) {
+      targetUserIds = (profiles || [])
+        .filter((p: any) => domainOf(p.email) === callerDomain)
+        .map((p: any) => p.user_id);
+    }
+
+    if (targetUserIds.length === 0) {
       return new Response(JSON.stringify({ count: 0, users: 0, events: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const { data: tokens } = await supabase
-      .from("gmail_tokens").select("user_id, grant_id").in("user_id", sameDomainIds);
+      .from("gmail_tokens").select("user_id, grant_id").in("user_id", targetUserIds);
     const profileById = new Map<string, { email: string | null; name: string | null }>();
     for (const p of (profiles || []) as any[]) {
       profileById.set(p.user_id, {
@@ -257,7 +322,13 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     return new Response(
-      JSON.stringify({ count: events.length, users: grants.length, events }),
+      JSON.stringify({
+        count: events.length,
+        users: grants.length,
+        source_company_id: targetCompanyId,
+        source_user_ids: targetUserIds.length,
+        events,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e: any) {
