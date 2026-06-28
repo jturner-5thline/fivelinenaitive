@@ -14,6 +14,7 @@ import {
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
+import { RevenueHistoricalTrend } from './HistoricalTrendChart';
 import {
   useQBQuarterlyRevenue,
   useQBCombinedQuarterlyRevenue,
@@ -241,7 +242,7 @@ export function RevenueDrilldownModal({
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+      <DialogContent className="max-w-4xl max-h-[88vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
@@ -387,6 +388,13 @@ export function RevenueDrilldownModal({
               </tfoot>
             </table>
           </div>
+        )}
+
+        {drilldown && (
+          <RevenueHistoricalTrend
+            variant={drilldown.realmIds[0] === FINSERV_REALM_ID ? 'finserv' : 'debt'}
+            color={drilldown.realmIds[0] === FINSERV_REALM_ID ? 'hsl(160, 65%, 50%)' : 'hsl(200, 80%, 55%)'}
+          />
         )}
       </DialogContent>
     </Dialog>
