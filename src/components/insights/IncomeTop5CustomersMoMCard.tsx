@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
   Bar,
   BarChart,
+  Line,
+  LineChart,
   CartesianGrid,
   Legend,
   ResponsiveContainer,
@@ -13,6 +15,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChartTypeToggle } from "./ChartTypeToggle";
 
 /**
  * Income: Top 5 Customers MoM.
@@ -143,6 +146,7 @@ export function IncomeTop5CustomersMoMCard() {
     prior: r.prior,
   }));
   const hasAny = rows.length > 0;
+  const [chartType, setChartType] = useState<"bar" | "line">("bar");
 
   return (
     <div
@@ -174,7 +178,9 @@ export function IncomeTop5CustomersMoMCard() {
         >
           Income · Top 5 Customers MoM
         </div>
-        <span
+        <div className="flex items-center gap-2">
+          <ChartTypeToggle value={chartType} onChange={setChartType} />
+          <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
@@ -182,7 +188,8 @@ export function IncomeTop5CustomersMoMCard() {
           {data?.lastSync
             ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
             : "—"}
-        </span>
+          </span>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -206,6 +213,7 @@ export function IncomeTop5CustomersMoMCard() {
           <>
             <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
+                {chartType === "bar" ? (
                 <BarChart
                   data={chartData}
                   margin={{ top: 12, right: 12, left: 4, bottom: 44 }}
@@ -262,6 +270,24 @@ export function IncomeTop5CustomersMoMCard() {
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
+                ) : (
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 12, right: 12, left: 4, bottom: 44 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.7)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} interval={0} angle={-25} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
+                  <Tooltip
+                    contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
+                    labelFormatter={(_, payload) => (payload?.[0]?.payload as { fullName?: string })?.fullName ?? ""}
+                    formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? curLabel : prevLabel]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? curLabel : prevLabel)} />
+                  <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="current" stroke="hsla(213,90%,70%,0.95)" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
 
