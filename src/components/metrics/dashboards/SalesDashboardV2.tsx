@@ -14,6 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   ResponsiveContainer,
   LineChart,
   Line,
@@ -147,6 +154,24 @@ const ViewCtx = React.createContext<DashboardView | null>(null);
 function useView(): DashboardView {
   const v = React.useContext(ViewCtx);
   if (!v) throw new Error('Missing DashboardView');
+  return v;
+}
+
+// ------------------------------------------------------------
+// Drilldown context — any chart/KPI/cell can call open(metric, monthIdx?)
+// to surface the underlying monthly composition.
+// ------------------------------------------------------------
+interface DrilldownFocus {
+  metricKey: MetricKey;
+  monthIndex?: number;
+}
+interface DrilldownApi {
+  open: (metric: MetricKey, monthIndex?: number) => void;
+}
+const DrilldownCtx = React.createContext<DrilldownApi | null>(null);
+function useDrilldown(): DrilldownApi {
+  const v = React.useContext(DrilldownCtx);
+  if (!v) throw new Error('Missing DrilldownCtx');
   return v;
 }
 
@@ -369,6 +394,7 @@ function KpiCard({
   mode: 'sum' | 'current';
 }) {
   const view = useView();
+  const drill = useDrilldown();
   const planArr = view.plan[metricKey];
   const actualArr = view.actual[metricKey];
   const E = view.elapsed;
@@ -389,7 +415,13 @@ function KpiCard({
   }));
 
   return (
-    <div style={glassStyle} className="relative p-4 flex flex-col gap-2 overflow-hidden">
+    <button
+      type="button"
+      onClick={() => drill.open(metricKey)}
+      style={glassStyle}
+      className="relative p-4 flex flex-col gap-2 overflow-hidden text-left cursor-pointer transition-transform hover:-translate-y-[1px] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2"
+      aria-label={`Drill into ${label}`}
+    >
       <div className="flex items-center gap-2">
         <div
           className="flex items-center justify-center rounded-lg"
@@ -456,7 +488,7 @@ function KpiCard({
           </LineChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -471,6 +503,7 @@ function statusColor(att: number): string {
 
 function PerformancePanel() {
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
   const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
   const actualYtd = sum(view.actual.dollarsFunded, E);
@@ -484,14 +517,15 @@ function PerformancePanel() {
     actual: number;
     plan: number;
     type: 'count' | 'money';
+    metricKey: MetricKey;
   };
   const drivers: Driver[] = [
-    { label: 'Sales Calls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Proposals Issued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Deals on Board', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
-    { label: 'Dollars Signed', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
-    { label: 'Deals Closed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Dollars Funded', actual: actualYtd, plan: planYtd, type: 'money' },
+    { label: 'Sales Calls', metricKey: 'salesCalls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Proposals Issued', metricKey: 'proposalsIssued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Deals on Board', metricKey: 'dealsOnBoard', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
+    { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'Deals Closed', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Dollars Funded', metricKey: 'dollarsFunded', actual: actualYtd, plan: planYtd, type: 'money' },
   ];
 
   const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
@@ -578,9 +612,11 @@ function PerformancePanel() {
             const att = d.actual / d.plan;
             const color = statusColor(att);
             return (
-              <div
+              <button
+                type="button"
                 key={d.label}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5"
+                onClick={() => drill.open(d.metricKey)}
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
                 style={{
                   borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}`,
                 }}
@@ -607,7 +643,7 @@ function PerformancePanel() {
                     {fmtPct(att)}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -670,6 +706,7 @@ function BridgeBar({
 // ============================================================
 function CumulativePace() {
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
   const planCum = cumulativePlan(view.plan.dollarsFunded);
   const actualCum = cumulative(view.actual.dollarsFunded);
@@ -693,6 +730,14 @@ function CumulativePace() {
           <div className="text-[11px]" style={{ color: C.textFaint }}>
             Dollars Funded · running total
           </div>
+          <button
+            type="button"
+            onClick={() => drill.open('dollarsFunded')}
+            className="ml-2 text-[10px] px-2 py-0.5 rounded-md hover:brightness-125 focus-visible:outline-none focus-visible:ring-1"
+            style={{ background: 'rgba(157,162,245,0.10)', color: C.periwinkle, border: `1px solid ${C.surfaceBorder}` }}
+          >
+            Drill in
+          </button>
         </div>
         <div className="flex items-center gap-5 text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
           <Readout label="ACTUAL TO DATE" value={fmtMoney(actualToDate)} color={C.cyan} />
@@ -789,6 +834,7 @@ function KeyStatCard({
   metricKey: MetricKey;
 }) {
   const view = useView();
+  const drill = useDrilldown();
   const planArr = view.plan[metricKey];
   const actualArr = view.actual[metricKey];
   const data = view.months.map((m, i) => ({
@@ -799,9 +845,14 @@ function KeyStatCard({
   return (
     <div style={glassStyle} className="p-4">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold" style={{ color: C.textPrimary }}>
+        <button
+          type="button"
+          onClick={() => drill.open(metricKey)}
+          className="text-sm font-semibold hover:underline focus-visible:outline-none focus-visible:ring-1 rounded text-left"
+          style={{ color: C.textPrimary }}
+        >
           {title}
-        </div>
+        </button>
         <div className="flex items-center gap-3 text-[10px]" style={{ color: C.textMuted }}>
           <span className="flex items-center gap-1">
             <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
@@ -871,6 +922,7 @@ type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
@@ -1003,7 +1055,14 @@ function SalesModelSheet() {
                     borderBottom: `1px solid ${C.hairline}`,
                   }}
                 >
-                  {row.label}
+                  <button
+                    type="button"
+                    onClick={() => drill.open(row.key)}
+                    className="hover:underline focus-visible:outline-none focus-visible:ring-1 rounded"
+                    style={{ color: 'inherit', fontWeight: 'inherit' }}
+                  >
+                    {row.label}
+                  </button>
                   {row.type === 'money' && (
                     <span className="ml-1 text-[10px]" style={{ color: C.textFaint }}>
                       $MM
@@ -1015,7 +1074,8 @@ function SalesModelSheet() {
                   return (
                     <td
                       key={m}
-                      className="px-3 py-2 text-right"
+                      className="px-3 py-2 text-right cursor-pointer hover:bg-white/[0.04]"
+                      onClick={() => drill.open(row.key, i)}
                       style={{
                         borderBottom: `1px solid ${C.hairline}`,
                         background: isFuture ? 'rgba(157,162,245,0.04)' : 'transparent',
@@ -1045,6 +1105,240 @@ function SalesModelSheet() {
             {view.months[E]}–{view.months[view.months.length - 1]} forecast
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// METRIC DRILLDOWN DIALOG
+// ============================================================
+interface SalesCallEvent {
+  title?: string;
+  start?: string;
+  end?: string;
+  organizer?: string;
+  attendees?: unknown;
+  calendar_owner?: string;
+  ical_uid?: string | null;
+}
+
+function MetricDrilldownDialog({
+  focus,
+  onClose,
+  view,
+  salesCallEvents,
+}: {
+  focus: DrilldownFocus | null;
+  onClose: () => void;
+  view: DashboardView;
+  salesCallEvents: SalesCallEvent[];
+}) {
+  if (!focus) return null;
+  const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
+  if (!row) return null;
+
+  const planArr = view.plan[row.key];
+  const actualArr = view.actual[row.key];
+  const E = view.elapsed;
+
+  const totalActual = actualArr.slice(0, E).reduce<number>((a, b) => a + (b ?? 0), 0);
+  const totalPlan = planArr.slice(0, E).reduce((a, b) => a + b, 0);
+  const variance = totalActual - totalPlan;
+  const attainment = totalPlan === 0 ? 0 : totalActual / totalPlan;
+
+  // Optional: list of underlying sales-call events for the focused month/period
+  const showCallEvents = row.key === 'salesCalls';
+  const eventsInPeriod = React.useMemo<SalesCallEvent[]>(() => {
+    if (!showCallEvents) return [];
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    let filtered = salesCallEvents.filter((ev) => {
+      if (!ev.start) return false;
+      const d = new Date(ev.start);
+      return d >= start && d <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        filtered = filtered.filter((ev) => {
+          if (!ev.start) return false;
+          const d = new Date(ev.start);
+          return d.getUTCFullYear() === SEED_YEAR && d.getUTCMonth() === idx;
+        });
+      }
+    }
+    return filtered.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  }, [showCallEvents, salesCallEvents, view, focus.monthIndex]);
+
+  const focusedMonthLabel =
+    focus.monthIndex !== undefined ? view.months[focus.monthIndex] : null;
+
+  return (
+    <Dialog open={!!focus} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="max-w-3xl"
+        style={{
+          background: 'rgba(12,12,18,0.98)',
+          border: `1px solid ${C.surfaceBorder}`,
+          color: C.textPrimary,
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ color: C.textPrimary }}>
+            {row.label}
+            {focusedMonthLabel && (
+              <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
+                · {focusedMonthLabel}
+              </span>
+            )}
+          </DialogTitle>
+          <DialogDescription style={{ color: C.textMuted }}>
+            {view.label} · breakdown of the underlying data
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Summary tiles */}
+        <div className="grid grid-cols-4 gap-3 mt-2">
+          <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
+          <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
+          <SummaryTile
+            label="Variance"
+            value={row.type === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
+            color={variance >= 0 ? C.cyan : C.rose}
+          />
+          <SummaryTile label="Attainment" value={fmtPct(attainment)} color={statusColor(attainment)} />
+        </div>
+
+        {/* Monthly breakdown */}
+        <div className="mt-4 overflow-x-auto sales-model-scroll">
+          <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ color: C.textMuted, fontSize: 11 }}>
+                <th className="text-left px-3 py-2">Month</th>
+                <th className="text-right px-3 py-2">Plan</th>
+                <th className="text-right px-3 py-2">Actual</th>
+                <th className="text-right px-3 py-2">Variance</th>
+                <th className="text-right px-3 py-2">Attainment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.months.map((m, i) => {
+                const p = planArr[i] ?? 0;
+                const a = actualArr[i];
+                const v = a === null || a === undefined ? null : a - p;
+                const att = a === null || a === undefined || p === 0 ? null : a / p;
+                const isFocused = focus.monthIndex === i;
+                const isFuture = i >= E;
+                return (
+                  <tr
+                    key={m}
+                    style={{
+                      borderTop: `1px solid ${C.hairline}`,
+                      background: isFocused ? 'rgba(157,162,245,0.10)' : 'transparent',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: isFuture ? C.textMuted : C.textPrimary,
+                    }}
+                  >
+                    <td className="px-3 py-2">{m}</td>
+                    <td className="text-right px-3 py-2">{fmtRow(p, row.type)}</td>
+                    <td className="text-right px-3 py-2" style={{ color: a == null ? C.textFaint : C.cyan }}>
+                      {a == null ? '—' : fmtRow(a, row.type)}
+                    </td>
+                    <td
+                      className="text-right px-3 py-2"
+                      style={{ color: v == null ? C.textFaint : v >= 0 ? C.cyan : C.rose }}
+                    >
+                      {v == null
+                        ? '—'
+                        : row.type === 'money'
+                          ? fmtSignedMoney(v)
+                          : fmtSignedCount(v)}
+                    </td>
+                    <td
+                      className="text-right px-3 py-2"
+                      style={{ color: att == null ? C.textFaint : statusColor(att) }}
+                    >
+                      {att == null ? '—' : fmtPct(att)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Sales-call event list (live data) */}
+        {showCallEvents && (
+          <div className="mt-5">
+            <div
+              className="text-[10px] font-medium uppercase mb-2"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              Qualifying calendar events ({eventsInPeriod.length})
+            </div>
+            <div
+              className="max-h-64 overflow-y-auto rounded-md"
+              style={{ border: `1px solid ${C.surfaceBorder}` }}
+            >
+              {eventsInPeriod.length === 0 ? (
+                <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
+                  No qualifying "[Company] {'<>'} 5th Line Financing Review" events in this period.
+                </div>
+              ) : (
+                <ul className="divide-y" style={{ borderColor: C.hairline }}>
+                  {eventsInPeriod.map((ev, i) => {
+                    const d = ev.start ? new Date(ev.start) : null;
+                    const when = d
+                      ? d.toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })
+                      : '—';
+                    return (
+                      <li
+                        key={`${ev.ical_uid ?? i}-${ev.start ?? i}`}
+                        className="px-3 py-2 text-xs"
+                        style={{ color: C.textPrimary }}
+                      >
+                        <div className="font-medium truncate">{ev.title ?? '(untitled)'}</div>
+                        <div style={{ color: C.textMuted }}>{when}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SummaryTile({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div
+      className="p-3 rounded-md"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+    >
+      <div
+        className="text-[9px] uppercase mb-1"
+        style={{ color: C.textFaint, letterSpacing: '0.08em' }}
+      >
+        {label}
+      </div>
+      <div
+        className="text-base font-semibold"
+        style={{ color, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {value}
       </div>
     </div>
   );
@@ -1168,8 +1462,17 @@ export function SalesDashboardV2() {
     [selectedQuarter, salesCallsQuery.data],
   );
 
+  // Drilldown state
+  const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
+  const drillApi = React.useMemo<DrilldownApi>(
+    () => ({ open: (metricKey, monthIndex) => setDrillFocus({ metricKey, monthIndex }) }),
+    [],
+  );
+  const salesCallEvents = salesCallsQuery.data?.events ?? [];
+
   return (
     <ViewCtx.Provider value={view}>
+    <DrilldownCtx.Provider value={drillApi}>
     <div
       className="sales-dashboard-v2 relative w-full"
       style={{
@@ -1300,6 +1603,13 @@ export function SalesDashboardV2() {
         </div>
       </div>
     </div>
+    <MetricDrilldownDialog
+      focus={drillFocus}
+      onClose={() => setDrillFocus(null)}
+      view={view}
+      salesCallEvents={salesCallEvents}
+    />
+    </DrilldownCtx.Provider>
     </ViewCtx.Provider>
   );
 }
