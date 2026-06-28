@@ -77,7 +77,6 @@ export function useProposalsIssuedByMonth(year: number): ProposalsIssuedByMonthR
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals;
       if (!deal) continue;
-      if (deal.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
       if (isExcludedDealName(deal.company)) continue;
       const enteredAt = row.changed_at as string;
       const d = new Date(enteredAt);
