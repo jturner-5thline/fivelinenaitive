@@ -1118,7 +1118,7 @@ interface SalesCallEvent {
   start?: string;
   end?: string;
   organizer?: string;
-  attendees?: string[];
+  attendees?: unknown;
   calendar_owner?: string;
   ical_uid?: string | null;
 }
