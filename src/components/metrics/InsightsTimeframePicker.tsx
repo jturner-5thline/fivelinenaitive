@@ -68,8 +68,10 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   const [quarterYear, setQuarterYear] = useState<number>(initialYear);
 
   const activePresetId: InsightsTimeframeId | null = reportingPeriod ? null : timeframe.id;
-  const activeMonth = reportingPeriod?.view === 'month' ? reportingPeriod.period : null;
-  const activeQuarter = reportingPeriod?.view === 'quarter' ? reportingPeriod.period : null;
+  const activeMonthStart = reportingPeriod?.view === 'month' ? reportingPeriod.period : null;
+  const activeMonthEnd = reportingPeriod?.view === 'month' ? (reportingPeriod.periodEnd ?? reportingPeriod.period) : null;
+  const activeQuarterStart = reportingPeriod?.view === 'quarter' ? reportingPeriod.period : null;
+  const activeQuarterEnd = reportingPeriod?.view === 'quarter' ? (reportingPeriod.periodEnd ?? reportingPeriod.period) : null;
 
   const triggerLabel = reportingPeriod?.label ?? timeframe.label;
 
@@ -79,16 +81,42 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
     setOpen(false);
   };
 
+  // Two-click range model: clicking the first chip sets the anchor (single
+  // selection); clicking a second chip in the same view forms the contiguous
+  // range min..max (always sequential because the in-between months/quarters
+  // are implicitly included). Clicking the existing single confirms & closes.
   const selectMonth = (year: number, month1: number) => {
+    const token = `${year}-${pad(month1)}`;
+    const current = reportingPeriod;
+    if (!current || current.view !== 'month') {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', token));
+      return; // keep open for a possible second click
+    }
+    // Already have a month selection — extend or confirm.
+    if (!current.periodEnd && current.period === token) {
+      setOpen(false);
+      return;
+    }
+    // Use the existing anchor (start of current selection) to form a range.
     setReportingPeriod(
-      reportingPeriodHelpers.computeReportingPeriod('month', `${year}-${pad(month1)}`),
+      reportingPeriodHelpers.computeReportingPeriod('month', current.period, token),
     );
     setOpen(false);
   };
 
   const selectQuarter = (year: number, q: number) => {
+    const token = `${year}-Q${q}`;
+    const current = reportingPeriod;
+    if (!current || current.view !== 'quarter') {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
+      return;
+    }
+    if (!current.periodEnd && current.period === token) {
+      setOpen(false);
+      return;
+    }
     setReportingPeriod(
-      reportingPeriodHelpers.computeReportingPeriod('quarter', `${year}-Q${q}`),
+      reportingPeriodHelpers.computeReportingPeriod('quarter', current.period, token),
     );
     setOpen(false);
   };
@@ -174,7 +202,11 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
             <div className="grid grid-cols-4 gap-1">
               {[1, 2, 3, 4].map((q) => {
                 const token = `${quarterYear}-Q${q}`;
-                const active = activeQuarter === token;
+                const active =
+                  activeQuarterStart !== null &&
+                  activeQuarterEnd !== null &&
+                  token >= activeQuarterStart &&
+                  token <= activeQuarterEnd;
                 const disabled = isFutureQuarter(quarterYear, q);
                 return (
                   <button
@@ -217,7 +249,11 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
               {MONTH_ABBR.map((label, idx) => {
                 const month1 = idx + 1;
                 const token = `${monthYear}-${pad(month1)}`;
-                const active = activeMonth === token;
+                const active =
+                  activeMonthStart !== null &&
+                  activeMonthEnd !== null &&
+                  token >= activeMonthStart &&
+                  token <= activeMonthEnd;
                 const disabled = isFutureMonth(monthYear, month1);
                 return (
                   <button
@@ -238,6 +274,9 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              Tip: click two chips to select a range (e.g. Jan → Mar = Jan–Mar). Click the same chip again to confirm a single period.
             </div>
           </div>
         </PopoverContent>
