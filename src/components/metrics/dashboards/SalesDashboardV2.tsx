@@ -1759,48 +1759,7 @@ export function SalesDashboardV2() {
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
           {/* Header */}
           <div className="flex items-start justify-end flex-wrap gap-3 mb-6">
-            <div className="flex items-center gap-2">
-              <Select
-                value={granularity}
-                onValueChange={(v) => handleGranularityChange(v as Granularity)}
-              >
-                <SelectTrigger
-                  className="w-[120px] h-9 rounded-full"
-                  style={{
-                    ...glassStyle,
-                    borderRadius: 999,
-                    color: C.textPrimary,
-                  }}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Month</SelectItem>
-                  <SelectItem value="quarter">Quarter</SelectItem>
-                  <SelectItem value="half">Half-Year</SelectItem>
-                  <SelectItem value="year">Year</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={selectedQuarter.value} onValueChange={setPeriodValue}>
-                <SelectTrigger
-                  className="w-[180px] h-9 rounded-full"
-                  style={{
-                    ...glassStyle,
-                    borderRadius: 999,
-                    color: C.textPrimary,
-                  }}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {periodOptions.map((q) => (
-                    <SelectItem key={q.value} value={q.value}>
-                      {q.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <DashboardPeriodPicker value={periodValue} onChange={setPeriodValue} />
           </div>
 
           {/* KPI strip */}
