@@ -199,6 +199,7 @@ export function FinServTopCustomersCard() {
     current: r.current,
     prior: r.prior,
   }));
+  const [chartType, setChartType] = useState<ChartType>("bar");
 
   return (
     <div
@@ -231,6 +232,7 @@ export function FinServTopCustomersCard() {
           FinServ Income · Top 10 Customers vs Prior Year
         </div>
         <div className="flex items-center gap-2">
+          <ChartTypeToggle value={chartType} onChange={setChartType} />
           <Select value={entityId} onValueChange={setEntityId}>
             <SelectTrigger
               className="h-7 text-[11px] bg-transparent border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.85)] min-w-[220px]"
@@ -279,6 +281,7 @@ export function FinServTopCustomersCard() {
           <>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
+                {chartType === "bar" ? (
                 <BarChart
                   data={chartData}
                   margin={{ top: 12, right: 12, left: 4, bottom: 48 }}
@@ -343,6 +346,24 @@ export function FinServTopCustomersCard() {
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
+                ) : (
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 12, right: 12, left: 4, bottom: 48 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.7)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} interval={0} angle={-30} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={(v) => (v >= 1_000_000 ? `$${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `$${(v / 1_000).toFixed(0)}K` : `$${v}`)} />
+                  <Tooltip
+                    contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
+                    labelFormatter={(_, payload) => (payload?.[0]?.payload as { fullName?: string })?.fullName ?? ""}
+                    formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? "Current YTD" : "Prior YTD"]}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? "Current YTD" : "Prior YTD")} />
+                  <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="current" stroke="hsla(213,90%,70%,0.95)" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+                )}
               </ResponsiveContainer>
             </div>
 
