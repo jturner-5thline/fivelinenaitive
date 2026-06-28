@@ -363,6 +363,9 @@ export function SalesTeamBoardDashboard() {
           </div>
         </GlassCardBody>
       </GlassCard>
+
+      {/* Sales Model — Monthly Forecast */}
+      <SalesModelForecastWidget onSave={(d) => console.log('Sales Model saved', d)} />
     </div>
   );
 }
