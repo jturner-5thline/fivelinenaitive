@@ -1295,30 +1295,42 @@ function MetricDrilldownDialog({
                       : 'No qualifying "[Company] <> 5th Line Financing Review" events in this period.'}
                 </div>
               ) : (
-                <ul className="divide-y" style={{ borderColor: C.hairline }}>
-                  {eventsInPeriod.map((ev, i) => {
-                    const d = ev.start ? new Date(ev.start) : null;
-                    const when = d
-                      ? d.toLocaleString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        })
-                      : '—';
-                    return (
-                      <li
-                        key={`${ev.ical_uid ?? i}-${ev.start ?? i}`}
-                        className="px-3 py-2 text-xs"
-                        style={{ color: C.textPrimary }}
-                      >
-                        <div className="font-medium truncate">{ev.title ?? '(untitled)'}</div>
-                        <div style={{ color: C.textMuted }}>{when}</div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ color: C.textMuted, fontSize: 10 }}>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider">Call Title</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">Date</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-56">5th Line Attendees</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {eventsInPeriod.map((ev, i) => {
+                      const d = ev.start ? new Date(ev.start) : null;
+                      const when = d
+                        ? d.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })
+                        : '—';
+                      const attendeeNames =
+                        ((ev.attendees ?? []) as { email: string | null; name: string | null }[])
+                          .map((a) => a.name || (a.email ? a.email.split('@')[0] : null))
+                          .filter((n): n is string => !!n)
+                          .join(', ') || '—';
+                      return (
+                        <tr
+                          key={`${ev.ical_uid ?? i}-${ev.start ?? i}`}
+                          style={{ borderTop: `1px solid ${C.hairline}`, color: C.textPrimary }}
+                        >
+                          <td className="px-3 py-2 font-medium">{ev.title ?? '(untitled)'}</td>
+                          <td className="px-3 py-2 whitespace-nowrap" style={{ color: C.textMuted }}>{when}</td>
+                          <td className="px-3 py-2" style={{ color: C.textMuted }}>{attendeeNames}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
