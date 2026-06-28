@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChartTypeToggle } from "./ChartTypeToggle";
 
 /**
  * Income: Top 5 Customers MoM.
