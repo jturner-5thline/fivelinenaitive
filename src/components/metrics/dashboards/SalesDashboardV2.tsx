@@ -11,6 +11,7 @@ import {
   Tooltip,
   ReferenceLine,
 } from 'recharts';
+import type { LucideIcon } from 'lucide-react';
 import {
   LayoutGrid,
   BarChart3,
@@ -271,7 +272,7 @@ function KpiCard({
   mode,
 }: {
   label: string;
-  Icon: React.ComponentType<{ size?: number; color?: string }>;
+  Icon: LucideIcon;
   type: 'count' | 'money';
   planArr: number[];
   actualArr: (number | null)[];
