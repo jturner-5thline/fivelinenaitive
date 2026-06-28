@@ -1828,12 +1828,7 @@ export function SalesDashboardV2() {
         {/* NavRail removed per request */}
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
           {/* Header */}
-          <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight" style={{ color: C.textPrimary }}>
-                Pipeline Performance
-              </h1>
-            </div>
+          <div className="flex items-start justify-end flex-wrap gap-3 mb-6">
             <div className="flex items-center gap-2">
               <Select
                 value={granularity}
