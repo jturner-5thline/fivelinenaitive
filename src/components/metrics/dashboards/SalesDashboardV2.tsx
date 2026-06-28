@@ -1,6 +1,18 @@
 import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import {
+  buildQuarterOptions,
+  getCurrentQuarter,
+  type QuarterOption,
+} from '@/hooks/useQBQuarterlyRevenue';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ResponsiveContainer,
   LineChart,
   Line,
@@ -38,6 +50,10 @@ import {
 // ============================================================
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'] as const;
 const ELAPSED = 6;
+
+// Calendar-month indexed (0=Jan ... 8=Sep) seeded data covers 2026 only.
+const SEED_YEAR = 2026;
+const SEED_MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 type MetricKey =
   | 'salesCalls'
@@ -109,6 +125,81 @@ function pad(actuals: number[]): (number | null)[] {
   const out: (number | null)[] = new Array(9).fill(null);
   actuals.forEach((v, i) => (out[i] = v));
   return out;
+}
+
+// ============================================================
+// FILTERED-VIEW CONTEXT
+// All sub-components read months/plan/actual/elapsed from here so the
+// quarter selector in the header drives the full dashboard.
+// ============================================================
+export interface DashboardView {
+  months: string[];
+  monthIndexes: number[]; // indexes into the seeded 9-month arrays
+  plan: Record<MetricKey, number[]>;
+  actual: Record<MetricKey, (number | null)[]>;
+  elapsed: number; // number of months in `months` already elapsed (have actuals)
+  rangeStart: Date;
+  rangeEnd: Date;
+  label: string;
+}
+
+const ViewCtx = React.createContext<DashboardView | null>(null);
+function useView(): DashboardView {
+  const v = React.useContext(ViewCtx);
+  if (!v) throw new Error('Missing DashboardView');
+  return v;
+}
+
+function buildView(quarter: QuarterOption): DashboardView {
+  // Determine which seeded month indexes fall inside the selected quarter.
+  const indexes: number[] = [];
+  const monthLabels: string[] = [];
+  for (const m of quarter.months) {
+    const [yStr, monStr] = m.key.split('-');
+    const y = Number(yStr);
+    const monIdx = Number(monStr) - 1; // 0-based
+    if (y === SEED_YEAR && SEED_MONTH_INDEXES.includes(monIdx)) {
+      indexes.push(monIdx);
+      monthLabels.push(MONTHS[monIdx]);
+    } else {
+      // Month outside seeded window — keep label but no seeded data.
+      indexes.push(-1);
+      const d = new Date(y, monIdx, 1);
+      monthLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+    }
+  }
+
+  const slice = <T,>(arr: T[], fallback: T): T[] =>
+    indexes.map((i) => (i >= 0 ? arr[i] : fallback));
+
+  const plan = {} as Record<MetricKey, number[]>;
+  const actual = {} as Record<MetricKey, (number | null)[]>;
+  (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+    plan[k] = slice(PLAN[k], 0);
+    actual[k] = slice(ACTUAL[k], null);
+  });
+
+  // Elapsed = months whose end-date is <= today.
+  const today = new Date();
+  let elapsed = 0;
+  for (const m of quarter.months) {
+    const end = new Date(m.end + 'T23:59:59');
+    if (end <= today) elapsed += 1;
+    else break;
+  }
+  // Clamp to at least 1 so charts render a current value
+  if (elapsed < 1) elapsed = Math.min(1, quarter.months.length);
+
+  return {
+    months: monthLabels,
+    monthIndexes: indexes,
+    plan,
+    actual,
+    elapsed,
+    rangeStart: new Date(quarter.startDate + 'T00:00:00'),
+    rangeEnd: new Date(quarter.endDate + 'T23:59:59'),
+    label: quarter.label,
+  };
 }
 
 // ============================================================
