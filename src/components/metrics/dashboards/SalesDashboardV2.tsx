@@ -114,7 +114,7 @@ const PLAN: Record<MetricKey, number[]> = {
 };
 
 const ACTUAL: Record<MetricKey, (number | null)[]> = {
-  salesCalls: pad([41, 50, 47, 52, 49, 55]),
+  salesCalls: pad([]),
   dealsOnBoard: pad([9, 10, 11, 12, 11, 13]),
   dollarsOnBoard: pad([]),
   proposalsIssued: pad([6, 7, 8, 6, 7, 9]),
@@ -1128,11 +1128,15 @@ function MetricDrilldownDialog({
   onClose,
   view,
   salesCallEvents,
+  salesCallsLoading,
+  salesCallsError,
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
   view: DashboardView;
   salesCallEvents: SalesCallEvent[];
+  salesCallsLoading?: boolean;
+  salesCallsError?: Error | null;
 }) {
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
@@ -1149,11 +1153,11 @@ function MetricDrilldownDialog({
 
   // Optional: list of underlying sales-call events for the focused month/period
   const showCallEvents = row.key === 'salesCalls';
-  const eventsInPeriod = React.useMemo<SalesCallEvent[]>(() => {
-    if (!showCallEvents) return [];
+  let eventsInPeriod: SalesCallEvent[] = [];
+  if (showCallEvents) {
     const start = view.rangeStart;
     const end = view.rangeEnd;
-    let filtered = salesCallEvents.filter((ev) => {
+    eventsInPeriod = salesCallEvents.filter((ev) => {
       if (!ev.start) return false;
       const d = new Date(ev.start);
       return d >= start && d <= end;
@@ -1161,15 +1165,15 @@ function MetricDrilldownDialog({
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
       const idx = view.monthIndexes[focus.monthIndex];
       if (idx >= 0) {
-        filtered = filtered.filter((ev) => {
+        eventsInPeriod = eventsInPeriod.filter((ev) => {
           if (!ev.start) return false;
           const d = new Date(ev.start);
           return d.getUTCFullYear() === SEED_YEAR && d.getUTCMonth() === idx;
         });
       }
     }
-    return filtered.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
-  }, [showCallEvents, salesCallEvents, view, focus.monthIndex]);
+    eventsInPeriod = eventsInPeriod.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
+  }
 
   const focusedMonthLabel =
     focus.monthIndex !== undefined ? view.months[focus.monthIndex] : null;
@@ -1283,7 +1287,11 @@ function MetricDrilldownDialog({
             >
               {eventsInPeriod.length === 0 ? (
                 <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
-                  No qualifying "[Company] {'<>'} 5th Line Financing Review" events in this period.
+                  {salesCallsLoading
+                    ? 'Loading qualifying calendar events…'
+                    : salesCallsError
+                      ? 'Could not load qualifying calendar events. The metric is unavailable until the calendar scan succeeds.'
+                      : 'No qualifying "[Company] <> 5th Line Financing Review" events in this period.'}
                 </div>
               ) : (
                 <ul className="divide-y" style={{ borderColor: C.hairline }}>
@@ -1430,37 +1438,32 @@ export function SalesDashboardV2() {
   const yearStart = React.useMemo(() => new Date(Date.UTC(YEAR, 0, 1)), []);
   const yearEnd = React.useMemo(() => new Date(Date.UTC(YEAR, 11, 31, 23, 59, 59)), []);
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
-  const [, forceRender] = React.useState(0);
-  React.useEffect(() => {
-    const events = salesCallsQuery.data?.events ?? [];
-    if (events.length === 0) return;
+  const salesCallEvents = salesCallsQuery.data?.events ?? [];
+  const liveSalesCallsActual = React.useMemo<(number | null)[]>(() => {
+    if (salesCallsQuery.isLoading || salesCallsQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
     const buckets: (number | null)[] = new Array(9).fill(null);
-    let touched = false;
-    for (const ev of events) {
+    for (let i = 0; i < buckets.length; i += 1) buckets[i] = 0;
+    for (const ev of salesCallEvents) {
       if (!ev.start) continue;
       const d = new Date(ev.start);
       if (d.getUTCFullYear() !== YEAR) continue;
       const m = d.getUTCMonth();
       if (m >= 9) continue; // dashboard covers Jan–Sep only
       buckets[m] = (buckets[m] ?? 0) + 1;
-      touched = true;
     }
-    if (!touched) return;
-    const today = new Date();
-    const currentMonth =
-      today.getUTCFullYear() === YEAR ? today.getUTCMonth() : 8;
-    const upper = Math.min(8, currentMonth);
-    for (let i = 0; i <= upper; i++) {
-      ACTUAL.salesCalls[i] = buckets[i] ?? 0;
-    }
-    forceRender((n) => n + 1);
-  }, [salesCallsQuery.data]);
+    return buckets;
+  }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
-  const view = React.useMemo(
-    () => buildView(selectedQuarter),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedQuarter, salesCallsQuery.data],
-  );
+  const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
+  const view = React.useMemo<DashboardView>(() => ({
+    ...baseView,
+    actual: {
+      ...baseView.actual,
+      salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
+    },
+  }), [baseView, liveSalesCallsActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -1468,7 +1471,6 @@ export function SalesDashboardV2() {
     () => ({ open: (metricKey, monthIndex) => setDrillFocus({ metricKey, monthIndex }) }),
     [],
   );
-  const salesCallEvents = salesCallsQuery.data?.events ?? [];
 
   return (
     <ViewCtx.Provider value={view}>
@@ -1608,6 +1610,8 @@ export function SalesDashboardV2() {
       onClose={() => setDrillFocus(null)}
       view={view}
       salesCallEvents={salesCallEvents}
+      salesCallsLoading={salesCallsQuery.isLoading || salesCallsQuery.isFetching}
+      salesCallsError={salesCallsQuery.error ?? null}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
