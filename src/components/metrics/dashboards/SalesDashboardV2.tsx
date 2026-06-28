@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
+import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -1135,6 +1136,9 @@ function MetricDrilldownDialog({
   dealsOnBoard,
   dealsOnBoardLoading,
   dealsOnBoardError,
+  proposalsIssued,
+  proposalsIssuedLoading,
+  proposalsIssuedError,
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
@@ -1145,6 +1149,9 @@ function MetricDrilldownDialog({
   dealsOnBoard: DealOnBoardEntry[];
   dealsOnBoardLoading?: boolean;
   dealsOnBoardError?: Error | null;
+  proposalsIssued: ProposalIssuedEntry[];
+  proposalsIssuedLoading?: boolean;
+  proposalsIssuedError?: Error | null;
 }) {
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
@@ -1204,6 +1211,30 @@ function MetricDrilldownDialog({
     }
     dealsInPeriod = dealsInPeriod.sort((a, b) =>
       (a.created_at ?? '').localeCompare(b.created_at ?? ''),
+    );
+  }
+
+  // Optional: list of underlying Proposals Issued for the focused month/period
+  const showProposalsIssued = row.key === 'proposalsIssued';
+  let proposalsInPeriod: ProposalIssuedEntry[] = [];
+  if (showProposalsIssued) {
+    const start = view.rangeStart;
+    const end = view.rangeEnd;
+    proposalsInPeriod = proposalsIssued.filter((d) => {
+      const c = new Date(d.entered_at);
+      return c >= start && c <= end;
+    });
+    if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
+      const idx = view.monthIndexes[focus.monthIndex];
+      if (idx >= 0) {
+        proposalsInPeriod = proposalsInPeriod.filter((d) => {
+          const c = new Date(d.entered_at);
+          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
+        });
+      }
+    }
+    proposalsInPeriod = proposalsInPeriod.sort((a, b) =>
+      (a.entered_at ?? '').localeCompare(b.entered_at ?? ''),
     );
   }
 
@@ -1424,6 +1455,64 @@ function MetricDrilldownDialog({
             </div>
           </div>
         )}
+
+        {/* Proposals Issued list (live data) */}
+        {showProposalsIssued && (
+          <div className="mt-5">
+            <div
+              className="text-[10px] font-medium uppercase mb-2"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              Proposals counted ({proposalsInPeriod.length})
+            </div>
+            <div
+              className="max-h-64 overflow-y-auto rounded-md"
+              style={{ border: `1px solid ${C.surfaceBorder}` }}
+            >
+              {proposalsInPeriod.length === 0 ? (
+                <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
+                  {proposalsIssuedLoading
+                    ? 'Loading proposals…'
+                    : proposalsIssuedError
+                      ? 'Could not load proposals from the Active Pipeline.'
+                      : 'No deals entered "Proposal Issued" in this period.'}
+                </div>
+              ) : (
+                <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ color: C.textMuted, fontSize: 10 }}>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider">Deal</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">Issued</th>
+                      <th className="text-right px-3 py-2 font-medium uppercase tracking-wider w-32">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {proposalsInPeriod.map((d) => {
+                      const when = new Date(d.entered_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                      const v = d.value
+                        ? `$${(d.value / 1_000_000).toFixed(1)}MM`
+                        : '—';
+                      return (
+                        <tr
+                          key={d.id}
+                          style={{ borderTop: `1px solid ${C.hairline}`, color: C.textPrimary }}
+                        >
+                          <td className="px-3 py-2 font-medium">{d.company}</td>
+                          <td className="px-3 py-2 whitespace-nowrap" style={{ color: C.textMuted }}>{when}</td>
+                          <td className="px-3 py-2 text-right" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>{v}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -1577,6 +1666,25 @@ export function SalesDashboardV2() {
     dealsOnBoardQuery.byMonth,
   ]);
 
+  // Live Proposals Issued — mirrors Consolidated Debt Pipeline Board logic
+  // (Active Pipeline, stage_enter into Proposal Issued via deal_stage_history,
+  // deduped to first entry per deal, excluding test deals). Bucket by month.
+  const proposalsIssuedQuery = useProposalsIssuedByMonth(YEAR);
+  const liveProposalsIssuedActual = React.useMemo<(number | null)[]>(() => {
+    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
+    const buckets: (number | null)[] = new Array(9).fill(0);
+    for (let m = 0; m < 9; m += 1) {
+      buckets[m] = proposalsIssuedQuery.byMonth[m]?.length ?? 0;
+    }
+    return buckets;
+  }, [
+    proposalsIssuedQuery.isLoading,
+    proposalsIssuedQuery.isFetching,
+    proposalsIssuedQuery.byMonth,
+  ]);
+
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
@@ -1584,8 +1692,9 @@ export function SalesDashboardV2() {
       ...baseView.actual,
       salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
       dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
+      proposalsIssued: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveProposalsIssuedActual[idx] : null)),
     },
-  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual]);
+  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -1737,6 +1846,9 @@ export function SalesDashboardV2() {
       dealsOnBoard={dealsOnBoardQuery.deals}
       dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
       dealsOnBoardError={dealsOnBoardQuery.error}
+      proposalsIssued={proposalsIssuedQuery.deals}
+      proposalsIssuedLoading={proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching}
+      proposalsIssuedError={proposalsIssuedQuery.error}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
