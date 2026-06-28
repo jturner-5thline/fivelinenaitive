@@ -966,7 +966,7 @@ export function SalesDashboardV2() {
       `}</style>
       <AmbientGlow />
       <div className="relative flex">
-        <NavRail />
+        {/* NavRail removed per request */}
         <div className="flex-1 min-w-0" style={{ padding: '22px 26px', maxWidth: 1240, margin: '0 auto' }}>
           {/* Header */}
           <div className="flex items-start justify-between flex-wrap gap-3 mb-6">
