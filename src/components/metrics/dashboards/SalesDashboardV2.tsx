@@ -2,6 +2,7 @@ import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
+import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -1685,6 +1686,26 @@ export function SalesDashboardV2() {
     proposalsIssuedQuery.byMonth,
   ]);
 
+  // Live Dollars Signed — mirrors Consolidated Debt Pipeline Board's
+  // "Debt $ Signed" (stage-entry into Final Credit Items on the Active
+  // Pipeline, deduped first-entry-per-deal, excluding test deals). Bucketed
+  // by UTC month and converted to $MM to match the dashboard's plan units.
+  const dollarsSignedQuery = useDollarsSignedByMonth(YEAR);
+  const liveDollarsSignedActual = React.useMemo<(number | null)[]>(() => {
+    if (dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching) {
+      return new Array(9).fill(null);
+    }
+    const buckets: (number | null)[] = new Array(9).fill(0);
+    for (let m = 0; m < 9; m += 1) {
+      buckets[m] = dollarsSignedQuery.dollarsByMonthMM[m] ?? 0;
+    }
+    return buckets;
+  }, [
+    dollarsSignedQuery.isLoading,
+    dollarsSignedQuery.isFetching,
+    dollarsSignedQuery.dollarsByMonthMM,
+  ]);
+
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
@@ -1693,8 +1714,9 @@ export function SalesDashboardV2() {
       salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
       dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
       proposalsIssued: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveProposalsIssuedActual[idx] : null)),
+      dollarsSigned: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDollarsSignedActual[idx] : null)),
     },
-  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual]);
+  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
