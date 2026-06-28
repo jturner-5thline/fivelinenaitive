@@ -1366,6 +1366,64 @@ function MetricDrilldownDialog({
             </div>
           </div>
         )}
+
+        {/* Deals on Board list (live data) */}
+        {showDealsOnBoard && (
+          <div className="mt-5">
+            <div
+              className="text-[10px] font-medium uppercase mb-2"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              Deals counted ({dealsInPeriod.length})
+            </div>
+            <div
+              className="max-h-64 overflow-y-auto rounded-md"
+              style={{ border: `1px solid ${C.surfaceBorder}` }}
+            >
+              {dealsInPeriod.length === 0 ? (
+                <div className="px-3 py-4 text-xs" style={{ color: C.textMuted }}>
+                  {dealsOnBoardLoading
+                    ? 'Loading deals…'
+                    : dealsOnBoardError
+                      ? 'Could not load deals from the Active Pipeline.'
+                      : 'No deals added to the Active Pipeline in this period.'}
+                </div>
+              ) : (
+                <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ color: C.textMuted, fontSize: 10 }}>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider">Deal</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">Added</th>
+                      <th className="text-right px-3 py-2 font-medium uppercase tracking-wider w-32">Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dealsInPeriod.map((d) => {
+                      const when = new Date(d.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      });
+                      const v = d.value
+                        ? `$${(d.value / 1_000_000).toFixed(1)}MM`
+                        : '—';
+                      return (
+                        <tr
+                          key={d.id}
+                          style={{ borderTop: `1px solid ${C.hairline}`, color: C.textPrimary }}
+                        >
+                          <td className="px-3 py-2 font-medium">{d.company}</td>
+                          <td className="px-3 py-2 whitespace-nowrap" style={{ color: C.textMuted }}>{when}</td>
+                          <td className="px-3 py-2 text-right" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>{v}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
