@@ -1625,10 +1625,13 @@ function SummaryTile({ label, value, color }: { label: string; value: string; co
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
-  // Unified Month / Quarter timeframe picker — matches Weekly Rundown.
-  // Drives every chart, KPI, and the Sales Model sheet via buildView().
-  const { value: periodValue, setValue: setPeriodValue, quarterOption: selectedQuarter } =
-    useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
+  // Timeframe is driven by the shared Insights header picker
+  // (Quick Presets / Quarter / Month). Fall back to a local persisted
+  // selection only if this dashboard is ever rendered outside the
+  // InsightsTimeframeProvider.
+  const insightsTf = useInsightsTimeframeOptional();
+  const fallback = useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
+  const selectedQuarter = insightsTf?.selectedQuarter ?? fallback.quarterOption;
 
   // Live Sales Calls — fetch for the full seeded year so the per-month
   // overwrite below picks up any month that maps into the active quarter.
