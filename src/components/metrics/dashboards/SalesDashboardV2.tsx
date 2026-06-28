@@ -922,6 +922,7 @@ type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
@@ -1066,7 +1067,8 @@ function SalesModelSheet() {
                   return (
                     <td
                       key={m}
-                      className="px-3 py-2 text-right"
+                      className="px-3 py-2 text-right cursor-pointer hover:bg-white/[0.04]"
+                      onClick={() => drill.open(row.key, i)}
                       style={{
                         borderBottom: `1px solid ${C.hairline}`,
                         background: isFuture ? 'rgba(157,162,245,0.04)' : 'transparent',
