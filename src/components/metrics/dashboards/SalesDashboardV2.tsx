@@ -221,8 +221,8 @@ function buildView(quarter: QuarterOption): DashboardView {
     plan,
     actual,
     elapsed,
-    rangeStart: new Date(quarter.startDate + 'T00:00:00'),
-    rangeEnd: new Date(quarter.endDate + 'T23:59:59'),
+    rangeStart: new Date(quarter.startDate + 'T00:00:00Z'),
+    rangeEnd: new Date(quarter.endDate + 'T23:59:59Z'),
     label: quarter.label,
   };
 }
