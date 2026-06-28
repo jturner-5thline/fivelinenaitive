@@ -92,7 +92,7 @@ export function StickyDashboardHeader({
               "rounded-xl px-5 py-4 bg-card",
               "dark:bg-[hsl(240,20%,8%)] dark:bg-[image:radial-gradient(circle_at_bottom_right,_hsl(280,60%,45%,0.25)_0%,_transparent_50%)]",
               "border border-border/50 dark:border-[hsl(263,45%,40%,0.5)]",
-              "shadow-xl dark:shadow-[-4px_0_16px_hsl(263,60%,50%,0.08)]",
+              "shadow-xl dark:shadow-none",
             )
           : cn(
               "py-3 border-b border-white/5",
