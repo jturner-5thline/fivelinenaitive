@@ -1868,6 +1868,41 @@ export function SalesDashboardV2() {
             <KeyStatCard title="Proposals Issued" metricKey="proposalsIssued" />
           </div>
 
+          {/* Conversion metric cards (trailing 3 months) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <ConversionCard title="TBD" value={null} subtitle="—" />
+            <ConversionCard
+              title="Call-to-Deal Conversion"
+              value={(() => {
+                const calls = trailing3(liveSalesCallsActual);
+                const deals = trailing3(liveDealsOnBoardActual);
+                if (calls == null || deals == null || calls === 0) return null;
+                return deals / calls;
+              })()}
+              subtitle={(() => {
+                const calls = trailing3(liveSalesCallsActual);
+                const deals = trailing3(liveDealsOnBoardActual);
+                if (calls == null || deals == null) return 'Loading…';
+                return `${deals} deals ÷ ${calls} calls · last 3 months`;
+              })()}
+            />
+            <ConversionCard
+              title="Deals-on-Board to Proposal"
+              value={(() => {
+                const deals = trailing3(liveDealsOnBoardActual);
+                const props = trailing3(liveProposalsIssuedActual);
+                if (deals == null || props == null || deals === 0) return null;
+                return props / deals;
+              })()}
+              subtitle={(() => {
+                const deals = trailing3(liveDealsOnBoardActual);
+                const props = trailing3(liveProposalsIssuedActual);
+                if (deals == null || props == null) return 'Loading…';
+                return `${props} proposals ÷ ${deals} deals · last 3 months`;
+              })()}
+            />
+          </div>
+
           {/* Sales model sheet */}
           <SalesModelSheet />
         </div>
