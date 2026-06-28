@@ -96,7 +96,18 @@ async function fetchForGrant(
   const out: SalesCallEvent[] = [];
   const calendars = await fetchCalendarsForGrant(grantId);
 
-  for (const calendar of calendars) {
+  const prioritizedCalendars = calendars.filter((calendar, index) => {
+    const id = calendar.id.toLowerCase();
+    const name = (calendar.name || "").toLowerCase();
+    const userEmail = (user.email || "").toLowerCase();
+    return (
+      index === 0 ||
+      id === "primary" ||
+      (!!userEmail && (id === userEmail || name === userEmail || id.includes(userEmail)))
+    );
+  });
+
+  for (const calendar of prioritizedCalendars.length > 0 ? prioritizedCalendars : calendars) {
     let pageToken: string | null = null;
     let pagesFetched = 0;
     const MAX_PAGES = 10; // up to 2000 events per calendar per call
