@@ -124,6 +124,7 @@ import {
   FinServFinancialMetricsDashboard,
   ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
+import { SalesDashboardV2 } from "@/components/metrics/dashboards/SalesDashboardV2";
 import { WeeklyRundownCarousel } from "@/components/metrics/dashboards/WeeklyRundownCarousel";
 import { useQuickBooksMetrics } from "@/hooks/useQuickBooksMetrics";
 import { useHubSpotMetrics } from "@/hooks/useHubSpotMetrics";
@@ -145,6 +146,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false, folder: 'financial' as const },
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false, folder: 'financial' as const },
   { id: 'sales-team-board', name: 'Sales Team Board', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'sales-dashboard-v2', name: 'Sales Dashboard-V2', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
@@ -172,7 +174,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
+    dashboardIds: ['sales-team-board', 'sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
   },
 ];
 
