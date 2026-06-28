@@ -503,6 +503,7 @@ function statusColor(att: number): string {
 
 function PerformancePanel() {
   const view = useView();
+  const drill = useDrilldown();
   const E = view.elapsed;
   const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
   const actualYtd = sum(view.actual.dollarsFunded, E);
@@ -516,14 +517,15 @@ function PerformancePanel() {
     actual: number;
     plan: number;
     type: 'count' | 'money';
+    metricKey: MetricKey;
   };
   const drivers: Driver[] = [
-    { label: 'Sales Calls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Proposals Issued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Deals on Board', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
-    { label: 'Dollars Signed', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
-    { label: 'Deals Closed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Dollars Funded', actual: actualYtd, plan: planYtd, type: 'money' },
+    { label: 'Sales Calls', metricKey: 'salesCalls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Proposals Issued', metricKey: 'proposalsIssued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Deals on Board', metricKey: 'dealsOnBoard', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
+    { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'Deals Closed', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Dollars Funded', metricKey: 'dollarsFunded', actual: actualYtd, plan: planYtd, type: 'money' },
   ];
 
   const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
@@ -610,9 +612,11 @@ function PerformancePanel() {
             const att = d.actual / d.plan;
             const color = statusColor(att);
             return (
-              <div
+              <button
+                type="button"
                 key={d.label}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5"
+                onClick={() => drill.open(d.metricKey)}
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
                 style={{
                   borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}`,
                 }}
@@ -639,7 +643,7 @@ function PerformancePanel() {
                     {fmtPct(att)}
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
