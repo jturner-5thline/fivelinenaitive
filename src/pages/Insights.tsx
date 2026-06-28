@@ -2402,9 +2402,7 @@ function MetricsInner() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {(selectedDashboard === 'management-snapshot' ||
-                selectedDashboard === 'consolidated-debt-pipeline' ||
-                selectedDashboard === 'sales-dashboard-v2') && (
+              {selectedDashboard !== 'management-review' && (
                 <InsightsTimeframePicker />
               )}
 
