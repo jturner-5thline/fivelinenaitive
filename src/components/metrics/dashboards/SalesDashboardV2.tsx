@@ -1228,8 +1228,17 @@ export function SalesDashboardV2() {
     [selectedQuarter, salesCallsQuery.data],
   );
 
+  // Drilldown state
+  const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
+  const drillApi = React.useMemo<DrilldownApi>(
+    () => ({ open: (metricKey, monthIndex) => setDrillFocus({ metricKey, monthIndex }) }),
+    [],
+  );
+  const salesCallEvents = salesCallsQuery.data?.events ?? [];
+
   return (
     <ViewCtx.Provider value={view}>
+    <DrilldownCtx.Provider value={drillApi}>
     <div
       className="sales-dashboard-v2 relative w-full"
       style={{
@@ -1360,6 +1369,13 @@ export function SalesDashboardV2() {
         </div>
       </div>
     </div>
+    <MetricDrilldownDialog
+      focus={drillFocus}
+      onClose={() => setDrillFocus(null)}
+      view={view}
+      salesCallEvents={salesCallEvents}
+    />
+    </DrilldownCtx.Provider>
     </ViewCtx.Provider>
   );
 }
