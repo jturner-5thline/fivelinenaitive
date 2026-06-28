@@ -14,6 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   ResponsiveContainer,
   LineChart,
   Line,
@@ -147,6 +154,24 @@ const ViewCtx = React.createContext<DashboardView | null>(null);
 function useView(): DashboardView {
   const v = React.useContext(ViewCtx);
   if (!v) throw new Error('Missing DashboardView');
+  return v;
+}
+
+// ------------------------------------------------------------
+// Drilldown context — any chart/KPI/cell can call open(metric, monthIdx?)
+// to surface the underlying monthly composition.
+// ------------------------------------------------------------
+interface DrilldownFocus {
+  metricKey: MetricKey;
+  monthIndex?: number;
+}
+interface DrilldownApi {
+  open: (metric: MetricKey, monthIndex?: number) => void;
+}
+const DrilldownCtx = React.createContext<DrilldownApi | null>(null);
+function useDrilldown(): DrilldownApi {
+  const v = React.useContext(DrilldownCtx);
+  if (!v) throw new Error('Missing DrilldownCtx');
   return v;
 }
 
