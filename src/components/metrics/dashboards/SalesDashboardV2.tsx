@@ -31,7 +31,6 @@ import {
   Layers,
   FileText,
   Settings,
-  Search,
   Phone,
   Target,
   Activity,
