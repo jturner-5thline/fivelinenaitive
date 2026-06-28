@@ -934,6 +934,66 @@ function KeyStatCard({
 }
 
 // ============================================================
+// CONVERSION CARD (trailing-3-month ratios)
+// ============================================================
+function ConversionCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string;
+  value: number | null;
+  subtitle?: string;
+}) {
+  const display =
+    value == null
+      ? '—'
+      : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+  return (
+    <div style={glassStyle} className="p-4 flex flex-col gap-2">
+      <div
+        className="text-[10px] font-medium uppercase"
+        style={{ color: C.textMuted, letterSpacing: '0.08em' }}
+      >
+        {title}
+      </div>
+      <div
+        className="text-3xl font-semibold leading-none"
+        style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {display}
+      </div>
+      {subtitle && (
+        <div
+          className="text-[11px]"
+          style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Sum the trailing 3 buckets ending at the most recent month with data.
+// Returns null if any of those 3 buckets is null (still loading).
+function trailing3(buckets: (number | null)[]): number | null {
+  const today = new Date();
+  let endIdx: number;
+  if (today.getUTCFullYear() > 2026) endIdx = 8;
+  else if (today.getUTCFullYear() < 2026) return null;
+  else endIdx = Math.min(8, today.getUTCMonth());
+  const startIdx = Math.max(0, endIdx - 2);
+  let total = 0;
+  for (let i = startIdx; i <= endIdx; i += 1) {
+    const v = buckets[i];
+    if (v == null) return null;
+    total += v;
+  }
+  return total;
+}
+
+// ============================================================
 // SALES MODEL SHEET
 // ============================================================
 type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
@@ -1866,6 +1926,41 @@ export function SalesDashboardV2() {
             <KeyStatCard title="Sales Calls" metricKey="salesCalls" />
             <KeyStatCard title="Deals on Board" metricKey="dealsOnBoard" />
             <KeyStatCard title="Proposals Issued" metricKey="proposalsIssued" />
+          </div>
+
+          {/* Conversion metric cards (trailing 3 months) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <ConversionCard title="TBD" value={null} subtitle="—" />
+            <ConversionCard
+              title="Call-to-Deal Conversion"
+              value={(() => {
+                const calls = trailing3(liveSalesCallsActual);
+                const deals = trailing3(liveDealsOnBoardActual);
+                if (calls == null || deals == null || calls === 0) return null;
+                return deals / calls;
+              })()}
+              subtitle={(() => {
+                const calls = trailing3(liveSalesCallsActual);
+                const deals = trailing3(liveDealsOnBoardActual);
+                if (calls == null || deals == null) return 'Loading…';
+                return `${deals} deals ÷ ${calls} calls · last 3 months`;
+              })()}
+            />
+            <ConversionCard
+              title="Deals-on-Board to Proposal"
+              value={(() => {
+                const deals = trailing3(liveDealsOnBoardActual);
+                const props = trailing3(liveProposalsIssuedActual);
+                if (deals == null || props == null || deals === 0) return null;
+                return props / deals;
+              })()}
+              subtitle={(() => {
+                const deals = trailing3(liveDealsOnBoardActual);
+                const props = trailing3(liveProposalsIssuedActual);
+                if (deals == null || props == null) return 'Loading…';
+                return `${props} proposals ÷ ${deals} deals · last 3 months`;
+              })()}
+            />
           </div>
 
           {/* Sales model sheet */}
