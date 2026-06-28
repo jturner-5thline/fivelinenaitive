@@ -834,6 +834,7 @@ function KeyStatCard({
   metricKey: MetricKey;
 }) {
   const view = useView();
+  const drill = useDrilldown();
   const planArr = view.plan[metricKey];
   const actualArr = view.actual[metricKey];
   const data = view.months.map((m, i) => ({
@@ -844,9 +845,14 @@ function KeyStatCard({
   return (
     <div style={glassStyle} className="p-4">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-sm font-semibold" style={{ color: C.textPrimary }}>
+        <button
+          type="button"
+          onClick={() => drill.open(metricKey)}
+          className="text-sm font-semibold hover:underline focus-visible:outline-none focus-visible:ring-1 rounded text-left"
+          style={{ color: C.textPrimary }}
+        >
           {title}
-        </div>
+        </button>
         <div className="flex items-center gap-3 text-[10px]" style={{ color: C.textMuted }}>
           <span className="flex items-center gap-1">
             <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
