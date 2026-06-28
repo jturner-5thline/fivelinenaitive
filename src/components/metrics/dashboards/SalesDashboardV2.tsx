@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { useDashboardPeriod } from '@/components/metrics/DashboardPeriodPicker';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { SalesTeamBoardKpiGrid } from '@/components/metrics/dashboards/SalesTeamBoardDashboard';
 import {
   Dialog,
   DialogContent,
@@ -1791,6 +1792,9 @@ export function SalesDashboardV2() {
           </div>
 
           {/* Cumulative pace */}
+          <div className="mb-6">
+            <SalesTeamBoardKpiGrid quarter={selectedQuarter} />
+          </div>
           <div className="mb-6 sales-model-scroll overflow-x-auto">
             <div style={{ minWidth: 600 }}>
               <CumulativePace />

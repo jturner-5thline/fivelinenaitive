@@ -192,7 +192,68 @@ export function SalesTeamBoardDashboard() {
     [quarterOptions, quarterValue],
   );
 
-  const m = useSalesTeamBoardMetrics(selectedQuarter);
+  return (
+    <div className="space-y-5">
+      {/* Header with period selector */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Sales Team Board</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            All metrics filtered by {selectedQuarter.label} · Click for detail
+          </p>
+        </div>
+        <Select value={quarterValue} onValueChange={setQuarterValue}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {quarterOptions.map(q => (
+              <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <SalesTeamBoardKpiGrid quarter={selectedQuarter} />
+
+      {/* Team Performance */}
+      <GlassCard interactive>
+        <GlassCardHeader title="Team Performance" subtitle="Quarter to date" />
+        <GlassCardBody>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={TEAM_PERFORMANCE_DATA} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
+                <XAxis dataKey="name" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="left" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [
+                    name === 'Deal Value' ? formatCurrency(value) : value,
+                    name,
+                  ]}
+                  contentStyle={TOOLTIP_STYLE}
+                  cursor={{ fill: 'rgba(160,200,255,0.06)' }}
+                />
+                <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
+                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
+                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </GlassCardBody>
+      </GlassCard>
+
+      {/* Sales Model — Monthly Forecast */}
+      <SalesModelForecastWidget onSave={(d) => console.log('Sales Model saved', d)} />
+    </div>
+  );
+}
+
+// Standalone KPI grid + drilldown — exported so other dashboards
+// (e.g. Sales Dashboard-V2) can embed the exact same widgets.
+export function SalesTeamBoardKpiGrid({ quarter }: { quarter: QuarterOption }) {
+  const m = useSalesTeamBoardMetrics(quarter);
   const [drilldown, setDrilldown] = useState<{ title: string; subtitle?: string; deals: StageEntryDeal[] } | null>(null);
 
   const cards: MetricCardConfig[] = [
@@ -298,28 +359,7 @@ export function SalesTeamBoardDashboard() {
   ];
 
   return (
-    <div className="space-y-5">
-      {/* Header with period selector */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Sales Team Board</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            All metrics filtered by {selectedQuarter.label} · Click for detail
-          </p>
-        </div>
-        <Select value={quarterValue} onValueChange={setQuarterValue}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {quarterOptions.map(q => (
-              <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* KPI grid */}
+    <>
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-6 gap-3">
         {cards.map(card => (
           <MetricKPICard
@@ -329,7 +369,6 @@ export function SalesTeamBoardDashboard() {
           />
         ))}
       </div>
-
       <DrilldownModal
         open={!!drilldown}
         onClose={() => setDrilldown(null)}
@@ -337,37 +376,6 @@ export function SalesTeamBoardDashboard() {
         subtitle={drilldown?.subtitle}
         deals={drilldown?.deals ?? []}
       />
-
-      {/* Team Performance */}
-      <GlassCard interactive>
-        <GlassCardHeader title="Team Performance" subtitle="Quarter to date" />
-        <GlassCardBody>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={TEAM_PERFORMANCE_DATA} margin={{ top: 8, right: 8, left: -10, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke={GRID_STROKE} vertical={false} />
-                <XAxis dataKey="name" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <YAxis yAxisId="left" tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={formatCurrency} tick={AXIS_TICK} axisLine={AXIS_LINE} tickLine={false} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [
-                    name === 'Deal Value' ? formatCurrency(value) : value,
-                    name,
-                  ]}
-                  contentStyle={TOOLTIP_STYLE}
-                  cursor={{ fill: 'rgba(160,200,255,0.06)' }}
-                />
-                <Legend wrapperStyle={LEGEND_STYLE} iconType="circle" iconSize={8} />
-                <Bar yAxisId="left" dataKey="closed" fill="hsl(var(--primary))" name="Deals Closed" shape={createGlassBarShape({ radius: 4 })} />
-                <Bar yAxisId="right" dataKey="value" fill="hsl(var(--chart-2))" name="Deal Value" shape={createGlassBarShape({ radius: 4 })} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </GlassCardBody>
-      </GlassCard>
-
-      {/* Sales Model — Monthly Forecast */}
-      <SalesModelForecastWidget onSave={(d) => console.log('Sales Model saved', d)} />
-    </div>
+    </>
   );
 }
