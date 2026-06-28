@@ -1,6 +1,18 @@
 import * as React from 'react';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import {
+  buildQuarterOptions,
+  getCurrentQuarter,
+  type QuarterOption,
+} from '@/hooks/useQBQuarterlyRevenue';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   ResponsiveContainer,
   LineChart,
   Line,
@@ -19,7 +31,6 @@ import {
   Layers,
   FileText,
   Settings,
-  Search,
   Phone,
   Target,
   Activity,
@@ -38,6 +49,10 @@ import {
 // ============================================================
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'] as const;
 const ELAPSED = 6;
+
+// Calendar-month indexed (0=Jan ... 8=Sep) seeded data covers 2026 only.
+const SEED_YEAR = 2026;
+const SEED_MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 type MetricKey =
   | 'salesCalls'
@@ -109,6 +124,81 @@ function pad(actuals: number[]): (number | null)[] {
   const out: (number | null)[] = new Array(9).fill(null);
   actuals.forEach((v, i) => (out[i] = v));
   return out;
+}
+
+// ============================================================
+// FILTERED-VIEW CONTEXT
+// All sub-components read months/plan/actual/elapsed from here so the
+// quarter selector in the header drives the full dashboard.
+// ============================================================
+export interface DashboardView {
+  months: string[];
+  monthIndexes: number[]; // indexes into the seeded 9-month arrays
+  plan: Record<MetricKey, number[]>;
+  actual: Record<MetricKey, (number | null)[]>;
+  elapsed: number; // number of months in `months` already elapsed (have actuals)
+  rangeStart: Date;
+  rangeEnd: Date;
+  label: string;
+}
+
+const ViewCtx = React.createContext<DashboardView | null>(null);
+function useView(): DashboardView {
+  const v = React.useContext(ViewCtx);
+  if (!v) throw new Error('Missing DashboardView');
+  return v;
+}
+
+function buildView(quarter: QuarterOption): DashboardView {
+  // Determine which seeded month indexes fall inside the selected quarter.
+  const indexes: number[] = [];
+  const monthLabels: string[] = [];
+  for (const m of quarter.months) {
+    const [yStr, monStr] = m.key.split('-');
+    const y = Number(yStr);
+    const monIdx = Number(monStr) - 1; // 0-based
+    if (y === SEED_YEAR && SEED_MONTH_INDEXES.includes(monIdx)) {
+      indexes.push(monIdx);
+      monthLabels.push(MONTHS[monIdx]);
+    } else {
+      // Month outside seeded window — keep label but no seeded data.
+      indexes.push(-1);
+      const d = new Date(y, monIdx, 1);
+      monthLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+    }
+  }
+
+  const slice = <T,>(arr: T[], fallback: T): T[] =>
+    indexes.map((i) => (i >= 0 ? arr[i] : fallback));
+
+  const plan = {} as Record<MetricKey, number[]>;
+  const actual = {} as Record<MetricKey, (number | null)[]>;
+  (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+    plan[k] = slice(PLAN[k], 0);
+    actual[k] = slice(ACTUAL[k], null);
+  });
+
+  // Elapsed = months whose end-date is <= today.
+  const today = new Date();
+  let elapsed = 0;
+  for (const m of quarter.months) {
+    const end = new Date(m.end + 'T23:59:59');
+    if (end <= today) elapsed += 1;
+    else break;
+  }
+  // Clamp to at least 1 so charts render a current value
+  if (elapsed < 1) elapsed = Math.min(1, quarter.months.length);
+
+  return {
+    months: monthLabels,
+    monthIndexes: indexes,
+    plan,
+    actual,
+    elapsed,
+    rangeStart: new Date(quarter.startDate + 'T00:00:00'),
+    rangeEnd: new Date(quarter.endDate + 'T23:59:59'),
+    label: quarter.label,
+  };
 }
 
 // ============================================================
@@ -268,28 +358,30 @@ function KpiCard({
   label,
   Icon,
   type,
-  planArr,
-  actualArr,
+  metricKey,
   mode,
 }: {
   label: string;
   Icon: LucideIcon;
   type: 'count' | 'money';
-  planArr: number[];
-  actualArr: (number | null)[];
+  metricKey: MetricKey;
   mode: 'sum' | 'current';
 }) {
-  const currentActual = actualArr[ELAPSED - 1] ?? 0;
-  const currentPlan = planArr[ELAPSED - 1];
-  const deltaPct = (currentActual - currentPlan) / currentPlan;
+  const view = useView();
+  const planArr = view.plan[metricKey];
+  const actualArr = view.actual[metricKey];
+  const E = view.elapsed;
+  const currentActual = actualArr[E - 1] ?? 0;
+  const currentPlan = planArr[E - 1] ?? 0;
+  const deltaPct = currentPlan === 0 ? 0 : (currentActual - currentPlan) / currentPlan;
   const positive = deltaPct >= 0;
 
   // sub-line uses comparison mode
-  const compareActual = mode === 'sum' ? sum(actualArr, ELAPSED) : currentActual;
-  const comparePlan = mode === 'sum' ? planArr.slice(0, ELAPSED).reduce((a, b) => a + b, 0) : currentPlan;
+  const compareActual = mode === 'sum' ? sum(actualArr, E) : currentActual;
+  const comparePlan = mode === 'sum' ? planArr.slice(0, E).reduce((a, b) => a + b, 0) : currentPlan;
   const gap = compareActual - comparePlan;
 
-  const sparkData = MONTHS.map((m, i) => ({
+  const sparkData = view.months.map((m, i) => ({
     month: m,
     plan: planArr[i],
     actual: actualArr[i],
@@ -377,9 +469,11 @@ function statusColor(att: number): string {
 }
 
 function PerformancePanel() {
-  const planYtd = PLAN.dollarsFunded.slice(0, ELAPSED).reduce((a, b) => a + b, 0);
-  const actualYtd = sum(ACTUAL.dollarsFunded, ELAPSED);
-  const attainment = actualYtd / planYtd;
+  const view = useView();
+  const E = view.elapsed;
+  const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
+  const actualYtd = sum(view.actual.dollarsFunded, E);
+  const attainment = planYtd === 0 ? 0 : actualYtd / planYtd;
   const gap = actualYtd - planYtd;
 
   // Drivers
@@ -391,15 +485,15 @@ function PerformancePanel() {
     type: 'count' | 'money';
   };
   const drivers: Driver[] = [
-    { label: 'Sales Calls', actual: sum(ACTUAL.salesCalls, ELAPSED), plan: PLAN.salesCalls.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Proposals Issued', actual: sum(ACTUAL.proposalsIssued, ELAPSED), plan: PLAN.proposalsIssued.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Deals on Board', note: '· current', actual: ACTUAL.dealsOnBoard[ELAPSED - 1] ?? 0, plan: PLAN.dealsOnBoard[ELAPSED - 1], type: 'count' },
-    { label: 'Dollars Signed', actual: sum(ACTUAL.dollarsSigned, ELAPSED), plan: PLAN.dollarsSigned.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'money' },
-    { label: 'Deals Closed', actual: sum(ACTUAL.dealsClosed, ELAPSED), plan: PLAN.dealsClosed.slice(0, ELAPSED).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Sales Calls', actual: sum(view.actual.salesCalls, E), plan: view.plan.salesCalls.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Proposals Issued', actual: sum(view.actual.proposalsIssued, E), plan: view.plan.proposalsIssued.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
+    { label: 'Deals on Board', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
+    { label: 'Dollars Signed', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
+    { label: 'Deals Closed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
     { label: 'Dollars Funded', actual: actualYtd, plan: planYtd, type: 'money' },
   ];
 
-  const actualWidthPct = Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
+  const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
 
   return (
     <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] overflow-hidden">
@@ -465,7 +559,7 @@ function PerformancePanel() {
           />
           <div className="text-[11px]" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
             <span style={{ color: C.rose }}>Gap {fmtSignedMoney(gap)}</span>
-            <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through Jun</span>
+            <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through {view.months[E - 1] ?? ''}</span>
           </div>
         </div>
       </div>
@@ -574,16 +668,18 @@ function BridgeBar({
 // CUMULATIVE PACE CHART
 // ============================================================
 function CumulativePace() {
-  const planCum = cumulativePlan(PLAN.dollarsFunded);
-  const actualCum = cumulative(ACTUAL.dollarsFunded);
-  const data = MONTHS.map((m, i) => ({
+  const view = useView();
+  const E = view.elapsed;
+  const planCum = cumulativePlan(view.plan.dollarsFunded);
+  const actualCum = cumulative(view.actual.dollarsFunded);
+  const data = view.months.map((m, i) => ({
     month: m,
     plan: planCum[i],
     actual: actualCum[i],
   }));
-  const actualToDate = actualCum[ELAPSED - 1] ?? 0;
-  const planToDate = planCum[ELAPSED - 1];
-  const fyTarget = planCum[8];
+  const actualToDate = actualCum[E - 1] ?? 0;
+  const planToDate = planCum[E - 1] ?? 0;
+  const fyTarget = planCum[planCum.length - 1] ?? 0;
 
   return (
     <div style={glassStyle} className="p-5">
@@ -637,7 +733,7 @@ function CumulativePace() {
               formatter={(v: number, n: string) => [`$${v.toFixed(1)}MM`, n === 'plan' ? 'Plan' : 'Actual']}
             />
             <ReferenceLine
-              x="Jun"
+              x={view.months[E - 1] ?? ''}
               stroke={C.textFaint}
               strokeDasharray="3 3"
               label={{ value: 'today', position: 'top', fill: C.textFaint, fontSize: 10 }}
@@ -686,14 +782,15 @@ function Readout({ label, value, color }: { label: string; value: string; color:
 // ============================================================
 function KeyStatCard({
   title,
-  planArr,
-  actualArr,
+  metricKey,
 }: {
   title: string;
-  planArr: number[];
-  actualArr: (number | null)[];
+  metricKey: MetricKey;
 }) {
-  const data = MONTHS.map((m, i) => ({
+  const view = useView();
+  const planArr = view.plan[metricKey];
+  const actualArr = view.actual[metricKey];
+  const data = view.months.map((m, i) => ({
     month: m,
     plan: planArr[i],
     actual: actualArr[i],
@@ -772,10 +869,12 @@ type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
+  const view = useView();
+  const E = view.elapsed;
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
-    const planV = PLAN[row.key][i];
-    const actualV = ACTUAL[row.key][i];
+    const planV = view.plan[row.key][i];
+    const actualV = view.actual[row.key][i];
     if (tab === 'Forecast') {
       return (
         <span style={{ color: C.textPrimary, fontVariantNumeric: 'tabular-nums' }}>
@@ -814,7 +913,7 @@ function SalesModelSheet() {
             Sales Model
           </div>
           <div className="text-[11px]" style={{ color: C.textFaint }}>
-            Monthly Forecast · 2026
+            Monthly Forecast · {view.label}
           </div>
         </div>
         <div
@@ -867,8 +966,8 @@ function SalesModelSheet() {
               >
                 Metric
               </th>
-              {MONTHS.map((m, i) => {
-                const isFuture = i >= ELAPSED;
+              {view.months.map((m, i) => {
+                const isFuture = i >= E;
                 return (
                   <th
                     key={m}
@@ -910,8 +1009,8 @@ function SalesModelSheet() {
                     </span>
                   )}
                 </td>
-                {MONTHS.map((m, i) => {
-                  const isFuture = i >= ELAPSED;
+                {view.months.map((m, i) => {
+                  const isFuture = i >= E;
                   return (
                     <td
                       key={m}
@@ -932,9 +1031,19 @@ function SalesModelSheet() {
       </div>
 
       <div className="mt-3 text-[11px]" style={{ color: C.textMuted }}>
-        <span style={{ color: C.cyan }}>Jan–Jun actuals tracked</span>
-        <span> · </span>
-        <span style={{ color: C.periwinkle }}>Jul–Sep forecast</span>
+        {E > 0 && (
+          <>
+            <span style={{ color: C.cyan }}>
+              {view.months[0]}–{view.months[E - 1]} actuals tracked
+            </span>
+            {E < view.months.length && <span> · </span>}
+          </>
+        )}
+        {E < view.months.length && (
+          <span style={{ color: C.periwinkle }}>
+            {view.months[E]}–{view.months[view.months.length - 1]} forecast
+          </span>
+        )}
       </div>
     </div>
   );
@@ -944,10 +1053,18 @@ function SalesModelSheet() {
 // MAIN
 // ============================================================
 export function SalesDashboardV2() {
-  // Live Sales Calls — count of unique "[Company] <> 5th Line Financing
-  // Review" calendar events across every teammate's connected calendar,
-  // bucketed per month. Falls back to seed data while loading or if the
-  // calendar fan-out returns empty.
+  // Quarter selector — drives every chart, KPI, and the Sales Model sheet.
+  const quarterOptions = React.useMemo(() => buildQuarterOptions(8), []);
+  const [quarterValue, setQuarterValue] = React.useState(
+    () => getCurrentQuarter().value,
+  );
+  const selectedQuarter: QuarterOption = React.useMemo(
+    () => quarterOptions.find((q) => q.value === quarterValue) ?? quarterOptions[0],
+    [quarterOptions, quarterValue],
+  );
+
+  // Live Sales Calls — fetch for the full seeded year so the per-month
+  // overwrite below picks up any month that maps into the active quarter.
   const YEAR = 2026;
   const yearStart = React.useMemo(() => new Date(Date.UTC(YEAR, 0, 1)), []);
   const yearEnd = React.useMemo(() => new Date(Date.UTC(YEAR, 11, 31, 23, 59, 59)), []);
@@ -964,19 +1081,28 @@ export function SalesDashboardV2() {
       if (d.getUTCFullYear() !== YEAR) continue;
       const m = d.getUTCMonth();
       if (m >= 9) continue; // dashboard covers Jan–Sep only
-      if (m >= ELAPSED) continue; // future months stay as plan
       buckets[m] = (buckets[m] ?? 0) + 1;
       touched = true;
     }
     if (!touched) return;
-    // Preserve forecast nulls beyond ELAPSED.
-    for (let i = 0; i < ELAPSED; i++) {
+    const today = new Date();
+    const currentMonth =
+      today.getUTCFullYear() === YEAR ? today.getUTCMonth() : 8;
+    const upper = Math.min(8, currentMonth);
+    for (let i = 0; i <= upper; i++) {
       ACTUAL.salesCalls[i] = buckets[i] ?? 0;
     }
     forceRender((n) => n + 1);
   }, [salesCallsQuery.data]);
 
+  const view = React.useMemo(
+    () => buildView(selectedQuarter),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedQuarter, salesCallsQuery.data],
+  );
+
   return (
+    <ViewCtx.Provider value={view}>
     <div
       className="sales-dashboard-v2 relative w-full"
       style={{
@@ -1014,17 +1140,26 @@ export function SalesDashboardV2() {
                 Pipeline Performance
               </h1>
             </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 rounded-full text-[12px]"
-              style={{
-                ...glassStyle,
-                borderRadius: 999,
-                color: C.textMuted,
-              }}
-            >
-              <Search size={12} />
-              <span>As of Jun 2026 ›</span>
-              <span style={{ color: C.cyan }}>H1 actuals</span>
+            <div className="flex items-center gap-2">
+              <Select value={quarterValue} onValueChange={setQuarterValue}>
+                <SelectTrigger
+                  className="w-[180px] h-9 rounded-full"
+                  style={{
+                    ...glassStyle,
+                    borderRadius: 999,
+                    color: C.textPrimary,
+                  }}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {quarterOptions.map((q) => (
+                    <SelectItem key={q.value} value={q.value}>
+                      {q.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -1034,24 +1169,21 @@ export function SalesDashboardV2() {
               label="Sales Calls"
               Icon={Phone}
               type="count"
-              planArr={PLAN.salesCalls}
-              actualArr={ACTUAL.salesCalls}
+              metricKey="salesCalls"
               mode="sum"
             />
             <KpiCard
               label="Deals on Board"
               Icon={Layers}
               type="count"
-              planArr={PLAN.dealsOnBoard}
-              actualArr={ACTUAL.dealsOnBoard}
+              metricKey="dealsOnBoard"
               mode="current"
             />
             <KpiCard
               label="Proposals Issued"
               Icon={FileText}
               type="count"
-              planArr={PLAN.proposalsIssued}
-              actualArr={ACTUAL.proposalsIssued}
+              metricKey="proposalsIssued"
               mode="sum"
             />
           </div>
@@ -1070,9 +1202,9 @@ export function SalesDashboardV2() {
 
           {/* Key-stat line charts */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <KeyStatCard title="Sales Calls" planArr={PLAN.salesCalls} actualArr={ACTUAL.salesCalls} />
-            <KeyStatCard title="Deals on Board" planArr={PLAN.dealsOnBoard} actualArr={ACTUAL.dealsOnBoard} />
-            <KeyStatCard title="Proposals Issued" planArr={PLAN.proposalsIssued} actualArr={ACTUAL.proposalsIssued} />
+            <KeyStatCard title="Sales Calls" metricKey="salesCalls" />
+            <KeyStatCard title="Deals on Board" metricKey="dealsOnBoard" />
+            <KeyStatCard title="Proposals Issued" metricKey="proposalsIssued" />
           </div>
 
           {/* Sales model sheet */}
@@ -1080,6 +1212,7 @@ export function SalesDashboardV2() {
         </div>
       </div>
     </div>
+    </ViewCtx.Provider>
   );
 }
 
