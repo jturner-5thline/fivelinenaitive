@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
 import {
   Dialog,
   DialogContent,
@@ -60,26 +61,35 @@ function fmtCompact(n: number): string {
 
 export function TotalIncomeRolling12MoCard() {
   const { user } = useAuth();
+  const tf = useInsightsTimeframeOptional();
   const [drill, setDrill] = useState<
     { year: number; month: number; label: string } | null
   >(null);
 
-  const { months, rangeStart, rangeEnd } = useMemo(() => {
+  const { months, rangeStart, rangeEnd, periodLabel } = useMemo(() => {
     const now = new Date();
-    const cur = new Date(now.getFullYear(), now.getMonth(), 1);
+    const tfStart = tf?.timeframe?.start
+      ? new Date(tf.timeframe.start + "T00:00:00")
+      : new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const tfEnd = tf?.timeframe?.end
+      ? new Date(tf.timeframe.end + "T00:00:00")
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const first = new Date(tfStart.getFullYear(), tfStart.getMonth(), 1);
+    const lastMonth = new Date(tfEnd.getFullYear(), tfEnd.getMonth(), 1);
     const months: { y: number; m: number }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(cur.getFullYear(), cur.getMonth() - i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() });
+    const cursor = new Date(first);
+    while (cursor <= lastMonth) {
+      months.push({ y: cursor.getFullYear(), m: cursor.getMonth() });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
-    const start = new Date(cur.getFullYear(), cur.getMonth() - 11, 1);
-    const end = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    const end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
     return {
       months,
-      rangeStart: isoDate(start),
-      rangeEnd: isoDate(end),
+      rangeStart: isoDate(first),
+      rangeEnd: isoDate(tfEnd < end ? tfEnd : end),
+      periodLabel: tf?.timeframe?.label ?? "Selected period",
     };
-  }, []);
+  }, [tf?.timeframe?.start, tf?.timeframe?.end, tf?.timeframe?.label]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["total-income-r12", user?.id, rangeStart, rangeEnd],
@@ -162,7 +172,7 @@ export function TotalIncomeRolling12MoCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Total Income · Rolling 12 Months
+          Total Income
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -182,7 +192,7 @@ export function TotalIncomeRolling12MoCard() {
               className="text-[10px] uppercase tracking-wide"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              Rolling 12-month total · 4 entities combined
+              {periodLabel} · 4 entities combined
             </div>
             {isLoading ? (
               <div className="h-7 w-40 rounded bg-white/5 animate-pulse mt-1" />

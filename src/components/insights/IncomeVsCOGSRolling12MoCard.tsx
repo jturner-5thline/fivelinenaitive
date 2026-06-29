@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
 
 /**
  * Income vs COGS — trailing 12 months for the four 5th Line entities,
@@ -64,26 +65,36 @@ function monthKey(dateStr: string): string {
 
 export function IncomeVsCOGSRolling12MoCard() {
   const { user } = useAuth();
+  const tf = useInsightsTimeframeOptional();
 
-  const { rangeStart, rangeEnd, months } = useMemo(() => {
+  const { rangeStart, rangeEnd, months, periodLabel } = useMemo(() => {
     const now = new Date();
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // end of current month
-    const start = new Date(end.getFullYear(), end.getMonth() - 11, 1);
+    const tfStart = tf?.timeframe?.start
+      ? new Date(tf.timeframe.start + "T00:00:00")
+      : new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const tfEnd = tf?.timeframe?.end
+      ? new Date(tf.timeframe.end + "T00:00:00")
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const start = new Date(tfStart.getFullYear(), tfStart.getMonth(), 1);
+    const lastMonth = new Date(tfEnd.getFullYear(), tfEnd.getMonth(), 1);
+    const end = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
     const months: { key: string; label: string }[] = [];
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
-      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const cursor = new Date(start);
+    while (cursor <= lastMonth) {
+      const k = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
       months.push({
         key: k,
-        label: d.toLocaleString("en-US", { month: "short", year: "2-digit" }),
+        label: cursor.toLocaleString("en-US", { month: "short", year: "2-digit" }),
       });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
     return {
       rangeStart: isoDate(start),
-      rangeEnd: isoDate(end),
+      rangeEnd: isoDate(tfEnd < end ? tfEnd : end),
       months,
+      periodLabel: tf?.timeframe?.label ?? "Selected period",
     };
-  }, []);
+  }, [tf?.timeframe?.start, tf?.timeframe?.end, tf?.timeframe?.label]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["income-vs-cogs-r12", user?.id, rangeStart, rangeEnd],
@@ -216,7 +227,7 @@ export function IncomeVsCOGSRolling12MoCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income vs COGS · Rolling 12 Months
+          Income vs COGS
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -234,7 +245,7 @@ export function IncomeVsCOGSRolling12MoCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          {rangeStart} → {rangeEnd} · 4 entities combined
+          {periodLabel} · 4 entities combined
         </div>
 
         {isLoading ? (
