@@ -361,28 +361,17 @@ function useChart(
   }, deps);
 }
 
-const STANDALONE_KPI_IDS = [
-  'kpi-total-revenue-curr',
-  'kpi-operating-profit-curr',
-  'kpi-outstanding-ar',
-  'kpi-active-pipeline-value',
-  'kpi-ttm-revenue',
-  'kpi-ytd-revenue',
-] as const;
-
-const STANDALONE_KPI_TO_REGISTRY: Record<string, string> = {
-  'kpi-total-revenue-curr': 'total-revenue-curr',
-  'kpi-operating-profit-curr': 'operating-profit-curr',
-  'kpi-outstanding-ar': 'outstanding-ar',
-  'kpi-active-pipeline-value': 'active-pipeline-value',
-  'kpi-ttm-revenue': 'ttm-revenue',
-  'kpi-ytd-revenue': 'ytd-revenue',
-};
+const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
+  { id: 'kpi-row-total-revenue-curr', registryId: 'total-revenue-curr' },
+  { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
+  { id: 'kpi-row-outstanding-ar', registryId: 'outstanding-ar' },
+  { id: 'kpi-row-active-pipeline-value', registryId: 'active-pipeline-value' },
+  { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
+  { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+];
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
-  ...STANDALONE_KPI_IDS.map((id, i) => ({
-    i: id, x: i * 2, y: 0, w: 2, h: 2, minW: 2, minH: 2, maxH: 4,
-  } as GridLayoutItem)),
+  { i: 'kpi-summary', x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 3 },
   { i: 'monthly-revenue', x: 0, y: 2, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'ar-aging', x: 6, y: 2, w: 6, h: 4, minW: 3, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 6, w: 12, h: 5, minW: 6, minH: 3 },
