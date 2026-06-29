@@ -407,7 +407,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
             onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance')}
             className="flex flex-col flex-1 min-h-0"
           >
-            <div className="px-5 pt-5 pb-2 shrink-0">
+            <div className="px-5 pt-2 pb-1 shrink-0">
               <TabsList>
                 <TabsTrigger value="dashboard" className="gap-1.5">
                   <LayoutDashboard className="h-3.5 w-3.5" />
