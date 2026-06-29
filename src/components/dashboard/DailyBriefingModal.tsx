@@ -45,6 +45,7 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 const DashboardModal = lazy(() =>
   import('./DashboardModal').then((m) => ({ default: m.DashboardModal })),
 );
+const LazyTasksPage = lazy(() => import('@/pages/Tasks'));
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
