@@ -551,9 +551,10 @@ export function EndOfDayTab({
       if (showingDismissed) {
         return resolved || dismissed || read;
       }
-      // Default view shows every actionable item — only resolved, dismissed,
-      // and snoozed items are hidden. Read items remain visible here.
-      return !resolved && !dismissed && !snoozed;
+      // Default view hides anything the user has acted on: resolved,
+      // dismissed, snoozed, or marked-as-read. Those only resurface when
+      // the "Dismissed" chip is explicitly selected.
+      return !resolved && !dismissed && !snoozed && !read;
     });
     const result = stateFiltered
       .map(({ ev, start }) => {
