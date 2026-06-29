@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * Income: YTD MoM Variance.
@@ -53,31 +54,20 @@ function fmtCompact(n: number): string {
   return `${sign}$${abs.toFixed(0)}`;
 }
 
-const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
 export function IncomeYTDMoMVarianceCard() {
   const { user } = useAuth();
+  const { rangeStart, rangeEnd, months, periodLabel } = useTimeframeRange();
 
-  const { yearStart, today, currentMonth, year } = useMemo(() => {
-    const now = new Date();
-    return {
-      yearStart: isoDate(new Date(now.getFullYear(), 0, 1)),
-      today: isoDate(now),
-      currentMonth: now.getMonth(),
-      year: now.getFullYear(),
-    };
-  }, []);
-
-  // Also pull December of prior year so the Jan variance has a baseline.
-  const priorDecStart = useMemo(() => {
-    return isoDate(new Date(year - 1, 11, 1));
-  }, [year]);
+  // Pull the month immediately before the window so the first bar has a baseline.
+  const priorMonthStart = useMemo(() => {
+    if (!months.length) return rangeStart;
+    const first = months[0];
+    const d = new Date(first.y, first.m - 1, 1);
+    return isoDate(d);
+  }, [months, rangeStart]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["income-ytd-mom-variance", user?.id, priorDecStart, today],
+    queryKey: ["income-mom-variance", user?.id, priorMonthStart, rangeEnd],
     enabled: !!user,
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
@@ -85,43 +75,41 @@ export function IncomeYTDMoMVarianceCard() {
         .from("quickbooks_invoices")
         .select("txn_date, total_amt, synced_at")
         .in("realm_id", REALM_IDS)
-        .gte("txn_date", priorDecStart)
-        .lte("txn_date", today);
+        .gte("txn_date", priorMonthStart)
+        .lte("txn_date", rangeEnd);
       if (error) throw error;
-      // monthIndex: -1 = prior Dec, 0..11 = months of current year
-      const totals = new Array(13).fill(0) as number[]; // 0..12 (12 = prior Dec offset)
-      // We'll index prior Dec at slot 12 to keep current year months at their natural index 0..11
+      const totals = new Map<string, number>();
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.txn_date) continue;
         const d = new Date(r.txn_date);
-        const yy = d.getFullYear();
-        const mm = d.getMonth();
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const amt = Number(r.total_amt ?? 0);
-        if (yy === year) totals[mm] += amt;
-        else if (yy === year - 1 && mm === 11) totals[12] += amt;
+        totals.set(k, (totals.get(k) ?? 0) + amt);
         if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
       }
       return { totals, lastSync };
     },
   });
 
-  const totals = data?.totals ?? new Array(13).fill(0);
-  const priorDec = totals[12];
-  const monthly = totals.slice(0, currentMonth + 1);
+  const totals = data?.totals ?? new Map<string, number>();
+  const monthly = months.map((mo) => totals.get(mo.key) ?? 0);
+  const priorMonthKey = priorMonthStart.slice(0, 7);
+  const priorTotal = totals.get(priorMonthKey) ?? 0;
   const ytdTotal = monthly.reduce((a, b) => a + b, 0);
 
-  const chartData = monthly.map((amt, i) => {
-    const prior = i === 0 ? priorDec : monthly[i - 1];
-    const hasPrior = prior > 0 || (i > 0 && monthly[i - 1] !== undefined);
+  const chartData = months.map((mo, i) => {
+    const amt = monthly[i];
+    const prior = i === 0 ? priorTotal : monthly[i - 1];
+    const hasPrior = i === 0 ? priorTotal > 0 : true;
     const variance = hasPrior ? amt - prior : 0;
     const pct = prior !== 0 ? (variance / prior) * 100 : null;
     return {
-      month: MONTH_LABELS[i],
+      month: mo.label,
       income: amt,
       variance,
       pct,
-      hasPrior: i === 0 ? priorDec > 0 : true,
+      hasPrior,
       label: hasPrior ? fmtCompact(variance) : "—",
     };
   });
@@ -158,7 +146,7 @@ export function IncomeYTDMoMVarianceCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · YTD MoM Variance
+          Income · MoM Variance
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -178,7 +166,7 @@ export function IncomeYTDMoMVarianceCard() {
               className="text-[10px] tracking-wide uppercase"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              YTD Total Income · 4 entities
+              Total Income · {periodLabel}
             </div>
             {isLoading ? (
               <div className="h-9 w-40 rounded bg-white/5 animate-pulse mt-1" />
@@ -195,7 +183,7 @@ export function IncomeYTDMoMVarianceCard() {
             className="text-[10px] tracking-wide"
             style={{ color: "rgba(255,255,255,0.55)" }}
           >
-            MoM variance · Jan – {MONTH_LABELS[currentMonth]} {year}
+            MoM variance · {periodLabel}
           </div>
         </div>
 
