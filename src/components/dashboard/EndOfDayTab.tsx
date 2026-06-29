@@ -81,7 +81,7 @@ const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 
-type FilterChip = 'internal' | 'deals';
+type FilterChip = 'internal' | 'deals' | 'dismissed';
 
 interface ContactInfo {
   fullName: string | null;
@@ -537,10 +537,23 @@ export function EndOfDayTab({
     // Require at least one OTHER attendee besides the current user.
     // Personal/solo events (Gym, focus blocks, etc.) are filtered out.
     const audienceEligible = windowed.filter(({ otherCount }) => otherCount > 0);
-    const uncleared = audienceEligible.filter(({ ev, start }) => (
-      !isResolved(ev.id) && !isDismissed(ev.id, start) && !isSnoozed(ev.id)
-    ));
-    const result = uncleared
+    const showingDismissed = filterChips.has('dismissed');
+    // Default view = actionable items: not resolved, not dismissed, not
+    // snoozed, AND not yet marked-as-read. Marking read therefore hides the
+    // tile, matching the "clear it from view once I've seen it" mental model.
+    // The "Dismissed" chip flips the pane to show ONLY items that have been
+    // cleared in some way — dismissed, resolved, or marked-as-read.
+    const stateFiltered = audienceEligible.filter(({ ev, start }) => {
+      const resolved = isResolved(ev.id);
+      const dismissed = isDismissed(ev.id, start);
+      const snoozed = isSnoozed(ev.id);
+      const read = readSet.has(ev.id);
+      if (showingDismissed) {
+        return resolved || dismissed || read;
+      }
+      return !resolved && !dismissed && !snoozed && !read;
+    });
+    const result = stateFiltered
       .map(({ ev, start }) => {
         const ageDays = start ? differenceInCalendarDays(ref, startOfDay(start)) : 0;
         return { ...ev, _ageDays: ageDays, _isCarry: ageDays > 0 };
@@ -553,7 +566,7 @@ export function EndOfDayTab({
       const invalidDateRows = normalizedEvents.filter(({ start }) => !start).length;
       const outsideWindowRows = normalizedEvents.length - windowed.length;
       const audienceFilteredRows = windowed.length - audienceEligible.length;
-      const clearedRows = audienceEligible.length - uncleared.length;
+      const clearedRows = audienceEligible.length - stateFiltered.length;
       // eslint-disable-next-line no-console
       console.log('[EndOfDay] query result', {
         rawEvents: normalizedEvents.length,
@@ -572,7 +585,7 @@ export function EndOfDayTab({
       });
     } catch { /* noop */ }
     return result;
-  }, [events, isResolved, isDismissed, isSnoozed, search, filterChips]);
+  }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips]);
 
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
@@ -1021,8 +1034,8 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {(['internal', 'deals'] as FilterChip[]).map(chip => {
-            const label = chip === 'internal' ? 'Internal' : 'Deals';
+          {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
+            const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
             const on = filterChips.has(chip);
             return (
               <button
