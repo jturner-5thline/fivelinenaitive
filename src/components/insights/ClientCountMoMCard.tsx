@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * Client Count MoM Change.
@@ -50,22 +51,8 @@ function monthLabel(key: string): string {
 export function ClientCountMoMCard() {
   const { user } = useAuth();
   const [view, setView] = useState<"chart" | "table">("chart");
-
-  const { months, rangeStart, rangeEnd } = useMemo(() => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    const months = [2, 1, 0].map((offset) => {
-      const d = new Date(first.getFullYear(), first.getMonth() - offset, 1);
-      return monthKey(d);
-    });
-    const startD = new Date(first.getFullYear(), first.getMonth() - 2, 1);
-    const endD = new Date(first.getFullYear(), first.getMonth() + 1, 0);
-    return {
-      months,
-      rangeStart: isoDate(startD),
-      rangeEnd: isoDate(endD),
-    };
-  }, []);
+  const { months: tfMonths, rangeStart, rangeEnd, periodLabel } = useTimeframeRange();
+  const months = useMemo(() => tfMonths.map((mo) => mo.key), [tfMonths]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["client-count-mom", user?.id, rangeStart, rangeEnd],
@@ -185,7 +172,7 @@ export function ClientCountMoMCard() {
           className="text-[10px] tracking-wide mb-2"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          Distinct active customers per month · 4 entities · last 3 months
+          Distinct active customers per month · 4 entities · {periodLabel}
         </div>
 
         {isLoading ? (
