@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * Income: YTD Change by Entity — bar chart showing YTD income variance
@@ -53,24 +54,12 @@ function fmtCompact(n: number): string {
 
 export function IncomeYTDChangeByEntityCard() {
   const { user } = useAuth();
-
-  const { yearStartCurrent, todayCurrent, yearStartPrior, sameDayPrior, year } = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const prior = new Date(y - 1, now.getMonth(), now.getDate());
-    return {
-      yearStartCurrent: isoDate(new Date(y, 0, 1)),
-      todayCurrent: isoDate(now),
-      yearStartPrior: isoDate(new Date(y - 1, 0, 1)),
-      sameDayPrior: isoDate(prior),
-      year: y,
-    };
-  }, []);
+  const { rangeStart, rangeEnd, priorRangeStart, priorRangeEnd, periodLabel } = useTimeframeRange();
 
   const realmIds = ENTITIES.map((e) => e.realmId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["income-ytd-change-by-entity", user?.id, yearStartCurrent, todayCurrent],
+    queryKey: ["income-change-by-entity", user?.id, rangeStart, rangeEnd, priorRangeStart, priorRangeEnd],
     enabled: !!user,
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
@@ -78,16 +67,16 @@ export function IncomeYTDChangeByEntityCard() {
         .from("quickbooks_invoices")
         .select("realm_id, txn_date, total_amt, synced_at")
         .in("realm_id", realmIds)
-        .gte("txn_date", yearStartPrior)
-        .lte("txn_date", todayCurrent);
+        .gte("txn_date", priorRangeStart)
+        .lte("txn_date", rangeEnd);
       if (error) throw error;
       const cur: Record<string, number> = {};
       const prv: Record<string, number> = {};
       for (const e of ENTITIES) { cur[e.realmId] = 0; prv[e.realmId] = 0; }
-      const curStart = new Date(yearStartCurrent).getTime();
-      const curEnd = new Date(todayCurrent).getTime();
-      const prvStart = new Date(yearStartPrior).getTime();
-      const prvEnd = new Date(sameDayPrior).getTime();
+      const curStart = new Date(rangeStart).getTime();
+      const curEnd = new Date(rangeEnd).getTime();
+      const prvStart = new Date(priorRangeStart).getTime();
+      const prvEnd = new Date(priorRangeEnd).getTime();
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.realm_id || !r.txn_date) continue;
@@ -152,7 +141,7 @@ export function IncomeYTDChangeByEntityCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · YTD Change by Entity
+          Income · Change by Entity
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -170,7 +159,7 @@ export function IncomeYTDChangeByEntityCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          YTD {year} vs YTD {year - 1} (same window)
+          {periodLabel} vs prior-year same window
         </div>
 
         {isLoading ? (
