@@ -37,6 +37,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
+import { normalizeEmailDomain, normalizeWebsiteDomain, isFreemailDomain } from '@/lib/domainMatch';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
