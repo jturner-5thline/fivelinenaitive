@@ -274,7 +274,10 @@ export function MeetingClaapInlineAction(props: Props) {
     </Button>
   );
 
-  if (band === 'none') return buttonCell;
+  // Once a recording is officially linked (manual approve or post-refresh
+  // hydration from event_claap_recordings), collapse back to the plain button
+  // cell — no banner. The button itself reflects the linked state via color.
+  if (band === 'none' || band === 'linked') return buttonCell;
 
   // Suggestion / linked detail bar — rendered via portal below the 4-button
   // action row so it can use full width and never clips the equal-width cell.
