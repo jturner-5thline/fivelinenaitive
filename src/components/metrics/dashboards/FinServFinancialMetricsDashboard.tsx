@@ -1014,6 +1014,7 @@ function FinServFinancialMetricsDashboardInner() {
           monthKeys={monthlyKeys}
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}
+          revenueByMonth={monthlyRevenueByKey}
         />
         <PlaceholderWidget title="Profit per Hour" />
       </div>
