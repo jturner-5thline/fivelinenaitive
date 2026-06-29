@@ -366,16 +366,16 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+  { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
+  { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
+  { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
+  { id: 'kpi-row-finserv-profit', registryId: 'finserv-profit' },
   { id: 'kpi-row-liq-operating', registryId: 'liq-operating' },
   { id: 'kpi-row-liq-mt', registryId: 'liq-mt' },
   { id: 'kpi-row-liq-tax', registryId: 'liq-tax-reserves' },
   { id: 'kpi-row-liq-5lt', registryId: 'liq-5lt' },
   { id: 'kpi-row-liq-5lca', registryId: 'liq-5lca' },
   { id: 'kpi-row-liq-5lfs', registryId: 'liq-5lfs' },
-  { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
-  { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
-  { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
-  { id: 'kpi-row-finserv-profit', registryId: 'finserv-profit' },
 ];
 
 // QBO realm IDs for per-entity revenue/profit breakdowns shown in Key Stats.
