@@ -308,11 +308,9 @@ function EventTile({
           </span>
           <span className="text-white/40">·</span>
           <span className="truncate">{fmtTime(ev.start, ev.all_day)}</span>
-          {ev._isCarry && (
-            <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-amber-500/40 text-amber-300 bg-amber-500/10">
-              Carry-forward · {ev._ageDays}d
-            </Badge>
-          )}
+          <Badge variant="outline" className="ml-1 h-4 px-1.5 text-[9px] border-white/15 text-white/75 bg-white/[0.04]">
+            {ev._ageDays <= 0 ? 'Today' : ev._ageDays === 1 ? 'Yesterday' : `${ev._ageDays} days ago`}
+          </Badge>
           <span className="ml-auto flex items-center gap-0.5 text-white/70">
             <Users className="h-2.5 w-2.5" />{attendeeCount}
           </span>
@@ -1541,11 +1539,9 @@ function EventDetailPane({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-semibold text-white truncate">{eventTitle}</h2>
-              {isCarry && (
-                <Badge variant="outline" className="border-amber-500/40 text-amber-300 bg-amber-500/10 text-[10px]">
-                  Carry-forward · {ageDays}d
-                </Badge>
-              )}
+              <Badge variant="outline" className="border-white/15 text-white/75 bg-white/[0.04] text-[10px]">
+                {ageDays <= 0 ? 'Today' : ageDays === 1 ? 'Yesterday' : `${ageDays} days ago`}
+              </Badge>
               {snoozedUntil && (
                 <Badge variant="outline" className="border-blue-500/40 text-blue-300 bg-blue-500/10 text-[10px]">
                   Snoozed until {format(snoozedUntil, 'MMM d, h:mm a')}
