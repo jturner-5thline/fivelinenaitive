@@ -750,7 +750,7 @@ function renderChartContent(
     case 'qb-revenue-trend': {
       if (!qbMetrics) return null;
       return (
-        <ChartWidgetContent title={widget.title} description="Rolling 12 months from QuickBooks">
+        <ChartWidgetContent title={widget.title} description="QuickBooks revenue">
           <div style={{ height: chartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={qbMetrics.monthlyRevenue}>
@@ -1037,7 +1037,7 @@ function renderChartContent(
     case 'hs-deal-value-trend': {
       if (!hsMetrics) return null;
       return (
-        <ChartWidgetContent title={widget.title} description="Rolling 12 months deal creation">
+        <ChartWidgetContent title={widget.title} description="Deal creation trend">
           <div style={{ height: chartHeight }}>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={hsMetrics.dealValueTrend}>
