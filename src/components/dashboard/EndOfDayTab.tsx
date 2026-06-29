@@ -1034,8 +1034,8 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {(['internal', 'deals'] as FilterChip[]).map(chip => {
-            const label = chip === 'internal' ? 'Internal' : 'Deals';
+          {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
+            const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
             const on = filterChips.has(chip);
             return (
               <button
