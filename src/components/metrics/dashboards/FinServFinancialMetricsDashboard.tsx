@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MetricManualInputDialog } from './MetricManualInputDialog';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine, LabelList,
@@ -89,6 +91,57 @@ function PlaceholderWidget({ title }: { title: string }) {
           <p className="text-xs mt-1 opacity-60">This widget is configured but awaiting calculation logic</p>
         </div>
       </CardContent>
+    </Card>
+  );
+}
+
+function RevenuePerHourWidget({
+  monthKeys,
+  monthLabels,
+  badge,
+}: {
+  monthKeys: string[];
+  monthLabels: string[];
+  badge: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Card className="glass-module">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <CardTitle className="text-sm font-medium">Revenue per Hour</CardTitle>
+            <Badge variant="outline" className="w-fit text-xs mt-1">{badge}</Badge>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 -mr-1 -mt-1"
+            aria-label="Input monthly hours"
+            title="Input monthly hours"
+            onClick={() => setOpen(true)}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+          <Clock className="h-8 w-8 mb-2 opacity-40" />
+          <p className="text-sm font-medium">Formula pending</p>
+          <p className="text-xs mt-1 opacity-60">Click the pencil to input monthly hours</p>
+        </div>
+      </CardContent>
+      <MetricManualInputDialog
+        open={open}
+        onOpenChange={setOpen}
+        metricKey="revenue_per_hour_hours"
+        title="Hours by Month"
+        unitLabel="Hours"
+        monthKeys={monthKeys}
+        monthLabels={monthLabels}
+      />
     </Card>
   );
 }
@@ -189,6 +242,14 @@ function FinServFinancialMetricsDashboardInner() {
     range.granularity === 'monthly' ? 'Monthly' :
     range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
+
+  // Months available for manual-input widgets (always monthly buckets across the timeframe).
+  const monthlyBuckets = useMemo(
+    () => buildBuckets(range.resolved.start, range.resolved.end, 'monthly'),
+    [range.resolved.start, range.resolved.end],
+  );
+  const monthlyKeys = useMemo(() => monthlyBuckets.map((b) => b.key), [monthlyBuckets]);
+  const monthlyLabels = useMemo(() => monthlyBuckets.map((b) => b.label), [monthlyBuckets]);
 
   // Resolve a clicked bucket label/monthKey to its actual start/end ymd.
   const { open: openDrill } = useDrilldown();
@@ -847,7 +908,11 @@ function FinServFinancialMetricsDashboardInner() {
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PlaceholderWidget title="Revenue per Hour" />
+        <RevenuePerHourWidget
+          monthKeys={monthlyKeys}
+          monthLabels={monthlyLabels}
+          badge={`Monthly · ${selectedPeriod.label}`}
+        />
         <PlaceholderWidget title="Profit per Hour" />
       </div>
     </div>
