@@ -47,7 +47,7 @@ export const HomepageHeader = () => {
         <Link to="/" className="flex items-center shrink-0 leading-none -ml-1" aria-label="naitive home">
           <img
             src={naitiveLogoDark}
-            alt="naitive"
+            alt="naitive deal management logo"
             className="h-16 sm:h-24 md:h-28 lg:h-[7.5rem] w-auto object-contain block -my-5 sm:-my-8 md:-my-9 lg:-my-10"
             style={{ aspectRatio: 'auto' }}
           />
