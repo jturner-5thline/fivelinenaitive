@@ -368,7 +368,15 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-active-pipeline-value', registryId: 'active-pipeline-value' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+  { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
+  { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
+  { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
+  { id: 'kpi-row-finserv-profit', registryId: 'finserv-profit' },
 ];
+
+// QBO realm IDs for per-entity revenue/profit breakdowns shown in Key Stats.
+const KEY_STATS_DEBT_REALM_ID = '193514877331929';
+const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // Top row: Key Stats sits above A/R Aging and Bank Account Balances,
@@ -579,6 +587,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const totalRevPrev = qbConnected ? previousRevenue : null;
   const opProfitCurr = qbConnected ? periodRevenue - periodExpenses : null;
   const opProfitPrev = qbConnected ? previousRevenue - previousExpenses : null;
+
+  // Per-entity (Debt Solutions vs FinServ) revenue & profit for the active
+  // selected period and the matching prior comparison window. Sourced from the
+  // same qbInvoices / qbExpenses dataset as Total Revenue / Operating Profit
+  // above, filtered by QBO realm_id.
+  const sumByRealm = (
+    rows: any[],
+    range: DateRange,
+    realmId: string,
+  ) =>
+    sumAmountInRange(
+      rows.filter((r: any) => r.realm_id === realmId),
+      range,
+      (r: any) => r.txn_date,
+      (r: any) => r.total_amt,
+    );
+
+  const debtRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtProfitCurr =
+    debtRevCurr !== null && debtExpCurr !== null ? debtRevCurr - debtExpCurr : null;
+  const debtProfitPrev =
+    debtRevPrev !== null && debtExpPrev !== null ? debtRevPrev - debtExpPrev : null;
+
+  const finservRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservProfitCurr =
+    finservRevCurr !== null && finservExpCurr !== null ? finservRevCurr - finservExpCurr : null;
+  const finservProfitPrev =
+    finservRevPrev !== null && finservExpPrev !== null ? finservRevPrev - finservExpPrev : null;
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
   const ttmSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
@@ -1225,6 +1267,46 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       v: fmtUSD(ytdRevenue),
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
+    {
+      id: 'debt-solutions-revenue',
+      l: 'Debt Solutions Revenue',
+      live: qbConnected,
+      v: fmtUSD(debtRevCurr),
+      sub: (() => {
+        const d = fmtDelta(debtRevCurr, debtRevPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'debt-solutions-profit',
+      l: 'Debt Solutions Profit',
+      live: qbConnected,
+      v: fmtUSD(debtProfitCurr),
+      sub: (() => {
+        const d = fmtDelta(debtProfitCurr, debtProfitPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'finserv-revenue',
+      l: 'FinServ Revenue',
+      live: qbConnected,
+      v: fmtUSD(finservRevCurr),
+      sub: (() => {
+        const d = fmtDelta(finservRevCurr, finservRevPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'finserv-profit',
+      l: 'FinServ Profit',
+      live: qbConnected,
+      v: fmtUSD(finservProfitCurr),
+      sub: (() => {
+        const d = fmtDelta(finservProfitCurr, finservProfitPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
   ];
 
   const kpiById = useMemo(() => {
@@ -1355,6 +1437,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 'active-pipeline-value': null,
                 'ttm-revenue': priorTtmRevenue,
                 'ytd-revenue': priorYtdRevenue,
+                'debt-solutions-revenue': debtRevPrev,
+                'debt-solutions-profit': debtProfitPrev,
+                'finserv-revenue': finservRevPrev,
+                'finserv-profit': finservProfitPrev,
               };
               const currByReg: Record<string, number | null> = {
                 'total-revenue-curr': totalRevCurr,
@@ -1363,6 +1449,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 'active-pipeline-value': activePipelineValue,
                 'ttm-revenue': ttmRevenue,
                 'ytd-revenue': ytdRevenue,
+                'debt-solutions-revenue': debtRevCurr,
+                'debt-solutions-profit': debtProfitCurr,
+                'finserv-revenue': finservRevCurr,
+                'finserv-profit': finservProfitCurr,
               };
               const handleRowClick = (reg: string, k: KpiTile) => {
                 if (isEditMode || !k.live) return;
