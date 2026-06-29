@@ -524,7 +524,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </div>
           <StagedDraftsPanel />
         </div>
-      ) : totalCount === 0 ? (
+      ) : (items.length + accessRequests.length) === 0 ? (
         <EmptyState />
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
