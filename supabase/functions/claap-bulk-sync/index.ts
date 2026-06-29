@@ -76,11 +76,43 @@ Deno.serve(async (req) => {
     }
   }
 
+  // After syncing summaries, score any recordings that have never been
+  // scored. This is what populates deal/contact/company candidates and
+  // auto-links to deals (mirroring into deal_claap_recordings so the deal
+  // detail page surfaces the call). Without this, recordings only ever
+  // get a meeting auto-repair link and never reach a deal.
+  const { data: unscored } = await supabase
+    .from('claap_recordings')
+    .select('id')
+    .is('last_scored_at', null)
+    .order('started_at', { ascending: false })
+    .limit(40);
+  const scoreUrl = `${supabaseUrl}/functions/v1/claap-score-recording`;
+  const scoreResults: any[] = [];
+  for (const r of unscored ?? []) {
+    try {
+      const resp = await fetch(scoreUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${serviceKey}`,
+          'x-internal-call': '1',
+        },
+        body: JSON.stringify({ recording_id: r.id, run_type: 'post_call' }),
+      });
+      scoreResults.push({ id: r.id, ok: resp.ok, status: resp.status });
+    } catch (e) {
+      scoreResults.push({ id: r.id, ok: false, error: String((e as Error).message || e) });
+    }
+  }
+
   return new Response(JSON.stringify({
     ok: true,
     token_present: true,
     processed: results.length,
     succeeded: results.filter(r => r.ok).length,
     results,
+    scored: scoreResults.length,
+    score_results: scoreResults,
   }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
