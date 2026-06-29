@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface MetricManualInputDialogProps {
   open: boolean;
@@ -17,6 +18,8 @@ interface MetricManualInputDialogProps {
   monthKeys: string[];
   /** Human-readable label for each month key, parallel to monthKeys */
   monthLabels: string[];
+  /** Optional callback fired after a successful save so consumers can refresh derived calcs */
+  onSaved?: () => void;
 }
 
 /**
@@ -31,8 +34,10 @@ export function MetricManualInputDialog({
   unitLabel = 'Value',
   monthKeys,
   monthLabels,
+  onSaved,
 }: MetricManualInputDialogProps) {
   const { company } = useCompany();
+  const queryClient = useQueryClient();
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -102,6 +107,19 @@ export function MetricManualInputDialog({
         .upsert(payload, { onConflict: 'company_id,metric_key,month_key' });
       if (error) throw error;
       toast.success('Inputs saved');
+      // Refresh any widget consuming this metric so calculations update in real time.
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const k = q.queryKey?.[0];
+          if (typeof k !== 'string') return false;
+          return (
+            k === 'rev-per-hour-hours' ||
+            k === `metric-manual:${metricKey}` ||
+            k.startsWith('metric-manual:')
+          );
+        },
+      });
+      onSaved?.();
       onOpenChange(false);
     } catch (e: any) {
       toast.error('Save failed', { description: e?.message });
