@@ -2377,7 +2377,23 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     />
                   )}
                   {contentReady && activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {contentReady && activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
+                  {contentReady && activeTab === 'operational' && (
+                    canSeeOperationalFull ? (
+                      <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />
+                    ) : (
+                      <Suspense
+                        fallback={
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Skeleton className="h-6 w-40" />
+                          </div>
+                        }
+                      >
+                        <div className="h-full w-full overflow-hidden">
+                          <LazyTasksPage overlayMode />
+                        </div>
+                      </Suspense>
+                    )
+                  )}
                   {contentReady && activeTab === 'end_of_day' && (
                     <EndOfDayTab
                       enabled={open}
