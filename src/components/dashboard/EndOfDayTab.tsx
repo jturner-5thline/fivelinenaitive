@@ -372,7 +372,7 @@ export function EndOfDayTab({
     return firstNameOf(meta.full_name || meta.name, user?.email || undefined);
   }, [user]);
 
-  const { events: hookEvents, listEvents, status } = useGoogleCalendar();
+  const { events: hookEvents, listEvents, status, isStatusLoading } = useGoogleCalendar();
   // Hydrate instantly from a per-user localStorage cache so reopening the
   // End of Day tab paints the master list immediately. The real fetch still
   // runs in the background and refreshes the cache.
@@ -1065,8 +1065,11 @@ export function EndOfDayTab({
     setSearch('');
   }, []);
 
-  // Empty / disconnected states
-  if (!status?.connected) {
+  // Empty / disconnected states. While the calendar status is still resolving
+  // (or we already have cached events from a prior session), assume connected
+  // so reopening the Dashboard popup paints instantly instead of flashing the
+  // "Connect Google Calendar" prompt.
+  if (!status?.connected && !isStatusLoading && events.length === 0) {
     return (
       <div className="rounded-xl border border-white/10 bg-background/60 p-10 text-center">
         <CalendarIcon className="h-8 w-8 mx-auto text-muted-foreground/60 mb-3" />
