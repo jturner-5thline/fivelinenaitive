@@ -392,6 +392,7 @@ export function EndOfDayTab({
   const { deals } = useDealsContext();
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
+  const { company } = useCompany();
 
   const { clear: clearResolved, restore: restoreResolved, isCleared: isResolvedRaw } = useDbPersistentClears('eod-agenda');
   const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissedRaw } = useDbPersistentClears('eod-dismissed');
