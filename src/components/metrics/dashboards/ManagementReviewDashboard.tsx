@@ -593,7 +593,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // same qbInvoices / qbExpenses dataset as Total Revenue / Operating Profit
   // above, filtered by QBO realm_id.
   const sumByRealm = (
-    rows: typeof qbInvoices,
+    rows: any[],
     range: DateRange,
     realmId: string,
   ) =>
