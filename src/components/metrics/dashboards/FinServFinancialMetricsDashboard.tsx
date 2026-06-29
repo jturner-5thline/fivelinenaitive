@@ -116,6 +116,7 @@ function PerHourWidget({
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<'monthly' | 'avg'>('monthly');
+  const [showTrend, setShowTrend] = useState(false);
   const { company } = useCompany();
   const companyId = company?.id ?? null;
 
@@ -141,7 +142,7 @@ function PerHourWidget({
   });
 
   const chartData = useMemo(() => {
-    return monthKeys.map((k, i) => {
+    const rows = monthKeys.map((k, i) => {
       const numerator = Number(numeratorByMonth[k] ?? 0);
       const hours = Number(hoursByMonth[k] ?? 0);
       const rate = hours > 0 ? numerator / hours : null;
@@ -151,8 +152,17 @@ function PerHourWidget({
         numerator,
         hours,
         rate,
+        delta: null as number | null,
       };
     });
+    for (let i = 1; i < rows.length; i++) {
+      const prev = rows[i - 1].rate;
+      const cur = rows[i].rate;
+      if (prev != null && prev !== 0 && cur != null) {
+        rows[i].delta = ((cur - prev) / Math.abs(prev)) * 100;
+      }
+    }
+    return rows;
   }, [monthKeys, monthLabels, numeratorByMonth, hoursByMonth]);
 
   const totals = useMemo(() => {
@@ -189,6 +199,16 @@ function PerHourWidget({
                 Avg.
               </button>
             </div>
+            {view === 'monthly' && (
+              <button
+                type="button"
+                onClick={() => setShowTrend((v) => !v)}
+                className={`text-[11px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ${showTrend ? 'bg-primary/20 text-foreground' : 'bg-white/[0.04] text-muted-foreground hover:text-foreground'}`}
+                title="Toggle trend line"
+              >
+                Trend
+              </button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -236,7 +256,7 @@ function PerHourWidget({
             </div>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <ComposedChart data={chartData} margin={{ top: 18, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
@@ -254,8 +274,61 @@ function PerHourWidget({
                     dataKey="rate"
                     fill="hsl(var(--primary))"
                     radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
+                  >
+                    <LabelList
+                      dataKey="rate"
+                      content={(props: any) => {
+                        const { x, y, width, value, index } = props;
+                        if (value == null) return null;
+                        const d = chartData[index];
+                        const cx = Number(x) + Number(width) / 2;
+                        const top = Number(y) - 4;
+                        const delta = d?.delta;
+                        const deltaColor = delta == null ? '#94a3b8' : delta >= 0 ? '#22c55e' : '#ef4444';
+                        const deltaText =
+                          delta == null ? '' : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
+                        return (
+                          <g>
+                            <text
+                              x={cx}
+                              y={top}
+                              textAnchor="middle"
+                              fontSize={10}
+                              fontWeight={600}
+                              fill="hsl(var(--foreground))"
+                            >
+                              {fmtCurrency(Number(value))}
+                            </text>
+                            {deltaText && (
+                              <text
+                                x={cx}
+                                y={top - 11}
+                                textAnchor="middle"
+                                fontSize={9}
+                                fontWeight={600}
+                                fill={deltaColor}
+                              >
+                                {deltaText}
+                              </text>
+                            )}
+                          </g>
+                        );
+                      }}
+                    />
+                  </Bar>
+                  {showTrend && (
+                    <Line
+                      type="monotone"
+                      dataKey="rate"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={{ r: 3, fill: 'hsl(var(--primary))' }}
+                      isAnimationActive={false}
+                      connectNulls
+                    />
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
