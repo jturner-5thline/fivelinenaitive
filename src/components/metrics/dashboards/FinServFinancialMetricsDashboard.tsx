@@ -174,6 +174,16 @@ function PerHourWidget({
 
   const hasAnyHours = chartData.some((d) => d.hours > 0);
 
+  const periodChange = useMemo(() => {
+    const rated = chartData.filter((d) => d.rate != null);
+    if (rated.length < 2) return null;
+    const first = rated[0];
+    const last = rated[rated.length - 1];
+    const absDelta = (last.rate as number) - (first.rate as number);
+    const pctDelta = first.rate ? (absDelta / Math.abs(first.rate as number)) * 100 : null;
+    return { first, last, absDelta, pctDelta };
+  }, [chartData]);
+
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -254,6 +264,27 @@ function PerHourWidget({
                 {fmtCurrency(totals.numerator)} · {totals.hours.toLocaleString()} hrs
               </div>
             </div>
+            {showTrend && periodChange && (
+              <div className="flex items-center justify-between text-[11px] tabular-nums">
+                <span className="text-muted-foreground">
+                  {periodChange.first.month} → {periodChange.last.month}
+                </span>
+                <span
+                  className={
+                    periodChange.absDelta >= 0 ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'
+                  }
+                >
+                  {periodChange.absDelta >= 0 ? '+' : '−'}
+                  {fmtCurrencyPrecise(Math.abs(periodChange.absDelta))} / hr
+                  {periodChange.pctDelta != null && (
+                    <span className="ml-1">
+                      ({periodChange.pctDelta >= 0 ? '+' : ''}
+                      {periodChange.pctDelta.toFixed(1)}%)
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 18, right: 8, left: 0, bottom: 0 }}>
