@@ -566,7 +566,7 @@ export function EndOfDayTab({
       const invalidDateRows = normalizedEvents.filter(({ start }) => !start).length;
       const outsideWindowRows = normalizedEvents.length - windowed.length;
       const audienceFilteredRows = windowed.length - audienceEligible.length;
-      const clearedRows = audienceEligible.length - uncleared.length;
+      const clearedRows = audienceEligible.length - stateFiltered.length;
       // eslint-disable-next-line no-console
       console.log('[EndOfDay] query result', {
         rawEvents: normalizedEvents.length,
