@@ -20,8 +20,7 @@ import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
 } from '@/hooks/useQBStackedFinServRevenue';
-import { InsightsTimeRangeSelector, type InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
-import { loadPersistedRange, resolveRange, defaultGranularityForRange } from '@/lib/insightsTimeRange';
+import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/components/insights/ChartDrilldown';
 import { buildBuckets } from '@/lib/insightsTimeRange';
@@ -115,23 +114,26 @@ export function FinServFinancialMetricsDashboard() {
 }
 
 function FinServFinancialMetricsDashboardInner() {
-  // Per-board time range selector — overrides the global context for this board.
-  const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
-  const initialResolved = useMemo(() => {
-    const id = initialPersisted?.presetId ?? 'ytd';
-    return resolveRange(id, {
-      custom: initialPersisted?.custom,
-      includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
-    });
-  }, [initialPersisted]);
-  const [range, setRange] = useState<InsightsTimeRangeValue>(() => ({
-    presetId: initialPersisted?.presetId ?? 'ytd',
-    granularity:
-      initialPersisted?.granularity ?? defaultGranularityForRange(initialResolved.start, initialResolved.end),
-    custom: initialPersisted?.custom,
-    includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
-    resolved: initialResolved,
-  }));
+  // Driven by the global Insights header timeframe (single source of truth).
+  const { timeframe } = useInsightsTimeframe();
+  const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
+    const s = new Date(timeframe.start);
+    const e = new Date(timeframe.end);
+    const months = Math.max(
+      1,
+      (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1,
+    );
+    if (months > 36) return 'yearly';
+    if (months > 18) return 'quarterly';
+    return 'monthly';
+  }, [timeframe.start, timeframe.end]);
+  const range = useMemo(
+    () => ({
+      granularity,
+      resolved: { start: timeframe.start, end: timeframe.end, label: timeframe.label },
+    }),
+    [granularity, timeframe.start, timeframe.end, timeframe.label],
+  );
 
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
@@ -278,12 +280,6 @@ function FinServFinancialMetricsDashboardInner() {
     <>
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
-        <InsightsTimeRangeSelector
-          boardId="finserv-financial-metrics"
-          defaultPresetId="ytd"
-          defaultGranularity="monthly"
-          onChange={setRange}
-        />
         {(totalRev.isLoading || profits.isLoading) && (
           <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
         )}

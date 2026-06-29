@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Lock, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}MM`;
@@ -74,6 +75,14 @@ function ErrorCard({ title }: { title: string }) {
 
 export function SalesBDROIDashboard() {
   const { data: metrics, isLoading } = useMetricsData();
+  const { timeframe } = useInsightsTimeframe();
+  const periodLabels = useMemo(() => {
+    const end = new Date(timeframe.end);
+    const monthLabel = end.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+    const q = Math.floor(end.getMonth() / 3) + 1;
+    const quarterLabel = `Q${q}-${end.getFullYear()}`;
+    return { monthLabel, quarterLabel };
+  }, [timeframe.end]);
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
     columns: DrilldownColumn[];
@@ -134,12 +143,15 @@ export function SalesBDROIDashboard() {
         {/* Current Month & Quarter */}
         <Card className="glass-module">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Month</CardTitle>
+            <CardTitle className="text-sm font-medium">Reporting Period</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <div className="text-3xl font-bold text-primary border-2 border-primary rounded px-4 py-2 inline-block">Oct 2025</div>
-              <div className="text-2xl font-bold text-primary">Q3-2025</div>
+              <div className="text-3xl font-bold text-primary border-2 border-primary rounded px-4 py-2 inline-block">
+                {periodLabels.monthLabel}
+              </div>
+              <div className="text-2xl font-bold text-primary">{periodLabels.quarterLabel}</div>
+              <div className="text-xs text-muted-foreground">{timeframe.label}</div>
             </div>
           </CardContent>
         </Card>
