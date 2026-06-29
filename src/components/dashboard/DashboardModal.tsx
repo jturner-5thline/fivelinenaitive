@@ -366,20 +366,53 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
         const muted = hsl('--muted-foreground');
         const gx = { ticks: { color: muted, font: { size: 9 } }, grid: { display: false }, border: { display: false } };
         const gy = { ticks: { color: muted, font: { size: 9 }, callback: (v: any) => '$' + v + 'K' }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
+        const makeGradient = (top: string, bottom: string) => (ctx: any) => {
+          const chart = ctx.chart;
+          const { ctx: c, chartArea } = chart;
+          if (!chartArea) return top;
+          const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          g.addColorStop(0, top);
+          g.addColorStop(1, bottom);
+          return g;
+        };
         barChart.current = new Chart(barRef.current, {
           type: 'bar',
           data: {
             labels: metrics.months,
             datasets: [
-              { label: 'Revenue', data: metrics.monthlyRevenue, backgroundColor: hsl('--chart-1'), borderColor: hsl('--chart-1'), borderWidth: 1, borderRadius: 4 },
-              { label: 'Commissions', data: metrics.monthlyCommissions, backgroundColor: hsl('--destructive'), borderColor: hsl('--destructive'), borderWidth: 1, borderRadius: 4 },
-              { label: 'Profit', data: metrics.monthlyProfit, backgroundColor: hsl('--chart-2'), borderColor: hsl('--chart-2'), borderWidth: 1, borderRadius: 4 }
+              {
+                label: 'Revenue',
+                data: metrics.monthlyRevenue,
+                backgroundColor: makeGradient('rgba(120,185,235,0.95)', 'rgba(50,110,170,0.55)'),
+                borderColor: 'rgba(160,210,245,0.55)',
+                borderWidth: 1,
+                borderRadius: 2,
+                stack: 'rev',
+              },
+              {
+                label: 'Profit',
+                data: metrics.monthlyProfit,
+                backgroundColor: makeGradient('rgba(80,230,160,0.95)', 'rgba(30,150,100,0.55)'),
+                borderColor: 'rgba(130,240,190,0.55)',
+                borderWidth: 1,
+                borderRadius: 2,
+                stack: 'cp',
+              },
+              {
+                label: 'Commissions',
+                data: metrics.monthlyCommissions,
+                backgroundColor: makeGradient('rgba(245,110,125,0.95)', 'rgba(170,40,55,0.55)'),
+                borderColor: 'rgba(250,160,170,0.55)',
+                borderWidth: 1,
+                borderRadius: 2,
+                stack: 'cp',
+              },
             ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx: any) => ' $' + ctx.parsed.y + 'K' } } },
-            scales: { x: gx as any, y: gy as any }
+            scales: { x: { ...gx, stacked: true } as any, y: { ...gy, stacked: true } as any }
           }
         });
       }
