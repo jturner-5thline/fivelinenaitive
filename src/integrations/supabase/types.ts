@@ -18113,6 +18113,39 @@ export type Database = {
           },
         ]
       }
+      metric_manual_inputs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          metric_key: string
+          month_key: string
+          updated_at: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metric_key: string
+          month_key: string
+          updated_at?: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          metric_key?: string
+          month_key?: string
+          updated_at?: string
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
       microsoft_tokens: {
         Row: {
           access_token: string
