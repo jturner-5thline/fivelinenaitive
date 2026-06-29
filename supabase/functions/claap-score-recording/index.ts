@@ -182,13 +182,16 @@ export async function scoreAndPersist(admin: any, rec: any, run_type: RunType) {
     // detail page (which reads from that legacy table) surfaces the call.
     if (et === 'deal') {
       try {
+        const startedMs = rec.started_at ? new Date(rec.started_at).getTime() : null;
+        const endedMs = rec.ended_at ? new Date(rec.ended_at).getTime() : null;
+        const duration = startedMs && endedMs ? Math.max(0, Math.round((endedMs - startedMs) / 1000)) : null;
         await admin.from('deal_claap_recordings').upsert({
           deal_id: c.entity_id,
           recording_id: rec.external_id || rec.id,
           recording_title: rec.title || null,
           recording_url: rec.recording_url || null,
-          duration_seconds: rec.duration_seconds || null,
-          recorder_name: rec.organizer_name || null,
+          duration_seconds: duration,
+          recorder_name: null,
           recorder_email: rec.organizer_email || null,
           notes: `Auto-linked by Claap scoring engine (confidence ${(c.score * 100).toFixed(0)}%)`,
         }, { onConflict: 'deal_id,recording_id' });
