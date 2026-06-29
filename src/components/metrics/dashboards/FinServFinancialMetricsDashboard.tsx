@@ -363,6 +363,8 @@ function FinServFinancialMetricsDashboardInner() {
   // Always-monthly revenue series for per-hour widgets.
   const totalRevMonthly = useFinServTotalRevenue(selectedPeriod, 'monthly');
   const profits = useFinServQuarterlyProfits(selectedPeriod, range.granularity);
+  // Always-monthly operating-profit series for Profit per Hour widget.
+  const profitsMonthly = useFinServQuarterlyProfits(selectedPeriod, 'monthly');
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
   const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
@@ -387,6 +389,16 @@ function FinServFinancialMetricsDashboardInner() {
     }
     return out;
   }, [totalRevMonthly.months]);
+  // Operating-profit-by-month, aligned to monthlyBuckets via index (same buildBuckets inputs).
+  const monthlyProfitByKey = useMemo(() => {
+    const out: Record<string, number> = {};
+    const rows = profitsMonthly.quarters ?? [];
+    monthlyBuckets.forEach((b, i) => {
+      const row = rows[i];
+      if (row) out[b.key] = Number(row.operatingProfit ?? 0);
+    });
+    return out;
+  }, [monthlyBuckets, profitsMonthly.quarters]);
 
   // Resolve a clicked bucket label/monthKey to its actual start/end ymd.
   const { open: openDrill } = useDrilldown();
@@ -1045,13 +1057,22 @@ function FinServFinancialMetricsDashboardInner() {
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <RevenuePerHourWidget
+        <PerHourWidget
+          title="Revenue per Hour"
+          numeratorLabel="Revenue"
           monthKeys={monthlyKeys}
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}
-          revenueByMonth={monthlyRevenueByKey}
+          numeratorByMonth={monthlyRevenueByKey}
         />
-        <PlaceholderWidget title="Profit per Hour" />
+        <PerHourWidget
+          title="Profit per Hour"
+          numeratorLabel="Operating Profit"
+          monthKeys={monthlyKeys}
+          monthLabels={monthlyLabels}
+          badge={`Monthly · ${selectedPeriod.label}`}
+          numeratorByMonth={monthlyProfitByKey}
+        />
       </div>
     </div>
     <InsightsDrilldownDrawer
