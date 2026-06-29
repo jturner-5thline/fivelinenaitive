@@ -1267,6 +1267,46 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       v: fmtUSD(ytdRevenue),
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
+    {
+      id: 'debt-solutions-revenue',
+      l: 'Debt Solutions Revenue',
+      live: qbConnected,
+      v: fmtUSD(debtRevCurr),
+      sub: (() => {
+        const d = fmtDelta(debtRevCurr, debtRevPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'debt-solutions-profit',
+      l: 'Debt Solutions Profit',
+      live: qbConnected,
+      v: fmtUSD(debtProfitCurr),
+      sub: (() => {
+        const d = fmtDelta(debtProfitCurr, debtProfitPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'finserv-revenue',
+      l: 'FinServ Revenue',
+      live: qbConnected,
+      v: fmtUSD(finservRevCurr),
+      sub: (() => {
+        const d = fmtDelta(finservRevCurr, finservRevPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
+    {
+      id: 'finserv-profit',
+      l: 'FinServ Profit',
+      live: qbConnected,
+      v: fmtUSD(finservProfitCurr),
+      sub: (() => {
+        const d = fmtDelta(finservProfitCurr, finservProfitPrev, comparisonBasis);
+        return d ? <span style={{ color: d.positive ? '#3de89a' : '#ff6b7a' }}>{d.label}</span> : <span style={{ color: NA_COLOR }}>—</span>;
+      })(),
+    },
   ];
 
   const kpiById = useMemo(() => {
@@ -1397,6 +1437,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 'active-pipeline-value': null,
                 'ttm-revenue': priorTtmRevenue,
                 'ytd-revenue': priorYtdRevenue,
+                'debt-solutions-revenue': debtRevPrev,
+                'debt-solutions-profit': debtProfitPrev,
+                'finserv-revenue': finservRevPrev,
+                'finserv-profit': finservProfitPrev,
               };
               const currByReg: Record<string, number | null> = {
                 'total-revenue-curr': totalRevCurr,
@@ -1405,6 +1449,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 'active-pipeline-value': activePipelineValue,
                 'ttm-revenue': ttmRevenue,
                 'ytd-revenue': ytdRevenue,
+                'debt-solutions-revenue': debtRevCurr,
+                'debt-solutions-profit': debtProfitCurr,
+                'finserv-revenue': finservRevCurr,
+                'finserv-profit': finservProfitCurr,
               };
               const handleRowClick = (reg: string, k: KpiTile) => {
                 if (isEditMode || !k.live) return;
