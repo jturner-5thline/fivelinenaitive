@@ -650,11 +650,11 @@ function MeetingCard({
 
 // ── Main component ────────────────────────────────────────────
 export function AgendaIntel() {
-  const { listEvents, status } = useGoogleCalendar();
+  const { listEvents, status, isStatusLoading, events: cachedEvents } = useGoogleCalendar();
   const navigate = useNavigate();
   const [range, setRange] = useState<RangeKey>('today');
   const [audience, setAudience] = useState<AudienceKey>('all');
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(cachedEvents || []);
   const [loading, setLoading] = useState(false);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [dealLinkOverrides, setDealLinkOverrides] = useState<Record<string, string>>({});
@@ -1155,7 +1155,11 @@ export function AgendaIntel() {
   // Early return AFTER all hooks above so React sees the same hook
   // count/order on every render (fixes "Rendered more hooks than during
   // the previous render" when Google Calendar connection state flips).
-  if (!status?.connected) {
+  // While the connection status is still being checked, OR we have cached
+  // events from a previous session, never show the "Connect" prompt — the
+  // user has connected before, render the agenda (cache) and silently
+  // revalidate in the background.
+  if (!status?.connected && !isStatusLoading && events.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
         <CalendarIcon className="h-8 w-8 mb-2 opacity-40" />
