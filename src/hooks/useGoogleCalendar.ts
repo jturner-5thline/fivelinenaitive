@@ -61,10 +61,31 @@ interface CalendarStatus {
  * pulling React Query into the call sites, and avoids ever showing fake /
  * stale "demo" data while real data loads.
  */
-const calendarCache: Record<
-  string,
-  { events: CalendarEvent[]; calendars: Calendar[]; status?: CalendarStatus }
-> = {};
+type CalendarCacheEntry = { events: CalendarEvent[]; calendars: Calendar[]; status?: CalendarStatus };
+const calendarCache: Record<string, CalendarCacheEntry> = {};
+
+// Persist the calendar snapshot to localStorage so reopening the app (or
+// the Dashboard popup after a hard refresh) renders instantly without a
+// "loading" or "connect" flash. Background revalidation still runs.
+const LS_KEY = (uid: string) => `gcal_cache_v1_${uid}`;
+function loadPersistedCache(uid: string): CalendarCacheEntry | undefined {
+  if (uid === 'anon' || typeof window === 'undefined') return undefined;
+  try {
+    const raw = window.localStorage.getItem(LS_KEY(uid));
+    if (!raw) return undefined;
+    return JSON.parse(raw) as CalendarCacheEntry;
+  } catch { return undefined; }
+}
+function persistCache(uid: string, entry: CalendarCacheEntry) {
+  if (uid === 'anon' || typeof window === 'undefined') return;
+  try { window.localStorage.setItem(LS_KEY(uid), JSON.stringify(entry)); } catch { /* quota */ }
+}
+function writeCache(uid: string, patch: Partial<CalendarCacheEntry>) {
+  const prev = calendarCache[uid] || { events: [], calendars: [] };
+  const next = { ...prev, ...patch };
+  calendarCache[uid] = next;
+  persistCache(uid, next);
+}
 
 export function useGoogleCalendar() {
   const { user } = useAuth();
@@ -79,6 +100,10 @@ export function useGoogleCalendar() {
     user?.email ||
     'Demo User';
   const cacheKey = user?.id || 'anon';
+  if (!calendarCache[cacheKey]) {
+    const persisted = loadPersistedCache(cacheKey);
+    if (persisted) calendarCache[cacheKey] = persisted;
+  }
   const cached = calendarCache[cacheKey];
   const [status, setStatus] = useState<CalendarStatus>(cached?.status || { connected: false });
   // If we have cached data we are NOT in the initial loading state — render
@@ -99,10 +124,8 @@ export function useGoogleCalendar() {
         email: 'demo@5thline.co',
       };
       setStatus(demoStatus);
-      calendarCache[cacheKey] = {
-        ...(calendarCache[cacheKey] || { events: [], calendars: [] }),
-        status: demoStatus,
-      };
+      writeCache(cacheKey, { status: demoStatus,
+       });
       setIsStatusLoading(false);
       return;
     }
@@ -115,7 +138,7 @@ export function useGoogleCalendar() {
       const { data, error } = await supabase.functions.invoke('calendar-status');
       if (error) throw error;
       setStatus(data);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), status: data };
+      writeCache(cacheKey, { status: data  });
       setError(null);
     } catch (err: any) {
       const msg = err?.message || '';
@@ -189,7 +212,7 @@ export function useGoogleCalendar() {
     if (isDemo) {
       const cals = [DEMO_PRIMARY_CALENDAR];
       setCalendars(cals);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: cals };
+      writeCache(cacheKey, { calendars: cals });
       return cals;
     }
     setIsLoading(true);
@@ -199,7 +222,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setCalendars(data.calendars || []);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: data.calendars || [] };
+      writeCache(cacheKey, { calendars: data.calendars || [] });
       setError(null);
       return data.calendars;
     } catch (err: any) {
@@ -222,7 +245,7 @@ export function useGoogleCalendar() {
     if (isDemo) {
       const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setEvents(evts);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: evts };
+      writeCache(cacheKey, { events: evts });
       return { events: evts };
     }
     setIsLoading(true);
@@ -239,7 +262,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setEvents(data.events || []);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: data.events || [] };
+      writeCache(cacheKey, { events: data.events || [] });
       setError(null);
       return data;
     } catch (err: any) {
@@ -277,7 +300,7 @@ export function useGoogleCalendar() {
       const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setCalendars(cals);
       setEvents(evts);
-      calendarCache[cacheKey] = { events: evts, calendars: cals, status: { connected: true } };
+      writeCache(cacheKey, { events: evts, calendars: cals, status: { connected: true } });
       return { calendars: cals, events: evts };
     }
     setIsLoading(true);
