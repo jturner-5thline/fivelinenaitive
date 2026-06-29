@@ -37,6 +37,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
+import { normalizeEmailDomain, normalizeWebsiteDomain, isFreemailDomain } from '@/lib/domainMatch';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
@@ -80,7 +81,7 @@ const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 
-type FilterChip = 'has_deal' | 'no_follow_up' | 'carry_14d';
+type FilterChip = 'internal' | 'deals';
 
 interface ContactInfo {
   fullName: string | null;
@@ -391,6 +392,7 @@ export function EndOfDayTab({
   const { deals } = useDealsContext();
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
+  const { company } = useCompany();
 
   const { clear: clearResolved, restore: restoreResolved, isCleared: isResolvedRaw } = useDbPersistentClears('eod-agenda');
   const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissedRaw } = useDbPersistentClears('eod-dismissed');
@@ -608,18 +610,102 @@ export function EndOfDayTab({
   });
 
   // Apply search / filter chips
+  // Pre-compute deal matching context. A meeting counts as "Deals" when:
+  //   1. It has a canonical link in `meeting_deal_links`, OR
+  //   2. A Claap recording attached to the event is linked to a deal in
+  //      `deal_claap_recordings` (the recording transcript/summary references
+  //      the deal — Claap routing writes this link when the transcript
+  //      mentions the deal name), OR
+  //   3. The event title contains the deal name/company, OR
+  //   4. Any non-internal attendee's email domain matches the deal's
+  //      company URL domain or the deal's client-contact email domain.
+  const visibleEventIds = useMemo(() => outstanding.map(e => e.id), [outstanding]);
+  const { data: dealLinkedEventIds } = useQuery<Set<string>>({
+    queryKey: ['eod-deal-linked-events', company?.id, visibleEventIds.join(',')],
+    enabled: !!company?.id && visibleEventIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const hits = new Set<string>();
+      // (1) meeting_deal_links
+      try {
+        const { data } = await (supabase.from('meeting_deal_links') as any)
+          .select('meeting_external_id')
+          .eq('org_company_id', company!.id)
+          .in('meeting_external_id', visibleEventIds)
+          .is('deleted_at', null);
+        for (const row of (data || []) as Array<{ meeting_external_id: string }>) {
+          if (row.meeting_external_id) hits.add(row.meeting_external_id);
+        }
+      } catch { /* noop */ }
+      // (2) event_claap_recordings → deal_claap_recordings
+      try {
+        const { data: ecr } = await (supabase.from('event_claap_recordings') as any)
+          .select('event_id, recording_id')
+          .eq('org_company_id', company!.id)
+          .in('event_id', visibleEventIds);
+        const recIds = Array.from(new Set(((ecr || []) as Array<{ recording_id: string }>)
+          .map(r => r.recording_id).filter(Boolean)));
+        if (recIds.length) {
+          const { data: dcr } = await supabase
+            .from('deal_claap_recordings')
+            .select('recording_id')
+            .in('recording_id', recIds);
+          const dealRecIds = new Set(((dcr || []) as Array<{ recording_id: string }>)
+            .map(r => r.recording_id));
+          for (const row of (ecr || []) as Array<{ event_id: string; recording_id: string }>) {
+            if (dealRecIds.has(row.recording_id)) hits.add(row.event_id);
+          }
+        }
+      } catch { /* noop */ }
+      return hits;
+    },
+  });
+
+  const dealMatchers = useMemo(() => {
+    const domains = new Map<string, true>();
+    const names: { needle: string }[] = [];
+    for (const d of deals || []) {
+      const webDom = normalizeWebsiteDomain(d.companyUrl);
+      if (webDom && !isFreemailDomain(webDom)) domains.set(webDom, true);
+      const contactDom = normalizeEmailDomain(d.contactInfo) ?? normalizeEmailDomain(d.contactEmail);
+      if (contactDom && !isFreemailDomain(contactDom)) domains.set(contactDom, true);
+      const company = (d.company || '').trim().toLowerCase();
+      const name = (d.name || '').trim().toLowerCase();
+      if (company.length >= 3) names.push({ needle: company });
+      if (name && name !== company && name.length >= 3) names.push({ needle: name });
+    }
+    return { domains, names };
+  }, [deals]);
+
+  const eventMatchesDeal = useCallback((ev: TileEvent): boolean => {
+    if (dealLinkedEventIds?.has(ev.id)) return true;
+    const title = (ev.summary || '').toLowerCase();
+    if (title) {
+      for (const { needle } of dealMatchers.names) {
+        if (title.includes(needle)) return true;
+      }
+    }
+    for (const a of (ev.attendees || [])) {
+      if (a.self) continue;
+      const dom = normalizeEmailDomain(a.email);
+      if (!dom || isFreemailDomain(dom)) continue;
+      if (dealMatchers.domains.has(dom)) return true;
+    }
+    return false;
+  }, [dealLinkedEventIds, dealMatchers]);
+
+  const eventIsInternal = useCallback((ev: TileEvent): boolean => {
+    const ax = ev.attendees || [];
+    const others = ax.filter(a => !a.self && (a.email || '').trim());
+    if (others.length === 0) return false;
+    return others.every(a => isInternalAttendee(a.email));
+  }, []);
+
   const filtered = useMemo<TileEvent[]>(() => {
     const q = search.trim().toLowerCase();
     return outstanding.filter(ev => {
-      // chip: carry > 14d
-      if (filterChips.has('carry_14d') && ev._ageDays <= 14) return false;
-      // chip: has linked deal — we approximate via local activity log
-      const log = activity.get(ev.id);
-      const hasDealLink = log.some(l => l.kind === 'linked_deal');
-      if (filterChips.has('has_deal') && !hasDealLink) return false;
-      // chip: no follow-up sent (no email_sent + no task_created in log)
-      const hasFollowUp = log.some(l => l.kind === 'email_sent' || l.kind === 'task_created');
-      if (filterChips.has('no_follow_up') && hasFollowUp) return false;
+      if (filterChips.has('internal') && !eventIsInternal(ev)) return false;
+      if (filterChips.has('deals') && !eventMatchesDeal(ev)) return false;
 
       if (!q) return true;
       if ((ev.summary || '').toLowerCase().includes(q)) return true;
@@ -633,7 +719,7 @@ export function EndOfDayTab({
       }
       return false;
     });
-  }, [outstanding, search, filterChips, contactsByEmail, activity]);
+  }, [outstanding, search, filterChips, contactsByEmail, eventIsInternal, eventMatchesDeal]);
 
   // Group into buckets
   type Bucket = { key: string; label: string; items: TileEvent[] };
@@ -684,7 +770,6 @@ export function EndOfDayTab({
   // when the user switches the linked deal in-place. This is the SINGLE
   // source of truth for prefilling the New Task deal field — no fuzzy
   // matching on title/transcript and no "first active deal" fallback.
-  const { company } = useCompany();
   const { data: selectedLinkedDealId } = useQuery<string | null>({
     queryKey: ['meeting-deal-link', selectedId, company?.id],
     enabled: !!company?.id && !!selectedId,
@@ -882,10 +967,8 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {(['has_deal', 'no_follow_up', 'carry_14d'] as FilterChip[]).map(chip => {
-            const label = chip === 'has_deal' ? 'Has linked deal'
-              : chip === 'no_follow_up' ? 'No follow-up sent'
-              : 'Carry-forward > 14d';
+          {(['internal', 'deals'] as FilterChip[]).map(chip => {
+            const label = chip === 'internal' ? 'Internal' : 'Deals';
             const on = filterChips.has(chip);
             return (
               <button
