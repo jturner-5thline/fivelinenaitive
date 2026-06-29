@@ -80,7 +80,7 @@ const COLLAPSED_GROUPS_KEY = 'eod:collapsed-groups';
 const UNDO_WINDOW_MS = 5000;
 const EVENTS_CACHE_KEY_PREFIX = 'eod:events-cache';
 
-type FilterChip = 'has_deal' | 'no_follow_up' | 'carry_14d';
+type FilterChip = 'internal' | 'deals';
 
 interface ContactInfo {
   fullName: string | null;
