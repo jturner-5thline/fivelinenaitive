@@ -383,17 +383,18 @@ const KEY_STATS_DEBT_REALM_ID = '193514877331929';
 const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
-  // Top row: Key Stats sits above A/R Aging and Bank Account Balances,
-  // matching the width of the Debt Pipeline widget below it.
+  // Frozen default layout — matches the currently-shipped visible arrangement.
+  // compactType is disabled at the grid level so these coordinates are
+  // authoritative and widgets will not reflow on refresh.
   { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 3, minW: 4, minH: 3 },
   { i: 'ar-aging', x: 6, y: 0, w: 6, h: 3, minW: 3, minH: 3 },
-  { i: 'monthly-revenue', x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'active-deals-list', x: 0, y: 11, w: 12, h: 5, minW: 6, minH: 3 },
-  { i: 'liabilities', x: 0, y: 16, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'dscr', x: 4, y: 16, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'cashflow-12w', x: 0, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'debt-rating', x: 6, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'asana-goals', x: 0, y: 23, w: 12, h: 6, minW: 6, minH: 4 },
+  { i: 'monthly-revenue', x: 0, y: 3, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'active-deals-list', x: 0, y: 7, w: 12, h: 5, minW: 6, minH: 3 },
+  { i: 'liabilities', x: 0, y: 12, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'dscr', x: 4, y: 12, w: 4, h: 3, minW: 3, minH: 2 },
+  { i: 'cashflow-12w', x: 0, y: 15, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'debt-rating', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'asana-goals', x: 0, y: 19, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -425,7 +426,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v5', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v6', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
@@ -1443,6 +1444,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
         draggableCancel=".react-resizable-handle"
+        compactType={null}
+        preventCollision
       >
         <div key="kpi-summary" className="h-full">
           <GridShell isEditMode={isEditMode} title="Key Stats">
