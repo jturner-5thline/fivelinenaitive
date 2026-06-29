@@ -53,41 +53,58 @@ export function useClaapRecordings() {
     setError(null);
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
+      // Read from the local `claap_recordings` mirror (populated by the
+      // claap sync edge function). This is ~10–100x faster than hitting
+      // the Claap API on every picker open. Single recording details and
+      // transcripts still go through the edge function on demand.
+      let query = supabase
+        .from('claap_recordings')
+        .select('external_id, title, started_at, organizer_email, participants, source_payload, transcript_url, recording_url')
+        .order('started_at', { ascending: false, nullsFirst: false })
+        .limit(200);
+
+      if (search && search.trim().length > 0) {
+        const q = search.trim().replace(/[%,]/g, ' ');
+        query = query.ilike('title', `%${q}%`);
       }
 
-      const params = new URLSearchParams({ action: 'list', limit: '50' });
-      if (search) params.set('search', search);
+      const { data, error: qErr } = await query;
+      if (qErr) throw qErr;
 
-      // Use fetch directly for query params
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
-      const fetchResponse = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
+      const mapped: ClaapRecording[] = (data || []).map((row: any) => {
+        const payload = (row.source_payload && typeof row.source_payload === 'object') ? row.source_payload : {};
+        const participants: ClaapParticipant[] = Array.isArray(row.participants)
+          ? row.participants.map((p: any) => ({
+              attended: !!p?.attended,
+              email: String(p?.email || ''),
+              id: String(p?.id || p?.email || ''),
+              name: String(p?.name || p?.displayName || ''),
+            }))
+          : [];
+        return {
+          id: row.external_id,
+          title: row.title || '',
+          createdAt: row.started_at || '',
+          durationSeconds: typeof payload.durationSeconds === 'number' ? payload.durationSeconds : 0,
+          labels: Array.isArray(payload.labels) ? payload.labels : [],
+          recorder: {
+            attended: false,
+            email: row.organizer_email || '',
+            id: row.organizer_email || '',
+            name: payload?.recorder?.name || row.organizer_email || '',
+          },
+          state: payload.state || 'ready',
+          thumbnailUrl: payload.thumbnailUrl || '',
+          transcripts: Array.isArray(payload.transcripts) ? payload.transcripts : [],
+          url: payload.url || row.recording_url || '',
+          meeting: {
+            participants,
+            startingAt: row.started_at || undefined,
+          },
+        } as ClaapRecording;
       });
 
-      if (!fetchResponse.ok) {
-        // Treat upstream rate-limits / transient failures as empty results
-        // instead of crashing the UI. Edge function returns 200 with cached
-        // data when possible; this is a belt-and-suspenders fallback.
-        if (fetchResponse.status === 429 || fetchResponse.status >= 500) {
-          console.warn('[Claap] upstream', fetchResponse.status, '— returning empty list');
-          setRecordings([]);
-          return;
-        }
-        const errorData = await fetchResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to fetch recordings');
-      }
-
-      const data = await fetchResponse.json();
-      if (data?.rateLimited) {
-        console.warn('[Claap] edge fallback', data.upstreamStatus, data.warning || 'showing cached recordings');
-      }
-      setRecordings(data.recordings || []);
+      setRecordings(mapped);
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
       setError(err.message);
