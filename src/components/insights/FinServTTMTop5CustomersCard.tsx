@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 import {
   Dialog,
   DialogContent,
@@ -57,16 +58,7 @@ function fmtCompact(n: number): string {
 export function FinServTTMTop5CustomersCard() {
   const { user } = useAuth();
   const [drill, setDrill] = useState<{ id: string; name: string } | null>(null);
-
-  const { rangeStart, rangeEnd } = useMemo(() => {
-    const now = new Date();
-    const start = new Date(now);
-    start.setMonth(start.getMonth() - 12);
-    return {
-      rangeStart: isoDate(start),
-      rangeEnd: isoDate(now),
-    };
-  }, []);
+  const { rangeStart, rangeEnd, periodLabel } = useTimeframeRange();
 
   const { data, isLoading } = useQuery({
     queryKey: ["finserv-ttm-top5-customers", user?.id, rangeStart, rangeEnd],
@@ -131,7 +123,7 @@ export function FinServTTMTop5CustomersCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          FinServ · TTM Top 5 Customers
+          FinServ · Top 5 Customers
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -151,7 +143,7 @@ export function FinServTTMTop5CustomersCard() {
               className="text-[10px] tracking-wide uppercase"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              Top 5 · Trailing 12 Months
+              Top 5 · {periodLabel}
             </div>
             {isLoading ? (
               <div className="h-9 w-40 rounded bg-white/5 animate-pulse mt-1" />
@@ -168,7 +160,7 @@ export function FinServTTMTop5CustomersCard() {
             className="text-[10px] tracking-wide"
             style={{ color: "rgba(255,255,255,0.55)" }}
           >
-            {rangeStart} → {rangeEnd}
+            {periodLabel}
           </div>
         </div>
 
@@ -292,7 +284,7 @@ function CustomerInvoiceDrilldown({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{customer?.name ?? "Customer"} · invoice detail (TTM)</DialogTitle>
+          <DialogTitle>{customer?.name ?? "Customer"} · invoice detail</DialogTitle>
         </DialogHeader>
         <div className="text-xs text-muted-foreground">
           {rangeStart} → {rangeEnd} · Total: {fmtUSD(total)}
