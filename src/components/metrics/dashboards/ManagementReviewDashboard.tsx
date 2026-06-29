@@ -366,7 +366,12 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
-  { id: 'kpi-row-firm-liquidity', registryId: 'firm-liquidity' },
+  { id: 'kpi-row-liq-operating', registryId: 'liq-operating' },
+  { id: 'kpi-row-liq-mt', registryId: 'liq-mt' },
+  { id: 'kpi-row-liq-tax', registryId: 'liq-tax-reserves' },
+  { id: 'kpi-row-liq-5lt', registryId: 'liq-5lt' },
+  { id: 'kpi-row-liq-5lca', registryId: 'liq-5lca' },
+  { id: 'kpi-row-liq-5lfs', registryId: 'liq-5lfs' },
   { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
   { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
   { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
@@ -1266,13 +1271,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       v: fmtUSD(ytdRevenue),
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
-    {
-      id: 'firm-liquidity',
-      l: 'Firm Liquidity',
+    ...([
+      { id: 'liq-operating', l: 'Operating Acc.' },
+      { id: 'liq-mt', l: 'M&T Acc.' },
+      { id: 'liq-tax-reserves', l: 'Tax Reserves' },
+      { id: 'liq-5lt', l: '5LT' },
+      { id: 'liq-5lca', l: '5LCA' },
+      { id: 'liq-5lfs', l: '5LFS' },
+    ].map(({ id, l }) => ({
+      id,
+      l,
       live: false,
       v: '—',
       sub: <span style={{ color: NA_COLOR }}>—</span>,
-    },
+    }))),
     {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
@@ -1559,7 +1571,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                         const k = kpiById.get(registryId);
                         if (!k) return null;
                         const sectionHeader =
-                          registryId === 'debt-solutions-revenue'
+                          registryId === 'liq-operating'
+                            ? 'Liquidity'
+                            : registryId === 'debt-solutions-revenue'
                             ? 'Debt Advisory'
                             : registryId === 'finserv-revenue'
                             ? 'FinServ'
