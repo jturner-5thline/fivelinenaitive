@@ -1257,14 +1257,15 @@ function MetricDrilldownDialog({
       return d >= start && d <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        eventsInPeriod = eventsInPeriod.filter((ev) => {
-          if (!ev.start) return false;
-          const d = new Date(ev.start);
-          return d.getUTCFullYear() === SEED_YEAR && d.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      eventsInPeriod = eventsInPeriod.filter((ev) => {
+        if (!ev.start) return false;
+        const d = new Date(ev.start);
+        return d.getUTCFullYear() === fy && d.getUTCMonth() === fm;
+      });
     }
     eventsInPeriod = eventsInPeriod.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
   }
@@ -1280,13 +1281,14 @@ function MetricDrilldownDialog({
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        dealsInPeriod = dealsInPeriod.filter((d) => {
-          const c = new Date(d.created_at);
-          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      dealsInPeriod = dealsInPeriod.filter((d) => {
+        const c = new Date(d.created_at);
+        return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
+      });
     }
     dealsInPeriod = dealsInPeriod.sort((a, b) =>
       (a.created_at ?? '').localeCompare(b.created_at ?? ''),
@@ -1304,13 +1306,14 @@ function MetricDrilldownDialog({
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        proposalsInPeriod = proposalsInPeriod.filter((d) => {
-          const c = new Date(d.entered_at);
-          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      proposalsInPeriod = proposalsInPeriod.filter((d) => {
+        const c = new Date(d.entered_at);
+        return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
+      });
     }
     proposalsInPeriod = proposalsInPeriod.sort((a, b) =>
       (a.entered_at ?? '').localeCompare(b.entered_at ?? ''),
