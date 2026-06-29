@@ -1101,17 +1101,87 @@ export default function Dashboard() {
                 )}
                 style={{
                    animation: 'fadeInUp 0.4s ease-out 0.3s forwards',
-                   paddingRight: showInlineDetail
-                     ? 'calc(clamp(640px, 70%, 1280px) + 1.25rem)'
-                     : undefined,
                  }}
               >
+              {showInlineDetail && selectedDeal ? (
+                /*
+                 * Unified workspace container: list + detail share one
+                 * bordered surface so their top edges are inherently
+                 * aligned beneath the page toolbar. The list column
+                 * scrolls independently; the detail column hosts its
+                 * own header / content / workbook-tab strip.
+                 */
+                <div
+                  className="hidden lg:flex rounded-2xl border border-white/[0.08] overflow-hidden bg-gradient-to-b from-white/[0.03] to-transparent h-[calc(100vh-9rem)]"
+                >
+                  <div
+                    ref={leftListColumnRef}
+                    className="w-[288px] shrink-0 h-full overflow-y-auto overscroll-contain border-r border-white/[0.08]"
+                  >
+                    {filters.flaggedOnly && (() => {
+                      const flagged = pipelineFilteredDeals.filter(d => d.isFlagged);
+                      const total = flagged.length;
+                      if (total === 0) return null;
+                      const archived = flagged.filter(
+                        d => d.status === 'archived' || d.stage === 'closed-lost'
+                      ).length;
+                      const active = total - archived;
+                      return (
+                        <div className="m-3 rounded-md border border-red-500/30 bg-gradient-to-r from-red-500/10 to-red-900/5 px-3 py-2 text-xs text-red-300 flex items-center gap-2">
+                          <Flag className="h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            Showing <strong className="font-semibold text-red-200">{total}</strong> flagged deal{total === 1 ? '' : 's'}.{' '}
+                            <strong className="font-semibold text-red-200">{active}</strong> active,{' '}
+                            <strong className="font-semibold text-red-200">{archived}</strong> archived.
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    {isLoading ? (
+                      <DealsListSkeleton groupBy={groupBy} />
+                    ) : (
+                      <DealsList
+                        deals={deals}
+                        onStatusChange={updateDealStatus}
+                        onStageChange={handleStageChange}
+                        onMarkReviewed={handleMarkReviewed}
+                        onToggleFlag={handleToggleFlag}
+                        groupBy={groupBy}
+                        sortField={sortField}
+                        sortDirection={sortDirection}
+                        viewMode={viewMode}
+                        expandAllSignal={expandAllSignal}
+                        collapseAllSignal={collapseAllSignal}
+                        collapsedGroups={collapsedGroups}
+                        onCollapsedGroupsChange={setCollapsedGroups}
+                        onToggleSort={toggleSort}
+                        filters={filters}
+                        onFiltersChange={updateFilters}
+                        detailPanelOpen={showInlineDetail}
+                      />
+                    )}
+                  </div>
+                  <aside
+                    ref={detailAsideRef}
+                    className="flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-[linear-gradient(180deg,#13131c,#0e0e15)]"
+                    aria-label="Selected deal summary"
+                  >
+                    <DealRundownMemoView
+                      deal={selectedDeal as Deal}
+                      onOpenDeal={(id) => setForceOverlayDealId(id)}
+                      onClose={closeDetail}
+                    />
+                  </aside>
+                  <style>{`
+                    tr[data-deal-open-id="${selectedId}"] > td {
+                      box-shadow: inset 0 0 0 1px rgba(155,111,212,.55), 0 8px 24px -12px rgba(155,111,212,.45) !important;
+                    }
+                  `}</style>
+                </div>
+              ) : null}
               <div
-                ref={showInlineDetail ? leftListColumnRef : undefined}
                 className={cn(
-                  showInlineDetail
-                    ? 'h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain pr-2 -mr-2'
-                    : 'contents',
+                  showInlineDetail ? 'lg:hidden' : 'contents',
                 )}
               >
               {/*
@@ -1179,32 +1249,6 @@ export default function Dashboard() {
                 />
               )}
               </div>
-              {showInlineDetail && selectedDeal && (
-                <style>{`
-                  tr[data-deal-open-id="${selectedId}"] > td {
-                    box-shadow: inset 0 0 0 1px rgba(155,111,212,.55), 0 8px 24px -12px rgba(155,111,212,.45) !important;
-                  }
-                `}</style>
-              )}
-              {showInlineDetail && selectedDeal && (
-                <aside
-                  ref={detailAsideRef}
-                  style={{
-                    background: 'linear-gradient(180deg, #13131c, #0e0e15)',
-                    willChange: 'transform, opacity',
-                  }}
-                  className="hidden lg:flex flex-col fixed right-4 sm:right-6 top-24 w-[clamp(640px,70%,1280px)] max-w-[calc(100vw-2rem)] h-[calc(100vh-7rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] z-20"
-                  aria-label="Selected deal summary"
-                >
-                  <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
-                    <DealRundownMemoView
-                      deal={selectedDeal as any}
-                      onOpenDeal={(id) => setForceOverlayDealId(id)}
-                      onClose={closeDetail}
-                    />
-                  </div>
-                </aside>
-              )}
               </div>
               {showOverlayDetail && (
                 <NaitiveDealOverlay
