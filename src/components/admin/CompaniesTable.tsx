@@ -58,7 +58,8 @@ export const CompaniesTable = () => {
       const { error } = await supabase.rpc('admin_delete_company', { _company_id: deleteTarget.id });
       if (error) throw error;
       toast.success(`"${deleteTarget.name}" deleted`);
-      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-all-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-system-stats'] });
       setDeleteTarget(null);
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete company');
