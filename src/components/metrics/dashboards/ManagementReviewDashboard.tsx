@@ -1267,6 +1267,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
     {
+      id: 'firm-liquidity',
+      l: 'Firm Liquidity',
+      live: false,
+      v: '—',
+      sub: <span style={{ color: NA_COLOR }}>—</span>,
+    },
+    {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
       live: qbConnected,
