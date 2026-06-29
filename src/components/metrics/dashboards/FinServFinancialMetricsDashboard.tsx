@@ -509,7 +509,8 @@ function FinServFinancialMetricsDashboardInner() {
         </Card>
       </div>
 
-      {/* ── Row 4: FinServ Cashflow ── */}
+      {/* ── Row 4 + 5: FinServ Cashflow + Active Clients ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">FinServ Cashflow</CardTitle>
@@ -517,7 +518,7 @@ function FinServFinancialMetricsDashboardInner() {
         </CardHeader>
         <CardContent>
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
-            <div className="h-[220px]">
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={cashflow.points}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -551,7 +552,6 @@ function FinServFinancialMetricsDashboardInner() {
         </CardContent>
       </Card>
 
-      {/* ── Row 5: Active Clients trend ── */}
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
@@ -590,9 +590,10 @@ function FinServFinancialMetricsDashboardInner() {
           )}
         </CardContent>
       </Card>
+      </div>
 
-      {/* ── Row 6: Revenue Change by Client ── */}
-      {/* ── Row 5b: Average Revenue by Client ── */}
+      {/* ── Row 5b + 6: Average Revenue by Client + Revenue Change by Client ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
@@ -630,7 +631,7 @@ function FinServFinancialMetricsDashboardInner() {
           {totalRev.isLoading || activeClients.isLoading ? <WidgetLoading /> :
             totalRev.error || activeClients.error ? <WidgetError /> :
             !avgRevenueByClient.hasAny ? <WidgetEmpty /> : (
-            <div className="h-[260px]">
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={avgRevenueByClient.points} margin={{ top: 28, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -747,7 +748,7 @@ function FinServFinancialMetricsDashboardInner() {
         </CardHeader>
         <CardContent>
           {revenueByClient.isLoading ? <WidgetLoading /> : revenueByClient.error ? <WidgetError /> : revenueByClient.clients.length === 0 ? <WidgetEmpty /> : (
-            <div className="h-[280px]">
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueByClient.clients.slice(0, 15)} layout="horizontal">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -803,8 +804,10 @@ function FinServFinancialMetricsDashboardInner() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* ── Row 7: Income by Product/Service (stacked) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Income by Product/Service</CardTitle>
@@ -812,7 +815,7 @@ function FinServFinancialMetricsDashboardInner() {
         </CardHeader>
         <CardContent>
           {stacked.isLoading ? <WidgetLoading /> : stacked.months.every(m => m.totalRevenue === 0) ? <WidgetEmpty /> : (
-            <div className="h-[240px]">
+            <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stacked.months}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -840,6 +843,7 @@ function FinServFinancialMetricsDashboardInner() {
           )}
         </CardContent>
       </Card>
+      </div>
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
