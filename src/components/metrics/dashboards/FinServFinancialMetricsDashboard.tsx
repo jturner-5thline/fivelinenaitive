@@ -278,31 +278,38 @@ function PerHourWidget({
                     <LabelList
                       dataKey="rate"
                       content={(props: any) => {
-                        const { x, y, width, value, index } = props;
+                        const { x, y, width, height, value, index } = props;
                         if (value == null) return null;
                         const d = chartData[index];
                         const cx = Number(x) + Number(width) / 2;
-                        const top = Number(y) - 4;
                         const delta = d?.delta;
                         const deltaColor = delta == null ? '#94a3b8' : delta >= 0 ? '#22c55e' : '#ef4444';
                         const deltaText =
                           delta == null ? '' : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%`;
+                        const h = Number(height);
+                        const barTop = Number(y);
+                        // Stack value + delta inside the bar, near the top.
+                        const hasRoomForBoth = h >= 28;
+                        const valueY = barTop + (hasRoomForBoth ? 12 : 10);
+                        const deltaY = valueY + 11;
+                        // Hide labels entirely if the bar is too short.
+                        if (h < 14) return null;
                         return (
                           <g>
                             <text
                               x={cx}
-                              y={top}
+                              y={valueY}
                               textAnchor="middle"
                               fontSize={10}
                               fontWeight={600}
-                              fill="hsl(var(--foreground))"
+                              fill="#ffffff"
                             >
                               {fmtCurrency(Number(value))}
                             </text>
-                            {deltaText && (
+                            {deltaText && hasRoomForBoth && (
                               <text
                                 x={cx}
-                                y={top - 11}
+                                y={deltaY}
                                 textAnchor="middle"
                                 fontSize={9}
                                 fontWeight={600}
