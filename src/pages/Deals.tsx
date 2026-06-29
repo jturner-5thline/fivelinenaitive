@@ -1108,7 +1108,11 @@ export default function Dashboard() {
               >
               <div
                 ref={showInlineDetail ? leftListColumnRef : undefined}
-                className="contents"
+                className={cn(
+                  showInlineDetail
+                    ? 'h-[calc(100vh-7rem)] overflow-y-auto overscroll-contain pr-2 -mr-2'
+                    : 'contents',
+                )}
               >
               {/*
                 Flagged-filter context banner — renders ONLY when the
