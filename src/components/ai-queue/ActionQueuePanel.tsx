@@ -695,17 +695,19 @@ function TabBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`group inline-flex items-center gap-2 h-8 px-3 rounded-lg border text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
+      className={`group relative overflow-hidden inline-flex items-center gap-2 h-8 px-3 rounded-md border text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
         active
-          ? 'border-white/[0.12] bg-white/[0.06] text-[#ecedf4]'
-          : 'border-transparent text-[#ecedf4]/58 hover:text-[#ecedf4] hover:bg-white/[0.035]'
+          ? 'border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)]'
+          : 'border-white/[0.10] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.06] hover:border-white/[0.14]'
       }`}
       style={FONT_BODY}
     >
-      {label}
+      <span className="relative z-[1]">{label}</span>
       <span
-        className={`inline-flex items-center h-4 px-1.5 rounded-full text-[10px] ${
-          active ? 'bg-white/[0.08] text-[#ecedf4]/85' : 'bg-white/[0.04] text-[#ecedf4]/55'
+        className={`relative z-[1] inline-flex items-center h-4 px-1.5 rounded-[4px] text-[10px] ${
+          active
+            ? 'bg-[rgba(126,184,247,0.18)] text-foreground'
+            : 'bg-white/[0.06] text-[#ecedf4]/60'
         }`}
         style={FONT_MONO}
       >
