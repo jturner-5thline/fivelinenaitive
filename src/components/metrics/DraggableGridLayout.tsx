@@ -37,6 +37,14 @@ interface DraggableGridLayoutProps {
   onInteractionStart?: () => void;
   /** Called when a drag or resize interaction ends or is cancelled. */
   onInteractionEnd?: () => void;
+  /**
+   * Controls react-grid-layout's auto-compaction.
+   * Default 'vertical' preserves legacy behavior; pass `null` to keep widgets
+   * locked at their saved x/y coordinates with no automatic reflow.
+   */
+  compactType?: 'vertical' | 'horizontal' | null;
+  /** When true, prevents items from swapping/displacing each other. */
+  preventCollision?: boolean;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -65,6 +73,8 @@ export function DraggableGridLayout({
   isResizableEnabled,
   onInteractionStart,
   onInteractionEnd,
+  compactType = 'vertical',
+  preventCollision = false,
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -207,6 +217,8 @@ export function DraggableGridLayout({
         margin={[16, 16] as [number, number]}
         containerPadding={[0, 0] as [number, number]}
         useCSSTransforms
+        compactType={compactType as any}
+        preventCollision={preventCollision}
       >
         {children}
       </Responsive>
