@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle } from "./ChartTypeToggle";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * Income: Top 5 Customers MoM.
@@ -59,25 +60,24 @@ function truncate(s: string, n: number): string {
 
 export function IncomeTop5CustomersMoMCard() {
   const { user } = useAuth();
-
+  const tfRange = useTimeframeRange();
   const { curStart, curEnd, prevStart, prevEnd, curLabel, prevLabel } =
     useMemo(() => {
-      const now = new Date();
-      const cs = new Date(now.getFullYear(), now.getMonth(), 1);
-      const ce = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const ps = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const pe = new Date(now.getFullYear(), now.getMonth(), 0);
-      const fmt = (d: Date) =>
-        d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      const cs = new Date(tfRange.rangeStart + "T00:00:00");
+      const ce = new Date(tfRange.rangeEnd + "T00:00:00");
+      // Prior window of the same length, ending the day before curStart.
+      const spanMs = ce.getTime() - cs.getTime();
+      const pe = new Date(cs.getTime() - 24 * 3600 * 1000);
+      const ps = new Date(pe.getTime() - spanMs);
       return {
         curStart: isoDate(cs),
         curEnd: isoDate(ce),
         prevStart: isoDate(ps),
         prevEnd: isoDate(pe),
-        curLabel: fmt(cs),
-        prevLabel: fmt(ps),
+        curLabel: tfRange.periodLabel,
+        prevLabel: "Prior period",
       };
-    }, []);
+    }, [tfRange.rangeStart, tfRange.rangeEnd, tfRange.periodLabel]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -197,7 +197,7 @@ export function IncomeTop5CustomersMoMCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          {curLabel} vs {prevLabel} · top 5 customers by current-month income · 4 entities
+          {curLabel} vs {prevLabel} · top 5 customers by income · 4 entities
         </div>
 
         {isLoading ? (
