@@ -364,8 +364,6 @@ function useChart(
 const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-total-revenue-curr', registryId: 'total-revenue-curr' },
   { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
-  { id: 'kpi-row-outstanding-ar', registryId: 'outstanding-ar' },
-  { id: 'kpi-row-active-pipeline-value', registryId: 'active-pipeline-value' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
   { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
