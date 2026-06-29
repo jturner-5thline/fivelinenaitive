@@ -537,8 +537,8 @@ export function EndOfDayTab({
     const audienceEligible = windowed.filter(({ otherCount }) => otherCount > 0);
     const showingDismissed = filterChips.has('dismissed');
     // Default view = actionable items: not resolved, not dismissed, not
-    // snoozed, AND not yet marked-as-read. Marking read therefore hides the
-    // tile, matching the "clear it from view once I've seen it" mental model.
+    // snoozed, AND not yet marked-as-read. Opening details must not mark an
+    // item read or clear it; only explicit actions should remove it from view.
     // The "Dismissed" chip flips the pane to show ONLY items that have been
     // cleared in some way — dismissed, resolved, or marked-as-read.
     const stateFiltered = audienceEligible.filter(({ ev, start }) => {
@@ -552,9 +552,8 @@ export function EndOfDayTab({
       // Default view hides anything the user has acted on: resolved,
       // dismissed, snoozed, or marked-as-read. Those only resurface when
       // the "Dismissed" chip is explicitly selected.
-      // Keep the currently-selected item visible even after it gets
-      // auto-marked-as-read on click, so opening details doesn't make
-      // the tile vanish from the list under the user.
+      // Keep the currently-selected item visible if a clearing action lands
+      // while its detail pane is still open.
       if (ev.id === selectedId) return !resolved && !dismissed && !snoozed;
       return !resolved && !dismissed && !snoozed && !read;
     });
@@ -936,10 +935,6 @@ export function EndOfDayTab({
       }
     },
   });
-
-  useEffect(() => {
-    if (selectedId) markRead(selectedId);
-  }, [selectedId, markRead]);
 
   // One-time baseline (subtask #4): on the first time a user lands in EOD
   // after this feature ships, mark every currently-outstanding item as
