@@ -1550,6 +1550,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       {KPI_SUMMARY_ROWS.map(({ id, registryId }) => {
                         const k = kpiById.get(registryId);
                         if (!k) return null;
+                        const sectionHeader =
+                          registryId === 'debt-solutions-revenue'
+                            ? 'Debt Advisory'
+                            : registryId === 'finserv-revenue'
+                            ? 'FinServ'
+                            : null;
                         const curr = currByReg[registryId];
                         const prior = priorByReg[registryId];
                         const hasDelta = k.live && curr !== null && prior !== null;
@@ -1562,8 +1568,26 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                         const sign = delta === null ? '' : positive ? '+' : '−';
                         const clickable = !isEditMode && k.live;
                         return (
+                          <React.Fragment key={id}>
+                            {sectionHeader && (
+                              <tr>
+                                <td
+                                  colSpan={4}
+                                  style={{
+                                    padding: '10px 8px 4px',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    letterSpacing: '1.2px',
+                                    textTransform: 'uppercase',
+                                    color: 'rgba(255,255,255,0.55)',
+                                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                                  }}
+                                >
+                                  {sectionHeader}
+                                </td>
+                              </tr>
+                            )}
                           <tr
-                            key={id}
                             onClick={() => handleRowClick(registryId, k)}
                             style={{ cursor: clickable ? 'pointer' : 'default' }}
                           >
@@ -1585,6 +1609,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                               {pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`}
                             </td>
                           </tr>
+                          </React.Fragment>
                         );
                       })}
                     </tbody>
