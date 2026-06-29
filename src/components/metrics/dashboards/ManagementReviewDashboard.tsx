@@ -368,7 +368,15 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-active-pipeline-value', registryId: 'active-pipeline-value' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+  { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
+  { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
+  { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
+  { id: 'kpi-row-finserv-profit', registryId: 'finserv-profit' },
 ];
+
+// QBO realm IDs for per-entity revenue/profit breakdowns shown in Key Stats.
+const KEY_STATS_DEBT_REALM_ID = '193514877331929';
+const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // Top row: Key Stats sits above A/R Aging and Bank Account Balances,
