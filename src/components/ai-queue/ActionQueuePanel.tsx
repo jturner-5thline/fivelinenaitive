@@ -519,7 +519,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       {/* Body */}
       {tab === 'staged' ? (
         <div className="relative flex-1 min-h-0 overflow-y-auto">
-          <div className="px-5 pt-3">
+          <div className="px-5 pt-3 flex items-center justify-end">
             <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
           </div>
           <StagedDraftsPanel />
