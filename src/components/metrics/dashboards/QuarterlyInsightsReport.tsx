@@ -665,6 +665,24 @@ export function useQuarterlyReportState(
           }
         }
 
+      // Preserve any in-flight edits the user made while the save was
+      // round-tripping. If the live state's narrative/attachments diverged
+      // from the payload we just persisted, the user has typed additional
+      // characters since the autosave fired — keep those local edits so
+      // they aren't clobbered by the (now-stale) reload. This is what was
+      // causing the narrative editor to "delete" or "reorder" characters
+      // and the screen to jump after Enter triggered an autosave.
+      const live = latestStateRef.current;
+      if (live.narrative !== payload.narrative) {
+        next = { ...next, narrative: live.narrative };
+      }
+      if (
+        JSON.stringify(live.narrativeAttachments ?? []) !==
+        JSON.stringify(payload.narrativeAttachments ?? [])
+      ) {
+        next = { ...next, narrativeAttachments: live.narrativeAttachments };
+      }
+
       setStateLocal(next);
       latestStateRef.current = next;
       lastLoadedSnapshotRef.current = JSON.stringify(next);
