@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
+import { useTimeframeRange } from "./useTimeframeRange";
 import {
   Dialog,
   DialogContent,
@@ -77,21 +78,17 @@ export function FinServTopCustomersCard() {
   const { user } = useAuth();
   const [entityId, setEntityId] = useState(ENTITIES[0].id);
   const [drill, setDrill] = useState<{ id: string; name: string } | null>(null);
-
-  const { curStart, curEnd, prevStart, prevEnd, periodLabel } = useMemo(() => {
-    const now = new Date();
-    const cs = new Date(now.getFullYear(), 0, 1);
-    const ce = now;
-    const ps = new Date(now.getFullYear() - 1, 0, 1);
-    const pe = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  const tfRange = useTimeframeRange();
+  const { curStart, curEnd, prevStart, prevEnd, periodLabel, priorLabel } = useMemo(() => {
     return {
-      curStart: isoDate(cs),
-      curEnd: isoDate(ce),
-      prevStart: isoDate(ps),
-      prevEnd: isoDate(pe),
-      periodLabel: `Jan 1 – ${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+      curStart: tfRange.rangeStart,
+      curEnd: tfRange.rangeEnd,
+      prevStart: tfRange.priorRangeStart,
+      prevEnd: tfRange.priorRangeEnd,
+      periodLabel: tfRange.periodLabel,
+      priorLabel: "Prior year",
     };
-  }, []);
+  }, [tfRange.rangeStart, tfRange.rangeEnd, tfRange.priorRangeStart, tfRange.priorRangeEnd, tfRange.periodLabel]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
