@@ -1186,11 +1186,10 @@ export default function Dashboard() {
                 <aside
                   ref={detailAsideRef}
                   style={{
-                    top: `${detailOffset}px`,
                     background: 'linear-gradient(180deg, #13131c, #0e0e15)',
                     willChange: 'transform, opacity',
                   }}
-                  className="hidden lg:flex flex-col absolute right-0 w-[clamp(640px,70%,1280px)] max-h-[calc(100vh-6rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] z-10"
+                  className="hidden lg:flex flex-col fixed right-4 sm:right-6 top-24 w-[clamp(640px,70%,1280px)] max-w-[calc(100vw-2rem)] h-[calc(100vh-7rem)] rounded-2xl border border-white/[0.09] overflow-hidden animate-slide-in-right shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] z-20"
                   aria-label="Selected deal summary"
                 >
                   <div className="flex-1 min-h-0 min-w-0 overflow-auto p-3">
