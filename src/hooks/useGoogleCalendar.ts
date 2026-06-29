@@ -124,10 +124,8 @@ export function useGoogleCalendar() {
         email: 'demo@5thline.co',
       };
       setStatus(demoStatus);
-      calendarCache[cacheKey] = {
-        ...(calendarCache[cacheKey] || { events: [], calendars: [] }),
-        status: demoStatus,
-      };
+      writeCache(cacheKey, { status: demoStatus,
+       });
       setIsStatusLoading(false);
       return;
     }
@@ -140,7 +138,7 @@ export function useGoogleCalendar() {
       const { data, error } = await supabase.functions.invoke('calendar-status');
       if (error) throw error;
       setStatus(data);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), status: data };
+      writeCache(cacheKey, { status: data  });
       setError(null);
     } catch (err: any) {
       const msg = err?.message || '';
@@ -214,7 +212,7 @@ export function useGoogleCalendar() {
     if (isDemo) {
       const cals = [DEMO_PRIMARY_CALENDAR];
       setCalendars(cals);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: cals };
+      writeCache(cacheKey, { calendars: cals });
       return cals;
     }
     setIsLoading(true);
@@ -224,7 +222,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setCalendars(data.calendars || []);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), calendars: data.calendars || [] };
+      writeCache(cacheKey, { calendars: data.calendars || [] });
       setError(null);
       return data.calendars;
     } catch (err: any) {
@@ -247,7 +245,7 @@ export function useGoogleCalendar() {
     if (isDemo) {
       const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setEvents(evts);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: evts };
+      writeCache(cacheKey, { events: evts });
       return { events: evts };
     }
     setIsLoading(true);
@@ -264,7 +262,7 @@ export function useGoogleCalendar() {
       });
       if (error) throw error;
       setEvents(data.events || []);
-      calendarCache[cacheKey] = { ...(calendarCache[cacheKey] || { events: [], calendars: [] }), events: data.events || [] };
+      writeCache(cacheKey, { events: data.events || [] });
       setError(null);
       return data;
     } catch (err: any) {
@@ -302,7 +300,7 @@ export function useGoogleCalendar() {
       const evts = buildDemoCalendarEvents({ selfEmail, selfName });
       setCalendars(cals);
       setEvents(evts);
-      calendarCache[cacheKey] = { events: evts, calendars: cals, status: { connected: true } };
+      writeCache(cacheKey, { events: evts, calendars: cals, status: { connected: true } });
       return { calendars: cals, events: evts };
     }
     setIsLoading(true);
