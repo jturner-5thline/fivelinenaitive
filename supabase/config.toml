@@ -1,253 +1,173 @@
 project_id = "tgkksvazruzbghssnxde"
 
-[functions.lender-summary]
-verify_jwt = false
-
-[functions.sales-calls-count]
-verify_jwt = true
-
-[functions.provision-demo-tenant]
-verify_jwt = false
-
-[functions.execute-workflow]
-verify_jwt = true
-
-[functions.send-invite]
-verify_jwt = true
-
-[functions.send-notification-email]
-verify_jwt = false
-
-[functions.send-weekly-summary]
-verify_jwt = false
-
-[functions.check-stale-deals]
-verify_jwt = false
-
-[functions.check-missed-milestones]
-verify_jwt = false
-
-[functions.seed-demo-data]
-verify_jwt = false
-
-[functions.validate-invitation]
-verify_jwt = false
-
-[functions.send-waitlist-welcome]
-verify_jwt = false
-
-[functions.export-data]
-verify_jwt = false
-
-[functions.webhook-sync]
-verify_jwt = false
-
-[functions.import-data]
-verify_jwt = false
-
-[functions.receive-external-sync]
-verify_jwt = false
-
-[functions.rate-limit]
-verify_jwt = false
-
-[functions.push-to-flex]
-verify_jwt = false
-
-[functions.receive-flex-activity]
-verify_jwt = false
-
-[functions.send-flex-weekly-summary]
-verify_jwt = false
-
-[functions.send-flex-alert]
-verify_jwt = false
-
-[functions.send-flex-reply]
-verify_jwt = false
-
-[functions.notify-flex-info-response]
-verify_jwt = false
-
-[functions.generate-insights]
-verify_jwt = false
-
-[functions.fetch-news]
-verify_jwt = false
-
-[functions.deal-research]
-verify_jwt = false
-
-[functions.deal-assistant]
-verify_jwt = false
-
-[functions.generate-activity-summary]
-verify_jwt = false
-
-[functions.gmail-auth]
-verify_jwt = false
-
-[functions.gmail-auth-callback]
-verify_jwt = false
-
-[functions.gmail-messages]
-verify_jwt = false
-
-[functions.gmail-status]
-verify_jwt = false
-
-[functions.hubspot-sync]
-verify_jwt = false
-
-[functions.lender-matching-ai]
-verify_jwt = false
-
-[functions.competitive-intel]
-verify_jwt = false
-
-[functions.market-sizing]
-verify_jwt = false
-
-[functions.term-sheet-benchmark]
-verify_jwt = false
-
-[functions.sec-filings-search]
-verify_jwt = false
-
-[functions.rate-tracking]
-verify_jwt = false
-
-[functions.universal-search]
-verify_jwt = false
-
-[functions.parse-workflow-description]
-verify_jwt = false
-
-[functions.suggest-workflows]
-verify_jwt = true
-
-[functions.naitive-flex-sync]
-verify_jwt = false
-
-[functions.sync-lender-to-flex-webhook]
-verify_jwt = false
-
-[functions.deal-space-ai]
-verify_jwt = false
-
-[functions.deal-space-financials-ai]
-verify_jwt = false
-
-[functions.validate-gate]
-verify_jwt = false
-
-[functions.calendar-ai]
-verify_jwt = false
-
-[functions.calendar-event-research]
-verify_jwt = false
-
-[functions.slack-agent-gateway]
-verify_jwt = false
-
-[functions.check-deal-slas]
-verify_jwt = false
-
-[functions.generate-scheduled-report]
-verify_jwt = false
-
-[functions.research-orchestrator]
-verify_jwt = false
-
-[functions.refine-text]
-verify_jwt = false
-
-[functions.fire-zapier-webhook]
-verify_jwt = false
-
-[functions.dashboard-chat]
-verify_jwt = false
-
-[functions.weekly-hours-api]
-verify_jwt = false
-
-[functions.weekly-hours-reminder]
-verify_jwt = false
-
-[functions.gamma-integration]
-verify_jwt = false
-
-[functions.notification-engine]
-verify_jwt = false
-
-[functions.deal-diligence-ai]
-verify_jwt = false
-
-[functions.claap-webhook]
-verify_jwt = false
-
-[functions.claap-analyze-meeting]
-verify_jwt = false
-
-[functions.claap-webhook-ingest]
-verify_jwt = false
-
-[functions.claap-score-recording]
-verify_jwt = false
-
-[functions.copilot-chat]
-verify_jwt = false
-
-[functions.notify-flex-lender-approved]
-verify_jwt = false
-
-[functions.analysis-chat]
-verify_jwt = false
-
-[functions.generate-ux-insights]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
-
-[functions.send-transactional-email]
-verify_jwt = true
-
-[functions.preview-transactional-email]
-verify_jwt = false
-
-[functions.handle-email-unsubscribe]
-verify_jwt = false
-
-[functions.handle-email-suppression]
-verify_jwt = false
-
-[functions.hubspot-create-deal]
-verify_jwt = false
-
-[functions.classify-file]
-verify_jwt = false
-
-[functions.flex-auto-remove]
-verify_jwt = false
-
-[functions.report-frontend-error]
-verify_jwt = false
-
-[functions.quickbooks-sync]
-verify_jwt = false
-
-[functions.quickbooks-auto-sync]
-verify_jwt = false
-
-[functions.daily-crm-update-scan]
-verify_jwt = false
-
-[functions.send-weekly-rundown]
-verify_jwt = false
-
-[functions.share-pipeline-report]
-verify_jwt = true
-
-[functions.admin-agent-sweep]
-verify_jwt = false
+[functions]
+  [functions.admin-agent-sweep]
+    verify_jwt = false
+  [functions.analysis-chat]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.calendar-ai]
+    verify_jwt = false
+  [functions.calendar-event-research]
+    verify_jwt = false
+  [functions.check-deal-slas]
+    verify_jwt = false
+  [functions.check-missed-milestones]
+    verify_jwt = false
+  [functions.check-stale-deals]
+    verify_jwt = false
+  [functions.claap-analyze-meeting]
+    verify_jwt = false
+  [functions.claap-score-recording]
+    verify_jwt = false
+  [functions.claap-webhook]
+    verify_jwt = false
+  [functions.claap-webhook-ingest]
+    verify_jwt = false
+  [functions.classify-file]
+    verify_jwt = false
+  [functions.competitive-intel]
+    verify_jwt = false
+  [functions.copilot-chat]
+    verify_jwt = false
+  [functions.daily-crm-update-scan]
+    verify_jwt = false
+  [functions.dashboard-chat]
+    verify_jwt = false
+  [functions.deal-assistant]
+    verify_jwt = false
+  [functions.deal-diligence-ai]
+    verify_jwt = false
+  [functions.deal-research]
+    verify_jwt = false
+  [functions.deal-space-ai]
+    verify_jwt = false
+  [functions.deal-space-financials-ai]
+    verify_jwt = false
+  [functions.execute-workflow]
+    verify_jwt = true
+  [functions.export-data]
+    verify_jwt = false
+  [functions.fetch-news]
+    verify_jwt = false
+  [functions.fire-zapier-webhook]
+    verify_jwt = false
+  [functions.flex-auto-remove]
+    verify_jwt = false
+  [functions.gamma-integration]
+    verify_jwt = false
+  [functions.generate-activity-summary]
+    verify_jwt = false
+  [functions.generate-insights]
+    verify_jwt = false
+  [functions.generate-scheduled-report]
+    verify_jwt = false
+  [functions.generate-ux-insights]
+    verify_jwt = false
+  [functions.gmail-auth]
+    verify_jwt = false
+  [functions.gmail-auth-callback]
+    verify_jwt = false
+  [functions.gmail-messages]
+    verify_jwt = false
+  [functions.gmail-status]
+    verify_jwt = false
+  [functions.handle-email-suppression]
+    verify_jwt = false
+  [functions.handle-email-unsubscribe]
+    verify_jwt = false
+  [functions.hubspot-create-deal]
+    verify_jwt = false
+  [functions.hubspot-sync]
+    verify_jwt = false
+  [functions.import-data]
+    verify_jwt = false
+  [functions.lender-matching-ai]
+    verify_jwt = false
+  [functions.lender-summary]
+    verify_jwt = false
+  [functions.market-sizing]
+    verify_jwt = false
+  [functions.naitive-flex-sync]
+    verify_jwt = false
+  [functions.notification-engine]
+    verify_jwt = false
+  [functions.notify-flex-info-response]
+    verify_jwt = false
+  [functions.notify-flex-lender-approved]
+    verify_jwt = false
+  [functions.parse-workflow-description]
+    verify_jwt = false
+  [functions.preview-transactional-email]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.provision-demo-tenant]
+    verify_jwt = false
+  [functions.push-to-flex]
+    verify_jwt = false
+  [functions.quickbooks-auto-sync]
+    verify_jwt = false
+  [functions.quickbooks-sync]
+    verify_jwt = false
+  [functions.rate-limit]
+    verify_jwt = false
+  [functions.rate-tracking]
+    verify_jwt = false
+  [functions.receive-external-sync]
+    verify_jwt = false
+  [functions.receive-flex-activity]
+    verify_jwt = false
+  [functions.refine-text]
+    verify_jwt = false
+  [functions.report-frontend-error]
+    verify_jwt = false
+  [functions.research-orchestrator]
+    verify_jwt = false
+  [functions.sales-calls-count]
+    verify_jwt = true
+  [functions.sec-filings-search]
+    verify_jwt = false
+  [functions.seed-demo-data]
+    verify_jwt = false
+  [functions.send-flex-alert]
+    verify_jwt = false
+  [functions.send-flex-reply]
+    verify_jwt = false
+  [functions.send-flex-weekly-summary]
+    verify_jwt = false
+  [functions.send-invite]
+    verify_jwt = true
+  [functions.send-notification-email]
+    verify_jwt = false
+  [functions.send-transactional-email]
+    verify_jwt = true
+  [functions.send-waitlist-welcome]
+    verify_jwt = false
+  [functions.send-weekly-rundown]
+    verify_jwt = false
+  [functions.send-weekly-summary]
+    verify_jwt = false
+  [functions.share-pipeline-report]
+    verify_jwt = true
+  [functions.slack-agent-gateway]
+    verify_jwt = false
+  [functions.suggest-workflows]
+    verify_jwt = true
+  [functions.sync-lender-to-flex-webhook]
+    verify_jwt = false
+  [functions.term-sheet-benchmark]
+    verify_jwt = false
+  [functions.universal-search]
+    verify_jwt = false
+  [functions.validate-gate]
+    verify_jwt = false
+  [functions.validate-invitation]
+    verify_jwt = false
+  [functions.webhook-sync]
+    verify_jwt = false
+  [functions.weekly-hours-api]
+    verify_jwt = false
+  [functions.weekly-hours-reminder]
+    verify_jwt = false
