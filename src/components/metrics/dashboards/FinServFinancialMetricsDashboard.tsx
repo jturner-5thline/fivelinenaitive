@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MetricManualInputDialog } from './MetricManualInputDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import { useQuery } from '@tanstack/react-query';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
   LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine, LabelList,
@@ -99,12 +102,62 @@ function RevenuePerHourWidget({
   monthKeys,
   monthLabels,
   badge,
+  revenueByMonth,
 }: {
   monthKeys: string[];
   monthLabels: string[];
   badge: string;
+  revenueByMonth: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
+  const { company } = useCompany();
+  const companyId = company?.id ?? null;
+
+  const { data: hoursByMonth = {}, isLoading } = useQuery({
+    queryKey: ['rev-per-hour-hours', companyId, monthKeys.join('|'), open],
+    queryFn: async () => {
+      if (monthKeys.length === 0) return {} as Record<string, number>;
+      let q = supabase
+        .from('metric_manual_inputs')
+        .select('month_key, value')
+        .eq('metric_key', 'revenue_per_hour_hours')
+        .in('month_key', monthKeys);
+      q = companyId ? q.eq('company_id', companyId) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+      const out: Record<string, number> = {};
+      for (const r of data ?? []) {
+        const v = (r as any).value;
+        if (v != null) out[(r as any).month_key as string] = Number(v);
+      }
+      return out;
+    },
+  });
+
+  const chartData = useMemo(() => {
+    return monthKeys.map((k, i) => {
+      const revenue = Number(revenueByMonth[k] ?? 0);
+      const hours = Number(hoursByMonth[k] ?? 0);
+      const rate = hours > 0 ? revenue / hours : null;
+      return {
+        month: monthLabels[i] ?? k,
+        monthKey: k,
+        revenue,
+        hours,
+        rate,
+      };
+    });
+  }, [monthKeys, monthLabels, revenueByMonth, hoursByMonth]);
+
+  const totals = useMemo(() => {
+    const revenue = chartData.reduce((s, d) => s + d.revenue, 0);
+    const hours = chartData.reduce((s, d) => s + d.hours, 0);
+    const rate = hours > 0 ? revenue / hours : null;
+    return { revenue, hours, rate };
+  }, [chartData]);
+
+  const hasAnyHours = chartData.some((d) => d.hours > 0);
+
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -127,11 +180,51 @@ function RevenuePerHourWidget({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-          <Clock className="h-8 w-8 mb-2 opacity-40" />
-          <p className="text-sm font-medium">Formula pending</p>
-          <p className="text-xs mt-1 opacity-60">Click the pencil to input monthly hours</p>
-        </div>
+        {isLoading ? (
+          <WidgetLoading subtitle="Loading hours…" />
+        ) : !hasAnyHours ? (
+          <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+            <Clock className="h-8 w-8 mb-2 opacity-40" />
+            <p className="text-sm font-medium">No hours entered</p>
+            <p className="text-xs mt-1 opacity-60">Click the pencil to input monthly hours</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <div className="text-2xl font-semibold tabular-nums">
+                {totals.rate != null ? fmtCurrencyPrecise(totals.rate) : '—'}
+                <span className="text-xs font-normal text-muted-foreground ml-1">/ hr</span>
+              </div>
+              <div className="text-xs text-muted-foreground tabular-nums">
+                {fmtCurrency(totals.revenue)} · {totals.hours.toLocaleString()} hrs
+              </div>
+            </div>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(v: any, _name, p: any) => {
+                      const d = p?.payload;
+                      if (d?.rate == null) return ['—', 'Revenue / hr'];
+                      return [
+                        `${fmtCurrencyPrecise(d.rate)} (${fmtCurrency(d.revenue)} / ${d.hours.toLocaleString()} hrs)`,
+                        'Revenue / hr',
+                      ];
+                    }}
+                  />
+                  <Bar
+                    dataKey="rate"
+                    fill="hsl(var(--primary))"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </CardContent>
       <MetricManualInputDialog
         open={open}
