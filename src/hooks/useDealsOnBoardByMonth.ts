@@ -28,19 +28,24 @@ export interface DealsOnBoardByMonthResult {
   deals: DealOnBoardEntry[];
   byMonth: DealOnBoardEntry[][]; // length 12
   countsByMonth: number[];       // length 12
+  /** Bucketed by absolute YYYY-MM key, so consumers spanning multiple years work. */
+  byMonthKey: Record<string, DealOnBoardEntry[]>;
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
 }
 
-export function useDealsOnBoardByMonth(year: number): DealsOnBoardByMonthResult {
+export function useDealsOnBoardByMonth(yearOrYears: number | number[]): DealsOnBoardByMonthResult {
   const { user } = useAuth();
 
-  const start = `${year}-01-01`;
-  const end = `${year}-12-31`;
+  const years = Array.isArray(yearOrYears) ? [...new Set(yearOrYears)].sort() : [yearOrYears];
+  const startYear = years[0];
+  const endYear = years[years.length - 1];
+  const start = `${startYear}-01-01`;
+  const end = `${endYear}-12-31`;
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['deals-on-board-by-month', ACTIVE_PIPELINE_ID, year],
+    queryKey: ['deals-on-board-by-month', ACTIVE_PIPELINE_ID, startYear, endYear],
     queryFn: async () => {
       const { data: rows, error: err } = await supabase
         .from('deals')
@@ -82,8 +87,12 @@ export function useDealsOnBoardByMonth(year: number): DealsOnBoardByMonthResult 
     });
 
   const byMonth: DealOnBoardEntry[][] = Array.from({ length: 12 }, () => []);
+  const byMonthKey: Record<string, DealOnBoardEntry[]> = {};
   for (const d of deals) {
     if (d.month_index >= 0 && d.month_index < 12) byMonth[d.month_index].push(d);
+    const dt = new Date(d.created_at);
+    const k = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+    (byMonthKey[k] = byMonthKey[k] || []).push(d);
   }
   const countsByMonth = byMonth.map((arr) => arr.length);
 
@@ -91,6 +100,7 @@ export function useDealsOnBoardByMonth(year: number): DealsOnBoardByMonthResult 
     deals,
     byMonth,
     countsByMonth,
+    byMonthKey,
     isLoading,
     isFetching,
     error: (error as Error) ?? null,

@@ -33,19 +33,24 @@ export interface DollarsSignedByMonthResult {
   byMonth: DollarsSignedEntry[][]; // length 12
   dollarsByMonthMM: number[];      // length 12, in $MM
   countsByMonth: number[];         // length 12
+  byMonthKey: Record<string, DollarsSignedEntry[]>;
+  dollarsByMonthKeyMM: Record<string, number>;
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
 }
 
-export function useDollarsSignedByMonth(year: number): DollarsSignedByMonthResult {
+export function useDollarsSignedByMonth(yearOrYears: number | number[]): DollarsSignedByMonthResult {
   const { user } = useAuth();
 
-  const start = `${year}-01-01`;
-  const end = `${year}-12-31`;
+  const years = Array.isArray(yearOrYears) ? [...new Set(yearOrYears)].sort() : [yearOrYears];
+  const startYear = years[0];
+  const endYear = years[years.length - 1];
+  const start = `${startYear}-01-01`;
+  const end = `${endYear}-12-31`;
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['dollars-signed-by-month', ACTIVE_PIPELINE_ID, year],
+    queryKey: ['dollars-signed-by-month', ACTIVE_PIPELINE_ID, startYear, endYear],
     queryFn: async () => {
       const { data: rows, error: err } = await supabase
         .from('deal_stage_history')
@@ -98,12 +103,20 @@ export function useDollarsSignedByMonth(year: number): DollarsSignedByMonthResul
   })();
 
   const byMonth: DollarsSignedEntry[][] = Array.from({ length: 12 }, () => []);
+  const byMonthKey: Record<string, DollarsSignedEntry[]> = {};
   for (const d of deals) {
     if (d.month_index >= 0 && d.month_index < 12) byMonth[d.month_index].push(d);
+    const dt = new Date(d.entered_at);
+    const k = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+    (byMonthKey[k] = byMonthKey[k] || []).push(d);
   }
   const dollarsByMonthMM = byMonth.map((arr) =>
     arr.reduce((s, d) => s + d.value, 0) / 1_000_000,
   );
+  const dollarsByMonthKeyMM: Record<string, number> = {};
+  for (const [k, arr] of Object.entries(byMonthKey)) {
+    dollarsByMonthKeyMM[k] = arr.reduce((s, d) => s + d.value, 0) / 1_000_000;
+  }
   const countsByMonth = byMonth.map((arr) => arr.length);
 
   return {
@@ -111,6 +124,8 @@ export function useDollarsSignedByMonth(year: number): DollarsSignedByMonthResul
     byMonth,
     dollarsByMonthMM,
     countsByMonth,
+    byMonthKey,
+    dollarsByMonthKeyMM,
     isLoading,
     isFetching,
     error: (error as Error) ?? null,

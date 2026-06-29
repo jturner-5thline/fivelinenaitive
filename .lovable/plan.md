@@ -1,61 +1,56 @@
-# Claap aiFields Compliance
+# Make the Global Timeframe Authoritative for Every Insights Widget
 
-Goal: every Claap Get Recording call requests `returnAiFields=true`, `aiFields` stays the primary parsing path, legacy `insightTemplates` remains as a temporary fallback, and we log enough to verify aiFields presence in both REST and webhook payloads. No matching logic touched.
+## Goal
+When you change the header timeframe (e.g. "Last 6 Months", a quarter, a custom range, a month), every KPI, chart, widget and drilldown on `/insights` reflects that exact window — no hardcoded years, no per-widget overrides, no "fixed 9-month plan" views.
 
-## Findings
+## Why this is bigger than a one-line fix
+A spot-check shows the timeframe context (`useInsightsTimeframe`) is already correct, but several dashboards bypass it:
 
-Get Recording call sites today:
+- **Sales Dashboard** — hardcodes `YEAR = 2026` and only renders Jan–Sep. KPI buckets, Sales Calls, Deals on Board, Proposals Issued, Dollars Signed all ignore the picker. `useSalesCallsCount(yearStart, yearEnd)` and the `*ByMonth(YEAR)` hooks need to accept the active range.
+- **Sales Team Board KPI grid** (now embedded in Sales Dashboard) — same hardcoded year.
+- **Cumulative Pace / Sales Model sheet** — `buildView(selectedQuarter)` collapses any range into a 9-month plan; needs a true N-month layout driven by `timeframe.start/end`.
+- **Management Review / Snapshot dashboards** — already partially wired but some carousels use their own period state.
+- **Revenue · Commissions · Profit, Revenue by Client, Income by Product/Service, Top Customers** — verify each chart/table reads `timeframe` and re-queries; today some default to the legacy `selectedQuarter` only.
+- **Forecasts and Key Metrics tabs** — ensure forecast horizon and KPI series both pivot off the active range.
+- **End of Day / Dashboard popup widgets** — outside `/insights`, untouched by this change (call out so we don't over-scope).
 
-- `supabase/functions/_shared/claap-api.ts:84` — shared `claapGetRecording` helper. **Missing** `returnAiFields=true`. Used by:
-  - `supabase/functions/claap-bulk-sync/index.ts:47`
-  - `supabase/functions/claap-backfill-summaries/index.ts:44`
-  - `supabase/functions/claap-sync-recording-content/index.ts:59`
-- `supabase/functions/claap-recordings/index.ts:241-242` — single-recording GET. Already sets `returnAiFields=true`.
-- `supabase/functions/claap-recordings/index.ts:158-163` — list endpoint. Already sets `returnAiFields=true`.
-- Transcript endpoints (`/transcript?format=text`) — unaffected, no change.
+## Plan
 
-Parsing paths already prefer `aiFields` over `insightTemplates`:
+### 1. Make the timeframe contract uniform
+- Standardize on `useInsightsTimeframe()` returning `{ start, end, label, months[] }` where `months[]` is the ordered list of `YYYY-MM` buckets inside the range.
+- Add a small helper `useTimeframeMonthBuckets()` so widgets that bucket by month don't each reimplement it.
 
-- `supabase/functions/claap-recordings/index.ts:77-100` (`extractClaapInsights`)
-- `supabase/functions/claap-webhook/index.ts:72-102` (`extractClaapInsights`)
-- `supabase/functions/_shared/claap-api.ts:138-207` (`normalizeRecording`) — does NOT currently read `aiFields`; it only parses `outlines`, `actionItems`, `keyTakeaways`. This is fine for the summary/action-item normalization it owns, but it means callers of `claapGetRecording` cannot see aiFields downstream. We will pass the raw `aiFields` through on the normalized object as an opaque field for parity with the recordings function.
+### 2. Sales Dashboard refactor (largest piece)
+- Remove the `YEAR = 2026` constant and the 9-month fixed array.
+- Drive `yearStart`, `yearEnd` and all `*ByMonth` hooks from `timeframe.start/end`.
+- Rebuild `buildView(...)` to accept arbitrary month ranges (1–24 months) and render the Sales Model sheet, cumulative pace chart, and KPI grid against that.
+- Update `useSalesCallsCount`, `useDealsOnBoardByMonth`, `useProposalsIssuedByMonth`, `useDollarsSignedByMonth` to accept `(start, end)` instead of `(YEAR)`. Keep the cached `sales_calls_cache` lookup; just pass through the range filter.
 
-## Changes
+### 3. Management Review + Snapshot
+- Replace any local quarter/month state with the shared context.
+- Carousel tabs (Agenda…SW) keep their own state, but every data widget reads `timeframe`.
 
-### 1. `supabase/functions/_shared/claap-api.ts`
-- Update `claapGetRecording` (line 84) to build the URL with `returnAiFields=true`:
-  ```
-  const url = new URL(`${CLAAP_API_BASE}/recordings/${encodeURIComponent(externalId)}`);
-  url.searchParams.set("returnAiFields", "true");
-  ```
-- After parsing JSON, add a single-line console log indicating aiFields presence and count, e.g.
-  `console.log("[claap] getRecording", externalId, "aiFields=", Array.isArray(r?.aiFields) ? r.aiFields.length : "absent", "insightTemplates=", Array.isArray(r?.insightTemplates) ? r.insightTemplates.length : "absent")`
-- Extend `NormalizedClaapRecording` with optional `ai_fields?: Array<{key,label,value,type}>` and `insight_templates_present?: boolean` so downstream callers can confirm rollout, and populate them in `normalizeRecording`. Leave existing summary/action-item logic untouched (aiFields stays primary for insight rendering via the existing `extractClaapInsights`).
-- Also apply the same `returnAiFields=true` query param to `claapListRecordings` (line 212) for consistency.
+### 4. Revenue / Finance widgets
+- Audit `RevenueByMonthChart`, `IncomeByProductServiceCard`, `RevenueOverviewDashboard`, `HistoricalTrendChart`, drilldowns.
+- Convert any `selectedQuarter`-only consumers to read `timeframe.start/end` directly. Keep `selectedQuarter` available for legacy QBO hooks, but compute it from `timeframe` (already does).
 
-### 2. `supabase/functions/claap-recordings/index.ts`
-- Already sets `returnAiFields=true` on list (line 163) and get (line 242). No URL changes.
-- Add concise logging right after each successful Claap response parse:
-  - list: log count of recordings + how many include `aiFields`.
-  - get: log `aiFields` length / `insightTemplates` length for the requested recording id.
+### 5. Forecasts + Key Metrics tabs
+- `BenchmarkForecastsPage`, `KeyMetricsPage`: tie series length and "as of" markers to `timeframe.end`; tie history horizon to `timeframe.start`.
 
-### 3. `supabase/functions/claap-webhook/index.ts`
-- No parsing change (`extractClaapInsights` already prefers `aiFields`).
-- At the top of the webhook handler, after JSON-parsing the incoming payload, log a single line:
-  `console.log("[claap] webhook", payload.event, payload.data?.id, "aiFields=", Array.isArray(payload.data?.aiFields) ? payload.data.aiFields.length : "absent", "insightTemplates=", Array.isArray(payload.data?.insightTemplates) ? payload.data.insightTemplates.length : "absent")`
+### 6. Verification pass
+For each dashboard tab:
+1. Set picker to "Last 6 Months", confirm every widget shows ~6 month buckets.
+2. Set picker to a single quarter, confirm widgets collapse to that quarter.
+3. Set picker to a custom 3-week range, confirm KPI cards and charts narrow accordingly (or hide month-bucketed widgets with a clear "Range too short" note when N<1 month).
+4. Drilldown pop-ups inherit the same window.
 
-### 4. Not changed
-- `claap-backfill`, `claap-deal-analyze`, `claap-webhook-ingest`, `claap-bulk-sync`, `claap-backfill-summaries`, `claap-sync-recording-content` — they all funnel Get Recording through the shared `claapGetRecording`, so the helper fix in #1 covers them automatically. Transcript endpoints stay untouched.
-- All Claap matching/scoring/routing logic (`claap-score-recording`, `claap-rank-recordings-for-meeting`, `claap-suggest-matches`, `claap-webhook` deal-matching block) is untouched.
+## Out of scope (will not change)
+- Dashboard popup (End of Day / Performance) — its own timeframe model, unchanged.
+- Deals / CRM / Finance pages outside `/insights`.
+- Sales Calls cache refresh cadence (still 24h sweep).
 
-## Verification after deploy
+## Risk / open questions
+- Sales Model "plan" numbers are currently keyed to specific months of 2026. When the user picks a window outside 2026, should plan rows show blanks, prorate, or hide? Default: render plan only for months that exist in the seeded model; show actuals for everything else.
+- Cumulative Pace target curve same question — default: show pace only when plan exists for the selected months.
 
-- Edge logs for `claap-recordings` and `_shared` helper should print `aiFields=<n>` on every fetch.
-- Edge logs for `claap-webhook` should show `aiFields=<n>` on inbound events.
-- If any log shows `aiFields=absent` while `insightTemplates=<n>`, that confirms the legacy fallback is still doing work and should remain until rollout completes.
-
-## Reported file/line changes (final summary will list exact line numbers post-edit)
-
-- `supabase/functions/_shared/claap-api.ts` — `claapGetRecording` URL + log + `NormalizedClaapRecording` fields + `normalizeRecording` population; `claapListRecordings` URL.
-- `supabase/functions/claap-recordings/index.ts` — add log statements after list and get responses (no URL change).
-- `supabase/functions/claap-webhook/index.ts` — add inbound payload log (no parsing change).
+If you'd like a different default for those two edge cases, tell me and I'll wire it that way before implementing.
