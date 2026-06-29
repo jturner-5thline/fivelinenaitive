@@ -46,6 +46,36 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Gate: all approval-queue activity is managed by the Deal Admin Agent.
+    // If the agent is disabled for the relevant company, do not extract action
+    // items (would otherwise insert a `claap_action_items` queue row).
+    {
+      let gateCompanyId: string | null = null;
+      if (meeting.deal_id) {
+        const { data: dealRow } = await supabaseAdmin
+          .from("deals").select("company_id").eq("id", meeting.deal_id).maybeSingle();
+        gateCompanyId = dealRow?.company_id || null;
+      }
+      if (!gateCompanyId) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles").select("company_id").eq("user_id", assignee_user_id).maybeSingle();
+        gateCompanyId = (prof as any)?.company_id || null;
+      }
+      let agentEnabled = false;
+      if (gateCompanyId) {
+        const { data: agentRow } = await supabaseAdmin
+          .from("admin_agent_settings").select("enabled").eq("company_id", gateCompanyId).maybeSingle();
+        agentEnabled = agentRow?.enabled === true;
+      }
+      if (!agentEnabled) {
+        console.log("[claap-extract-action-items] Deal Admin Agent disabled — skipping", { gateCompanyId });
+        return new Response(
+          JSON.stringify({ ok: true, note: "Deal Admin Agent disabled — skipped" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     const transcript = (meeting.transcript || "").slice(0, 15000);
     const summary = meeting.ai_summary || "";
     const next_steps = Array.isArray(meeting.next_steps) ? meeting.next_steps : [];

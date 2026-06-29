@@ -1190,6 +1190,34 @@ Deno.serve(async (req) => {
     // to anything user-visible, and review AI-extracted follow-up tasks before
     // they're created.
     if (!excluded && taskAssignee) {
+      // Gate: all approval-queue activity is managed by the Deal Admin Agent.
+      // If the agent is disabled for the relevant company, skip both the
+      // recording-review enqueue AND the action-items extraction trigger.
+      let agentEnabled = false;
+      try {
+        let gateCompanyId: string | null = resolvedCompanyId || null;
+        if (!gateCompanyId && resolvedDealId) {
+          const { data: dealRow } = await supabaseAdmin
+            .from("deals").select("company_id").eq("id", resolvedDealId).maybeSingle();
+          gateCompanyId = dealRow?.company_id || null;
+        }
+        if (!gateCompanyId) {
+          const { data: prof } = await supabaseAdmin
+            .from("profiles").select("company_id").eq("user_id", taskAssignee).maybeSingle();
+          gateCompanyId = (prof as any)?.company_id || null;
+        }
+        if (gateCompanyId) {
+          const { data: agentRow } = await supabaseAdmin
+            .from("admin_agent_settings").select("enabled").eq("company_id", gateCompanyId).maybeSingle();
+          agentEnabled = agentRow?.enabled === true;
+        }
+      } catch (e) {
+        console.error("[claap-webhook] Deal Admin Agent gate check failed:", e);
+      }
+
+      if (!agentEnabled) {
+        console.log("[claap-webhook] Deal Admin Agent disabled — skipping Approval Queue enqueue + action-items extraction");
+      } else {
       try {
         // Build the top-3 suggestions for Stage-1 (relationship matching).
         const candidateDealIds = resolvedDealId
@@ -1277,6 +1305,7 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.error("Failed to trigger action-items extraction:", e);
         }
+      }
       }
     }
 
