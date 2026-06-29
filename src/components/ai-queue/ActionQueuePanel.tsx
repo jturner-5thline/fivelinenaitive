@@ -519,7 +519,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       {/* Body */}
       {tab === 'staged' ? (
         <div className="relative flex-1 min-h-0 overflow-y-auto">
-          <div className="px-5 pt-3">
+          <div className="px-5 pt-3 flex items-center justify-end">
             <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
           </div>
           <StagedDraftsPanel />
@@ -531,29 +531,32 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           {/* LEFT RAIL */}
           <aside className="flex flex-col min-h-0 md:border-r border-white/[0.08]">
             <div className="px-4 pt-3 pb-2 space-y-3 shrink-0">
-              <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
-
-              {isAdmin && (
-                <div className="flex items-center gap-1.5">
-                  <FilterChip
-                    label="All"
-                    count={items.length + accessRequests.length}
-                    active={scope === 'all'}
-                    onClick={() => setScope('all')}
-                  />
-                  <FilterChip
-                    label="Me"
-                    count={
-                      (myDealIds
-                        ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
-                          accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
-                        : 0)
-                    }
-                    active={scope === 'me'}
-                    onClick={() => setScope('me')}
-                  />
-                </div>
-              )}
+              <div className="flex items-center justify-between gap-2">
+                {isAdmin ? (
+                  <div className="flex items-center gap-1.5">
+                    <FilterChip
+                      label="All"
+                      count={items.length + accessRequests.length}
+                      active={scope === 'all'}
+                      onClick={() => setScope('all')}
+                    />
+                    <FilterChip
+                      label="Me"
+                      count={
+                        (myDealIds
+                          ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
+                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                          : 0)
+                      }
+                      active={scope === 'me'}
+                      onClick={() => setScope('me')}
+                    />
+                  </div>
+                ) : (
+                  <div />
+                )}
+                <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
+              </div>
 
               {/* Search */}
               <div className="relative">
