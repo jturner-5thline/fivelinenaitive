@@ -1990,9 +1990,26 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
     [],
   );
   const canSeeFinancial = !!currentUser?.email && FINANCIAL_ALLOWLIST.has(currentUser.email.toLowerCase());
+  // Users who keep the legacy "Operational" projects dashboard. Everyone
+  // else sees the "My Tasks" experience (same as the My Tasks pop-up).
+  const OPERATIONAL_FULL_ALLOWLIST = useMemo(
+    () => new Set([
+      'jturner@5thline.co',
+      'jmoffitt@5thline.co',
+      'mclark@5thline.co',
+      'swilliams@5thline.co',
+    ]),
+    [],
+  );
+  const canSeeOperationalFull = !!currentUser?.email && OPERATIONAL_FULL_ALLOWLIST.has(currentUser.email.toLowerCase());
   const TABS = useMemo(
     () =>
-      ALL_TABS.filter(t => {
+      ALL_TABS.map(t => {
+        if (t.value === 'operational' && !canSeeOperationalFull) {
+          return { ...t, label: 'My Tasks' };
+        }
+        return t;
+      }).filter(t => {
         if (excludeTabs?.includes(t.value as any)) return false;
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
@@ -2002,7 +2019,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial],
+    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
