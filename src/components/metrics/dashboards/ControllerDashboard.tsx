@@ -338,14 +338,8 @@ function ControllerDashboardInner() {
 
   return (
     <div className="space-y-6">
-      {/* Shared time-range selector (parity with FinServ board) */}
+      {/* Timeframe is controlled by the global Insights header selector. */}
       <div className="flex items-center gap-3 flex-wrap">
-        <InsightsTimeRangeSelector
-          boardId="controller-dashboard"
-          defaultPresetId="ytd"
-          defaultGranularity="monthly"
-          onChange={setRange}
-        />
         <div className="flex items-center gap-2 ml-auto">
           <Switch
             id="controller-data-labels"
@@ -567,7 +561,7 @@ function ControllerDashboardInner() {
         <QuickBooksFinancialDashboard
           period={period}
           periodBadge={periodBadge}
-          granularity={range.granularity}
+          granularity={granularity}
           showDataLabels={showDataLabels}
           revenueSource="pl"
         />
