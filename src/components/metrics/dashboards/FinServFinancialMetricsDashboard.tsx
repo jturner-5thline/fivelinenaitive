@@ -325,6 +325,8 @@ function FinServFinancialMetricsDashboardInner() {
 
   // Data hooks
   const totalRev = useFinServTotalRevenue(selectedPeriod, range.granularity);
+  // Always-monthly revenue series for per-hour widgets.
+  const totalRevMonthly = useFinServTotalRevenue(selectedPeriod, 'monthly');
   const profits = useFinServQuarterlyProfits(selectedPeriod, range.granularity);
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
   const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
@@ -343,6 +345,13 @@ function FinServFinancialMetricsDashboardInner() {
   );
   const monthlyKeys = useMemo(() => monthlyBuckets.map((b) => b.key), [monthlyBuckets]);
   const monthlyLabels = useMemo(() => monthlyBuckets.map((b) => b.label), [monthlyBuckets]);
+  const monthlyRevenueByKey = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const m of totalRevMonthly.months ?? []) {
+      out[m.monthKey] = Number(m.amount ?? 0);
+    }
+    return out;
+  }, [totalRevMonthly.months]);
 
   // Resolve a clicked bucket label/monthKey to its actual start/end ymd.
   const { open: openDrill } = useDrilldown();
