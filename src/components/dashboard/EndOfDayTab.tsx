@@ -1553,35 +1553,6 @@ function EventDetailPane({
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10" onClick={onResolve}>
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Resolve
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Mark resolved (E)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5 text-rose-300 hover:text-rose-200 hover:bg-rose-500/10" onClick={onDismiss}>
-                  <X className="h-3.5 w-3.5" /> Dismiss
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Dismiss (D)</TooltipContent>
-            </Tooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> Snooze <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-[10px]">Snooze until</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => onSnooze(addHours(new Date(), 4), eventTitle)}>4 hours</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSnooze(addDays(new Date(), 1), eventTitle)}>Tomorrow</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSnooze(addWeeks(new Date(), 1), eventTitle)}>1 week</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             {event.html_link && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1598,8 +1569,9 @@ function EventDetailPane({
         </div>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden px-4 py-3 space-y-5">
+      {/* Two-column body: main content + right action rail */}
+      <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-row">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-5">
         {/* Attendees */}
         <section>
           <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
@@ -1745,6 +1717,19 @@ function EventDetailPane({
           )}
         </section>
 
+        {/* Linked Claap recording match strip (portal target) */}
+        <div id={`claap-suggest-slot-${event.id}`} className="empty:hidden" />
+
+        {/* Suggested tasks (extracted from Claap action items) */}
+        <SuggestedTasksSection
+          eventId={event.id}
+          meetingRowId={claapCtx.recording?.meetingRowId ?? null}
+          recordingRowId={claapCtx.recording?.rowId ?? null}
+          source={claapCtx.source}
+          fallbackActionItems={claapCtx.actionItems}
+          linkedDealId={linkedDealId ?? null}
+        />
+
         {/* Saved notes — selectable narrative */}
         {savedNotes.length > 0 && (
           <section>
@@ -1771,60 +1756,9 @@ function EventDetailPane({
           </section>
         )}
 
-        {/* Action items */}
+        {/* Note / Claap summary */}
         <section>
-          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="flex flex-row flex-nowrap items-stretch gap-2 w-full [&>*]:flex-1 [&>*]:min-w-0">
-            <MeetingFollowupInlineAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              primaryAttendeeName={externals[0]?.display_name || null}
-              primaryAttendeeEmail={externals[0]?.email || null}
-              onOpenComposer={(prefilled) => {
-                setComposerPrefillBody(prefilled);
-                setComposerForAll(true);
-              }}
-            />
-            <MeetingCreateFollowUpAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              eventStartISO={event.start}
-              linkedDealId={linkedDealId ?? null}
-            />
-            <MeetingAddToDealCalendarAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              eventStartISO={event.start}
-              linkedDealId={linkedDealId ?? null}
-            />
-            <MeetingDealInlineAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              attendees={(event.attendees || []).map(a => ({
-                email: a.email,
-                displayName: a.display_name,
-                self: a.self,
-              }))}
-              onLinkedDeal={(d) => onLinkDeal(d)}
-            />
-            <MeetingClaapInlineAction
-              eventId={event.id}
-              eventTitle={eventTitle}
-              eventStart={event.start}
-              eventEnd={event.end}
-              organizerEmail={event.organizer?.email || null}
-              attendees={(event.attendees || []).map(a => ({
-                email: a.email,
-                displayName: a.display_name,
-                self: a.self,
-                responseStatus: a.response_status,
-              }))}
-              onOpenPicker={() => setClaapLinkerOpen(true)}
-            />
-          </div>
-          {/* Portal slot for Claap suggestion/linked bar — full width, below the row */}
-          <div id={`claap-suggest-slot-${event.id}`} className="mt-2 empty:hidden" />
-          <div className="mt-2 space-y-2">
+          <div className="space-y-2">
             <FindATimeDialog
               open={scheduleNextOpen}
               onOpenChange={setScheduleNextOpen}
@@ -1841,15 +1775,6 @@ function EventDetailPane({
 
           {/* Add note */}
           <div className="mt-3">
-            {/* Suggested tasks (extracted from Claap action items) */}
-            <SuggestedTasksSection
-              eventId={event.id}
-              meetingRowId={claapCtx.recording?.meetingRowId ?? null}
-              recordingRowId={claapCtx.recording?.rowId ?? null}
-              source={claapCtx.source}
-              fallbackActionItems={claapCtx.actionItems}
-              linkedDealId={linkedDealId ?? null}
-            />
             <div className="flex items-center gap-1.5 mb-1.5">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
@@ -1988,6 +1913,60 @@ function EventDetailPane({
             </ul>
           )}
         </section>
+        </div>
+
+        {/* Right action rail */}
+        <aside className="w-[188px] shrink-0 border-l border-white/[0.08] px-3 py-3 overflow-y-auto">
+          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
+          <div className="flex flex-col gap-2 [&>*]:w-full [&>*]:min-w-0">
+            <MeetingFollowupInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              primaryAttendeeName={externals[0]?.display_name || null}
+              primaryAttendeeEmail={externals[0]?.email || null}
+              onOpenComposer={(prefilled) => {
+                setComposerPrefillBody(prefilled);
+                setComposerForAll(true);
+              }}
+            />
+            <MeetingCreateFollowUpAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              eventStartISO={event.start}
+              linkedDealId={linkedDealId ?? null}
+            />
+            <MeetingAddToDealCalendarAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              eventStartISO={event.start}
+              linkedDealId={linkedDealId ?? null}
+            />
+            <MeetingDealInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+              }))}
+              onLinkedDeal={(d) => onLinkDeal(d)}
+            />
+            <MeetingClaapInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              eventStart={event.start}
+              eventEnd={event.end}
+              organizerEmail={event.organizer?.email || null}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+                responseStatus: a.response_status,
+              }))}
+              onOpenPicker={() => setClaapLinkerOpen(true)}
+            />
+          </div>
+        </aside>
       </div>
 
       {/* Sticky footer */}
