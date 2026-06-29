@@ -217,8 +217,7 @@ export function DraggableGridLayout({
         margin={[16, 16] as [number, number]}
         containerPadding={[0, 0] as [number, number]}
         useCSSTransforms
-        compactType={compactType as any}
-        preventCollision={preventCollision}
+        {...({ compactType, preventCollision } as any)}
       >
         {children}
       </Responsive>
