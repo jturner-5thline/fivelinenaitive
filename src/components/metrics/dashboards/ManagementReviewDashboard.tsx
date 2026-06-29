@@ -587,6 +587,40 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const totalRevPrev = qbConnected ? previousRevenue : null;
   const opProfitCurr = qbConnected ? periodRevenue - periodExpenses : null;
   const opProfitPrev = qbConnected ? previousRevenue - previousExpenses : null;
+
+  // Per-entity (Debt Solutions vs FinServ) revenue & profit for the active
+  // selected period and the matching prior comparison window. Sourced from the
+  // same qbInvoices / qbExpenses dataset as Total Revenue / Operating Profit
+  // above, filtered by QBO realm_id.
+  const sumByRealm = (
+    rows: typeof qbInvoices,
+    range: DateRange,
+    realmId: string,
+  ) =>
+    sumAmountInRange(
+      rows.filter((r: any) => r.realm_id === realmId),
+      range,
+      (r: any) => r.txn_date,
+      (r: any) => r.total_amt,
+    );
+
+  const debtRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtProfitCurr =
+    debtRevCurr !== null && debtExpCurr !== null ? debtRevCurr - debtExpCurr : null;
+  const debtProfitPrev =
+    debtRevPrev !== null && debtExpPrev !== null ? debtRevPrev - debtExpPrev : null;
+
+  const finservRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservProfitCurr =
+    finservRevCurr !== null && finservExpCurr !== null ? finservRevCurr - finservExpCurr : null;
+  const finservProfitPrev =
+    finservRevPrev !== null && finservExpPrev !== null ? finservRevPrev - finservExpPrev : null;
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
   const ttmSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
