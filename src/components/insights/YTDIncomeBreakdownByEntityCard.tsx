@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * YTD Income: Breakdown by Entity — pie chart showing each entity's
@@ -46,20 +47,12 @@ function fmtCompact(n: number): string {
 
 export function YTDIncomeBreakdownByEntityCard() {
   const { user } = useAuth();
-
-  const { yearStart, today, year } = useMemo(() => {
-    const now = new Date();
-    return {
-      yearStart: isoDate(new Date(now.getFullYear(), 0, 1)),
-      today: isoDate(now),
-      year: now.getFullYear(),
-    };
-  }, []);
+  const { rangeStart, rangeEnd, periodLabel } = useTimeframeRange();
 
   const realmIds = ENTITIES.map((e) => e.realmId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["ytd-income-breakdown-by-entity", user?.id, yearStart, today],
+    queryKey: ["income-breakdown-by-entity", user?.id, rangeStart, rangeEnd],
     enabled: !!user,
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
@@ -67,15 +60,14 @@ export function YTDIncomeBreakdownByEntityCard() {
         .from("quickbooks_invoices")
         .select("realm_id, txn_date, total_amt, synced_at")
         .in("realm_id", realmIds)
-        .gte("txn_date", yearStart)
-        .lte("txn_date", today);
+        .gte("txn_date", rangeStart)
+        .lte("txn_date", rangeEnd);
       if (error) throw error;
       const totals: Record<string, number> = {};
       for (const e of ENTITIES) totals[e.realmId] = 0;
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.realm_id || !r.txn_date) continue;
-        if (new Date(r.txn_date).getFullYear() !== year) continue;
         totals[r.realm_id] = (totals[r.realm_id] ?? 0) + Number(r.total_amt ?? 0);
         if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
       }
@@ -124,7 +116,7 @@ export function YTDIncomeBreakdownByEntityCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          YTD Income · Breakdown by Entity
+          Income · Breakdown by Entity
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -144,7 +136,7 @@ export function YTDIncomeBreakdownByEntityCard() {
               className="text-[10px] tracking-wide uppercase"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              Total Firm Income YTD {year}
+              Total Firm Income · {periodLabel}
             </div>
             {isLoading ? (
               <div className="h-9 w-40 rounded bg-white/5 animate-pulse mt-1" />

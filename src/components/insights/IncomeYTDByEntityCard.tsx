@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
  * Income: YTD by Entity — cumulative YTD income per entity, one line each,
@@ -24,11 +25,6 @@ const ENTITIES: { realmId: string; label: string; color: string }[] = [
   { realmId: "193514877331929", label: "Capital Advisors", color: "hsl(142 71% 50%)" },
   { realmId: "9130350272677286", label: "Technologies", color: "hsl(45 90% 60%)" },
   { realmId: "123146077561874", label: "Capital", color: "hsl(280 70% 65%)" },
-];
-
-const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
 function isoDate(d: Date): string {
@@ -54,21 +50,12 @@ function fmtUSDFull(n: number): string {
 
 export function IncomeYTDByEntityCard() {
   const { user } = useAuth();
-
-  const { yearStart, today, currentMonth, year } = useMemo(() => {
-    const now = new Date();
-    return {
-      yearStart: isoDate(new Date(now.getFullYear(), 0, 1)),
-      today: isoDate(now),
-      currentMonth: now.getMonth(),
-      year: now.getFullYear(),
-    };
-  }, []);
+  const { rangeStart, rangeEnd, months, periodLabel } = useTimeframeRange();
 
   const realmIds = ENTITIES.map((e) => e.realmId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["income-ytd-by-entity", user?.id, yearStart, today],
+    queryKey: ["income-ytd-by-entity", user?.id, rangeStart, rangeEnd],
     enabled: !!user,
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
@@ -76,20 +63,19 @@ export function IncomeYTDByEntityCard() {
         .from("quickbooks_invoices")
         .select("realm_id, txn_date, total_amt, synced_at")
         .in("realm_id", realmIds)
-        .gte("txn_date", yearStart)
-        .lte("txn_date", today);
+        .gte("txn_date", rangeStart)
+        .lte("txn_date", rangeEnd);
       if (error) throw error;
-      // monthly[realmId][monthIdx]
-      const monthly: Record<string, number[]> = {};
-      for (const e of ENTITIES) monthly[e.realmId] = new Array(12).fill(0);
+      // monthly[realmId][monthKey]
+      const monthly: Record<string, Record<string, number>> = {};
+      for (const e of ENTITIES) monthly[e.realmId] = {};
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.txn_date || !r.realm_id) continue;
         const d = new Date(r.txn_date);
-        if (d.getFullYear() !== year) continue;
-        const m = d.getMonth();
-        const arr = monthly[r.realm_id];
-        if (arr) arr[m] += Number(r.total_amt ?? 0);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const bucket = monthly[r.realm_id];
+        if (bucket) bucket[k] = (bucket[k] ?? 0) + Number(r.total_amt ?? 0);
         if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
       }
       return { monthly, lastSync };
@@ -98,19 +84,18 @@ export function IncomeYTDByEntityCard() {
 
   const chartData = useMemo(() => {
     const monthly = data?.monthly;
-    const months = MONTH_LABELS.slice(0, currentMonth + 1);
     const running: Record<string, number> = {};
     for (const e of ENTITIES) running[e.realmId] = 0;
-    return months.map((m, i) => {
-      const row: Record<string, number | string> = { month: m };
+    return months.map((mo) => {
+      const row: Record<string, number | string> = { month: mo.label };
       for (const e of ENTITIES) {
-        const amt = monthly?.[e.realmId]?.[i] ?? 0;
+        const amt = monthly?.[e.realmId]?.[mo.key] ?? 0;
         running[e.realmId] += amt;
         row[e.label] = running[e.realmId];
       }
       return row;
     });
-  }, [data, currentMonth]);
+  }, [data, months]);
 
   const hasAnyData = chartData.some((row) =>
     ENTITIES.some((e) => Number(row[e.label] ?? 0) > 0)
@@ -144,7 +129,7 @@ export function IncomeYTDByEntityCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · YTD by Entity
+          Income by Entity
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -162,7 +147,7 @@ export function IncomeYTDByEntityCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          Cumulative YTD income · Jan – {MONTH_LABELS[currentMonth]} {year}
+          Cumulative income · {periodLabel}
         </div>
 
         {isLoading ? (

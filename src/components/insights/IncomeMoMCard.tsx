@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 import {
   Dialog,
   DialogContent,
@@ -75,24 +76,12 @@ export function IncomeMoMCard() {
   const [drill, setDrill] = useState<
     { year: number; month: number; label: string } | null
   >(null);
-
-  const { months, rangeStart, rangeEnd } = useMemo(() => {
-    const now = new Date();
-    const cur = new Date(now.getFullYear(), now.getMonth(), 1);
-    const months: { y: number; m: number }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(cur.getFullYear(), cur.getMonth() - i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() });
-    }
-    // We need prior-year same months too, so start 24 months back.
-    const start = new Date(cur.getFullYear() - 1, cur.getMonth() - 11, 1);
-    const end = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
-    return {
-      months,
-      rangeStart: isoDate(start),
-      rangeEnd: isoDate(end),
-    };
-  }, []);
+  const tfRange = useTimeframeRange();
+  const months = tfRange.months;
+  const periodLabel = tfRange.periodLabel;
+  // Pull prior-year data too so we can overlay same-month last year.
+  const rangeStart = tfRange.priorRangeStart;
+  const rangeEnd = tfRange.rangeEnd;
 
   const { data, isLoading } = useQuery({
     queryKey: ["income-mom-12mo", user?.id, rangeStart, rangeEnd],
@@ -167,7 +156,7 @@ export function IncomeMoMCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · MoM (last 12 months)
+          Income · MoM
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
@@ -185,7 +174,7 @@ export function IncomeMoMCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          Total income · 4 entities · click a bar for account-level breakdown
+          Total income · {periodLabel} · click a bar for account-level breakdown
         </div>
 
         {isLoading ? (

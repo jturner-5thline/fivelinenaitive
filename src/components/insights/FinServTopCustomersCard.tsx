@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
+import { useTimeframeRange } from "./useTimeframeRange";
 import {
   Dialog,
   DialogContent,
@@ -77,21 +78,17 @@ export function FinServTopCustomersCard() {
   const { user } = useAuth();
   const [entityId, setEntityId] = useState(ENTITIES[0].id);
   const [drill, setDrill] = useState<{ id: string; name: string } | null>(null);
-
-  const { curStart, curEnd, prevStart, prevEnd, periodLabel } = useMemo(() => {
-    const now = new Date();
-    const cs = new Date(now.getFullYear(), 0, 1);
-    const ce = now;
-    const ps = new Date(now.getFullYear() - 1, 0, 1);
-    const pe = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+  const tfRange = useTimeframeRange();
+  const { curStart, curEnd, prevStart, prevEnd, periodLabel, priorLabel } = useMemo(() => {
     return {
-      curStart: isoDate(cs),
-      curEnd: isoDate(ce),
-      prevStart: isoDate(ps),
-      prevEnd: isoDate(pe),
-      periodLabel: `Jan 1 – ${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+      curStart: tfRange.rangeStart,
+      curEnd: tfRange.rangeEnd,
+      prevStart: tfRange.priorRangeStart,
+      prevEnd: tfRange.priorRangeEnd,
+      periodLabel: tfRange.periodLabel,
+      priorLabel: "Prior year",
     };
-  }, []);
+  }, [tfRange.rangeStart, tfRange.rangeEnd, tfRange.priorRangeStart, tfRange.priorRangeEnd, tfRange.periodLabel]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -264,8 +261,8 @@ export function FinServTopCustomersCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          {periodLabel} {new Date().getFullYear()} vs {periodLabel}{" "}
-          {new Date().getFullYear() - 1} · sum of invoice totals
+          {periodLabel} vs prior-year same window
+           · sum of invoice totals
         </div>
 
         {isLoading ? (
@@ -326,13 +323,13 @@ export function FinServTopCustomersCard() {
                     }
                     formatter={(v: number, name: string) => [
                       fmtUSD(v),
-                      name === "current" ? "Current YTD" : "Prior YTD",
+                      name === "current" ? periodLabel : priorLabel,
                     ]}
                   />
                   <Legend
                     wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
                     formatter={(v) =>
-                      v === "current" ? "Current YTD" : "Prior YTD"
+                      v === "current" ? periodLabel : priorLabel
                     }
                   />
                   <Bar
@@ -357,9 +354,9 @@ export function FinServTopCustomersCard() {
                   <Tooltip
                     contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
                     labelFormatter={(_, payload) => (payload?.[0]?.payload as { fullName?: string })?.fullName ?? ""}
-                    formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? "Current YTD" : "Prior YTD"]}
+                    formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? periodLabel : priorLabel]}
                   />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? "Current YTD" : "Prior YTD")} />
+                  <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? periodLabel : priorLabel)} />
                   <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="current" stroke="hsla(213,90%,70%,0.95)" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
@@ -531,7 +528,7 @@ function CustomerDrilldownDialog({
           <DialogTitle>{customer?.name ?? "Customer"} · invoice detail</DialogTitle>
         </DialogHeader>
         <div className="text-xs text-muted-foreground">
-          Current YTD: {fmtUSD(totals.current)} · Prior YTD: {fmtUSD(totals.prior)}
+          Current: {fmtUSD(totals.current)} · Prior: {fmtUSD(totals.prior)}
         </div>
         <div className="flex-1 overflow-auto">
           {isLoading ? (
