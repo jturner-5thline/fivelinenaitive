@@ -1218,7 +1218,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const kpiRegistry: KpiTile[] = [
     {
       id: 'total-revenue-curr',
-      l: 'Revenue (selected period)',
+      l: 'Revenue',
       live: qbConnected,
       v: fmtUSD(totalRevCurr),
       sub: (() => {
@@ -1228,7 +1228,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     },
     {
       id: 'operating-profit-curr',
-      l: 'Operating Profit (selected period)',
+      l: 'Operating Profit',
       live: qbConnected,
       v: fmtUSD(opProfitCurr),
       sub: (() => {
@@ -1317,7 +1317,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const auditRows = useMemo(() => ([
     {
-      widget: 'Revenue (selected period)',
+      widget: 'Revenue',
       dataSource: 'quickbooks_invoices',
       queryParams: `txn_date in ${formatRangeLabel(periodRange)} (client-filtered live query)`,
       reportingPeriod: periodLabel,
@@ -1325,7 +1325,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       recomputesOnPeriodChange: true,
     },
     {
-      widget: 'Operating Profit (selected period)',
+      widget: 'Operating Profit',
       dataSource: 'quickbooks_invoices + quickbooks_expenses',
       queryParams: `txn_date in ${formatRangeLabel(periodRange)}; compare ${formatRangeLabel(previousRange)}`,
       reportingPeriod: periodLabel,
