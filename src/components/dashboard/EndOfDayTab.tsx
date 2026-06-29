@@ -1553,35 +1553,6 @@ function EventDetailPane({
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5 text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10" onClick={onResolve}>
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Resolve
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Mark resolved (E)</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5 text-rose-300 hover:text-rose-200 hover:bg-rose-500/10" onClick={onDismiss}>
-                  <X className="h-3.5 w-3.5" /> Dismiss
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Dismiss (D)</TooltipContent>
-            </Tooltip>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> Snooze <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-[10px]">Snooze until</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => onSnooze(addHours(new Date(), 4), eventTitle)}>4 hours</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSnooze(addDays(new Date(), 1), eventTitle)}>Tomorrow</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onSnooze(addWeeks(new Date(), 1), eventTitle)}>1 week</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             {event.html_link && (
               <Tooltip>
                 <TooltipTrigger asChild>
