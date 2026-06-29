@@ -289,20 +289,23 @@ function PerHourWidget({
                         const h = Number(height);
                         const barTop = Number(y);
                         // Stack value + delta inside the bar, near the top.
-                        const hasRoomForBoth = h >= 28;
-                        const valueY = barTop + (hasRoomForBoth ? 12 : 10);
-                        const deltaY = valueY + 11;
+                        const hasRoomForBoth = h >= 52;
+                        const valueY = barTop + (hasRoomForBoth ? 22 : 18);
+                        const deltaY = valueY + 20;
                         // Hide labels entirely if the bar is too short.
-                        if (h < 14) return null;
+                        if (h < 22) return null;
                         return (
                           <g>
                             <text
                               x={cx}
                               y={valueY}
                               textAnchor="middle"
-                              fontSize={10}
+                              fontSize={20}
                               fontWeight={600}
                               fill="#ffffff"
+                              stroke="rgba(0,0,0,0.75)"
+                              strokeWidth={3}
+                              paintOrder="stroke"
                             >
                               {fmtCurrency(Number(value))}
                             </text>
@@ -311,9 +314,12 @@ function PerHourWidget({
                                 x={cx}
                                 y={deltaY}
                                 textAnchor="middle"
-                                fontSize={9}
+                                fontSize={18}
                                 fontWeight={600}
                                 fill={deltaColor}
+                                stroke="rgba(0,0,0,0.75)"
+                                strokeWidth={3}
+                                paintOrder="stroke"
                               >
                                 {deltaText}
                               </text>
