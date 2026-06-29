@@ -499,10 +499,15 @@ export function EndOfDayTab({
 
   // Fetch
   useEffect(() => {
-    if (!enabled || !status?.connected) return;
+    if (!enabled) return;
+    // Allow the fetch when we either know we're connected OR when we already
+    // have cached events (which implies a prior successful connection). This
+    // avoids waiting for the status round-trip before refreshing the list.
+    if (!status?.connected && events.length === 0) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      // Only show the loading spinner on a true cold start.
+      if (events.length === 0) setLoading(true);
       const timeMin = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS)).toISOString();
       const timeMax = endOfDay(new Date()).toISOString();
       const res = await listEvents({ timeMin, timeMax, maxResults: EOD_FETCH_MAX_RESULTS });
@@ -514,7 +519,8 @@ export function EndOfDayTab({
       }
     })();
     return () => { cancelled = true; };
-  }, [enabled, status?.connected, listEvents, hookEvents, eventsCacheKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, status?.connected, listEvents, eventsCacheKey]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
   const outstanding = useMemo<TileEvent[]>(() => {
