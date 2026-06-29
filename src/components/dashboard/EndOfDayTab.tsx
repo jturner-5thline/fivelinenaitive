@@ -537,10 +537,23 @@ export function EndOfDayTab({
     // Require at least one OTHER attendee besides the current user.
     // Personal/solo events (Gym, focus blocks, etc.) are filtered out.
     const audienceEligible = windowed.filter(({ otherCount }) => otherCount > 0);
-    const uncleared = audienceEligible.filter(({ ev, start }) => (
-      !isResolved(ev.id) && !isDismissed(ev.id, start) && !isSnoozed(ev.id)
-    ));
-    const result = uncleared
+    const showingDismissed = filterChips.has('dismissed');
+    // Default view = actionable items: not resolved, not dismissed, not
+    // snoozed, AND not yet marked-as-read. Marking read therefore hides the
+    // tile, matching the "clear it from view once I've seen it" mental model.
+    // The "Dismissed" chip flips the pane to show ONLY items that have been
+    // cleared in some way — dismissed, resolved, or marked-as-read.
+    const stateFiltered = audienceEligible.filter(({ ev, start }) => {
+      const resolved = isResolved(ev.id);
+      const dismissed = isDismissed(ev.id, start);
+      const snoozed = isSnoozed(ev.id);
+      const read = readSet.has(ev.id);
+      if (showingDismissed) {
+        return resolved || dismissed || read;
+      }
+      return !resolved && !dismissed && !snoozed && !read;
+    });
+    const result = stateFiltered
       .map(({ ev, start }) => {
         const ageDays = start ? differenceInCalendarDays(ref, startOfDay(start)) : 0;
         return { ...ev, _ageDays: ageDays, _isCarry: ageDays > 0 };
@@ -572,7 +585,7 @@ export function EndOfDayTab({
       });
     } catch { /* noop */ }
     return result;
-  }, [events, isResolved, isDismissed, isSnoozed, search, filterChips]);
+  }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips]);
 
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
