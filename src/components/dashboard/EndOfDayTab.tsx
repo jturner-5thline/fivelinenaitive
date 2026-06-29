@@ -664,42 +664,96 @@ export function EndOfDayTab({
   const dealMatchers = useMemo(() => {
     const domains = new Map<string, true>();
     const names: { needle: string }[] = [];
+    // Common single words / short tokens we never want to use as a deal
+    // matcher (otherwise titles like "Finance Sync" or "John & James" match
+    // any deal whose name happens to contain "finance", "john", etc.).
+    const STOPWORDS = new Set([
+      'finance', 'sync', 'review', 'call', 'meeting', 'sales', 'team',
+      'weekly', 'daily', 'monthly', 'check', 'checkin', 'check-in',
+      'standup', 'stand-up', 'sync-up', 'syncup', 'kickoff', 'kick-off',
+      'intro', 'follow', 'followup', 'follow-up', 'update', 'updates',
+      'pipeline', 'partners', 'partner', 'ops', 'operations', 'deal',
+      'deals', 'lender', 'lenders', 'capital', 'group', 'co', 'company',
+      'inc', 'llc', 'ltd', 'the', 'and', 'for', 'with', 'naitive',
+      '5th line', '5thline',
+    ]);
     for (const d of deals || []) {
       const webDom = normalizeWebsiteDomain(d.companyUrl);
-      if (webDom && !isFreemailDomain(webDom)) domains.set(webDom, true);
+      if (webDom && !isFreemailDomain(webDom) && webDom !== '5thline.co') {
+        domains.set(webDom, true);
+      }
       const contactDom = normalizeEmailDomain(d.contactInfo) ?? normalizeEmailDomain(d.contactEmail);
-      if (contactDom && !isFreemailDomain(contactDom)) domains.set(contactDom, true);
+      if (contactDom && !isFreemailDomain(contactDom) && contactDom !== '5thline.co') {
+        domains.set(contactDom, true);
+      }
       const company = (d.company || '').trim().toLowerCase();
       const name = (d.name || '').trim().toLowerCase();
-      if (company.length >= 3) names.push({ needle: company });
-      if (name && name !== company && name.length >= 3) names.push({ needle: name });
+      const pushName = (raw: string) => {
+        if (!raw) return;
+        // Require ≥4 chars and skip stopwords / generic tokens. A single-word
+        // needle additionally must be ≥5 chars to avoid false positives like
+        // "James"/"Finance" inside event titles.
+        if (raw.length < 4) return;
+        if (STOPWORDS.has(raw)) return;
+        const tokens = raw.split(/\s+/).filter(Boolean);
+        if (tokens.length === 1 && raw.length < 5) return;
+        names.push({ needle: raw });
+      };
+      pushName(company);
+      if (name !== company) pushName(name);
     }
     return { domains, names };
   }, [deals]);
 
+  // Word-boundary aware title match. We require the deal-name needle to
+  // appear as a whole word (or contiguous phrase) inside the title — not
+  // just as a substring — so titles like "Finance Sync" don't match a deal
+  // called "Finance Co" via the bare substring "finance".
+  const titleContainsNeedle = useCallback((title: string, needle: string): boolean => {
+    if (!title || !needle) return false;
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, 'i');
+    return re.test(title);
+  }, []);
+
   const eventMatchesDeal = useCallback((ev: TileEvent): boolean => {
     if (dealLinkedEventIds?.has(ev.id)) return true;
+    // Purely internal meetings (every party @5thline.co) never count as a
+    // deal meeting unless they have an explicit canonical link above.
+    if (eventIsInternalStrict(ev)) return false;
     const title = (ev.summary || '').toLowerCase();
     if (title) {
       for (const { needle } of dealMatchers.names) {
-        if (title.includes(needle)) return true;
+        if (titleContainsNeedle(title, needle)) return true;
       }
     }
     for (const a of (ev.attendees || [])) {
       if (a.self) continue;
       const dom = normalizeEmailDomain(a.email);
       if (!dom || isFreemailDomain(dom)) continue;
+      if (dom === '5thline.co') continue;
       if (dealMatchers.domains.has(dom)) return true;
     }
     return false;
-  }, [dealLinkedEventIds, dealMatchers]);
+  }, [dealLinkedEventIds, dealMatchers, titleContainsNeedle]);
 
-  const eventIsInternal = useCallback((ev: TileEvent): boolean => {
-    const ax = ev.attendees || [];
-    const others = ax.filter(a => !a.self && (a.email || '').trim());
-    if (others.length === 0) return false;
-    return others.every(a => isInternalAttendee(a.email));
-  }, []);
+  // An event is "internal" when every email-bearing party (attendees + the
+  // organizer) uses the @5thline.co domain. We include the organizer so
+  // events where attendees are missing self entries (or where the organizer
+  // isn't listed as an attendee) still resolve correctly. Solo events with
+  // no other attendees count as internal when the organizer is internal.
+  function eventIsInternalStrict(ev: TileEvent): boolean {
+    const emails: string[] = [];
+    for (const a of ev.attendees || []) {
+      const e = (a.email || '').trim();
+      if (e) emails.push(e);
+    }
+    const orgEmail = (ev.organizer?.email || '').trim();
+    if (orgEmail) emails.push(orgEmail);
+    if (emails.length === 0) return false;
+    return emails.every(e => isInternalAttendee(e));
+  }
+  const eventIsInternal = useCallback((ev: TileEvent) => eventIsInternalStrict(ev), []);
 
   const filtered = useMemo<TileEvent[]>(() => {
     const q = search.trim().toLowerCase();
