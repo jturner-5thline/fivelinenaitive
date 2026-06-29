@@ -366,6 +366,7 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+  { id: 'kpi-row-firm-liquidity', registryId: 'firm-liquidity' },
   { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
   { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
   { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
@@ -1266,6 +1267,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
     {
+      id: 'firm-liquidity',
+      l: 'Firm Liquidity',
+      live: false,
+      v: '—',
+      sub: <span style={{ color: NA_COLOR }}>—</span>,
+    },
+    {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
       live: qbConnected,
@@ -1600,7 +1608,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                               )}
                             </td>
                             <td style={{ ...tdBase, textAlign: 'right', color: k.live ? '#e8f6ff' : NA_COLOR, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                              {k.live ? k.v : 'Unavailable'}
+                              {k.live ? k.v : (k.v && k.v !== '$0' ? k.v : 'Unavailable')}
                             </td>
                             <td style={{ ...tdBase, textAlign: 'right', color: deltaColor, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                               {delta === null ? '—' : `${sign}${fmtUSD(Math.abs(delta))}`}
