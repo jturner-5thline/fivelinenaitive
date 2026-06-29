@@ -29,19 +29,23 @@ export interface ProposalsIssuedByMonthResult {
   deals: ProposalIssuedEntry[];
   byMonth: ProposalIssuedEntry[][]; // length 12
   countsByMonth: number[];          // length 12
+  byMonthKey: Record<string, ProposalIssuedEntry[]>;
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
 }
 
-export function useProposalsIssuedByMonth(year: number): ProposalsIssuedByMonthResult {
+export function useProposalsIssuedByMonth(yearOrYears: number | number[]): ProposalsIssuedByMonthResult {
   const { user } = useAuth();
 
-  const start = `${year}-01-01`;
-  const end = `${year}-12-31`;
+  const years = Array.isArray(yearOrYears) ? [...new Set(yearOrYears)].sort() : [yearOrYears];
+  const startYear = years[0];
+  const endYear = years[years.length - 1];
+  const start = `${startYear}-01-01`;
+  const end = `${endYear}-12-31`;
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['proposals-issued-by-month', ACTIVE_PIPELINE_ID, year],
+    queryKey: ['proposals-issued-by-month', ACTIVE_PIPELINE_ID, startYear, endYear],
     queryFn: async () => {
       const { data: rows, error: err } = await supabase
         .from('deal_stage_history')
@@ -95,8 +99,12 @@ export function useProposalsIssuedByMonth(year: number): ProposalsIssuedByMonthR
   })();
 
   const byMonth: ProposalIssuedEntry[][] = Array.from({ length: 12 }, () => []);
+  const byMonthKey: Record<string, ProposalIssuedEntry[]> = {};
   for (const d of deals) {
     if (d.month_index >= 0 && d.month_index < 12) byMonth[d.month_index].push(d);
+    const dt = new Date(d.entered_at);
+    const k = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+    (byMonthKey[k] = byMonthKey[k] || []).push(d);
   }
   const countsByMonth = byMonth.map((arr) => arr.length);
 
@@ -104,6 +112,7 @@ export function useProposalsIssuedByMonth(year: number): ProposalsIssuedByMonthR
     deals,
     byMonth,
     countsByMonth,
+    byMonthKey,
     isLoading,
     isFetching,
     error: (error as Error) ?? null,

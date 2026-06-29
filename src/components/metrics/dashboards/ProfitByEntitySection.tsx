@@ -179,7 +179,7 @@ export function ProfitBarChart({
             className="text-[10px] mt-1.5 uppercase tracking-wider"
             style={{ color: 'rgba(120, 170, 255, 0.40)' }}
           >
-            {months.length}-Month Quarter Total
+            {months.length}-Month Total
           </p>
         </div>
       </CardHeader>

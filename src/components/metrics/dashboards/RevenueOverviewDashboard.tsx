@@ -99,7 +99,7 @@ function RevenueBarChart({
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Quarter Total</p>
+          <p className="text-[10px] text-muted-foreground">Period Total</p>
         </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
@@ -435,7 +435,7 @@ export function StackedDebtRevenueChart({
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Quarter Total</p>
+          <p className="text-[10px] text-muted-foreground">Period Total</p>
         </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
@@ -569,7 +569,7 @@ export function StackedGenericRevenueChart({
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Quarter Total</p>
+          <p className="text-[10px] text-muted-foreground">Period Total</p>
         </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">

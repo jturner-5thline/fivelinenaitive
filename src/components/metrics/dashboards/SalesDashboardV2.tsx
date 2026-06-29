@@ -1257,14 +1257,15 @@ function MetricDrilldownDialog({
       return d >= start && d <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        eventsInPeriod = eventsInPeriod.filter((ev) => {
-          if (!ev.start) return false;
-          const d = new Date(ev.start);
-          return d.getUTCFullYear() === SEED_YEAR && d.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      eventsInPeriod = eventsInPeriod.filter((ev) => {
+        if (!ev.start) return false;
+        const d = new Date(ev.start);
+        return d.getUTCFullYear() === fy && d.getUTCMonth() === fm;
+      });
     }
     eventsInPeriod = eventsInPeriod.sort((a, b) => (a.start ?? '').localeCompare(b.start ?? ''));
   }
@@ -1280,13 +1281,14 @@ function MetricDrilldownDialog({
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        dealsInPeriod = dealsInPeriod.filter((d) => {
-          const c = new Date(d.created_at);
-          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      dealsInPeriod = dealsInPeriod.filter((d) => {
+        const c = new Date(d.created_at);
+        return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
+      });
     }
     dealsInPeriod = dealsInPeriod.sort((a, b) =>
       (a.created_at ?? '').localeCompare(b.created_at ?? ''),
@@ -1304,13 +1306,14 @@ function MetricDrilldownDialog({
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
-      const idx = view.monthIndexes[focus.monthIndex];
-      if (idx >= 0) {
-        proposalsInPeriod = proposalsInPeriod.filter((d) => {
-          const c = new Date(d.entered_at);
-          return c.getUTCFullYear() === SEED_YEAR && c.getUTCMonth() === idx;
-        });
-      }
+      const f = new Date(view.rangeStart);
+      f.setUTCMonth(f.getUTCMonth() + focus.monthIndex);
+      const fy = f.getUTCFullYear();
+      const fm = f.getUTCMonth();
+      proposalsInPeriod = proposalsInPeriod.filter((d) => {
+        const c = new Date(d.entered_at);
+        return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
+      });
     }
     proposalsInPeriod = proposalsInPeriod.sort((a, b) =>
       (a.entered_at ?? '').localeCompare(b.entered_at ?? ''),
@@ -1634,97 +1637,122 @@ export function SalesDashboardV2() {
   const fallback = useDashboardPeriod('sales-dashboard-v2-period', 'quarter');
   const selectedQuarter = insightsTf?.selectedQuarter ?? fallback.quarterOption;
 
-  // Live Sales Calls — fetch for the full seeded year so the per-month
-  // overwrite below picks up any month that maps into the active quarter.
-  const YEAR = 2026;
-  const yearStart = React.useMemo(() => new Date(Date.UTC(YEAR, 0, 1)), []);
-  const yearEnd = React.useMemo(() => new Date(Date.UTC(YEAR, 11, 31, 23, 59, 59)), []);
+  // Derive the year span from the active timeframe so every "Last N months /
+  // quarter / custom" selection in the header drives the queries below.
+  // Falls back to the current calendar year if anything is missing.
+  const { activeYears, rangeStart, rangeEnd } = React.useMemo(() => {
+    const startStr = selectedQuarter.startDate || `${new Date().getFullYear()}-01-01`;
+    const endStr = selectedQuarter.endDate || `${new Date().getFullYear()}-12-31`;
+    const sy = Number(startStr.slice(0, 4));
+    const ey = Number(endStr.slice(0, 4));
+    const years: number[] = [];
+    for (let y = sy; y <= ey; y += 1) years.push(y);
+    return {
+      activeYears: years.length ? years : [new Date().getFullYear()],
+      rangeStart: new Date(`${startStr}T00:00:00Z`),
+      rangeEnd: new Date(`${endStr}T23:59:59Z`),
+    };
+  }, [selectedQuarter.startDate, selectedQuarter.endDate]);
+
+  // Live Sales Calls — fetch for the active range so the per-month bucketing
+  // below picks up every month in the selected timeframe.
+  const yearStart = rangeStart;
+  const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
   const salesCallEvents = salesCallsQuery.data?.events ?? [];
-  const liveSalesCallsActual = React.useMemo<(number | null)[]>(() => {
-    if (salesCallsQuery.isLoading || salesCallsQuery.isFetching) {
-      return new Array(9).fill(null);
-    }
-    const buckets: (number | null)[] = new Array(9).fill(null);
-    for (let i = 0; i < buckets.length; i += 1) buckets[i] = 0;
+  /**
+   * Live actuals keyed by absolute YYYY-MM so any selected window (within or
+   * across calendar years) maps directly through buildView's month keys.
+   */
+  const salesCallsByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (salesCallsQuery.isLoading || salesCallsQuery.isFetching) return {};
+    const out: Record<string, number> = {};
     for (const ev of salesCallEvents) {
       if (!ev.start) continue;
       const d = new Date(ev.start);
-      if (d.getUTCFullYear() !== YEAR) continue;
-      const m = d.getUTCMonth();
-      if (m >= 9) continue; // dashboard covers Jan–Sep only
-      buckets[m] = (buckets[m] ?? 0) + 1;
+      const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      out[k] = (out[k] ?? 0) + 1;
     }
-    return buckets;
+    return out;
   }, [salesCallsQuery.isFetching, salesCallsQuery.isLoading, salesCallEvents]);
 
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
-  // (Active Pipeline, deals.created_at within range, excluding closed/lost/
-  // on-hold/archived). We fetch the full seeded year and bucket by month.
-  const dealsOnBoardQuery = useDealsOnBoardByMonth(YEAR);
-  const liveDealsOnBoardActual = React.useMemo<(number | null)[]>(() => {
-    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) {
-      return new Array(9).fill(null);
+  const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardQuery.byMonthKey)) {
+      out[k] = arr.length;
     }
-    const buckets: (number | null)[] = new Array(9).fill(0);
-    for (let m = 0; m < 9; m += 1) {
-      buckets[m] = dealsOnBoardQuery.byMonth[m]?.length ?? 0;
-    }
-    return buckets;
+    return out;
   }, [
     dealsOnBoardQuery.isLoading,
     dealsOnBoardQuery.isFetching,
-    dealsOnBoardQuery.byMonth,
+    dealsOnBoardQuery.byMonthKey,
   ]);
 
   // Live Proposals Issued — mirrors Consolidated Debt Pipeline Board logic
-  // (Active Pipeline, stage_enter into Proposal Issued via deal_stage_history,
-  // deduped to first entry per deal, excluding test deals). Bucket by month.
-  const proposalsIssuedQuery = useProposalsIssuedByMonth(YEAR);
-  const liveProposalsIssuedActual = React.useMemo<(number | null)[]>(() => {
-    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) {
-      return new Array(9).fill(null);
+  const proposalsIssuedQuery = useProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedQuery.byMonthKey)) {
+      out[k] = arr.length;
     }
-    const buckets: (number | null)[] = new Array(9).fill(0);
-    for (let m = 0; m < 9; m += 1) {
-      buckets[m] = proposalsIssuedQuery.byMonth[m]?.length ?? 0;
-    }
-    return buckets;
+    return out;
   }, [
     proposalsIssuedQuery.isLoading,
     proposalsIssuedQuery.isFetching,
-    proposalsIssuedQuery.byMonth,
+    proposalsIssuedQuery.byMonthKey,
   ]);
 
   // Live Dollars Signed — mirrors Consolidated Debt Pipeline Board's
-  // "Debt $ Signed" (stage-entry into Final Credit Items on the Active
-  // Pipeline, deduped first-entry-per-deal, excluding test deals). Bucketed
-  // by UTC month and converted to $MM to match the dashboard's plan units.
-  const dollarsSignedQuery = useDollarsSignedByMonth(YEAR);
-  const liveDollarsSignedActual = React.useMemo<(number | null)[]>(() => {
-    if (dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching) {
-      return new Array(9).fill(null);
-    }
-    const buckets: (number | null)[] = new Array(9).fill(0);
-    for (let m = 0; m < 9; m += 1) {
-      buckets[m] = dollarsSignedQuery.dollarsByMonthMM[m] ?? 0;
-    }
-    return buckets;
+  const dollarsSignedQuery = useDollarsSignedByMonth(activeYears);
+  const dollarsSignedByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching) return {};
+    return dollarsSignedQuery.dollarsByMonthKeyMM ?? {};
   }, [
     dollarsSignedQuery.isLoading,
     dollarsSignedQuery.isFetching,
-    dollarsSignedQuery.dollarsByMonthMM,
+    dollarsSignedQuery.dollarsByMonthKeyMM,
   ]);
+
+  // Map each month in the selected timeframe (via QuarterOption.months[].key)
+  // to its actual bucket. Months outside the live data range render as null
+  // so charts visibly indicate "no data" instead of falsely-zero.
+  const monthKeys = React.useMemo(
+    () => selectedQuarter.months.map((m) => m.key),
+    [selectedQuarter.months],
+  );
+  const lookup = (map: Record<string, number>, isLoading: boolean) =>
+    monthKeys.map((k) => (isLoading ? null : map[k] ?? 0));
+  const liveSalesCallsActual = React.useMemo(
+    () => lookup(salesCallsByMonthKey, salesCallsQuery.isLoading || salesCallsQuery.isFetching),
+    [salesCallsByMonthKey, salesCallsQuery.isLoading, salesCallsQuery.isFetching, monthKeys],
+  );
+  const liveDealsOnBoardActual = React.useMemo(
+    () => lookup(dealsOnBoardByMonthKey, dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching),
+    [dealsOnBoardByMonthKey, dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, monthKeys],
+  );
+  const liveProposalsIssuedActual = React.useMemo(
+    () => lookup(proposalsIssuedByMonthKey, proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching),
+    [proposalsIssuedByMonthKey, proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching, monthKeys],
+  );
+  const liveDollarsSignedActual = React.useMemo(
+    () => lookup(dollarsSignedByMonthKey, dollarsSignedQuery.isLoading || dollarsSignedQuery.isFetching),
+    [dollarsSignedByMonthKey, dollarsSignedQuery.isLoading, dollarsSignedQuery.isFetching, monthKeys],
+  );
 
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
   const view = React.useMemo<DashboardView>(() => ({
     ...baseView,
     actual: {
       ...baseView.actual,
-      salesCalls: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveSalesCallsActual[idx] : null)),
-      dealsOnBoard: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDealsOnBoardActual[idx] : null)),
-      proposalsIssued: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveProposalsIssuedActual[idx] : null)),
-      dollarsSigned: baseView.monthIndexes.map((idx) => (idx >= 0 ? liveDollarsSignedActual[idx] : null)),
+      // Live actuals are already indexed 1:1 with the active timeframe months.
+      salesCalls: liveSalesCallsActual,
+      dealsOnBoard: liveDealsOnBoardActual,
+      proposalsIssued: liveProposalsIssuedActual,
+      dollarsSigned: liveDollarsSignedActual,
     },
   }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
