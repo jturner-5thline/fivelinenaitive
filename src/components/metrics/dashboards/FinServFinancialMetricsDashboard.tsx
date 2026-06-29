@@ -98,16 +98,21 @@ function PlaceholderWidget({ title }: { title: string }) {
   );
 }
 
-function RevenuePerHourWidget({
+function PerHourWidget({
+  title,
+  numeratorLabel,
   monthKeys,
   monthLabels,
   badge,
-  revenueByMonth,
+  numeratorByMonth,
 }: {
+  title: string;
+  /** Short label for the numerator, e.g. "Revenue" or "Profit". */
+  numeratorLabel: string;
   monthKeys: string[];
   monthLabels: string[];
   badge: string;
-  revenueByMonth: Record<string, number>;
+  numeratorByMonth: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<'monthly' | 'avg'>('monthly');
@@ -137,24 +142,24 @@ function RevenuePerHourWidget({
 
   const chartData = useMemo(() => {
     return monthKeys.map((k, i) => {
-      const revenue = Number(revenueByMonth[k] ?? 0);
+      const numerator = Number(numeratorByMonth[k] ?? 0);
       const hours = Number(hoursByMonth[k] ?? 0);
-      const rate = hours > 0 ? revenue / hours : null;
+      const rate = hours > 0 ? numerator / hours : null;
       return {
         month: monthLabels[i] ?? k,
         monthKey: k,
-        revenue,
+        numerator,
         hours,
         rate,
       };
     });
-  }, [monthKeys, monthLabels, revenueByMonth, hoursByMonth]);
+  }, [monthKeys, monthLabels, numeratorByMonth, hoursByMonth]);
 
   const totals = useMemo(() => {
-    const revenue = chartData.reduce((s, d) => s + d.revenue, 0);
+    const numerator = chartData.reduce((s, d) => s + d.numerator, 0);
     const hours = chartData.reduce((s, d) => s + d.hours, 0);
-    const rate = hours > 0 ? revenue / hours : null;
-    return { revenue, hours, rate };
+    const rate = hours > 0 ? numerator / hours : null;
+    return { numerator, hours, rate };
   }, [chartData]);
 
   const hasAnyHours = chartData.some((d) => d.hours > 0);
@@ -164,7 +169,7 @@ function RevenuePerHourWidget({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-sm font-medium">Revenue per Hour</CardTitle>
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
             <Badge variant="outline" className="w-fit text-xs mt-1">{badge}</Badge>
           </div>
           <div className="flex items-center gap-1">
@@ -214,7 +219,7 @@ function RevenuePerHourWidget({
               <span className="text-sm font-normal text-muted-foreground ml-1">/ hr</span>
             </div>
             <div className="text-xs text-muted-foreground mt-2 tabular-nums">
-              {fmtCurrencyFull(totals.revenue)} ÷ {totals.hours.toLocaleString()} hrs
+              {fmtCurrencyFull(totals.numerator)} ÷ {totals.hours.toLocaleString()} hrs
             </div>
             <div className="text-[11px] text-muted-foreground/70 mt-1">Average across {badge.replace(/^Monthly · /, '')}</div>
           </div>
@@ -226,7 +231,7 @@ function RevenuePerHourWidget({
                 <span className="text-xs font-normal text-muted-foreground ml-1">/ hr</span>
               </div>
               <div className="text-xs text-muted-foreground tabular-nums">
-                {fmtCurrency(totals.revenue)} · {totals.hours.toLocaleString()} hrs
+                {fmtCurrency(totals.numerator)} · {totals.hours.toLocaleString()} hrs
               </div>
             </div>
             <div className="h-[180px]">
@@ -238,10 +243,10 @@ function RevenuePerHourWidget({
                   <Tooltip
                     formatter={(v: any, _name, p: any) => {
                       const d = p?.payload;
-                      if (d?.rate == null) return ['—', 'Revenue / hr'];
+                      if (d?.rate == null) return ['—', `${numeratorLabel} / hr`];
                       return [
-                        `${fmtCurrencyPrecise(d.rate)} (${fmtCurrency(d.revenue)} / ${d.hours.toLocaleString()} hrs)`,
-                        'Revenue / hr',
+                        `${fmtCurrencyPrecise(d.rate)} (${fmtCurrency(d.numerator)} / ${d.hours.toLocaleString()} hrs)`,
+                        `${numeratorLabel} / hr`,
                       ];
                     }}
                   />
