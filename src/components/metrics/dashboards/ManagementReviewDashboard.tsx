@@ -366,6 +366,7 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
   { id: 'kpi-row-operating-profit-curr', registryId: 'operating-profit-curr' },
   { id: 'kpi-row-ttm-revenue', registryId: 'ttm-revenue' },
   { id: 'kpi-row-ytd-revenue', registryId: 'ytd-revenue' },
+  { id: 'kpi-row-firm-liquidity', registryId: 'firm-liquidity' },
   { id: 'kpi-row-debt-solutions-revenue', registryId: 'debt-solutions-revenue' },
   { id: 'kpi-row-debt-solutions-profit', registryId: 'debt-solutions-profit' },
   { id: 'kpi-row-finserv-revenue', registryId: 'finserv-revenue' },
