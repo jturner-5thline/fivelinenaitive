@@ -908,7 +908,11 @@ function FinServFinancialMetricsDashboardInner() {
 
       {/* ── Row 8: Placeholder widgets ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PlaceholderWidget title="Revenue per Hour" />
+        <RevenuePerHourWidget
+          monthKeys={monthlyKeys}
+          monthLabels={monthlyLabels}
+          badge={`Monthly · ${selectedPeriod.label}`}
+        />
         <PlaceholderWidget title="Profit per Hour" />
       </div>
     </div>
