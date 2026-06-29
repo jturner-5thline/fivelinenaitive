@@ -110,6 +110,7 @@ function RevenuePerHourWidget({
   revenueByMonth: Record<string, number>;
 }) {
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<'monthly' | 'avg'>('monthly');
   const { company } = useCompany();
   const companyId = company?.id ?? null;
 
@@ -166,17 +167,35 @@ function RevenuePerHourWidget({
             <CardTitle className="text-sm font-medium">Revenue per Hour</CardTitle>
             <Badge variant="outline" className="w-fit text-xs mt-1">{badge}</Badge>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 -mr-1 -mt-1"
-            aria-label="Input monthly hours"
-            title="Input monthly hours"
-            onClick={() => setOpen(true)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <div className="inline-flex rounded-md border border-border/60 bg-white/[0.04] p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setView('monthly')}
+                className={`px-2 py-0.5 rounded-[4px] transition-colors ${view === 'monthly' ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('avg')}
+                className={`px-2 py-0.5 rounded-[4px] transition-colors ${view === 'avg' ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                Avg.
+              </button>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 -mr-1 -mt-1"
+              aria-label="Input monthly hours"
+              title="Input monthly hours"
+              onClick={() => setOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -187,6 +206,17 @@ function RevenuePerHourWidget({
             <Clock className="h-8 w-8 mb-2 opacity-40" />
             <p className="text-sm font-medium">No hours entered</p>
             <p className="text-xs mt-1 opacity-60">Click the pencil to input monthly hours</p>
+          </div>
+        ) : view === 'avg' ? (
+          <div className="flex flex-col items-center justify-center py-10">
+            <div className="text-4xl font-semibold tabular-nums text-foreground">
+              {totals.rate != null ? fmtCurrencyPrecise(totals.rate) : '—'}
+              <span className="text-sm font-normal text-muted-foreground ml-1">/ hr</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-2 tabular-nums">
+              {fmtCurrencyFull(totals.revenue)} ÷ {totals.hours.toLocaleString()} hrs
+            </div>
+            <div className="text-[11px] text-muted-foreground/70 mt-1">Average across {badge.replace(/^Monthly · /, '')}</div>
           </div>
         ) : (
           <div className="space-y-2">
