@@ -26,9 +26,9 @@ export const HomepageFeatureSection = ({
             ref={textRef}
             className={`flex-1 max-w-[34rem] transition-all duration-700 delay-100 ${textVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
           >
-            <h3 className="text-3xl md:text-4xl lg:text-[40px] font-semibold tracking-[-0.02em] text-white mb-6 leading-[1.1]">
+            <h2 className="text-3xl md:text-4xl lg:text-[40px] font-semibold tracking-[-0.02em] text-white mb-6 leading-[1.1]">
               {title}
-            </h3>
+            </h2>
             <p className="text-base md:text-lg font-light text-white/60 leading-[1.6]">
               {description}
             </p>
