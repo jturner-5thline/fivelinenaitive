@@ -14,23 +14,38 @@ import {
   defaultRepScorecardFilter,
   type RepScorecardPeriod,
 } from "@/hooks/useRepScorecard";
-import { currentFiscalYear } from "@/lib/fiscalQuarter";
+import { useInsightsTimeframe } from "@/contexts/InsightsTimeframeContext";
 import { formatUSD } from "@/lib/formatters/currency";
-
-const PERIODS: { id: RepScorecardPeriod; label: string }[] = [
-  { id: 1, label: "Q1" },
-  { id: 2, label: "Q2" },
-  { id: 3, label: "Q3" },
-  { id: 4, label: "Q4" },
-  { id: "year", label: "Year" },
-];
 
 const PRODUCTION_ROW_KEYS = new Set(["deals_on_board", "dollars_on_board"]);
 
 export function RepScorecardCard() {
   const { user } = useAuth();
   const { isAdmin } = useAdminRole();
-  const [filter, setFilter] = useState(() => defaultRepScorecardFilter(user?.id ?? null));
+  const { timeframe } = useInsightsTimeframe();
+
+  // Derive fiscalYear + period (Q1-Q4 or "year") from the global header timeframe.
+  const derived = useMemo(() => {
+    const s = new Date(timeframe.start);
+    const e = new Date(timeframe.end);
+    const fiscalYear = e.getFullYear();
+    const sameYear = s.getFullYear() === e.getFullYear();
+    const sQ = Math.floor(s.getMonth() / 3) + 1;
+    const eQ = Math.floor(e.getMonth() / 3) + 1;
+    const period: RepScorecardPeriod = sameYear && sQ === eQ ? (eQ as RepScorecardPeriod) : "year";
+    return { fiscalYear, period };
+  }, [timeframe.start, timeframe.end]);
+
+  const [filter, setFilter] = useState(() => ({
+    ...defaultRepScorecardFilter(user?.id ?? null),
+    fiscalYear: derived.fiscalYear,
+    period: derived.period,
+  }));
+
+  // Re-sync whenever the header timeframe changes.
+  useEffect(() => {
+    setFilter(f => ({ ...f, fiscalYear: derived.fiscalYear, period: derived.period }));
+  }, [derived.fiscalYear, derived.period]);
 
   // Keep filter.userId in sync with auth on first load.
   useEffect(() => {
@@ -42,10 +57,6 @@ export function RepScorecardCard() {
   const { data, isLoading } = useRepScorecard(filter);
 
   const repOptions = useMemo(() => data?.reps ?? [], [data]);
-  const years = useMemo(() => {
-    const cy = currentFiscalYear();
-    return [cy - 1, cy, cy + 1];
-  }, []);
 
   const selectedRep = repOptions.find(r => r.user_id === filter.userId);
 
@@ -76,32 +87,9 @@ export function RepScorecardCard() {
                 ))}
               </SelectContent>
             </Select>
-            <Select
-              value={String(filter.fiscalYear)}
-              onValueChange={v => setFilter(f => ({ ...f, fiscalYear: Number(v) }))}
-            >
-              <SelectTrigger className="h-8 w-[88px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {years.map(y => (
-                  <SelectItem key={y} value={String(y)} className="text-xs">FY {y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="flex items-center rounded-md border border-border/50 bg-background/40 p-0.5">
-              {PERIODS.map(p => (
-                <Button
-                  key={String(p.id)}
-                  variant={filter.period === p.id ? "secondary" : "ghost"}
-                  size="sm"
-                  className="h-7 px-2.5 text-xs"
-                  onClick={() => setFilter(f => ({ ...f, period: p.id }))}
-                >
-                  {p.label}
-                </Button>
-              ))}
-            </div>
+            <Badge variant="outline" className="h-7 px-2 text-[11px] font-medium">
+              {timeframe.label}
+            </Badge>
             <div className="flex items-center gap-2 rounded-md border border-border/50 bg-background/40 px-2 h-8">
               <Switch
                 id="active-only"
