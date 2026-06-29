@@ -387,7 +387,6 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // matching the width of the Debt Pipeline widget below it.
   { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 3, minW: 4, minH: 3 },
   { i: 'ar-aging', x: 6, y: 0, w: 6, h: 3, minW: 3, minH: 3 },
-  { i: 'bank-balances', x: 0, y: 3, w: 6, h: 4, minW: 3, minH: 2 },
   { i: 'monthly-revenue', x: 0, y: 7, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 11, w: 12, h: 5, minW: 6, minH: 3 },
   { i: 'liabilities', x: 0, y: 16, w: 4, h: 3, minW: 3, minH: 2 },
@@ -426,7 +425,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v4', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v5', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
@@ -1796,11 +1795,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="bank-balances" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Bank Account Balances">
-            <NaPlaceholder height={140} label="Data unavailable — no live period-scoped bank balance source" />
-          </GridShell>
-        </div>
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
             <NaPlaceholder height={140} label="Data unavailable — no live debt schedule source" />
