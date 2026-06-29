@@ -17,15 +17,7 @@ import {
   LabelList,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
-import {
-  InsightsTimeRangeSelector,
-  type InsightsTimeRangeValue,
-} from '@/components/insights/InsightsTimeRangeSelector';
-import {
-  defaultGranularityForRange,
-  loadPersistedRange,
-  resolveRange,
-} from '@/lib/insightsTimeRange';
+import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 import {
   DrilldownProvider,
   useDrilldown,
@@ -261,33 +253,28 @@ function CurrencyTooltip({ active, payload, label }: any) {
 
 /* ─── Inner shell (uses useDrilldown — must live under DrilldownProvider) ─── */
 function ControllerDashboardInner() {
-  // ── Shared time-range selector (parity with FinServ board) ──────────────
-  const initialPersisted = useMemo(() => loadPersistedRange('controller-dashboard'), []);
-  const initialResolved = useMemo(() => {
-    const id = initialPersisted?.presetId ?? 'ytd';
-    return resolveRange(id, {
-      custom: initialPersisted?.custom,
-      includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
-    });
-  }, [initialPersisted]);
-  const [range, setRange] = useState<InsightsTimeRangeValue>(() => ({
-    presetId: initialPersisted?.presetId ?? 'ytd',
-    granularity:
-      initialPersisted?.granularity ?? defaultGranularityForRange(initialResolved.start, initialResolved.end),
-    custom: initialPersisted?.custom,
-    includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
-    resolved: initialResolved,
-  }));
-
+  // ── Global Insights timeframe (header selector is the single source of truth) ──
+  const { timeframe } = useInsightsTimeframe();
+  const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
+    const s = new Date(timeframe.start);
+    const e = new Date(timeframe.end);
+    const months = Math.max(
+      1,
+      (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1,
+    );
+    if (months > 36) return 'yearly';
+    if (months > 18) return 'quarterly';
+    return 'monthly';
+  }, [timeframe.start, timeframe.end]);
   const granularityLabel =
-    range.granularity === 'monthly' ? 'Monthly' :
-    range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
-  const periodBadge = `${granularityLabel} · ${range.resolved.label}`;
-  const snapshotBadge = `Snapshot · today · ${range.resolved.label}`;
+    granularity === 'monthly' ? 'Monthly' :
+    granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
+  const periodBadge = `${granularityLabel} · ${timeframe.label}`;
+  const snapshotBadge = `Snapshot · today · ${timeframe.label}`;
 
   const period = useMemo(
-    () => ({ start: range.resolved.start, end: range.resolved.end, label: range.resolved.label }),
-    [range.resolved.start, range.resolved.end, range.resolved.label],
+    () => ({ start: timeframe.start, end: timeframe.end, label: timeframe.label }),
+    [timeframe.start, timeframe.end, timeframe.label],
   );
 
   // Per-user "show data labels" toggle (Scott's nice-to-have).
@@ -316,7 +303,7 @@ function ControllerDashboardInner() {
       sourceLabel,
       selection: label,
       period,
-      granularity: range.granularity,
+      granularity,
       client: label,
       realm,
       externalLink: { href: QBO_CUSTOMERS_URL, label: 'View customer in QuickBooks' },
@@ -339,7 +326,7 @@ function ControllerDashboardInner() {
       sourceLabel,
       selection: label,
       period,
-      granularity: range.granularity,
+      granularity,
       externalLink: { href: QBO_CHART_OF_ACCOUNTS_URL, label: 'View account in QuickBooks' },
       rows: [
         { metric: 'Account', value: label },
