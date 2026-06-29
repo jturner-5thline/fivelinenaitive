@@ -677,6 +677,50 @@ export function EndOfDayTab({
     },
   });
 
+  // Fetch transcript/summary text for any Claap recording linked to a visible
+  // event so we can match deal names that the recording *content* mentions
+  // (e.g. a "Structural Capital" event whose recording transcript discusses
+  // the "Worthy" deal).
+  const { data: eventRecordingText } = useQuery<Record<string, string>>({
+    queryKey: ['eod-event-recording-text', company?.id, visibleEventIds.join(',')],
+    enabled: !!company?.id && visibleEventIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const out: Record<string, string> = {};
+      try {
+        const { data: ecr } = await (supabase.from('event_claap_recordings') as any)
+          .select('event_id, recording_id')
+          .eq('org_company_id', company!.id)
+          .in('event_id', visibleEventIds);
+        const rows = (ecr || []) as Array<{ event_id: string; recording_id: string }>;
+        const recIds = Array.from(new Set(rows.map(r => r.recording_id).filter(Boolean)));
+        if (!recIds.length) return out;
+        const { data: recs } = await (supabase.from('claap_recordings') as any)
+          .select('id, title, summary, synthesized_note, key_takeaways, action_items, chapters')
+          .in('id', recIds);
+        const textById = new Map<string, string>();
+        for (const r of (recs || []) as Array<Record<string, any>>) {
+          const parts: string[] = [];
+          const push = (v: any) => {
+            if (!v) return;
+            if (typeof v === 'string') parts.push(v);
+            else if (Array.isArray(v)) v.forEach(push);
+            else if (typeof v === 'object') Object.values(v).forEach(push);
+          };
+          push(r.title); push(r.summary); push(r.synthesized_note);
+          push(r.key_takeaways); push(r.action_items); push(r.chapters);
+          textById.set(r.id, parts.join(' \n ').toLowerCase());
+        }
+        for (const row of rows) {
+          const t = textById.get(row.recording_id);
+          if (!t) continue;
+          out[row.event_id] = (out[row.event_id] ? out[row.event_id] + ' \n ' : '') + t;
+        }
+      } catch { /* noop */ }
+      return out;
+    },
+  });
+
   const dealMatchers = useMemo(() => {
     const domains = new Map<string, true>();
     const names: { needle: string }[] = [];
@@ -764,6 +808,15 @@ export function EndOfDayTab({
         if (titleContainsNeedle(title, needle)) return true;
       }
     }
+    // Match deal names against linked Claap recording transcript/summary
+    // text — covers cases where the meeting title doesn't reference the
+    // deal but the recording content does.
+    const recText = eventRecordingText?.[ev.id];
+    if (recText) {
+      for (const { needle } of dealMatchers.names) {
+        if (titleContainsNeedle(recText, needle)) return true;
+      }
+    }
     for (const a of (ev.attendees || [])) {
       if (a.self) continue;
       const dom = normalizeEmailDomain(a.email);
@@ -772,7 +825,7 @@ export function EndOfDayTab({
       if (dealMatchers.domains.has(dom)) return true;
     }
     return false;
-  }, [dealLinkedEventIds, dealMatchers, titleContainsNeedle]);
+  }, [dealLinkedEventIds, dealMatchers, titleContainsNeedle, eventRecordingText]);
 
   // An event is "internal" when every email-bearing party (attendees + the
   // organizer) uses the @5thline.co domain. We include the organizer so
