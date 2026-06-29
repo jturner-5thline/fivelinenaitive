@@ -60,23 +60,23 @@ export function IncomeYTDByEntityCard() {
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
       const { data: rows, error } = await supabase
-        .from("quickbooks_invoices")
-        .select("realm_id, txn_date, total_amt, synced_at")
+        .from("qbo_pnl_snapshots")
+        .select("realm_id, period_start, period_end, income_total, fetched_at")
         .in("realm_id", realmIds)
-        .gte("txn_date", rangeStart)
-        .lte("txn_date", rangeEnd);
+        .gte("period_start", rangeStart)
+        .lte("period_end", rangeEnd);
       if (error) throw error;
       // monthly[realmId][monthKey]
       const monthly: Record<string, Record<string, number>> = {};
       for (const e of ENTITIES) monthly[e.realmId] = {};
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
-        if (!r.txn_date || !r.realm_id) continue;
-        const d = new Date(r.txn_date);
+        if (!r.period_start || !r.realm_id) continue;
+        const d = new Date(r.period_start);
         const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const bucket = monthly[r.realm_id];
-        if (bucket) bucket[k] = (bucket[k] ?? 0) + Number(r.total_amt ?? 0);
-        if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
+        if (bucket) bucket[k] = (bucket[k] ?? 0) + Number(r.income_total ?? 0);
+        if (r.fetched_at && (!lastSync || r.fetched_at > lastSync)) lastSync = r.fetched_at;
       }
       return { monthly, lastSync };
     },
