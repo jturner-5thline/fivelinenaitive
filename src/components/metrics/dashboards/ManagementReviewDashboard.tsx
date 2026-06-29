@@ -1271,13 +1271,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       v: fmtUSD(ytdRevenue),
       sub: renderDelta(ytdRevenue, priorYtdRevenue, 'YTD'),
     },
-    {
-      id: 'firm-liquidity',
-      l: 'Firm Liquidity',
+    ...([
+      { id: 'liq-operating', l: 'Operating Acc.' },
+      { id: 'liq-mt', l: 'M&T Acc.' },
+      { id: 'liq-tax-reserves', l: 'Tax Reserves' },
+      { id: 'liq-5lt', l: '5LT' },
+      { id: 'liq-5lca', l: '5LCA' },
+      { id: 'liq-5lfs', l: '5LFS' },
+    ].map(({ id, l }) => ({
+      id,
+      l,
       live: false,
       v: '—',
       sub: <span style={{ color: NA_COLOR }}>—</span>,
-    },
+    }))),
     {
       id: 'debt-solutions-revenue',
       l: 'Debt Solutions Revenue',
