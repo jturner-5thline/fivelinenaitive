@@ -1343,110 +1343,167 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         draggableHandle=".widget-drag-handle"
         draggableCancel=".react-resizable-handle"
       >
-        {STANDALONE_KPI_IDS.map((widgetId) => {
-          const k = kpiById.get(STANDALONE_KPI_TO_REGISTRY[widgetId]);
-          return (
-            <div key={widgetId} className="h-full">
-              <GridShell isEditMode={isEditMode} title={k?.l ?? widgetId} titleAlign="center">
-                {k ? (
-                  <div
-                    onClick={() => {
-                      if (isEditMode || !k.live) return;
-                      const reg = STANDALONE_KPI_TO_REGISTRY[widgetId];
-                      let columns: DrilldownColumn<Record<string, any>>[] = [
-                        { key: 'metric', label: 'Metric' },
-                        { key: 'value', label: 'Value', align: 'right' },
-                      ];
-                      let rows: Record<string, any>[] = [{ metric: k.l, value: k.v }];
-                      let emptyHint: string | undefined = k.emptyHint;
-                      let trend: DrilldownTrend | undefined = undefined;
-                      if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
-                        columns = [
-                          { key: 'month', label: 'Month' },
-                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                          { key: 'payments', label: 'Payments', align: 'right', render: (r) => fmtUSD(r.payments) },
-                          { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
-                          { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
-                        ];
-                        rows = revenueSeries.map(row => ({ ...row, net: row.revenue - row.expenses }));
-                        const isOp = reg === 'operating-profit-curr';
-                        trend = {
-                          unit: 'currency',
-                          seriesLabel: isOp ? 'Operating Profit' : 'Revenue',
-                          data: revenueSeries.map(row => ({
-                            label: row.month,
-                            value: isOp ? (row.revenue || 0) - (row.expenses || 0) : (row.revenue || 0),
-                          })),
-                        };
-                      } else if (reg === 'outstanding-ar') {
-                        columns = [
-                          { key: 'bucket', label: 'Bucket' },
-                          { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
-                        ];
-                        rows = arBuckets;
-                      } else if (reg === 'active-pipeline-value') {
-                        columns = [
-                          { key: 'company', label: 'Deal' },
-                          { key: 'stage', label: 'Stage' },
-                          { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
-                        ];
-                        rows = activeDeals;
-                      } else if (reg === 'ttm-revenue') {
-                        columns = [
-                          { key: 'month', label: 'Month' },
-                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                        ];
-                        rows = ttmSeries;
-                        trend = {
-                          unit: 'currency',
-                          seriesLabel: 'TTM Revenue',
-                          data: ttmSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
-                        };
-                      } else if (reg === 'ytd-revenue') {
-                        columns = [
-                          { key: 'month', label: 'Month' },
-                          { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                        ];
-                        rows = ytdSeries;
-                        trend = {
-                          unit: 'currency',
-                          seriesLabel: 'YTD Revenue',
-                          data: ytdSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
-                        };
-                      }
-                      setDrilldown({
-                        context: {
-                          sourceId: `kpi:${reg}`,
-                          sourceLabel: k.l,
-                          selection: k.v,
-                          periodLabel,
-                        },
-                        columns,
-                        rows,
-                        emptyHint,
-                        trend,
-                      });
-                    }}
-                    style={{
-                      display: 'flex', flexDirection: 'column', gap: 4, height: '100%',
-                      justifyContent: 'center', alignItems: 'center', textAlign: 'center',
-                      cursor: !isEditMode && k.live ? 'pointer' : 'default',
-                    }}
-                  >
-                    <div style={{ fontSize: 22, fontWeight: 700, color: k.live ? '#e8f6ff' : NA_COLOR, lineHeight: 1.1, textAlign: 'center' }}>
-                      {k.live ? k.v : 'Unavailable'}
-                    </div>
-                    <div style={{ fontSize: 11, textAlign: 'center', color: k.live ? undefined : NA_COLOR }}>
-                      {k.live ? k.sub : (k.emptyHint ?? 'No live source')}
-                    </div>
-                  </div>
-                ) : (
-                  <NaPlaceholder height={100} label="Metric unavailable" />
-                )}
-              </GridShell>
-            </div>
-          );
-        })}
+        <div key="kpi-summary" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Key Stats">
+            {(() => {
+              const priorByReg: Record<string, number | null> = {
+                'total-revenue-curr': totalRevPrev,
+                'operating-profit-curr': opProfitPrev,
+                'outstanding-ar': null,
+                'active-pipeline-value': null,
+                'ttm-revenue': priorTtmRevenue,
+                'ytd-revenue': priorYtdRevenue,
+              };
+              const currByReg: Record<string, number | null> = {
+                'total-revenue-curr': totalRevCurr,
+                'operating-profit-curr': opProfitCurr,
+                'outstanding-ar': totalAR,
+                'active-pipeline-value': activePipelineValue,
+                'ttm-revenue': ttmRevenue,
+                'ytd-revenue': ytdRevenue,
+              };
+              const handleRowClick = (reg: string, k: KpiTile) => {
+                if (isEditMode || !k.live) return;
+                let columns: DrilldownColumn<Record<string, any>>[] = [
+                  { key: 'metric', label: 'Metric' },
+                  { key: 'value', label: 'Value', align: 'right' },
+                ];
+                let rows: Record<string, any>[] = [{ metric: k.l, value: k.v }];
+                let emptyHint: string | undefined = k.emptyHint;
+                let trend: DrilldownTrend | undefined = undefined;
+                if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
+                  columns = [
+                    { key: 'month', label: 'Month' },
+                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                    { key: 'payments', label: 'Payments', align: 'right', render: (r) => fmtUSD(r.payments) },
+                    { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
+                    { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
+                  ];
+                  rows = revenueSeries.map(row => ({ ...row, net: row.revenue - row.expenses }));
+                  const isOp = reg === 'operating-profit-curr';
+                  trend = {
+                    unit: 'currency',
+                    seriesLabel: isOp ? 'Operating Profit' : 'Revenue',
+                    data: revenueSeries.map(row => ({
+                      label: row.month,
+                      value: isOp ? (row.revenue || 0) - (row.expenses || 0) : (row.revenue || 0),
+                    })),
+                  };
+                } else if (reg === 'outstanding-ar') {
+                  columns = [
+                    { key: 'bucket', label: 'Bucket' },
+                    { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                  ];
+                  rows = arBuckets;
+                } else if (reg === 'active-pipeline-value') {
+                  columns = [
+                    { key: 'company', label: 'Deal' },
+                    { key: 'stage', label: 'Stage' },
+                    { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                  ];
+                  rows = activeDeals;
+                } else if (reg === 'ttm-revenue') {
+                  columns = [
+                    { key: 'month', label: 'Month' },
+                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                  ];
+                  rows = ttmSeries;
+                  trend = {
+                    unit: 'currency',
+                    seriesLabel: 'TTM Revenue',
+                    data: ttmSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
+                  };
+                } else if (reg === 'ytd-revenue') {
+                  columns = [
+                    { key: 'month', label: 'Month' },
+                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
+                  ];
+                  rows = ytdSeries;
+                  trend = {
+                    unit: 'currency',
+                    seriesLabel: 'YTD Revenue',
+                    data: ytdSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
+                  };
+                }
+                setDrilldown({
+                  context: { sourceId: `kpi:${reg}`, sourceLabel: k.l, selection: k.v, periodLabel },
+                  columns, rows, emptyHint, trend,
+                });
+              };
+              const thStyle: React.CSSProperties = {
+                padding: '6px 10px', color: 'rgba(255,255,255,0.55)', fontWeight: 700,
+                fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+              };
+              const tdBase: React.CSSProperties = {
+                padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                fontSize: 12,
+              };
+              return (
+                <div style={{ height: '100%', overflow: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col style={{ width: '40%' }} />
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '20%' }} />
+                      <col style={{ width: '20%' }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th style={{ ...thStyle, textAlign: 'left' }}>Metric</th>
+                        <th style={{ ...thStyle, textAlign: 'right' }}>Current</th>
+                        <th style={{ ...thStyle, textAlign: 'right' }}>$ Change</th>
+                        <th style={{ ...thStyle, textAlign: 'right' }}>% Change</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {KPI_SUMMARY_ROWS.map(({ id, registryId }) => {
+                        const k = kpiById.get(registryId);
+                        if (!k) return null;
+                        const curr = currByReg[registryId];
+                        const prior = priorByReg[registryId];
+                        const hasDelta = k.live && curr !== null && prior !== null;
+                        const delta = hasDelta ? (curr as number) - (prior as number) : null;
+                        const pct = hasDelta && (prior as number) !== 0
+                          ? ((delta as number) / Math.abs(prior as number)) * 100
+                          : null;
+                        const positive = (delta ?? 0) >= 0;
+                        const deltaColor = delta === null ? NA_COLOR : positive ? '#3de89a' : '#ff6b7a';
+                        const sign = delta === null ? '' : positive ? '+' : '−';
+                        const clickable = !isEditMode && k.live;
+                        return (
+                          <tr
+                            key={id}
+                            onClick={() => handleRowClick(registryId, k)}
+                            style={{ cursor: clickable ? 'pointer' : 'default' }}
+                          >
+                            <td style={{ ...tdBase, color: '#e8f6ff', fontWeight: 500 }}>
+                              {k.l}
+                              {!k.live && k.emptyHint && (
+                                <div style={{ fontSize: 10, color: NA_COLOR, marginTop: 2, fontWeight: 400 }}>
+                                  {k.emptyHint}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ ...tdBase, textAlign: 'right', color: k.live ? '#e8f6ff' : NA_COLOR, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                              {k.live ? k.v : 'Unavailable'}
+                            </td>
+                            <td style={{ ...tdBase, textAlign: 'right', color: deltaColor, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                              {delta === null ? '—' : `${sign}${fmtUSD(Math.abs(delta))}`}
+                            </td>
+                            <td style={{ ...tdBase, textAlign: 'right', color: deltaColor, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                              {pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </GridShell>
+        </div>
 
         <div key="monthly-revenue" className="h-full">
           <GridShell
