@@ -287,7 +287,6 @@ export function MeetingClaapInlineAction(props: Props) {
         'w-full min-w-0 rounded-md border px-2.5 py-1.5 flex flex-wrap items-center gap-2',
         band === 'auto' && 'border-emerald-500/30 bg-emerald-500/[0.05]',
         band === 'review' && 'border-amber-500/30 bg-amber-500/[0.05]',
-        band === 'linked' && 'border-sky-500/30 bg-sky-500/[0.05]',
       )}
     >
       <a
