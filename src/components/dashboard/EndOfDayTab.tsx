@@ -709,11 +709,32 @@ export function EndOfDayTab({
         // Require ≥4 chars and skip stopwords / generic tokens. A single-word
         // needle additionally must be ≥5 chars to avoid false positives like
         // "James"/"Finance" inside event titles.
-        if (raw.length < 4) return;
-        if (STOPWORDS.has(raw)) return;
-        const tokens = raw.split(/\s+/).filter(Boolean);
-        if (tokens.length === 1 && raw.length < 5) return;
-        names.push({ needle: raw });
+        const cleaned = raw
+          // Strip corporate suffixes so "Worthy Financial Inc" can still
+          // surface its core token "worthy".
+          .replace(/\b(inc|llc|ltd|co|corp|corporation|company|capital|partners|holdings|group)\b\.?/gi, '')
+          .replace(/[,.]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+        if (!cleaned) return;
+        const tokens = cleaned.split(/\s+/).filter(Boolean);
+        const pushOne = (n: string) => {
+          if (!n || n.length < 4) return;
+          if (STOPWORDS.has(n)) return;
+          names.push({ needle: n });
+        };
+        // Push the full phrase when it's multi-word — catches "structural
+        // capital advisors" style titles.
+        if (tokens.length > 1) pushOne(cleaned);
+        // Always also push individual significant tokens (≥5 chars) so a
+        // shortened event title like "Worthy call" matches a deal named
+        // "Worthy Financial".
+        for (const tok of tokens) {
+          if (tok.length >= 5) pushOne(tok);
+        }
+        // Single-word deal names ≥5 chars are still allowed via the token
+        // loop above; shorter single-word names are intentionally skipped.
       };
       pushName(company);
       if (name !== company) pushName(name);
