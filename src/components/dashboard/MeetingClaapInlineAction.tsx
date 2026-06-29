@@ -41,6 +41,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [approving, setApproving] = useState(false);
   const [autoApproved, setAutoApproved] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
+  const [locallyLinked, setLocallyLinked] = useState(false);
 
   // Lazy load recordings once per mount
   useEffect(() => {
@@ -126,12 +127,12 @@ export function MeetingClaapInlineAction(props: Props) {
   }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing]);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
-    if (existing) return 'linked';
+    if (existing || locallyLinked) return 'linked';
     if (userRejected || !ranked) return 'none';
     if (ranked.score >= 0.90) return 'auto';
     if (ranked.score >= 0.65) return 'review';
     return 'none';
-  }, [existing, ranked, userRejected]);
+  }, [existing, locallyLinked, ranked, userRejected]);
 
   const handleApprove = async () => {
     if (!ranked) return;
@@ -197,6 +198,7 @@ export function MeetingClaapInlineAction(props: Props) {
         }
       }
       toast.success('Recording linked');
+      setLocallyLinked(true);
       qc.invalidateQueries({ queryKey: ['event-claap-inline-link', eventId] });
       qc.invalidateQueries({ queryKey: ['event-claap-links', eventId] });
       qc.invalidateQueries({ queryKey: ['meeting-claap-context', eventId, company?.id] });
@@ -210,6 +212,7 @@ export function MeetingClaapInlineAction(props: Props) {
 
   useEffect(() => {
     setAutoApproved(false);
+    setLocallyLinked(false);
   }, [eventId]);
 
   useEffect(() => {
@@ -266,11 +269,21 @@ export function MeetingClaapInlineAction(props: Props) {
       )}
       onClick={onOpenPicker}
     >
-      <Video className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="truncate">
-        {ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording'}
+      {band === 'linked' ? (
+        <Check className="h-3.5 w-3.5 text-emerald-300 shrink-0" />
+      ) : (
+        <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+      )}
+      <span className={cn('truncate', band === 'linked' && 'text-emerald-200')}>
+        {band === 'linked'
+          ? 'Matched'
+          : ranking || loadingRecordings
+            ? 'Checking Claap…'
+            : 'Link Claap Recording'}
       </span>
-      {(ranking || loadingRecordings) && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
+      {band !== 'linked' && (ranking || loadingRecordings) && (
+        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+      )}
     </Button>
   );
 
