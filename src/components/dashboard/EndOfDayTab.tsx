@@ -552,6 +552,10 @@ export function EndOfDayTab({
       // Default view hides anything the user has acted on: resolved,
       // dismissed, snoozed, or marked-as-read. Those only resurface when
       // the "Dismissed" chip is explicitly selected.
+      // Keep the currently-selected item visible even after it gets
+      // auto-marked-as-read on click, so opening details doesn't make
+      // the tile vanish from the list under the user.
+      if (ev.id === selectedId) return !resolved && !dismissed && !snoozed;
       return !resolved && !dismissed && !snoozed && !read;
     });
     const result = stateFiltered
@@ -586,7 +590,7 @@ export function EndOfDayTab({
       });
     } catch { /* noop */ }
     return result;
-  }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips]);
+  }, [events, isResolved, isDismissed, isSnoozed, readSet, search, filterChips, selectedId]);
 
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
