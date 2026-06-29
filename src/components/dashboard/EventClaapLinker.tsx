@@ -363,7 +363,7 @@ export function EventClaapLinker({
       recording_title: rec.title || null,
       recording_url: rec.url || null,
       thumbnail_url: rec.thumbnailUrl || null,
-      duration_seconds: rec.durationSeconds || null,
+      duration_seconds: rec.durationSeconds ? Math.round(rec.durationSeconds) : null,
       recorder_name: rec.recorder?.name || null,
       recorder_email: rec.recorder?.email || null,
       linked_by: user?.id || null,
@@ -394,7 +394,9 @@ export function EventClaapLinker({
         recording_title: selectedRecording.title || null,
         recording_url: selectedRecording.url || null,
         thumbnail_url: selectedRecording.thumbnailUrl || null,
-        duration_seconds: selectedRecording.durationSeconds || null,
+        duration_seconds: selectedRecording.durationSeconds
+          ? Math.round(selectedRecording.durationSeconds)
+          : null,
         recorder_name: selectedRecording.recorder?.name || null,
         recorder_email: selectedRecording.recorder?.email || null,
         recorded_at: selectedRecording.createdAt || null,
