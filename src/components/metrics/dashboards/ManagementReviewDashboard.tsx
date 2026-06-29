@@ -1571,7 +1571,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                         const k = kpiById.get(registryId);
                         if (!k) return null;
                         const sectionHeader =
-                          registryId === 'debt-solutions-revenue'
+                          registryId === 'liq-operating'
+                            ? 'Liquidity'
+                            : registryId === 'debt-solutions-revenue'
                             ? 'Debt Advisory'
                             : registryId === 'finserv-revenue'
                             ? 'FinServ'
