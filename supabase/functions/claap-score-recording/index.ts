@@ -88,7 +88,10 @@ export async function scoreAndPersist(admin: any, rec: any, run_type: RunType) {
       .eq('org_company_id', org).limit(5000),
     admin.from('companies').select('id,name,primary_domain,domains').limit(2000),
     admin.from('deals').select('id,company,stage,updated_at,company_id,crm_company_id').limit(2000),
-    admin.from('meeting_deal_links').select('meeting_id,deal_id').limit(5000),
+    // meeting_deal_links keys on the calendar event's external id (string)
+    // — NOT the synthetic claap_meetings UUID. We then build two lookup
+    // maps below so meeting candidates (UUIDs) can still inherit deals.
+    admin.from('meeting_deal_links').select('meeting_external_id,deal_id').limit(5000),
     admin.from('calendar_events').select('attendees')
       .gte('start_time', new Date(Date.now() - 14 * 86_400_000).toISOString()).limit(500),
   ]);
@@ -104,9 +107,26 @@ export async function scoreAndPersist(admin: any, rec: any, run_type: RunType) {
   const activeDealCompanyIds = new Set<string>(
     (dealsRes.data || []).filter((d: any) => d.company_id).map((d: any) => d.company_id),
   );
-  const meetingDealById = new Map<string, string>(
-    (mdlRes.data || []).map((m: any) => [m.meeting_id, m.deal_id]),
+  // 1) external_id (text) → deal_id, for direct calendar_event lookups
+  const dealByExternalId = new Map<string, string>(
+    (mdlRes.data || []).map((m: any) => [m.meeting_external_id, m.deal_id]),
   );
+  // 2) calendar_events.id (uuid, what scoreMeetings emits as entity_id)
+  //    → deal_id, by joining via calendar_events.event_id.
+  const meetingDealById = new Map<string, string>();
+  if (dealByExternalId.size && (meetingsRes.data || []).length) {
+    for (const ev of meetingsRes.data as any[]) {
+      // Resolve event_id (text) for this calendar_event UUID. We didn't
+      // select it above for perf, so re-pull a minimal map.
+    }
+    const { data: evRows } = await admin.from('calendar_events')
+      .select('id,event_id')
+      .in('id', (meetingsRes.data as any[]).map((m: any) => m.id));
+    for (const r of (evRows || []) as any[]) {
+      const dealId = dealByExternalId.get(r.event_id);
+      if (dealId) meetingDealById.set(r.id, dealId);
+    }
+  }
 
   // ---- Score ----
   const input = {
@@ -157,6 +177,28 @@ export async function scoreAndPersist(admin: any, rec: any, run_type: RunType) {
       candidate_id: cand?.id ?? null,
     }, { onConflict: 'recording_id,link_role,entity_id' });
     autoLinked++;
+
+    // Mirror auto-linked deals into deal_claap_recordings so the deal
+    // detail page (which reads from that legacy table) surfaces the call.
+    if (et === 'deal') {
+      try {
+        const startedMs = rec.started_at ? new Date(rec.started_at).getTime() : null;
+        const endedMs = rec.ended_at ? new Date(rec.ended_at).getTime() : null;
+        const duration = startedMs && endedMs ? Math.max(0, Math.round((endedMs - startedMs) / 1000)) : null;
+        await admin.from('deal_claap_recordings').upsert({
+          deal_id: c.entity_id,
+          recording_id: rec.external_id || rec.id,
+          recording_title: rec.title || null,
+          recording_url: rec.recording_url || null,
+          duration_seconds: duration,
+          recorder_name: null,
+          recorder_email: rec.organizer_email || null,
+          notes: `Auto-linked by Claap scoring engine (confidence ${(c.score * 100).toFixed(0)}%)`,
+        }, { onConflict: 'deal_id,recording_id' });
+      } catch (mirrorErr) {
+        console.warn('[claap-score] deal_claap_recordings mirror failed', mirrorErr);
+      }
+    }
   }
 
   const hasReview = all.some(c => bandFor(c.score) === 'review');
