@@ -686,7 +686,6 @@ export function EndOfDayTab({
   // when the user switches the linked deal in-place. This is the SINGLE
   // source of truth for prefilling the New Task deal field — no fuzzy
   // matching on title/transcript and no "first active deal" fallback.
-  const { company } = useCompany();
   const { data: selectedLinkedDealId } = useQuery<string | null>({
     queryKey: ['meeting-deal-link', selectedId, company?.id],
     enabled: !!company?.id && !!selectedId,
