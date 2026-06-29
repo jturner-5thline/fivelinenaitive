@@ -1608,7 +1608,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                               )}
                             </td>
                             <td style={{ ...tdBase, textAlign: 'right', color: k.live ? '#e8f6ff' : NA_COLOR, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                              {k.live ? k.v : 'Unavailable'}
+                              {k.live ? k.v : (k.v && k.v !== '$0' ? k.v : 'Unavailable')}
                             </td>
                             <td style={{ ...tdBase, textAlign: 'right', color: deltaColor, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                               {delta === null ? '—' : `${sign}${fmtUSD(Math.abs(delta))}`}
