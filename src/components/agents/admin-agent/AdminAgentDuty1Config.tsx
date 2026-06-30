@@ -92,7 +92,10 @@ export function AdminAgentDuty1Config() {
 
   // ── Settings ───────────────────────────────────────────────────
   const settingsQ = useQuery<SettingsRow | null>({
-    queryKey: ['admin-agent-settings', companyId],
+    // Distinct key from AgentCatalog's lightweight `select('enabled')` query.
+    // Sharing the same key caused this full settings fetch to be skipped and
+    // custom_rules / pipelines / stages to silently render as empty.
+    queryKey: ['admin-agent-settings', companyId, 'full'],
     enabled: !!companyId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -245,6 +248,7 @@ export function AdminAgentDuty1Config() {
         .from('admin_agent_settings')
         .upsert(payload, { onConflict: 'company_id' });
       if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] });
       await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
       toast.success('Admin Agent settings saved.');
     } catch (e: any) {
@@ -264,6 +268,7 @@ export function AdminAgentDuty1Config() {
         { onConflict: 'company_id' },
       );
     if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] });
     await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
   }
 
