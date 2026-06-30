@@ -7770,6 +7770,28 @@ serve(async (req) => {
       } catch (e) {
         console.warn("[copilot-chat] admin_agent_settings.custom_rules load failed", (e as Error)?.message);
       }
+
+      // Active LEARNED rules — synthesized from approval-queue feedback
+      // (approvals, edits, rejections) and accepted by an operator. These
+      // are workspace operating rules the agent has been taught implicitly.
+      try {
+        const { data: learned } = await supabaseAdmin
+          .from("agent_learned_rules")
+          .select("rule_text")
+          .eq("company_id", companyId)
+          .eq("agent_key", "admin_agent")
+          .eq("status", "active")
+          .order("created_at", { ascending: true });
+        const learnedTexts: string[] = (learned || [])
+          .map((r: any) => (typeof r?.rule_text === "string" ? r.rule_text.trim() : ""))
+          .filter((t: string) => t.length > 0);
+        if (learnedTexts.length > 0) {
+          const numbered = learnedTexts.map((t, i) => `${i + 1}. ${t}`).join("\n");
+          orgPreferencesSection += `\n\nADMIN AGENT LEARNED RULES (synthesized from operator feedback — apply with the same weight as custom rules):\n${numbered}`;
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] agent_learned_rules load failed", (e as Error)?.message);
+      }
     }
 
     const page = context?.page || "unknown";

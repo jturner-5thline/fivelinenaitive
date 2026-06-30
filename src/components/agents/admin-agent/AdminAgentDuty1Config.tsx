@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -302,6 +302,68 @@ export function AdminAgentDuty1Config() {
 
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [editingRuleText, setEditingRuleText] = useState('');
+
+  // ── Learned rules (agent self-improvement from approval feedback) ────
+  type LearnedRule = {
+    id: string;
+    rule_text: string;
+    status: 'proposed' | 'active' | 'dismissed';
+    confidence: number | null;
+    occurrences: number | null;
+    evidence: any;
+    created_at: string;
+  };
+  const learnedQ = useQuery<LearnedRule[]>({
+    queryKey: ['agent-learned-rules', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agent_learned_rules')
+        .select('id, rule_text, status, confidence, occurrences, evidence, created_at')
+        .eq('company_id', companyId)
+        .eq('agent_key', 'admin_agent')
+        .in('status', ['proposed', 'active'])
+        .order('status', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as LearnedRule[];
+    },
+  });
+  const [isTraining, setIsTraining] = useState(false);
+
+  async function trainNow() {
+    if (!companyId) return;
+    setIsTraining(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('agent-learn-from-feedback', {
+        body: { company_id: companyId, agent_key: 'admin_agent', lookback_days: 14 },
+      });
+      if (error) throw error;
+      const proposed = (data as any)?.proposed ?? 0;
+      const reason = (data as any)?.reason;
+      if (reason) toast.info(reason);
+      else toast.success(proposed > 0 ? `Learned ${proposed} new pattern${proposed === 1 ? '' : 's'}.` : 'No new patterns detected.');
+      await qc.invalidateQueries({ queryKey: ['agent-learned-rules', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not run learning pass.');
+    } finally {
+      setIsTraining(false);
+    }
+  }
+
+  async function decideLearnedRule(id: string, status: 'active' | 'dismissed') {
+    try {
+      const { error } = await supabase
+        .from('agent_learned_rules')
+        .update({ status, decided_by: currentUserId, decided_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['agent-learned-rules', companyId] });
+      toast.success(status === 'active' ? 'Rule accepted — the agent will follow it.' : 'Rule dismissed.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update rule.');
+    }
+  }
 
   function startEditRule(r: CustomRule) {
     setEditingRuleId(r.id);
@@ -842,6 +904,90 @@ export function AdminAgentDuty1Config() {
                       >
                         <X className="h-3 w-3" />
                       </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </ScrollArea>
+        )}
+      </section>
+
+      {/* Learned patterns — the agent self-improves from approval feedback */}
+      <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+              <Brain className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold leading-tight">Learned patterns</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                The agent reviews recent approval-queue decisions — approvals, edits, and rejections — and proposes new operating rules it noticed you applying. Accepted rules apply to every future Admin Agent action alongside your custom rules. Runs automatically every week.
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs shrink-0"
+            onClick={trainNow}
+            disabled={isTraining || readOnly}
+          >
+            {isTraining ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
+            Train now
+          </Button>
+        </div>
+
+        {learnedQ.isLoading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : (learnedQ.data ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground italic">
+            No learned patterns yet. As you approve, edit, and dismiss approval-queue items, the agent will surface rules here for your review.
+          </p>
+        ) : (
+          <ScrollArea className="h-72 rounded-md border border-border/40 bg-background/30">
+            <ol className="space-y-1.5 p-2">
+              {(learnedQ.data ?? []).map((r) => (
+                <li
+                  key={r.id}
+                  className="group flex items-start gap-2 rounded-md border border-border/60 bg-card/40 p-2.5"
+                >
+                  <span className={`mt-0.5 inline-flex h-5 items-center justify-center rounded px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
+                    r.status === 'active'
+                      ? 'bg-emerald-500/15 text-emerald-300'
+                      : 'bg-amber-500/15 text-amber-300'
+                  }`}>
+                    {r.status === 'active' ? 'Active' : 'Proposed'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.rule_text}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      confidence {Math.round((Number(r.confidence) || 0) * 100)}%
+                      {r.occurrences && r.occurrences > 1 ? ` · seen ${r.occurrences}×` : ''}
+                      {r.evidence?.summary ? ` · ${String(r.evidence.summary).slice(0, 140)}` : ''}
+                    </p>
+                  </div>
+                  {!readOnly && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {r.status === 'proposed' && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-6 text-[11px] px-2"
+                          onClick={() => decideLearnedRule(r.id, 'active')}
+                        >
+                          <Check className="h-3 w-3 mr-1" /> Accept
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground"
+                        onClick={() => decideLearnedRule(r.id, 'dismissed')}
+                      >
+                        <X className="h-3 w-3 mr-1" /> {r.status === 'active' ? 'Retire' : 'Dismiss'}
+                      </Button>
                     </div>
                   )}
                 </li>

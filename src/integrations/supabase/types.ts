@@ -1010,6 +1010,57 @@ export type Database = {
           },
         ]
       }
+      agent_learned_rules: {
+        Row: {
+          agent_key: string
+          company_id: string
+          confidence: number | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          evidence: Json
+          id: string
+          last_synthesized_at: string
+          occurrences: number
+          rule_text: string
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_key?: string
+          company_id: string
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          evidence?: Json
+          id?: string
+          last_synthesized_at?: string
+          occurrences?: number
+          rule_text: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_key?: string
+          company_id?: string
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          evidence?: Json
+          id?: string
+          last_synthesized_at?: string
+          occurrences?: number
+          rule_text?: string
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       agent_memory: {
         Row: {
           agent_id: string
