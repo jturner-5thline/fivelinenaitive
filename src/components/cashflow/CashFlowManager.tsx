@@ -927,10 +927,10 @@ export function CashFlowManager() {
   const logAction = useCallback((action: string) => {
     setActivityLog(prev => [...prev, {
       timestamp: new Date().toISOString(),
-      user: role === 'admin' ? 'Admin' : 'Viewer (sandbox)',
+      user: role === 'viewer' ? `${currentUserName} (sandbox)` : currentUserName,
       action,
     }]);
-  }, [role]);
+  }, [role, currentUserName]);
 
   const pushUndo = useCallback((description: string) => {
     // Capture a complete pre-image of every server-persisted slice that
