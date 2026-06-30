@@ -32,7 +32,6 @@ import { TrackingStatusSettings } from '@/components/settings/TrackingStatusSett
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
-import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { UnifiedChecklistSettings } from '@/components/settings/UnifiedChecklistSettings';
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
