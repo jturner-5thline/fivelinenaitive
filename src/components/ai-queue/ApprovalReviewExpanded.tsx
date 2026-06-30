@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { formatEditableDate, parseEditableDateToIso, isIsoDateLike, isDateFieldName } from './editableDate';
 import { Loader2, Check, X, MessageSquare, ExternalLink, Pencil, Zap } from 'lucide-react';
 import {
   QueuedAiAction,
@@ -132,15 +133,14 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
             {fieldKeys.map((k) => {
               const oldV = (oldValues as any)[k];
               const proposed = edits[k] ?? (newValues as any)[k];
-              const isoRe = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}/;
-              const looksDate = /(_at|_date|date|completed)$/i.test(k);
               const proposedStr = proposed == null ? '' : String(proposed);
-              const oldStr = oldV == null ? '—' : String(oldV);
-              const isoMatch = proposedStr.match(isoRe);
-              const isDateField = looksDate || !!isoMatch;
-              const dateVal = isoMatch ? `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}` : proposedStr;
-              const oldIso = typeof oldV === 'string' ? oldV.match(isoRe) : null;
-              const oldDisplay = oldIso ? `${oldIso[1]}-${oldIso[2]}-${oldIso[3]}` : oldStr;
+              const isDateField = isDateFieldName(k) || isIsoDateLike(proposed) || isIsoDateLike(oldV);
+              const editableValue = isDateField ? formatEditableDate(proposed) : proposedStr;
+              const oldDisplay = oldV == null
+                ? '—'
+                : isDateField
+                  ? (formatEditableDate(oldV) || String(oldV))
+                  : String(oldV);
               return (
                 <div key={k} className="contents">
                   <div className="px-2 py-1.5 border-b border-white/5 text-foreground">{k}</div>
@@ -149,14 +149,14 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
                   </div>
                   <div className="px-2 py-1.5 border-b border-white/5">
                     <Input
-                      type={isDateField ? 'date' : 'text'}
-                      value={isDateField ? dateVal : proposedStr}
+                      type="text"
+                      placeholder={isDateField ? 'MM-DD-YYYY' : undefined}
+                      value={isDateField ? editableValue : proposedStr}
                       onChange={(e) => {
                         const v = e.target.value;
-                        if (isDateField && v) {
-                          // Store as ISO at start of UTC day so execute path
-                          // continues to receive a parseable timestamp.
-                          setEdits((p) => ({ ...p, [k]: `${v}T00:00:00.000Z` }));
+                        if (isDateField) {
+                          const parsed = parseEditableDateToIso(v, (newValues as any)[k] ?? oldV);
+                          setEdits((p) => ({ ...p, [k]: parsed ?? '' }));
                         } else {
                           setEdits((p) => ({ ...p, [k]: v }));
                         }
