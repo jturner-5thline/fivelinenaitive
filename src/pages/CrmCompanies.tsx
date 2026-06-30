@@ -71,12 +71,16 @@ export default function CrmCompanies() {
 
   useEffect(() => {
     if (!hasNextPage || isFetchingNextPage || isFetching || companies.length < 100 || companies.length >= 150) return;
-    if ('requestIdleCallback' in window) {
-      const id = window.requestIdleCallback(() => void fetchNextPage());
-      return () => window.cancelIdleCallback(id);
+    const idleWindow = window as Window & typeof globalThis & {
+      requestIdleCallback?: (callback: IdleRequestCallback) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(() => void fetchNextPage());
+      return () => idleWindow.cancelIdleCallback?.(id);
     }
-    const id = window.setTimeout(() => void fetchNextPage(), 250);
-    return () => window.clearTimeout(id);
+    const id = globalThis.setTimeout(() => void fetchNextPage(), 250);
+    return () => globalThis.clearTimeout(id);
   }, [companies.length, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage]);
 
   const showSyncBanner = !isLoading && totalCount === 0;
