@@ -1,0 +1,1 @@
+UPDATE public.ai_action_queue SET status='dismissed', dismissed_at=now(), rejection_reason='Mislabeled as Discovery Call — was Financing Feedback Call. Refreshed by sweep.' WHERE id='c2e4e007-e714-48c1-922a-ca9cb58b700e';
