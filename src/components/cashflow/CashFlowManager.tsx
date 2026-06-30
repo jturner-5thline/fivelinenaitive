@@ -42,6 +42,20 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+// Format a YYYY-MM-DD date as "week of Mon D" for human-readable activity log entries.
+function formatWeekOf(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return '';
+  return ` for the week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+function formatAmountUsd(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1000) return `$${Math.round(n / 1000).toLocaleString()}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
 const QUARTER_RANGES: Record<string, [number, number]> = {
   Q1: [0, 2],
   Q2: [3, 5],
@@ -661,6 +675,32 @@ export function CashFlowManager() {
   // Activity log
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string>('Unknown user');
+
+  // Resolve the signed-in user's display name once for activity log attribution.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, full_name, first_name, last_name')
+          .eq('id', user.id)
+          .maybeSingle();
+        const p: any = profile || {};
+        const composed =
+          p.display_name ||
+          p.full_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ').trim() ||
+          user.email ||
+          'Unknown user';
+        setCurrentUserName(composed);
+      } catch {
+        /* best-effort */
+      }
+    })();
+  }, []);
 
   // Plans
   const [planSnapshots, setPlanSnapshots] = useState<PlanSnapshot[]>([]);
@@ -901,10 +941,10 @@ export function CashFlowManager() {
   const logAction = useCallback((action: string) => {
     setActivityLog(prev => [...prev, {
       timestamp: new Date().toISOString(),
-      user: role === 'admin' ? 'Admin' : 'Viewer (sandbox)',
+      user: role === 'viewer' ? `${currentUserName} (sandbox)` : currentUserName,
       action,
     }]);
-  }, [role]);
+  }, [role, currentUserName]);
 
   const pushUndo = useCallback((description: string) => {
     // Capture a complete pre-image of every server-persisted slice that
@@ -1645,7 +1685,7 @@ export function CashFlowManager() {
             });
             if (ok) {
               logAction(
-                `Added one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: ${rowLabel} ($${amount.toLocaleString()})`,
+                `Added ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: "${rowLabel} ${formatAmountUsd(amount)}"${formatWeekOf(occDate)}`,
               );
             }
             return ok;
@@ -1688,7 +1728,12 @@ export function CashFlowManager() {
               if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
               const ok = await updateCashInDbItem(realId, cashPatch);
               if (ok) {
-                logAction(`Edited cash-in entry: $${Number(cashPatch.amount ?? 0).toLocaleString()}`);
+                {
+                  const lbl = (patch.notes as string) || 'Cash-in entry';
+                  logAction(
+                    `Edited "${lbl} ${formatAmountUsd(Number(cashPatch.amount ?? 0))}"${formatWeekOf(cashPatch.target_date)}`,
+                  );
+                }
                 broadcastRef.current('scheduled');
               }
               return ok;
@@ -1699,7 +1744,9 @@ export function CashFlowManager() {
             const updated: ScheduledCashFlow = { ...existing, ...patch };
             const ok = await saveScheduledItems([updated], []);
             if (ok) {
-              logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+              logAction(
+                `Edited "${updated.category} ${formatAmountUsd(Number(updated.amount))}"${formatWeekOf(updated.start_date)}`,
+              );
               broadcastRef.current('scheduled');
             }
             return ok;
@@ -1719,7 +1766,11 @@ export function CashFlowManager() {
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
             if (ok) {
-              if (existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+              if (existing) {
+                logAction(
+                  `Deleted "${existing.category} ${formatAmountUsd(Number(existing.amount))}"${formatWeekOf(existing.start_date)}`,
+                );
+              }
               broadcastRef.current('scheduled');
             }
             return ok;
