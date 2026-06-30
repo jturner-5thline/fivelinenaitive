@@ -76,6 +76,13 @@ export function useQuickbooksDerivedCashFlows(enabled: boolean) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    // QuickBooks-invoice auto-derivation of cashflow rows is disabled per
+    // workspace policy — invoice cash-in figures should not flow into the
+    // weekly cashflow grid or the 12-week forecast.
+    setItems([]);
+    setIsLoading(false);
+    return;
+    // eslint-disable-next-line no-unreachable
     if (!enabled) { setItems([]); return; }
     let cancelled = false;
     (async () => {
