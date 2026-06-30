@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Mail, Phone, Calendar, MessageSquare, Plus, Pencil, User, Building2,
   Briefcase, Trash2, X, CheckSquare, MoreHorizontal, ChevronRight, ChevronDown,
-  MapPin, Globe, Linkedin, Paperclip, Activity as ActivityIcon, Users,
+  MapPin, Globe, Linkedin, Paperclip, Activity as ActivityIcon, Users, Link2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -207,13 +207,11 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-xs text-muted-foreground hidden md:inline">Owner · {ownerName}</span>
-              <Button size="sm" onClick={() => handleLogActivity('email')}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Log Activity
-              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More actions">
-                    <MoreHorizontal className="h-4 w-4" />
+                  <Button size="sm">
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Log Activity
+                    <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
@@ -223,16 +221,30 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   <DropdownMenuItem onClick={() => handleLogActivity('meeting')}>
                     <Calendar className="h-3.5 w-3.5 mr-2" /> Log meeting
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowCreateTask(true)}>
-                    <CheckSquare className="h-3.5 w-3.5 mr-2" /> Create task
-                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Link to company or deal">
+                    <Link2 className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem onClick={() => setShowLinkCompany(true)}>
                     <Building2 className="h-3.5 w-3.5 mr-2" /> Link company
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowLinkDeal(true)}>
                     <Briefcase className="h-3.5 w-3.5 mr-2" /> Link deal
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More actions">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem onClick={() => setShowDelete(true)} className="text-destructive focus:text-destructive">
                     <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete contact
                   </DropdownMenuItem>
