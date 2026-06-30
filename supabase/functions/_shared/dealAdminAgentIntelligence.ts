@@ -657,7 +657,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 MILESTONE UPDATE GATE — apply strictly
 - Do NOT propose update_milestone (or create_milestone) for a "Kick-Off" / "Kickoff" / "Kick Off" milestone based on emails, claap recordings, intro/discovery/scoping calls, or any meeting that is merely scheduled. An intro call is NEVER a kick-off.
 - ONLY propose update_milestone for a Kick-Off milestone when ALL of these are true:
-    1. The calendar (deal_calendar_items) contains an event whose title clearly reads as a kick-off for THIS deal — matches /kick[\\s-]?off/i (e.g. "{Deal} Kick Off", "Kickoff Call", "Deal Kick-Off").
+    1. The calendar (deal_calendar_items / calendar) contains an event whose **title itself** clearly reads as a kick-off for THIS deal — title must match /kick[\\s-]?off/i (e.g. "{Deal} <> 5th Line Kick Off", "{Deal} Kick-Off Call"). A "RE:" / "Fw:" thread subject, an intro/discovery/scoping/feasibility/credit-referral/financing-feedback invite, or any title that does NOT itself contain "kick off" / "kickoff" / "kick-off" DOES NOT QUALIFY — even if the meeting has happened.
     2. That calendar event's date (and time, if present) is already in the past relative to "now" — the meeting has actually occurred, not just been scheduled.
     3. The deal has an existing Kick-Off milestone that is not already completed.
   If any of these is missing, emit NOTHING for the Kick-Off milestone — no update_milestone, no create_milestone, no generic "update milestone" follow-up task.
@@ -665,7 +665,7 @@ MILESTONE UPDATE GATE — apply strictly
     item_title = "Check off {Deal Name} Kick-Off Milestone"
     target_object_type = "deal_milestone", target_object_id = the kick-off milestone id
     proposed_values = { completed: true, status: "completed", completed_at: <calendar event end ISO> }
-    evidence_references citing the calendar event (kind="calendar") that justifies completion.
+    evidence_references MUST cite the kick-off calendar event (kind="calendar") whose excerpt/title contains "kick off" / "kickoff" / "kick-off". Do NOT cite a non-kickoff invite as kick-off evidence.
 - Never confuse an intro/discovery/scoping/first call with a kick-off. Different meeting → no kick-off proposal.
 
 CREATE MILESTONE GATE — apply strictly
@@ -1026,6 +1026,108 @@ function filterUnconfiguredMilestones(
       (c.proposed_values as any)?.title ?? c.linked_entity_label ?? c.item_title,
     );
     if (!title || !allowed.has(title) || existing.has(title)) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
+ * Hard guardrail for Kick-Off milestone completion.
+ *
+ * The Deal Admin Agent may ONLY propose completing (or creating) a
+ * "Kick-Off" milestone when the deal has a real calendar event whose
+ * **title** reads as a kick-off (matches /kick[\s-]?off/i) AND whose
+ * scheduled date/time is already in the past. Intro / discovery /
+ * scoping / "RE: Fw: …" calendar events do NOT qualify, even if they
+ * have happened — only an event explicitly titled as a kick-off counts.
+ *
+ * The system prompt expresses this rule, but the LLM has historically
+ * cited a non-kickoff calendar invite as evidence and proposed
+ * completion anyway. This function drops any such proposal at the
+ * source so it never reaches the queue.
+ */
+function filterInvalidKickoffMilestones(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const KICK_RE = /kick[\s-]?off/i;
+  const isKickoffMilestoneTitle = (s: unknown) =>
+    typeof s === "string" && KICK_RE.test(s);
+
+  // Collect kick-off-titled calendar events for this deal that have
+  // already occurred. We use the `date` (+ optional `time`) on
+  // deal_calendar_items, and `start`/`start_time`/`end`/`end_time`
+  // shapes on calendar_events fallbacks.
+  const now = Date.now();
+  const eventEpoch = (ev: any): number | null => {
+    const candidates = [
+      ev?.end_time, ev?.end, ev?.start_time, ev?.start,
+    ].filter((v) => typeof v === "string" && v.length > 0);
+    for (const c of candidates) {
+      const t = Date.parse(c);
+      if (!Number.isNaN(t)) return t;
+    }
+    if (typeof ev?.date === "string" && ev.date.length > 0) {
+      const dt = ev.time && typeof ev.time === "string"
+        ? `${ev.date}T${ev.time}`
+        : `${ev.date}T23:59:59Z`;
+      const t = Date.parse(dt);
+      if (!Number.isNaN(t)) return t;
+    }
+    return null;
+  };
+  const hasPastKickoffEvent = (bundle.calendar_items ?? []).some((ev: any) => {
+    if (!isKickoffMilestoneTitle(ev?.title)) return false;
+    const t = eventEpoch(ev);
+    return typeof t === "number" && t <= now;
+  });
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    const at = c?.action_type;
+    if (at !== "update_milestone" && at !== "create_milestone") return true;
+
+    // Identify whether this candidate is targeting a Kick-Off milestone.
+    const milestoneById = new Map<string, any>(
+      (bundle.milestones ?? [])
+        .filter((m: any) => m?.id)
+        .map((m: any) => [m.id, m]),
+    );
+    const targetMilestone = c?.target_object_id
+      ? milestoneById.get(c.target_object_id as string)
+      : null;
+    const proposedTitle = (c?.proposed_values as any)?.title;
+    const itemTitle = c?.item_title;
+    const linkedLabel = c?.linked_entity_label;
+    const looksLikeKickoff =
+      isKickoffMilestoneTitle(targetMilestone?.title) ||
+      isKickoffMilestoneTitle(proposedTitle) ||
+      isKickoffMilestoneTitle(itemTitle) ||
+      isKickoffMilestoneTitle(linkedLabel);
+    if (!looksLikeKickoff) return true;
+
+    if (!hasPastKickoffEvent) {
+      dropped++;
+      return false;
+    }
+
+    // Extra check: the cited evidence itself must include a calendar
+    // event whose excerpt mentions kick-off. Otherwise the LLM is
+    // wiring a non-kickoff event id to a kickoff proposal.
+    const evRefs = (c?.evidence_references ?? []) as any[];
+    const calRefs = evRefs.filter((e) => e?.kind === "calendar");
+    if (calRefs.length === 0) {
+      dropped++;
+      return false;
+    }
+    const anyKickoffEvidence = calRefs.some((e) => {
+      const ex = typeof e?.excerpt === "string" ? e.excerpt : "";
+      return KICK_RE.test(ex);
+    });
+    if (!anyKickoffEvidence) {
       dropped++;
       return false;
     }
@@ -2555,12 +2657,23 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (milestoneFiltered.kept.length === 0) continue;
 
+      // Drop any Kick-Off milestone proposal that isn't backed by a real,
+      // past calendar event explicitly titled as a kick-off. Prevents the
+      // agent from completing the Kick-Off milestone off the back of an
+      // unrelated invite (intro / "RE: Fw: …" / discovery).
+      const kickoffFiltered = filterInvalidKickoffMilestones(milestoneFiltered.kept, bundle);
+      if (kickoffFiltered.dropped > 0) {
+        result.candidates_filtered += kickoffFiltered.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${kickoffFiltered.dropped} kick-off milestone proposal(s) for deal=${d.id} — no past calendar event titled as a kick-off`);
+      }
+      if (kickoffFiltered.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
       // never "on-hold". Runs before gating so the rewritten value flows
       // through every downstream check.
-      const holdNormalized = normalizeHoldVsUnresponsive(milestoneFiltered.kept);
+      const holdNormalized = normalizeHoldVsUnresponsive(kickoffFiltered.kept);
       if (holdNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
