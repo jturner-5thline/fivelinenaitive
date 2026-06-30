@@ -78,44 +78,49 @@ export function buildOnApproveSentence(item: QueuedAiAction): string {
   const ov = (item.old_values || {}) as Record<string, any>;
   switch (item.action_type) {
     case 'update_deal_stage':
-      return `On approve: ${target} will move from "${ov.stage ?? '—'}" to "${nv.stage ?? '—'}".`;
+      return `${capitalize(target)} will move from "${ov.stage ?? '—'}" to "${nv.stage ?? '—'}".`;
     case 'update_deal_status':
-      return `On approve: ${target} status will update from "${ov.status ?? '—'}" to "${nv.status ?? '—'}".`;
+      return `${capitalize(target)} status will update from "${ov.status ?? '—'}" to "${nv.status ?? '—'}".`;
     case 'add_status_note':
-      return `On approve: a new status note will be appended to ${target}.`;
+      return `A new status note will be appended to ${target}.`;
     case 'update_funding_source': {
       const lender = nv.lender_name || ov.lender_name || 'funding source';
       const from = ov.substage ?? ov.new_status ?? ov.status ?? ov.stage ?? null;
       const to = nv.substage ?? nv.new_status ?? nv.status ?? nv.stage ?? null;
       const notesChanged = typeof nv.notes === 'string' && nv.notes.trim().length > 0 && nv.notes !== ov.notes;
       if (!to && notesChanged) {
-        return `On approve: notes on ${lender} for ${target} will be updated. No stage or status change.`;
+        return `Notes on ${lender} for ${target} will be updated. No stage or status change.`;
       }
       if (!to) {
-        return `On approve: ${lender} on ${target} will be updated.`;
+        return `${capitalize(lender)} on ${target} will be updated.`;
       }
-      return `On approve: ${lender} on ${target} will update from "${from ?? '—'}" to "${to}".`;
+      return `${capitalize(lender)} on ${target} will update from "${from ?? '—'}" to "${to}".`;
     }
     case 'create_milestone':
-      return `On approve: a new milestone will be created on ${target}.`;
+      return `A new milestone will be created on ${target}.`;
     case 'update_milestone':
-      return `On approve: the milestone on ${target} will be updated.`;
+      return `The milestone on ${target} will be updated.`;
     case 'create_followup_task':
     case 'create_task':
-      return `On approve: a follow-up task will be created on ${target}.`;
+      return `A follow-up task will be created on ${target}.`;
     case 'update_contact':
-      return `On approve: the linked contact record will be updated.`;
+      return `The linked contact record will be updated.`;
     case 'update_company':
-      return `On approve: the linked company record will be updated.`;
+      return `The linked company record will be updated.`;
     case 'draft_email':
-      return `On approve: this draft moves to the Staged Drafts panel for manual send — it will NOT auto-send.`;
+      return `This draft moves to the Staged Drafts panel for manual send — it will NOT auto-send.`;
     case 'escalate':
-      return `On approve: an urgent escalation task will be created.`;
+      return `An urgent escalation task will be created.`;
     case 'reassign_deal':
-      return `On approve: ${target} will be reassigned to a new manager.`;
+      return `${capitalize(target)} will be reassigned to a new manager.`;
     default:
-      return `On approve: the proposed change above will be applied.`;
+      return `The proposed change above will be applied.`;
   }
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** CTA label for the primary approve button. */
