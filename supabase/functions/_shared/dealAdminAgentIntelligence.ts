@@ -313,10 +313,38 @@ async function gatherSignalsForDeal(
   // Pre-compute "business days since last lender contact" for each funding
   // source so the prompt can apply the 3-BD follow-up rule deterministically.
   const today = new Date();
+  // Resolve stage/substage UUIDs (or slugs) to human labels using the
+  // workspace's lender_stage_configs. This is critical for downstream rules
+  // that key off labels like "In Diligence" / "Closed & Funded" instead of
+  // opaque UUIDs stored on deal_lenders.stage.
+  const { data: stageCfgRows } = await supabase
+    .from("lender_stage_configs")
+    .select("stages, substages")
+    .eq("company_id", companyId)
+    .limit(5);
+  const stageLabelById = new Map<string, string>();
+  const substageLabelById = new Map<string, string>();
+  for (const row of (stageCfgRows ?? []) as any[]) {
+    for (const s of (row?.stages ?? []) as any[]) {
+      if (s?.id && typeof s?.label === "string") stageLabelById.set(String(s.id), s.label);
+    }
+    for (const s of (row?.substages ?? []) as any[]) {
+      if (s?.id && typeof s?.label === "string") substageLabelById.set(String(s.id), s.label);
+    }
+  }
   const fundingWithBd = (fs.data ?? []).map((f: any) => {
     const lastTs = f.last_contact_at ?? f.last_status_change_at ?? f.updated_at ?? null;
     const bd = lastTs ? businessDaysBetween(new Date(lastTs), today) : null;
-    return { ...f, business_days_since_last_contact: bd };
+    const stageLabel = f.stage ? (stageLabelById.get(String(f.stage)) ?? String(f.stage)) : null;
+    const substageLabel = f.substage
+      ? (substageLabelById.get(String(f.substage)) ?? String(f.substage))
+      : null;
+    return {
+      ...f,
+      business_days_since_last_contact: bd,
+      stage_label: stageLabel,
+      substage_label: substageLabel,
+    };
   });
 
   // Hydrate claap recordings with transcript / summary / action items from
@@ -1303,35 +1331,45 @@ function filterLenderDraftEmails(
 ): { kept: CandidateItem[]; dropped: number } {
   const TERMINAL_LENDER_RE =
     /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
-  const DILIGENCE_RE =
-    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  // "Concentration" stages: once any lender on a deal hits diligence (term
+  // sheet signed, DD underway) or closed & funded, the deal is committed to
+  // that lender. Nudging OTHERS at that point is incorrect.
+  const CONCENTRATION_RE =
+    /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|closed[\s_&-]*(?:and[\s_-]+)?funded|\bfunded\b|term[\s_-]?sheet[\s_-]?signed)/i;
   const fsById = new Map<string, any>();
   for (const f of fundingSources ?? []) {
     if (f?.id) fsById.set(String(f.id), f);
   }
   // Detect "diligence concentration": if ANY funding source on the deal is
-  // in diligence, we don't nudge OTHER lenders — the deal is concentrated
-  // with whoever is in DD, and shopping/follow-ups elsewhere is incorrect.
+  // in diligence (or already closed/funded), we don't nudge OTHER lenders —
+  // the deal is concentrated with whoever is in DD, and shopping/follow-ups
+  // elsewhere is incorrect.
   const fsState = (f: any) =>
-    [f?.tracking_status, f?.stage, f?.substage, f?.status]
+    [
+      f?.tracking_status,
+      f?.stage,
+      f?.substage,
+      f?.status,
+      f?.stage_label,
+      f?.substage_label,
+    ]
       .map((v) => (typeof v === "string" ? v : ""))
       .join(" ");
   const anyInDiligence = (fundingSources ?? []).some((f) =>
-    DILIGENCE_RE.test(fsState(f)),
+    CONCENTRATION_RE.test(fsState(f)),
   );
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
     const targetType = (c.target_object_type ?? "").toString().toLowerCase();
-    // Only gate lender-targeted drafts. Referral/client/other drafts unchanged.
+    const tid = c.target_object_id ? String(c.target_object_id) : "";
+    const fs = tid ? fsById.get(tid) : null;
     const isLenderTarget =
       targetType === "funding_source" ||
       targetType === "deal_lender" ||
-      targetType === "lender";
-    if (!isLenderTarget) return true;
-    const tid = c.target_object_id ? String(c.target_object_id) : "";
-    const fs = tid ? fsById.get(tid) : null;
-    if (!fs) return true;
+      targetType === "lender" ||
+      !!fs; // target_object_id resolves to a deal_lender on this deal
+    if (!isLenderTarget || !fs) return true;
     const stateBlob = fsState(fs);
     if (TERMINAL_LENDER_RE.test(stateBlob)) {
       dropped++;
@@ -1340,7 +1378,7 @@ function filterLenderDraftEmails(
     // Diligence concentration: only the lender(s) actually in diligence may
     // be nudged when the deal has someone in DD. Drop nudges for everyone
     // else.
-    if (anyInDiligence && !DILIGENCE_RE.test(stateBlob)) {
+    if (anyInDiligence && !CONCENTRATION_RE.test(stateBlob)) {
       dropped++;
       return false;
     }
@@ -2436,21 +2474,18 @@ async function reconcileStalePendingApprovals(
     }
   }
 
-  // Diligence concentration reconciliation: if a deal has ANY funding source
-  // in diligence, dismiss pending draft_email lender nudges targeting OTHER
-  // funding sources that are not themselves in diligence. We don't shop the
-  // deal while a lender is in DD.
-  const DILIGENCE_RE_REC =
-    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  // Concentration reconciliation: if a deal has ANY funding source already
+  // in diligence (term sheet signed, DD underway) or closed/funded, dismiss
+  // pending draft_email lender nudges targeting OTHER funding sources that
+  // are not themselves in that concentration state. We don't shop the deal
+  // around once a lender is committed.
+  const CONCENTRATION_RE_REC =
+    /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|closed[\s_&-]*(?:and[\s_-]+)?funded|\bfunded\b|term[\s_-]?sheet[\s_-]?signed)/i;
   const lenderEmailPending = (pending as any[]).filter(
     (p) =>
       p.action_type === "draft_email" &&
       p.deal_id &&
-      p.target_object_id &&
-      typeof p.target_object_type === "string" &&
-      ["funding_source", "deal_lender", "lender"].includes(
-        (p.target_object_type as string).toLowerCase(),
-      ),
+      p.target_object_id,
   );
   if (lenderEmailPending.length > 0) {
     const dealIds = Array.from(new Set(lenderEmailPending.map((p) => p.deal_id as string)));
@@ -2458,22 +2493,46 @@ async function reconcileStalePendingApprovals(
       .from("deal_lenders")
       .select("id, deal_id, tracking_status, stage, substage")
       .in("deal_id", dealIds);
+    // Resolve stage/substage UUIDs to labels via lender_stage_configs.
+    const { data: stageCfgRows } = await supabase
+      .from("lender_stage_configs")
+      .select("stages, substages")
+      .eq("company_id", companyId)
+      .limit(5);
+    const stageLabelById = new Map<string, string>();
+    const substageLabelById = new Map<string, string>();
+    for (const row of (stageCfgRows ?? []) as any[]) {
+      for (const s of (row?.stages ?? []) as any[]) {
+        if (s?.id && typeof s?.label === "string") stageLabelById.set(String(s.id), s.label);
+      }
+      for (const s of (row?.substages ?? []) as any[]) {
+        if (s?.id && typeof s?.label === "string") substageLabelById.set(String(s.id), s.label);
+      }
+    }
     const stateById = new Map<string, string>();
     const dealHasDiligence = new Map<string, boolean>();
     for (const l of (allLenders ?? []) as any[]) {
-      const blob = [l.tracking_status, l.stage, l.substage]
+      const stageLabel = l.stage ? (stageLabelById.get(String(l.stage)) ?? String(l.stage)) : "";
+      const substageLabel = l.substage
+        ? (substageLabelById.get(String(l.substage)) ?? String(l.substage))
+        : "";
+      const blob = [l.tracking_status, l.stage, l.substage, stageLabel, substageLabel]
         .filter((v) => typeof v === "string")
         .join(" ");
       if (l?.id) stateById.set(l.id, blob);
-      if (l?.deal_id && DILIGENCE_RE_REC.test(blob)) {
+      if (l?.deal_id && CONCENTRATION_RE_REC.test(blob)) {
         dealHasDiligence.set(l.deal_id, true);
       }
     }
     for (const p of lenderEmailPending) {
       if (toResolve.includes(p.id)) continue;
       if (!dealHasDiligence.get(p.deal_id as string)) continue;
-      const targetState = stateById.get(p.target_object_id as string) ?? "";
-      if (!DILIGENCE_RE_REC.test(targetState)) {
+      // Only act on lender-targeted drafts: target_object_id must map to a
+      // deal_lender on this deal. Skip client/referral/other drafts so we
+      // don't accidentally dismiss legitimate non-lender nudges.
+      const targetState = stateById.get(p.target_object_id as string);
+      if (targetState === undefined) continue;
+      if (!CONCENTRATION_RE_REC.test(targetState)) {
         toResolve.push(p.id);
       }
     }
