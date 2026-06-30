@@ -242,7 +242,7 @@ export default function CrmCompanies() {
                 {isFetchingNextPage ? (
                   <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    Loading more companies…
+                    More companies loading…
                   </span>
                 ) : hasNextPage ? (
                   <span className="text-xs">Scroll to load more</span>
