@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { Plus, UserPlus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
   ContactSearchAndCreate,
@@ -55,8 +62,8 @@ export function MultiContactPickerField({
         className,
       )}
     >
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
           <Button
             type="button"
             variant="ghost"
@@ -73,29 +80,22 @@ export function MultiContactPickerField({
               </>
             )}
           </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-80 p-3 create-deal-dropdown-content"
-          align="start"
-          side="bottom"
-          sideOffset={6}
-          avoidCollisions={false}
-          collisionPadding={8}
-          container={
-            typeof document !== "undefined"
-              ? ((document.querySelector('[role="dialog"]') as HTMLElement) ?? document.body)
-              : undefined
-          }
+        </DialogTrigger>
+        <DialogContent
+          className="p-0 gap-0 overflow-hidden flex flex-col"
+          style={{ width: 'min(92vw, 600px)', maxWidth: 'min(92vw, 600px)', maxHeight: '85vh' }}
         >
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Add client contact</label>
-            <p className="text-[11px] text-muted-foreground">
+          <DialogHeader className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
+            <DialogTitle>Add client contact</DialogTitle>
+            <DialogDescription className="text-[12px]">
               Pick from the Contacts database or create a new contact.
-            </p>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
             <ContactSearchAndCreate open={open} onSelect={handleSelect} autoFocus />
           </div>
-        </PopoverContent>
-      </Popover>
+        </DialogContent>
+      </Dialog>
       {value.length === 0 && (
         <span className="text-sm text-muted-foreground px-1">{placeholder}</span>
       )}
