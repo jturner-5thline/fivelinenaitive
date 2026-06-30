@@ -180,7 +180,7 @@ export function DealsHeader() {
   const canSeeMoffitt = canSeeMoffittBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
   const isMoffittViewingHimself = user?.email?.toLowerCase() === MOFFITT_EMAIL;
-  const briefingUserEmails = ['jturner@5thline.co', 'nheikali@5thline.co'];
+  const briefingUserEmails = ['jturner@5thline.co', 'nheikali@5thline.co', 'jmoffitt@5thline.co'];
   const canSeeBriefingHeaderItems =
     briefingUserEmails.includes(user?.email?.toLowerCase() ?? '') || isNikiMirror;
 
