@@ -268,6 +268,7 @@ export function AdminAgentDuty1Config() {
         { onConflict: 'company_id' },
       );
     if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] });
     await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
   }
 
