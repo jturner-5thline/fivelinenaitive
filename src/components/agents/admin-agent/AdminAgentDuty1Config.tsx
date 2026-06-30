@@ -516,6 +516,18 @@ export function AdminAgentDuty1Config() {
   // Master gate: if the company isn't entitled, render only a
   // disabled-state explainer. The chat tools + sweep enforce the same
   // gate server-side; this UI just mirrors it.
+  // Only render the disabled-state once we've actually confirmed the
+  // entitlement lookup completed — otherwise the popup briefly (or
+  // permanently, on slow networks / cache misses) shows "not enabled"
+  // and hides Custom Rules even when the company is entitled.
+  if (!companyId || companyAccessQ.isLoading || companyAccessQ.isFetching) {
+    return (
+      <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        Loading Admin Agent configuration…
+      </div>
+    );
+  }
   if (!companyEntitled) {
     return (
       <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
