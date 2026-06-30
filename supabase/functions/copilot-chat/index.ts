@@ -7746,6 +7746,30 @@ serve(async (req) => {
           orgPreferencesSection = `\n\nORGANIZATION PREFERENCES (follow these rules strictly — ${rules.length} total):\n${rules.slice(0, 12).join("\n")}\n- ...and ${rules.length - 12} more rules (apply them all consistently)`;
         }
       }
+
+      // Admin Agent custom rules — natural-language teaching configured in
+      // the Admin Agent popup (AdminAgentDuty1Config). Injected verbatim so
+      // the agent treats them as workspace-wide operating rules.
+      try {
+        const { data: adminCfg } = await supabaseAdmin
+          .from("admin_agent_settings")
+          .select("custom_rules")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        const raw = (adminCfg as any)?.custom_rules;
+        const adminRules: string[] = Array.isArray(raw)
+          ? raw
+              .map((r: any) => (typeof r === "string" ? r : typeof r?.text === "string" ? r.text : ""))
+              .map((t: string) => t.trim())
+              .filter((t: string) => t.length > 0)
+          : [];
+        if (adminRules.length > 0) {
+          const numbered = adminRules.map((t, i) => `${i + 1}. ${t}`).join("\n");
+          orgPreferencesSection += `\n\nADMIN AGENT CUSTOM RULES (workspace-specific, follow strictly across every Admin Agent action — audits, follow-ups, task proposals, queue items, and sweeps):\n${numbered}`;
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] admin_agent_settings.custom_rules load failed", (e as Error)?.message);
+      }
     }
 
     const page = context?.page || "unknown";
