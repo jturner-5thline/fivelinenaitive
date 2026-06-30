@@ -2123,6 +2123,109 @@ async function reconcileStalePendingApprovals(
     }
   }
 
+  // Freshness check: if a proposal cites client participants by email and
+  // those clients have corresponded (sent or received a fresh email) after
+  // the queue item was created, the underlying basis ("client owes us X",
+  // "log this call", "draft a nudge") is stale — dismiss it. This catches
+  // the common case where the deal manager has already moved on but hasn't
+  // logged a status note, updated the stage, etc.
+  const freshnessItems = (pending as any[]).filter(
+    (p) =>
+      p.deal_id &&
+      (p.action_type === "add_status_note" ||
+        p.action_type === "draft_email" ||
+        p.action_type === "create_followup_task" ||
+        p.action_type === "update_deal_status"),
+  );
+  if (freshnessItems.length > 0) {
+    const { data: profs } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("company_id", companyId);
+    const internalEmails = new Set<string>(
+      ((profs ?? []) as any[])
+        .map((p) => (p.email ?? "").toLowerCase())
+        .filter((e) => !!e),
+    );
+    const internalDomains = new Set<string>();
+    for (const e of internalEmails) {
+      const d = e.split("@")[1];
+      if (d) internalDomains.add(d);
+    }
+
+    const freshIds = freshnessItems.map((f) => f.id as string);
+    const { data: fullRows } = await supabase
+      .from("ai_action_queue")
+      .select("id, deal_id, created_at, evidence")
+      .in("id", freshIds);
+
+    const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    const itemMeta = new Map<
+      string,
+      { dealId: string; createdMs: number; emails: Set<string>; domains: Set<string> }
+    >();
+    for (const row of (fullRows ?? []) as any[]) {
+      const emails = new Set<string>();
+      const domains = new Set<string>();
+      const evStr = JSON.stringify(row.evidence ?? []);
+      const matches = evStr.match(EMAIL_RE) ?? [];
+      for (const raw of matches) {
+        const e = raw.toLowerCase();
+        if (internalEmails.has(e)) continue;
+        const d = e.split("@")[1];
+        if (d && internalDomains.has(d)) continue;
+        emails.add(e);
+        if (d) domains.add(d);
+      }
+      if (emails.size === 0) continue;
+      itemMeta.set(row.id, {
+        dealId: row.deal_id,
+        createdMs: new Date(row.created_at).getTime(),
+        emails,
+        domains,
+      });
+    }
+
+    if (itemMeta.size > 0) {
+      const allClientEmails = Array.from(
+        new Set(Array.from(itemMeta.values()).flatMap((v) => Array.from(v.emails))),
+      );
+      const earliestCreated = Math.min(
+        ...Array.from(itemMeta.values()).map((v) => v.createdMs),
+      );
+      const sinceIso = new Date(earliestCreated).toISOString();
+
+      const [gmRes, ecRes] = await Promise.all([
+        supabase
+          .from("gmail_messages")
+          .select("from_email, received_at")
+          .in("from_email", allClientEmails)
+          .gte("received_at", sinceIso)
+          .limit(1000),
+        supabase
+          .from("email_cache")
+          .select("from_email, received_at")
+          .in("from_email", allClientEmails)
+          .gte("received_at", sinceIso)
+          .limit(1000),
+      ]);
+      const allMsgs = [
+        ...(((gmRes as any).data ?? []) as any[]),
+        ...(((ecRes as any).data ?? []) as any[]),
+      ];
+
+      for (const [itemId, meta] of itemMeta) {
+        if (toResolve.includes(itemId)) continue;
+        const hit = allMsgs.some((m) => {
+          const fe = (m.from_email ?? "").toLowerCase();
+          if (!fe || !meta.emails.has(fe)) return false;
+          return new Date(m.received_at).getTime() > meta.createdMs;
+        });
+        if (hit) toResolve.push(itemId);
+      }
+    }
+  }
+
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
