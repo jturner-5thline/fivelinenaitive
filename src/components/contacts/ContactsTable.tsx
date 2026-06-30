@@ -143,7 +143,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           {...props}
           role="button"
           tabIndex={0}
-          className={cn(props.className, 'cursor-pointer [&>td]:py-1 [&>td]:h-[31px]')}
+          className={cn(props.className, 'cursor-pointer border-0 hover:bg-foreground/[0.025] focus-visible:bg-foreground/[0.03] transition-colors [&>td]:py-1 [&>td]:h-[31px]')}
           onClick={activate}
           onKeyDown={(e: React.KeyboardEvent) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -277,7 +277,18 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
       </div>
 
       {/* Table — fixed height to always show ~25 rows */}
-      <div className="border rounded-lg overflow-hidden" style={{ height: 56 + 25 * 31 }}>
+      <div
+        className={cn(
+          'rounded-xl overflow-hidden bg-card/40 dark:bg-white/[0.015]',
+          'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+          '[&_table]:border-separate [&_table]:border-spacing-0',
+          '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80',
+          '[&_thead_tr]:bg-transparent [&_thead_th]:border-b [&_thead_th]:border-border/40 [&_thead_th]:backdrop-blur-sm [&_thead_th]:bg-background/70',
+          '[&_td]:px-3 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
+          '[&_tbody_tr:last-child_td]:border-b-0',
+        )}
+        style={{ height: 56 + 25 * 31 }}
+      >
         {filtered.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
             {isFetching && search.trim() ? (
@@ -303,7 +314,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
               TableBody: TableBody as any,
             }}
             fixedHeaderContent={() => (
-              <TableRow className="bg-muted/30">
+              <TableRow className="border-0 hover:bg-transparent">
                 <TableHead className="w-10">
                   <Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                 </TableHead>
@@ -362,9 +373,9 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
                       const tags = splitContactTypes((c.hs_contact_type || c.contact_type) as string | null);
                       if (!tags.length) return <span className="text-muted-foreground">—</span>;
                       return (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-nowrap gap-1 overflow-hidden max-w-[220px]">
                           {tags.map(t => (
-                            <span key={t} className={contactTypeBadgeClass(t)}>{t}</span>
+                            <span key={t} className={cn(contactTypeBadgeClass(t), 'truncate')}>{t}</span>
                           ))}
                         </div>
                       );
