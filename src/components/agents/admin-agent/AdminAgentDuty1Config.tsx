@@ -677,31 +677,8 @@ export function AdminAgentDuty1Config() {
         </div>
       </section>
 
-      {/* Freshness + Friday sweep */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4 space-y-4">
-        <div>
-          <h4 className="text-sm font-semibold">Freshness rule</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Items are flagged "may need review" after this many US business days without an update.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Input
-            type="number"
-            min={1}
-            max={30}
-            step={1}
-            value={staleThreshold}
-            onChange={(e) => setStaleThreshold(Number(e.target.value))}
-            disabled={readOnly}
-            className="h-9 w-20 text-center tabular-nums text-base font-semibold"
-            aria-label="Stale threshold in business days"
-          />
-          <span className="text-xs text-muted-foreground">business days (1–30)</span>
-        </div>
-
-        <Separator />
-
+      {/* Friday sweep */}
+      <section className="rounded-lg border border-border/60 bg-card/40 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h5 className="text-sm font-medium leading-tight">Friday sweep</h5>
@@ -717,79 +694,6 @@ export function AdminAgentDuty1Config() {
           />
         </div>
       </section>
-
-      {/* Holidays */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4 space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-            Excluded dates
-          </h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            US federal holidays are always excluded. Add your workspace's non-business days below.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-end gap-2">
-          <div className="flex flex-col gap-1">
-            <Label htmlFor="holiday-date" className="text-[11px] uppercase tracking-wide text-muted-foreground">Date</Label>
-            <Input
-              id="holiday-date"
-              type="date"
-              value={newHolidayDate}
-              onChange={(e) => setNewHolidayDate(e.target.value)}
-              className="h-8 w-40 text-xs"
-              disabled={readOnly}
-            />
-          </div>
-          <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
-            <Label htmlFor="holiday-label" className="text-[11px] uppercase tracking-wide text-muted-foreground">Label</Label>
-            <Input
-              id="holiday-label"
-              value={newHolidayLabel}
-              onChange={(e) => setNewHolidayLabel(e.target.value)}
-              placeholder="e.g. Company off-site"
-              className="h-8 text-xs"
-              disabled={readOnly}
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs"
-            onClick={addHoliday}
-            disabled={readOnly || !newHolidayDate}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {(holidaysQ.data ?? []).map((h) => (
-            <Badge
-              key={h.id}
-              variant="secondary"
-              className="h-6 pl-2 pr-1 text-[11px] gap-1 bg-muted/40 border border-border/60 text-foreground/80"
-            >
-              <span className="tabular-nums">{format(new Date(h.holiday_date), 'MMM d, yyyy')}</span>
-              {h.label ? <span className="opacity-70">· {h.label}</span> : null}
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => removeHoliday(h.id)}
-                  className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded hover:bg-muted"
-                  aria-label="Remove holiday"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </Badge>
-          ))}
-          {(holidaysQ.data ?? []).length === 0 && (
-            <span className="text-xs text-muted-foreground">No workspace-specific dates added.</span>
-          )}
-        </div>
-      </section>
       </>
       )}
 
@@ -803,7 +707,7 @@ export function AdminAgentDuty1Config() {
           <div className="flex-1">
             <h4 className="text-sm font-semibold leading-tight">Custom rules</h4>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Examples: "Never flag deals owned by Steve as stale", "Treat 'On-Hold' deals as unresponsive after 5 business days", "When proposing tasks, default the owner to the Deal Manager".
+              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Use rules to set freshness thresholds and excluded dates too. Examples: "Flag deals as stale after 3 US business days without an update", "Treat Dec 24–Jan 2 as non-business days every year", "Skip the Friday sweep on company off-sites", "When proposing tasks, default the owner to the Deal Manager".
             </p>
           </div>
         </div>
