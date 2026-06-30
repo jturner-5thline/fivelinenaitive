@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +74,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   const [createContactCompanyId, setCreateContactCompanyId] = useState<string | null>(null);
   const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
 
-  const { data: allContactsResult } = useContacts({ pageSize: 1000 });
+  const { data: allContactsResult } = useContacts({ pageSize: 1000, enabled: !!linkContactCompanyId });
   const allContacts = allContactsResult?.data ?? [];
   const linkContact = useLinkContactToCompany();
   const deleteCompany = useDeleteCrmCompany();
@@ -89,8 +89,10 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
     [companies]
   );
 
+  const deferredCompanies = useDeferredValue(companies);
+
   const filtered = useMemo(() => {
-    let result = [...companies];
+    let result = [...deferredCompanies];
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(c =>
@@ -140,7 +142,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
       });
     }
     return result;
-  }, [companies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir, columnFilters]);
+  }, [deferredCompanies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir, columnFilters]);
 
   const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
   const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
@@ -339,6 +341,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             // inside the companies box) and the full row list expands naturally.
             useWindowScroll
             data={filtered}
+            computeItemKey={(_index, co) => co.id}
+            increaseViewportBy={{ top: 600, bottom: 1400 }}
             components={{
               Table: (props) => <Table {...props} style={{ ...props.style, width: '100%' }} />,
               TableHead: TableHeader as any,

@@ -227,10 +227,10 @@ export function useCrmCompaniesInfinite(params: CrmCompaniesInfiniteParams = {})
       const offset = pageParam as number;
       const size = offset === 0 ? firstPageSize : pageSize;
 
-      // Use estimated count so the first page returns instantly on 90k+ row tables.
+      // Skip row counting entirely so every page is a single lightweight indexed range read.
       let query = supabase
         .from('crm_companies')
-        .select(LIST_COLUMNS, { count: 'estimated' })
+        .select(LIST_COLUMNS)
         .eq('org_company_id', company!.id);
 
       if (search?.trim()) {
@@ -266,16 +266,17 @@ export function useCrmCompaniesInfinite(params: CrmCompaniesInfiniteParams = {})
       const from = offset;
       const to = offset + size - 1;
 
-      const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, to);
+      const { data, error } = await query.order('created_at', { ascending: false }).range(from, to);
       if (error) throw error;
 
       const rows = (data || []) as CrmCompany[];
-      return { rows, nextOffset: offset + rows.length, hasMore: rows.length === size, totalCount: count ?? null };
+      return { rows, nextOffset: offset + rows.length, hasMore: rows.length === size, totalCount: null };
     },
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: !!company?.id,
-    staleTime: 60_000,
-    gcTime: 30 * 60_000,
+    staleTime: 24 * 60 * 60_000,
+    gcTime: 24 * 60 * 60_000,
+    refetchOnMount: false,
     placeholderData: (prev) => prev,
   });
 }
