@@ -32,7 +32,6 @@ import { TrackingStatusSettings } from '@/components/settings/TrackingStatusSett
 import { DealTypesSettings } from '@/components/settings/DealTypesSettings';
 import { DealStagesSettings } from '@/components/settings/DealStagesSettings';
 import { DefaultMilestonesSettings } from '@/components/settings/DefaultMilestonesSettings';
-import { ReferralSourcesSettings } from '@/components/settings/ReferralSourcesSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { UnifiedChecklistSettings } from '@/components/settings/UnifiedChecklistSettings';
 import { LenderMatchingSettings } from '@/components/settings/LenderMatchingSettings';
@@ -125,13 +124,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         keywords: ['preferences', 'theme', 'dark', 'light', 'regional', 'timezone'],
         href: '/preferences',
       },
-      {
-        id: 'database',
-        label: 'Database',
-        description: 'View and manage your directories and data.',
-        keywords: ['database', 'directories', 'data'],
-        href: '/database',
-      },
     ],
   },
   {
@@ -180,13 +172,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         description: 'Templates applied automatically to new deals.',
         keywords: ['default', 'milestones', 'milestone', 'templates'],
         render: ({ isAdmin }) => <DefaultMilestonesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'referral-sources',
-        label: 'Referrals',
-        description: 'Manage referral sources used for attribution.',
-        keywords: ['referral', 'sources', 'source', 'referrer'],
-        render: ({ isAdmin }) => <ReferralSourcesSettings isAdmin={isAdmin} />,
       },
       {
         id: 'sourced-via',

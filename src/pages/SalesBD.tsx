@@ -2,18 +2,15 @@ import { Helmet } from "react-helmet-async";
 import { Users, Handshake, Network, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
-import { Building2, UserCheck } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
-import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
-import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
 import { PartnerInsightsFeed, type InsightsSource } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
-import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
@@ -37,7 +34,7 @@ function SalesBdHeaderRangeSelector() {
 
 function SalesBDInner() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [channelsSubView, setChannelsSubView] = useState<"channels" | "companies" | "referral-sources">("channels");
+  const [channelsSubView, setChannelsSubView] = useState<"channels" | "companies">("channels");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
   const [insightsSource, setInsightsSource] = useState<InsightsSource>("all");
   const { data: partners = [] } = usePartners();
@@ -115,17 +112,6 @@ function SalesBDInner() {
                       <Building2 className="h-3.5 w-3.5" />
                       Companies
                     </button>
-                    <button
-                      onClick={() => setChannelsSubView("referral-sources")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-                        channelsSubView === "referral-sources"
-                          ? "bg-background/60 text-foreground border border-border"
-                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
-                      }`}
-                    >
-                      <UserCheck className="h-3.5 w-3.5" />
-                      Referral Sources
-                    </button>
                   </div>
 
                   {channelsSubView === "channels" && <ChannelsDashboard />}
@@ -140,19 +126,17 @@ function SalesBDInner() {
                     </div>
                   )}
 
-                  {channelsSubView === "referral-sources" && <ReferralSourcesView />}
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <h2 className="text-lg font-semibold">Partners and Referrals Insights</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners and referral sources</p>
+                      <h2 className="text-lg font-semibold">Partners Insights</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
                     </div>
                     <div className="flex items-center bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 gap-0.5">
                       {([
                         { value: 'all', label: 'All' },
                         { value: 'partners', label: 'Partners only' },
-                        { value: 'referrals', label: 'Referral Sources only' },
                       ] as { value: InsightsSource; label: string }[]).map(o => (
                         <button
                           key={o.value}
@@ -174,10 +158,8 @@ function SalesBDInner() {
                       <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
                     )}
                   </div>
-                  {insightsSource !== 'partners' && <ReferralsNeedingAttention />}
                 </div>
                 <PartnerSourcedDeals />
-                <ReferralSourceDeals />
               </div>
             </TabsContent>
 

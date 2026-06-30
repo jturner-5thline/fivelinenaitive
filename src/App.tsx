@@ -154,7 +154,6 @@ const SalesBD = lazy(lazyRetry(() => import("./pages/SalesBD")));
 const HR = lazy(lazyRetry(() => import("./pages/HR")));
 const Operations = lazy(lazyRetry(() => import("./pages/Operations")));
 const DebugRecognition = lazy(lazyRetry(() => import("./pages/DebugRecognition")));
-const Database = lazy(lazyRetry(() => import("./pages/Database")));
 const Workflows = lazy(lazyRetry(() => import("./pages/Workflows")));
 const Tasks = lazy(lazyRetry(() => import("./pages/Tasks")));
 const TaskDetail = lazy(lazyRetry(() => import("./pages/TaskDetail")));
@@ -427,7 +426,6 @@ const App = () => (
                             <Route path="/lenders/:lenderName/history" element={<LenderDealHistory />} />
                             <Route path="/lenders/qa" element={<LenderMatchingQA />} />
                             <Route path="/preferences" element={<Preferences />} />
-                            <Route path="/database" element={<Database />} />
                             <Route path="/workflows" element={<Workflows />} />
                             <Route path="/company" element={<Company />} />
                             <Route path="/notifications" element={<Notifications />} />
