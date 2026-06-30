@@ -2481,6 +2481,11 @@ async function reconcileStalePendingApprovals(
   // around once a lender is committed.
   const CONCENTRATION_RE_REC =
     /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|closed[\s_&-]*(?:and[\s_-]+)?funded|\bfunded\b|term[\s_-]?sheet[\s_-]?signed)/i;
+  // KEEP only nudges that target a lender ACTIVELY in diligence (or term sheet
+  // signed). Funded/closed lenders are terminal — nudging them is moot, so
+  // they fall outside the keep-set and get dismissed alongside the rest.
+  const ACTIVE_DILIGENCE_RE =
+    /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|term[\s_-]?sheet[\s_-]?signed)/i;
   const lenderEmailPending = (pending as any[]).filter(
     (p) =>
       p.action_type === "draft_email" &&
@@ -2532,7 +2537,7 @@ async function reconcileStalePendingApprovals(
       // don't accidentally dismiss legitimate non-lender nudges.
       const targetState = stateById.get(p.target_object_id as string);
       if (targetState === undefined) continue;
-      if (!CONCENTRATION_RE_REC.test(targetState)) {
+      if (!ACTIVE_DILIGENCE_RE.test(targetState)) {
         toResolve.push(p.id);
       }
     }
