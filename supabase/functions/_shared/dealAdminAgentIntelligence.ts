@@ -2370,6 +2370,56 @@ async function reconcileStalePendingApprovals(
 
   if (toResolve.length === 0) return 0;
 
+  // Kick-off milestone reconciliation: any pending update_milestone /
+  // create_milestone targeting a kick-off milestone must be backed by a
+  // PAST calendar event whose title contains "kick off" / "kickoff" /
+  // "kick-off" for the same deal. Without such an event, dismiss it.
+  const KICK_RE_REC = /kick[\s-]?off/i;
+  const kickoffPending = (pending as any[]).filter(
+    (p) =>
+      (p.action_type === "update_milestone" || p.action_type === "create_milestone") &&
+      p.deal_id && p.target_object_id,
+  );
+  if (kickoffPending.length > 0) {
+    const milestoneIds = Array.from(new Set(kickoffPending.map((p) => p.target_object_id as string)));
+    const { data: mrows } = await supabase
+      .from("deal_milestones")
+      .select("id, title")
+      .in("id", milestoneIds);
+    const kickoffMilestoneIds = new Set<string>(
+      ((mrows ?? []) as any[])
+        .filter((m) => typeof m?.title === "string" && KICK_RE_REC.test(m.title))
+        .map((m) => m.id as string),
+    );
+    const kickoffItems = kickoffPending.filter((p) =>
+      kickoffMilestoneIds.has(p.target_object_id as string),
+    );
+    if (kickoffItems.length > 0) {
+      const dealIds = Array.from(new Set(kickoffItems.map((p) => p.deal_id as string)));
+      const { data: calRows } = await supabase
+        .from("deal_calendar_items")
+        .select("deal_id, title, date")
+        .in("deal_id", dealIds);
+      const nowMs = Date.now();
+      const hasKickoffByDeal = new Map<string, boolean>();
+      for (const ev of (calRows ?? []) as any[]) {
+        if (!ev?.deal_id || !KICK_RE_REC.test(ev?.title ?? "")) continue;
+        const t = ev?.date ? Date.parse(`${ev.date}T23:59:59Z`) : NaN;
+        if (!Number.isNaN(t) && t <= nowMs) {
+          hasKickoffByDeal.set(ev.deal_id, true);
+        }
+      }
+      for (const p of kickoffItems) {
+        if (toResolve.includes(p.id)) continue;
+        if (!hasKickoffByDeal.get(p.deal_id as string)) {
+          toResolve.push(p.id);
+        }
+      }
+    }
+  }
+
+  if (toResolve.length === 0) return 0;
+
   const nowIso = new Date().toISOString();
   const { error: updErr } = await supabase
     .from("ai_action_queue")
