@@ -657,7 +657,7 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 MILESTONE UPDATE GATE — apply strictly
 - Do NOT propose update_milestone (or create_milestone) for a "Kick-Off" / "Kickoff" / "Kick Off" milestone based on emails, claap recordings, intro/discovery/scoping calls, or any meeting that is merely scheduled. An intro call is NEVER a kick-off.
 - ONLY propose update_milestone for a Kick-Off milestone when ALL of these are true:
-    1. The calendar (deal_calendar_items) contains an event whose title clearly reads as a kick-off for THIS deal — matches /kick[\\s-]?off/i (e.g. "{Deal} Kick Off", "Kickoff Call", "Deal Kick-Off").
+    1. The calendar (deal_calendar_items / calendar) contains an event whose **title itself** clearly reads as a kick-off for THIS deal — title must match /kick[\\s-]?off/i (e.g. "{Deal} <> 5th Line Kick Off", "{Deal} Kick-Off Call"). A "RE:" / "Fw:" thread subject, an intro/discovery/scoping/feasibility/credit-referral/financing-feedback invite, or any title that does NOT itself contain "kick off" / "kickoff" / "kick-off" DOES NOT QUALIFY — even if the meeting has happened.
     2. That calendar event's date (and time, if present) is already in the past relative to "now" — the meeting has actually occurred, not just been scheduled.
     3. The deal has an existing Kick-Off milestone that is not already completed.
   If any of these is missing, emit NOTHING for the Kick-Off milestone — no update_milestone, no create_milestone, no generic "update milestone" follow-up task.
@@ -665,7 +665,7 @@ MILESTONE UPDATE GATE — apply strictly
     item_title = "Check off {Deal Name} Kick-Off Milestone"
     target_object_type = "deal_milestone", target_object_id = the kick-off milestone id
     proposed_values = { completed: true, status: "completed", completed_at: <calendar event end ISO> }
-    evidence_references citing the calendar event (kind="calendar") that justifies completion.
+    evidence_references MUST cite the kick-off calendar event (kind="calendar") whose excerpt/title contains "kick off" / "kickoff" / "kick-off". Do NOT cite a non-kickoff invite as kick-off evidence.
 - Never confuse an intro/discovery/scoping/first call with a kick-off. Different meeting → no kick-off proposal.
 
 CREATE MILESTONE GATE — apply strictly
