@@ -1685,7 +1685,7 @@ export function CashFlowManager() {
             });
             if (ok) {
               logAction(
-                `Added one-time ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: ${rowLabel} ($${amount.toLocaleString()})`,
+                `Added ${flowType === 'cash_in' ? 'cash-in' : 'cash-out'} entry: "${rowLabel} ${formatAmountUsd(amount)}"${formatWeekOf(occDate)}`,
               );
             }
             return ok;
@@ -1728,7 +1728,12 @@ export function CashFlowManager() {
               if (typeof patch.notes === 'string' && patch.notes) cashPatch.deal_name = patch.notes;
               const ok = await updateCashInDbItem(realId, cashPatch);
               if (ok) {
-                logAction(`Edited cash-in entry: $${Number(cashPatch.amount ?? 0).toLocaleString()}`);
+                {
+                  const lbl = (patch.notes as string) || 'Cash-in entry';
+                  logAction(
+                    `Edited "${lbl} ${formatAmountUsd(Number(cashPatch.amount ?? 0))}"${formatWeekOf(cashPatch.target_date)}`,
+                  );
+                }
                 broadcastRef.current('scheduled');
               }
               return ok;
@@ -1739,7 +1744,9 @@ export function CashFlowManager() {
             const updated: ScheduledCashFlow = { ...existing, ...patch };
             const ok = await saveScheduledItems([updated], []);
             if (ok) {
-              logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+              logAction(
+                `Edited "${updated.category} ${formatAmountUsd(Number(updated.amount))}"${formatWeekOf(updated.start_date)}`,
+              );
               broadcastRef.current('scheduled');
             }
             return ok;
@@ -1759,7 +1766,11 @@ export function CashFlowManager() {
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
             if (ok) {
-              if (existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+              if (existing) {
+                logAction(
+                  `Deleted "${existing.category} ${formatAmountUsd(Number(existing.amount))}"${formatWeekOf(existing.start_date)}`,
+                );
+              }
               broadcastRef.current('scheduled');
             }
             return ok;
