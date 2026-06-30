@@ -192,7 +192,7 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         label: 'Gamma',
         description: 'Presentation templates for pitches and status updates.',
         keywords: ['gamma', 'templates', 'presentation', 'pitch'],
-        visible: (g) => g.gammaEnabled,
+        visible: () => false,
         render: ({ isAdmin }) => <GammaTemplatesSettings isAdmin={isAdmin} />,
       },
       {
