@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_crm_companies_org_created_at ON public.crm_companies (org_company_id, created_at DESC);
