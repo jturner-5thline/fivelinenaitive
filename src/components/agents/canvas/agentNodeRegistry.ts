@@ -80,13 +80,11 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         label: 'Model',
         required: true,
         options: [
-          { value: 'google/gemini-3-flash-preview', label: 'Gemini 3 Flash (Fast)' },
-          { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-          { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (Best)' },
-          { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
-          { value: 'openai/gpt-5', label: 'GPT-5' },
+          { value: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Recommended)' },
+          { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4 (Best Reasoning)' },
+          { value: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5 (Fast)' },
         ],
-        hint: 'Choose the AI model for this agent',
+        hint: 'All agents are powered by Claude',
       },
       system_prompt: {
         type: 'textarea',
@@ -134,10 +132,10 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         label: 'Model',
         required: true,
         options: [
-          { value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro (Recommended)' },
-          { value: 'openai/gpt-5', label: 'GPT-5' },
+          { value: 'anthropic/claude-opus-4', label: 'Claude Opus 4 (Recommended)' },
+          { value: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
         ],
-        hint: 'Planners benefit from stronger reasoning models',
+        hint: 'Planners use Claude for deep reasoning',
       },
       planning_prompt: {
         type: 'textarea',
@@ -168,8 +166,8 @@ export const AGENT_NODE_REGISTRY: AgentNodePaletteItem[] = [
         label: 'Model',
         required: true,
         options: [
-          { value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-          { value: 'openai/gpt-5-mini', label: 'GPT-5 Mini' },
+          { value: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+          { value: 'anthropic/claude-haiku-4-5', label: 'Claude Haiku 4.5' },
         ],
       },
       review_prompt: {
