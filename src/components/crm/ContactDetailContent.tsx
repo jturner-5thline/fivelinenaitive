@@ -207,9 +207,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-xs text-muted-foreground hidden md:inline">Owner · {ownerName}</span>
-              <Button variant="outline" size="sm" onClick={() => goAnchor('contact-info')}>
-                <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-              </Button>
               <Button size="sm" onClick={() => handleLogActivity('email')}>
                 <Plus className="h-3.5 w-3.5 mr-1" /> Log Activity
               </Button>
