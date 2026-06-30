@@ -69,17 +69,20 @@ export default function CrmCompanies() {
     return () => io.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
 
+  // Always keep one page pre-fetched ahead of the user. As soon as the
+  // current page settles, schedule the next one during idle time so the
+  // sentinel never has to wait — scrolling feels seamless.
   useEffect(() => {
-    if (!hasNextPage || isFetchingNextPage || isFetching || companies.length < 100 || companies.length >= 150) return;
+    if (!hasNextPage || isFetchingNextPage || isFetching || companies.length === 0) return;
     const idleWindow = window as Window & typeof globalThis & {
       requestIdleCallback?: (callback: IdleRequestCallback) => number;
       cancelIdleCallback?: (handle: number) => void;
     };
     if (idleWindow.requestIdleCallback) {
-      const id = idleWindow.requestIdleCallback(() => void fetchNextPage());
+      const id = idleWindow.requestIdleCallback(() => void fetchNextPage(), { timeout: 1500 });
       return () => idleWindow.cancelIdleCallback?.(id);
     }
-    const id = globalThis.setTimeout(() => void fetchNextPage(), 250);
+    const id = globalThis.setTimeout(() => void fetchNextPage(), 200);
     return () => globalThis.clearTimeout(id);
   }, [companies.length, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage]);
 
