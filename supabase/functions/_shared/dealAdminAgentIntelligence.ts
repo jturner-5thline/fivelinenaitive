@@ -386,7 +386,7 @@ async function gatherSignalsForDeal(
       .from("claap_recordings")
       .select("id, title, summary, action_items, key_takeaways, started_at, ended_at, organizer_email, participants, recording_url")
       .eq("org_company_id", companyId)
-      .or(`title.imatch.${wordBoundaryPattern},summary.imatch.${wordBoundaryPattern}`)
+      .filter("title", "imatch", wordBoundaryPattern)
       .gte("started_at", since)
       .order("started_at", { ascending: false })
       .limit(5);
