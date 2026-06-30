@@ -2475,12 +2475,13 @@ async function reconcileStalePendingApprovals(
     }
   }
 
-  // Diligence concentration reconciliation: if a deal has ANY funding source
-  // in diligence, dismiss pending draft_email lender nudges targeting OTHER
-  // funding sources that are not themselves in diligence. We don't shop the
-  // deal while a lender is in DD.
-  const DILIGENCE_RE_REC =
-    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  // Concentration reconciliation: if a deal has ANY funding source already
+  // in diligence (term sheet signed, DD underway) or closed/funded, dismiss
+  // pending draft_email lender nudges targeting OTHER funding sources that
+  // are not themselves in that concentration state. We don't shop the deal
+  // around once a lender is committed.
+  const CONCENTRATION_RE_REC =
+    /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|closed[\s_&-]*(?:and[\s_-]+)?funded|\bfunded\b|term[\s_-]?sheet[\s_-]?signed)/i;
   const lenderEmailPending = (pending as any[]).filter(
     (p) =>
       p.action_type === "draft_email" &&
@@ -2497,14 +2498,34 @@ async function reconcileStalePendingApprovals(
       .from("deal_lenders")
       .select("id, deal_id, tracking_status, stage, substage")
       .in("deal_id", dealIds);
+    // Resolve stage/substage UUIDs to labels via lender_stage_configs.
+    const { data: stageCfgRows } = await supabase
+      .from("lender_stage_configs")
+      .select("stages, substages")
+      .eq("company_id", companyId)
+      .limit(5);
+    const stageLabelById = new Map<string, string>();
+    const substageLabelById = new Map<string, string>();
+    for (const row of (stageCfgRows ?? []) as any[]) {
+      for (const s of (row?.stages ?? []) as any[]) {
+        if (s?.id && typeof s?.label === "string") stageLabelById.set(String(s.id), s.label);
+      }
+      for (const s of (row?.substages ?? []) as any[]) {
+        if (s?.id && typeof s?.label === "string") substageLabelById.set(String(s.id), s.label);
+      }
+    }
     const stateById = new Map<string, string>();
     const dealHasDiligence = new Map<string, boolean>();
     for (const l of (allLenders ?? []) as any[]) {
-      const blob = [l.tracking_status, l.stage, l.substage]
+      const stageLabel = l.stage ? (stageLabelById.get(String(l.stage)) ?? String(l.stage)) : "";
+      const substageLabel = l.substage
+        ? (substageLabelById.get(String(l.substage)) ?? String(l.substage))
+        : "";
+      const blob = [l.tracking_status, l.stage, l.substage, stageLabel, substageLabel]
         .filter((v) => typeof v === "string")
         .join(" ");
       if (l?.id) stateById.set(l.id, blob);
-      if (l?.deal_id && DILIGENCE_RE_REC.test(blob)) {
+      if (l?.deal_id && CONCENTRATION_RE_REC.test(blob)) {
         dealHasDiligence.set(l.deal_id, true);
       }
     }
@@ -2512,7 +2533,7 @@ async function reconcileStalePendingApprovals(
       if (toResolve.includes(p.id)) continue;
       if (!dealHasDiligence.get(p.deal_id as string)) continue;
       const targetState = stateById.get(p.target_object_id as string) ?? "";
-      if (!DILIGENCE_RE_REC.test(targetState)) {
+      if (!CONCENTRATION_RE_REC.test(targetState)) {
         toResolve.push(p.id);
       }
     }
