@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Loader2, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -297,6 +297,29 @@ export function AdminAgentDuty1Config() {
       setCustomRules(next);
     } catch (e: any) {
       toast.error(e?.message || 'Could not remove rule.');
+    }
+  }
+
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [editingRuleText, setEditingRuleText] = useState('');
+
+  function startEditRule(r: CustomRule) {
+    setEditingRuleId(r.id);
+    setEditingRuleText(r.text);
+  }
+
+  async function saveEditRule(id: string) {
+    const text = editingRuleText.trim();
+    if (!text) return;
+    try {
+      const next = customRules.map((r) => (r.id === id ? { ...r, text } : r));
+      await persistCustomRules(next);
+      setCustomRules(next);
+      setEditingRuleId(null);
+      setEditingRuleText('');
+      toast.success('Rule updated.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update rule.');
     }
   }
 
