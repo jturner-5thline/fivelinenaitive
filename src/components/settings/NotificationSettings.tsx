@@ -335,9 +335,10 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
           </div>
         </div>
 
+        {/* In-App Notifications Section (hidden) */}
+        {false && (
+        <>
         <Separator />
-
-        {/* In-App Notifications Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Smartphone className="h-4 w-4 text-muted-foreground" />
@@ -391,9 +392,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
             </div>
           </div>
         </div>
-
         <Separator />
-
         {/* Desktop / Browser Notifications Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -455,6 +454,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
             )}
           </div>
         </div>
+        </>
+        )}
 
         <Separator />
         <div className="space-y-4">
@@ -617,9 +618,7 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
           </div>
         </div>
 
-        <Separator />
-
-        <EmailSignalSlackSettings />
+        {/* Slack DMs for Email Priority Signals hidden */}
       </CardContent>
     );
 
