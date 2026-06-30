@@ -2657,6 +2657,17 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (milestoneFiltered.kept.length === 0) continue;
 
+      // Drop any Kick-Off milestone proposal that isn't backed by a real,
+      // past calendar event explicitly titled as a kick-off. Prevents the
+      // agent from completing the Kick-Off milestone off the back of an
+      // unrelated invite (intro / "RE: Fw: …" / discovery).
+      const kickoffFiltered = filterInvalidKickoffMilestones(milestoneFiltered.kept, bundle);
+      if (kickoffFiltered.dropped > 0) {
+        result.candidates_filtered += kickoffFiltered.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${kickoffFiltered.dropped} kick-off milestone proposal(s) for deal=${d.id} — no past calendar event titled as a kick-off`);
+      }
+      if (kickoffFiltered.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
