@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare, MessageCircle } from 'lucide-react';
 import { useFinancialComments } from '@/hooks/useFinancialComments';
 import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -419,16 +419,31 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
         </Tooltip>
       </TooltipProvider>
       
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 py-4 border-b flex-shrink-0 pr-14">
-          <div className="flex items-center justify-between">
-            <div>
-              <DialogTitle className="text-xl">Deal Memo</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {companyName}
+      <DialogContent className="sm:max-w-[1240px] w-[96vw] p-0 overflow-hidden flex flex-col h-[88vh] rounded-[22px] border-white/[0.08] bg-[#06060a]/95 backdrop-blur-xl text-[#ecedf4]">
+        <DialogHeader className="px-6 py-4 border-b border-white/[0.08] flex-shrink-0 pr-14 space-y-0">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#9DA2F5]/80 mb-1">Deal Memo</div>
+              <DialogTitle className="text-[20px] leading-tight tracking-tight truncate">{companyName}</DialogTitle>
+              <p className="text-[12px] text-[#ecedf4]/55 mt-1">
+                Internal briefing · prepared for senior review.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
+              {autoSaveLabel && (
+                <span
+                  className={`text-[11px] mr-1 inline-flex items-center gap-1.5 ${
+                    autoSaveStatus === 'error' ? 'text-destructive cursor-pointer'
+                    : autoSaveStatus === 'saved' ? 'text-[#5EEAD4]/80'
+                    : 'text-[#ecedf4]/50'
+                  }`}
+                  onClick={autoSaveStatus === 'error' ? saveNow : undefined}
+                >
+                  {autoSaveStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {autoSaveStatus === 'saved' && <Check className="h-3 w-3" />}
+                  {autoSaveLabel}
+                </span>
+              )}
               {/* Approval Status Badge */}
               {approvalInfo.approvalState === 'approved' && !hasChanges && (
                 <Badge className="gap-1.5 bg-success/15 text-success border-success/30 hover:bg-success/15">
@@ -484,41 +499,11 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                 </div>
               )}
 
-              {/* Submit for Approval button - only shown for 5th Line accounts */}
-              {isApprovalEnabled && userRole && !isCurrentApprover && userRole !== 'admin' && memo && (
-                localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
-              ) && (
-                <Button
-                  size="sm"
-                  onClick={submitForApproval}
-                  disabled={isApprovalSubmitting}
-                >
-                  {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  {approvalInfo.approvalState === 'not_submitted' ? 'Submit for Approval' : hasChanges ? 'Resubmit' : 'Resubmit for Approval'}
-                </Button>
-              )}
-
-              {/* Admin self-approve button - only show when memo has content and is not already approved without changes */}
-              {isApprovalEnabled && userRole === 'admin' && !isCurrentApprover && memo && (
-                approvalInfo.approvalState !== 'approved' || hasChanges
-              ) && (
-                localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
-              ) && (
-                <Button
-                  size="sm"
-                  onClick={submitForApproval}
-                  disabled={isApprovalSubmitting}
-                >
-                  {isApprovalSubmitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                  Approve
-                </Button>
-              )}
-
               {onGoToDataRoom && (
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08]"
                   onClick={() => {
                     setIsOpen(false);
                     onGoToDataRoom();
@@ -527,19 +512,32 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                   <FolderOpen className="h-4 w-4" />
                 </Button>
               )}
-              <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} onRevert={handleRevert} />
-              <Button 
-                onClick={handleSave} 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSave}
                 disabled={!hasChanges || isSaving}
-                size="icon"
-                className="h-8 w-8"
+                className="h-8 gap-1.5 text-[#ecedf4]/85 hover:bg-white/[0.06]"
               >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
+                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                Save
               </Button>
+              {isApprovalEnabled && memo && (
+                localValues.narrative.trim() || localValues.highlights.trim() || localValues.hurdles.trim() || localValues.lender_notes.trim() || localValues.analyst_notes.trim() || localValues.other_notes.trim()
+              ) && !isCurrentApprover && (
+                (userRole !== 'admin') || (approvalInfo.approvalState !== 'approved' || hasChanges)
+              ) && (
+                <Button
+                  size="sm"
+                  onClick={submitForApproval}
+                  disabled={isApprovalSubmitting}
+                  className="h-8 gap-1.5 bg-[#5EEAD4]/15 border border-[#5EEAD4]/40 text-[#5EEAD4] hover:bg-[#5EEAD4]/25"
+                >
+                  {isApprovalSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (userRole === 'admin' ? <ShieldCheck className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />)}
+                  {userRole === 'admin' ? 'Approve' : (approvalInfo.approvalState === 'not_submitted' ? 'Submit for approval' : 'Resubmit')}
+                </Button>
+              )}
+              <MemoAuditLogPopover entries={auditEntries} isLoading={auditLoading} onRevert={handleRevert} />
             </div>
           </div>
           {/* Reject reason input */}
@@ -581,284 +579,205 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="py-4 px-6 space-y-6">
-              {/* Narrative Section */}
-              <MemoSectionContextMenu section="narrative" sectionLabel="Narrative" {...makeCommentHandlers('narrative')}>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-foreground">Narrative</label>
-                    <MemoCommentThread section="narrative" sectionLabel="Narrative" {...makeCommentHandlers('narrative')} />
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-[#ecedf4]/50" />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[45fr_55fr] gap-4 p-4 overflow-hidden">
+            {/* LEFT RAIL — three text fields */}
+            <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
+              {([
+                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…' },
+                { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…' },
+                { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…' },
+              ] as const).map((s) => (
+                <MemoSectionContextMenu key={s.key} section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)}>
+                  <div className="flex-1 min-h-0 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3">
+                    <div className="flex items-center justify-between mb-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        <MessageCircle className="h-3 w-3 text-[#9DA2F5]/70" />
+                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">{s.label}</span>
+                      </div>
+                      <MemoCommentThread section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)} />
+                    </div>
+                    <Textarea
+                      value={localValues[s.key]}
+                      onChange={(e) => handleChange(s.key, e.target.value)}
+                      onBlur={handleFieldBlur}
+                      placeholder={s.placeholder}
+                      className="flex-1 min-h-0 resize-none bg-transparent border-white/[0.06] focus-visible:ring-1 focus-visible:ring-[#9DA2F5]/40 text-[13px] text-[#ecedf4] placeholder:text-[#ecedf4]/35"
+                    />
                   </div>
-                  <Textarea
-                    value={localValues.narrative}
-                    onChange={(e) => handleChange('narrative', e.target.value)}
-                    onBlur={handleFieldBlur}
-                    placeholder="Describe the company, what they are looking for, and the proposed solution..."
-                    className="min-h-[100px] resize-none"
-                  />
-                  <Separator className="mt-6" />
-                </div>
-              </MemoSectionContextMenu>
+                </MemoSectionContextMenu>
+              ))}
+            </div>
 
-              {/* Deal Highlights Section - List based */}
+            {/* RIGHT COLUMN — Highlights + Hurdles */}
+            <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
+              {/* Highlights */}
               <MemoSectionContextMenu section="highlights" sectionLabel="Highlights" {...makeCommentHandlers('highlights')}>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-foreground">
-                      Deal Highlights: Why We Can Get Them an Offer
-                    </label>
+                <div className="flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3 min-h-0" style={{ flex: '1 1 0' }}>
+                  <div className="flex items-center justify-between mb-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">Deal Highlights</span>
+                      <span className="inline-flex items-center h-4 px-1.5 rounded-[4px] text-[9px] uppercase border border-[#9DA2F5]/30 text-[#9DA2F5]/85 bg-[#9DA2F5]/10">Why we can win it</span>
+                    </div>
                     <MemoCommentThread section="highlights" sectionLabel="Highlights" {...makeCommentHandlers('highlights')} />
                   </div>
-                  <div className="flex gap-2 mb-3">
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleAddHighlight}
-                      disabled={!newHighlight.trim()}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      value={newHighlight}
-                      onChange={(e) => setNewHighlight(e.target.value)}
-                      onKeyDown={handleHighlightKeyDown}
-                      placeholder="Add a highlight..."
-                      className="flex-1"
-                    />
-                  </div>
-                  {highlightsList.length > 0 ? (
-                    <ol className="space-y-2">
-                      {highlightsList.map((highlight, index) => (
-                        <MemoSectionContextMenu key={index} section="highlights" sectionLabel="Highlight" itemIndex={index} {...makeCommentHandlers('highlights', index)}>
-                          <li className="flex items-start gap-2 p-2 bg-muted/50 rounded-md group">
-                            <span className="text-sm font-medium text-muted-foreground min-w-[20px] mt-0.5">
-                              {index + 1}.
-                            </span>
-                            {editingHighlight === index ? (
-                              <Input
-                                autoFocus
-                                value={highlight}
-                                onChange={(e) => handleEditHighlight(index, e.target.value)}
-                                onBlur={() => setEditingHighlight(null)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') setEditingHighlight(null);
-                                  if (e.key === 'Escape') setEditingHighlight(null);
-                                }}
-                                className="flex-1 h-7 text-sm"
-                              />
-                            ) : (
-                              <span
-                                className="flex-1 text-sm cursor-pointer hover:text-primary transition-colors"
-                                onClick={() => setEditingHighlight(index)}
-                              >
-                                {highlight}
-                              </span>
-                            )}
-                            <MemoCommentThread section="highlights" sectionLabel="Highlight" itemIndex={index} {...makeCommentHandlers('highlights', index)} />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveHighlight(index)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </li>
-                        </MemoSectionContextMenu>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      No highlights added yet
-                    </p>
-                  )}
-                  <Separator className="mt-6" />
-                </div>
-              </MemoSectionContextMenu>
-
-              {/* Deal Hurdles Section - List based */}
-              <MemoSectionContextMenu section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')}>
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-foreground">
-                      Deal Hurdles & Remedies
-                    </label>
-                    <MemoCommentThread section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')} />
-                  </div>
-                  <div className="flex gap-2 mb-3">
-                    <Button 
-                      type="button"
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleAddHurdle}
-                      disabled={!newHurdle.trim()}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      value={newHurdle}
-                      onChange={(e) => setNewHurdle(e.target.value)}
-                      onKeyDown={handleHurdleKeyDown}
-                      placeholder="Add a hurdle..."
-                      className="flex-1"
-                    />
-                  </div>
-                  {hurdlesList.length > 0 ? (
-                    <TooltipProvider>
-                    <ol className="space-y-2">
-                      {hurdlesList.map((item, index) => (
-                        <MemoSectionContextMenu key={index} section="hurdles" sectionLabel="Hurdle" itemIndex={index} {...makeCommentHandlers('hurdles', index)}>
-                          <li 
-                            className={`p-2 rounded-md group ${item.resolved ? 'bg-primary/5 border border-primary/20' : 'bg-muted/50'}`}
-                          >
-                            <div className="flex items-start gap-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleHurdleResolved(index)}
-                                    className={`mt-0.5 h-5 w-5 shrink-0 rounded border flex items-center justify-center transition-colors ${
-                                      item.resolved 
-                                        ? 'bg-primary border-primary text-primary-foreground' 
-                                        : 'border-muted-foreground/30 hover:border-primary'
-                                    }`}
-                                  >
-                                    {item.resolved && <Check className="h-3 w-3" />}
-                                  </button>
-                                </TooltipTrigger>
-                                {item.resolved && item.resolvedBy && (
-                                  <TooltipContent side="top">
-                                    <p>Resolved by {item.resolvedBy}</p>
-                                  </TooltipContent>
-                                )}
-                              </Tooltip>
-                              <div className="flex-1 min-w-0">
-                                {editingHurdle === index ? (
-                                  <Input
-                                    autoFocus
-                                    value={item.hurdle}
-                                    onChange={(e) => handleEditHurdle(index, e.target.value)}
-                                    onBlur={() => setEditingHurdle(null)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') setEditingHurdle(null);
-                                      if (e.key === 'Escape') setEditingHurdle(null);
-                                    }}
-                                    className="h-7 text-sm"
-                                  />
-                                ) : (
-                                  <span
-                                    className={`text-sm cursor-pointer hover:text-primary transition-colors block ${item.resolved ? 'line-through text-muted-foreground' : ''}`}
-                                    onClick={() => setEditingHurdle(index)}
-                                  >
-                                    {item.hurdle}
-                                  </span>
-                                )}
-                                {/* Remedy sub-field */}
-                                {editingRemedy === index ? (
-                                  <Input
-                                    autoFocus
-                                    value={item.remedy}
-                                    onChange={(e) => handleEditRemedy(index, e.target.value)}
-                                    onBlur={() => setEditingRemedy(null)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') setEditingRemedy(null);
-                                      if (e.key === 'Escape') setEditingRemedy(null);
-                                    }}
-                                    placeholder="Add a remedy..."
-                                    className="h-7 text-sm mt-1"
-                                  />
-                                ) : (
-                                  <span
-                                    className={`text-xs cursor-pointer hover:text-primary transition-colors block mt-1 ${item.resolved ? 'line-through text-muted-foreground/60' : 'text-muted-foreground'}`}
-                                    onClick={() => setEditingRemedy(index)}
-                                  >
-                                    {item.remedy ? `Remedy: ${item.remedy}` : '+ Add remedy'}
-                                  </span>
-                                )}
-                              </div>
-                              <MemoCommentThread section="hurdles" sectionLabel="Hurdle" itemIndex={index} {...makeCommentHandlers('hurdles', index)} />
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                    <ol className="space-y-1.5">
+                      {Array.from({ length: Math.max(highlightsList.length, 3) }).map((_, index) => {
+                        const value = highlightsList[index] ?? '';
+                        const exists = index < highlightsList.length;
+                        return (
+                          <li key={index} className="group flex items-center gap-2">
+                            <span className="font-mono text-[11px] text-[#ecedf4]/45 w-5 text-right shrink-0">{String(index + 1).padStart(2, '0')}</span>
+                            <Input
+                              value={value}
+                              placeholder="Add a highlight…"
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                if (exists) {
+                                  handleEditHighlight(index, v);
+                                } else {
+                                  const updated = [...highlightsList, v];
+                                  setHighlightsList(updated);
+                                  setLocalValues((prev) => ({ ...prev, highlights: updated.join('\n') }));
+                                  setHasChanges(true);
+                                }
+                              }}
+                              onBlur={handleFieldBlur}
+                              className="h-8 text-[12.5px] bg-white/[0.03] border-white/[0.06] focus-visible:ring-1 focus-visible:ring-[#9DA2F5]/40 text-[#ecedf4] placeholder:text-[#ecedf4]/30"
+                            />
+                            {exists && (
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                                onClick={() => handleRemoveHurdle(index)}
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 text-[#ecedf4]/50 hover:text-destructive"
+                                onClick={() => handleRemoveHighlight(index)}
                               >
                                 <X className="h-3 w-3" />
                               </Button>
-                            </div>
+                            )}
                           </li>
-                        </MemoSectionContextMenu>
-                      ))}
+                        );
+                      })}
                     </ol>
-                    </TooltipProvider>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      No hurdles added yet
-                    </p>
-                  )}
-                  <Separator className="mt-6" />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-7 gap-1.5 text-[11px] text-[#9DA2F5]/85 hover:bg-white/[0.04]"
+                      onClick={() => {
+                        const updated = [...highlightsList, ''];
+                        setHighlightsList(updated);
+                        setLocalValues((prev) => ({ ...prev, highlights: updated.join('\n') }));
+                        setHasChanges(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" /> Add highlight
+                    </Button>
+                  </div>
                 </div>
               </MemoSectionContextMenu>
 
-              {/* Other sections */}
-              {MEMO_SECTIONS.map((section, index) => (
-                <MemoSectionContextMenu key={section.key} section={section.key} sectionLabel={section.label} {...makeCommentHandlers(section.key)}>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-foreground">
-                        {section.label}
-                      </label>
-                      <MemoCommentThread section={section.key} sectionLabel={section.label} {...makeCommentHandlers(section.key)} />
+              {/* Hurdles & Remedies */}
+              <MemoSectionContextMenu section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')}>
+                <div className="flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3 min-h-0" style={{ flex: '1.25 1 0' }}>
+                  <div className="flex items-center justify-between mb-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">Hurdles &amp; Remedies</span>
+                      <span className="inline-flex items-center h-4 px-1.5 rounded-[4px] text-[9px] uppercase border border-[#5EEAD4]/30 text-[#5EEAD4]/85 bg-[#5EEAD4]/10">Risk → mitigation</span>
                     </div>
-                    <Textarea
-                      value={localValues[section.key]}
-                      onChange={(e) => handleChange(section.key, e.target.value)}
-                      onBlur={handleFieldBlur}
-                      placeholder={section.placeholder}
-                      className="min-h-[100px] resize-none"
-                    />
-                    {index < MEMO_SECTIONS.length - 1 && (
-                      <Separator className="mt-6" />
-                    )}
+                    <MemoCommentThread section="hurdles" sectionLabel="Hurdles" {...makeCommentHandlers('hurdles')} />
                   </div>
-                </MemoSectionContextMenu>
-              ))}
-
-              {/* Financial Comments from IS/BS */}
-              {financialComments.length > 0 && (
-                <div className="mt-6 pt-4 border-t border-border">
-                  <FinancialCommentsSection
-                    comments={financialComments}
-                    onDelete={deleteFinancialComment}
-                    compact
-                  />
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+                    <ol className="space-y-3">
+                      {Array.from({ length: Math.max(hurdlesList.length, 3) }).map((_, index) => {
+                        const item = hurdlesList[index] ?? { hurdle: '', remedy: '', resolved: false, resolvedBy: '' };
+                        const exists = index < hurdlesList.length;
+                        const ensureExists = () => {
+                          if (!exists) {
+                            const updated = [...hurdlesList, { hurdle: '', remedy: '', resolved: false, resolvedBy: '' }];
+                            setHurdlesList(updated);
+                            setLocalValues((prev) => ({ ...prev, hurdles: stringifyHurdles(updated) }));
+                            setHasChanges(true);
+                            return updated.length - 1;
+                          }
+                          return index;
+                        };
+                        return (
+                          <li key={index} className="group rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-2">
+                            <div className="flex items-center gap-2">
+                              <span className="shrink-0 inline-flex items-center h-5 px-2 rounded-full text-[10px] uppercase tracking-wide bg-destructive/15 text-destructive/90 border border-destructive/30">Hurdle</span>
+                              <Input
+                                value={item.hurdle}
+                                placeholder="What stands in the way…"
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (exists) handleEditHurdle(index, v);
+                                  else {
+                                    const newIdx = ensureExists();
+                                    handleEditHurdle(newIdx, v);
+                                  }
+                                }}
+                                onBlur={handleFieldBlur}
+                                className="h-7 text-[12.5px] bg-transparent border-white/[0.06] focus-visible:ring-1 focus-visible:ring-destructive/30 text-[#ecedf4] placeholder:text-[#ecedf4]/30"
+                              />
+                              {exists && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 text-[#ecedf4]/50 hover:text-destructive"
+                                  onClick={() => handleRemoveHurdle(index)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            <div className="my-2 border-t border-dashed border-white/[0.08]" />
+                            <div className="flex items-center gap-2">
+                              <span className="shrink-0 inline-flex items-center h-5 px-2 rounded-full text-[10px] uppercase tracking-wide bg-[#5EEAD4]/15 text-[#5EEAD4] border border-[#5EEAD4]/30">Remedy</span>
+                              <Input
+                                value={item.remedy}
+                                placeholder="How we mitigate it…"
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (exists) handleEditRemedy(index, v);
+                                  else {
+                                    const newIdx = ensureExists();
+                                    handleEditRemedy(newIdx, v);
+                                  }
+                                }}
+                                onBlur={handleFieldBlur}
+                                className="h-7 text-[12.5px] bg-transparent border-white/[0.06] focus-visible:ring-1 focus-visible:ring-[#5EEAD4]/30 text-[#ecedf4] placeholder:text-[#ecedf4]/30"
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-7 gap-1.5 text-[11px] text-[#5EEAD4]/85 hover:bg-white/[0.04]"
+                      onClick={() => {
+                        const updated = [...hurdlesList, { hurdle: '', remedy: '', resolved: false, resolvedBy: '' }];
+                        setHurdlesList(updated);
+                        setLocalValues((prev) => ({ ...prev, hurdles: stringifyHurdles(updated) }));
+                        setHasChanges(true);
+                      }}
+                    >
+                      <Plus className="h-3 w-3" /> Add hurdle / remedy
+                    </Button>
+                  </div>
                 </div>
-              )}
+              </MemoSectionContextMenu>
             </div>
-          )}
-        </ScrollArea>
-
-        {autoSaveLabel && (
-          <div 
-            className={`px-6 py-2 border-t text-xs flex items-center gap-2 ${
-              autoSaveStatus === 'error' ? 'bg-destructive/10 text-destructive cursor-pointer' 
-              : autoSaveStatus === 'saved' ? 'bg-success/10 text-success' 
-              : 'bg-muted/30 text-muted-foreground'
-            }`}
-            onClick={autoSaveStatus === 'error' ? saveNow : undefined}
-          >
-            {autoSaveStatus === 'saving' && <Loader2 className="h-3 w-3 animate-spin" />}
-            {autoSaveStatus === 'saved' && <Check className="h-3 w-3" />}
-            {autoSaveLabel}
           </div>
         )}
       </DialogContent>
