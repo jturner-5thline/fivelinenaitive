@@ -1035,6 +1035,108 @@ function filterUnconfiguredMilestones(
 }
 
 /**
+ * Hard guardrail for Kick-Off milestone completion.
+ *
+ * The Deal Admin Agent may ONLY propose completing (or creating) a
+ * "Kick-Off" milestone when the deal has a real calendar event whose
+ * **title** reads as a kick-off (matches /kick[\s-]?off/i) AND whose
+ * scheduled date/time is already in the past. Intro / discovery /
+ * scoping / "RE: Fw: …" calendar events do NOT qualify, even if they
+ * have happened — only an event explicitly titled as a kick-off counts.
+ *
+ * The system prompt expresses this rule, but the LLM has historically
+ * cited a non-kickoff calendar invite as evidence and proposed
+ * completion anyway. This function drops any such proposal at the
+ * source so it never reaches the queue.
+ */
+function filterInvalidKickoffMilestones(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const KICK_RE = /kick[\s-]?off/i;
+  const isKickoffMilestoneTitle = (s: unknown) =>
+    typeof s === "string" && KICK_RE.test(s);
+
+  // Collect kick-off-titled calendar events for this deal that have
+  // already occurred. We use the `date` (+ optional `time`) on
+  // deal_calendar_items, and `start`/`start_time`/`end`/`end_time`
+  // shapes on calendar_events fallbacks.
+  const now = Date.now();
+  const eventEpoch = (ev: any): number | null => {
+    const candidates = [
+      ev?.end_time, ev?.end, ev?.start_time, ev?.start,
+    ].filter((v) => typeof v === "string" && v.length > 0);
+    for (const c of candidates) {
+      const t = Date.parse(c);
+      if (!Number.isNaN(t)) return t;
+    }
+    if (typeof ev?.date === "string" && ev.date.length > 0) {
+      const dt = ev.time && typeof ev.time === "string"
+        ? `${ev.date}T${ev.time}`
+        : `${ev.date}T23:59:59Z`;
+      const t = Date.parse(dt);
+      if (!Number.isNaN(t)) return t;
+    }
+    return null;
+  };
+  const hasPastKickoffEvent = (bundle.calendar_items ?? []).some((ev: any) => {
+    if (!isKickoffMilestoneTitle(ev?.title)) return false;
+    const t = eventEpoch(ev);
+    return typeof t === "number" && t <= now;
+  });
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    const at = c?.action_type;
+    if (at !== "update_milestone" && at !== "create_milestone") return true;
+
+    // Identify whether this candidate is targeting a Kick-Off milestone.
+    const milestoneById = new Map<string, any>(
+      (bundle.milestones ?? [])
+        .filter((m: any) => m?.id)
+        .map((m: any) => [m.id, m]),
+    );
+    const targetMilestone = c?.target_object_id
+      ? milestoneById.get(c.target_object_id as string)
+      : null;
+    const proposedTitle = (c?.proposed_values as any)?.title;
+    const itemTitle = c?.item_title;
+    const linkedLabel = c?.linked_entity_label;
+    const looksLikeKickoff =
+      isKickoffMilestoneTitle(targetMilestone?.title) ||
+      isKickoffMilestoneTitle(proposedTitle) ||
+      isKickoffMilestoneTitle(itemTitle) ||
+      isKickoffMilestoneTitle(linkedLabel);
+    if (!looksLikeKickoff) return true;
+
+    if (!hasPastKickoffEvent) {
+      dropped++;
+      return false;
+    }
+
+    // Extra check: the cited evidence itself must include a calendar
+    // event whose excerpt mentions kick-off. Otherwise the LLM is
+    // wiring a non-kickoff event id to a kickoff proposal.
+    const evRefs = (c?.evidence_references ?? []) as any[];
+    const calRefs = evRefs.filter((e) => e?.kind === "calendar");
+    if (calRefs.length === 0) {
+      dropped++;
+      return false;
+    }
+    const anyKickoffEvidence = calRefs.some((e) => {
+      const ex = typeof e?.excerpt === "string" ? e.excerpt : "";
+      return KICK_RE.test(ex);
+    });
+    if (!anyKickoffEvidence) {
+      dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
  * Drop any `update_deal_stage` candidates whose proposed `stage` is not in
  * the deal's actual pipeline. Other action types pass through unchanged.
  * Prevents the AI from queueing un-executable stage moves like
