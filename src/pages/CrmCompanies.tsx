@@ -224,13 +224,16 @@ export default function CrmCompanies() {
                   }
                 />
               </div>
-              <div ref={sentinelRef} className="h-10 flex items-center justify-center text-xs text-muted-foreground">
+              <div ref={sentinelRef} className="py-6 flex items-center justify-center text-sm text-muted-foreground">
                 {isFetchingNextPage ? (
-                  <span className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading more…</span>
+                  <span className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-4 py-2 shadow-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Loading more companies…
+                  </span>
                 ) : hasNextPage ? (
-                  <span>Scroll to load more</span>
+                  <span className="text-xs">Scroll to load more</span>
                 ) : companies.length > 0 ? (
-                  <span>Showing all {companies.length.toLocaleString()} companies</span>
+                  <span className="text-xs">Showing all {companies.length.toLocaleString()} companies</span>
                 ) : null}
               </div>
             </>
