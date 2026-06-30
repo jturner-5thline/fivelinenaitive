@@ -786,6 +786,7 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
 async function callModelForCandidates(
   bundle: DealSignalBundle,
   fingerprint?: string | null,
+  extraRules?: string | null,
 ): Promise<CandidateItem[]> {
   if (!ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY missing — Deal Admin Agent cannot analyze");
@@ -794,7 +795,7 @@ async function callModelForCandidates(
   const body = {
     model: MODEL,
     max_tokens: 6000,
-    system: `${SYSTEM_PROMPT_FULL}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
+    system: `${SYSTEM_PROMPT_FULL}${extraRules ? `\n\n${extraRules}` : ""}\n\nRespond with ONLY a JSON object of the form {"items":[...]}. No prose, no markdown fences.`,
     messages: [
       { role: "user", content: buildUserPrompt(bundle, fingerprint) },
     ],
