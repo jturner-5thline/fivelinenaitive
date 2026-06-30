@@ -661,6 +661,32 @@ export function CashFlowManager() {
   // Activity log
   const [activityLog, setActivityLog] = useState<ActivityLogEntry[]>([]);
   const [activityLogOpen, setActivityLogOpen] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState<string>('Unknown user');
+
+  // Resolve the signed-in user's display name once for activity log attribution.
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name, full_name, first_name, last_name')
+          .eq('id', user.id)
+          .maybeSingle();
+        const p: any = profile || {};
+        const composed =
+          p.display_name ||
+          p.full_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ').trim() ||
+          user.email ||
+          'Unknown user';
+        setCurrentUserName(composed);
+      } catch {
+        /* best-effort */
+      }
+    })();
+  }, []);
 
   // Plans
   const [planSnapshots, setPlanSnapshots] = useState<PlanSnapshot[]>([]);
