@@ -50,6 +50,7 @@ import {
   targetSummary,
   buildRationaleFallback,
 } from './approvalCopy';
+import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
@@ -208,7 +209,7 @@ function formatDateDisplay(value: string | null | undefined): string {
   return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${formatDistanceToNow(date)} ago)`;
 }
 
-function isDateField(key: string): boolean {
+function isDisplayDateField(key: string): boolean {
   const normalized = key.toLowerCase();
   return normalized.endsWith('_at') || normalized.endsWith('_date') || normalized.includes('date');
 }
@@ -241,7 +242,7 @@ function formatFieldValue(
 ): string {
   const base = formatProposedValue(v);
   if (!base) return '';
-  if (isDateField(key)) {
+  if (isDisplayDateField(key)) {
     return formatDateDisplay(base) || base;
   }
   // Stage / pipeline lookups
@@ -1376,6 +1377,12 @@ function DetailPane({
                         ? resolvedLastContactAt
                         : oldV;
                     const proposedRaw = edits[k] ?? newValues[k];
+                    const isEditableDateField = isDateFieldName(k) || isIsoDateLike(proposedRaw) || isIsoDateLike(effectiveOldV);
+                    const proposedEditValue = isEditableDateField
+                      ? formatEditableDate(proposedRaw)
+                      : proposedRaw == null
+                        ? ''
+                        : String(proposedRaw);
                     const oldDisplay = formatFieldValue(k, effectiveOldV, lookups);
                     const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
                     const isOldEmpty = oldDisplay === '';
@@ -1402,10 +1409,16 @@ function DetailPane({
                         </span>
                         {editMode ? (
                           <Input
-                            value={proposedRaw == null ? '' : String(proposedRaw)}
-                            onChange={(e) =>
-                              setEdits((p) => ({ ...p, [k]: e.target.value }))
-                            }
+                            type="text"
+                            placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
+                            value={proposedEditValue}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const nextValue = isEditableDateField
+                                ? parseEditableDateToIso(value, newValues[k] ?? effectiveOldV)
+                                : value;
+                              setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
+                            }}
                             className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
                             style={FONT_BODY}
                           />
