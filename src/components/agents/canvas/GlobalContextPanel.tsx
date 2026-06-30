@@ -128,10 +128,9 @@ export function GlobalContextPanel({ context, onChange, onClose }: GlobalContext
               >
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="google/gemini-2.5-flash" className="text-xs">Gemini 2.5 Flash</SelectItem>
-                  <SelectItem value="google/gemini-2.5-pro" className="text-xs">Gemini 2.5 Pro</SelectItem>
-                  <SelectItem value="openai/gpt-5-mini" className="text-xs">GPT-5 Mini</SelectItem>
-                  <SelectItem value="openai/gpt-5" className="text-xs">GPT-5</SelectItem>
+                  <SelectItem value="anthropic/claude-sonnet-4-5" className="text-xs">Claude Sonnet 4.5</SelectItem>
+                  <SelectItem value="anthropic/claude-opus-4" className="text-xs">Claude Opus 4</SelectItem>
+                  <SelectItem value="anthropic/claude-haiku-4-5" className="text-xs">Claude Haiku 4.5</SelectItem>
                 </SelectContent>
               </Select>
             </div>
