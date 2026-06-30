@@ -40,7 +40,6 @@ import { SLARulesSettings } from '@/components/settings/SLARulesSettings';
 import { StaleAlertSettings } from '@/components/settings/StaleAlertSettings';
 import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
-import { EmailLabelsSettings } from '@/components/settings/EmailLabelsSettings';
 import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
 import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
@@ -48,7 +47,6 @@ import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettin
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
-import { DistributionStatsSettings } from '@/components/settings/DistributionStatsSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
@@ -281,13 +279,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         render: () => <EmailSnippetsSettings />,
       },
       {
-        id: 'email-labels',
-        label: 'Labels',
-        description: 'Smart label rules for inbox categorization.',
-        keywords: ['email', 'labels', 'tags', 'rules', 'categorize'],
-        render: () => <EmailLabelsSettings />,
-      },
-      {
         id: 'email-templates-outbound',
         label: 'Outbound Templates',
         description: 'Lender submission sequences and outbound bodies.',
@@ -314,13 +305,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         description: 'Triggered email workflows.',
         keywords: ['email', 'workflows', 'triggers'],
         render: ({ isAdmin }) => <EmailWorkflowsSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'distribution-stats',
-        label: 'Distribution Stats',
-        description: 'Internal IP / bot filtering for opens and clicks.',
-        keywords: ['distribution', 'stats', 'tracking', 'opens', 'clicks', 'bot'],
-        render: () => <DistributionStatsSettings />,
       },
     ],
   },
