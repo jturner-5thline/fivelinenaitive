@@ -188,7 +188,6 @@ export default function Preferences() {
                   {isVisible('notifications') && <PerUserStaleThresholdSettings />}
                   {isVisible('notifications') && <UserNotificationSettings />}
                   {isVisible('notifications') && <NotificationSettings />}
-                  {isVisible('suggestions') && <SuggestionSettings />}
                 </TabsContent>
 
                 {/* Alerts & Thresholds Tab */}
