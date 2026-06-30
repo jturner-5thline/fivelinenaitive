@@ -390,20 +390,12 @@ function EventDetailPopover({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] bg-black/60" onClick={onClose}>
       <div
         className={cn(
-          "absolute z-[61] border border-white/10 rounded-xl shadow-2xl left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden transition-all",
+          "popup-shell-surface glass-border-soft absolute z-[61] rounded-2xl border-transparent shadow-2xl shadow-black/20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden transition-all",
           showResearch ? "w-[680px] max-h-[80vh]" : "w-[340px]"
         )}
-        style={{
-          background:
-            "linear-gradient(180deg, hsl(var(--background) / 0.96) 0%, hsl(var(--background) / 0.92) 100%)",
-          backdropFilter: "blur(14px) saturate(140%)",
-          WebkitBackdropFilter: "blur(14px) saturate(140%)",
-          boxShadow:
-            "0 24px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)",
-        }}
         onClick={e => e.stopPropagation()}
       >
         <div className={cn('h-2 w-full', colorClass)} />
@@ -437,7 +429,7 @@ function EventDetailPopover({
               </div>
             )}
             {hasVideo && (
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(videoLink || '', '_blank')}>
+              <Button size="sm" className="w-full gap-2 text-xs" onClick={() => window.open(videoLink || '', '_blank')}>
                 {videoProvider ? (
                   <span className="text-sm">{videoProvider.icon}</span>
                 ) : (
@@ -500,7 +492,6 @@ function EventDetailPopover({
             <div className="flex gap-2">
               {onEdit && (
                 <Button
-                  variant="outline"
                   size="sm"
                   className="flex-1 gap-1.5 text-xs"
                   onClick={() => onEdit(event)}
@@ -513,7 +504,6 @@ function EventDetailPopover({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant={showResearch ? "secondary" : "default"}
                       size="sm"
                       className="flex-1 gap-2 text-xs"
                       onClick={runResearch}
