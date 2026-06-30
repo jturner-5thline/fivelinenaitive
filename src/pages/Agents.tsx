@@ -261,10 +261,6 @@ export default function Agents() {
               <Lock className="h-4 w-4" />
               My Agents ({myAgents.length})
             </TabsTrigger>
-            <TabsTrigger value="builder" className="gap-2">
-              <Workflow className="h-4 w-4" />
-              Builder
-            </TabsTrigger>
             <TabsTrigger value="runs" className="gap-2">
               <History className="h-4 w-4" />
               Run History
