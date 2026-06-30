@@ -341,7 +341,20 @@ function RoutePrefetcher() {
 
 const App = () => (
   <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: localStoragePersister,
+        maxAge: 24 * 60 * 60 * 1000,
+        buster: 'v1',
+        dehydrateOptions: {
+          shouldDehydrateQuery: (q) => {
+            const root = Array.isArray(q.queryKey) ? q.queryKey[0] : q.queryKey;
+            return typeof root === 'string' && PERSISTED_QUERY_KEYS.has(root);
+          },
+        },
+      }}
+    >
       <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" storageKey="app-theme">
         <AuthProvider>
           <PreferencesProvider>
