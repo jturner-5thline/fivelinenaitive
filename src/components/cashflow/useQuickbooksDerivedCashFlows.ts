@@ -27,9 +27,6 @@ const FALLBACK_RULES: MappingRule[] = [
   { priority: 52, match_type: 'include', match_field: 'either',  pattern: 'advisory fee',       target_row: 'Closing Fees', categorized: true, is_active: true },
   { priority: 53, match_type: 'include', match_field: 'account', pattern: 'debt fee revenue',   target_row: 'Closing Fees', categorized: true, is_active: true },
   { priority: 54, match_type: 'include', match_field: 'either',  pattern: 'consulting fee',     target_row: 'Closing Fees', categorized: true, is_active: true },
-  { priority: 90, match_type: 'include', match_field: 'account', pattern: 'debt',               target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
-  { priority: 91, match_type: 'include', match_field: 'account', pattern: 'retainer revenue',   target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
-  { priority: 92, match_type: 'include', match_field: 'account', pattern: 'referral revenue',   target_row: 'Debt Advisory Revenue', categorized: false, is_active: true },
 ];
 
 function ruleMatches(rule: MappingRule, account: string, item: string): boolean {
