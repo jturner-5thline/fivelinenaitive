@@ -144,18 +144,16 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         render: ({ isAdmin }) => <DealStagesSettings isAdmin={isAdmin} />,
       },
       {
-        id: 'deal-types',
-        label: 'Types',
-        description: 'Categorize deals by type for routing and reporting.',
-        keywords: ['deal', 'types', 'type', 'category', 'classification'],
-        render: ({ isAdmin }) => <DealTypesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'deal-info-fields',
-        label: 'Info Fields',
-        description: 'Configure deal information cards and field visibility.',
-        keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility'],
-        render: ({ isAdmin }) => <DealInfoFieldsSettings isAdmin={isAdmin} />,
+        id: 'deal-info',
+        label: 'Deal Info',
+        description: 'Deal types and the information cards/fields shown on each deal.',
+        keywords: ['deal', 'info', 'information', 'types', 'type', 'category', 'fields', 'card', 'layout', 'order', 'visibility'],
+        render: ({ isAdmin }) => (
+          <>
+            <DealTypesSettings isAdmin={isAdmin} />
+            <DealInfoFieldsSettings isAdmin={isAdmin} />
+          </>
+        ),
       },
       {
         id: 'writeup-fields',
