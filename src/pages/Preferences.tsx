@@ -21,6 +21,7 @@ import { usePreferences, CURRENCY_FORMAT_OPTIONS, CurrencyFormat } from '@/conte
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { UserNotificationSettings } from '@/components/settings/UserNotificationSettings';
+import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
 import { MorningDigestSettings } from '@/components/settings/MorningDigestSettings';
 import { SuggestionSettings } from '@/components/settings/SuggestionSettings';
 import { PerUserStaleThresholdSettings } from '@/components/settings/PerUserStaleThresholdSettings';
@@ -186,6 +187,7 @@ export default function Preferences() {
                 <TabsContent value="notifications" className="space-y-4 mt-4">
                   {isVisible('notifications') && <MorningDigestSettings />}
                   {isVisible('notifications') && <PerUserStaleThresholdSettings />}
+                  {isVisible('notifications') && <NotificationLinkSettings />}
                   {isVisible('notifications') && <UserNotificationSettings />}
                   {isVisible('notifications') && <NotificationSettings />}
                 </TabsContent>
