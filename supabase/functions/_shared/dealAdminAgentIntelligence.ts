@@ -681,6 +681,7 @@ CLAAP RECORDING MAPPING
 
 LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - TERMINAL LENDER GUARD (applies to ALL rules below): NEVER propose any lender nudge / draft_email / follow-up for a funding source whose tracking_status, stage, or substage matches any of: "not_a_fit", "not a fit", "passed", "pass", "declined", "withdraw(n)", "dead", "lost", "rejected", "closed", "no_go", "unresponsive", "on_hold", "on hold", "paused". These lenders are RESOLVED — there is nothing to nudge. If the lender is in any of these states, emit nothing for them under any rule.
+- DILIGENCE CONCENTRATION GUARD (applies to ALL rules below): If ANY funding_source on this deal has a stage/substage/tracking_status indicating "in diligence" / "due diligence" / "in_diligence" / "diligence", the deal is concentrated with that lender. Do NOT propose ANY lender nudge / draft_email / follow-up for OTHER funding sources that are not themselves in diligence — we are not shopping the deal while a lender is in DD. Only the lender(s) actively in diligence may receive a nudge under L1–L3.
 - Rule L1: funding_sources[].business_days_since_last_contact >= 3 AND tracking_status is active/engaged (NOT any terminal state listed above) → draft_email to that lender (requires_send_ui=true) gently nudging for an update. Cite the funding_source id as target_object_id and as evidence (kind="funding_source").
 - Rule L2: An outbound email to a lender contact reads as urgent (deadline language, escalation, "ASAP", calling out timing) AND no inbound reply has arrived → draft_email re-pinging that lender. Reference the email id in evidence (kind="email"). Tone: still semi-formal, do not blame.
 - Rule L3: A lender explicitly stated they would respond by date X (parsed from an email, claap transcript, or status note) AND that date is today or in the past with no reply since → draft_email referencing their commitment, plus an optional internal create_followup_task for the deal manager.
@@ -1302,10 +1303,22 @@ function filterLenderDraftEmails(
 ): { kept: CandidateItem[]; dropped: number } {
   const TERMINAL_LENDER_RE =
     /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+  const DILIGENCE_RE =
+    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
   const fsById = new Map<string, any>();
   for (const f of fundingSources ?? []) {
     if (f?.id) fsById.set(String(f.id), f);
   }
+  // Detect "diligence concentration": if ANY funding source on the deal is
+  // in diligence, we don't nudge OTHER lenders — the deal is concentrated
+  // with whoever is in DD, and shopping/follow-ups elsewhere is incorrect.
+  const fsState = (f: any) =>
+    [f?.tracking_status, f?.stage, f?.substage, f?.status]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+  const anyInDiligence = (fundingSources ?? []).some((f) =>
+    DILIGENCE_RE.test(fsState(f)),
+  );
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
@@ -1319,10 +1332,15 @@ function filterLenderDraftEmails(
     const tid = c.target_object_id ? String(c.target_object_id) : "";
     const fs = tid ? fsById.get(tid) : null;
     if (!fs) return true;
-    const stateBlob = [fs.tracking_status, fs.stage, fs.substage, fs.status]
-      .map((v) => (typeof v === "string" ? v : ""))
-      .join(" ");
+    const stateBlob = fsState(fs);
     if (TERMINAL_LENDER_RE.test(stateBlob)) {
+      dropped++;
+      return false;
+    }
+    // Diligence concentration: only the lender(s) actually in diligence may
+    // be nudged when the deal has someone in DD. Drop nudges for everyone
+    // else.
+    if (anyInDiligence && !DILIGENCE_RE.test(stateBlob)) {
       dropped++;
       return false;
     }
@@ -2414,6 +2432,49 @@ async function reconcileStalePendingApprovals(
         if (!hasKickoffByDeal.get(p.deal_id as string)) {
           toResolve.push(p.id);
         }
+      }
+    }
+  }
+
+  // Diligence concentration reconciliation: if a deal has ANY funding source
+  // in diligence, dismiss pending draft_email lender nudges targeting OTHER
+  // funding sources that are not themselves in diligence. We don't shop the
+  // deal while a lender is in DD.
+  const DILIGENCE_RE_REC =
+    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  const lenderEmailPending = (pending as any[]).filter(
+    (p) =>
+      p.action_type === "draft_email" &&
+      p.deal_id &&
+      p.target_object_id &&
+      typeof p.target_object_type === "string" &&
+      ["funding_source", "deal_lender", "lender"].includes(
+        (p.target_object_type as string).toLowerCase(),
+      ),
+  );
+  if (lenderEmailPending.length > 0) {
+    const dealIds = Array.from(new Set(lenderEmailPending.map((p) => p.deal_id as string)));
+    const { data: allLenders } = await supabase
+      .from("deal_lenders")
+      .select("id, deal_id, tracking_status, stage, substage")
+      .in("deal_id", dealIds);
+    const stateById = new Map<string, string>();
+    const dealHasDiligence = new Map<string, boolean>();
+    for (const l of (allLenders ?? []) as any[]) {
+      const blob = [l.tracking_status, l.stage, l.substage]
+        .filter((v) => typeof v === "string")
+        .join(" ");
+      if (l?.id) stateById.set(l.id, blob);
+      if (l?.deal_id && DILIGENCE_RE_REC.test(blob)) {
+        dealHasDiligence.set(l.deal_id, true);
+      }
+    }
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      if (!dealHasDiligence.get(p.deal_id as string)) continue;
+      const targetState = stateById.get(p.target_object_id as string) ?? "";
+      if (!DILIGENCE_RE_REC.test(targetState)) {
+        toResolve.push(p.id);
       }
     }
   }
