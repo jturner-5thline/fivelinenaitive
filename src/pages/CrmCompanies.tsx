@@ -63,11 +63,25 @@ export default function CrmCompanies() {
           fetchNextPage();
         }
       },
-      { rootMargin: '600px 0px' },
+      { rootMargin: '1800px 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
+
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage || isFetching || companies.length < 100 || companies.length >= 150) return;
+    const idleWindow = window as Window & typeof globalThis & {
+      requestIdleCallback?: (callback: IdleRequestCallback) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      const id = idleWindow.requestIdleCallback(() => void fetchNextPage());
+      return () => idleWindow.cancelIdleCallback?.(id);
+    }
+    const id = globalThis.setTimeout(() => void fetchNextPage(), 250);
+    return () => globalThis.clearTimeout(id);
+  }, [companies.length, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage]);
 
   const showSyncBanner = !isLoading && totalCount === 0;
 
@@ -189,7 +203,7 @@ export default function CrmCompanies() {
             </div>
           ) : (
             <>
-              <div className={isFetching && !isFetchingNextPage ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+              <div>
                 <CrmCompaniesTable
                   companies={companies}
                   leadingFilterSlot={
@@ -226,8 +240,8 @@ export default function CrmCompanies() {
               </div>
               <div ref={sentinelRef} className="py-6 flex items-center justify-center text-sm text-muted-foreground">
                 {isFetchingNextPage ? (
-                  <span className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-4 py-2 shadow-sm">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="flex items-center gap-2 rounded-full border border-border/60 bg-background/70 px-3 py-1.5 text-xs shadow-sm backdrop-blur">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                     Loading more companies…
                   </span>
                 ) : hasNextPage ? (
