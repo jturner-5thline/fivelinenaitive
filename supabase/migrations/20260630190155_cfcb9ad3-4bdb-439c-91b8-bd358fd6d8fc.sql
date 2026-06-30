@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_contacts_org_updated_created ON public.contacts (org_company_id, updated_at DESC NULLS LAST, created_at DESC);
