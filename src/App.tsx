@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
@@ -271,6 +273,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// Persist a small whitelist of long-lived list queries to localStorage so a
+// hard refresh hydrates from cache instead of triggering a full refetch.
+const PERSISTED_QUERY_KEYS = new Set(['crm-companies-infinite']);
+const localStoragePersister = createSyncStoragePersister({
+  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  key: 'naitive-rq-cache-v1',
+  throttleTime: 1000,
+});
+
 function PageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -330,7 +341,20 @@ function RoutePrefetcher() {
 
 const App = () => (
   <HelmetProvider>
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider
+      client={queryClient}
+      persistOptions={{
+        persister: localStoragePersister,
+        maxAge: 24 * 60 * 60 * 1000,
+        buster: 'v1',
+        dehydrateOptions: {
+          shouldDehydrateQuery: (q) => {
+            const root = Array.isArray(q.queryKey) ? q.queryKey[0] : q.queryKey;
+            return typeof root === 'string' && PERSISTED_QUERY_KEYS.has(root);
+          },
+        },
+      }}
+    >
       <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" storageKey="app-theme">
         <AuthProvider>
           <PreferencesProvider>
@@ -512,7 +536,7 @@ const App = () => (
           </PreferencesProvider>
         </AuthProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </HelmetProvider>
 );
 
