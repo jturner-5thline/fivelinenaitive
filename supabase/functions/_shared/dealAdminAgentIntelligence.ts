@@ -2486,11 +2486,7 @@ async function reconcileStalePendingApprovals(
     (p) =>
       p.action_type === "draft_email" &&
       p.deal_id &&
-      p.target_object_id &&
-      typeof p.target_object_type === "string" &&
-      ["funding_source", "deal_lender", "lender"].includes(
-        (p.target_object_type as string).toLowerCase(),
-      ),
+      p.target_object_id,
   );
   if (lenderEmailPending.length > 0) {
     const dealIds = Array.from(new Set(lenderEmailPending.map((p) => p.deal_id as string)));
