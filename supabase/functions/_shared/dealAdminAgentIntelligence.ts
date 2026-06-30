@@ -2155,6 +2155,43 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     result.errors.push(`reconcile_pending: ${(e as Error)?.message ?? "unknown"}`);
   }
 
+  // Load workspace custom + learned rules once per sweep and inject into
+  // every model call so the agent operates under them company-wide.
+  let companyRulesBlock: string | null = null;
+  try {
+    const [{ data: settings }, { data: learned }] = await Promise.all([
+      supabase
+        .from("admin_agent_settings")
+        .select("custom_rules")
+        .eq("company_id", companyId)
+        .maybeSingle(),
+      supabase
+        .from("agent_learned_rules")
+        .select("rule_text")
+        .eq("company_id", companyId)
+        .eq("agent_key", "admin_agent")
+        .eq("status", "active"),
+    ]);
+    const customTexts: string[] = Array.isArray((settings as any)?.custom_rules)
+      ? ((settings as any).custom_rules as any[])
+          .map((r) => (typeof r === "string" ? r : r?.text))
+          .filter((t: any) => typeof t === "string" && t.trim().length > 0)
+      : [];
+    const learnedTexts: string[] = (learned ?? [])
+      .map((r: any) => (typeof r?.rule_text === "string" ? r.rule_text.trim() : ""))
+      .filter((t: string) => t.length > 0);
+    const parts: string[] = [];
+    if (customTexts.length > 0) {
+      parts.push(`ADMIN AGENT CUSTOM RULES (workspace-specific, follow strictly):\n${customTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}`);
+    }
+    if (learnedTexts.length > 0) {
+      parts.push(`ADMIN AGENT LEARNED RULES (synthesized from operator feedback — apply with the same weight as custom rules):\n${learnedTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}`);
+    }
+    if (parts.length > 0) companyRulesBlock = parts.join("\n\n");
+  } catch (e) {
+    console.warn("[deal-admin-agent] rule load failed", (e as Error)?.message);
+  }
+
   // 1) Load target deals.
   // Scope: deals whose **Deal Manager** is an activated Admin Agent user.
   // The Deal Manager is the source of truth for reminders/agent tasks
