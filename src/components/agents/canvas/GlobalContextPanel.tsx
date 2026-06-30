@@ -22,7 +22,7 @@ const DEFAULT_CONTEXT: GlobalContext = {
     company_id: '',
     user_id: '',
     environment: 'development',
-    default_llm: 'google/gemini-2.5-flash',
+    default_llm: 'anthropic/claude-sonnet-4-5',
     default_temperature: 0.7,
   },
   authBindings: [
