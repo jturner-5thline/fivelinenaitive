@@ -85,9 +85,16 @@ export function buildOnApproveSentence(item: QueuedAiAction): string {
       return `On approve: a new status note will be appended to ${target}.`;
     case 'update_funding_source': {
       const lender = nv.lender_name || ov.lender_name || 'funding source';
-      const from = ov.substage ?? ov.new_status ?? ov.status ?? '—';
-      const to = nv.substage ?? nv.new_status ?? nv.status ?? '—';
-      return `On approve: ${lender} on ${target} will update from "${from}" to "${to}".`;
+      const from = ov.substage ?? ov.new_status ?? ov.status ?? ov.stage ?? null;
+      const to = nv.substage ?? nv.new_status ?? nv.status ?? nv.stage ?? null;
+      const notesChanged = typeof nv.notes === 'string' && nv.notes.trim().length > 0 && nv.notes !== ov.notes;
+      if (!to && notesChanged) {
+        return `On approve: notes on ${lender} for ${target} will be updated. No stage or status change.`;
+      }
+      if (!to) {
+        return `On approve: ${lender} on ${target} will be updated.`;
+      }
+      return `On approve: ${lender} on ${target} will update from "${from ?? '—'}" to "${to}".`;
     }
     case 'create_milestone':
       return `On approve: a new milestone will be created on ${target}.`;
