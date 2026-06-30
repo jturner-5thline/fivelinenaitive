@@ -95,9 +95,9 @@ export function CompanyMembersSettings() {
                           <Badge variant="outline" className="text-xs">You</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {member.email || `User ID: ${member.user_id.slice(0, 8)}...`}
-                      </p>
+                      {member.email && (
+                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                      )}
                     </div>
                   </div>
 
