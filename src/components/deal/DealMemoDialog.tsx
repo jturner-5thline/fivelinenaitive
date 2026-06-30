@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck, MessageSquare, MessageCircle } from 'lucide-react';
+import { FileText, Save, Loader2, Plus, X, FolderOpen, Check, Send, CheckCircle2, XCircle, Clock, ShieldCheck } from 'lucide-react';
 import { useFinancialComments } from '@/hooks/useFinancialComments';
 import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -592,11 +592,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                 <MemoSectionContextMenu key={s.key} section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)}>
                   <div className="flex-1 min-h-0 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3">
                     <div className="flex items-center justify-between mb-2 shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <MessageCircle className="h-3 w-3 text-[#9DA2F5]/70" />
-                        <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">{s.label}</span>
-                      </div>
-                      <MemoCommentThread section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)} />
+                      <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">{s.label}</span>
                     </div>
                     <Textarea
                       value={localValues[s.key]}
