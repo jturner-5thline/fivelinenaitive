@@ -1,0 +1,1 @@
+UPDATE ai_action_queue SET status='dismissed', dismissed_at=now(), rejection_reason='kickoff_no_calendar_event' WHERE id='3471b35b-aba3-4e04-82b8-09bbd5647a6a' AND status='pending';
