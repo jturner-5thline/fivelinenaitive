@@ -11,9 +11,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const { objective, dataSources, goal, mode } = await req.json();
@@ -91,20 +91,27 @@ Generate a comprehensive system prompt that:
 The system prompt should be written in expert prompt engineering style - specific, actionable, and comprehensive.`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Convert OpenAI-style tool definition to Anthropic tool format
+    const toolDef = tools![0].function;
+    const claudeTools = [{
+      name: toolDef.name,
+      description: toolDef.description,
+      input_schema: toolDef.parameters,
+    }];
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: "You are an expert AI agent designer for a commercial lending platform." },
-          { role: "user", content: prompt },
-        ],
-        tools,
-        tool_choice,
+        model: "claude-sonnet-4-5",
+        max_tokens: 2048,
+        system: "You are an expert AI agent designer for a commercial lending platform.",
+        messages: [{ role: "user", content: prompt }],
+        tools: claudeTools,
+        tool_choice: { type: "tool", name: toolDef.name },
       }),
     });
 
@@ -125,13 +132,11 @@ The system prompt should be written in expert prompt engineering style - specifi
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (!toolCall) {
+    const toolUse = (data.content || []).find((b: any) => b.type === "tool_use");
+    if (!toolUse) {
       throw new Error("No tool call in response");
     }
-
-    const result = JSON.parse(toolCall.function.arguments);
+    const result = toolUse.input;
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
