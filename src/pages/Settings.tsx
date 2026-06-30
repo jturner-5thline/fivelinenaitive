@@ -44,7 +44,6 @@ import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSett
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
-import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
 import { DisclaimerSettings } from '@/components/settings/DisclaimerSettings';
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
@@ -190,13 +189,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         keywords: ['agreement', 'templates', 'legal', 'advisory', 'contract'],
         visible: (g) => g.agreementVisible && g.agreementAccess,
         render: ({ isAdmin }) => <AgreementTemplatesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'lender-score',
-        label: 'Lender Score',
-        description: 'Lender scoring weights for matching and ranking.',
-        keywords: ['lender', 'score', 'scoring', 'weights'],
-        render: ({ isAdmin }) => <LenderScoreSettings isAdmin={isAdmin} />,
       },
       {
         id: 'disclaimer',
