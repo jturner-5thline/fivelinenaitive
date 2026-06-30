@@ -324,7 +324,18 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
         )}
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div
+        className={cn(
+          'rounded-xl overflow-hidden bg-card/40 dark:bg-white/[0.015]',
+          'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+          // Lighter, more refined table internals
+          '[&_table]:border-separate [&_table]:border-spacing-0',
+          '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80',
+          '[&_thead_tr]:bg-transparent [&_thead_th]:border-b [&_thead_th]:border-border/40 [&_thead_th]:backdrop-blur-sm [&_thead_th]:bg-background/70',
+          '[&_td]:px-3 [&_td]:py-0 [&_td]:h-11 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
+          '[&_tbody_tr:last-child_td]:border-b-0',
+        )}
+      >
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
@@ -370,14 +381,14 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                         go();
                       }
                     }}
-                    className={cn(rowProps.className, 'cursor-pointer hover:bg-muted/30 focus-visible:bg-muted/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring')}
+                    className={cn(rowProps.className, 'cursor-pointer border-0 hover:bg-foreground/[0.025] focus-visible:bg-foreground/[0.03] focus:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors')}
                   />
                 );
               },
               TableBody: TableBody as any,
             }}
             fixedHeaderContent={() => (
-              <TableRow className="bg-muted/30">
+              <TableRow className="border-0 hover:bg-transparent">
                 <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} /></TableHead>
                 <TableHead><ColHeader field="name">Company</ColHeader></TableHead>
                 <TableHead><ColHeader field="domain">Domain</ColHeader></TableHead>
@@ -413,7 +424,11 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                   </div>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.domain || '—'}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.industry || '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  {co.industry ? (
+                    <span title={co.industry} className="block max-w-[160px] truncate">{co.industry}</span>
+                  ) : '—'}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>
                 <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.website_url} label="Visit" /></TableCell>
