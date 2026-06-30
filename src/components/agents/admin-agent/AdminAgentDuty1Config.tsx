@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Loader2, Plus, ShieldCheck, X } from 'lucide-react';
+import { CalendarDays, Loader2, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -51,6 +52,14 @@ type SettingsRow = {
   active_stage_ids: string[] | null;
   stale_threshold_business_days: number | null;
   friday_sweep_enabled: boolean | null;
+  custom_rules: CustomRule[] | null;
+};
+
+type CustomRule = {
+  id: string;
+  text: string;
+  created_at: string;
+  created_by: string | null;
 };
 
 type HolidayRow = {
@@ -88,7 +97,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_settings')
-        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled')
+        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules')
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
@@ -176,6 +185,9 @@ export function AdminAgentDuty1Config() {
   const [pipelineIds, setPipelineIds] = useState<string[]>([]);
   const [stageIds, setStageIds] = useState<string[]>([]);
   const [staleThreshold, setStaleThreshold] = useState<number>(STALE_THRESHOLD_DEFAULT);
+  const [customRules, setCustomRules] = useState<CustomRule[]>([]);
+  const [newRuleText, setNewRuleText] = useState('');
+  const [isSavingRule, setIsSavingRule] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -191,6 +203,7 @@ export function AdminAgentDuty1Config() {
         ? s.stale_threshold_business_days
         : STALE_THRESHOLD_DEFAULT,
     );
+    setCustomRules(Array.isArray(s?.custom_rules) ? (s!.custom_rules as CustomRule[]) : []);
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -238,6 +251,52 @@ export function AdminAgentDuty1Config() {
       toast.error(e?.message || 'Could not save Admin Agent settings.');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // ── Custom rules (natural-language teaching) ─────────────────────
+  async function persistCustomRules(next: CustomRule[]) {
+    if (!companyId) return;
+    const { error } = await supabase
+      .from('admin_agent_settings')
+      .upsert(
+        { company_id: companyId, custom_rules: next as any },
+        { onConflict: 'company_id' },
+      );
+    if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
+  }
+
+  async function addCustomRule() {
+    const text = newRuleText.trim();
+    if (!text) return;
+    setIsSavingRule(true);
+    try {
+      const rule: CustomRule = {
+        id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        text,
+        created_at: new Date().toISOString(),
+        created_by: currentUserId,
+      };
+      const next = [...customRules, rule];
+      await persistCustomRules(next);
+      setCustomRules(next);
+      setNewRuleText('');
+      toast.success('Rule added — the agent will follow it on its next run.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save rule.');
+    } finally {
+      setIsSavingRule(false);
+    }
+  }
+
+  async function removeCustomRule(id: string) {
+    try {
+      const next = customRules.filter((r) => r.id !== id);
+      await persistCustomRules(next);
+      setCustomRules(next);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not remove rule.');
     }
   }
 
