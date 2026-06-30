@@ -99,12 +99,9 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
         c.name.toLowerCase().includes(q) ||
         (c.domain || '').toLowerCase().includes(q) ||
         (c.industry || '').toLowerCase().includes(q) ||
-        (c.address || '').toLowerCase().includes(q) ||
-        (c.hq_address || '').toLowerCase().includes(q) ||
         (c.phone || '').toLowerCase().includes(q) ||
         (c.website_url || '').toLowerCase().includes(q) ||
-        (c.linkedin_url || '').toLowerCase().includes(q) ||
-        (c.notes || '').toLowerCase().includes(q)
+        (c.linkedin_url || '').toLowerCase().includes(q)
       );
     }
     if (lifecycleFilter !== 'all') result = result.filter(c => c.lifecycle_stage === lifecycleFilter);
@@ -390,9 +387,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 <TableHead><ColHeader field="website_url" sortable={false}>Website</ColHeader></TableHead>
                 <TableHead><ColHeader field="linkedin_url" sortable={false}>LinkedIn</ColHeader></TableHead>
                 <TableHead><ColHeader field="phone">Phone</ColHeader></TableHead>
-                <TableHead><ColHeader field="address">Address</ColHeader></TableHead>
-                <TableHead><ColHeader field="hq_address">HQ Address</ColHeader></TableHead>
-                <TableHead><ColHeader field="notes" sortable={false}>Notes</ColHeader></TableHead>
                 <TableHead><ColHeader field="lifecycle_stage">Stage</ColHeader></TableHead>
                 <TableHead><ColHeader field="status">Status</ColHeader></TableHead>
                 <TableHead><ColHeader field="segment">Segment</ColHeader></TableHead>
@@ -425,9 +419,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.website_url} label="Visit" /></TableCell>
                 <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>
-                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.address} /></TableCell>
-                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.hq_address} /></TableCell>
-                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.notes} /></TableCell>
                 <TableCell>
                   <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[co.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === co.lifecycle_stage)?.label || co.lifecycle_stage}</Badge>
                 </TableCell>
