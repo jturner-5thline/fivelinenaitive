@@ -42,6 +42,20 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+// Format a YYYY-MM-DD date as "week of Mon D" for human-readable activity log entries.
+function formatWeekOf(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return '';
+  return ` for the week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+function formatAmountUsd(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1000) return `$${Math.round(n / 1000).toLocaleString()}K`;
+  return `$${Math.round(n).toLocaleString()}`;
+}
+
 const QUARTER_RANGES: Record<string, [number, number]> = {
   Q1: [0, 2],
   Q2: [3, 5],
