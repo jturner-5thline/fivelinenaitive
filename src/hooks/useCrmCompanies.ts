@@ -275,6 +275,7 @@ export function useCrmCompaniesInfinite(params: CrmCompaniesInfiniteParams = {})
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: !!company?.id,
     staleTime: 60_000,
+    gcTime: 30 * 60_000,
     placeholderData: (prev) => prev,
   });
 }
