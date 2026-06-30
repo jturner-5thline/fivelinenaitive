@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList, Lock, Plus, X, ShieldAlert } from 'lucide-react';
+import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList, Lock, Plus, X, ShieldAlert, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -32,6 +32,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
 
 interface DealInfoFieldsSettingsProps {
   isAdmin?: boolean;
@@ -294,22 +295,29 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
                     const config = DEAL_INFO_FIELD_DEFINITIONS.find(f => f.id === fieldId);
                     if (!config) return null;
                     const canRemove = config.canHide && !config.lockedVisible;
+                    const visible = isFieldVisible(fieldId);
                     return (
-                      <SortableFieldItem
-                        key={fieldId}
-                        fieldId={fieldId}
-                        label={config.label}
-                        visible={isFieldVisible(fieldId)}
-                        canHide={config.canHide}
-                        lockedVisible={config.lockedVisible}
-                        canRemove={canRemove}
-                        readOnly={readOnly}
-                        onToggle={() => toggleFieldVisibility(fieldId)}
-                        onRemove={canRemove ? () => {
-                          removeField(fieldId);
-                          toast({ title: 'Field removed', description: `${config.label} is no longer in the Deal Information list.` });
-                        } : undefined}
-                      />
+                      <div key={fieldId} className="space-y-1.5">
+                        <SortableFieldItem
+                          fieldId={fieldId}
+                          label={config.label}
+                          visible={visible}
+                          canHide={config.canHide}
+                          lockedVisible={config.lockedVisible}
+                          canRemove={canRemove}
+                          readOnly={readOnly}
+                          onToggle={() => toggleFieldVisibility(fieldId)}
+                          onRemove={canRemove ? () => {
+                            removeField(fieldId);
+                            toast({ title: 'Field removed', description: `${config.label} is no longer in the Deal Information list.` });
+                          } : undefined}
+                        />
+                        {fieldId === 'sourcedVia' && visible && (
+                          <div className="ml-7 rounded-lg border border-border/60 bg-muted/20 p-3">
+                            <SourcedViaSettings isAdmin={!readOnly} />
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
