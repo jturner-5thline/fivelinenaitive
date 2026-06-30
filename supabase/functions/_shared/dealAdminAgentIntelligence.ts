@@ -1362,15 +1362,14 @@ function filterLenderDraftEmails(
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
     const targetType = (c.target_object_type ?? "").toString().toLowerCase();
-    // Only gate lender-targeted drafts. Referral/client/other drafts unchanged.
+    const tid = c.target_object_id ? String(c.target_object_id) : "";
+    const fs = tid ? fsById.get(tid) : null;
     const isLenderTarget =
       targetType === "funding_source" ||
       targetType === "deal_lender" ||
-      targetType === "lender";
-    if (!isLenderTarget) return true;
-    const tid = c.target_object_id ? String(c.target_object_id) : "";
-    const fs = tid ? fsById.get(tid) : null;
-    if (!fs) return true;
+      targetType === "lender" ||
+      !!fs; // target_object_id resolves to a deal_lender on this deal
+    if (!isLenderTarget || !fs) return true;
     const stateBlob = fsState(fs);
     if (TERMINAL_LENDER_RE.test(stateBlob)) {
       dropped++;
