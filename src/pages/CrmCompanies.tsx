@@ -1,14 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Plus, Upload, Building2, Loader2, RefreshCw, Download, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCrmCompanies } from '@/hooks/useCrmCompanies';
+import { useCrmCompaniesInfinite } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
 import { ImportCrmCompaniesModal } from '@/components/crm-companies/ImportCrmCompaniesModal';
-import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -24,8 +23,6 @@ export default function CrmCompanies() {
   const [showCreate, setShowCreate] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [quickFilter, setQuickFilter] = useState('all');
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(50);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [advancedFilters, setAdvancedFilters] = useState<FilterRule[]>([]);
@@ -36,18 +33,41 @@ export default function CrmCompanies() {
   const queryClient = useQueryClient();
   const { company } = useCompany();
 
-  const { data: result, isLoading, isFetching } = useCrmCompanies({
-    page,
-    pageSize,
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useCrmCompaniesInfinite({
     quickFilter,
     advancedFilters: debouncedFilters,
     matchMode,
     search: debouncedSearch,
+    firstPageSize: 100,
+    pageSize: 50,
   });
 
-  const companies = result?.data ?? [];
-  const totalCount = result?.totalCount ?? 0;
-  const totalPages = result?.totalPages ?? 0;
+  const companies = useMemo(() => data?.pages.flatMap((p) => p.rows) ?? [], [data]);
+  const totalCount = data?.pages[0]?.totalCount ?? companies.length;
+
+  // Infinite-scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
 
   const showSyncBanner = !isLoading && totalCount === 0;
 
@@ -74,6 +94,7 @@ export default function CrmCompanies() {
 
       toast.success(`Synced ${totalSynced} companies from HubSpot`);
       queryClient.invalidateQueries({ queryKey: ['crm-companies'] });
+      queryClient.invalidateQueries({ queryKey: ['crm-companies-infinite'] });
     } catch (error: any) {
       toast.error('Failed to sync companies', { description: error.message });
     } finally {
@@ -99,19 +120,8 @@ export default function CrmCompanies() {
     }
   };
 
-  const handleQuickFilterChange = (value: string) => {
-    setQuickFilter(value);
-    setPage(0);
-  };
-
   const handleFiltersChange = (filters: FilterRule[]) => {
     setAdvancedFilters(filters);
-    setPage(0);
-  };
-
-  const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setPage(0);
   };
 
   return (
@@ -179,7 +189,7 @@ export default function CrmCompanies() {
             </div>
           ) : (
             <>
-              <div className={isFetching ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
+              <div className={isFetching && !isFetchingNextPage ? 'opacity-60 pointer-events-none transition-opacity' : ''}>
                 <CrmCompaniesTable
                   companies={companies}
                   leadingFilterSlot={
@@ -189,13 +199,13 @@ export default function CrmCompanies() {
                       <Input
                         placeholder="Search companies..."
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        onChange={(e) => setSearch(e.target.value)}
                         className="pl-8 pr-8 h-9"
                       />
                       {search && (
                         <button
                           type="button"
-                          onClick={() => { setSearch(''); setPage(0); }}
+                          onClick={() => setSearch('')}
                           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-muted"
                           aria-label="Clear search"
                         >
@@ -214,15 +224,15 @@ export default function CrmCompanies() {
                   }
                 />
               </div>
-              <TablePagination
-                page={page}
-                pageSize={pageSize}
-                totalCount={totalCount}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                onPageSizeChange={handlePageSizeChange}
-                isLoading={isFetching}
-              />
+              <div ref={sentinelRef} className="h-10 flex items-center justify-center text-xs text-muted-foreground">
+                {isFetchingNextPage ? (
+                  <span className="flex items-center gap-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading more…</span>
+                ) : hasNextPage ? (
+                  <span>Scroll to load more</span>
+                ) : companies.length > 0 ? (
+                  <span>Showing all {companies.length.toLocaleString()} companies</span>
+                ) : null}
+              </div>
             </>
           )}
         </main>
