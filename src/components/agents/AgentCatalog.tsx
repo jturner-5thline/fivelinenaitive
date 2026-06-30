@@ -12,7 +12,6 @@ import {
   Search as SearchIcon,
   FolderOpen,
   Mail,
-  ClipboardList,
   FileText,
   TrendingUp,
   Globe2,
@@ -42,7 +41,7 @@ interface CatalogAgent {
 
 const CATALOG: CatalogAgent[] = [
   {
-    name: 'Admin Agent',
+    name: 'Deal Admin Agent',
     subtitle: 'Operational copilot · Verify Deal Information',
     description:
       'Audits active deals for stale or missing critical updates — status, stage, milestones, status notes, and per-lender funding sources — and surfaces findings in Ask nAItive AI for review.',
@@ -76,13 +75,6 @@ const CATALOG: CatalogAgent[] = [
     description:
       'Creates and formats deal materials including teasers, memos, one-pagers, and pitch decks.',
     icon: FileText,
-  },
-  {
-    name: 'Deal Admin',
-    subtitle: 'Lifecycle & workflow coordinator',
-    description:
-      'Handles deal lifecycle administration: status updates, task tracking, deadline management, and workflow coordination.',
-    icon: ClipboardList,
   },
   {
     name: 'Communication',
