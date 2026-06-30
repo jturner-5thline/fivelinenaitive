@@ -4,14 +4,12 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
-import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 import { TaskDefaultsSettings } from '@/components/settings/TaskDefaultsSettings';
-import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
 import { useAuth } from '@/contexts/AuthContext';
 
-type SectionId = 'profile' | 'security' | 'notifications' | 'emails' | 'tasks';
+type SectionId = 'profile' | 'security' | 'emails' | 'tasks';
 
 const SECTIONS: Array<{
   id: SectionId;
@@ -35,17 +33,6 @@ const SECTIONS: Array<{
     label: 'Security',
     description: 'Password, active sessions, and recent login history.',
     render: () => <SecuritySettings />,
-  },
-  {
-    id: 'notifications',
-    label: 'Notifications',
-    description: 'How and where you receive notifications, including Slack.',
-    render: () => (
-      <>
-        <NotificationLinkSettings />
-        <NotificationSettings />
-      </>
-    ),
   },
   {
     id: 'emails',
