@@ -1,0 +1,2 @@
+ALTER TABLE public.admin_agent_settings ADD COLUMN IF NOT EXISTS custom_rules jsonb NOT NULL DEFAULT '[]'::jsonb;
+COMMENT ON COLUMN public.admin_agent_settings.custom_rules IS 'Natural-language operating rules learned by the Admin Agent for this company. JSON array of { id, text, created_at, created_by } objects. Injected verbatim into the Admin Agent system prompt.';

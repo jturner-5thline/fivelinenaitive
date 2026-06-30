@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Loader2, Plus, ShieldCheck, X } from 'lucide-react';
+import { CalendarDays, Loader2, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -51,6 +52,14 @@ type SettingsRow = {
   active_stage_ids: string[] | null;
   stale_threshold_business_days: number | null;
   friday_sweep_enabled: boolean | null;
+  custom_rules: CustomRule[] | null;
+};
+
+type CustomRule = {
+  id: string;
+  text: string;
+  created_at: string;
+  created_by: string | null;
 };
 
 type HolidayRow = {
@@ -88,7 +97,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_settings')
-        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled')
+        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules')
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
@@ -176,6 +185,9 @@ export function AdminAgentDuty1Config() {
   const [pipelineIds, setPipelineIds] = useState<string[]>([]);
   const [stageIds, setStageIds] = useState<string[]>([]);
   const [staleThreshold, setStaleThreshold] = useState<number>(STALE_THRESHOLD_DEFAULT);
+  const [customRules, setCustomRules] = useState<CustomRule[]>([]);
+  const [newRuleText, setNewRuleText] = useState('');
+  const [isSavingRule, setIsSavingRule] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -191,6 +203,7 @@ export function AdminAgentDuty1Config() {
         ? s.stale_threshold_business_days
         : STALE_THRESHOLD_DEFAULT,
     );
+    setCustomRules(Array.isArray(s?.custom_rules) ? (s!.custom_rules as CustomRule[]) : []);
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -238,6 +251,52 @@ export function AdminAgentDuty1Config() {
       toast.error(e?.message || 'Could not save Admin Agent settings.');
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // ── Custom rules (natural-language teaching) ─────────────────────
+  async function persistCustomRules(next: CustomRule[]) {
+    if (!companyId) return;
+    const { error } = await supabase
+      .from('admin_agent_settings')
+      .upsert(
+        { company_id: companyId, custom_rules: next as any },
+        { onConflict: 'company_id' },
+      );
+    if (error) throw error;
+    await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
+  }
+
+  async function addCustomRule() {
+    const text = newRuleText.trim();
+    if (!text) return;
+    setIsSavingRule(true);
+    try {
+      const rule: CustomRule = {
+        id: (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+        text,
+        created_at: new Date().toISOString(),
+        created_by: currentUserId,
+      };
+      const next = [...customRules, rule];
+      await persistCustomRules(next);
+      setCustomRules(next);
+      setNewRuleText('');
+      toast.success('Rule added — the agent will follow it on its next run.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save rule.');
+    } finally {
+      setIsSavingRule(false);
+    }
+  }
+
+  async function removeCustomRule(id: string) {
+    try {
+      const next = customRules.filter((r) => r.id !== id);
+      await persistCustomRules(next);
+      setCustomRules(next);
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not remove rule.');
     }
   }
 
@@ -633,6 +692,86 @@ export function AdminAgentDuty1Config() {
             <span className="text-xs text-muted-foreground">No workspace-specific dates added.</span>
           )}
         </div>
+      </section>
+
+      {/* Custom rules — natural-language teaching */}
+      <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+            <Sparkles className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold leading-tight">Custom rules</h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Examples: "Never flag deals owned by Steve as stale", "Treat 'On-Hold' deals as unresponsive after 5 business days", "When proposing tasks, default the owner to the Deal Manager".
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Textarea
+            value={newRuleText}
+            onChange={(e) => setNewRuleText(e.target.value)}
+            placeholder="Write a rule in plain English. The agent will learn and apply it to all of its work in this workspace."
+            disabled={readOnly || isSavingRule}
+            rows={3}
+            className="text-sm"
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!readOnly && newRuleText.trim()) addCustomRule();
+              }
+            }}
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground">
+              {customRules.length} active rule{customRules.length === 1 ? '' : 's'} · ⌘/Ctrl + Enter to add
+            </span>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={addCustomRule}
+              disabled={readOnly || isSavingRule || !newRuleText.trim()}
+              className="h-8 text-xs"
+            >
+              {isSavingRule ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Plus className="h-3.5 w-3.5 mr-1" />
+              )}
+              Add rule
+            </Button>
+          </div>
+        </div>
+
+        {customRules.length > 0 && (
+          <ScrollArea className="max-h-64">
+            <ol className="space-y-1.5 pr-2">
+              {customRules.map((r, i) => (
+                <li
+                  key={r.id}
+                  className="group flex items-start gap-2 rounded-md border border-border/60 bg-card/40 p-2.5"
+                >
+                  <span className="mt-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary tabular-nums">
+                    {i + 1}
+                  </span>
+                  <p className="flex-1 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.text}</p>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() => removeCustomRule(r.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted shrink-0"
+                      aria-label="Remove rule"
+                      title="Remove rule"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </ScrollArea>
+        )}
       </section>
 
       {/* Per-user overrides */}
