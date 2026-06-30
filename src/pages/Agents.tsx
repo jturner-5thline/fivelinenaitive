@@ -240,20 +240,19 @@ export default function Agents() {
           </div>
         )}
 
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search agents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="relative w-full sm:w-72 order-2 sm:order-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search agents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <TabsList className="order-1 sm:order-2">
             <TabsTrigger value="catalog" className="gap-2">
               <LayoutGrid className="h-4 w-4" />
               Agents
@@ -282,10 +281,11 @@ export default function Agents() {
               <History className="h-4 w-4" />
               Run History
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
 
           <TabsContent value="catalog" className="mt-6">
-            <AgentCatalog />
+            <AgentCatalog searchQuery={searchQuery} />
           </TabsContent>
 
           <TabsContent value="my-agents" className="mt-6 space-y-6">
