@@ -693,8 +693,11 @@ export function AdminAgentDuty1Config() {
           )}
         </div>
       </section>
+      </>
+      )}
 
       {/* Custom rules — natural-language teaching */}
+      {/* Always visible when the company is entitled, regardless of per-user activation. */}
       <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
         <div className="flex items-start gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
@@ -774,6 +777,8 @@ export function AdminAgentDuty1Config() {
         )}
       </section>
 
+      {!myActivation ? null : (
+      <>
       {/* Per-user overrides */}
       <section className="rounded-lg border border-border/60 bg-card/40 p-4 space-y-3">
         <div>
