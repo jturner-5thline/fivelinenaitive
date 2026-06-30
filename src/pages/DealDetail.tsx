@@ -929,7 +929,26 @@ export default function DealDetail() {
             }
           });
         }
-        
+
+        // Final dedupe: collapse by id and by natural key (master_lender_id || lower(name))
+        // to guarantee a single funding source never renders twice, even if local
+        // optimistic state and a realtime refetch raced.
+        if (mergedLenders && mergedLenders.length > 1) {
+          const seenIds = new Set<string>();
+          const seenKeys = new Set<string>();
+          mergedLenders = mergedLenders.filter((l) => {
+            if (!l) return false;
+            if (seenIds.has(l.id)) return false;
+            seenIds.add(l.id);
+            const key = l.name ? `name:${l.name.trim().toLowerCase()}` : null;
+            if (key) {
+              if (seenKeys.has(key)) return false;
+              seenKeys.add(key);
+            }
+            return true;
+          });
+        }
+
         // Merge context changes with local state, preserving local edits for fee fields only
         return {
           ...contextDeal,
