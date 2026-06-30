@@ -436,10 +436,37 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
         },
       };
     } else {
-      // Going forward — update the recurring base. We deliberately do NOT
-      // wipe existing per-period overrides; users can clear those from the
-      // Configure modal.
-      patch = { ...otherPatch, amount: newAmount };
+      // Going forward — update the recurring base. Critically, we MUST
+      // clear any per-occurrence override on the edited occurrence (and its
+      // remapped origin date), otherwise `getOccurrenceAmount` would keep
+      // returning the stale override and the cell would silently revert to
+      // the previous figure after save. Other future overrides are left
+      // intact so deliberately-pinned weeks aren't disturbed.
+      const existingCfg = (entry.frequency_config || {}) as any;
+      const existingOverrides: Record<string, number> = { ...(existingCfg.amount_overrides || {}) };
+      const origDate = (() => {
+        const map = existingCfg.date_overrides as Record<string, string> | undefined;
+        if (!map) return occurrenceDate;
+        for (const [orig, mapped] of Object.entries(map)) {
+          if (mapped === occurrenceDate) return orig;
+        }
+        return occurrenceDate;
+      })();
+      delete existingOverrides[occurrenceDate];
+      if (origDate !== occurrenceDate) delete existingOverrides[origDate];
+      const otherCfg = (otherPatch.frequency_config as any) || {};
+      patch = {
+        ...otherPatch,
+        amount: newAmount,
+        frequency_config: {
+          ...existingCfg,
+          ...otherCfg,
+          amount_overrides: {
+            ...existingOverrides,
+            ...(otherCfg.amount_overrides || {}),
+          },
+        },
+      };
     }
     const ok = await onUpdateEntry!(entryId, patch);
     setBusyId(null);
