@@ -2350,7 +2350,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
-      const raw = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint), bundle);
+      const raw = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, companyRulesBlock), bundle);
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
