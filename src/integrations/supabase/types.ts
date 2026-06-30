@@ -565,6 +565,7 @@ export type Database = {
           company_id: string
           created_at: string
           critical_fields: string[]
+          custom_rules: Json
           default_chat_behavior: Json
           enabled: boolean
           friday_sweep_enabled: boolean
@@ -579,6 +580,7 @@ export type Database = {
           company_id: string
           created_at?: string
           critical_fields?: string[]
+          custom_rules?: Json
           default_chat_behavior?: Json
           enabled?: boolean
           friday_sweep_enabled?: boolean
@@ -593,6 +595,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           critical_fields?: string[]
+          custom_rules?: Json
           default_chat_behavior?: Json
           enabled?: boolean
           friday_sweep_enabled?: boolean
