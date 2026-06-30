@@ -2436,6 +2436,49 @@ async function reconcileStalePendingApprovals(
     }
   }
 
+  // Diligence concentration reconciliation: if a deal has ANY funding source
+  // in diligence, dismiss pending draft_email lender nudges targeting OTHER
+  // funding sources that are not themselves in diligence. We don't shop the
+  // deal while a lender is in DD.
+  const DILIGENCE_RE_REC =
+    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  const lenderEmailPending = (pending as any[]).filter(
+    (p) =>
+      p.action_type === "draft_email" &&
+      p.deal_id &&
+      p.target_object_id &&
+      typeof p.target_object_type === "string" &&
+      ["funding_source", "deal_lender", "lender"].includes(
+        (p.target_object_type as string).toLowerCase(),
+      ),
+  );
+  if (lenderEmailPending.length > 0) {
+    const dealIds = Array.from(new Set(lenderEmailPending.map((p) => p.deal_id as string)));
+    const { data: allLenders } = await supabase
+      .from("deal_lenders")
+      .select("id, deal_id, tracking_status, stage, substage")
+      .in("deal_id", dealIds);
+    const stateById = new Map<string, string>();
+    const dealHasDiligence = new Map<string, boolean>();
+    for (const l of (allLenders ?? []) as any[]) {
+      const blob = [l.tracking_status, l.stage, l.substage]
+        .filter((v) => typeof v === "string")
+        .join(" ");
+      if (l?.id) stateById.set(l.id, blob);
+      if (l?.deal_id && DILIGENCE_RE_REC.test(blob)) {
+        dealHasDiligence.set(l.deal_id, true);
+      }
+    }
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      if (!dealHasDiligence.get(p.deal_id as string)) continue;
+      const targetState = stateById.get(p.target_object_id as string) ?? "";
+      if (!DILIGENCE_RE_REC.test(targetState)) {
+        toResolve.push(p.id);
+      }
+    }
+  }
+
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
