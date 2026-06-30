@@ -155,10 +155,15 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
       },
       {
         id: 'writeup-fields',
-        label: 'Write-Up Fields',
-        description: 'Configure write-up labels, required fields, and overview.',
-        keywords: ['write', 'writeup', 'fields', 'labels', 'required', 'overview'],
-        render: ({ isAdmin }) => <WriteUpFieldsSettings isAdmin={isAdmin} />,
+        label: 'Write-Up',
+        description: 'Write-up labels, required fields, overview, and disclaimer text.',
+        keywords: ['write', 'writeup', 'fields', 'labels', 'required', 'overview', 'disclaimer', 'legal', 'footer'],
+        render: ({ isAdmin }) => (
+          <>
+            <WriteUpFieldsSettings isAdmin={isAdmin} />
+            <DisclaimerSettings isAdmin={isAdmin} />
+          </>
+        ),
       },
       {
         id: 'default-milestones',
@@ -189,13 +194,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         keywords: ['agreement', 'templates', 'legal', 'advisory', 'contract'],
         visible: (g) => g.agreementVisible && g.agreementAccess,
         render: ({ isAdmin }) => <AgreementTemplatesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'disclaimer',
-        label: 'Disclaimer',
-        description: 'Disclaimer text used in write-ups and outbound docs.',
-        keywords: ['disclaimer', 'legal', 'footer'],
-        render: ({ isAdmin }) => <DisclaimerSettings isAdmin={isAdmin} />,
       },
     ],
   },
