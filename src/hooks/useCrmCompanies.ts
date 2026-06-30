@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -191,6 +191,90 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
       };
     },
     enabled: !!company?.id,
+    placeholderData: (prev) => prev,
+  });
+}
+
+// Infinite-scroll variant: instant first page (100 rows, no exact count) then 50/page.
+export interface CrmCompaniesInfiniteParams {
+  search?: string;
+  lifecycleStage?: string;
+  status?: string;
+  quickFilter?: string;
+  advancedFilters?: FilterRule[];
+  matchMode?: MatchMode;
+  firstPageSize?: number;
+  pageSize?: number;
+}
+
+export function useCrmCompaniesInfinite(params: CrmCompaniesInfiniteParams = {}) {
+  const { company } = useCompany();
+  const {
+    search,
+    lifecycleStage,
+    status,
+    quickFilter,
+    advancedFilters = [],
+    matchMode = 'all',
+    firstPageSize = 100,
+    pageSize = 50,
+  } = params;
+
+  return useInfiniteQuery({
+    queryKey: ['crm-companies-infinite', company?.id, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode, firstPageSize, pageSize],
+    initialPageParam: 0 as number,
+    queryFn: async ({ pageParam }) => {
+      const offset = pageParam as number;
+      const size = offset === 0 ? firstPageSize : pageSize;
+
+      // Use estimated count so the first page returns instantly on 90k+ row tables.
+      let query = supabase
+        .from('crm_companies')
+        .select(LIST_COLUMNS, { count: 'estimated' })
+        .eq('org_company_id', company!.id);
+
+      if (search?.trim()) {
+        const tokens = search.trim().split(/\s+/).map((t) => t.replace(/[%,()*]/g, '')).filter(Boolean);
+        for (const t of tokens) query = query.ilike('name', `%${t}%`);
+      }
+      if (lifecycleStage && lifecycleStage !== 'all') query = query.eq('lifecycle_stage', lifecycleStage as any);
+      if (status && status !== 'all') query = query.eq('status', status as any);
+
+      if (quickFilter && quickFilter !== 'all') {
+        switch (quickFilter) {
+          case 'customers': query = query.eq('lifecycle_stage', 'customer'); break;
+          case 'prospects': query = query.eq('company_type', 'prospect'); break;
+          case 'churn_risk': query = query.eq('lifecycle_stage', 'churn_risk'); break;
+          case 'no_activity_30d': {
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
+            query = query.or(`last_activity_date.is.null,last_activity_date.lt.${thirtyDaysAgo}`);
+            break;
+          }
+          case 'renewal_90d': {
+            const now = new Date().toISOString();
+            const ninetyDays = new Date(Date.now() + 90 * 86400000).toISOString();
+            query = query.gt('renewal_date', now).lt('renewal_date', ninetyDays);
+            break;
+          }
+        }
+      }
+
+      if (advancedFilters.length > 0) {
+        query = applyFiltersToQuery(query, advancedFilters, matchMode);
+      }
+
+      const from = offset;
+      const to = offset + size - 1;
+
+      const { data, error, count } = await query.order('created_at', { ascending: false }).range(from, to);
+      if (error) throw error;
+
+      const rows = (data || []) as CrmCompany[];
+      return { rows, nextOffset: offset + rows.length, hasMore: rows.length === size, totalCount: count ?? null };
+    },
+    getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
+    enabled: !!company?.id,
+    staleTime: 60_000,
     placeholderData: (prev) => prev,
   });
 }
