@@ -1331,21 +1331,32 @@ function filterLenderDraftEmails(
 ): { kept: CandidateItem[]; dropped: number } {
   const TERMINAL_LENDER_RE =
     /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
-  const DILIGENCE_RE =
-    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
+  // "Concentration" stages: once any lender on a deal hits diligence (term
+  // sheet signed, DD underway) or closed & funded, the deal is committed to
+  // that lender. Nudging OTHERS at that point is incorrect.
+  const CONCENTRATION_RE =
+    /(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|\bdiligence\b|\bdd\b|closed[\s_&-]*(?:and[\s_-]+)?funded|\bfunded\b|term[\s_-]?sheet[\s_-]?signed)/i;
   const fsById = new Map<string, any>();
   for (const f of fundingSources ?? []) {
     if (f?.id) fsById.set(String(f.id), f);
   }
   // Detect "diligence concentration": if ANY funding source on the deal is
-  // in diligence, we don't nudge OTHER lenders — the deal is concentrated
-  // with whoever is in DD, and shopping/follow-ups elsewhere is incorrect.
+  // in diligence (or already closed/funded), we don't nudge OTHER lenders —
+  // the deal is concentrated with whoever is in DD, and shopping/follow-ups
+  // elsewhere is incorrect.
   const fsState = (f: any) =>
-    [f?.tracking_status, f?.stage, f?.substage, f?.status]
+    [
+      f?.tracking_status,
+      f?.stage,
+      f?.substage,
+      f?.status,
+      f?.stage_label,
+      f?.substage_label,
+    ]
       .map((v) => (typeof v === "string" ? v : ""))
       .join(" ");
   const anyInDiligence = (fundingSources ?? []).some((f) =>
-    DILIGENCE_RE.test(fsState(f)),
+    CONCENTRATION_RE.test(fsState(f)),
   );
   let dropped = 0;
   const kept = candidates.filter((c) => {
@@ -1368,7 +1379,7 @@ function filterLenderDraftEmails(
     // Diligence concentration: only the lender(s) actually in diligence may
     // be nudged when the deal has someone in DD. Drop nudges for everyone
     // else.
-    if (anyInDiligence && !DILIGENCE_RE.test(stateBlob)) {
+    if (anyInDiligence && !CONCENTRATION_RE.test(stateBlob)) {
       dropped++;
       return false;
     }
