@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,7 +8,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import {
-  Search as SearchIcon,
   FolderOpen,
   Mail,
   FileText,
@@ -99,8 +97,8 @@ const CATALOG: CatalogAgent[] = [
   },
 ];
 
-export function AgentCatalog() {
-  const [query, setQuery] = useState('');
+export function AgentCatalog({ searchQuery = '' }: { searchQuery?: string } = {}) {
+  const query = searchQuery;
   const [configKey, setConfigKey] = useState<CatalogAgent['configKey'] | null>(null);
   const [configTitle, setConfigTitle] = useState<string>('');
   const { company, isAdmin } = useCompany();
@@ -172,16 +170,6 @@ export function AgentCatalog() {
             A catalog of purpose-built agents for the 5th Line workflow.
           </p>
         </div>
-      </div>
-
-      <div className="relative max-w-sm">
-        <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search agents by name or subtitle..."
-          className="pl-8 h-9"
-        />
       </div>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
