@@ -951,7 +951,16 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
       if (!nonEmpty(pv.status)) return false;
       break;
     case "update_funding_source":
-      if (!nonEmpty(pv.stage) && !nonEmpty(pv.status) && !nonEmpty((pv as any).substage)) return false;
+      // Rule: update_funding_source MUST carry a concrete stage/substage/status
+      // transition. A notes-only payload is ambiguous (renders as "— → —" in
+      // the queue) and violates the "never approve an update to —" guardrail.
+      // Notes-only lender movements must be expressed as add_status_note.
+      if (
+        !nonEmpty(pv.stage) &&
+        !nonEmpty(pv.status) &&
+        !nonEmpty((pv as any).substage) &&
+        !nonEmpty((pv as any).tracking_status)
+      ) return false;
       break;
     case "update_lender_status":
       if (!nonEmpty((pv as any).substage) && !nonEmpty((pv as any).new_status) && !nonEmpty(pv.status)) return false;
