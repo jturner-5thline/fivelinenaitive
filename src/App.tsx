@@ -536,7 +536,7 @@ const App = () => (
           </PreferencesProvider>
         </AuthProvider>
       </ThemeProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   </HelmetProvider>
 );
 
