@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -302,6 +302,68 @@ export function AdminAgentDuty1Config() {
 
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [editingRuleText, setEditingRuleText] = useState('');
+
+  // ── Learned rules (agent self-improvement from approval feedback) ────
+  type LearnedRule = {
+    id: string;
+    rule_text: string;
+    status: 'proposed' | 'active' | 'dismissed';
+    confidence: number | null;
+    occurrences: number | null;
+    evidence: any;
+    created_at: string;
+  };
+  const learnedQ = useQuery<LearnedRule[]>({
+    queryKey: ['agent-learned-rules', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agent_learned_rules')
+        .select('id, rule_text, status, confidence, occurrences, evidence, created_at')
+        .eq('company_id', companyId)
+        .eq('agent_key', 'admin_agent')
+        .in('status', ['proposed', 'active'])
+        .order('status', { ascending: true })
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as LearnedRule[];
+    },
+  });
+  const [isTraining, setIsTraining] = useState(false);
+
+  async function trainNow() {
+    if (!companyId) return;
+    setIsTraining(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('agent-learn-from-feedback', {
+        body: { company_id: companyId, agent_key: 'admin_agent', lookback_days: 14 },
+      });
+      if (error) throw error;
+      const proposed = (data as any)?.proposed ?? 0;
+      const reason = (data as any)?.reason;
+      if (reason) toast.info(reason);
+      else toast.success(proposed > 0 ? `Learned ${proposed} new pattern${proposed === 1 ? '' : 's'}.` : 'No new patterns detected.');
+      await qc.invalidateQueries({ queryKey: ['agent-learned-rules', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not run learning pass.');
+    } finally {
+      setIsTraining(false);
+    }
+  }
+
+  async function decideLearnedRule(id: string, status: 'active' | 'dismissed') {
+    try {
+      const { error } = await supabase
+        .from('agent_learned_rules')
+        .update({ status, decided_by: currentUserId, decided_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['agent-learned-rules', companyId] });
+      toast.success(status === 'active' ? 'Rule accepted — the agent will follow it.' : 'Rule dismissed.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update rule.');
+    }
+  }
 
   function startEditRule(r: CustomRule) {
     setEditingRuleId(r.id);
