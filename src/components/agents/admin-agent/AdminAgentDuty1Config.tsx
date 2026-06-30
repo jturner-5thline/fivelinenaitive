@@ -707,7 +707,7 @@ export function AdminAgentDuty1Config() {
           <div className="flex-1">
             <h4 className="text-sm font-semibold leading-tight">Custom rules</h4>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Examples: "Never flag deals owned by Steve as stale", "Treat 'On-Hold' deals as unresponsive after 5 business days", "When proposing tasks, default the owner to the Deal Manager".
+              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Use rules to set freshness thresholds and excluded dates too. Examples: "Flag deals as stale after 3 US business days without an update", "Treat Dec 24–Jan 2 as non-business days every year", "Skip the Friday sweep on company off-sites", "When proposing tasks, default the owner to the Deal Manager".
             </p>
           </div>
         </div>
