@@ -50,6 +50,7 @@ import {
   targetSummary,
   buildRationaleFallback,
 } from './approvalCopy';
+import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
@@ -208,7 +209,7 @@ function formatDateDisplay(value: string | null | undefined): string {
   return `${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} (${formatDistanceToNow(date)} ago)`;
 }
 
-function isDateField(key: string): boolean {
+function isDisplayDateField(key: string): boolean {
   const normalized = key.toLowerCase();
   return normalized.endsWith('_at') || normalized.endsWith('_date') || normalized.includes('date');
 }
@@ -241,7 +242,7 @@ function formatFieldValue(
 ): string {
   const base = formatProposedValue(v);
   if (!base) return '';
-  if (isDateField(key)) {
+  if (isDisplayDateField(key)) {
     return formatDateDisplay(base) || base;
   }
   // Stage / pipeline lookups
