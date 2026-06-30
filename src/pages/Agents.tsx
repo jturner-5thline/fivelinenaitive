@@ -265,18 +265,6 @@ export default function Agents() {
               <Workflow className="h-4 w-4" />
               Builder
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2">
-              <NaitiveIcon className="h-4 w-4" />
-              Templates
-            </TabsTrigger>
-            <TabsTrigger value="team" className="gap-2">
-              <Users className="h-4 w-4" />
-              Team ({sharedAgents.length})
-            </TabsTrigger>
-            <TabsTrigger value="public" className="gap-2">
-              <Globe className="h-4 w-4" />
-              Public ({publicAgents.length})
-            </TabsTrigger>
             <TabsTrigger value="runs" className="gap-2">
               <History className="h-4 w-4" />
               Run History
