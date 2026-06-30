@@ -42,7 +42,6 @@ import { PipelineSettings } from '@/components/settings/PipelineSettings';
 import { EmailSnippetsSettings } from '@/components/settings/EmailSnippetsSettings';
 import { EmailSignatureSettings } from '@/components/settings/EmailSignatureSettings';
 import { DealInfoFieldsSettings } from '@/components/settings/DealInfoFieldsSettings';
-import { SourcedViaSettings } from '@/components/settings/SourcedViaSettings';
 import { WriteUpFieldsSettings } from '@/components/settings/WriteUpFieldsSettings';
 import { GammaTemplatesSettings } from '@/components/settings/GammaTemplatesSettings';
 import { LenderScoreSettings } from '@/components/settings/LenderScoreSettings';
@@ -168,13 +167,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         description: 'Templates applied automatically to new deals.',
         keywords: ['default', 'milestones', 'milestone', 'templates'],
         render: ({ isAdmin }) => <DefaultMilestonesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'sourced-via',
-        label: 'Sourced Via',
-        description: 'Configure the "Sourced Via" dropdown options for new deals and filters.',
-        keywords: ['sourced', 'via', 'source', 'origin', 'channel', 'dropdown'],
-        render: ({ isAdmin }) => <SourcedViaSettings isAdmin={isAdmin} />,
       },
       {
         id: 'data-room-checklist',
