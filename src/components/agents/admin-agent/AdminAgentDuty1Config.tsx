@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { CalendarDays, Loader2, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -297,6 +297,29 @@ export function AdminAgentDuty1Config() {
       setCustomRules(next);
     } catch (e: any) {
       toast.error(e?.message || 'Could not remove rule.');
+    }
+  }
+
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [editingRuleText, setEditingRuleText] = useState('');
+
+  function startEditRule(r: CustomRule) {
+    setEditingRuleId(r.id);
+    setEditingRuleText(r.text);
+  }
+
+  async function saveEditRule(id: string) {
+    const text = editingRuleText.trim();
+    if (!text) return;
+    try {
+      const next = customRules.map((r) => (r.id === id ? { ...r, text } : r));
+      await persistCustomRules(next);
+      setCustomRules(next);
+      setEditingRuleId(null);
+      setEditingRuleText('');
+      toast.success('Rule updated.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update rule.');
     }
   }
 
@@ -748,8 +771,8 @@ export function AdminAgentDuty1Config() {
         </div>
 
         {customRules.length > 0 && (
-          <ScrollArea className="max-h-64">
-            <ol className="space-y-1.5 pr-2">
+          <ScrollArea className="h-72 rounded-md border border-border/40 bg-background/30">
+            <ol className="space-y-1.5 p-2">
               {customRules.map((r, i) => (
                 <li
                   key={r.id}
@@ -758,17 +781,68 @@ export function AdminAgentDuty1Config() {
                   <span className="mt-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary tabular-nums">
                     {i + 1}
                   </span>
-                  <p className="flex-1 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.text}</p>
-                  {!readOnly && (
-                    <button
-                      type="button"
-                      onClick={() => removeCustomRule(r.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted shrink-0"
-                      aria-label="Remove rule"
-                      title="Remove rule"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                  {editingRuleId === r.id ? (
+                    <div className="flex-1 space-y-1.5">
+                      <Textarea
+                        value={editingRuleText}
+                        onChange={(e) => setEditingRuleText(e.target.value)}
+                        rows={3}
+                        className="text-xs"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            saveEditRule(r.id);
+                          } else if (e.key === 'Escape') {
+                            setEditingRuleId(null);
+                          }
+                        }}
+                      />
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => { setEditingRuleId(null); setEditingRuleText(''); }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 text-xs"
+                          onClick={() => saveEditRule(r.id)}
+                          disabled={!editingRuleText.trim()}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="flex-1 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.text}</p>
+                  )}
+                  {!readOnly && editingRuleId !== r.id && (
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => startEditRule(r)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                        aria-label="Edit rule"
+                        title="Edit rule"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomRule(r.id)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                        aria-label="Remove rule"
+                        title="Remove rule"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   )}
                 </li>
               ))}
