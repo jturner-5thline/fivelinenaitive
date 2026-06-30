@@ -12,7 +12,6 @@ import {
   Search as SearchIcon,
   FolderOpen,
   Mail,
-  ClipboardList,
   FileText,
   TrendingUp,
   Globe2,
