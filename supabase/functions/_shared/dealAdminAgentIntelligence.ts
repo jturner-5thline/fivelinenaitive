@@ -377,11 +377,16 @@ async function gatherSignalsForDeal(
   const nameToken = dealNameRaw.split(/\s+/)[0] ?? dealNameRaw;
   if (dealNameRaw && nameToken.length >= 3) {
     const linkedTitles = new Set(enrichedClaap.map((r: any) => (r.title ?? "").toLowerCase()));
+    // Use word-boundary regex matching (not substring ilike) so a deal named
+    // "LASSO" does not falsely match titles containing "Galasso", or "Bond"
+    // matching "Bondurant", etc. Escape any regex metachars in the deal name.
+    const escapedName = dealNameRaw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const wordBoundaryPattern = `\\m${escapedName}\\M`;
     const { data: nameClaap } = await supabase
       .from("claap_recordings")
       .select("id, title, summary, action_items, key_takeaways, started_at, ended_at, organizer_email, participants, recording_url")
       .eq("org_company_id", companyId)
-      .ilike("title", `%${dealNameRaw}%`)
+      .or(`title.imatch.${wordBoundaryPattern},summary.imatch.${wordBoundaryPattern}`)
       .gte("started_at", since)
       .order("started_at", { ascending: false })
       .limit(5);
@@ -406,7 +411,7 @@ async function gatherSignalsForDeal(
     const { data: nameCal } = await supabase
       .from("calendar_events")
       .select("id, title, start_time, end_time, organizer_email, attendees, meeting_url, is_cancelled")
-      .ilike("title", `%${dealNameRaw}%`)
+      .filter("title", "imatch", wordBoundaryPattern)
       .gte("start_time", since)
       .order("start_time", { ascending: false })
       .limit(8);
