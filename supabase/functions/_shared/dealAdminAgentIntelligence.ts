@@ -2528,7 +2528,11 @@ async function reconcileStalePendingApprovals(
     for (const p of lenderEmailPending) {
       if (toResolve.includes(p.id)) continue;
       if (!dealHasDiligence.get(p.deal_id as string)) continue;
-      const targetState = stateById.get(p.target_object_id as string) ?? "";
+      // Only act on lender-targeted drafts: target_object_id must map to a
+      // deal_lender on this deal. Skip client/referral/other drafts so we
+      // don't accidentally dismiss legitimate non-lender nudges.
+      const targetState = stateById.get(p.target_object_id as string);
+      if (targetState === undefined) continue;
       if (!CONCENTRATION_RE_REC.test(targetState)) {
         toResolve.push(p.id);
       }
