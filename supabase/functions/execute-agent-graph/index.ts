@@ -63,7 +63,15 @@ function getUpstreamOutputs(nodeId: string, edges: GraphEdge[], ctx: ExecutionCo
 
 async function executeAgentNode(node: GraphNode, inputs: Record<string, any>, ctx: ExecutionContext): Promise<Record<string, any>> {
   const { config } = node.data;
-  const model = config.model || 'google/gemini-2.5-flash';
+  // All agents are powered by Claude (Anthropic). Map any legacy/saved model
+  // selection onto a Claude model so old graphs keep working.
+  const rawModel: string = config.model || 'anthropic/claude-sonnet-4-5';
+  const lower = rawModel.toLowerCase();
+  let claudeModel = 'claude-sonnet-4-5';
+  if (lower.includes('opus')) claudeModel = 'claude-opus-4-20250514';
+  else if (lower.includes('haiku') || lower.includes('flash') || lower.includes('mini') || lower.includes('nano')) claudeModel = 'claude-haiku-4-5';
+  else if (lower.includes('sonnet') || lower.includes('pro') || lower.includes('gpt-5') || lower.includes('gemini')) claudeModel = 'claude-sonnet-4-5';
+
   const systemPrompt = config.system_prompt || 'You are a helpful AI assistant.';
   const temperature = config.temperature ?? 0.7;
 
@@ -71,33 +79,36 @@ async function executeAgentNode(node: GraphNode, inputs: Record<string, any>, ct
     .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
     .join('\n\n');
 
-  const gatewayUrl = Deno.env.get('SUPABASE_URL')!.replace('.supabase.co', '.gateway.supabase.co');
-  
-  const response = await fetch(`${gatewayUrl}/v1/chat/completions`, {
+  const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY is not configured');
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')!}`,
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: contextStr || 'Begin.' },
-      ],
+      model: claudeModel,
+      max_tokens: 4096,
       temperature,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: contextStr || 'Begin.' }],
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`AI model error: ${err}`);
+    throw new Error(`Claude error (${response.status}): ${err}`);
   }
 
   const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
+  const text = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
 
-  return { response: text, tool_calls: null };
+  return { response: text, tool_calls: null, model: claudeModel };
 }
 
 async function executeToolNode(node: GraphNode, inputs: Record<string, any>, supabase: any): Promise<Record<string, any>> {

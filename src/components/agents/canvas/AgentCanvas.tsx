@@ -127,7 +127,7 @@ export function AgentCanvas({
   const [inlineAdd, setInlineAdd] = useState<{ position: { x: number; y: number }; sourceNodeId: string; sourceHandleId: string } | null>(null);
   const [globalContext, setGlobalContext] = useState<GlobalContext>({
     envVars: [],
-    sharedContext: { company_id: '', user_id: '', environment: 'development', default_llm: 'google/gemini-2.5-flash', default_temperature: 0.7 },
+    sharedContext: { company_id: '', user_id: '', environment: 'development', default_llm: 'anthropic/claude-sonnet-4-5', default_temperature: 0.7 },
     authBindings: [],
   });
 

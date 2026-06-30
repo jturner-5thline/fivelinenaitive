@@ -165,29 +165,32 @@ ${contextInfo}
 
 Provide a concise, actionable response based on this event. Focus on insights that would be valuable to the user.`;
 
-        // Call AI
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        // Call Claude — all agents are powered by Claude
+        const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+        if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+        const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
-            messages: [
-              { role: "system", content: fullSystemPrompt },
-              { role: "user", content: eventPrompt },
-            ],
+            model: "claude-sonnet-4-5",
+            max_tokens: 4096,
             temperature: agent.temperature || 0.7,
+            system: fullSystemPrompt,
+            messages: [{ role: "user", content: eventPrompt }],
           }),
         });
 
         if (!aiResponse.ok) {
-          throw new Error(`AI gateway error: ${aiResponse.status}`);
+          throw new Error(`Claude error: ${aiResponse.status}`);
         }
 
         const aiData = await aiResponse.json();
-        const content = aiData.choices?.[0]?.message?.content;
+        const content = (aiData.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n");
 
         if (!content) {
           throw new Error("No response content from AI");

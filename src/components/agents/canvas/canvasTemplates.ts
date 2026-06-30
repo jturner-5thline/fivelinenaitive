@@ -61,7 +61,7 @@ const NAITIVE_TEMPLATES: CanvasTemplate[] = [
       makeNode('deals', 'tool/db_query', 300, 0, { table: 'deals', natural_query: 'Find all active deals with no activity in 7+ days', limit: 50 }),
       makeNode('milestones', 'tool/db_query', 300, 200, { table: 'deal_milestones', natural_query: 'Find all overdue milestones', limit: 50 }),
       makeNode('analyzer', 'agent/llm_worker', 600, 100, {
-        model: 'google/gemini-2.5-flash',
+        model: 'anthropic/claude-sonnet-4-5',
         system_prompt: 'Analyze stale deals and overdue milestones. Produce a structured pipeline health report with CRITICAL, HIGH, and MEDIUM priority sections.',
       }),
       makeNode('slack', 'tool/slack', 900, 0, { channel: '#deal-alerts' }),
@@ -85,7 +85,7 @@ const NAITIVE_TEMPLATES: CanvasTemplate[] = [
       makeNode('trigger', 'trigger/webhook', 0, 100, { method: 'POST', path: '/deal-created' }),
       makeNode('dealData', 'tool/db_query', 300, 100, { table: 'deals', natural_query: 'Get the newly created deal with all fields', limit: 1 }),
       makeNode('screener', 'agent/llm_worker', 600, 100, {
-        model: 'google/gemini-2.5-flash',
+        model: 'anthropic/claude-sonnet-4-5',
         system_prompt: 'Evaluate new deal data completeness. Check for missing: loan amount, property type, borrower name, LTV, asset class. Produce a completeness score and list missing required fields.',
       }),
       makeNode('output', 'output/response', 900, 100, { status_code: 'success' }),
@@ -106,7 +106,7 @@ const NAITIVE_TEMPLATES: CanvasTemplate[] = [
       makeNode('lenders', 'tool/db_query', 300, 0, { table: 'deal_lenders', natural_query: 'Get all lenders for this deal with their stages and last contact dates', limit: 20 }),
       makeNode('activity', 'tool/db_query', 300, 200, { table: 'activity_logs', natural_query: 'Get recent lender communication activity for this deal', limit: 50 }),
       makeNode('coach', 'agent/llm_worker', 600, 100, {
-        model: 'google/gemini-2.5-pro',
+        model: 'anthropic/claude-opus-4',
         system_prompt: 'Analyze lender engagement. For each lender, determine: status (Active/At Risk/Silent based on days since contact), and draft a professional follow-up email for At Risk and Silent lenders.',
       }),
       makeNode('email', 'tool/email', 900, 100, { subject: 'Follow-up' }),
@@ -129,11 +129,11 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     description: 'Search the web, collect information, and produce a structured summary with human review.',
     icon: '🔬',
     nodes: [
-      makeNode('planner', 'agent/planner', 0, 100, { model: 'google/gemini-2.5-pro' }),
+      makeNode('planner', 'agent/planner', 0, 100, { model: 'anthropic/claude-opus-4' }),
       makeNode('search', 'tool/web_search', 300, 0, { max_results: 10 }),
       makeNode('db', 'tool/db_query', 300, 200, { table: 'deals', limit: 5 }),
       makeNode('worker', 'agent/llm_worker', 600, 100, {
-        model: 'google/gemini-2.5-flash',
+        model: 'anthropic/claude-sonnet-4-5',
         system_prompt: 'Synthesize the research results into a clear, actionable summary.',
       }),
       makeNode('review', 'ui/approval', 900, 100),
@@ -154,7 +154,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     nodes: [
       makeNode('db_check', 'tool/db_query', 0, 100, { table: 'deals', fields: 'company, stage, value', limit: 20 }),
       makeNode('analyzer', 'agent/llm_worker', 300, 100, {
-        model: 'google/gemini-2.5-flash',
+        model: 'anthropic/claude-sonnet-4-5',
         system_prompt: 'Analyze the deal data and identify any urgent items that need attention.',
       }),
       makeNode('router', 'router/conditional', 600, 100, { condition: 'truthy' }),
@@ -176,7 +176,7 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
     nodes: [
       makeNode('form', 'ui/form_input', 0, 100, { form_title: 'Request Details' }),
       makeNode('worker', 'agent/llm_worker', 300, 100, {
-        model: 'openai/gpt-5-mini',
+        model: 'anthropic/claude-sonnet-4-5',
         system_prompt: 'Review the request and prepare a recommendation for the approver.',
       }),
       makeNode('approval', 'ui/approval', 600, 100, { notify_via: 'email', timeout_hours: 48 }),
@@ -199,10 +199,10 @@ export const CANVAS_TEMPLATES: CanvasTemplate[] = [
       makeNode('memory', 'memory/conversation', 0, 0, { max_messages: 30 }),
       makeNode('vector', 'memory/vector_store', 0, 200, { collection: 'documents', top_k: 5 }),
       makeNode('worker', 'agent/llm_worker', 350, 100, {
-        model: 'google/gemini-2.5-pro',
+        model: 'anthropic/claude-opus-4',
         system_prompt: 'Answer the user\'s question using the provided context. Cite sources where possible.',
       }),
-      makeNode('reviewer', 'agent/reviewer', 650, 100, { model: 'google/gemini-2.5-flash' }),
+      makeNode('reviewer', 'agent/reviewer', 650, 100, { model: 'anthropic/claude-sonnet-4-5' }),
     ],
     edges: [
       makeEdge('e1', 'memory', 'history', 'worker', 'context'),
