@@ -919,42 +919,48 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           Cell total shown in grid: <span className="tabular-nums">{fmt(context.cellValue)}</span>
         </div>
         {scopePrompt && (
-          <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 space-y-2">
-            <div className="text-sm font-medium">Apply amount change to…</div>
-            <div className="text-xs text-muted-foreground">
-              Choose whether the new amount of{' '}
-              <span className="tabular-nums font-medium text-foreground">
-                {fmt(scopePrompt.newAmount)}
-              </span>{' '}
-              should override only the {formatNiceDate(scopePrompt.occurrenceDate)} entry
-              or update this entry and all future entries.
-            </div>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => applyScope('this_period')}
-                disabled={busyId === scopePrompt.entryId}
-              >
-                For this Period Only
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => applyScope('going_forward')}
-                disabled={busyId === scopePrompt.entryId}
-              >
-                Going Forward
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setScopePrompt(null)}
-                disabled={busyId === scopePrompt.entryId}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
+          <AlertDialog open onOpenChange={(o) => { if (!o && busyId !== scopePrompt.entryId) setScopePrompt(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Apply amount change to…</AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="text-sm text-muted-foreground">
+                    Choose whether the new amount of{' '}
+                    <span className="tabular-nums font-medium text-foreground">
+                      {fmt(scopePrompt.newAmount)}
+                    </span>{' '}
+                    should override only the {formatNiceDate(scopePrompt.occurrenceDate)} entry
+                    or update this entry and all future entries.
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setScopePrompt(null)}
+                  disabled={busyId === scopePrompt.entryId}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyScope('this_period')}
+                  disabled={busyId === scopePrompt.entryId}
+                >
+                  For this Period Only
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => applyScope('going_forward')}
+                  disabled={busyId === scopePrompt.entryId}
+                >
+                  {busyId === scopePrompt.entryId ? 'Saving…' : 'Going Forward'}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
         <AlertDialog open={!!deletePrompt} onOpenChange={(o) => { if (!o) closeDeletePrompt(); }}>
           <AlertDialogContent>
