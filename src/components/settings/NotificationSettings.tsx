@@ -617,9 +617,13 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
           </div>
         </div>
 
-        <Separator />
-
-        <EmailSignalSlackSettings />
+        {/* Slack DMs section hidden */}
+        {false && (
+          <>
+            <Separator />
+            <EmailSignalSlackSettings />
+          </>
+        )}
       </CardContent>
     );
 
