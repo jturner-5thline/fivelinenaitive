@@ -147,23 +147,22 @@ async function handleIncomingMessage(
     },
   ];
 
-  // Call the AI via the agent-chat pattern
-  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  // All agents are powered by Claude
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
+  const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        {
-          role: "system",
-          content: `${agent.system_prompt}\n\nYou are responding in a Slack channel. Keep messages concise and use Slack formatting (bold with *text*, code with \`code\`, lists with •).${memoryContext}\n\nIMPORTANT: If the user shares a preference, fact, or important context that should be remembered for future conversations, include it at the END of your response in this exact format:\n[MEMORY:type:key:value]\nFor example: [MEMORY:preference:timezone:EST]\nDo NOT mention this to the user.`,
-        },
-        ...messages,
-      ],
+      model: "claude-sonnet-4-5",
+      max_tokens: 4096,
       temperature: agent.temperature || 0.7,
+      system: `${agent.system_prompt}\n\nYou are responding in a Slack channel. Keep messages concise and use Slack formatting (bold with *text*, code with \`code\`, lists with •).${memoryContext}\n\nIMPORTANT: If the user shares a preference, fact, or important context that should be remembered for future conversations, include it at the END of your response in this exact format:\n[MEMORY:type:key:value]\nFor example: [MEMORY:preference:timezone:EST]\nDo NOT mention this to the user.`,
+      messages,
     }),
   });
 
@@ -187,7 +186,7 @@ async function handleIncomingMessage(
   }
 
   const aiData = await aiResponse.json();
-  let content = aiData.choices?.[0]?.message?.content || "I couldn't generate a response.";
+  let content = ((aiData.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n")) || "I couldn't generate a response.";
 
   // Extract and store memory markers
   const memoryRegex = /\[MEMORY:(\w+):([^:]+):([^\]]+)\]/g;
@@ -417,25 +416,21 @@ async function handleDraftFollowup(
 Lenders: ${(lenders || []).map((l: { name: string; stage: string }) => `${l.name} (${l.stage})`).join(", ") || "None"}
 Recent Activity: ${(activities || []).map((a: { activity_type: string; description: string }) => `${a.activity_type}: ${a.description}`).join("; ") || "None"}`;
 
-  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const ANTHROPIC_API_KEY_FU = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY_FU) throw new Error("ANTHROPIC_API_KEY is not configured");
+  const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${lovableKey}`,
+      "x-api-key": ANTHROPIC_API_KEY_FU,
+      "anthropic-version": "2023-06-01",
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        {
-          role: "system",
-          content: "You are a deal follow-up assistant. Draft a concise, professional follow-up action plan based on the deal context. Use Slack formatting. Include specific next steps and suggested email/call scripts where appropriate.",
-        },
-        {
-          role: "user",
-          content: `Draft a follow-up plan for this deal:\n\n${context}`,
-        },
-      ],
+      model: "claude-sonnet-4-5",
+      max_tokens: 4096,
       temperature: 0.7,
+      system: "You are a deal follow-up assistant. Draft a concise, professional follow-up action plan based on the deal context. Use Slack formatting. Include specific next steps and suggested email/call scripts where appropriate.",
+      messages: [{ role: "user", content: `Draft a follow-up plan for this deal:\n\n${context}` }],
     }),
   });
 
@@ -446,7 +441,7 @@ Recent Activity: ${(activities || []).map((a: { activity_type: string; descripti
   }
 
   const aiData = await aiResponse.json();
-  const followup = aiData.choices?.[0]?.message?.content || "Could not generate follow-up.";
+  const followup = ((aiData.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join("\n")) || "Could not generate follow-up.";
 
   const message = `📝 *Follow-up Plan: ${deal.company}*\n\n${followup}`;
 
