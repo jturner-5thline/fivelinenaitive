@@ -420,14 +420,11 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
       </TooltipProvider>
       
       <DialogContent className="sm:max-w-[1240px] w-[96vw] p-0 overflow-hidden flex flex-col h-[88vh] rounded-[22px] border-white/[0.08] bg-[#06060a]/95 backdrop-blur-xl text-[#ecedf4]">
-        <DialogHeader className="px-6 py-4 border-b border-white/[0.08] flex-shrink-0 pr-14 space-y-0">
+        <DialogHeader className="px-6 py-2 border-b border-white/[0.08] flex-shrink-0 pr-14 space-y-0">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-[#9DA2F5]/80 mb-1">Deal Memo</div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-[#9DA2F5]/80">Deal Memo</div>
               <DialogTitle className="text-[20px] leading-tight tracking-tight truncate">{companyName}</DialogTitle>
-              <p className="text-[12px] text-[#ecedf4]/55 mt-1">
-                Internal briefing · prepared for senior review.
-              </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {autoSaveLabel && (
