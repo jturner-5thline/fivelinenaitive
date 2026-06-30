@@ -282,7 +282,7 @@ export function ContactsTable({ contacts, onBulkAction, search: controlledSearch
           'rounded-xl overflow-hidden bg-card/40 dark:bg-white/[0.015]',
           'ring-1 ring-border/40 shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
           '[&_table]:border-separate [&_table]:border-spacing-0',
-          '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80',
+          '[&_th]:h-10 [&_th]:px-3 [&_th]:py-0 [&_th]:bg-transparent [&_th]:font-medium [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground/80 [&_th]:whitespace-nowrap',
           '[&_thead_tr]:bg-transparent [&_thead_th]:border-b [&_thead_th]:border-border/40 [&_thead_th]:backdrop-blur-sm [&_thead_th]:bg-background/70',
           '[&_td]:px-3 [&_td]:align-middle [&_td]:border-b [&_td]:border-border/25 [&_td]:whitespace-nowrap',
           '[&_tbody_tr:last-child_td]:border-b-0',
