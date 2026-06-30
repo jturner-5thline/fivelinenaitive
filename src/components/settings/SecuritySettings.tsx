@@ -55,9 +55,6 @@ interface LoginHistoryEntry {
 
 export function SecuritySettings() {
   const { user } = useAuth();
-  const isGoogleUser = (user?.app_metadata?.providers ?? []).includes('google')
-    || user?.app_metadata?.provider === 'google'
-    || (user?.identities ?? []).some((i: any) => i.provider === 'google');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -279,19 +276,7 @@ export function SecuritySettings() {
       </div>
       <CardContent className="space-y-6 pt-6">
         {/* Password Section */}
-        {isGoogleUser ? (
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <div>
-              <p className="font-medium">Password</p>
-              <p className="text-sm text-muted-foreground">
-                You sign in with Google. Manage your password in your Google account.
-              </p>
-            </div>
-            <Button variant="outline" disabled>
-              Change Password
-            </Button>
-          </div>
-        ) : !isChangingPassword ? (
+        {!isChangingPassword ? (
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div>
               <p className="font-medium">Password</p>

@@ -8,9 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProfile } from '@/hooks/useProfile';
 import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useQuery } from '@tanstack/react-query';
 
 const companySizeOptions = [
   { value: '1-10', label: '1-10 employees' },
@@ -49,23 +46,6 @@ type FormErrors = Partial<Record<keyof z.infer<typeof companySettingsSchema>, st
 
 export function CompanySettings() {
   const { profile, isLoading, updateProfile } = useProfile();
-  const { user } = useAuth();
-  const { data: resolvedCompanyName } = useQuery({
-    queryKey: ['user-company-name', user?.id],
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('company_members')
-        .select('companies(name)')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (error) return null;
-      return (data as any)?.companies?.name ?? null;
-    },
-  });
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [formData, setFormData] = useState({
@@ -81,25 +61,14 @@ export function CompanySettings() {
     if (profile) {
       setFormData({
         phone: profile.phone || '',
-        company_name: resolvedCompanyName || profile.company_name || '',
+        company_name: profile.company_name || '',
         backup_email: profile.backup_email || '',
         company_url: profile.company_url || '',
         company_size: profile.company_size || '',
         company_role: profile.company_role || '',
       });
     }
-  }, [profile, resolvedCompanyName]);
-
-  // Auto-persist resolved company name when it differs from profile
-  useEffect(() => {
-    if (
-      resolvedCompanyName &&
-      profile &&
-      profile.company_name !== resolvedCompanyName
-    ) {
-      updateProfile({ company_name: resolvedCompanyName }).catch(() => {});
-    }
-  }, [resolvedCompanyName, profile, updateProfile]);
+  }, [profile]);
 
   const validateForm = (): boolean => {
     const result = companySettingsSchema.safeParse(formData);
@@ -222,14 +191,8 @@ export function CompanySettings() {
             value={formData.company_name}
             onChange={(e) => handleFieldChange('company_name', e.target.value)}
             placeholder="Enter company name"
-            disabled={!!resolvedCompanyName}
             className={errors.company_name ? 'border-destructive' : ''}
           />
-          {resolvedCompanyName && (
-            <p className="text-xs text-muted-foreground">
-              Linked to your workspace. Contact an admin to change this.
-            </p>
-          )}
           {errors.company_name && (
             <p className="text-sm text-destructive">{errors.company_name}</p>
           )}
