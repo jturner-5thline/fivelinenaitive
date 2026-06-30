@@ -2226,6 +2226,46 @@ async function reconcileStalePendingApprovals(
     }
   }
 
+  // Off-pipeline guard (5th Line): the Deal Admin Agent is scoped strictly to
+  // the default "Active" pipeline. Any pending item attached to a deal that
+  // currently lives in another pipeline (e.g. "In Development", "Archived",
+  // "naitive Pipeline") is by definition out of scope and should be cleared.
+  if (companyId === FIFTH_LINE_COMPANY_ID) {
+    const { data: pipeRow } = await supabase
+      .from("deal_pipelines")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("is_default", true)
+      .maybeSingle();
+    const activePipelineId = (pipeRow as any)?.id ?? null;
+    if (activePipelineId) {
+      const dealIdsAll = Array.from(
+        new Set(
+          (pending as any[])
+            .map((p) => p.deal_id)
+            .filter((v): v is string => typeof v === "string" && v.length > 0),
+        ),
+      );
+      if (dealIdsAll.length > 0) {
+        const { data: dealRows } = await supabase
+          .from("deals")
+          .select("id, pipeline_id")
+          .in("id", dealIdsAll);
+        const pipelineByDeal = new Map<string, string | null>();
+        for (const d of (dealRows ?? []) as any[]) {
+          pipelineByDeal.set(d.id, d.pipeline_id ?? null);
+        }
+        for (const p of pending as any[]) {
+          if (!p.deal_id) continue;
+          const pid = pipelineByDeal.get(p.deal_id);
+          if (pid && pid !== activePipelineId && !toResolve.includes(p.id)) {
+            toResolve.push(p.id);
+          }
+        }
+      }
+    }
+  }
+
   if (toResolve.length === 0) return 0;
 
   const nowIso = new Date().toISOString();
