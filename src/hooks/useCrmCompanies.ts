@@ -88,7 +88,11 @@ export const CRM_COMPANY_LIFECYCLES = [
   { value: 'churn_risk', label: 'Churn Risk' },
 ];
 
-const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date, owner_user_id, website_url, linkedin_url, phone, address, hq_address, notes';
+// Lightweight column set for the list view. Heavier text fields (`notes`,
+// `address`, `hq_address`) and rarely-rendered URL fields are intentionally
+// excluded — they're fetched on demand from the company detail page so the
+// initial list payload stays small and scrolling fetches stay fast.
+const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date, owner_user_id, website_url, linkedin_url, phone';
 
 export interface CrmCompaniesListParams {
   page?: number;
