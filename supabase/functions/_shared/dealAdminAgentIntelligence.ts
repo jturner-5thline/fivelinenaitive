@@ -1303,10 +1303,22 @@ function filterLenderDraftEmails(
 ): { kept: CandidateItem[]; dropped: number } {
   const TERMINAL_LENDER_RE =
     /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+  const DILIGENCE_RE =
+    /(^|[\s_-])(in[\s_-]?(?:due[\s_-]?)?diligence|due[\s_-]?diligence|diligence|dd)(\b|[\s_-]|$)/i;
   const fsById = new Map<string, any>();
   for (const f of fundingSources ?? []) {
     if (f?.id) fsById.set(String(f.id), f);
   }
+  // Detect "diligence concentration": if ANY funding source on the deal is
+  // in diligence, we don't nudge OTHER lenders — the deal is concentrated
+  // with whoever is in DD, and shopping/follow-ups elsewhere is incorrect.
+  const fsState = (f: any) =>
+    [f?.tracking_status, f?.stage, f?.substage, f?.status]
+      .map((v) => (typeof v === "string" ? v : ""))
+      .join(" ");
+  const anyInDiligence = (fundingSources ?? []).some((f) =>
+    DILIGENCE_RE.test(fsState(f)),
+  );
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
@@ -1320,10 +1332,15 @@ function filterLenderDraftEmails(
     const tid = c.target_object_id ? String(c.target_object_id) : "";
     const fs = tid ? fsById.get(tid) : null;
     if (!fs) return true;
-    const stateBlob = [fs.tracking_status, fs.stage, fs.substage, fs.status]
-      .map((v) => (typeof v === "string" ? v : ""))
-      .join(" ");
+    const stateBlob = fsState(fs);
     if (TERMINAL_LENDER_RE.test(stateBlob)) {
+      dropped++;
+      return false;
+    }
+    // Diligence concentration: only the lender(s) actually in diligence may
+    // be nudged when the deal has someone in DD. Drop nudges for everyone
+    // else.
+    if (anyInDiligence && !DILIGENCE_RE.test(stateBlob)) {
       dropped++;
       return false;
     }
