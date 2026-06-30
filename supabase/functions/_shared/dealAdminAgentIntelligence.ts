@@ -313,10 +313,38 @@ async function gatherSignalsForDeal(
   // Pre-compute "business days since last lender contact" for each funding
   // source so the prompt can apply the 3-BD follow-up rule deterministically.
   const today = new Date();
+  // Resolve stage/substage UUIDs (or slugs) to human labels using the
+  // workspace's lender_stage_configs. This is critical for downstream rules
+  // that key off labels like "In Diligence" / "Closed & Funded" instead of
+  // opaque UUIDs stored on deal_lenders.stage.
+  const { data: stageCfgRows } = await supabase
+    .from("lender_stage_configs")
+    .select("stages, substages")
+    .eq("company_id", companyId)
+    .limit(5);
+  const stageLabelById = new Map<string, string>();
+  const substageLabelById = new Map<string, string>();
+  for (const row of (stageCfgRows ?? []) as any[]) {
+    for (const s of (row?.stages ?? []) as any[]) {
+      if (s?.id && typeof s?.label === "string") stageLabelById.set(String(s.id), s.label);
+    }
+    for (const s of (row?.substages ?? []) as any[]) {
+      if (s?.id && typeof s?.label === "string") substageLabelById.set(String(s.id), s.label);
+    }
+  }
   const fundingWithBd = (fs.data ?? []).map((f: any) => {
     const lastTs = f.last_contact_at ?? f.last_status_change_at ?? f.updated_at ?? null;
     const bd = lastTs ? businessDaysBetween(new Date(lastTs), today) : null;
-    return { ...f, business_days_since_last_contact: bd };
+    const stageLabel = f.stage ? (stageLabelById.get(String(f.stage)) ?? String(f.stage)) : null;
+    const substageLabel = f.substage
+      ? (substageLabelById.get(String(f.substage)) ?? String(f.substage))
+      : null;
+    return {
+      ...f,
+      business_days_since_last_contact: bd,
+      stage_label: stageLabel,
+      substage_label: substageLabel,
+    };
   });
 
   // Hydrate claap recordings with transcript / summary / action items from
