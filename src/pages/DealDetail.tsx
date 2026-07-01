@@ -1528,6 +1528,7 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+  const [otherPassReasonText, setOtherPassReasonText] = useState('');
 
   // Required status note dialog on stage changes (non-passed)
   const [pendingStageNoteChange, setPendingStageNoteChange] = useState<{
