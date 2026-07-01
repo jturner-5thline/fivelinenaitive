@@ -4602,14 +4602,20 @@ export default function DealDetail() {
                                       >
                                         {lender.name}
                                       </button>
-                                        {renderLenderStatusDate(lender) ?? (() => {
-                                          const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                          return timeInfo.text ? (
-                                            <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                              {timeInfo.text}
-                                            </span>
-                                          ) : null;
-                                        })()}
+                                        <LenderNoteTimestamp
+                                          updatedAt={lender.notesUpdatedAt}
+                                          additionalDates={[
+                                            lender.lastStatusChangeAt,
+                                            lender.updatedAt,
+                                            lender.submittedAt,
+                                            lender.onDeckAt,
+                                            lender.onHoldAt,
+                                            lender.approvedAt,
+                                            lender.passedAt,
+                                            lender.declinedAt,
+                                            lender.excludedAt,
+                                          ]}
+                                        />
                                     </div>
                                   </div>
                                   <Select
@@ -4811,22 +4817,6 @@ export default function DealDetail() {
                                 <div className="ml-2 mt-2 space-y-1">
                                   <div className="flex items-start gap-2">
                                     <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
-                                    <LenderNoteTimestamp
-                                      updatedAt={lender.notesUpdatedAt}
-                                      additionalDates={[
-                                        lender.lastStatusChangeAt,
-                                        lender.updatedAt,
-                                        lender.submittedAt,
-                                        lender.onDeckAt,
-                                        lender.onHoldAt,
-                                        lender.approvedAt,
-                                        lender.passedAt,
-                                        lender.declinedAt,
-                                        lender.excludedAt,
-                                      ]}
-                                      noteCount={(lender.notesHistory?.length || 0) + (lender.notes ? 1 : 0)}
-                                      className="mt-1.5"
-                                    />
                                     <LenderNotesField
                                       lenderId={lender.id}
                                       initialValue={lender.notes || ''}
@@ -5028,14 +5018,20 @@ export default function DealDetail() {
                                               >
                                                 {lender.name}
                                               </button>
-                                               {renderLenderStatusDate(lender) ?? (() => {
-                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                                 return timeInfo.text ? (
-                                                   <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                                     {timeInfo.text}
-                                                   </span>
-                                                 ) : null;
-                                               })()}
+                                               <LenderNoteTimestamp
+                                                 updatedAt={lender.notesUpdatedAt}
+                                                 additionalDates={[
+                                                   lender.lastStatusChangeAt,
+                                                   lender.updatedAt,
+                                                   lender.submittedAt,
+                                                   lender.onDeckAt,
+                                                   lender.onHoldAt,
+                                                   lender.approvedAt,
+                                                   lender.passedAt,
+                                                   lender.declinedAt,
+                                                   lender.excludedAt,
+                                                 ]}
+                                               />
                                             </div>
                                           </div>
                                           <Select
@@ -5191,22 +5187,6 @@ export default function DealDetail() {
                                         <div className="ml-2 mt-2 space-y-1">
                                           <div className="flex items-start gap-2">
                                             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
-                                            <LenderNoteTimestamp
-                                              updatedAt={lender.notesUpdatedAt}
-                                              additionalDates={[
-                                                lender.lastStatusChangeAt,
-                                                lender.updatedAt,
-                                                lender.submittedAt,
-                                                lender.onDeckAt,
-                                                lender.onHoldAt,
-                                                lender.approvedAt,
-                                                lender.passedAt,
-                                                lender.declinedAt,
-                                                lender.excludedAt,
-                                              ]}
-                                              noteCount={(lender.notesHistory?.length || 0) + (lender.notes ? 1 : 0)}
-                                              className="mt-1.5"
-                                            />
                                             <LenderNotesField
                                               lenderId={lender.id}
                                               initialValue={lender.notes || ''}
