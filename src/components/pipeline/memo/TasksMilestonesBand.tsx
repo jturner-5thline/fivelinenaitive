@@ -222,7 +222,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-[hsl(220,25%,10%)] text-white/70 hover:text-white hover:border-primary/60 hover:bg-[hsl(220,25%,14%)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Plus className="h-3.5 w-3.5" />
     </button>
