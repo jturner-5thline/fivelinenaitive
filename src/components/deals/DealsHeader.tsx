@@ -27,22 +27,29 @@ import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 import { useMyTasks } from '@/hooks/useTasks';
+import { lazyRetry } from '@/lib/lazyRetry';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
 // the real component's chunk + data hydrate in the background.
-const loadDashboard = () =>
-  import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal }));
-const loadTasks = () =>
-  import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay }));
-const loadCalendar = () =>
-  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
-const loadMail = () =>
-  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }));
-const loadDailyBriefing = () =>
-  import('@/components/dashboard/DailyBriefingModal').then((m) => ({ default: m.DailyBriefingModal }));
-const loadDealsOverlay = () =>
-  import('@/components/deals/DealsOverlay').then((m) => ({ default: m.DealsOverlay }));
+const loadDashboard = lazyRetry(() =>
+  import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal })),
+);
+const loadTasks = lazyRetry(() =>
+  import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay })),
+);
+const loadCalendar = lazyRetry(() =>
+  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView })),
+);
+const loadMail = lazyRetry(() =>
+  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog })),
+);
+const loadDailyBriefing = lazyRetry(() =>
+  import('@/components/dashboard/DailyBriefingModal').then((m) => ({ default: m.DailyBriefingModal })),
+);
+const loadDealsOverlay = lazyRetry(() =>
+  import('@/components/deals/DealsOverlay').then((m) => ({ default: m.DealsOverlay })),
+);
 
 const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
