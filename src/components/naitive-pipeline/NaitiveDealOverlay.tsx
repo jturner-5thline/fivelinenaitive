@@ -194,7 +194,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       setIsClosing(false);
       closingDealIdRef.current = null;
     }
-    if (lastAnimatedDealId.current === deal.id) return;
+    // NOTE: we intentionally do NOT early-return when the effect re-runs
+    // for the same deal.id. In React strict mode (and on any parent
+    // remount) the previous effect's cleanup cancels the release rAFs,
+    // and an early-return here would leave `originTransform` stuck at
+    // the tile's scale — the panel would then render permanently at the
+    // tile's size. Fall through so the release path re-arms.
     // Carousel navigation between sibling deals: skip the expand-from-tile
     // shell animation entirely. The shell stays visually pinned and only
     // the inner content wrapper slides horizontally (handled by the
