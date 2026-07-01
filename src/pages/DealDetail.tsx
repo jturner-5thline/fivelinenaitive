@@ -4602,14 +4602,20 @@ export default function DealDetail() {
                                       >
                                         {lender.name}
                                       </button>
-                                        {renderLenderStatusDate(lender) ?? (() => {
-                                          const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                          return timeInfo.text ? (
-                                            <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                              {timeInfo.text}
-                                            </span>
-                                          ) : null;
-                                        })()}
+                                        <LenderNoteTimestamp
+                                          updatedAt={lender.notesUpdatedAt}
+                                          additionalDates={[
+                                            lender.lastStatusChangeAt,
+                                            lender.updatedAt,
+                                            lender.submittedAt,
+                                            lender.onDeckAt,
+                                            lender.onHoldAt,
+                                            lender.approvedAt,
+                                            lender.passedAt,
+                                            lender.declinedAt,
+                                            lender.excludedAt,
+                                          ]}
+                                        />
                                     </div>
                                   </div>
                                   <Select
@@ -5028,14 +5034,20 @@ export default function DealDetail() {
                                               >
                                                 {lender.name}
                                               </button>
-                                               {renderLenderStatusDate(lender) ?? (() => {
-                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                                 return timeInfo.text ? (
-                                                   <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                                     {timeInfo.text}
-                                                   </span>
-                                                 ) : null;
-                                               })()}
+                                               <LenderNoteTimestamp
+                                                 updatedAt={lender.notesUpdatedAt}
+                                                 additionalDates={[
+                                                   lender.lastStatusChangeAt,
+                                                   lender.updatedAt,
+                                                   lender.submittedAt,
+                                                   lender.onDeckAt,
+                                                   lender.onHoldAt,
+                                                   lender.approvedAt,
+                                                   lender.passedAt,
+                                                   lender.declinedAt,
+                                                   lender.excludedAt,
+                                                 ]}
+                                               />
                                             </div>
                                           </div>
                                           <Select
