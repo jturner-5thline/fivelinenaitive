@@ -83,10 +83,13 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
 
   // Team meetings: broad window around the visible range so week nav
   // doesn't re-trigger network requests.
-  const teamRange = useMemo(() => ({
-    start: addDays(windowStart, -28),
-    end: addDays(windowStart, 56),
-  }), [windowStart]);
+  // Anchor to today (not windowStart) so paging through weeks keeps the
+  // same query key and the request only fires once per deal view.
+  const teamRange = useMemo(() => {
+    const today = defaultWindowStart();
+    return { start: addDays(today, -56), end: addDays(today, 84) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deal.id]);
   const { data: teamEvents = [] } = useDealTeamCalendarEvents(deal.id, teamRange);
 
   // Add / edit form
