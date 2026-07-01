@@ -1916,16 +1916,28 @@ function prettifyChangeValue(raw: unknown): string {
   if (typeof raw === "boolean") return raw ? "Completed" : "Not Completed";
   const s = String(raw).trim();
   if (!s) return "";
-  // Convert snake/kebab case → Title Case ("on_hold" → "On Hold")
+  // Convert snake/kebab case → Title Case ("on_hold" → "On Hold",
+  // "reviewing-drl" → "Reviewing DRL"). Preserve tokens already containing
+  // uppercase letters (e.g. "IOI", "LOI") so we don't downcase acronyms.
+  const ACRONYMS = new Set([
+    "drl","dm","ioi","loi","lp","gp","vc","pe","dd","kyc","kpi","mrr","arr",
+    "sla","poc","rfp","rfi","nda","msa","sow","po","qbr","cfo","ceo","cto",
+    "coo","cro","cmo","vp","svp","evp","us","usa","uk","eu","ai","api","sdk",
+    "sql","erp","crm","hr","it","io","saas","paas","iaas","b2b","b2c","tam",
+    "sam","som","yoy","mom","qoq","ytd","mtd","qtd","ebit","ebitda","ltv","cac"
+  ]);
   const cleaned = s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
-  // Title-case unless it already has mixed/uppercase letters (preserve casing).
-  if (/^[a-z\s]+$/.test(cleaned)) {
-    return cleaned
-      .split(" ")
-      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
-      .join(" ");
-  }
-  return cleaned;
+  return cleaned
+    .split(" ")
+    .map((w) => {
+      if (!w) return w;
+      const lower = w.toLowerCase();
+      if (ACRONYMS.has(lower)) return lower.toUpperCase();
+      // Preserve tokens that already have uppercase mixed in.
+      if (/[A-Z]/.test(w) && w !== w.toUpperCase()) return w;
+      return lower[0].toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
 }
 
 function valuesDiffer(a: unknown, b: unknown): boolean {
