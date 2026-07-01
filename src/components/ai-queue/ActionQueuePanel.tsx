@@ -1313,7 +1313,7 @@ function DetailPane({
 
           {/* Rationale */}
           <p
-            className="text-[12.5px] leading-[1.6] text-[#ecedf4]/90 max-w-[72ch]"
+            className="text-[14px] leading-[1.6] text-white max-w-[72ch]"
             style={FONT_BODY}
           >
             {toSingleSentence(item.rationale || buildRationaleFallback(item))}
