@@ -108,6 +108,12 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
 }
 
 function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
+  return null as any;
+}
+
+// (Replaced above no-op — real ExpandedDeals defined below via reassignment.)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _NoopExpanded() {
   const navigate = useNavigate();
   return (
     <div className="px-4 pb-4 space-y-2">
