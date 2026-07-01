@@ -20,6 +20,7 @@ import {
   LENDER_STAGE_CONFIG,
   LENDER_TRACKING_STATUS_CONFIG,
 } from '@/types/deal';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 import {
   X,
   Inbox as InboxIcon,
@@ -290,7 +291,7 @@ function expiryDaysLabel(item: QueuedAiAction): string {
 function getFieldOptions(
   key: string,
   item: QueuedAiAction,
-  lookups: { stages?: Record<string, string>; pipelines?: Record<string, string> },
+  lookups: { stages?: Record<string, string>; pipelines?: Record<string, string>; lenderStages?: Array<{ id: string; label: string }> },
 ): Array<{ value: string; label: string }> | null {
   const targetType = (item as any).target_object_type as string | undefined;
   const isLenderCtx =
@@ -306,8 +307,15 @@ function getFieldOptions(
     case 'stage':
     case 'stage_id': {
       // For funding source / lender rows, `stage` is the lender pipeline
-      // stage (Reviewing DRL, Management Call Set, etc.) — NOT the deal stage.
-      if (isLenderCtx) return toOpts(LENDER_STAGE_CONFIG);
+      // stage — pull from the company-configured lender stages (which include
+      // On Deck, Reviewing DRL, Terms Issued, Passed, etc.), NOT the deal stages.
+      if (isLenderCtx) {
+        const configured = lookups.lenderStages ?? [];
+        if (configured.length > 0) {
+          return configured.map((s) => ({ value: s.id, label: s.label }));
+        }
+        return toOpts(LENDER_STAGE_CONFIG);
+      }
       // Prefer live pipeline stages when available; fall back to STAGE_CONFIG.
       const stageMap = lookups.stages ?? {};
       const entries = Object.entries(stageMap);
@@ -338,6 +346,10 @@ function getFieldOptions(
     case 'lender_status':
     case 'funding_source_status': {
       if (isLenderCtx || key === 'lender_status' || key === 'funding_source_status') {
+        const configured = lookups.lenderStages ?? [];
+        if (configured.length > 0) {
+          return configured.map((s) => ({ value: s.id, label: s.label }));
+        }
         return toOpts(LENDER_STAGE_CONFIG);
       }
       return null;
@@ -1139,6 +1151,7 @@ function DetailPane({
   const navigate = useNavigate();
   // Lookup tables to resolve raw UUIDs (stage_id, pipeline_id) into labels.
   const { pipelines } = usePipelineContext();
+  const { stages: lenderStagesConfigured } = useLenderStages();
   const lookups = useMemo(() => {
     const stages: Record<string, string> = {};
     const pipelinesMap: Record<string, string> = {};
@@ -1146,8 +1159,12 @@ function DetailPane({
       pipelinesMap[p.id] = p.name;
       for (const s of p.stages ?? []) stages[s.id] = s.label;
     }
-    return { stages, pipelines: pipelinesMap };
-  }, [pipelines]);
+    return {
+      stages,
+      pipelines: pipelinesMap,
+      lenderStages: (lenderStagesConfigured ?? []).map((s) => ({ id: s.id, label: s.label })),
+    };
+  }, [pipelines, lenderStagesConfigured]);
   const dealId = (item as any).deal_id as string | undefined;
   const targetObjectId = (item as any).target_object_id as string | undefined;
   const isFundingSource =
