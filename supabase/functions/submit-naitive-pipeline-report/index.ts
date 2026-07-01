@@ -9,12 +9,32 @@ const corsHeaders = {
 
 const FIFTH_LINE_COMPANY_ID = "44556c46-9127-4b12-b14e-d6fee784afcf";
 
-const RECIPIENTS = [
-  "ppina@5thline.co",
+// Default recipients — always included in every 5th Line pipeline report
+// email. Clients may pass additional recipients via `recipients` in the body;
+// the defaults are re-added server-side so they can never be removed.
+const DEFAULT_RECIPIENTS = [
   "jturner@5thline.co",
-  "ffustinoni@5thline.co",
   "jmoffitt@5thline.co",
+  "swilliams@5thline.co",
+  "mclark@5thline.co",
 ];
+
+const EMAIL_RE = /^[A-Za-z0-9._%+\-!#$&'*/=?^`{|}~]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/;
+
+function normalizeRecipients(input: unknown): string[] {
+  const list = Array.isArray(input) ? input : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list) {
+    if (typeof raw !== "string") continue;
+    const clean = raw.trim().toLowerCase();
+    if (!clean || clean.length > 254 || !EMAIL_RE.test(clean)) continue;
+    if (seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+  }
+  return out;
+}
 
 /**
  * Canonical app base URL for links embedded in outbound emails.
@@ -116,7 +136,15 @@ Deno.serve(async (req) => {
       period_key = null,
       period_label = null,
       snapshot = {},
+      recipients: recipientsIn = [],
     } = body || {};
+
+    // Always start with defaults, then union with any valid client-supplied
+    // extras. Defaults can never be dropped.
+    const extras = normalizeRecipients(recipientsIn).filter(
+      (e) => !DEFAULT_RECIPIENTS.includes(e),
+    );
+    const recipients = [...DEFAULT_RECIPIENTS, ...extras];
 
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -153,7 +181,7 @@ Deno.serve(async (req) => {
         submitted_by: user.id,
         submitter_name: submitterName,
         submitter_email: submitterEmail,
-        recipients: RECIPIENTS,
+        recipients,
         period_type,
         period_key,
         period_label,
@@ -214,7 +242,7 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             from: buildFrom("Naitive"),
-            to: RECIPIENTS,
+            to: recipients,
             subject: "Your naitive Pipeline Report",
             html,
             text:
