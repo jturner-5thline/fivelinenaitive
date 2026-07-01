@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Users, DollarSign, FileCheck, FileSignature, FileText, ClipboardCheck,
-  Coins, ScrollText, Handshake, Banknote, LayoutGrid, Table as TableIcon,
+  Coins, ScrollText, Handshake, Banknote, Briefcase, LayoutGrid, Table as TableIcon,
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
@@ -951,7 +951,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'deals-on-board',
           title: 'Deals on the Board',
-          icon: Users,
+          icon: Briefcase,
           value: m.ndaNeedsList.count,
           isLoading: m.ndaNeedsList.isLoading,
           deals: m.ndaNeedsList.deals,
@@ -962,7 +962,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'proposals-issued',
           title: 'Proposals Issued',
-          icon: FileText,
+          icon: Briefcase,
           value: m.proposalsIssued.count,
           isLoading: m.proposalsIssued.isLoading,
           deals: m.proposalsIssued.deals,
@@ -973,7 +973,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'debt-deals-signed',
           title: 'Debt Deals Signed',
-          icon: FileSignature,
+          icon: Briefcase,
           value: m.finalCreditItems.count,
           isLoading: m.finalCreditItems.isLoading,
           deals: m.finalCreditItems.deals,
@@ -984,7 +984,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'terms-issued',
           title: 'Terms Issued',
-          icon: ScrollText,
+          icon: Briefcase,
           value: m.termsIssued.count,
           isLoading: m.termsIssued.isLoading,
           deals: m.termsIssued.deals,
@@ -995,7 +995,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'terms-signed',
           title: 'Terms Signed',
-          icon: Handshake,
+          icon: Briefcase,
           value: m.inDueDiligence.count,
           isLoading: m.inDueDiligence.isLoading,
           deals: m.inDueDiligence.deals,
@@ -1006,7 +1006,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'deals-closed',
           title: 'Deals Closed',
-          icon: FileSignature,
+          icon: Briefcase,
           value: m.fundedInvoicedOnly.count,
           isLoading: m.fundedInvoicedOnly.isLoading,
           deals: m.fundedInvoicedOnly.deals,
