@@ -11,9 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil, Search, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
+import { Input } from '@/components/ui/input';
+import { useTriStateSort } from '@/hooks/useTriStateSort';
 
 const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
@@ -138,6 +140,8 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
+  const [search, setSearch] = useState('');
+  const { sortField, sortDir, handleSort } = useTriStateSort({ field: 'totalVolume', direction: 'desc' });
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
     channelFilter,
@@ -190,11 +194,50 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
         return !!t && tierFilter.includes(t as TierValue);
       });
     }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(r =>
+        r.referredBy.toLowerCase().includes(q) ||
+        (r.companyName || '').toLowerCase().includes(q) ||
+        (r.channelType || '').toLowerCase().includes(q) ||
+        (r.latestDeal.company || '').toLowerCase().includes(q) ||
+        (r.latestDeal.stage || '').toLowerCase().includes(q)
+      );
+    }
     return list;
-  }, [referralSources, companyFilter, tierFilter, tierLookup]);
+  }, [referralSources, companyFilter, tierFilter, tierLookup, search]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0;
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); };
+  const sortedSources = useMemo(() => {
+    if (!sortField || !sortDir) return filteredSources;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const tierRank = (t: string | null) => {
+      if (t === 'Tier 1') return 1;
+      if (t === 'Tier 2') return 2;
+      if (t === 'Tier 3') return 3;
+      return 99;
+    };
+    const val = (r: DealReferralSourceEntry): string | number => {
+      switch (sortField) {
+        case 'referredBy': return r.referredBy.toLowerCase();
+        case 'companyName': return (r.companyName || '').toLowerCase();
+        case 'channelType': return (r.channelType || '').toLowerCase();
+        case 'tier': return tierRank(getTier(r));
+        case 'dealCount': return r.dealCount;
+        case 'totalVolume': return r.totalVolume;
+        case 'latestDeal': return (r.latestDeal.company || '').toLowerCase();
+        case 'stage': return (r.latestDeal.stage || '').toLowerCase();
+        default: return 0;
+      }
+    };
+    return [...filteredSources].sort((a, b) => {
+      const av = val(a); const bv = val(b);
+      if (typeof av === 'string' && typeof bv === 'string') return av.localeCompare(bv) * dir;
+      return ((av as number) - (bv as number)) * dir;
+    });
+  }, [filteredSources, sortField, sortDir, tierLookup]);
+
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
 
   if (isLoading) {
     return (
