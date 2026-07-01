@@ -1152,6 +1152,9 @@ export default function Dashboard() {
                     tr[data-deal-open-id="${selectedId}"] > td {
                       box-shadow: inset 0 0 0 1px rgba(155,111,212,.55), 0 8px 24px -12px rgba(155,111,212,.45) !important;
                     }
+                    div[data-deal-open-id="${selectedId}"] {
+                      box-shadow: inset 0 0 0 1px rgba(155,111,212,.55), 0 8px 24px -12px rgba(155,111,212,.45) !important;
+                    }
                   `}</style>
                 </div>
               ) : null}
