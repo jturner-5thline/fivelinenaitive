@@ -1030,7 +1030,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'dollars-proposed',
           title: 'Dollars Proposed',
-          icon: Coins,
+          icon: DollarSign,
           value: formatCurrency(m.proposalsIssued.dollarVolume),
           isLoading: m.proposalsIssued.isLoading,
           deals: m.proposalsIssued.deals,
@@ -1041,7 +1041,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'debt-dollar-signed',
           title: 'Debt $ Signed',
-          icon: Banknote,
+          icon: DollarSign,
           value: formatCurrency(m.finalCreditItems.dollarVolume),
           isLoading: m.finalCreditItems.isLoading,
           deals: m.finalCreditItems.deals,
@@ -1063,7 +1063,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'terms-signed-dollars',
           title: 'Terms Signed $',
-          icon: ClipboardCheck,
+          icon: DollarSign,
           value: formatCurrency(m.inDueDiligence.dollarVolume),
           isLoading: m.inDueDiligence.isLoading,
           deals: m.inDueDiligence.deals,
@@ -1074,7 +1074,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'dollars-funded',
           title: 'Dollars Funded',
-          icon: Banknote,
+          icon: DollarSign,
           value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
           isLoading: m.fundedInvoicedOnly.isLoading,
           deals: m.fundedInvoicedOnly.deals,
