@@ -96,7 +96,14 @@ import { DealDataUpdateBanner } from '@/components/deal/DealDataUpdateBanner';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
-const LenderDirectoryDialog = lazy(() => import('@/components/deal/LenderDirectoryDialog').then(m => ({ default: m.LenderDirectoryDialog })));
+import { lazyRetry } from '@/lib/lazyRetry';
+const LenderDirectoryDialog = lazy(
+  lazyRetry(() =>
+    import('@/components/deal/LenderDirectoryDialog').then(m => ({
+      default: m.LenderDirectoryDialog,
+    })),
+  ),
+);
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
 import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
