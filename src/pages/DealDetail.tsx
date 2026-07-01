@@ -5477,8 +5477,8 @@ export default function DealDetail() {
       {/* Lender Detail Dialog */}
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60">
-            <DialogTitle className="flex items-center gap-2 text-lg">
+          <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60 relative">
+            <DialogTitle className="flex items-center gap-2 text-lg pr-40">
               {(() => {
                 const ml = masterLenders.find(
                   (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
@@ -5501,43 +5501,43 @@ export default function DealDetail() {
                 );
               })()}
               <LenderFlagIndicator lenderName={selectedLenderName || ''} />
-              {(() => {
-                const lenderList = deal?.lenders || [];
-                const idx = lenderList.findIndex(l => l.name === selectedLenderName);
-                if (lenderList.length < 2 || idx < 0) return null;
-                const goPrev = () => {
-                  const prev = lenderList[(idx - 1 + lenderList.length) % lenderList.length];
-                  if (prev) setSelectedLenderName(prev.name);
-                };
-                const goNext = () => {
-                  const next = lenderList[(idx + 1) % lenderList.length];
-                  if (next) setSelectedLenderName(next.name);
-                };
-                return (
-                  <div className="flex items-center gap-1 ml-2">
-                    <button
-                      type="button"
-                      onClick={goPrev}
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                      title="Previous funding source"
-                    >
-                      <ChevronLeft className="h-8 w-8" />
-                    </button>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {idx + 1}/{lenderList.length}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={goNext}
-                      className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                      title="Next funding source"
-                    >
-                      <ChevronRight className="h-8 w-8" />
-                    </button>
-                  </div>
-                );
-              })()}
             </DialogTitle>
+            {(() => {
+              const lenderList = deal?.lenders || [];
+              const idx = lenderList.findIndex(l => l.name === selectedLenderName);
+              if (lenderList.length < 2 || idx < 0) return null;
+              const goPrev = () => {
+                const prev = lenderList[(idx - 1 + lenderList.length) % lenderList.length];
+                if (prev) setSelectedLenderName(prev.name);
+              };
+              const goNext = () => {
+                const next = lenderList[(idx + 1) % lenderList.length];
+                if (next) setSelectedLenderName(next.name);
+              };
+              return (
+                <div className="absolute right-14 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                    title="Previous funding source"
+                  >
+                    <ChevronLeft className="h-8 w-8" />
+                  </button>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {idx + 1}/{lenderList.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                    title="Next funding source"
+                  >
+                    <ChevronRight className="h-8 w-8" />
+                  </button>
+                </div>
+              );
+            })()}
           </DialogHeader>
           {selectedLenderName && (() => {
             // Look up lender from the master lenders directory (database), with direct-fetch fallback
