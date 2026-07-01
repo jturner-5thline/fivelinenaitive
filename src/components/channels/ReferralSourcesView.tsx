@@ -11,9 +11,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil } from 'lucide-react';
+import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil, Search, ArrowUp, ArrowDown, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
+import { Input } from '@/components/ui/input';
+import { useTriStateSort } from '@/hooks/useTriStateSort';
 
 const CHANNEL_OPTIONS = [
   { value: 'Banks', label: 'Banks' },
@@ -105,6 +107,37 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
+function SortHeaderCell({
+  field,
+  sortField,
+  sortDir,
+  onSort,
+  align = 'left',
+  children,
+}: {
+  field: string;
+  sortField: string | null;
+  sortDir: 'asc' | 'desc' | null;
+  onSort: (f: string) => void;
+  align?: 'left' | 'right';
+  children: React.ReactNode;
+}) {
+  const active = sortField === field && !!sortDir;
+  const Icon = !active ? ChevronsUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <th className={`p-3 text-muted-foreground font-medium ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${active ? 'text-foreground' : ''} ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      >
+        <span>{children}</span>
+        <Icon className={`h-3 w-3 ${active ? 'opacity-100' : 'opacity-40'}`} />
+      </button>
+    </th>
+  );
+}
+
 function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
   const navigate = useNavigate();
   return (
@@ -138,6 +171,8 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
+  const [search, setSearch] = useState('');
+  const { sortField, sortDir, handleSort } = useTriStateSort({ field: 'totalVolume', direction: 'desc' });
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
     channelFilter,
@@ -190,11 +225,50 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
         return !!t && tierFilter.includes(t as TierValue);
       });
     }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(r =>
+        r.referredBy.toLowerCase().includes(q) ||
+        (r.companyName || '').toLowerCase().includes(q) ||
+        (r.channelType || '').toLowerCase().includes(q) ||
+        (r.latestDeal.company || '').toLowerCase().includes(q) ||
+        (r.latestDeal.stage || '').toLowerCase().includes(q)
+      );
+    }
     return list;
-  }, [referralSources, companyFilter, tierFilter, tierLookup]);
+  }, [referralSources, companyFilter, tierFilter, tierLookup, search]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0;
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); };
+  const sortedSources = useMemo(() => {
+    if (!sortField || !sortDir) return filteredSources;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const tierRank = (t: string | null) => {
+      if (t === 'Tier 1') return 1;
+      if (t === 'Tier 2') return 2;
+      if (t === 'Tier 3') return 3;
+      return 99;
+    };
+    const val = (r: DealReferralSourceEntry): string | number => {
+      switch (sortField) {
+        case 'referredBy': return r.referredBy.toLowerCase();
+        case 'companyName': return (r.companyName || '').toLowerCase();
+        case 'channelType': return (r.channelType || '').toLowerCase();
+        case 'tier': return tierRank(getTier(r));
+        case 'dealCount': return r.dealCount;
+        case 'totalVolume': return r.totalVolume;
+        case 'latestDeal': return (r.latestDeal.company || '').toLowerCase();
+        case 'stage': return (r.latestDeal.stage || '').toLowerCase();
+        default: return 0;
+      }
+    };
+    return [...filteredSources].sort((a, b) => {
+      const av = val(a); const bv = val(b);
+      if (typeof av === 'string' && typeof bv === 'string') return av.localeCompare(bv) * dir;
+      return ((av as number) - (bv as number)) * dir;
+    });
+  }, [filteredSources, sortField, sortDir, tierLookup]);
+
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0 || search.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); setSearch(''); };
 
   if (isLoading) {
     return (
@@ -265,6 +339,25 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
             onChange={setCompanyFilter}
           />
         )}
+
+        <div className="relative ml-auto">
+          <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sources…"
+            className="h-7 pl-7 pr-7 text-xs w-52 bg-white/[0.03] border-white/[0.08]"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
 
         {hasActiveFilters && (
           <Button
@@ -349,9 +442,9 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
       ) : (
         <div className={`${glassCard} overflow-hidden`}>
           <div className="relative z-10 p-4 border-b border-white/[0.06]">
-            <h3 className="text-sm font-medium text-foreground">Referral Sources — Sorted by Volume</h3>
+            <h3 className="text-sm font-medium text-foreground">Referral Sources</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {filteredSources.length} source{filteredSources.length !== 1 ? 's' : ''} · Click any row to expand deals
+              {sortedSources.length} source{sortedSources.length !== 1 ? 's' : ''} · Click headers to sort · Click any row to expand deals
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -359,19 +452,19 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
               <thead>
                 <tr className="border-b border-white/[0.06] bg-[hsl(260,18%,12%,0.4)] backdrop-blur-sm">
                   <th className="text-left p-3 text-muted-foreground font-medium w-8"></th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Tier</th>
-                  <th className="text-right p-3 text-muted-foreground font-medium">Deals</th>
-                  <th className="text-right p-3 text-muted-foreground font-medium">Volume</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Latest Deal</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Stage</th>
+                  <SortHeaderCell field="referredBy" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Referral Source</SortHeaderCell>
+                  <SortHeaderCell field="companyName" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Company</SortHeaderCell>
+                  <SortHeaderCell field="channelType" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Channel</SortHeaderCell>
+                  <SortHeaderCell field="tier" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Tier</SortHeaderCell>
+                  <SortHeaderCell field="dealCount" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Deals</SortHeaderCell>
+                  <SortHeaderCell field="totalVolume" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Volume</SortHeaderCell>
+                  <SortHeaderCell field="latestDeal" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Latest Deal</SortHeaderCell>
+                  <SortHeaderCell field="stage" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Stage</SortHeaderCell>
                   <th className="text-right p-3 text-muted-foreground font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSources.map((entry) => {
+                {sortedSources.map((entry) => {
                   const isExpanded = expandedId === entry.referredBy;
                   return (
                     <React.Fragment key={entry.referredBy}>
