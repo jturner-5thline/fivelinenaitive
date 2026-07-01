@@ -608,10 +608,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
   };
 
   return (
-    <div className="px-5 py-3 bg-white/[0.03] border-b border-white/[0.08]">
+    <div className="px-5 py-3 bg-gradient-to-br from-[hsl(220,30%,9%)] to-[hsl(260,15%,5%)] border-b border-white/10">
       <div className="w-full min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-2 min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 shrink-0 truncate">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white shrink-0 truncate">
           Tasks & milestones
         </div>
         <div
@@ -639,7 +639,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                   'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                   selected
                     ? 'border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary'
-                    : 'border-border/60 bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border'
+                    : 'border-white/15 bg-white/[0.04] text-white/75 hover:text-white hover:bg-white/[0.08] hover:border-white/25'
                 )}
               >
                 {f.label}
@@ -650,7 +650,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       </div>
 
       {!hasContent ? (
-        <p className="text-xs italic text-muted-foreground">
+        <p className="text-xs italic text-white/60">
           {activeFilter
             ? `No ${
                 activeFilter === 'task'
@@ -666,7 +666,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
           className={cn(
             'relative -mr-1 pr-1',
             isScrollable &&
-              'max-h-[5.25rem] overflow-y-auto rounded-md ring-1 ring-border/50 bg-background/30 p-1 tasks-scroll-shell'
+              'max-h-[5.25rem] overflow-y-auto rounded-md ring-1 ring-white/10 bg-black/30 p-1 tasks-scroll-shell'
           )}
         >
         <div className="space-y-1.5">
