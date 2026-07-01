@@ -45,7 +45,7 @@ import { StagedDraftsPanel } from './StagedDraftsPanel';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   buildOutcomeSentence,
-  buildOnApproveSentence,
+  // buildOnApproveSentence removed — intent now conveyed via the item title
   approveButtonLabel,
   targetSummary,
   buildRationaleFallback,
@@ -1044,7 +1044,6 @@ function DetailPane({
 }) {
   const meta = TYPE_META[item.action_type];
   const target = targetSummary(item);
-  const onApproveSentence = buildOnApproveSentence(item);
   const outcome = buildOutcomeSentence(item);
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
@@ -1306,27 +1305,6 @@ function DetailPane({
                 {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                 {approveButtonLabel(item, editedCount > 0)}
               </button>
-            </div>
-          </div>
-
-          {/* On-approve summary strip — tinted, no border, high-contrast body */}
-          <div
-            className="rounded-md px-3.5 py-2.5"
-            style={{ background: 'rgba(94,205,245,0.07)' }}
-          >
-            <div className="flex items-baseline gap-2.5">
-              <span
-                className="text-[10px] uppercase tracking-[0.12em] text-[#5ecdf5] font-semibold shrink-0"
-                style={FONT_BODY}
-              >
-                On approve
-              </span>
-              <p
-                className="text-[13px] leading-[1.45] text-[#f7f8fc]"
-                style={FONT_BODY}
-              >
-                {onApproveSentence}
-              </p>
             </div>
           </div>
 
