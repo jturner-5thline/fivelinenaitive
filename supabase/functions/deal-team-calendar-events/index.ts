@@ -93,7 +93,7 @@ serve(async (req: Request): Promise<Response> => {
     // Fetch deal
     const { data: deal, error: dealErr } = await supabase
       .from("deals")
-      .select("id, company_name, company_url")
+      .select("id, company, company_url")
       .eq("id", body.deal_id)
       .maybeSingle();
     if (dealErr || !deal) {
@@ -102,7 +102,7 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    const companyName = ((deal as any).company_name || "").trim();
+    const companyName = ((deal as any).company || "").trim();
     const companyDomain = normalizeUrlToDomain((deal as any).company_url);
     const domainMatchable = companyDomain && !FREE_PROVIDERS.has(companyDomain) ? companyDomain : null;
     const nameMatchable = companyName && companyName.length >= 3 ? companyName.toLowerCase() : null;
