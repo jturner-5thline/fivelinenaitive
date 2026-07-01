@@ -35,7 +35,11 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    // Prefer the connector-managed key (RESEND_API_KEY_1); fall back to the
+    // legacy RESEND_API_KEY secret. Matches the pattern used by
+    // notify-comment-mentions and avoids stale/rotated-key failures.
+    const RESEND_API_KEY =
+      Deno.env.get("RESEND_API_KEY_1") ?? Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
         status: 500,
