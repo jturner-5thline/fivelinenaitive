@@ -1528,6 +1528,20 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+
+  // Required status note dialog on stage changes (non-passed)
+  const [pendingStageNoteChange, setPendingStageNoteChange] = useState<{
+    lenderId: string;
+    lenderName: string;
+    fromLabel: string;
+    toLabel: string;
+    apply: (statusNote: string) => void;
+  } | null>(null);
+  const [pendingStageNoteText, setPendingStageNoteText] = useState('');
+
+  useEffect(() => {
+    setPendingStageNoteText('');
+  }, [pendingStageNoteChange?.lenderId, pendingStageNoteChange?.toLabel]);
   
   // Term Sheet milestone confirmation dialog state
   const [termSheetMilestoneDialogOpen, setTermSheetMilestoneDialogOpen] = useState(false);
@@ -2274,6 +2288,63 @@ export default function DealDetail() {
       ? `Lender passed due to ${passReason}`
       : undefined;
 
+    // Require a status note on all non-passed stage changes.
+    // 'passed' already collects a reason via its own dialog and generates autoNote.
+    if (newGroup !== 'passed' && lender) {
+      setPendingStageNoteChange({
+        lenderId,
+        lenderName: lender.name,
+        fromLabel: oldStage?.label || lender.stage || '—',
+        toLabel: targetStage?.label || newGroup,
+        apply: (statusNote: string) => {
+          const notesToSave = statusNote.trim();
+          withSavingAsync(`lender-stage-${lenderId}`, async () => {
+            try {
+              await updateLenderInDb(lenderId, {
+                ...(targetStage ? { stage: targetStage.id } : {}),
+                trackingStatus: newGroup,
+                passReason: null,
+                notes: notesToSave,
+              });
+            } catch (err) {
+              setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+              throw err;
+            }
+          });
+          logActivity('lender_stage_change', `${lender.name} stage changed`, {
+            lender_id: lender.id,
+            lender_name: lender.name,
+            from: oldStage?.label || lender.stage,
+            to: targetStage?.label || newGroup,
+            status_note: notesToSave,
+          });
+          setDeal(prev => {
+            if (!prev) return prev;
+            const updatedLenders = prev.lenders?.map(l =>
+              l.id === lenderId
+                ? { ...l, ...(targetStage ? { stage: targetStage.id as any } : {}), trackingStatus: newGroup, passReason: undefined, notes: notesToSave, updatedAt: new Date().toISOString() }
+                : l,
+            );
+            return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+          });
+          toast({
+            title: 'Stage updated',
+            description: `${lender.name} moved to ${targetStage?.label || newGroup}`,
+            action: (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+              >
+                Undo
+              </Button>
+            ),
+          });
+        },
+      });
+      return;
+    }
+
     // Persist to database with loading indicator
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
@@ -2361,6 +2432,65 @@ export default function DealDetail() {
     const autoNote = newGroup === 'passed' && passReason
       ? `Lender passed due to ${passReason}`
       : undefined;
+
+    // No-op if stage hasn't actually changed
+    if (lender && lender.stage === newStageId) return;
+
+    // Require a status note on non-passed stage transitions
+    if (newGroup !== 'passed' && lender) {
+      setPendingStageNoteChange({
+        lenderId,
+        lenderName: lender.name,
+        fromLabel: oldStage?.label || lender.stage || '—',
+        toLabel: targetStage.label,
+        apply: (statusNote: string) => {
+          const notesToSave = statusNote.trim();
+          withSavingAsync(`lender-stage-${lenderId}`, async () => {
+            try {
+              await updateLenderInDb(lenderId, {
+                stage: targetStage.id,
+                trackingStatus: newGroup,
+                passReason: null,
+                notes: notesToSave,
+              });
+            } catch (err) {
+              setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+              throw err;
+            }
+          });
+          logActivity('lender_stage_change', `${lender.name} stage changed`, {
+            lender_id: lender.id,
+            lender_name: lender.name,
+            from: oldStage?.label || lender.stage,
+            to: targetStage.label,
+            status_note: notesToSave,
+          });
+          setDeal(prev => {
+            if (!prev) return prev;
+            const updatedLenders = prev.lenders?.map(l =>
+              l.id === lenderId
+                ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: undefined, notes: notesToSave, updatedAt: new Date().toISOString() }
+                : l,
+            );
+            return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+          });
+          toast({
+            title: 'Stage updated',
+            description: `${lender.name} moved to ${targetStage.label}`,
+            action: (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+              >
+                Undo
+              </Button>
+            ),
+          });
+        },
+      });
+      return;
+    }
 
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
@@ -5475,6 +5605,50 @@ export default function DealDetail() {
       </div>
 
       {/* Lender Detail Dialog */}
+      {/* Required status note dialog on funding-source stage changes */}
+      <Dialog
+        open={!!pendingStageNoteChange}
+        onOpenChange={(open) => {
+          if (!open) setPendingStageNoteChange(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a status note</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Moving <span className="text-foreground font-medium">{pendingStageNoteChange?.lenderName}</span>{' '}
+              from <span className="text-foreground">{pendingStageNoteChange?.fromLabel}</span>{' '}
+              to <span className="text-foreground">{pendingStageNoteChange?.toLabel}</span>. A status note is required.
+            </p>
+            <Textarea
+              value={pendingStageNoteText}
+              onChange={(e) => setPendingStageNoteText(e.target.value)}
+              placeholder="What changed? (context, next steps, etc.)"
+              rows={4}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingStageNoteChange(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!pendingStageNoteText.trim()}
+              onClick={() => {
+                const change = pendingStageNoteChange;
+                if (!change || !pendingStageNoteText.trim()) return;
+                change.apply(pendingStageNoteText);
+                setPendingStageNoteChange(null);
+              }}
+            >
+              Save & update stage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60 relative">
