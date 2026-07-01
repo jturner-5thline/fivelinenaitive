@@ -1308,27 +1308,6 @@ function DetailPane({
             </div>
           </div>
 
-          {/* On-approve summary strip — tinted, no border, high-contrast body */}
-          <div
-            className="rounded-md px-3.5 py-2.5"
-            style={{ background: 'rgba(94,205,245,0.07)' }}
-          >
-            <div className="flex items-baseline gap-2.5">
-              <span
-                className="text-[10px] uppercase tracking-[0.12em] text-[#5ecdf5] font-semibold shrink-0"
-                style={FONT_BODY}
-              >
-                On approve
-              </span>
-              <p
-                className="text-[13px] leading-[1.45] text-[#f7f8fc]"
-                style={FONT_BODY}
-              >
-                {onApproveSentence}
-              </p>
-            </div>
-          </div>
-
           {/* Rationale */}
           <p
             className="text-[12.5px] leading-[1.6] text-[#ecedf4]/90 max-w-[72ch]"
