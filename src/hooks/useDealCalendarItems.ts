@@ -21,6 +21,7 @@ export interface DealCalendarItem {
 
 const qk = (dealId: string) => ['deal-calendar-items', dealId];
 const ck = (dealId: string) => ['deal-calendar-item-creators', dealId];
+const lsKey = (dealId: string) => `deal-calendar-items:${dealId}`;
 
 export interface DealCalendarCreator {
   user_id: string;
@@ -37,7 +38,19 @@ export function useDealCalendarItems(dealId: string | undefined) {
   const query = useQuery({
     queryKey: qk(dealId || 'none'),
     enabled: !!dealId,
-    staleTime: 30_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    initialData: (() => {
+      if (!dealId || typeof window === 'undefined') return undefined;
+      try {
+        const raw = window.localStorage.getItem(lsKey(dealId));
+        if (!raw) return undefined;
+        const parsed = JSON.parse(raw) as { items: DealCalendarItem[]; savedAt: number };
+        if (Date.now() - parsed.savedAt > 24 * 60 * 60_000) return undefined;
+        return parsed.items;
+      } catch { return undefined; }
+    })(),
+    initialDataUpdatedAt: 0,
     queryFn: async (): Promise<DealCalendarItem[]> => {
       const { data, error } = await supabase
         .from('deal_calendar_items')
@@ -45,7 +58,11 @@ export function useDealCalendarItems(dealId: string | undefined) {
         .eq('deal_id', dealId!)
         .order('date', { ascending: true });
       if (error) throw error;
-      return (data || []) as DealCalendarItem[];
+      const items = (data || []) as DealCalendarItem[];
+      if (dealId && typeof window !== 'undefined') {
+        try { window.localStorage.setItem(lsKey(dealId), JSON.stringify({ items, savedAt: Date.now() })); } catch { /* quota */ }
+      }
+      return items;
     },
   });
 
