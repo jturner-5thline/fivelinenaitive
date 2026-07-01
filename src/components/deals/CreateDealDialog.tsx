@@ -664,30 +664,6 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                 ) : <div />}
               </div>
 
-              {/* Row 3b (5th Line only): Referral source contact picker */}
-              {is5thLine && showReferral && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-1">
-                    <LabelWithBadge>Referral source</LabelWithBadge>
-                    <MultiContactPickerField
-                      id="referralContact"
-                      value={referralContacts}
-                      onChange={(list) => {
-                        const one = list.slice(-1);
-                        setReferralContacts(one);
-                        const first = one[0];
-                        setReferralName(first?.name || '');
-                        setReferralEmail(first?.email || '');
-                      }}
-                      placeholder="Select referral source (optional)"
-                      dialogTitle="Select referral source"
-                      dialogDescription="Pick a contact from the Contacts database or create a new one."
-                      addButtonLabel="Select referral"
-                    />
-                  </div>
-                  <div />
-                </div>
-              )}
 
               {/* Row 4: Deal stage | Deal status */}
               <div className="grid grid-cols-2 gap-2">
@@ -875,7 +851,27 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </Select>
                   </div>
                 ) : <div />}
-                <div />
+                {is5thLine && showReferral ? (
+                  <div className="grid gap-1">
+                    <LabelWithBadge>Referral source</LabelWithBadge>
+                    <MultiContactPickerField
+                      id="referralContact"
+                      value={referralContacts}
+                      onChange={(list) => {
+                        const one = list.slice(-1);
+                        setReferralContacts(one);
+                        const first = one[0];
+                        setReferralName(first?.name || '');
+                        setReferralEmail(first?.email || '');
+                      }}
+                      placeholder="Select referral source (optional)"
+                      dialogTitle="Select referral source"
+                      dialogDescription="Pick a contact from the Contacts database or create a new one."
+                      addButtonLabel="Select referral"
+                      className={createDealDropdownTriggerClass}
+                    />
+                  </div>
+                ) : <div />}
               </div>
 
               {sortedMilestones.length > 0 && (
