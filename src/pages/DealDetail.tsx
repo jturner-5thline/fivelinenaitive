@@ -687,6 +687,35 @@ export default function DealDetail() {
     window.addEventListener('naitive:open-status-report', handler as EventListener);
     return () => window.removeEventListener('naitive:open-status-report', handler as EventListener);
   }, [id]);
+
+  // Prefetch every tab's chunk on idle after DealDetail mounts. Tab switches
+  // then render from the in-memory module cache instead of blocking on a
+  // network round-trip for the JS bundle. Fire-and-forget; individual chunk
+  // failures fall back to the on-click lazyRetry path.
+  useEffect(() => {
+    const prefetch = () => {
+      void loadLendersKanban();
+      void loadDealManagementTab();
+      void loadDealSpaceTab();
+      void loadDataRoomV2();
+      void loadVdrShell();
+      void loadDealActivityLogTab();
+      void loadDealCommunicationsTab();
+      void loadLenderDirectoryDialog();
+    };
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const handle = w.requestIdleCallback(prefetch, { timeout: 2500 });
+      return () => {
+        try { w.cancelIdleCallback?.(handle); } catch { /* ignore */ }
+      };
+    }
+    const t = window.setTimeout(prefetch, 1200);
+    return () => window.clearTimeout(t);
+  }, []);
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
   const { linkedRecordings: claapLinkedRecordings } = useDealClaapRecordings(id || '');
