@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 
-import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp, Users, Briefcase } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
@@ -13,6 +13,24 @@ import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/comp
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
+import { useDealReferralSources } from '@/hooks/useDealReferralSources';
+
+const kpiCard = [
+  "relative isolate rounded-xl overflow-hidden p-4",
+  "border border-[hsl(260,40%,50%,0.12)]",
+  "ring-1 ring-inset ring-white/[0.05]",
+  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
+  "backdrop-blur-2xl backdrop-saturate-150",
+  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)]",
+  "hover:border-[hsl(263,50%,55%,0.2)] transition-all duration-300",
+].join(" ");
+
+function formatCurrencyCompact(v: number): string {
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toLocaleString()}`;
+}
 
 interface DealRow {
   id: string;
@@ -71,6 +89,12 @@ export function ReferralSourceDeals() {
   const ttm = useTtmActivePipelineConversion({ kind: 'referral' });
   const conversionRateLabel = ttm.label;
 
+  // Aggregate referral sources totals (unfiltered) to display alongside the
+  // referral-deal KPIs. These are the same numbers previously shown at the top
+  // of ReferralSourcesView.
+  const { totalCount: sourcesCount, totalDeals: sourcesDeals, totalVolume: sourcesVolume } =
+    useDealReferralSources({ channelFilter: [], pipelineFilter: 'all' });
+
   if (typeof window !== 'undefined') {
     (window as any).__salesBdReferralTtm = ttm;
   }
@@ -106,32 +130,48 @@ export function ReferralSourceDeals() {
     <div>
       <h3 className={`${liquidGlassSectionTitle} mb-3`}>Referral-Source Deals</h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <Hash className="h-3.5 w-3.5" /> Total Referred
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3">
+        {/* 1. Total Referred (deals) */}
+        <div className={kpiCard}>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(263,60%,55%,0.15)] shrink-0">
+              <Hash className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{matchedDeals.length}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Total Referred</p>
+            </div>
           </div>
-          <span className="text-2xl font-bold text-foreground">{matchedDeals.length}</span>
         </div>
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <DollarSign className="h-3.5 w-3.5" /> Referred Value
+        {/* 2. Referred Value */}
+        <div className={kpiCard}>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(160,65%,45%,0.15)] shrink-0">
+              <DollarSign className="h-4 w-4" style={{ color: 'hsl(160, 65%, 45%)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{formatCurrencyCompact(totalValue)}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Referred Value</p>
+            </div>
           </div>
-          <span className="text-2xl font-bold text-foreground">
-            {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
-          </span>
         </div>
+        {/* 3. Conversion Rate TTM */}
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className={`${liquidGlassKPI} p-4 flex flex-col items-center cursor-help`}>
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
-                  <span className="ml-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] font-medium text-muted-foreground">
-                    TTM
-                  </span>
+              <div className={`${kpiCard} cursor-help`}>
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(38,92%,55%,0.15)] shrink-0">
+                    <TrendingUp className="h-4 w-4" style={{ color: 'hsl(38, 92%, 55%)' }} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{conversionRateLabel}</p>
+                    <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                      Conversion Rate
+                      <span className="rounded-full border border-border/60 bg-muted/40 px-1 py-px text-[9px] font-medium">TTM</span>
+                    </p>
+                  </div>
                 </div>
-                <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
@@ -139,6 +179,42 @@ export function ReferralSourceDeals() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        {/* 4. Referral Sources count */}
+        <div className={kpiCard}>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(263,60%,55%,0.15)] shrink-0">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{sourcesCount}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Referral Sources</p>
+            </div>
+          </div>
+        </div>
+        {/* 5. Referred Deals (all sources) */}
+        <div className={kpiCard}>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(160,65%,45%,0.15)] shrink-0">
+              <Briefcase className="h-4 w-4" style={{ color: 'hsl(160, 65%, 45%)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{sourcesDeals}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Referred Deals</p>
+            </div>
+          </div>
+        </div>
+        {/* 6. Total Referred Volume */}
+        <div className={kpiCard}>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(38,92%,55%,0.15)] shrink-0">
+              <DollarSign className="h-4 w-4" style={{ color: 'hsl(38, 92%, 55%)' }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold font-mono tabular-nums text-foreground truncate">{formatCurrencyCompact(sourcesVolume)}</p>
+              <p className="text-[10px] text-muted-foreground truncate">Total Referred Volume</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <Collapsible open={showDetails} onOpenChange={setShowDetails}>

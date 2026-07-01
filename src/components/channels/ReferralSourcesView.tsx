@@ -132,7 +132,7 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
   );
 }
 
-export function ReferralSourcesView() {
+export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean } = {}) {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
@@ -299,6 +299,7 @@ export function ReferralSourcesView() {
       )}
 
       {/* KPI Cards */}
+      {!hideKpis && (
       <div className="grid grid-cols-3 gap-3">
         <div className={`${glassCardKPI} p-4 space-y-2`}>
           <div className="flex items-center gap-2">
@@ -334,6 +335,7 @@ export function ReferralSourcesView() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Table */}
       {filteredSources.length === 0 ? (

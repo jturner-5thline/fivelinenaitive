@@ -170,7 +170,7 @@ function SalesBDInner() {
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
                 <ReferralSourceDeals />
-                <ReferralSourcesView />
+                <ReferralSourcesView hideKpis />
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
