@@ -150,10 +150,18 @@ function SalesBDInner() {
                     <h2 className="text-lg font-semibold">Partners Insights</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <PartnerInsightsFeed sourceFilter="partners" />
-                    <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
-                  </div>
+                  <Tabs defaultValue="activity">
+                    <TabsList>
+                      <TabsTrigger value="activity">Activity</TabsTrigger>
+                      <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="activity" className="mt-4">
+                      <PartnerInsightsFeed sourceFilter="partners" />
+                    </TabsContent>
+                    <TabsContent value="attention" className="mt-4">
+                      <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
+                    </TabsContent>
+                  </Tabs>
                 </div>
                 <PartnerSourcedDeals />
               </div>
@@ -167,8 +175,18 @@ function SalesBDInner() {
                     <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across referral sources</p>
                   </div>
-                  <PartnerInsightsFeed sourceFilter="referrals" />
-                  <ReferralsNeedingAttention />
+                  <Tabs defaultValue="activity">
+                    <TabsList>
+                      <TabsTrigger value="activity">Activity</TabsTrigger>
+                      <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="activity" className="mt-4">
+                      <PartnerInsightsFeed sourceFilter="referrals" />
+                    </TabsContent>
+                    <TabsContent value="attention" className="mt-4">
+                      <ReferralsNeedingAttention />
+                    </TabsContent>
+                  </Tabs>
                 </div>
                 <ReferralSourceDeals />
               </div>
