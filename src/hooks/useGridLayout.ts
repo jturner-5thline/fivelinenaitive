@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,12 +40,15 @@ export function useGridLayout(
 ) {
   const { company, isAdmin, isOwner } = useCompany();
   const canEdit = options?.allowAllMembers ? !!company?.id : (isAdmin || isOwner);
-  const defaultsMap = (options?.layoutDefaults ?? []).reduce<Record<string, GridLayoutItem>>((acc, item) => {
-    acc[item.i] = item;
-    return acc;
-  }, {});
-  const buildDefaults = (ids: string[]): GridLayoutItem[] => {
-    if (options?.layoutDefaults && options.layoutDefaults.length) {
+  const layoutDefaults = options?.layoutDefaults;
+  const defaultsMap = useMemo(() => {
+    return (layoutDefaults ?? []).reduce<Record<string, GridLayoutItem>>((acc, item) => {
+      acc[item.i] = item;
+      return acc;
+    }, {});
+  }, [layoutDefaults]);
+  const buildDefaults = useCallback((ids: string[]): GridLayoutItem[] => {
+    if (layoutDefaults && layoutDefaults.length) {
       const generated = generateDefaultLayout(ids);
       let maxY = 0;
       const result = generated.map(g => {
@@ -69,47 +72,27 @@ export function useGridLayout(
       });
     }
     return generateDefaultLayout(ids);
-  };
+  }, [defaultsMap, layoutDefaults]);
   const [layout, setLayout] = useState<GridLayoutItem[]>(() => buildDefaults(defaultWidgetIds));
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevWidgetIdsRef = useRef<string>(defaultWidgetIds.join(','));
-
-  // Synchronously merge any new widget IDs into the current layout
   const widgetIdsKey = defaultWidgetIds.join(',');
-  if (widgetIdsKey !== prevWidgetIdsRef.current) {
-    prevWidgetIdsRef.current = widgetIdsKey;
-    const currentIds = new Set(layout.map(l => l.i));
-    const newIds = defaultWidgetIds.filter(id => !currentIds.has(id));
-    if (newIds.length > 0) {
-      const maxY = layout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
-      const newItems: GridLayoutItem[] = newIds.map((id, idx) => {
-        const d = defaultsMap[id];
-        if (d) {
-          return { ...d, y: maxY + d.y };
-        }
-        return {
-          i: id,
-          x: (idx % 3) * 4,
-          y: maxY + Math.floor(idx / 3) * 2,
-          w: 4,
-          h: 2,
-          minW: 3,
-          minH: 2,
-        };
-      });
-      setLayout(prev => [...prev, ...newItems]);
-    }
-    const validIds = new Set(defaultWidgetIds);
-    const hasStale = layout.some(l => !validIds.has(l.i));
-    if (hasStale) {
-      setLayout(prev => prev.filter(l => validIds.has(l.i)));
-    }
-  }
 
-  // Load saved layout by company
+  // Canonical saved layout from DB — the source of truth. Widget-ID
+  // reconciliation (append new / strip stale) is applied on top of this
+  // inside a single effect so the render pipeline can't accidentally overwrite
+  // saved positions with defaults during hydration.
+  const savedLayoutRef = useRef<GridLayoutItem[] | null>(null);
+  const hasSavedRowRef = useRef<boolean>(false);
+  const fetchTokenRef = useRef<number>(0);
+
+  // Load saved layout by company. Cancellation via fetchTokenRef prevents
+  // stale responses from a previous company/dashboard from clobbering the
+  // current one when the identifiers change quickly on mount.
   useEffect(() => {
     if (!company?.id) return;
+    const token = ++fetchTokenRef.current;
+    setIsLoaded(false);
 
     (async () => {
       const { data } = await (supabase
@@ -118,34 +101,98 @@ export function useGridLayout(
         .eq('company_id', company.id)
         .eq('dashboard_id', dashboardId)
         .maybeSingle();
+      if (token !== fetchTokenRef.current) return; // stale
 
       if (data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
-        const savedLayout = data.layout as GridLayoutItem[];
-        const savedIds = new Set(savedLayout.map(l => l.i));
-        const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
-        const maxY = savedLayout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
-
-        const newLayouts: GridLayoutItem[] = newWidgets.map((id, idx) => {
-          const d = defaultsMap[id];
-          if (d) return { ...d, y: maxY + d.y };
-          return {
-            i: id,
-            x: (idx % 3) * 4,
-            y: maxY + Math.floor(idx / 3) * 2,
-            w: 4,
-            h: 2,
-            minW: 3,
-            minH: 2,
-          };
-        });
-
-        setLayout([...savedLayout, ...newLayouts]);
+        savedLayoutRef.current = data.layout as GridLayoutItem[];
+        hasSavedRowRef.current = true;
       } else {
-        setLayout(buildDefaults(defaultWidgetIds));
+        savedLayoutRef.current = null;
+        hasSavedRowRef.current = false;
       }
       setIsLoaded(true);
     })();
-  }, [company?.id, dashboardId, widgetIdsKey]);
+  }, [company?.id, dashboardId]);
+
+  // Realtime subscription — reflect layout changes from other users in the
+  // same workspace immediately, without requiring a refresh.
+  useEffect(() => {
+    if (!company?.id) return;
+    const channel = supabase
+      .channel(`dashboard-grid-layout-${dashboardId}-${company.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dashboard_grid_layouts',
+          filter: `company_id=eq.${company.id}`,
+        },
+        (payload: any) => {
+          const row = (payload.new ?? payload.old) as any;
+          if (!row || row.dashboard_id !== dashboardId) return;
+          if (payload.eventType === 'DELETE') {
+            savedLayoutRef.current = null;
+            hasSavedRowRef.current = false;
+            setLayout(buildDefaults(defaultWidgetIds));
+            return;
+          }
+          const next = (payload.new as any)?.layout;
+          if (Array.isArray(next) && next.length > 0) {
+            savedLayoutRef.current = next as GridLayoutItem[];
+            hasSavedRowRef.current = true;
+            // Reconcile with current widget IDs before applying
+            applyReconciled(next as GridLayoutItem[]);
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // buildDefaults + widgetIdsKey intentionally captured via closure; the
+    // subscription itself doesn't need to be re-established for widget-id
+    // changes because reconciliation happens inside the callback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company?.id, dashboardId]);
+
+  // Reconcile a saved layout against the current widget ID set and apply it.
+  const applyReconciled = useCallback((saved: GridLayoutItem[] | null) => {
+    if (!saved || saved.length === 0) {
+      setLayout(buildDefaults(defaultWidgetIds));
+      return;
+    }
+    const validIds = new Set(defaultWidgetIds);
+    const filtered = saved.filter(l => validIds.has(l.i));
+    const savedIds = new Set(filtered.map(l => l.i));
+    const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
+    const maxY = filtered.reduce((max, l) => Math.max(max, l.y + l.h), 0);
+    const appended: GridLayoutItem[] = newWidgets.map((id, idx) => {
+      const d = defaultsMap[id];
+      if (d) return { ...d, y: maxY + d.y };
+      return {
+        i: id,
+        x: (idx % 3) * 4,
+        y: maxY + Math.floor(idx / 3) * 2,
+        w: 4,
+        h: 2,
+        minW: 3,
+        minH: 2,
+      };
+    });
+    setLayout([...filtered, ...appended]);
+  }, [defaultWidgetIds, defaultsMap, buildDefaults]);
+
+  // After the saved layout has loaded — and whenever the widget-id set
+  // changes — reconcile and apply. This is the ONLY code path that
+  // hydrates the grid state from the source of truth. Defaults are only
+  // used when the workspace truly has no saved row.
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (hasSavedRowRef.current && savedLayoutRef.current) {
+      applyReconciled(savedLayoutRef.current);
+    } else {
+      setLayout(buildDefaults(defaultWidgetIds));
+    }
+  }, [isLoaded, widgetIdsKey, applyReconciled, buildDefaults, defaultWidgetIds]);
 
   // Persist layout to DB
   const persistLayout = useCallback(async (newLayout: GridLayoutItem[]) => {
@@ -158,6 +205,11 @@ export function useGridLayout(
     if (error) {
       console.error('[useGridLayout] save failed', error);
       toast.error('Failed to save layout. Your changes may not persist.');
+    } else {
+      // Keep the in-memory canonical mirror in sync so realtime echo /
+      // widget-id reconciliation doesn't revert the user's edit.
+      savedLayoutRef.current = newLayout;
+      hasSavedRowRef.current = true;
     }
   }, [company?.id, dashboardId, canEdit]);
 
@@ -165,7 +217,10 @@ export function useGridLayout(
   const saveLayout = useCallback((newLayout: GridLayoutItem[], immediate?: boolean) => {
     setLayout(newLayout);
 
-    if (!canEdit) return;
+    // Never persist before the saved layout has loaded — otherwise the
+    // initial default state can be flushed to DB and overwrite the
+    // real saved layout for the whole workspace.
+    if (!canEdit || !isLoaded) return;
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
@@ -176,36 +231,49 @@ export function useGridLayout(
         persistLayout(newLayout);
       }, 300);
     }
-  }, [canEdit, persistLayout]);
+  }, [canEdit, isLoaded, persistLayout]);
 
   // Flush pending debounced save on unmount or page unload
   const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
   const originalSaveLayout = saveLayout;
   const wrappedSaveLayout = useCallback((newLayout: GridLayoutItem[], immediate?: boolean) => {
+    // Guard: never queue a save until the persisted layout has hydrated.
+    // This prevents the initial default state — or the transient
+    // reconciled state produced while widget IDs are still loading — from
+    // ever being written to the database.
+    if (!isLoaded) {
+      setLayout(newLayout);
+      return;
+    }
     pendingLayoutRef.current = newLayout;
     originalSaveLayout(newLayout, immediate);
     if (immediate) pendingLayoutRef.current = null;
-  }, [originalSaveLayout]);
+  }, [originalSaveLayout, isLoaded]);
 
   useEffect(() => {
     const flushOnUnload = () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
-      }
-      if (pendingLayoutRef.current && canEdit && company?.id) {
-        // Synchronous best-effort flush via the authenticated RPC
-        persistLayout(pendingLayoutRef.current);
+        if (pendingLayoutRef.current && canEdit && company?.id) {
+          // Synchronous best-effort flush via the authenticated RPC —
+          // only when a debounced save is actually pending.
+          persistLayout(pendingLayoutRef.current);
+          pendingLayoutRef.current = null;
+        }
       }
     };
     window.addEventListener('beforeunload', flushOnUnload);
     return () => {
       window.removeEventListener('beforeunload', flushOnUnload);
-      // Also flush on unmount
+      // Flush any pending debounced save on unmount — only if a debounce
+      // timer was actually pending. Do NOT re-persist stale refs.
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
         if (pendingLayoutRef.current) {
           persistLayout(pendingLayoutRef.current);
+          pendingLayoutRef.current = null;
         }
       }
     };
@@ -214,6 +282,8 @@ export function useGridLayout(
   const resetLayout = useCallback(async () => {
     const def = buildDefaults(defaultWidgetIds);
     setLayout(def);
+    savedLayoutRef.current = null;
+    hasSavedRowRef.current = false;
     if (!company?.id || !canEdit) return;
     const { error } = await (supabase as any).rpc('reset_dashboard_grid_layout', {
       _company_id: company.id,
@@ -223,7 +293,7 @@ export function useGridLayout(
       console.error('[useGridLayout] reset failed', error);
       toast.error('Failed to reset layout.');
     }
-  }, [company?.id, dashboardId, defaultWidgetIds, canEdit]);
+  }, [company?.id, dashboardId, defaultWidgetIds, canEdit, buildDefaults]);
 
   return { layout, saveLayout: wrappedSaveLayout, resetLayout, isLoaded, canEdit };
 }
