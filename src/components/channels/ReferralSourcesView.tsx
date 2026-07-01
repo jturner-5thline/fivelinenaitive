@@ -11,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
@@ -28,7 +27,7 @@ const TIER_OPTIONS = [
   { value: 'Tier 2', label: 'Tier 2' },
   { value: 'Tier 3', label: 'Tier 3' },
 ] as const;
-type TierValue = typeof TIER_OPTIONS[number]['value'] | 'all';
+type TierValue = typeof TIER_OPTIONS[number]['value'];
 
 function formatCurrency(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
@@ -136,7 +135,7 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
 export function ReferralSourcesView() {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
-  const [tierFilter, setTierFilter] = useState<TierValue>('all');
+  const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
 
@@ -185,14 +184,17 @@ export function ReferralSourcesView() {
     if (companyFilter.length) {
       list = list.filter(r => r.companyName && companyFilter.includes(r.companyName));
     }
-    if (tierFilter !== 'all') {
-      list = list.filter(r => getTier(r) === tierFilter);
+    if (tierFilter.length > 0) {
+      list = list.filter(r => {
+        const t = getTier(r);
+        return !!t && tierFilter.includes(t as TierValue);
+      });
     }
     return list;
   }, [referralSources, companyFilter, tierFilter, tierLookup]);
 
-  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter !== 'all';
-  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter('all'); };
+  const hasActiveFilters = channelFilter.length > 0 || companyFilter.length > 0 || pipelineFilter !== 'all' || tierFilter.length > 0;
+  const clearAll = () => { setChannelFilter([]); setCompanyFilter([]); setPipelineFilter('all'); setTierFilter([]); };
 
   if (isLoading) {
     return (
@@ -209,26 +211,34 @@ export function ReferralSourcesView() {
     <div className="space-y-6">
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Pipeline filter */}
-        <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
-          {[
-            { value: 'all' as const, label: 'All Pipelines' },
-            { value: 'active' as const, label: 'Active' },
-            { value: 'in-development' as const, label: 'In Development' },
-          ].map(p => (
-            <button
-              key={p.value}
-              onClick={() => setPipelineFilter(p.value)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-                pipelineFilter === p.value
-                  ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
-              }`}
+        {/* Pipeline filter (single-select dropdown) */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={`h-7 text-xs gap-1.5 border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] ${pipelineFilter !== 'all' ? 'border-primary/30 text-foreground' : 'text-muted-foreground'}`}
             >
-              {p.label}
-            </button>
-          ))}
-        </div>
+              {pipelineFilter === 'all' ? 'All Pipelines' : pipelineFilter === 'active' ? 'Active' : 'In Development'}
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-1" align="start">
+            {([
+              { value: 'all', label: 'All Pipelines' },
+              { value: 'active', label: 'Active' },
+              { value: 'in-development', label: 'In Development' },
+            ] as { value: 'all' | 'active' | 'in-development'; label: string }[]).map(p => (
+              <button
+                key={p.value}
+                onClick={() => setPipelineFilter(p.value)}
+                className={`w-full text-left px-2 py-1.5 rounded-md text-xs hover:bg-accent/40 ${pipelineFilter === p.value ? 'text-primary font-medium' : 'text-foreground'}`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </PopoverContent>
+        </Popover>
 
         <div className="h-4 w-px bg-white/[0.08]" />
 
@@ -239,25 +249,13 @@ export function ReferralSourcesView() {
           onChange={setChannelFilter}
         />
 
-        {/* Tier filter */}
-        <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
-          {([
-            { value: 'all', label: 'All Tiers' },
-            ...TIER_OPTIONS,
-          ] as { value: TierValue; label: string }[]).map(t => (
-            <button
-              key={t.value}
-              onClick={() => setTierFilter(t.value)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-                tierFilter === t.value
-                  ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {/* Tier filter (multi-select) */}
+        <MultiSelectFilter
+          label="All Tiers"
+          options={TIER_OPTIONS.map(t => ({ value: t.value, label: t.label }))}
+          selected={tierFilter}
+          onChange={(v) => setTierFilter(v as TierValue[])}
+        />
 
         {companyOptions.length > 0 && (
           <MultiSelectFilter
