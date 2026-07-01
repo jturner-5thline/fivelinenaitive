@@ -1460,6 +1460,7 @@ function DetailPane({
                     const oldDisplay = formatFieldValue(k, effectiveOldV, lookups);
                     const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
                     const isOldEmpty = oldDisplay === '';
+                    const fieldOptions = isEditableDateField ? null : getFieldOptions(k, item, lookups);
                     return (
                       <div
                         key={k}
@@ -1492,7 +1493,36 @@ function DetailPane({
                             {isOldEmpty ? 'No current value' : oldDisplay}
                           </span>
                         )}
-                        {editMode ? (
+                        {editMode && fieldOptions && fieldOptions.length > 0 ? (
+                          <Select
+                            value={
+                              typeof proposedRaw === 'string' && proposedRaw
+                                ? proposedRaw
+                                : undefined
+                            }
+                            onValueChange={(value) => {
+                              setEdits((p) => ({ ...p, [k]: value }));
+                            }}
+                          >
+                            <SelectTrigger
+                              className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60 min-w-0"
+                              style={FONT_BODY}
+                            >
+                              <SelectValue placeholder="Select…" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#0f1420] border-white/[0.12] text-[#f7f8fc]">
+                              {fieldOptions.map((opt) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                  className="text-[12.5px] focus:bg-white/[0.08] focus:text-[#f7f8fc]"
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : editMode ? (
                           <Input
                             type="text"
                             placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
