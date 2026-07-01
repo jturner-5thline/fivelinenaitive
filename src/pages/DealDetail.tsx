@@ -1528,6 +1528,25 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+  const [otherPassReasonText, setOtherPassReasonText] = useState('');
+  const hydratePassReasonSelection = useCallback((passReason: string) => {
+    const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+    const labels = passReason.split(', ').map(r => r.trim()).filter(Boolean);
+    const ids: string[] = [];
+    let otherText = '';
+    labels.forEach(label => {
+      const lower = label.toLowerCase();
+      if (lower.startsWith('other:') && otherReason) {
+        if (!ids.includes(otherReason.id)) ids.push(otherReason.id);
+        otherText = label.slice(label.indexOf(':') + 1).trim();
+      } else {
+        const match = passReasons.find(pr => pr.label === label)?.id;
+        if (match) ids.push(match);
+      }
+    });
+    setSelectedPassReasons(ids);
+    setOtherPassReasonText(otherText);
+  }, [passReasons]);
 
   // Required status note dialog on stage changes (non-passed)
   const [pendingStageNoteChange, setPendingStageNoteChange] = useState<{
@@ -4759,13 +4778,9 @@ export default function DealDetail() {
                                         setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
                                         // Pre-populate existing reasons when editing
                                         if (isAlreadyPassed && lender.passReason) {
-                                          const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                                          const existingReasonIds = existingReasonLabels
-                                            .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                            .filter(Boolean) as string[];
-                                          setSelectedPassReasons(existingReasonIds);
+                                          hydratePassReasonSelection(lender.passReason || '');
                                         } else {
-                                          setSelectedPassReasons([]);
+                                          setSelectedPassReasons([]); setOtherPassReasonText("");
                                         }
                                         setPassReasonDialogOpen(true);
                                       } else {
@@ -4832,11 +4847,7 @@ export default function DealDetail() {
                                                       (document.activeElement as HTMLElement)?.blur();
                                                     }
                                                     setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                                    const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                                    const existingReasonIds = existingReasonLabels
-                                                      .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                      .filter(Boolean) as string[];
-                                                    setSelectedPassReasons(existingReasonIds);
+                                                    hydratePassReasonSelection(lender.passReason! || '');
                                                     setTimeout(() => setPassReasonDialogOpen(true), 100);
                                                   }}
                                                 >
@@ -5173,13 +5184,9 @@ export default function DealDetail() {
                                                 const isAlreadyPassed = currentStageConfig?.group === 'passed' && value === lender.stage;
                                                 setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
                                                 if (isAlreadyPassed && lender.passReason) {
-                                                  const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                                                  const existingReasonIds = existingReasonLabels
-                                                    .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                    .filter(Boolean) as string[];
-                                                  setSelectedPassReasons(existingReasonIds);
+                                                  hydratePassReasonSelection(lender.passReason || '');
                                                 } else {
-                                                  setSelectedPassReasons([]);
+                                                  setSelectedPassReasons([]); setOtherPassReasonText("");
                                                 }
                                                 setPassReasonDialogOpen(true);
                                               } else {
@@ -5241,11 +5248,7 @@ export default function DealDetail() {
                                                             e.preventDefault();
                                                             (document.activeElement as HTMLElement)?.blur();
                                                             setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                                            const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                                            const existingReasonIds = existingReasonLabels
-                                                              .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                              .filter(Boolean) as string[];
-                                                            setSelectedPassReasons(existingReasonIds);
+                                                            hydratePassReasonSelection(lender.passReason! || '');
                                                             setTimeout(() => setPassReasonDialogOpen(true), 100);
                                                           }}
                                                         >
@@ -5790,7 +5793,7 @@ export default function DealDetail() {
                               const newStage = configuredStages.find(s => s.id === value);
                               if (newStage?.group === 'passed') {
                                 setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
-                                setSelectedPassReasons([]);
+                                setSelectedPassReasons([]); setOtherPassReasonText("");
                                 setPassReasonDialogOpen(true);
                               } else {
                                 const newGroup = newStage?.group || 'active';
@@ -6178,8 +6181,9 @@ export default function DealDetail() {
         if (!open) {
           setPassReasonDialogOpen(false);
           setPendingPassStageChange(null);
-          setSelectedPassReasons([]);
+          setSelectedPassReasons([]); setOtherPassReasonText("");
           setPassReasonSearch('');
+          setOtherPassReasonText('');
         }
       }}>
         <DialogContent className="sm:max-w-2xl">
@@ -6229,6 +6233,9 @@ export default function DealDetail() {
                             ? prev.filter((id) => id !== reason.id)
                             : [...prev, reason.id]
                         );
+                        if (isSelected && reason.label.toLowerCase() === 'other') {
+                          setOtherPassReasonText('');
+                        }
                       }}
                     >
                       {reason.label}
@@ -6246,12 +6253,31 @@ export default function DealDetail() {
                 </p>
               )}
             </div>
+            {(() => {
+              const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+              const otherSelected = !!otherReason && selectedPassReasons.includes(otherReason.id);
+              if (!otherSelected) return null;
+              return (
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Please specify (required)
+                  </label>
+                  <Input
+                    autoFocus
+                    placeholder="Enter custom reason..."
+                    value={otherPassReasonText}
+                    onChange={(e) => setOtherPassReasonText(e.target.value)}
+                  />
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setPassReasonDialogOpen(false);
               setPendingPassStageChange(null);
-              setSelectedPassReasons([]);
+              setSelectedPassReasons([]); setOtherPassReasonText("");
+              setOtherPassReasonText('');
             }}>
               Cancel
             </Button>
@@ -6263,7 +6289,13 @@ export default function DealDetail() {
                 const stageId = pendingPassStageChange.newStageId as LenderStage;
 
                 const reasonLabels = selectedPassReasons.length > 0
-                  ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id)
+                  ? selectedPassReasons.map(id => {
+                      const label = passReasons.find(r => r.id === id)?.label || id;
+                      if (label.toLowerCase() === 'other' && otherPassReasonText.trim()) {
+                        return `Other: ${otherPassReasonText.trim()}`;
+                      }
+                      return label;
+                    })
                   : [];
                 const passReasonStr = reasonLabels.join(', ');
 
@@ -6303,9 +6335,15 @@ export default function DealDetail() {
 
                 setPassReasonDialogOpen(false);
                 setPendingPassStageChange(null);
-                setSelectedPassReasons([]);
+                setSelectedPassReasons([]); setOtherPassReasonText("");
+                setOtherPassReasonText('');
               }}
-              disabled={selectedPassReasons.length === 0 && passReasons.length > 0}
+              disabled={(() => {
+                if (selectedPassReasons.length === 0 && passReasons.length > 0) return true;
+                const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+                if (otherReason && selectedPassReasons.includes(otherReason.id) && !otherPassReasonText.trim()) return true;
+                return false;
+              })()}
             >
               {pendingPassStageChange?.isEditing ? 'Update Reasons' : 'Confirm Pass'}
             </Button>
@@ -6461,13 +6499,9 @@ export default function DealDetail() {
                 if (lender) {
                   setPendingPassStageChange({ lenderId, newStageId: lender.stage, isEditing: true });
                   if (lender.passReason) {
-                    const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                    const existingReasonIds = existingReasonLabels
-                      .map(label => passReasons.find(pr => pr.label === label)?.id)
-                      .filter(Boolean) as string[];
-                    setSelectedPassReasons(existingReasonIds);
+                    hydratePassReasonSelection(lender.passReason || '');
                   } else {
-                    setSelectedPassReasons([]);
+                    setSelectedPassReasons([]); setOtherPassReasonText("");
                   }
                   setPassReasonDialogOpen(true);
                 }
