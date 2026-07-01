@@ -1228,7 +1228,13 @@ export function ConsolidatedDebtPipelineDashboard({
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div
+            className={
+              section.id === 'sales'
+                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
+                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'
+            }
+          >
             {section.cards.map(card => (
               <MetricKPICard
                 key={card.id}
