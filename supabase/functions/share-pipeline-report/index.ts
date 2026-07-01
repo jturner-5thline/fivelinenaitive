@@ -38,13 +38,23 @@ serve(async (req) => {
     // Prefer the connector-managed key (RESEND_API_KEY_1); fall back to the
     // legacy RESEND_API_KEY secret. Matches the pattern used by
     // notify-comment-mentions and avoids stale/rotated-key failures.
-    const RESEND_API_KEY =
-      Deno.env.get("RESEND_API_KEY_1") ?? Deno.env.get("RESEND_API_KEY");
+    // The connector-managed RESEND_API_KEY_1 is a Lovable-proxy key (prefix
+    // `lovc_`) that must be sent as `X-Connection-Api-Key` to the proxy — it
+    // is NOT a real Resend key and cannot be passed to the Resend SDK. So we
+    // only accept a native `re_...` key here. Fall back to the connector key
+    // ONLY if the legacy key isn't present, purely so the missing-key branch
+    // returns a clearer error to the client.
+    const legacyKey = Deno.env.get("RESEND_API_KEY");
+    const RESEND_API_KEY = legacyKey && legacyKey.startsWith("re_")
+      ? legacyKey
+      : undefined;
+    const key1 = Deno.env.get("RESEND_API_KEY_1");
     console.log("[share-pipeline-report] key debug", {
-      hasKey1: !!Deno.env.get("RESEND_API_KEY_1"),
-      hasKey: !!Deno.env.get("RESEND_API_KEY"),
-      usedPrefix: RESEND_API_KEY ? RESEND_API_KEY.slice(0, 6) : null,
-      usedLen: RESEND_API_KEY?.length ?? 0,
+      hasKey1: !!key1,
+      key1Prefix: key1?.slice(0, 6) ?? null,
+      hasLegacy: !!legacyKey,
+      legacyPrefix: legacyKey?.slice(0, 6) ?? null,
+      usingLegacy: !!RESEND_API_KEY,
     });
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
