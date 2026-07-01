@@ -37,6 +37,35 @@ function normalizeUrlToDomain(input?: string | null): string | null {
   }
 }
 
+/**
+ * Derive candidate domains from a company name when company_url is absent.
+ * e.g. "Gabb Wireless" -> ["gabbwireless.com","gabbwireless.io","gabbwireless.co","gabbwireless.ai"]
+ */
+function candidateDomainsFromName(name?: string | null): string[] {
+  if (!name) return [];
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (slug.length < 3) return [];
+  return [".com", ".io", ".co", ".ai"].map((tld) => slug + tld);
+}
+
+/**
+ * Significant name tokens for title matching. Lowercased, ≥4 chars, drops
+ * generic suffixes so "Gabb Wireless" matches events titled just "Gabb / 5L".
+ */
+const NAME_STOPWORDS = new Set([
+  "inc","llc","corp","corporation","co","company","ltd","limited","holdings",
+  "group","the","and","of","wireless","technologies","tech","systems","solutions",
+  "labs","studio","studios","capital","partners","ventures","global","international",
+  "services","industries","enterprises","networks","network","software","platform",
+]);
+function significantTokens(name?: string | null): string[] {
+  if (!name) return [];
+  return name
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 4 && !NAME_STOPWORDS.has(t));
+}
+
 interface ReqBody {
   deal_id: string;
   time_min: string;
@@ -104,9 +133,13 @@ serve(async (req: Request): Promise<Response> => {
 
     const companyName = ((deal as any).company || "").trim();
     const companyDomain = normalizeUrlToDomain((deal as any).company_url);
-    const domainMatchable = companyDomain && !FREE_PROVIDERS.has(companyDomain) ? companyDomain : null;
-    const nameMatchable = companyName && companyName.length >= 3 ? companyName.toLowerCase() : null;
-    if (!domainMatchable && !nameMatchable) {
+    const primaryDomain = companyDomain && !FREE_PROVIDERS.has(companyDomain) ? companyDomain : null;
+    // Fall back to inferred domains when the deal has no company_url on file.
+    const fallbackDomains = primaryDomain ? [] : candidateDomainsFromName(companyName);
+    const matchDomains = new Set<string>([primaryDomain, ...fallbackDomains].filter(Boolean) as string[]);
+    const nameLower = companyName && companyName.length >= 3 ? companyName.toLowerCase() : null;
+    const tokens = significantTokens(companyName);
+    if (matchDomains.size === 0 && !nameLower && tokens.length === 0) {
       return new Response(JSON.stringify({ events: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -158,9 +191,16 @@ serve(async (req: Request): Promise<Response> => {
             const participantEmails = participants
               .map((pt: any) => (pt?.email || "").toLowerCase())
               .filter(Boolean);
-            const titleHit = nameMatchable ? title.toLowerCase().includes(nameMatchable) : false;
-            const domainHit = domainMatchable
-              ? participantEmails.some((em: string) => domainOf(em) === domainMatchable)
+            const titleLower = title.toLowerCase();
+            const fullNameHit = nameLower ? titleLower.includes(nameLower) : false;
+            // Token-based fallback: any distinctive ≥4-char token in the title.
+            const tokenHit = !fullNameHit && tokens.some((t) => titleLower.includes(t));
+            const titleHit = fullNameHit || tokenHit;
+            const domainHit = matchDomains.size > 0
+              ? participantEmails.some((em: string) => {
+                  const d = domainOf(em);
+                  return d ? matchDomains.has(d) : false;
+                })
               : false;
             if (!titleHit && !domainHit) return null;
             const w = e.when || {};
