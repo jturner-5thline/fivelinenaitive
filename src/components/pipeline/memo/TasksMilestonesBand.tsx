@@ -222,7 +222,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md border border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md border border-white/10 bg-[hsl(220,25%,10%)] text-white/70 hover:text-white hover:border-primary/60 hover:bg-[hsl(220,25%,14%)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Plus className="h-3.5 w-3.5" />
     </button>
@@ -608,10 +608,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
   };
 
   return (
-    <div className="px-5 py-3 bg-white/[0.03] border-b border-white/[0.08]">
+    <div className="px-5 py-3 bg-gradient-to-br from-[hsl(220,30%,9%)] to-[hsl(260,15%,5%)] border-b border-white/10">
       <div className="w-full min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-2 min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 shrink-0 truncate">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white shrink-0 truncate">
           Tasks & milestones
         </div>
         <div
@@ -639,7 +639,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                   'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                   selected
                     ? 'border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary'
-                    : 'border-border/60 bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border'
+                    : 'border-white/15 bg-white/[0.04] text-white/75 hover:text-white hover:bg-white/[0.08] hover:border-white/25'
                 )}
               >
                 {f.label}
@@ -650,7 +650,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
       </div>
 
       {!hasContent ? (
-        <p className="text-xs italic text-muted-foreground">
+        <p className="text-xs italic text-white/60">
           {activeFilter
             ? `No ${
                 activeFilter === 'task'
@@ -666,7 +666,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
           className={cn(
             'relative -mr-1 pr-1',
             isScrollable &&
-              'max-h-[5.25rem] overflow-y-auto rounded-md ring-1 ring-border/50 bg-background/30 p-1 tasks-scroll-shell'
+              'max-h-[5.25rem] overflow-y-auto rounded-md ring-1 ring-white/10 bg-black/30 p-1 tasks-scroll-shell'
           )}
         >
         <div className="space-y-1.5">
@@ -693,7 +693,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
 
             const rowEl = (
               <div
-                className="group flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
+                className="group flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-[hsl(220,25%,9%)] border border-white/10 px-2.5 py-1.5 shadow-sm"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -799,10 +799,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                           e.stopPropagation();
                           startAssigneeEdit(task.id, task.assignedToId ?? null);
                         }}
-                        className="group/assignee flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted whitespace-nowrap shrink-0 disabled:pointer-events-none disabled:opacity-60"
+                        className="group/assignee flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/80 transition-colors hover:text-white hover:border-primary/50 hover:bg-white/[0.1] whitespace-nowrap shrink-0 disabled:pointer-events-none disabled:opacity-60"
                         title={assigneeLabel || 'No assignee'}
                       >
-                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white/10 text-[8px] font-semibold text-white/90">
                           {initialsOf(assigneeLabel) || '?'}
                         </span>
                         <span className="truncate max-w-[84px] group-hover/assignee:underline decoration-dotted underline-offset-2">
@@ -849,8 +849,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                     </PopoverContent>
                   </Popover>
                 ) : assigneeLabel ? (
-                  <span className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
+                  <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/80 whitespace-nowrap shrink-0">
+                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white/10 text-[8px] font-semibold text-white/90">
                       {initialsOf(assigneeLabel)}
                     </span>
                     <span className="truncate max-w-[84px]">{assigneeLabel}</span>
@@ -874,8 +874,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                           startDateEdit(task.id, task.dueDate ?? null);
                         }}
                         className={cn(
-                          'group/date inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted disabled:pointer-events-none disabled:opacity-60',
-                          isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                          'group/date inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-white hover:border-primary/50 hover:bg-white/[0.1] disabled:pointer-events-none disabled:opacity-60',
+                          isOverdue ? 'text-destructive font-medium' : 'text-white/80'
                         )}
                         title={dueDate ? format(dueDate, 'MMM d, yyyy') : 'No due date'}
                       >
@@ -919,8 +919,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                 ) : dueDate ? (
                   <span
                     className={cn(
-                      'rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
-                      isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                      'rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
+                      isOverdue ? 'text-destructive font-medium' : 'text-white/80'
                     )}
                   >
                     {format(dueDate, 'MMM d')}
@@ -943,7 +943,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
           })}
           {milestonesToRender.map((m, idx) => (
             <div key={m.id || `${m.title}-${idx}`} className="grid items-center gap-2 grid-cols-[1fr_28px]">
-              <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
+              <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/15 border border-primary/40 px-2.5 py-1.5 shadow-sm">
                 <button
                   type="button"
                   role="checkbox"
