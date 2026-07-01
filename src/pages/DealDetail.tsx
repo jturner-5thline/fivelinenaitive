@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
+import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { HubSpotDealBadge } from '@/components/integrations/hubspot/HubSpotDealBadge';
@@ -5479,6 +5479,42 @@ export default function DealDetail() {
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60">
             <DialogTitle className="flex items-center gap-2 text-lg">
+              {(() => {
+                const lenderList = deal?.lenders || [];
+                const idx = lenderList.findIndex(l => l.name === selectedLenderName);
+                if (lenderList.length < 2 || idx < 0) return null;
+                const goPrev = () => {
+                  const prev = lenderList[(idx - 1 + lenderList.length) % lenderList.length];
+                  if (prev) setSelectedLenderName(prev.name);
+                };
+                const goNext = () => {
+                  const next = lenderList[(idx + 1) % lenderList.length];
+                  if (next) setSelectedLenderName(next.name);
+                };
+                return (
+                  <div className="flex items-center gap-1 mr-1">
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Previous funding source"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {idx + 1}/{lenderList.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Next funding source"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })()}
               {(() => {
                 const ml = masterLenders.find(
                   (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
