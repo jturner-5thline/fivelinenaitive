@@ -25,6 +25,9 @@ interface Props {
   className?: string;
   invalid?: boolean;
   id?: string;
+  dialogTitle?: string;
+  dialogDescription?: string;
+  addButtonLabel?: string;
 }
 
 export function MultiContactPickerField({
@@ -34,6 +37,9 @@ export function MultiContactPickerField({
   className,
   invalid,
   id,
+  dialogTitle = 'Add client contact',
+  dialogDescription = 'Pick from the Contacts database or create a new contact.',
+  addButtonLabel,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -72,7 +78,7 @@ export function MultiContactPickerField({
           >
             {value.length === 0 ? (
               <>
-                <UserPlus className="h-3.5 w-3.5" /> Add contact
+                <UserPlus className="h-3.5 w-3.5" /> {addButtonLabel || 'Add contact'}
               </>
             ) : (
               <>
@@ -86,9 +92,9 @@ export function MultiContactPickerField({
           style={{ width: 'min(92vw, 600px)', maxWidth: 'min(92vw, 600px)', maxHeight: '85vh' }}
         >
           <DialogHeader className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
-            <DialogTitle>Add client contact</DialogTitle>
+            <DialogTitle>{dialogTitle}</DialogTitle>
             <DialogDescription className="text-[12px]">
-              Pick from the Contacts database or create a new contact.
+              {dialogDescription}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">

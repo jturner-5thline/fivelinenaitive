@@ -176,6 +176,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
+  const [referralContacts, setReferralContacts] = useState<ContactPickerValue[]>(
+    initialValues?.referralName || initialValues?.referralEmail
+      ? [{ name: initialValues?.referralName || '', email: initialValues?.referralEmail || '' }]
+      : [],
+  );
   const [sourcedVia, setSourcedVia] = useState('');
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isCreating, setIsCreating] = useState(false);
@@ -431,6 +436,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setNarrative('');
     setReferralName('');
     setReferralEmail('');
+    setReferralContacts([]);
     setSourcedVia('');
     setBlankFields([]);
     setDealTypesOpen(false);
@@ -638,29 +644,22 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                   </div>
                 ) : showReferral ? (
                   <div className="grid gap-1">
-                    <LabelWithBadge badge="renamed">Deal originator</LabelWithBadge>
-                    <Popover modal>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`} style={createDealDropdownTriggerStyle} type="button">
-                          <span className={referralName.trim() ? 'text-foreground' : 'text-muted-foreground'}>
-                            {referralName.trim()
-                              ? `${referralName}${referralEmail.trim() ? ` · ${referralEmail}` : ''}`
-                              : 'Select originator (optional)'}
-                          </span>
-                          <ChevronDown className="h-4 w-4 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent data-create-deal-popover container={dialogContentRef.current} className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-3 space-y-3`} style={createDealDropdownSurfaceStyle} align="start" side="bottom" onOpenAutoFocus={(e) => e.preventDefault()}>
-                        <div className="grid gap-1">
-                          <Label htmlFor="referralName" className="text-xs">Name</Label>
-                          <Input id="referralName" value={referralName} onChange={(e) => setReferralName(e.target.value)} placeholder="e.g., John Smith" />
-                        </div>
-                        <div className="grid gap-1">
-                          <Label htmlFor="referralEmail" className="text-xs">Email</Label>
-                          <Input id="referralEmail" type="email" value={referralEmail} onChange={(e) => setReferralEmail(e.target.value)} placeholder="e.g., john@example.com" />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <LabelWithBadge>Deal originator</LabelWithBadge>
+                    <MultiContactPickerField
+                      id="referralContact"
+                      value={referralContacts}
+                      onChange={(list) => {
+                        const one = list.slice(-1);
+                        setReferralContacts(one);
+                        const first = one[0];
+                        setReferralName(first?.name || '');
+                        setReferralEmail(first?.email || '');
+                      }}
+                      placeholder="Select referral source (optional)"
+                      dialogTitle="Select referral source"
+                      dialogDescription="Pick a contact from the Contacts database or create a new one."
+                      addButtonLabel="Select referral"
+                    />
                   </div>
                 ) : <div />}
               </div>
