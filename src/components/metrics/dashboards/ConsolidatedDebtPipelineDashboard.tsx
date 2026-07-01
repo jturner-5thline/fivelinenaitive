@@ -97,10 +97,10 @@ function MetricKPICard({
       />
       <CardContent className="flex items-center gap-4 p-4">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/20"
           style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
         >
-          <Icon className="h-5 w-5" style={{ color: config.color }} />
+          <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground font-medium truncate">{config.title}</p>
