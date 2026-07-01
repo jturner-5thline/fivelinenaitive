@@ -81,6 +81,14 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
   const [selectedKey, setSelectedKey] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
 
+  // Team meetings: broad window around the visible range so week nav
+  // doesn't re-trigger network requests.
+  const teamRange = useMemo(() => ({
+    start: addDays(windowStart, -28),
+    end: addDays(windowStart, 56),
+  }), [windowStart]);
+  const { data: teamEvents = [] } = useDealTeamCalendarEvents(deal.id, teamRange);
+
   // Add / edit form
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -132,8 +140,24 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         raw: c,
       }));
     }
+    for (const ev of teamEvents) {
+      const dateKey = toDateKey(ev.start);
+      let time: string | null = null;
+      if (!ev.all_day && ev.start) {
+        try { time = format(parseISO(ev.start), 'HH:mm:ss'); } catch { time = null; }
+      }
+      push(dateKey, (_k, weekendTag) => ({
+        id: `team-${ev.id}`,
+        kind: 'team',
+        title: ev.title,
+        time,
+        editable: false,
+        weekendTag,
+        team: ev,
+      }));
+    }
     return map;
-  }, [milestones, tasks, customItems]);
+  }, [milestones, tasks, customItems, teamEvents]);
 
   // Visible Mon–Fri days for the 2-week window.
   const days = useMemo(() => {
