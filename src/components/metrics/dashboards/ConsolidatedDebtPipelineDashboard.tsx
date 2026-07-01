@@ -1206,9 +1206,13 @@ export function ConsolidatedDebtPipelineDashboard({
             const rows = section.id === 'sales'
               ? [section.cards.slice(0, 6), section.cards.slice(6, 12)]
               : [section.cards];
-            const gridClass = section.id === 'sales'
-              ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
-              : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3';
+            // Sales KPI grid is the canonical tile-sizing template. Averages
+            // reuses the exact same grid so each tile lines up with a Sales
+            // column instead of stretching to fill a wider 4-col layout.
+            const gridClass =
+              section.id === 'sales' || section.id === 'averages'
+                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
+                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3';
             return (
               <div className="space-y-3">
                 {rows.map((rowCards, idx) => (
