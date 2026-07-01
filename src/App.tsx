@@ -18,6 +18,7 @@ function PilotKpiTrackingMount() {
   return null;
 }
 import { useInboxPrefetch } from "@/hooks/useInboxPrefetch";
+import { AppVersionRefreshMount } from "@/hooks/useAppVersionRefresh";
 
 /**
  * Keeps the inbox cache warm across the entire authenticated app so the
@@ -389,6 +390,7 @@ const App = () => (
                         <NewTaskViaNaitiveModal />
                         <PilotKpiTrackingMount />
                         <InboxPrefetchMount />
+                        <AppVersionRefreshMount />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />
