@@ -7,6 +7,7 @@ import type { Deal } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { useDealCalendarItems, type DealCalendarItem, type DealCalendarItemType } from '@/hooks/useDealCalendarItems';
+import { useDealTeamCalendarEvents, type DealTeamCalendarEvent } from '@/hooks/useDealTeamCalendarEvents';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ interface CalendarPanelProps {
   onOpenDeal?: () => void;
 }
 
-type ItemKind = 'milestone' | 'task' | 'custom' | 'lender';
+type ItemKind = 'milestone' | 'task' | 'custom' | 'lender' | 'team';
 
 interface DayItem {
   id: string;
@@ -31,6 +32,7 @@ interface DayItem {
   /** Set when the source date fell on a weekend and was rolled to Friday. */
   weekendTag?: 'Sat' | 'Sun';
   ref?: { milestoneId?: string; taskId?: string };
+  team?: DealTeamCalendarEvent;
 }
 
 const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }> = {
@@ -38,6 +40,7 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
   task: { dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'Task' },
   custom: { dot: 'bg-emerald-500', bar: 'bg-emerald-500', label: 'Event' },
   lender: { dot: 'bg-amber-500', bar: 'bg-amber-500', label: 'Lender' },
+  team: { dot: 'bg-cyan-400', bar: 'bg-cyan-400', label: 'Team meeting' },
 };
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
@@ -77,6 +80,14 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
   // Visible window = 2 work weeks starting at `windowStart` (a Monday).
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
   const [selectedKey, setSelectedKey] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
+
+  // Team meetings: broad window around the visible range so week nav
+  // doesn't re-trigger network requests.
+  const teamRange = useMemo(() => ({
+    start: addDays(windowStart, -28),
+    end: addDays(windowStart, 56),
+  }), [windowStart]);
+  const { data: teamEvents = [] } = useDealTeamCalendarEvents(deal.id, teamRange);
 
   // Add / edit form
   const [formOpen, setFormOpen] = useState(false);
@@ -129,8 +140,24 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         raw: c,
       }));
     }
+    for (const ev of teamEvents) {
+      const dateKey = toDateKey(ev.start);
+      let time: string | null = null;
+      if (!ev.all_day && ev.start) {
+        try { time = format(parseISO(ev.start), 'HH:mm:ss'); } catch { time = null; }
+      }
+      push(dateKey, (_k, weekendTag) => ({
+        id: `team-${ev.id}`,
+        kind: 'team',
+        title: ev.title,
+        time,
+        editable: false,
+        weekendTag,
+        team: ev,
+      }));
+    }
     return map;
-  }, [milestones, tasks, customItems]);
+  }, [milestones, tasks, customItems, teamEvents]);
 
   // Visible Mon–Fri days for the 2-week window.
   const days = useMemo(() => {
@@ -213,6 +240,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
       onOpenDeal?.();
     } else if (item.editable) {
       openEditForm(item);
+    } else if (item.kind === 'team' && item.team?.html_link) {
+      window.open(item.team.html_link, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -421,6 +450,31 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                       <span className="text-[9px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                     )}
                   </button>
+                  {it.kind === 'team' && it.team?.teammate && (() => {
+                    const t = it.team.teammate;
+                    const name = t.display_name || t.email || 'Teammate';
+                    const initials = (name.split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('') || 'T').toUpperCase();
+                    const matchLabel = it.team.match.title && it.team.match.domain
+                      ? 'Company name & attendee domain match'
+                      : it.team.match.title
+                        ? 'Company name in title'
+                        : 'Attendee email domain match';
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Avatar className="h-4 w-4 mt-0.5 shrink-0 border border-cyan-400/40">
+                            {t.avatar_url && <AvatarImage src={t.avatar_url} alt={name} />}
+                            <AvatarFallback className="text-[8px] font-medium bg-cyan-500/20 text-foreground/80">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {name}'s calendar · {matchLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
                   {it.raw?.created_by && (() => {
                     const c = creators[it.raw.created_by];
                     const name = c?.display_name
@@ -463,7 +517,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                  ) : (
+                  ) : it.kind === 'team' ? null : (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Lock className="h-3 w-3 text-muted-foreground/40 mt-0.5 shrink-0" />
