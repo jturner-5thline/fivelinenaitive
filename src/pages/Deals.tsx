@@ -1139,7 +1139,7 @@ export default function Dashboard() {
                   </div>
                   <aside
                     ref={detailAsideRef}
-                    className="flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-[linear-gradient(180deg,#13131c,#0e0e15)]"
+                    className="flex-1 min-w-0 h-full flex flex-col overflow-hidden bg-transparent"
                     aria-label="Selected deal summary"
                   >
                     <DealRundownMemoView
