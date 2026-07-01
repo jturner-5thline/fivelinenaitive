@@ -874,8 +874,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                           startDateEdit(task.id, task.dueDate ?? null);
                         }}
                         className={cn(
-                          'group/date inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted disabled:pointer-events-none disabled:opacity-60',
-                          isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                          'group/date inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-white hover:border-primary/50 hover:bg-white/[0.1] disabled:pointer-events-none disabled:opacity-60',
+                          isOverdue ? 'text-destructive font-medium' : 'text-white/80'
                         )}
                         title={dueDate ? format(dueDate, 'MMM d, yyyy') : 'No due date'}
                       >
@@ -919,8 +919,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                 ) : dueDate ? (
                   <span
                     className={cn(
-                      'rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
-                      isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
+                      'rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0',
+                      isOverdue ? 'text-destructive font-medium' : 'text-white/80'
                     )}
                   >
                     {format(dueDate, 'MMM d')}
@@ -943,7 +943,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
           })}
           {milestonesToRender.map((m, idx) => (
             <div key={m.id || `${m.title}-${idx}`} className="grid items-center gap-2 grid-cols-[1fr_28px]">
-              <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
+              <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/15 border border-primary/40 px-2.5 py-1.5 shadow-sm">
                 <button
                   type="button"
                   role="checkbox"
