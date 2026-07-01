@@ -656,6 +656,9 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                         setReferralEmail(first?.email || '');
                       }}
                       placeholder="Select referral source (optional)"
+                      dialogTitle="Select referral source"
+                      dialogDescription="Pick a contact from the Contacts database or create a new one."
+                      addButtonLabel="Select referral"
                     />
                   </div>
                 ) : <div />}
