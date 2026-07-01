@@ -18,10 +18,16 @@ interface LendersPanelProps {
 
 type Bucket = 'reviewing' | 'onhold' | 'ondeck' | 'passed';
 
+function isPassedLikeStage(stage: string): boolean {
+  return /\b(pass(ed)?|declin(?:ed)?|reject(?:ed)?|not\s+a\s+fit|unresponsive|no\s+go|no-go)\b/.test(
+    stage.replace(/[-_]+/g, ' '),
+  );
+}
+
 function bucketOf(l: DealLender): Bucket {
   const ts = (l.trackingStatus || '').toLowerCase();
   const stage = (l.stage || '').toLowerCase();
-  if (ts === 'passed') return 'passed';
+  if (ts === 'passed' || isPassedLikeStage(stage)) return 'passed';
   if (ts === 'on-hold' || ts === 'onhold' || /hold/.test(stage)) return 'onhold';
   if (ts === 'on-deck' || ts === 'ondeck') return 'ondeck';
   return 'reviewing';
@@ -42,11 +48,20 @@ const VISIBLE_PER_BUCKET = 2;
 type LenderTagVariant = 'destructive' | 'amber' | 'blue' | 'green' | 'gray';
 
 function humanizeStage(s: string): string {
+  const acronyms = new Set(['drl', 'ioi', 'loi', 'nda', 'dd']);
+  const minorWords = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'nor', 'of', 'on', 'or', 'the', 'to', 'via']);
   return s
     .trim()
     .replace(/[-_]+/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .split(' ')
+    .map((word, index) => {
+      const lower = word.toLowerCase();
+      if (acronyms.has(lower)) return lower.toUpperCase();
+      if (index > 0 && minorWords.has(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
 }
 
 /**
@@ -60,8 +75,8 @@ function deriveLenderTag(l: DealLender): { label: string; variant: LenderTagVari
   const stage = stageRaw.toLowerCase();
 
   // PASSED — highest priority, red/danger
-  if (ts === 'passed' || /\b(pass(ed)?|declin|reject)\b/.test(stage)) {
-    return { label: 'Passed', variant: 'destructive' };
+  if (ts === 'passed' || isPassedLikeStage(stage)) {
+    return { label: stageRaw ? humanizeStage(stageRaw) : 'Passed', variant: 'destructive' };
   }
 
   // Prefer the per-deal lender stage label
