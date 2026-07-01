@@ -194,7 +194,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       setIsClosing(false);
       closingDealIdRef.current = null;
     }
-    if (lastAnimatedDealId.current === deal.id) return;
+    // NOTE: we intentionally do NOT early-return when the effect re-runs
+    // for the same deal.id. In React strict mode (and on any parent
+    // remount) the previous effect's cleanup cancels the release rAFs,
+    // and an early-return here would leave `originTransform` stuck at
+    // the tile's scale — the panel would then render permanently at the
+    // tile's size. Fall through so the release path re-arms.
     // Carousel navigation between sibling deals: skip the expand-from-tile
     // shell animation entirely. The shell stays visually pinned and only
     // the inner content wrapper slides horizontally (handled by the
@@ -257,9 +262,18 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         setOriginBorderRadius(null);
       });
     });
+    // Safety net: some browsers (notably Safari) and slower machines
+    // occasionally miss the double-rAF release — the panel then stays
+    // pinned at the tile's size because the transform is never cleared.
+    // Guarantee a release after ~80ms regardless of rAF behavior.
+    const safety = window.setTimeout(() => {
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+    }, 80);
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
+      window.clearTimeout(safety);
     };
   }, [deal?.id, reduceMotion]);
 
