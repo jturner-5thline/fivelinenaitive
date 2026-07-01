@@ -15,6 +15,7 @@ import {
   buildOutcomeSentence,
   approveButtonLabel,
   targetSummary,
+  toSingleSentence,
 } from './approvalCopy';
 
 /**
@@ -196,7 +197,7 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
       {item.rationale && (
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Rationale</p>
-          <p className="text-[11px] text-foreground/90">{item.rationale}</p>
+          <p className="text-[11px] text-foreground/90">{toSingleSentence(item.rationale)}</p>
         </div>
       )}
 
