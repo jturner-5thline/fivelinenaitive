@@ -411,9 +411,9 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
       ) : (
         <div className={`${glassCard} overflow-hidden`}>
           <div className="relative z-10 p-4 border-b border-white/[0.06]">
-            <h3 className="text-sm font-medium text-foreground">Referral Sources — Sorted by Volume</h3>
+            <h3 className="text-sm font-medium text-foreground">Referral Sources</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              {filteredSources.length} source{filteredSources.length !== 1 ? 's' : ''} · Click any row to expand deals
+              {sortedSources.length} source{sortedSources.length !== 1 ? 's' : ''} · Click headers to sort · Click any row to expand deals
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -421,19 +421,19 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
               <thead>
                 <tr className="border-b border-white/[0.06] bg-[hsl(260,18%,12%,0.4)] backdrop-blur-sm">
                   <th className="text-left p-3 text-muted-foreground font-medium w-8"></th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Referral Source</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Company</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Channel</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Tier</th>
-                  <th className="text-right p-3 text-muted-foreground font-medium">Deals</th>
-                  <th className="text-right p-3 text-muted-foreground font-medium">Volume</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Latest Deal</th>
-                  <th className="text-left p-3 text-muted-foreground font-medium">Stage</th>
+                  <SortHeaderCell field="referredBy" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Referral Source</SortHeaderCell>
+                  <SortHeaderCell field="companyName" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Company</SortHeaderCell>
+                  <SortHeaderCell field="channelType" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Channel</SortHeaderCell>
+                  <SortHeaderCell field="tier" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Tier</SortHeaderCell>
+                  <SortHeaderCell field="dealCount" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Deals</SortHeaderCell>
+                  <SortHeaderCell field="totalVolume" sortField={sortField} sortDir={sortDir} onSort={handleSort} align="right">Volume</SortHeaderCell>
+                  <SortHeaderCell field="latestDeal" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Latest Deal</SortHeaderCell>
+                  <SortHeaderCell field="stage" sortField={sortField} sortDir={sortDir} onSort={handleSort}>Stage</SortHeaderCell>
                   <th className="text-right p-3 text-muted-foreground font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSources.map((entry) => {
+                {sortedSources.map((entry) => {
                   const isExpanded = expandedId === entry.referredBy;
                   return (
                     <React.Fragment key={entry.referredBy}>
