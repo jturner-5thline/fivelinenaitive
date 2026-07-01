@@ -27,7 +27,6 @@ import {
   Folder, FolderPlus, MoreHorizontal, Trash2 as TrashIcon
 } from "lucide-react";
 import { Sparkles } from "lucide-react";
-import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
