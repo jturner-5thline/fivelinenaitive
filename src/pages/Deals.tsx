@@ -411,14 +411,10 @@ export default function Dashboard() {
     return !!(arr && arr.length > 0);
   }, [dealTasksMap]);
 
-  // Count stale deals
-  const staleDealCount = useMemo(() => {
-    return pipelineFilteredDeals.filter(deal => {
-      if (deal.status === 'archived') return false;
-      const days = Math.floor((Date.now() - new Date(deal.updatedAt).getTime()) / (1000 * 60 * 60 * 24));
-      return days >= preferences.staleDealsDays;
-    }).length;
-  }, [pipelineFilteredDeals, preferences.staleDealsDays]);
+  // Stale deals are now auto-flagged (see useAutoStaleFlags). We no longer
+  // render a standalone "stale" toolbar filter — the standard Flag filter
+  // surfaces them alongside manually flagged deals.
+  useAutoStaleFlags(pipelineFilteredDeals, preferences.staleDealsDays);
 
   // Per-deal notification count — must match DealCard notification logic so
   // the 3-state Notifications filter (All / Has / None) lines up with the
