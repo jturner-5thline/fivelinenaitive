@@ -386,17 +386,27 @@ export default function Dashboard() {
     );
   }, [allFilteredDeals, activePipelineId]);
 
-  const savedViewLikelyHidingDeals = dealsInSelectedPipeline.length > 0 && pipelineFilteredDeals.length === 0 && (hasActiveFilters || !!defaultView);
+  // Only auto-clear when a saved DEFAULT view is itself producing an empty
+  // result — i.e. the current filter/sort state still matches what the saved
+  // view applied. Manual toolbar toggles (e.g. clicking the Flag filter) must
+  // never trigger a saved-view clear, even if they yield zero results.
+  const savedViewLikelyHidingDeals = useMemo(() => {
+    if (dealsInSelectedPipeline.length === 0 || pipelineFilteredDeals.length > 0) return false;
+    if (!defaultView) return false;
+    const cfg = defaultView.config;
+    const sameFilters = JSON.stringify(filters) === JSON.stringify(cfg.filters);
+    const sameSort = sortField === sanitizeSortField(cfg.sortField) && sortDirection === cfg.sortDirection;
+    return sameFilters && sameSort;
+  }, [dealsInSelectedPipeline.length, pipelineFilteredDeals.length, defaultView, filters, sortField, sortDirection]);
 
   useEffect(() => {
-    if (!savedViewLikelyHidingDeals || isLoading) return;
-    // Auto-clear broken saved views that hide all deals
+    if (!savedViewLikelyHidingDeals || isLoading || savedViewWarningDismissed) return;
     resetDealViewState({ clearSavedViews: true, showToast: true });
     toast({
       title: 'Saved view cleared',
       description: 'A saved view was hiding all deals in this pipeline, so it was removed.',
     });
-  }, [isLoading, resetDealViewState, savedViewLikelyHidingDeals]);
+  }, [isLoading, resetDealViewState, savedViewLikelyHidingDeals, savedViewWarningDismissed]);
 
   // Get notification counts for filtering
   const allDealIds = useMemo(() => pipelineFilteredDeals.map(d => d.id), [pipelineFilteredDeals]);
