@@ -45,7 +45,7 @@ import { StagedDraftsPanel } from './StagedDraftsPanel';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   buildOutcomeSentence,
-  buildOnApproveSentence,
+  // buildOnApproveSentence removed — intent now conveyed via the item title
   approveButtonLabel,
   targetSummary,
   buildRationaleFallback,
