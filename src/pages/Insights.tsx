@@ -95,6 +95,7 @@ import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
 import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -1413,6 +1414,32 @@ function MetricsInner() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Per-user Insights dashboard restrictions. Users listed here only see the
+  // dashboards in their allowlist; the dropdown, folders and custom dashboards
+  // are all filtered accordingly and the initial/active selection is forced
+  // into the allowlist.
+  const { user: authUser } = useAuth();
+  const RESTRICTED_DASHBOARDS: Record<string, readonly string[]> = {
+    'ppina@5thline.co': ['sales-dashboard-v2', 'consolidated-debt-pipeline'],
+  };
+  const allowedDashboardIds = useMemo(() => {
+    const email = authUser?.email?.toLowerCase();
+    const list = email ? RESTRICTED_DASHBOARDS[email] : undefined;
+    return list ? new Set(list) : null;
+  }, [authUser?.email]);
+  const visibleDashboardOptions = useMemo(
+    () => allowedDashboardIds
+      ? DASHBOARD_OPTIONS.filter(d => allowedDashboardIds.has(d.id))
+      : DASHBOARD_OPTIONS,
+    [allowedDashboardIds]
+  );
+  useEffect(() => {
+    if (allowedDashboardIds && !allowedDashboardIds.has(selectedDashboard)) {
+      const first = visibleDashboardOptions[0]?.id;
+      if (first) setSelectedDashboard(first);
+    }
+  }, [allowedDashboardIds, selectedDashboard, visibleDashboardOptions]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
@@ -1557,8 +1584,8 @@ function MetricsInner() {
     [dashboardSelectedQuarter],
   );
   const allDashboardOptions = [
-    ...DASHBOARD_OPTIONS,
-    ...customDashboards.map(d => ({ id: d.id, name: d.name, isFavorite: false })),
+    ...visibleDashboardOptions,
+    ...(allowedDashboardIds ? [] : customDashboards).map(d => ({ id: d.id, name: d.name, isFavorite: false })),
   ];
   const [editingWidget, setEditingWidget] = useState<MetricWidgetConfig | undefined>();
   const [editingManagementSnapshotCardId, setEditingManagementSnapshotCardId] = useState<EditableManagementSnapshotCardId | null>(null);
@@ -1827,12 +1854,12 @@ function MetricsInner() {
     () => {
       // Exclude any dashboards that belong to a code-defined default folder so
       // they don't render twice (once inside the default folder, once at the root).
-      const candidateIds = DASHBOARD_OPTIONS
+      const candidateIds = visibleDashboardOptions
         .filter(d => !DEFAULT_FOLDER_IDS.has(d.id))
         .map(d => d.id);
       return getUnfolderedDashboardIds(candidateIds);
     },
-    [folders, getUnfolderedDashboardIds]
+    [folders, getUnfolderedDashboardIds, visibleDashboardOptions]
   );
 
   // Per-folder expand/collapse state for the 3 code-defined default folders,
@@ -2151,8 +2178,9 @@ function MetricsInner() {
                     {DEFAULT_FOLDER_GROUPS.map((group, groupIdx) => {
                       const isExpanded = defaultFolderExpanded[group.id] ?? true;
                       const groupDashboards = group.dashboardIds
-                        .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
+                        .map(id => visibleDashboardOptions.find(d => d.id === id))
                         .filter(Boolean) as typeof DASHBOARD_OPTIONS;
+                      if (groupDashboards.length === 0) return null;
 
                       return (
                         <div key={group.id} className={cn(groupIdx > 0 && "mt-1")}>
@@ -2207,7 +2235,7 @@ function MetricsInner() {
                     {/* User-created folders (DB-backed) */}
                     {folders.map((folder) => {
                       const folderDashboards = folder.dashboardIds
-                        .map(id => DASHBOARD_OPTIONS.find(d => d.id === id))
+                        .map(id => visibleDashboardOptions.find(d => d.id === id))
                         .filter(Boolean);
                       
                       return (
@@ -2299,7 +2327,7 @@ function MetricsInner() {
 
                     {/* Unfoldered dashboards */}
                     {unfolderedIds.map((id) => {
-                      const dashboard = DASHBOARD_OPTIONS.find(d => d.id === id);
+                      const dashboard = visibleDashboardOptions.find(d => d.id === id);
                       if (!dashboard) return null;
                       return (
                         <DropdownMenuSub key={dashboard.id}>
@@ -2348,10 +2376,10 @@ function MetricsInner() {
                     })}
 
                     {/* Custom dashboards */}
-                    {customDashboards.length > 0 && (
+                    {!allowedDashboardIds && customDashboards.length > 0 && (
                       <DropdownMenuSeparator className="my-1.5 bg-white/[0.05]" />
                     )}
-                    {customDashboards.map((dash) => (
+                    {(allowedDashboardIds ? [] : customDashboards).map((dash) => (
                       <DropdownMenuSub key={dash.id}>
                         <div className="flex items-center gap-0.5">
                           <DropdownMenuItem
