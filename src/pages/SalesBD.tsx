@@ -169,6 +169,7 @@ function SalesBDInner() {
 
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
+                <ReferralSourceDeals />
                 <ReferralSourcesView />
                 <div className="space-y-4">
                   <div>
@@ -188,7 +189,6 @@ function SalesBDInner() {
                     </TabsContent>
                   </Tabs>
                 </div>
-                <ReferralSourceDeals />
               </div>
             </TabsContent>
         </DashboardPage>
