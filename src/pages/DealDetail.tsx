@@ -1528,6 +1528,20 @@ export default function DealDetail() {
   } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
+
+  // Required status note dialog on stage changes (non-passed)
+  const [pendingStageNoteChange, setPendingStageNoteChange] = useState<{
+    lenderId: string;
+    lenderName: string;
+    fromLabel: string;
+    toLabel: string;
+    apply: (statusNote: string) => void;
+  } | null>(null);
+  const [pendingStageNoteText, setPendingStageNoteText] = useState('');
+
+  useEffect(() => {
+    setPendingStageNoteText('');
+  }, [pendingStageNoteChange?.lenderId, pendingStageNoteChange?.toLabel]);
   
   // Term Sheet milestone confirmation dialog state
   const [termSheetMilestoneDialogOpen, setTermSheetMilestoneDialogOpen] = useState(false);
