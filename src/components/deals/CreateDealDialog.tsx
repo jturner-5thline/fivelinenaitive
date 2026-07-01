@@ -436,6 +436,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
     setNarrative('');
     setReferralName('');
     setReferralEmail('');
+    setReferralContacts([]);
     setSourcedVia('');
     setBlankFields([]);
     setDealTypesOpen(false);
