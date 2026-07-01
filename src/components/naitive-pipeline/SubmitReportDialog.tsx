@@ -8,18 +8,27 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, Send, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Loader2, Send, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import type { NaitivePipelineFilterState } from '@/hooks/useNaitivePipelineFilters';
+import {
+  isValidRecipientEmail,
+  splitRecipientList,
+  extractEmailFromRecipientToken,
+} from '@/lib/emailRecipients';
 
-const RECIPIENTS = [
-  'ppina@5thline.co',
+// Default "to" recipients for the 5th Line pipeline report. Always included
+// and non-removable; users can add additional recipients on top of these.
+const DEFAULT_RECIPIENTS = [
   'jturner@5thline.co',
-  'ffustinoni@5thline.co',
   'jmoffitt@5thline.co',
+  'swilliams@5thline.co',
+  'mclark@5thline.co',
 ];
 
 const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
@@ -82,6 +91,39 @@ export function SubmitReportDialog({
 }: Props) {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [extraRecipients, setExtraRecipients] = useState<string[]>([]);
+  const [recipientInput, setRecipientInput] = useState('');
+
+  const addRecipientsFromInput = (raw: string) => {
+    const tokens = splitRecipientList(raw);
+    if (tokens.length === 0) return;
+    const existing = new Set(
+      [...DEFAULT_RECIPIENTS, ...extraRecipients].map((e) => e.toLowerCase()),
+    );
+    const added: string[] = [];
+    const invalid: string[] = [];
+    for (const token of tokens) {
+      const { email } = extractEmailFromRecipientToken(token);
+      const clean = email.trim().toLowerCase();
+      if (!clean) continue;
+      if (!isValidRecipientEmail(clean)) {
+        invalid.push(token);
+        continue;
+      }
+      if (existing.has(clean)) continue;
+      existing.add(clean);
+      added.push(clean);
+    }
+    if (added.length) setExtraRecipients((prev) => [...prev, ...added]);
+    if (invalid.length) {
+      toast.error(`Invalid email${invalid.length > 1 ? 's' : ''}: ${invalid.join(', ')}`);
+    }
+    setRecipientInput('');
+  };
+
+  const removeExtraRecipient = (email: string) => {
+    setExtraRecipients((prev) => prev.filter((e) => e !== email));
+  };
 
   const period = useMemo(() => {
     const now = new Date();
@@ -156,6 +198,7 @@ export function SubmitReportDialog({
             period_key: period.key,
             period_label: period.label,
             snapshot,
+            recipients: [...DEFAULT_RECIPIENTS, ...extraRecipients],
           },
         },
       );
@@ -212,13 +255,54 @@ export function SubmitReportDialog({
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Recipients</div>
-            <ul className="text-sm space-y-0.5">
-              {RECIPIENTS.map((r) => (
-                <li key={r} className="text-foreground/90">{r}</li>
+            <div className="flex flex-wrap gap-1.5">
+              {DEFAULT_RECIPIENTS.map((r) => (
+                <Badge
+                  key={r}
+                  variant="secondary"
+                  className="text-xs font-normal py-1 px-2"
+                  title="Default recipient"
+                >
+                  {r}
+                </Badge>
               ))}
-            </ul>
+              {extraRecipients.map((r) => (
+                <Badge
+                  key={r}
+                  variant="outline"
+                  className="text-xs font-normal py-1 pl-2 pr-1 gap-1 items-center"
+                >
+                  {r}
+                  <button
+                    type="button"
+                    onClick={() => removeExtraRecipient(r)}
+                    className="rounded hover:bg-muted p-0.5"
+                    aria-label={`Remove ${r}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <Input
+              value={recipientInput}
+              onChange={(e) => setRecipientInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',' || e.key === ';' || e.key === 'Tab') {
+                  if (recipientInput.trim()) {
+                    e.preventDefault();
+                    addRecipientsFromInput(recipientInput);
+                  }
+                }
+              }}
+              onBlur={() => {
+                if (recipientInput.trim()) addRecipientsFromInput(recipientInput);
+              }}
+              placeholder="Add more emails (comma or Enter to add)"
+              className="h-8 text-sm"
+            />
           </div>
 
           <div className="flex items-start gap-2 rounded-md bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-700 dark:text-amber-300">
