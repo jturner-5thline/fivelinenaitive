@@ -4780,7 +4780,7 @@ export default function DealDetail() {
                                         if (isAlreadyPassed && lender.passReason) {
                                           hydratePassReasonSelection(lender.passReason || '');
                                         } else {
-                                          setSelectedPassReasons([]);
+                                          setSelectedPassReasons([]); setOtherPassReasonText("");
                                         }
                                         setPassReasonDialogOpen(true);
                                       } else {
@@ -5186,7 +5186,7 @@ export default function DealDetail() {
                                                 if (isAlreadyPassed && lender.passReason) {
                                                   hydratePassReasonSelection(lender.passReason || '');
                                                 } else {
-                                                  setSelectedPassReasons([]);
+                                                  setSelectedPassReasons([]); setOtherPassReasonText("");
                                                 }
                                                 setPassReasonDialogOpen(true);
                                               } else {
@@ -5793,7 +5793,7 @@ export default function DealDetail() {
                               const newStage = configuredStages.find(s => s.id === value);
                               if (newStage?.group === 'passed') {
                                 setPendingPassStageChange({ lenderId: dealLender.id, newStageId: value, isEditing: false });
-                                setSelectedPassReasons([]);
+                                setSelectedPassReasons([]); setOtherPassReasonText("");
                                 setPassReasonDialogOpen(true);
                               } else {
                                 const newGroup = newStage?.group || 'active';
@@ -6181,7 +6181,7 @@ export default function DealDetail() {
         if (!open) {
           setPassReasonDialogOpen(false);
           setPendingPassStageChange(null);
-          setSelectedPassReasons([]);
+          setSelectedPassReasons([]); setOtherPassReasonText("");
           setPassReasonSearch('');
           setOtherPassReasonText('');
         }
@@ -6276,7 +6276,7 @@ export default function DealDetail() {
             <Button variant="outline" onClick={() => {
               setPassReasonDialogOpen(false);
               setPendingPassStageChange(null);
-              setSelectedPassReasons([]);
+              setSelectedPassReasons([]); setOtherPassReasonText("");
               setOtherPassReasonText('');
             }}>
               Cancel
@@ -6335,7 +6335,7 @@ export default function DealDetail() {
 
                 setPassReasonDialogOpen(false);
                 setPendingPassStageChange(null);
-                setSelectedPassReasons([]);
+                setSelectedPassReasons([]); setOtherPassReasonText("");
                 setOtherPassReasonText('');
               }}
               disabled={(() => {
@@ -6501,7 +6501,7 @@ export default function DealDetail() {
                   if (lender.passReason) {
                     hydratePassReasonSelection(lender.passReason || '');
                   } else {
-                    setSelectedPassReasons([]);
+                    setSelectedPassReasons([]); setOtherPassReasonText("");
                   }
                   setPassReasonDialogOpen(true);
                 }
