@@ -1092,7 +1092,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'average-deal-on-board',
           title: 'Average Deal on the Board',
-          icon: DollarSign,
+          icon: Sigma,
           value: formatMetricCurrency(m.averageDealOnBoard.value),
           isLoading: m.averageDealOnBoard.isLoading,
           deals: m.averageDealOnBoard.deals,
@@ -1104,7 +1104,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'average-deal-signed',
           title: 'Average Deal Signed',
-          icon: DollarSign,
+          icon: Sigma,
           value: formatMetricCurrency(m.averageDealSigned.value),
           isLoading: m.averageDealSigned.isLoading,
           deals: m.averageDealSigned.deals,
@@ -1116,7 +1116,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'average-revenue-per-deal-signed',
           title: 'Average Revenue per Deal Signed',
-          icon: Coins,
+          icon: Sigma,
           value: formatMetricCurrency(m.averageRevenuePerDealSigned.value),
           isLoading: m.averageRevenuePerDealSigned.isLoading,
           deals: m.averageRevenuePerDealSigned.deals,
@@ -1128,7 +1128,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'average-deal-closed',
           title: 'Average Deal Closed',
-          icon: Banknote,
+          icon: Sigma,
           value: formatMetricCurrency(m.averageDealClosed.value),
           isLoading: m.averageDealClosed.isLoading,
           deals: m.averageDealClosed.deals,
@@ -1140,7 +1140,7 @@ export function ConsolidatedDebtPipelineDashboard({
         {
           id: 'average-revenue-per-deal-closed',
           title: 'Average Revenue per Deal Closed',
-          icon: Handshake,
+          icon: Sigma,
           value: formatMetricCurrency(m.averageRevenuePerDealClosed.value),
           isLoading: m.averageRevenuePerDealClosed.isLoading,
           deals: m.averageRevenuePerDealClosed.deals,
