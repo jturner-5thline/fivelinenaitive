@@ -1389,16 +1389,27 @@ function DetailPane({
                         >
                           {humanizeFieldKey(k)}
                         </p>
-                        <span
-                          className={`min-w-0 text-[12.5px] break-words ${
-                            isOldEmpty
-                              ? 'text-[#ecedf4]/65 italic'
-                              : 'text-[#ecedf4]/90'
-                          }`}
-                          style={FONT_BODY}
-                        >
-                          {isOldEmpty ? 'No current value' : oldDisplay}
-                        </span>
+                        {TAG_STYLE_FIELD_KEYS.has(k) && !isOldEmpty ? (
+                          <span className="min-w-0">
+                            <span
+                              className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-medium border border-white/[0.12] bg-white/[0.05] text-[#ecedf4]/90"
+                              style={FONT_BODY}
+                            >
+                              {prettifyTagLabel(oldDisplay)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span
+                            className={`min-w-0 text-[12.5px] break-words ${
+                              isOldEmpty
+                                ? 'text-[#ecedf4]/65 italic'
+                                : 'text-[#ecedf4]/90'
+                            }`}
+                            style={FONT_BODY}
+                          >
+                            {isOldEmpty ? 'No current value' : oldDisplay}
+                          </span>
+                        )}
                         {editMode ? (
                           <Input
                             type="text"
@@ -1414,6 +1425,15 @@ function DetailPane({
                             className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
                             style={FONT_BODY}
                           />
+                        ) : TAG_STYLE_FIELD_KEYS.has(k) && proposedDisplay ? (
+                          <span className="min-w-0">
+                            <span
+                              className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-semibold border border-[#5ecdf5]/40 bg-[#5ecdf5]/[0.10] text-[#f7f8fc]"
+                              style={FONT_BODY}
+                            >
+                              {prettifyTagLabel(proposedDisplay)}
+                            </span>
+                          </span>
                         ) : (
                           <span
                             className="min-w-0 text-[12.5px] font-medium text-[#f7f8fc] break-words"
