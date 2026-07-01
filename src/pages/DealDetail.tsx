@@ -4816,7 +4816,6 @@ export default function DealDetail() {
                                 {/* Funding Source Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
                                   <div className="flex items-start gap-2">
-                                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
                                     <LenderNotesField
                                       lenderId={lender.id}
                                       initialValue={lender.notes || ''}
@@ -5186,7 +5185,6 @@ export default function DealDetail() {
                                         {/* Funding Source Notes */}
                                         <div className="ml-2 mt-2 space-y-1">
                                           <div className="flex items-start gap-2">
-                                            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
                                             <LenderNotesField
                                               lenderId={lender.id}
                                               initialValue={lender.notes || ''}
