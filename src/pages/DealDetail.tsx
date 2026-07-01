@@ -1529,7 +1529,7 @@ export default function DealDetail() {
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   const [otherPassReasonText, setOtherPassReasonText] = useState('');
-  const hydratePassReasonSelection = React.useCallback((passReason: string) => {
+  const hydratePassReasonSelection = useCallback((passReason: string) => {
     const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
     const labels = passReason.split(', ').map(r => r.trim()).filter(Boolean);
     const ids: string[] = [];
