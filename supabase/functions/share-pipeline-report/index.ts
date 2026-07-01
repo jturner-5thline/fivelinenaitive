@@ -40,6 +40,12 @@ serve(async (req) => {
     // notify-comment-mentions and avoids stale/rotated-key failures.
     const RESEND_API_KEY =
       Deno.env.get("RESEND_API_KEY_1") ?? Deno.env.get("RESEND_API_KEY");
+    console.log("[share-pipeline-report] key debug", {
+      hasKey1: !!Deno.env.get("RESEND_API_KEY_1"),
+      hasKey: !!Deno.env.get("RESEND_API_KEY"),
+      usedPrefix: RESEND_API_KEY ? RESEND_API_KEY.slice(0, 6) : null,
+      usedLen: RESEND_API_KEY?.length ?? 0,
+    });
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
         status: 500,
