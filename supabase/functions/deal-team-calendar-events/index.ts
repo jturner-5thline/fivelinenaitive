@@ -158,10 +158,10 @@ serve(async (req: Request): Promise<Response> => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { data: tokens } = await supabase
+    const { data: tokenRows } = await supabase
       .from("gmail_tokens").select("user_id, grant_id").in("user_id", ids);
     const grantByUser = new Map<string, string>();
-    for (const t of tokens || []) if ((t as any).grant_id) grantByUser.set((t as any).user_id, (t as any).grant_id);
+    for (const t of tokenRows || []) if ((t as any).grant_id) grantByUser.set((t as any).user_id, (t as any).grant_id);
     const profByUser = new Map<string, any>();
     for (const p of sameDomain) profByUser.set(p.user_id, p);
 
