@@ -35,6 +35,15 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    // Prefer the connector-managed key (RESEND_API_KEY_1); fall back to the
+    // legacy RESEND_API_KEY secret. Matches the pattern used by
+    // notify-comment-mentions and avoids stale/rotated-key failures.
+    // The connector-managed RESEND_API_KEY_1 is a Lovable-proxy key (prefix
+    // `lovc_`) that must be sent as `X-Connection-Api-Key` to the proxy — it
+    // is NOT a real Resend key and cannot be passed to the Resend SDK. So we
+    // only accept a native `re_...` key here. Fall back to the connector key
+    // ONLY if the legacy key isn't present, purely so the missing-key branch
+    // returns a clearer error to the client.
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
