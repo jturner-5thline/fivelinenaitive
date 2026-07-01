@@ -95,7 +95,7 @@ function MetricKPICard({
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
-      <CardContent className="flex items-center gap-3 p-4 pl-2">
+      <CardContent className="flex items-center gap-2 py-4 px-2">
         <div
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/20"
           style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
@@ -1211,8 +1211,8 @@ export function ConsolidatedDebtPipelineDashboard({
             // column instead of stretching to fill a wider 4-col layout.
             const gridClass =
               section.id === 'sales' || section.id === 'averages'
-                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
-                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3';
+                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2'
+                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
             return (
               <div className="space-y-3">
                 {rows.map((rowCards, idx) => (
