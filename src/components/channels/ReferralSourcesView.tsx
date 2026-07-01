@@ -309,6 +309,25 @@ export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean }
           />
         )}
 
+        <div className="relative ml-auto">
+          <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search sources…"
+            className="h-7 pl-7 pr-7 text-xs w-52 bg-white/[0.03] border-white/[0.08]"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+
         {hasActiveFilters && (
           <Button
             variant="ghost"
