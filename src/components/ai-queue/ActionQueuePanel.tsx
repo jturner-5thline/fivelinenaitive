@@ -1044,7 +1044,6 @@ function DetailPane({
 }) {
   const meta = TYPE_META[item.action_type];
   const target = targetSummary(item);
-  const onApproveSentence = buildOnApproveSentence(item);
   const outcome = buildOutcomeSentence(item);
   const [editMode, setEditMode] = useState(false);
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
