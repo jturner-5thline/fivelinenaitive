@@ -11,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Users, TrendingUp, Briefcase, ChevronDown, ChevronUp, X, RotateCcw, ExternalLink, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ReferralSourceEditDialog } from './ReferralSourceEditDialog';
