@@ -39,13 +39,23 @@ serve(async (req) => {
     // trim it in-place so the model still gets the most recent context.
     const MAX_THREAD_CHARS = 50000;
     const MAX_BODY_CHARS = 4000;
+    const trimBodyFields = (e: any) => {
+      if (!e || typeof e !== "object") return;
+      for (const k of ["body_preview", "body_text", "body_html", "snippet"]) {
+        if (typeof e[k] === "string" && e[k].length > MAX_BODY_CHARS) {
+          e[k] = e[k].slice(0, MAX_BODY_CHARS) + "… [truncated]";
+        }
+      }
+    };
+    // Also trim the single emailData payload — some callers send only this
+    // with a very long body_text/body_html and no `emails` array.
+    trimBodyFields(emailData);
     if (threadData && Array.isArray(threadData.emails)) {
       // Cap each message body first.
       for (const e of threadData.emails) {
-        if (e && typeof e.body_preview === "string" && e.body_preview.length > MAX_BODY_CHARS) {
-          e.body_preview = e.body_preview.slice(0, MAX_BODY_CHARS) + "… [truncated]";
-        }
+        trimBodyFields(e);
       }
+      if (threadData.latestEmail) trimBodyFields(threadData.latestEmail);
       // Then drop oldest messages until under the size budget.
       while (
         JSON.stringify(threadData).length > MAX_THREAD_CHARS &&
@@ -56,8 +66,10 @@ serve(async (req) => {
       // Last resort: if a single message is still over budget, hard-truncate.
       if (JSON.stringify(threadData).length > MAX_THREAD_CHARS && threadData.emails[0]) {
         const only = threadData.emails[0];
-        if (typeof only.body_preview === "string") {
-          only.body_preview = only.body_preview.slice(0, MAX_BODY_CHARS) + "… [truncated]";
+        for (const k of ["body_preview", "body_text", "body_html", "snippet"]) {
+          if (typeof only[k] === "string") {
+            only[k] = only[k].slice(0, 1500) + "… [truncated]";
+          }
         }
         threadData.emails = [only];
       }
