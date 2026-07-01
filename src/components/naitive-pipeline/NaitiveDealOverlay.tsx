@@ -245,7 +245,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     // next frame so the CSS transition interpolates back to identity.
     setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
     setOriginBorderRadius(16);
-    setContentVisible(false);
+    // Mirror the close animation: content is visible inside the shell
+    // from the very first frame, so the shell expands from the tile
+    // WITH the deal content already painted (reverse of the collapse).
+    setContentVisible(true);
 
     let raf2 = 0;
     const raf1 = requestAnimationFrame(() => {
@@ -254,19 +257,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         setOriginBorderRadius(null);
       });
     });
-    // Defer mounting the heavy DealDetail subtree until the shell's
-    // expand-from-tile transform has settled. Mounting it on the same
-    // frame that the transform starts causes React reconciliation +
-    // Suspense hydration to invalidate the compositor animation,
-    // producing the visible "split second stutter" right before the
-    // panel opens. 260ms matches the 240ms transform + one frame.
-    const mountTimer = window.setTimeout(() => {
-      startTransition(() => setContentVisible(true));
-    }, 260);
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
-      window.clearTimeout(mountTimer);
     };
   }, [deal?.id, reduceMotion]);
 
