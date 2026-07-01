@@ -190,3 +190,39 @@ export function toSingleSentence(text: string | null | undefined): string {
   const match = trimmed.match(/^.*?[.!?](?=\s|$)/);
   return (match ? match[0] : trimmed).trim();
 }
+
+/** Field keys whose values should render as tag-style pills in the diff view. */
+export const TAG_STYLE_FIELD_KEYS = new Set<string>([
+  'stage', 'stage_id', 'stage_label', 'stage_name', 'pipeline_stage_id',
+  'status', 'deal_status', 'substage', 'sub_stage',
+  'funding_source_status', 'lender_status', 'milestone_status',
+  'priority', 'call_type', 'type',
+]);
+
+const ACRONYMS = new Set([
+  'drl','dm','ioi','loi','lp','gp','vc','pe','dd','kyc','kpi','mrr','arr',
+  'sla','poc','rfp','rfi','nda','msa','sow','po','qbr','cfo','ceo','cto',
+  'coo','cro','cmo','vp','svp','evp','us','usa','uk','eu','ai','api','sdk',
+  'sql','erp','crm','hr','it','io','saas','paas','iaas','b2b','b2c','tam',
+  'sam','som','yoy','mom','qoq','ytd','mtd','qtd','ebit','ebitda','ltv','cac',
+]);
+
+/** Convert raw stage/status values (e.g. "reviewing-drl") to human labels
+ *  (e.g. "Reviewing DRL") for tag-style rendering. */
+export function prettifyTagLabel(raw: unknown): string {
+  if (raw === null || raw === undefined) return '';
+  if (typeof raw === 'boolean') return raw ? 'Completed' : 'Not Completed';
+  const s = String(raw).trim();
+  if (!s) return '';
+  const cleaned = s.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned
+    .split(' ')
+    .map((w) => {
+      if (!w) return w;
+      const lower = w.toLowerCase();
+      if (ACRONYMS.has(lower)) return lower.toUpperCase();
+      if (/[A-Z]/.test(w) && w !== w.toUpperCase()) return w;
+      return lower[0].toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+}
