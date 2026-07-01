@@ -718,105 +718,101 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
 
               {/* Row 6: Company name | Contact name */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1">
-                  <LabelWithBadge badge="new">Company name</LabelWithBadge>
-                  <Popover modal open={companyPickerOpen} onOpenChange={setCompanyPickerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`}
-                        style={createDealDropdownTriggerStyle}
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className={`truncate ${companyNameVisual ? 'text-foreground' : 'text-muted-foreground'}`}>
-                            {companyNameVisual || 'New company name…'}
-                          </span>
-                        </span>
-                        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      data-create-deal-popover
-                      container={dialogContentRef.current}
-                      className={`${createDealDropdownContentClass} w-[var(--radix-popover-trigger-width)] p-0 popup-shell-surface dark text-foreground border-white/10`}
-                      style={createDealDropdownSurfaceStyle}
-                      align="start"
-                      side="bottom"
-                      sideOffset={4}
-                      avoidCollisions={false}
-                      onOpenAutoFocus={(e) => e.preventDefault()}
-                    >
-                      <div className="border-b p-2">
-                        <Input
-                          placeholder="Search companies…"
-                          value={companySearch}
-                          onChange={(e) => setCompanySearch(e.target.value)}
-                          className="h-8"
-                        />
-                      </div>
-                      <div className="max-h-56 overflow-y-auto py-1">
-                        {filteredCrmCompanies.length === 0 && (
-                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">
-                            {companiesLoading ? 'Loading…' : 'No companies found'}
-                          </p>
-                        )}
-                        {filteredCrmCompanies.map((c) => {
-                          const initials = c.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
-                          return (
-                            <button
-                              key={c.id}
-                              type="button"
-                              className="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-sm hover:bg-accent"
-                              onClick={() => {
-                                setCompanyNameVisual(c.name);
-                                if (!dealName.trim()) setDealName(c.name);
-                                setCompanyPickerOpen(false);
-                                setCompanySearch('');
-                              }}
-                            >
-                              <span className="flex items-center gap-2 min-w-0">
-                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
-                                  {initials}
-                                </span>
-                                <span className="truncate">{c.name}</span>
-                              </span>
-                              {c.industry && (
-                                <span className="text-xs text-muted-foreground whitespace-nowrap">{c.industry}</span>
-                              )}
-                            </button>
-                          );
-                        })}
-                        {companySearch.trim() && !filteredCrmCompanies.some((c) => c.name.toLowerCase() === companySearch.trim().toLowerCase()) && (
-                          <button
-                            type="button"
-                            disabled={createCrmCompany.isPending}
-                            className="flex w-full items-center gap-2 border-t px-3 py-2 text-sm text-primary hover:bg-accent"
-                            onClick={async () => {
-                              const name = companySearch.trim();
-                              try {
-                                const created = await createCrmCompany.mutateAsync({ name } as any);
-                                setCompanyNameVisual(created?.name || name);
-                                if (!dealName.trim()) setDealName(created?.name || name);
-                                toast.success(`Added "${name}" to companies`);
-                              } catch (err: any) {
-                                toast.error(err?.message || 'Failed to add company');
-                                return;
-                              } finally {
-                                setCompanyPickerOpen(false);
-                                setCompanySearch('');
-                              }
-                            }}
-                          >
-                            <Plus className="h-4 w-4" />
-                            {createCrmCompany.isPending ? 'Adding…' : `Add "${companySearch.trim()}" as new company`}
-                          </button>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                 <div className="grid gap-1">
+                   <LabelWithBadge badge="new">Company name</LabelWithBadge>
+                   <Button
+                     variant="outline"
+                     type="button"
+                     onClick={() => setCompanyPickerOpen(true)}
+                     className={`${createDealDropdownTriggerClass} w-full justify-between font-normal`}
+                     style={createDealDropdownTriggerStyle}
+                   >
+                     <span className="flex items-center gap-2 min-w-0">
+                       <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                       <span className={`truncate ${companyNameVisual ? 'text-foreground' : 'text-muted-foreground'}`}>
+                         {companyNameVisual || 'New company name…'}
+                       </span>
+                     </span>
+                     <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+                   </Button>
+                   <Dialog open={companyPickerOpen} onOpenChange={(o) => { setCompanyPickerOpen(o); if (!o) setCompanySearch(''); }}>
+                     <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden popup-shell-surface dark text-foreground border-white/10">
+                       <DialogHeader className="px-4 pt-4 pb-2">
+                         <DialogTitle>Select or add a company</DialogTitle>
+                       </DialogHeader>
+                       <div className="border-b border-white/10 px-4 pb-3">
+                         <div className="relative">
+                           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                           <Input
+                             placeholder="Search companies…"
+                             value={companySearch}
+                             onChange={(e) => setCompanySearch(e.target.value)}
+                             className="h-9 pl-8"
+                             autoFocus
+                           />
+                         </div>
+                       </div>
+                       <div className="max-h-[320px] overflow-y-auto py-1">
+                         {filteredCrmCompanies.length === 0 && (
+                           <p className="px-3 py-6 text-xs text-muted-foreground text-center">
+                             {companiesLoading ? 'Loading…' : 'No companies found'}
+                           </p>
+                         )}
+                         {filteredCrmCompanies.map((c: any) => {
+                           const initials = c.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase();
+                           return (
+                             <button
+                               key={c.id}
+                               type="button"
+                               className="flex w-full items-center justify-between gap-2 px-4 py-2 text-sm hover:bg-accent"
+                               onClick={() => {
+                                 setCompanyNameVisual(c.name);
+                                 if (!dealName.trim()) setDealName(c.name);
+                                 setCompanyPickerOpen(false);
+                                 setCompanySearch('');
+                               }}
+                             >
+                               <span className="flex items-center gap-2 min-w-0">
+                                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground">
+                                   {initials}
+                                 </span>
+                                 <span className="truncate">{c.name}</span>
+                               </span>
+                               {c.industry && (
+                                 <span className="text-xs text-muted-foreground whitespace-nowrap">{c.industry}</span>
+                               )}
+                             </button>
+                           );
+                         })}
+                         {companySearch.trim() && !filteredCrmCompanies.some((c: any) => c.name.toLowerCase() === companySearch.trim().toLowerCase()) && (
+                           <button
+                             type="button"
+                             disabled={createCrmCompany.isPending}
+                             className="flex w-full items-center gap-2 border-t border-white/10 px-4 py-3 text-sm text-primary hover:bg-accent"
+                             onClick={async () => {
+                               const name = companySearch.trim();
+                               try {
+                                 const created = await createCrmCompany.mutateAsync({ name } as any);
+                                 setCompanyNameVisual(created?.name || name);
+                                 if (!dealName.trim()) setDealName(created?.name || name);
+                                 toast.success(`Added "${name}" to companies`);
+                               } catch (err: any) {
+                                 toast.error(err?.message || 'Failed to add company');
+                                 return;
+                               } finally {
+                                 setCompanyPickerOpen(false);
+                                 setCompanySearch('');
+                               }
+                             }}
+                           >
+                             <Plus className="h-4 w-4" />
+                             {createCrmCompany.isPending ? 'Adding…' : `Add "${companySearch.trim()}" as new company`}
+                           </button>
+                         )}
+                       </div>
+                     </DialogContent>
+                   </Dialog>
+                 </div>
                 {showClientContact ? (
                   <div className="grid gap-1">
                     <LabelWithBadge htmlFor="clientContact" required badge="merged">Contact name</LabelWithBadge>
