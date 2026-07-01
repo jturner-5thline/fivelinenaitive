@@ -107,6 +107,37 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
   );
 }
 
+function SortHeaderCell({
+  field,
+  sortField,
+  sortDir,
+  onSort,
+  align = 'left',
+  children,
+}: {
+  field: string;
+  sortField: string | null;
+  sortDir: 'asc' | 'desc' | null;
+  onSort: (f: string) => void;
+  align?: 'left' | 'right';
+  children: React.ReactNode;
+}) {
+  const active = sortField === field && !!sortDir;
+  const Icon = !active ? ChevronsUpDown : sortDir === 'asc' ? ArrowUp : ArrowDown;
+  return (
+    <th className={`p-3 text-muted-foreground font-medium ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`inline-flex items-center gap-1 hover:text-foreground transition-colors ${active ? 'text-foreground' : ''} ${align === 'right' ? 'flex-row-reverse' : ''}`}
+      >
+        <span>{children}</span>
+        <Icon className={`h-3 w-3 ${active ? 'opacity-100' : 'opacity-40'}`} />
+      </button>
+    </th>
+  );
+}
+
 function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
   const navigate = useNavigate();
   return (
