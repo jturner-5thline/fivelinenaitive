@@ -4,6 +4,7 @@ import { DealCard } from './DealCard';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { DealListRow } from './DealListRow';
+import { DealListCardRow } from './DealListCardRow';
 import { FileX, ChevronDown, ChevronRight, GripVertical, ArrowUp, ArrowDown, ArrowUpDown, X } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
@@ -438,59 +439,36 @@ export function DealsList({ deals, onStatusChange, onStageChange, onMarkReviewed
             </button>
           </div>
         )}
-        <div className="px-0 py-1 min-w-0 max-w-full overflow-x-auto">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <Table className="border-separate border-spacing-y-2 w-full min-w-[720px]">
-              <TableHeader>
-                <TableRow
-                  className="rounded-xl [&>th:first-child]:rounded-l-xl [&>th:last-child]:rounded-r-xl hover:bg-transparent [&>th]:border-y [&>th]:border-white/[0.06] [&>th:first-child]:border-l [&>th:last-child]:border-r [&>th]:bg-[linear-gradient(180deg,rgba(22,22,31,0.85),rgba(16,16,24,0.85))] [&>th]:backdrop-blur-md [&>th]:h-11"
-                >
-                  <TableHead className="w-[40px] px-2 text-[#9697a6]">
-                    <Checkbox
-                      checked={sortedDeals.length > 0 && selectedDealIds.size === sortedDeals.length}
-                      onCheckedChange={toggleSelectAll}
-                    />
-                  </TableHead>
-                  <SortableContext items={renderedActiveColumns} strategy={horizontalListSortingStrategy}>
-                    {renderedActiveColumns.map((colId) => (
-                      <SortableFilterableHead
-                        key={colId}
-                        id={colId}
-                        sortField={sortField}
-                        sortDirection={sortDirection}
-                        onToggleSort={onToggleSort}
-                        filterActive={isColumnFilterActive(colId, filters)}
-                        filters={filters}
-                        setFilters={onFiltersChange}
-                        unfilteredDeals={deals}
-                      />
-                    ))}
-                  </SortableContext>
-                  {!detailPanelOpen && (
-                    <TableHead className="w-[100px] text-[10px] uppercase tracking-[0.14em] text-[#9697a6]">Actions</TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedDeals.map((deal) => (
-                  <DealListRow
-                    key={deal.id}
-                    deal={deal}
-                    onStatusChange={onStatusChange}
-                    onStageChange={onStageChange}
-                    onMarkReviewed={onMarkReviewed}
-                    onToggleFlag={onToggleFlag}
-                    flexEngagement={flexEngagementScores?.get(deal.id)}
-                    columnOrder={renderedActiveColumns}
-                    notificationCount={flexNotificationCounts[deal.id] || 0}
-                    isSelected={selectedDealIds.has(deal.id)}
-                    onToggleSelect={toggleSelectDeal}
-                    hideActionsColumn={detailPanelOpen}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </DndContext>
+        <div className="px-0 py-1 min-w-0 max-w-full">
+          <div className="flex items-center gap-2 px-2 pb-2 text-[11px] text-[#9697a6]">
+            <Checkbox
+              checked={sortedDeals.length > 0 && selectedDealIds.size === sortedDeals.length}
+              onCheckedChange={toggleSelectAll}
+              aria-label="Select all deals"
+            />
+            <span>
+              {selectedDealIds.size > 0
+                ? `${selectedDealIds.size} selected`
+                : `${sortedDeals.length} ${sortedDeals.length === 1 ? 'deal' : 'deals'}`}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {sortedDeals.map((deal) => (
+              <DealListCardRow
+                key={deal.id}
+                deal={deal}
+                onStatusChange={onStatusChange}
+                onStageChange={onStageChange}
+                onMarkReviewed={onMarkReviewed}
+                onToggleFlag={onToggleFlag}
+                flexEngagement={flexEngagementScores?.get(deal.id)}
+                notificationCount={flexNotificationCounts[deal.id] || 0}
+                isSelected={selectedDealIds.has(deal.id)}
+                onToggleSelect={toggleSelectDeal}
+                compact={detailPanelOpen}
+              />
+            ))}
+          </div>
         </div>
         <DealsBulkActionBar
           selectedDealIds={selectedDealIds}
