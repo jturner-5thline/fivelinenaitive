@@ -44,18 +44,7 @@ serve(async (req) => {
     // only accept a native `re_...` key here. Fall back to the connector key
     // ONLY if the legacy key isn't present, purely so the missing-key branch
     // returns a clearer error to the client.
-    const legacyKey = Deno.env.get("RESEND_API_KEY");
-    const RESEND_API_KEY = legacyKey && legacyKey.startsWith("re_")
-      ? legacyKey
-      : undefined;
-    const key1 = Deno.env.get("RESEND_API_KEY_1");
-    console.log("[share-pipeline-report] key debug", {
-      hasKey1: !!key1,
-      key1Prefix: key1?.slice(0, 6) ?? null,
-      hasLegacy: !!legacyKey,
-      legacyPrefix: legacyKey?.slice(0, 6) ?? null,
-      usingLegacy: !!RESEND_API_KEY,
-    });
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
         status: 500,
