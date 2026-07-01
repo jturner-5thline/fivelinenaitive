@@ -95,6 +95,7 @@ import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useCompanyDashboardConfig } from "@/hooks/useCompanyDashboardConfig";
 import { useMetricsEditPermission } from "@/hooks/useMetricsEditPermission";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardFolders } from "@/contexts/DashboardFoldersContext";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -1413,6 +1414,32 @@ function MetricsInner() {
 
   const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Per-user Insights dashboard restrictions. Users listed here only see the
+  // dashboards in their allowlist; the dropdown, folders and custom dashboards
+  // are all filtered accordingly and the initial/active selection is forced
+  // into the allowlist.
+  const { user: authUser } = useAuth();
+  const RESTRICTED_DASHBOARDS: Record<string, readonly string[]> = {
+    'ppina@5thline.co': ['sales-dashboard-v2', 'consolidated-debt-pipeline'],
+  };
+  const allowedDashboardIds = useMemo(() => {
+    const email = authUser?.email?.toLowerCase();
+    const list = email ? RESTRICTED_DASHBOARDS[email] : undefined;
+    return list ? new Set(list) : null;
+  }, [authUser?.email]);
+  const visibleDashboardOptions = useMemo(
+    () => allowedDashboardIds
+      ? DASHBOARD_OPTIONS.filter(d => allowedDashboardIds.has(d.id))
+      : DASHBOARD_OPTIONS,
+    [allowedDashboardIds]
+  );
+  useEffect(() => {
+    if (allowedDashboardIds && !allowedDashboardIds.has(selectedDashboard)) {
+      const first = visibleDashboardOptions[0]?.id;
+      if (first) setSelectedDashboard(first);
+    }
+  }, [allowedDashboardIds, selectedDashboard, visibleDashboardOptions]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
