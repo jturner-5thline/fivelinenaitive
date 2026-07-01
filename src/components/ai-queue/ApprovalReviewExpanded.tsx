@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { formatEditableDate, parseEditableDateToIso, isIsoDateLike, isDateFieldName } from './editableDate';
-import { Loader2, Check, X, MessageSquare, ExternalLink, Pencil, Zap } from 'lucide-react';
+import { Loader2, Check, X, MessageSquare, ExternalLink, Pencil } from 'lucide-react';
 import {
   QueuedAiAction,
   useApproveAiAction,
@@ -13,7 +13,6 @@ import {
 } from '@/hooks/useAiActionQueue';
 import {
   buildOutcomeSentence,
-  buildOnApproveSentence,
   approveButtonLabel,
   targetSummary,
 } from './approvalCopy';
@@ -44,7 +43,6 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
   const [edits, setEdits] = useState<Record<string, any>>({});
 
   const outcome = useMemo(() => buildOutcomeSentence(item), [item]);
-  const onApprove = useMemo(() => buildOnApproveSentence(item), [item]);
   const target = useMemo(() => targetSummary(item), [item]);
   const oldValues = item.old_values || {};
   const newValues = item.new_values || {};
@@ -123,12 +121,6 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
             </Badge>
           )}
         </div>
-      </div>
-
-      {/* What happens on approve */}
-      <div className="rounded border border-primary/25 bg-primary/[0.06] px-2.5 py-1.5 flex items-start gap-2">
-        <Zap className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-        <p className="text-[11px] text-foreground/90 leading-snug">{onApprove}</p>
       </div>
 
       {/* Old → New diff */}
