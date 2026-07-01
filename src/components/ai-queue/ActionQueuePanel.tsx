@@ -1314,7 +1314,7 @@ function DetailPane({
             className="text-[12.5px] leading-[1.6] text-[#ecedf4]/90 max-w-[72ch]"
             style={FONT_BODY}
           >
-            {item.rationale || buildRationaleFallback(item)}
+            {toSingleSentence(item.rationale || buildRationaleFallback(item))}
           </p>
 
           {/* Proposed changes — full-width, flat, balanced columns */}
