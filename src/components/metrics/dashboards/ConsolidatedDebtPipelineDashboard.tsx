@@ -1202,29 +1202,37 @@ export function ConsolidatedDebtPipelineDashboard({
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
           </div>
-          <div
-            className={
-              section.id === 'sales'
-                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
-                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'
-            }
-          >
-            {section.cards.map(card => (
-              <MetricKPICard
-                key={card.id}
-                config={card}
-                onClick={() => setDrilldown({
-                  title: card.drilldownTitle,
-                  deals: card.deals,
-                  periodNote: card.drilldownPeriodNote,
-                  metricType: card.drilldownMetricType ?? 'dollars',
-                  valueFormatter: card.drilldownValueFormatter
-                    ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
-                  chartColor: card.drilldownChartColor ?? card.color,
-                })}
-              />
-            ))}
-          </div>
+          {(() => {
+            const rows = section.id === 'sales'
+              ? [section.cards.slice(0, 6), section.cards.slice(6, 12)]
+              : [section.cards];
+            const gridClass = section.id === 'sales'
+              ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
+              : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3';
+            return (
+              <div className="space-y-3">
+                {rows.map((rowCards, idx) => (
+                  <div key={idx} className={gridClass}>
+                    {rowCards.map(card => (
+                      <MetricKPICard
+                        key={card.id}
+                        config={card}
+                        onClick={() => setDrilldown({
+                          title: card.drilldownTitle,
+                          deals: card.deals,
+                          periodNote: card.drilldownPeriodNote,
+                          metricType: card.drilldownMetricType ?? 'dollars',
+                          valueFormatter: card.drilldownValueFormatter
+                            ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                          chartColor: card.drilldownChartColor ?? card.color,
+                        })}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
         ))
       )}
