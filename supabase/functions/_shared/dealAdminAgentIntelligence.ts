@@ -1907,6 +1907,87 @@ function computePriority(c: CandidateItem, dealFlagged: boolean): "urgent" | "hi
   return "normal";
 }
 
+/* ------------------------------------------------------------------ */
+/*  Title change-suffix helpers                                        */
+/* ------------------------------------------------------------------ */
+
+function prettifyChangeValue(raw: unknown): string {
+  if (raw === null || raw === undefined) return "";
+  if (typeof raw === "boolean") return raw ? "Completed" : "Not Completed";
+  const s = String(raw).trim();
+  if (!s) return "";
+  // Convert snake/kebab case → Title Case ("on_hold" → "On Hold")
+  const cleaned = s.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  // Title-case unless it already has mixed/uppercase letters (preserve casing).
+  if (/^[a-z\s]+$/.test(cleaned)) {
+    return cleaned
+      .split(" ")
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+      .join(" ");
+  }
+  return cleaned;
+}
+
+function valuesDiffer(a: unknown, b: unknown): boolean {
+  const na = a === null || a === undefined ? "" : String(a).trim().toLowerCase();
+  const nb = b === null || b === undefined ? "" : String(b).trim().toLowerCase();
+  return na !== nb && String(a ?? "").trim() !== "";
+}
+
+/**
+ * Return a short " to \"X\"" suffix describing the primary proposed change
+ * for this candidate, or "" if nothing meaningful is proposed. Used to make
+ * approval-queue titles self-explanatory (e.g. "Update Flow Capital to
+ * \"Unresponsive\"" instead of just "Update Flow Capital").
+ */
+function describeChangeSuffix(c: CandidateItem): string {
+  const pv: Record<string, any> = (c.proposed_values as any) ?? {};
+  const cv: Record<string, any> = (c.current_values as any) ?? {};
+
+  // Priority order per action_type: which field carries the "main" intent.
+  const priorityByAction: Record<string, string[]> = {
+    update_funding_source: ["stage", "status", "priority", "next_step"],
+    add_status_note: ["status", "deal_status"],
+    update_deal_status: ["status", "deal_status"],
+    update_deal_stage: ["stage_label", "stage_name", "stage", "pipeline_stage_id"],
+    update_deal_field: ["value", "new_value"],
+    update_milestone: ["completed", "status", "title"],
+    create_milestone: ["title", "name"],
+    update_contact: ["status", "role", "title"],
+    update_contact_field: ["value", "new_value"],
+    update_company: ["status", "name"],
+    reassign_deal: ["assigned_to_name", "owner_name", "assigned_to"],
+  };
+
+  const keys = priorityByAction[c.action_type] ?? [];
+  let pickedKey: string | null = null;
+  let pickedValue: unknown = undefined;
+  for (const k of keys) {
+    if (k in pv && valuesDiffer(pv[k], cv[k])) {
+      pickedKey = k;
+      pickedValue = pv[k];
+      break;
+    }
+  }
+  // Fallback: first proposed field that meaningfully differs.
+  if (pickedKey === null) {
+    for (const k of Object.keys(pv)) {
+      if (["id", "deal_id", "notes", "note", "description", "rationale"].includes(k)) continue;
+      if (valuesDiffer(pv[k], cv[k])) {
+        pickedKey = k;
+        pickedValue = pv[k];
+        break;
+      }
+    }
+  }
+  if (pickedKey === null) return "";
+  const pretty = prettifyChangeValue(pickedValue);
+  if (!pretty) return "";
+  // Keep suffix compact — no giant blobs of text in the queue title.
+  if (pretty.length > 40) return "";
+  return `to "${pretty}"`;
+}
+
 function buildCandidateRows(
   opts: AnalyzeOpts,
   bundle: DealSignalBundle,
