@@ -2433,6 +2433,65 @@ export default function DealDetail() {
       ? `Lender passed due to ${passReason}`
       : undefined;
 
+    // No-op if stage hasn't actually changed
+    if (lender && lender.stage === newStageId) return;
+
+    // Require a status note on non-passed stage transitions
+    if (newGroup !== 'passed' && lender) {
+      setPendingStageNoteChange({
+        lenderId,
+        lenderName: lender.name,
+        fromLabel: oldStage?.label || lender.stage || '—',
+        toLabel: targetStage.label,
+        apply: (statusNote: string) => {
+          const notesToSave = statusNote.trim();
+          withSavingAsync(`lender-stage-${lenderId}`, async () => {
+            try {
+              await updateLenderInDb(lenderId, {
+                stage: targetStage.id,
+                trackingStatus: newGroup,
+                passReason: null,
+                notes: notesToSave,
+              });
+            } catch (err) {
+              setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+              throw err;
+            }
+          });
+          logActivity('lender_stage_change', `${lender.name} stage changed`, {
+            lender_id: lender.id,
+            lender_name: lender.name,
+            from: oldStage?.label || lender.stage,
+            to: targetStage.label,
+            status_note: notesToSave,
+          });
+          setDeal(prev => {
+            if (!prev) return prev;
+            const updatedLenders = prev.lenders?.map(l =>
+              l.id === lenderId
+                ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: undefined, notes: notesToSave, updatedAt: new Date().toISOString() }
+                : l,
+            );
+            return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+          });
+          toast({
+            title: 'Stage updated',
+            description: `${lender.name} moved to ${targetStage.label}`,
+            action: (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+              >
+                Undo
+              </Button>
+            ),
+          });
+        },
+      });
+      return;
+    }
+
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
       try {
         await updateLenderInDb(lenderId, {
