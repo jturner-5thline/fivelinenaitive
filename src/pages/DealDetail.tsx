@@ -4778,11 +4778,7 @@ export default function DealDetail() {
                                         setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
                                         // Pre-populate existing reasons when editing
                                         if (isAlreadyPassed && lender.passReason) {
-                                          const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                                          const existingReasonIds = existingReasonLabels
-                                            .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                            .filter(Boolean) as string[];
-                                          setSelectedPassReasons(existingReasonIds);
+                                          hydratePassReasonSelection(lender.passReason || '');
                                         } else {
                                           setSelectedPassReasons([]);
                                         }
@@ -4851,11 +4847,7 @@ export default function DealDetail() {
                                                       (document.activeElement as HTMLElement)?.blur();
                                                     }
                                                     setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                                    const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                                    const existingReasonIds = existingReasonLabels
-                                                      .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                      .filter(Boolean) as string[];
-                                                    setSelectedPassReasons(existingReasonIds);
+                                                    hydratePassReasonSelection(lender.passReason! || '');
                                                     setTimeout(() => setPassReasonDialogOpen(true), 100);
                                                   }}
                                                 >
@@ -5192,11 +5184,7 @@ export default function DealDetail() {
                                                 const isAlreadyPassed = currentStageConfig?.group === 'passed' && value === lender.stage;
                                                 setPendingPassStageChange({ lenderId: lender.id, newStageId: value, isEditing: isAlreadyPassed });
                                                 if (isAlreadyPassed && lender.passReason) {
-                                                  const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                                                  const existingReasonIds = existingReasonLabels
-                                                    .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                    .filter(Boolean) as string[];
-                                                  setSelectedPassReasons(existingReasonIds);
+                                                  hydratePassReasonSelection(lender.passReason || '');
                                                 } else {
                                                   setSelectedPassReasons([]);
                                                 }
@@ -5260,11 +5248,7 @@ export default function DealDetail() {
                                                             e.preventDefault();
                                                             (document.activeElement as HTMLElement)?.blur();
                                                             setPendingPassStageChange({ lenderId: lender.id, newStageId: lender.stage, isEditing: true });
-                                                            const existingReasonLabels = lender.passReason!.split(', ').map(r => r.trim());
-                                                            const existingReasonIds = existingReasonLabels
-                                                              .map(label => passReasons.find(pr => pr.label === label)?.id)
-                                                              .filter(Boolean) as string[];
-                                                            setSelectedPassReasons(existingReasonIds);
+                                                            hydratePassReasonSelection(lender.passReason! || '');
                                                             setTimeout(() => setPassReasonDialogOpen(true), 100);
                                                           }}
                                                         >
@@ -6515,11 +6499,7 @@ export default function DealDetail() {
                 if (lender) {
                   setPendingPassStageChange({ lenderId, newStageId: lender.stage, isEditing: true });
                   if (lender.passReason) {
-                    const existingReasonLabels = lender.passReason.split(', ').map(r => r.trim());
-                    const existingReasonIds = existingReasonLabels
-                      .map(label => passReasons.find(pr => pr.label === label)?.id)
-                      .filter(Boolean) as string[];
-                    setSelectedPassReasons(existingReasonIds);
+                    hydratePassReasonSelection(lender.passReason || '');
                   } else {
                     setSelectedPassReasons([]);
                   }
