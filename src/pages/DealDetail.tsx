@@ -87,7 +87,8 @@ import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificati
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
-const LendersKanban = lazy(lazyRetry(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban }))));
+const loadLendersKanban = lazyRetry(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban })));
+const LendersKanban = lazy(loadLendersKanban);
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
@@ -97,20 +98,20 @@ import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
 import { lazyRetry } from '@/lib/lazyRetry';
-const LenderDirectoryDialog = lazy(
-  lazyRetry(() =>
-    import('@/components/deal/LenderDirectoryDialog').then(m => ({
-      default: m.LenderDirectoryDialog,
-    })),
-  ),
+const loadLenderDirectoryDialog = lazyRetry(() =>
+  import('@/components/deal/LenderDirectoryDialog').then(m => ({
+    default: m.LenderDirectoryDialog,
+  })),
 );
+const LenderDirectoryDialog = lazy(loadLenderDirectoryDialog);
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
 import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
-const DealManagementTab = lazy(lazyRetry(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab }))));
+const loadDealManagementTab = lazyRetry(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab })));
+const DealManagementTab = lazy(loadDealManagementTab);
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
@@ -135,7 +136,8 @@ const DealEmailsTab = lazy(lazyRetry(() => import('@/components/deal/DealEmailsT
 const FloatingDealAssistant = lazy(lazyRetry(() => import('@/components/deals/FloatingDealAssistant').then(m => ({ default: m.FloatingDealAssistant }))));
 import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
-const DealSpaceTab = lazy(lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab }))));
+const loadDealSpaceTab = lazyRetry(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
+const DealSpaceTab = lazy(loadDealSpaceTab);
 const DealPanelReorderDialog = lazy(lazyRetry(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog }))));
 const DealMemoDialog = lazy(lazyRetry(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog }))));
 const AgreementDrafterDialog = lazy(lazyRetry(() => import('@/components/agreement/AgreementDrafterDialog').then(m => ({ default: m.AgreementDrafterDialog }))));
@@ -143,11 +145,15 @@ import { EmailPromptCenterButton } from '@/components/deal/EmailPromptCenter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
-const DataRoomV2 = lazy(lazyRetry(() => import('@/components/deal/DataRoomV2').then(m => ({ default: m.DataRoomV2 }))));
+const loadDataRoomV2 = lazyRetry(() => import('@/components/deal/DataRoomV2').then(m => ({ default: m.DataRoomV2 })));
+const DataRoomV2 = lazy(loadDataRoomV2);
 import { VdrErrorBoundary } from '@/components/vdr/VdrErrorBoundary';
-const VdrShell = lazy(lazyRetry(() => import('@/components/vdr/VdrShell').then(m => ({ default: m.VdrShell }))));
-const DealActivityLogTab = lazy(lazyRetry(() => import('@/components/deal/DealActivityLogTab').then(m => ({ default: m.DealActivityLogTab }))));
-const DealCommunicationsTab = lazy(lazyRetry(() => import('@/components/deal/DealCommunicationsTab').then(m => ({ default: m.DealCommunicationsTab }))));
+const loadVdrShell = lazyRetry(() => import('@/components/vdr/VdrShell').then(m => ({ default: m.VdrShell })));
+const VdrShell = lazy(loadVdrShell);
+const loadDealActivityLogTab = lazyRetry(() => import('@/components/deal/DealActivityLogTab').then(m => ({ default: m.DealActivityLogTab })));
+const DealActivityLogTab = lazy(loadDealActivityLogTab);
+const loadDealCommunicationsTab = lazyRetry(() => import('@/components/deal/DealCommunicationsTab').then(m => ({ default: m.DealCommunicationsTab })));
+const DealCommunicationsTab = lazy(loadDealCommunicationsTab);
 import DealCrmSearch from '@/components/deals/DealCrmSearch';
 import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
