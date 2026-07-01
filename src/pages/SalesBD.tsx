@@ -89,6 +89,7 @@ function SalesBDInner() {
         >
             <TabsContent value="partners-channels" className="mt-4">
               <div className="space-y-8">
+                <PartnerSourcedDeals />
                 <div className="space-y-6">
                   {/* Sub-navigation */}
                   <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
@@ -163,7 +164,6 @@ function SalesBDInner() {
                     </TabsContent>
                   </Tabs>
                 </div>
-                <PartnerSourcedDeals />
               </div>
             </TabsContent>
 
