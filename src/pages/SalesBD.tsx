@@ -146,7 +146,7 @@ function SalesBDInner() {
                     </div>
                   )}
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-4 md:w-1/2">
                   <div>
                     <h2 className="text-lg font-semibold">Partners Insights</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
