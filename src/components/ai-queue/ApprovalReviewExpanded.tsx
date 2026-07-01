@@ -49,11 +49,19 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
   const oldValues = item.old_values || {};
   const newValues = item.new_values || {};
   const fieldKeys = useMemo(() => {
+    const norm = (v: any) =>
+      v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = new Set<string>([
       ...Object.keys(oldValues),
       ...Object.keys(newValues),
     ]);
-    return Array.from(keys);
+    // Only surface fields that actually have a proposed change: the new
+    // value must be non-empty AND different from the current value.
+    return Array.from(keys).filter((k) => {
+      const proposed = norm((newValues as any)[k]);
+      if (!proposed) return false;
+      return proposed !== norm((oldValues as any)[k]);
+    });
   }, [oldValues, newValues]);
 
   const editedCount = Object.keys(edits).length;
