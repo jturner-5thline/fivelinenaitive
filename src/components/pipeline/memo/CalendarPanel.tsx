@@ -240,6 +240,8 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
       onOpenDeal?.();
     } else if (item.editable) {
       openEditForm(item);
+    } else if (item.kind === 'team' && item.team?.html_link) {
+      window.open(item.team.html_link, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -448,6 +450,31 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                       <span className="text-[9px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                     )}
                   </button>
+                  {it.kind === 'team' && it.team?.teammate && (() => {
+                    const t = it.team.teammate;
+                    const name = t.display_name || t.email || 'Teammate';
+                    const initials = (name.split(' ').map((s) => s[0]).filter(Boolean).slice(0, 2).join('') || 'T').toUpperCase();
+                    const matchLabel = it.team.match.title && it.team.match.domain
+                      ? 'Company name & attendee domain match'
+                      : it.team.match.title
+                        ? 'Company name in title'
+                        : 'Attendee email domain match';
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Avatar className="h-4 w-4 mt-0.5 shrink-0 border border-cyan-400/40">
+                            {t.avatar_url && <AvatarImage src={t.avatar_url} alt={name} />}
+                            <AvatarFallback className="text-[8px] font-medium bg-cyan-500/20 text-foreground/80">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          {name}'s calendar · {matchLabel}
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
                   {it.raw?.created_by && (() => {
                     const c = creators[it.raw.created_by];
                     const name = c?.display_name
@@ -490,7 +517,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
-                  ) : (
+                  ) : it.kind === 'team' ? null : (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Lock className="h-3 w-3 text-muted-foreground/40 mt-0.5 shrink-0" />
