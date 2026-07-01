@@ -6231,6 +6231,9 @@ export default function DealDetail() {
                             ? prev.filter((id) => id !== reason.id)
                             : [...prev, reason.id]
                         );
+                        if (isSelected && reason.label.toLowerCase() === 'other') {
+                          setOtherPassReasonText('');
+                        }
                       }}
                     >
                       {reason.label}
@@ -6248,12 +6251,31 @@ export default function DealDetail() {
                 </p>
               )}
             </div>
+            {(() => {
+              const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+              const otherSelected = !!otherReason && selectedPassReasons.includes(otherReason.id);
+              if (!otherSelected) return null;
+              return (
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Please specify (required)
+                  </label>
+                  <Input
+                    autoFocus
+                    placeholder="Enter custom reason..."
+                    value={otherPassReasonText}
+                    onChange={(e) => setOtherPassReasonText(e.target.value)}
+                  />
+                </div>
+              );
+            })()}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setPassReasonDialogOpen(false);
               setPendingPassStageChange(null);
               setSelectedPassReasons([]);
+              setOtherPassReasonText('');
             }}>
               Cancel
             </Button>
@@ -6265,7 +6287,13 @@ export default function DealDetail() {
                 const stageId = pendingPassStageChange.newStageId as LenderStage;
 
                 const reasonLabels = selectedPassReasons.length > 0
-                  ? selectedPassReasons.map(id => passReasons.find(r => r.id === id)?.label || id)
+                  ? selectedPassReasons.map(id => {
+                      const label = passReasons.find(r => r.id === id)?.label || id;
+                      if (label.toLowerCase() === 'other' && otherPassReasonText.trim()) {
+                        return `Other: ${otherPassReasonText.trim()}`;
+                      }
+                      return label;
+                    })
                   : [];
                 const passReasonStr = reasonLabels.join(', ');
 
@@ -6306,8 +6334,14 @@ export default function DealDetail() {
                 setPassReasonDialogOpen(false);
                 setPendingPassStageChange(null);
                 setSelectedPassReasons([]);
+                setOtherPassReasonText('');
               }}
-              disabled={selectedPassReasons.length === 0 && passReasons.length > 0}
+              disabled={(() => {
+                if (selectedPassReasons.length === 0 && passReasons.length > 0) return true;
+                const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+                if (otherReason && selectedPassReasons.includes(otherReason.id) && !otherPassReasonText.trim()) return true;
+                return false;
+              })()}
             >
               {pendingPassStageChange?.isEditing ? 'Update Reasons' : 'Confirm Pass'}
             </Button>
