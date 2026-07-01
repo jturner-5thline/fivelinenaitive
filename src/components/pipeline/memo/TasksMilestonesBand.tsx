@@ -693,7 +693,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
 
             const rowEl = (
               <div
-                className="group flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-background/70 border border-border/60 px-2.5 py-1.5"
+                className="group flex-1 min-w-0 flex items-center gap-2.5 rounded-md bg-[hsl(220,25%,9%)] border border-white/10 px-2.5 py-1.5 shadow-sm"
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
@@ -799,10 +799,10 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                           e.stopPropagation();
                           startAssigneeEdit(task.id, task.assignedToId ?? null);
                         }}
-                        className="group/assignee flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted whitespace-nowrap shrink-0 disabled:pointer-events-none disabled:opacity-60"
+                        className="group/assignee flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/80 transition-colors hover:text-white hover:border-primary/50 hover:bg-white/[0.1] whitespace-nowrap shrink-0 disabled:pointer-events-none disabled:opacity-60"
                         title={assigneeLabel || 'No assignee'}
                       >
-                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white/10 text-[8px] font-semibold text-white/90">
                           {initialsOf(assigneeLabel) || '?'}
                         </span>
                         <span className="truncate max-w-[84px] group-hover/assignee:underline decoration-dotted underline-offset-2">
@@ -849,8 +849,8 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                     </PopoverContent>
                   </Popover>
                 ) : assigneeLabel ? (
-                  <span className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
+                  <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/80 whitespace-nowrap shrink-0">
+                    <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-white/10 text-[8px] font-semibold text-white/90">
                       {initialsOf(assigneeLabel)}
                     </span>
                     <span className="truncate max-w-[84px]">{assigneeLabel}</span>
