@@ -946,7 +946,7 @@ export function ConsolidatedDebtPipelineDashboard({
     {
       id: 'sales',
       title: 'Sales',
-      description: 'New opportunities entering the pipeline',
+      description: 'Top-line KPIs for the Active Pipeline',
       cards: [
         {
           id: 'deals-on-board',
@@ -959,6 +959,68 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Deals on the Board — added to Active Pipeline',
           drilldownMetricType: 'count',
         },
+        {
+          id: 'proposals-issued',
+          title: 'Proposals Issued',
+          icon: FileText,
+          value: m.proposalsIssued.count,
+          isLoading: m.proposalsIssued.isLoading,
+          deals: m.proposalsIssued.deals,
+          color: 'hsl(var(--chart-3))',
+          drilldownTitle: 'Proposals Issued — entered Proposal Issued',
+          drilldownMetricType: 'count',
+        },
+        {
+          id: 'debt-deals-signed',
+          title: 'Debt Deals Signed',
+          icon: FileSignature,
+          value: m.finalCreditItems.count,
+          isLoading: m.finalCreditItems.isLoading,
+          deals: m.finalCreditItems.deals,
+          color: 'hsl(var(--chart-5))',
+          drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
+          drilldownMetricType: 'count',
+        },
+        {
+          id: 'terms-issued',
+          title: 'Terms Issued',
+          icon: ScrollText,
+          value: m.termsIssued.count,
+          isLoading: m.termsIssued.isLoading,
+          deals: m.termsIssued.deals,
+          color: 'hsl(var(--chart-1))',
+          drilldownTitle: 'Terms Issued — entered Terms Issued',
+          drilldownMetricType: 'count',
+        },
+        {
+          id: 'terms-signed',
+          title: 'Terms Signed',
+          icon: Handshake,
+          value: m.inDueDiligence.count,
+          isLoading: m.inDueDiligence.isLoading,
+          deals: m.inDueDiligence.deals,
+          color: 'hsl(var(--chart-3))',
+          drilldownTitle: 'Terms Signed — entered In Due Diligence',
+          drilldownMetricType: 'count',
+        },
+        {
+          id: 'deals-closed',
+          title: 'Deals Closed',
+          icon: FileSignature,
+          value: m.fundedInvoicedOnly.count,
+          isLoading: m.fundedInvoicedOnly.isLoading,
+          deals: m.fundedInvoicedOnly.deals,
+          color: 'hsl(var(--chart-3))',
+          drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
+          drilldownMetricType: 'count',
+        },
+      ],
+    },
+    {
+      id: 'board',
+      title: 'Board',
+      description: 'Deal volume & averages for opportunities on the Active Pipeline',
+      cards: [
         {
           id: 'debt-dollar-on-board',
           title: 'Debt $ on the Board',
@@ -990,17 +1052,6 @@ export function ConsolidatedDebtPipelineDashboard({
       description: 'Proposals issued to clients in the Active Pipeline',
       cards: [
         {
-          id: 'proposals-issued',
-          title: 'Proposals Issued',
-          icon: FileText,
-          value: m.proposalsIssued.count,
-          isLoading: m.proposalsIssued.isLoading,
-          deals: m.proposalsIssued.deals,
-          color: 'hsl(var(--chart-3))',
-          drilldownTitle: 'Proposals Issued — entered Proposal Issued',
-          drilldownMetricType: 'count',
-        },
-        {
           id: 'dollars-proposed',
           title: 'Dollars Proposed',
           icon: Coins,
@@ -1018,17 +1069,6 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Signed',
       description: 'Engagements signed (entered Final Credit Items)',
       cards: [
-        {
-          id: 'debt-deals-signed',
-          title: 'Debt Deals Signed',
-          icon: FileSignature,
-          value: m.finalCreditItems.count,
-          isLoading: m.finalCreditItems.isLoading,
-          deals: m.finalCreditItems.deals,
-          color: 'hsl(var(--chart-5))',
-          drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
-          drilldownMetricType: 'count',
-        },
         {
           id: 'debt-dollar-signed',
           title: 'Debt $ Signed',
@@ -1072,17 +1112,6 @@ export function ConsolidatedDebtPipelineDashboard({
       description: 'Deals entering Funded / Invoiced in the Active Pipeline',
       cards: [
         {
-          id: 'deals-closed',
-          title: 'Deals Closed',
-          icon: FileSignature,
-          value: m.fundedInvoicedOnly.count,
-          isLoading: m.fundedInvoicedOnly.isLoading,
-          deals: m.fundedInvoicedOnly.deals,
-          color: 'hsl(var(--chart-3))',
-          drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
-          drilldownMetricType: 'count',
-        },
-        {
           id: 'dollars-funded',
           title: 'Dollars Funded',
           icon: Banknote,
@@ -1125,17 +1154,6 @@ export function ConsolidatedDebtPipelineDashboard({
       description: 'Lender terms issued and signed',
       cards: [
         {
-          id: 'terms-issued',
-          title: 'Terms Issued',
-          icon: ScrollText,
-          value: m.termsIssued.count,
-          isLoading: m.termsIssued.isLoading,
-          deals: m.termsIssued.deals,
-          color: 'hsl(var(--chart-1))',
-          drilldownTitle: 'Terms Issued — entered Terms Issued',
-          drilldownMetricType: 'count',
-        },
-        {
           id: 'terms-issued-dollars',
           title: 'Terms Issued $',
           icon: DollarSign,
@@ -1145,17 +1163,6 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-2))',
           drilldownTitle: 'Terms Issued $ — entered Terms Issued',
           drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'terms-signed',
-          title: 'Terms Signed',
-          icon: Handshake,
-          value: m.inDueDiligence.count,
-          isLoading: m.inDueDiligence.isLoading,
-          deals: m.inDueDiligence.deals,
-          color: 'hsl(var(--chart-3))',
-          drilldownTitle: 'Terms Signed — entered In Due Diligence',
-          drilldownMetricType: 'count',
         },
         {
           id: 'terms-signed-dollars',
@@ -1221,7 +1228,13 @@ export function ConsolidatedDebtPipelineDashboard({
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div
+            className={
+              section.id === 'sales'
+                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3'
+                : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'
+            }
+          >
             {section.cards.map(card => (
               <MetricKPICard
                 key={card.id}
