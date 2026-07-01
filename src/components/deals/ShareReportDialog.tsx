@@ -16,6 +16,16 @@ import type { Deal, DealStatus } from '@/types/deal';
 import { RecipientField } from '@/components/deal/email/RecipientField';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+
+// Default "To" recipients for 5th Line pipeline reports. Prefilled but
+// fully editable — users can remove them or add more as needed.
+const FIFTH_LINE_DEFAULT_TO = [
+  'jturner@5thline.co',
+  'jmoffitt@5thline.co',
+  'swilliams@5thline.co',
+  'mclark@5thline.co',
+];
 
 /** Stage label (case-insensitive) at and after which deals are eligible for the report. */
 const MIN_INCLUDED_STAGE_LABEL = 'proposal issued';
@@ -203,6 +213,7 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     }));
   }, [filteredDeals]);
 
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const [to, setTo] = useState<string[]>([]);
   const [cc, setCc] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
@@ -232,6 +243,11 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     introEditor?.commands.setContent(defaultIntroHtml(pipelineName), { emitUpdate: false });
     outroEditor?.commands.setContent(DEFAULT_OUTRO_HTML, { emitUpdate: false });
 
+    // Prefill 5th Line default recipients on open, but only if the user
+    // hasn't already typed their own list (avoid clobbering edits when
+    // filters/deals recompute and re-run this effect).
+    setTo((prev) => (prev.length === 0 && isFifthLine ? [...FIFTH_LINE_DEFAULT_TO] : prev));
+
     const seed: Record<string, string> = {};
     const orig: Record<string, string> = {};
     for (const g of STATUS_ORDER) {
@@ -246,7 +262,7 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     setStatusTexts(seed);
     setOriginals(orig);
     setSyncState({});
-  }, [open, filteredDeals, pipelineName, introEditor, outroEditor]);
+  }, [open, filteredDeals, pipelineName, introEditor, outroEditor, isFifthLine]);
 
   const handleStatusTextChange = (dealId: string, next: string) => {
     setStatusTexts((prev) => ({ ...prev, [dealId]: next }));
