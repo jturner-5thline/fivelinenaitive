@@ -49,6 +49,7 @@ import {
   approveButtonLabel,
   targetSummary,
   buildRationaleFallback,
+  toSingleSentence,
 } from './approvalCopy';
 import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
