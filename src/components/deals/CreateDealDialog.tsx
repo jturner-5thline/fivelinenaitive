@@ -176,6 +176,11 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [narrative, setNarrative] = useState(initialValues?.narrative || '');
   const [referralName, setReferralName] = useState(initialValues?.referralName || '');
   const [referralEmail, setReferralEmail] = useState(initialValues?.referralEmail || '');
+  const [referralContacts, setReferralContacts] = useState<ContactPickerValue[]>(
+    initialValues?.referralName || initialValues?.referralEmail
+      ? [{ name: initialValues?.referralName || '', email: initialValues?.referralEmail || '' }]
+      : [],
+  );
   const [sourcedVia, setSourcedVia] = useState('');
   const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isCreating, setIsCreating] = useState(false);
