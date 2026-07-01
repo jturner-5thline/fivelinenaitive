@@ -1015,16 +1015,16 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownMetricType: 'count',
         },
         // Row 2 — dollar/value KPIs, in the exact order:
-        // Debt $ on the Board | Dollars Proposed | Debt $ Signed | Terms Issued $ | Terms Signed $ | Dollars Funded
+        // Dollars on the Board | Dollars Proposed | Dollars Signed | Terms Issued $ | Terms Signed $ | Dollars Funded
         {
           id: 'debt-dollar-on-board',
-          title: 'Debt $ on the Board',
+          title: 'Dollars on the Board',
           icon: DollarSign,
           value: formatCurrency(m.ndaNeedsList.dollarVolume),
           isLoading: m.ndaNeedsList.isLoading,
           deals: m.ndaNeedsList.deals,
           color: 'hsl(var(--chart-2))',
-          drilldownTitle: 'Debt $ on the Board — added to Active Pipeline',
+          drilldownTitle: 'Dollars on the Board — added to Active Pipeline',
           drilldownMetricType: 'dollars',
         },
         {
@@ -1040,13 +1040,13 @@ export function ConsolidatedDebtPipelineDashboard({
         },
         {
           id: 'debt-dollar-signed',
-          title: 'Debt $ Signed',
+          title: 'Dollars Signed',
           icon: DollarSign,
           value: formatCurrency(m.finalCreditItems.dollarVolume),
           isLoading: m.finalCreditItems.isLoading,
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--success))',
-          drilldownTitle: 'Debt $ Signed — entered Final Credit Items',
+          drilldownTitle: 'Dollars Signed — entered Final Credit Items',
           drilldownMetricType: 'dollars',
         },
         {
@@ -1098,7 +1098,7 @@ export function ConsolidatedDebtPipelineDashboard({
           deals: m.averageDealOnBoard.deals,
           color: 'hsl(var(--chart-4))',
           drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
-          drilldownPeriodNote: 'Selected period · Debt $ on the Board ÷ Deals on the Board',
+          drilldownPeriodNote: 'Selected period · Dollars on the Board ÷ Deals on the Board',
           drilldownMetricType: 'average',
         },
         {
