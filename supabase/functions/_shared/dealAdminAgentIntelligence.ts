@@ -1937,6 +1937,13 @@ function buildCandidateRows(
         "lender";
       title = `Update ${lenderName}`;
     }
+    // Append the primary proposed change so titles clearly convey intent
+    // (e.g. `Update Flow Capital to "Unresponsive"` instead of a generic
+    // `Update Flow Capital`).
+    const suffix = describeChangeSuffix(c);
+    if (suffix && title && !title.toLowerCase().includes(suffix.toLowerCase())) {
+      title = `${title} ${suffix}`;
+    }
     return {
       user_id: opts.attributionUserId,
       assigned_to: assignedTo,
