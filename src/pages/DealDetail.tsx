@@ -5538,10 +5538,6 @@ export default function DealDetail() {
                 );
               })()}
             </DialogTitle>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Working record for this funding source on{' '}
-              <span className="text-foreground/80">{deal?.company || deal?.name}</span>
-            </p>
           </DialogHeader>
           {selectedLenderName && (() => {
             // Look up lender from the master lenders directory (database), with direct-fetch fallback
