@@ -305,6 +305,9 @@ function getFieldOptions(
   switch (key) {
     case 'stage':
     case 'stage_id': {
+      // For funding source / lender rows, `stage` is the lender pipeline
+      // stage (Reviewing DRL, Management Call Set, etc.) — NOT the deal stage.
+      if (isLenderCtx) return toOpts(LENDER_STAGE_CONFIG);
       // Prefer live pipeline stages when available; fall back to STAGE_CONFIG.
       const stageMap = lookups.stages ?? {};
       const entries = Object.entries(stageMap);
