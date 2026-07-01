@@ -976,9 +976,6 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
             </div>
           ))}
         </div>
-        {isScrollable && (
-          <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-4 -mt-4 bg-gradient-to-t from-muted/80 to-transparent rounded-b-md" />
-        )}
         </div>
       )}
 
