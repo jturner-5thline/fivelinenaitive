@@ -50,6 +50,8 @@ import {
   targetSummary,
   buildRationaleFallback,
   toSingleSentence,
+  TAG_STYLE_FIELD_KEYS,
+  prettifyTagLabel,
 } from './approvalCopy';
 import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
