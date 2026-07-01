@@ -6181,6 +6181,7 @@ export default function DealDetail() {
           setPendingPassStageChange(null);
           setSelectedPassReasons([]);
           setPassReasonSearch('');
+          setOtherPassReasonText('');
         }
       }}>
         <DialogContent className="sm:max-w-2xl">
