@@ -4,6 +4,13 @@ import { cn } from '@/lib/utils';
 
 interface LenderNoteTimestampProps {
   updatedAt: string | Date | null | undefined;
+  /**
+   * Additional timestamps to consider (status note, status change, milestone
+   * change). The component renders the most recent of `updatedAt` and any of
+   * these values so the "Updated …" label reflects the last change to the
+   * funding source overall, not just the notes field.
+   */
+  additionalDates?: Array<string | Date | null | undefined>;
   noteCount?: number;
   className?: string;
 }
@@ -12,10 +19,16 @@ interface LenderNoteTimestampProps {
  * Inline, always-visible "Updated {relative}" label for the most recent
  * lender note on a deal's Funding Sources card. Full timestamp on hover.
  */
-export function LenderNoteTimestamp({ updatedAt, noteCount, className }: LenderNoteTimestampProps) {
-  if (!updatedAt) return null;
-  const date = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
-  if (isNaN(date.getTime())) return null;
+export function LenderNoteTimestamp({ updatedAt, additionalDates, noteCount, className }: LenderNoteTimestampProps) {
+  const candidates = [updatedAt, ...(additionalDates ?? [])]
+    .map((v) => {
+      if (!v) return null;
+      const d = v instanceof Date ? v : new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    })
+    .filter((d): d is Date => d !== null);
+  if (candidates.length === 0) return null;
+  const date = candidates.reduce((a, b) => (a.getTime() >= b.getTime() ? a : b));
 
   const daysAgo = differenceInDays(new Date(), date);
   const now = new Date();
