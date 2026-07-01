@@ -5480,6 +5480,42 @@ export default function DealDetail() {
           <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60">
             <DialogTitle className="flex items-center gap-2 text-lg">
               {(() => {
+                const lenderList = deal?.lenders || [];
+                const idx = lenderList.findIndex(l => l.name === selectedLenderName);
+                if (lenderList.length < 2 || idx < 0) return null;
+                const goPrev = () => {
+                  const prev = lenderList[(idx - 1 + lenderList.length) % lenderList.length];
+                  if (prev) setSelectedLenderName(prev.name);
+                };
+                const goNext = () => {
+                  const next = lenderList[(idx + 1) % lenderList.length];
+                  if (next) setSelectedLenderName(next.name);
+                };
+                return (
+                  <div className="flex items-center gap-1 mr-1">
+                    <button
+                      type="button"
+                      onClick={goPrev}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Previous funding source"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {idx + 1}/{lenderList.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={goNext}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Next funding source"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })()}
+              {(() => {
                 const ml = masterLenders.find(
                   (m) => m.name.toLowerCase().trim() === (selectedLenderName || '').toLowerCase().trim(),
                 );
