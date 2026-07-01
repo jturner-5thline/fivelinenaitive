@@ -74,6 +74,7 @@ import { ShareReportDialog } from '@/components/deals/ShareReportDialog';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { useAutoStaleFlags } from '@/hooks/useAutoStaleFlags';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
