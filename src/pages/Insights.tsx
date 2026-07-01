@@ -146,7 +146,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false, folder: 'financial' as const },
   { id: 'sales-dashboard-v2', name: 'Sales Dashboard', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
-  { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
+  { id: 'consolidated-debt-pipeline', name: 'Debt Advisory Metrics', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
   { id: 'rep-scorecard', name: 'Rep Scorecard', isFavorite: false, folder: 'sales-bd' as const },

@@ -25,7 +25,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 
 /**
- * Consolidated Debt Pipeline Board currency display.
+ * Debt Advisory Metrics Board currency display.
  * Always renders as abbreviated millions with two decimals, e.g. $2.00MM, $0.75MM.
  * Used for KPI tiles, drilldown table cells, totals, and chart tooltips so every
  * surface on this board reconciles.
@@ -607,7 +607,7 @@ function StageMovementStackedBarChart({
             Stage Movement — Funded/Invoiced vs Closed Won
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Consolidated Debt Pipeline — {trendMode === 'monthly' ? 'monthly' : 'quarterly'} stage_enter events, past {trendMode === 'monthly' ? '6 months' : '4 quarters'} (rolling, anchored to today)
+            Debt Advisory Metrics — {trendMode === 'monthly' ? 'monthly' : 'quarterly'} stage_enter events, past {trendMode === 'monthly' ? '6 months' : '4 quarters'} (rolling, anchored to today)
           </p>
         </div>
         <div className="text-right">
@@ -889,7 +889,7 @@ export function ConsolidatedDebtPipelineDashboard({
   const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
 
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
-    `${metricLabel} · Consolidated Debt Pipeline → Funded / Invoiced + Closed Won · ${bucket.label}`;
+    `${metricLabel} · Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${bucket.label}`;
 
   useEffect(() => {
     if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return;
@@ -937,7 +937,7 @@ export function ConsolidatedDebtPipelineDashboard({
   if (!selectedQuarter) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Select a quarter from the dashboard header to view Consolidated Debt Pipeline metrics.
+        Select a quarter from the dashboard header to view Debt Advisory Metrics metrics.
       </div>
     );
   }
@@ -1157,7 +1157,7 @@ export function ConsolidatedDebtPipelineDashboard({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Consolidated Debt Pipeline</h2>
+          <h2 className="text-lg font-semibold text-foreground">Debt Advisory Metrics</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
           </p>
@@ -1246,7 +1246,7 @@ export function ConsolidatedDebtPipelineDashboard({
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Closed Trend</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Consolidated Debt Pipeline — stage_enter into Funded / Invoiced or Closed Won, zero-filled periods (rolling, anchored to today)
+              Debt Advisory Metrics — stage_enter into Funded / Invoiced or Closed Won, zero-filled periods (rolling, anchored to today)
             </p>
           </div>
           <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
@@ -1260,7 +1260,7 @@ export function ConsolidatedDebtPipelineDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
             title="Deals Closed"
-            subtitle={`Consolidated Debt Pipeline → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            subtitle={`Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--chart-3))"
@@ -1277,7 +1277,7 @@ export function ConsolidatedDebtPipelineDashboard({
           />
           <CompactFundedBarChart
             title="Dollars Funded"
-            subtitle={`Consolidated Debt Pipeline → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            subtitle={`Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--success))"
