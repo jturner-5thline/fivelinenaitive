@@ -7,6 +7,7 @@ import type { Deal } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { useDealCalendarItems, type DealCalendarItem, type DealCalendarItemType } from '@/hooks/useDealCalendarItems';
+import { useDealTeamCalendarEvents, type DealTeamCalendarEvent } from '@/hooks/useDealTeamCalendarEvents';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -17,7 +18,7 @@ interface CalendarPanelProps {
   onOpenDeal?: () => void;
 }
 
-type ItemKind = 'milestone' | 'task' | 'custom' | 'lender';
+type ItemKind = 'milestone' | 'task' | 'custom' | 'lender' | 'team';
 
 interface DayItem {
   id: string;
@@ -31,6 +32,7 @@ interface DayItem {
   /** Set when the source date fell on a weekend and was rolled to Friday. */
   weekendTag?: 'Sat' | 'Sun';
   ref?: { milestoneId?: string; taskId?: string };
+  team?: DealTeamCalendarEvent;
 }
 
 const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }> = {
@@ -38,6 +40,7 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
   task: { dot: 'bg-blue-500', bar: 'bg-blue-500', label: 'Task' },
   custom: { dot: 'bg-emerald-500', bar: 'bg-emerald-500', label: 'Event' },
   lender: { dot: 'bg-amber-500', bar: 'bg-amber-500', label: 'Lender' },
+  team: { dot: 'bg-cyan-400', bar: 'bg-cyan-400', label: 'Team meeting' },
 };
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
