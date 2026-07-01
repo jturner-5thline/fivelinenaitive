@@ -141,7 +141,7 @@ function DealListCardRowImpl({
   return (
     <div
       className={cn(
-        'deal-glass group flex items-center gap-3 p-3 cursor-pointer transition-all duration-200 hover:-translate-y-0.5',
+        'deal-glass group flex items-center gap-3 p-3 min-h-[68px] cursor-pointer transition-all duration-200 hover:-translate-y-0.5',
         isSelected && 'ring-2 ring-primary',
       )}
       data-deal-open-id={deal.id}
@@ -160,14 +160,16 @@ function DealListCardRowImpl({
         </div>
       )}
 
-      <div className="p-2 bg-primary/10 rounded-lg shrink-0">
-        <Building2 className="h-5 w-5 text-primary" />
-      </div>
+      {!compact && (
+        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+          <Building2 className="h-5 w-5 text-primary" />
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
         {/* Primary row: company name + status chip + inline tags */}
         <div className="flex items-center gap-2 flex-wrap">
-          {timeAgoData.isStale && (
+          {!compact && timeAgoData.isStale && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -187,7 +189,7 @@ function DealListCardRowImpl({
           <h3 className="font-medium truncate text-foreground">
             {deal.company || 'Untitled deal'}
           </h3>
-          {notificationCount > 0 &&
+          {!compact && notificationCount > 0 &&
             deal.status !== 'archived' &&
             deal.stage !== 'closed-lost' && (
               <TooltipProvider>
@@ -209,7 +211,7 @@ function DealListCardRowImpl({
                 </Tooltip>
               </TooltipProvider>
             )}
-          {deal.migratedFromPersonal && (
+          {!compact && deal.migratedFromPersonal && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -221,15 +223,17 @@ function DealListCardRowImpl({
               </Tooltip>
             </TooltipProvider>
           )}
-          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-            <InlineStatusDropdown
-              dealId={deal.id}
-              status={deal.status}
-              onStatusChange={onStatusChange}
-              className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
-            />
-          </div>
-          {engagementLabel && (
+          {!compact && (
+            <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+              <InlineStatusDropdown
+                dealId={deal.id}
+                status={deal.status}
+                onStatusChange={onStatusChange}
+                className="text-foreground dark:text-[hsl(240,25%,5%)] whitespace-nowrap"
+              />
+            </div>
+          )}
+          {!compact && engagementLabel && (
             <Badge
               variant="outline"
               className="text-[10px] uppercase tracking-wider rounded-md whitespace-nowrap border-white/10 bg-white/[0.03] text-muted-foreground shrink-0"
@@ -237,7 +241,7 @@ function DealListCardRowImpl({
               {engagementLabel}
             </Badge>
           )}
-          {lateMilestoneCount > 0 && (
+          {!compact && lateMilestoneCount > 0 && (
             <Badge
               variant="outline"
               className="text-[10px] rounded-md border-destructive/60 text-destructive shrink-0"
@@ -248,6 +252,7 @@ function DealListCardRowImpl({
         </div>
 
         {/* Secondary metadata: value · stage · manager · fee · updated */}
+        {!compact && (
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           <span className="font-medium text-foreground tabular-nums">
             {formatCurrencyValue(deal.value)}
@@ -293,9 +298,11 @@ function DealListCardRowImpl({
             </span>
           )}
         </div>
+        )}
       </div>
 
       {/* Trailing actions */}
+      {!compact && (
       <div className="flex items-center gap-1 ml-4 shrink-0" onClick={(e) => e.stopPropagation()}>
         {onToggleFlag && (
           <>
@@ -438,6 +445,7 @@ function DealListCardRowImpl({
           onClose={() => setIsPipelineDialogOpen(false)}
         />
       </div>
+      )}
     </div>
   );
 }
