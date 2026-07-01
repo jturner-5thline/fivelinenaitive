@@ -1174,9 +1174,20 @@ function DetailPane({
   const expires = expiryDaysLabel(item);
   const oldValues = (item.old_values || {}) as Record<string, any>;
   const newValues = (item.new_values || {}) as Record<string, any>;
-  const fieldKeys = Array.from(
-    new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]),
-  );
+  const fieldKeys = (() => {
+    const norm = (v: any) =>
+      v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
+    const keys = Array.from(
+      new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]),
+    );
+    // Only surface fields with an actual proposed change: proposed must be
+    // non-empty AND different from the current value.
+    return keys.filter((k) => {
+      const proposed = norm(newValues[k]);
+      if (!proposed) return false;
+      return proposed !== norm(oldValues[k]);
+    });
+  })();
   const editedCount = Object.keys(edits).length;
 
   return (
