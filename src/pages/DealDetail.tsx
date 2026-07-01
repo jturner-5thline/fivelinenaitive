@@ -5605,6 +5605,50 @@ export default function DealDetail() {
       </div>
 
       {/* Lender Detail Dialog */}
+      {/* Required status note dialog on funding-source stage changes */}
+      <Dialog
+        open={!!pendingStageNoteChange}
+        onOpenChange={(open) => {
+          if (!open) setPendingStageNoteChange(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add a status note</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Moving <span className="text-foreground font-medium">{pendingStageNoteChange?.lenderName}</span>{' '}
+              from <span className="text-foreground">{pendingStageNoteChange?.fromLabel}</span>{' '}
+              to <span className="text-foreground">{pendingStageNoteChange?.toLabel}</span>. A status note is required.
+            </p>
+            <Textarea
+              value={pendingStageNoteText}
+              onChange={(e) => setPendingStageNoteText(e.target.value)}
+              placeholder="What changed? (context, next steps, etc.)"
+              rows={4}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingStageNoteChange(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!pendingStageNoteText.trim()}
+              onClick={() => {
+                const change = pendingStageNoteChange;
+                if (!change || !pendingStageNoteText.trim()) return;
+                change.apply(pendingStageNoteText);
+                setPendingStageNoteChange(null);
+              }}
+            >
+              Save & update stage
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!selectedLenderName} onOpenChange={(open) => !open && setSelectedLenderName(null)}>
         <DialogContent className="max-w-3xl w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="shrink-0 px-6 pt-5 pb-3 border-b border-border/60 relative">
