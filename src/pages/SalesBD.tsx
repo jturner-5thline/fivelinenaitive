@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Handshake, Network, Settings as SettingsIcon, UserCheck } from "lucide-react";
+import { Handshake, Network, Settings as SettingsIcon, UserCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
 import { Building2 } from "lucide-react";
@@ -8,7 +8,7 @@ import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
-import { PartnerInsightsFeed, type InsightsSource } from "@/components/partners/PartnerInsightsFeed";
+import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
@@ -36,10 +36,9 @@ function SalesBdHeaderRangeSelector() {
 }
 
 function SalesBDInner() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [channelsSubView, setChannelsSubView] = useState<"channels" | "companies" | "referral-sources">("channels");
+  const [activeTab, setActiveTab] = useState("partners-channels");
+  const [channelsSubView, setChannelsSubView] = useState<"pipeline" | "channels" | "companies">("pipeline");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
-  const [insightsSource, setInsightsSource] = useState<InsightsSource>("all");
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
   const canEditPartnerRules = useCanEditPartnerRules();
@@ -78,21 +77,32 @@ function SalesBDInner() {
                 </div>
               </div>
               <TabsList>
-                <TabsTrigger value="overview" className="gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Overview
+                <TabsTrigger value="partners-channels" className="gap-1.5">
+                  <Handshake className="h-3.5 w-3.5" /> Partners & Channels
                 </TabsTrigger>
-                <TabsTrigger value="partners-pipeline" className="gap-1.5">
-                  <Handshake className="h-3.5 w-3.5" /> Partners Pipeline
+                <TabsTrigger value="referral-sources" className="gap-1.5">
+                  <UserCheck className="h-3.5 w-3.5" /> Referral Sources
                 </TabsTrigger>
               </TabsList>
             </>
           }
         >
-            <TabsContent value="overview" className="mt-4">
+            <TabsContent value="partners-channels" className="mt-4">
               <div className="space-y-8">
                 <div className="space-y-6">
                   {/* Sub-navigation */}
                   <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
+                    <button
+                      onClick={() => setChannelsSubView("pipeline")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                        channelsSubView === "pipeline"
+                          ? "bg-background/60 text-foreground border border-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
+                      }`}
+                    >
+                      <Handshake className="h-3.5 w-3.5" />
+                      Partners Pipeline
+                    </button>
                     <button
                       onClick={() => setChannelsSubView("channels")}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
@@ -115,18 +125,13 @@ function SalesBDInner() {
                       <Building2 className="h-3.5 w-3.5" />
                       Companies
                     </button>
-                    <button
-                      onClick={() => setChannelsSubView("referral-sources")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
-                        channelsSubView === "referral-sources"
-                          ? "bg-background/60 text-foreground border border-border"
-                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
-                      }`}
-                    >
-                      <UserCheck className="h-3.5 w-3.5" />
-                      Referral Sources
-                    </button>
                   </div>
+
+                  {channelsSubView === "pipeline" && (
+                    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+                      <PartnersPipeline />
+                    </Suspense>
+                  )}
 
                   {channelsSubView === "channels" && <ChannelsDashboard />}
 
@@ -139,52 +144,34 @@ function SalesBDInner() {
                       <ChannelsBoard />
                     </div>
                   )}
-
-                  {channelsSubView === "referral-sources" && <ReferralSourcesView />}
                 </div>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <h2 className="text-lg font-semibold">Partners and Referrals Insights</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners and referral sources</p>
-                    </div>
-                    <div className="flex items-center bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 gap-0.5">
-                      {([
-                        { value: 'all', label: 'All' },
-                        { value: 'partners', label: 'Partners only' },
-                        { value: 'referrals', label: 'Referral Sources only' },
-                      ] as { value: InsightsSource; label: string }[]).map(o => (
-                        <button
-                          key={o.value}
-                          onClick={() => setInsightsSource(o.value)}
-                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-                            insightsSource === o.value
-                              ? 'bg-background/60 text-foreground border border-border'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-background/30'
-                          }`}
-                        >
-                          {o.label}
-                        </button>
-                      ))}
-                    </div>
+                  <div>
+                    <h2 className="text-lg font-semibold">Partners Insights</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <PartnerInsightsFeed sourceFilter={insightsSource} />
-                    {insightsSource !== 'referrals' && (
-                      <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
-                    )}
+                    <PartnerInsightsFeed sourceFilter="partners" />
+                    <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
                   </div>
-                  {insightsSource !== 'partners' && <ReferralsNeedingAttention />}
                 </div>
                 <PartnerSourcedDeals />
-                <ReferralSourceDeals />
               </div>
             </TabsContent>
 
-            <TabsContent value="partners-pipeline" className="mt-4">
-              <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-                <PartnersPipeline />
-              </Suspense>
+            <TabsContent value="referral-sources" className="mt-4">
+              <div className="space-y-8">
+                <ReferralSourcesView />
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across referral sources</p>
+                  </div>
+                  <PartnerInsightsFeed sourceFilter="referrals" />
+                  <ReferralsNeedingAttention />
+                </div>
+                <ReferralSourceDeals />
+              </div>
             </TabsContent>
         </DashboardPage>
       </div>
