@@ -1529,6 +1529,24 @@ export default function DealDetail() {
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
   const [otherPassReasonText, setOtherPassReasonText] = useState('');
+  const hydratePassReasonSelection = React.useCallback((passReason: string) => {
+    const otherReason = passReasons.find(r => r.label.toLowerCase() === 'other');
+    const labels = passReason.split(', ').map(r => r.trim()).filter(Boolean);
+    const ids: string[] = [];
+    let otherText = '';
+    labels.forEach(label => {
+      const lower = label.toLowerCase();
+      if (lower.startsWith('other:') && otherReason) {
+        if (!ids.includes(otherReason.id)) ids.push(otherReason.id);
+        otherText = label.slice(label.indexOf(':') + 1).trim();
+      } else {
+        const match = passReasons.find(pr => pr.label === label)?.id;
+        if (match) ids.push(match);
+      }
+    });
+    setSelectedPassReasons(ids);
+    setOtherPassReasonText(otherText);
+  }, [passReasons]);
 
   // Required status note dialog on stage changes (non-passed)
   const [pendingStageNoteChange, setPendingStageNoteChange] = useState<{
