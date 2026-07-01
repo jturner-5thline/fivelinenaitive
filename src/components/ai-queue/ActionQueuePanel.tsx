@@ -1585,6 +1585,27 @@ function DetailPane({
             </div>
           )}
 
+          {/* Status note editor for funding source updates. Persisted into
+           *  deal_lenders.notes via the executor's `merged.notes` handling. */}
+          {editMode && isFundingSource && (
+            <div className="space-y-1.5">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[#ecedf4]/90"
+                style={FONT_BODY}
+              >
+                Status note
+              </p>
+              <Textarea
+                rows={3}
+                value={typeof edits.notes === 'string' ? edits.notes : (oldValues.notes ?? '')}
+                onChange={(e) => setEdits((p) => ({ ...p, notes: e.target.value }))}
+                placeholder="Add context for this status change (optional)…"
+                className="text-[12.5px] px-2.5 py-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] placeholder:text-[#ecedf4]/45 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                style={FONT_BODY}
+              />
+            </div>
+          )}
+
           {item.execution_error && (
             <p className="text-[11.5px] text-[#f58aa0]" style={FONT_BODY}>
               Last execution failed: {item.execution_error}
