@@ -48,8 +48,6 @@ import { StatusChangeGateProvider } from "@/components/deal/StatusChangeGate";
 import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
-import { InsightsAccessDebug } from "@/components/InsightsAccessDebug";
-import { AsanaSyncDebug } from "@/components/AsanaSyncDebug";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
 import { NewTaskViaNaitiveModal } from "@/components/dashboard/chat/NewTaskViaNaitiveModal";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -382,9 +380,7 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <WorkflowEmailModalListener />
-                      <InsightsAccessDebug />
-                      <AsanaSyncDebug />
-                      
+
                       <BrowserRouter>
                         <ScrollToTop />
                         <CanonicalTag />
