@@ -95,7 +95,7 @@ function MetricKPICard({
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
-      <CardContent className="flex items-center gap-4 p-4">
+      <CardContent className="flex items-center gap-3 p-4 pl-2">
         <div
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/20"
           style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
