@@ -103,11 +103,7 @@ function LabelWithBadge({
         {children}
         {required ? <span className="text-destructive"> *</span> : null}
       </Label>
-      {badge ? (
-        <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {badge}
-        </span>
-      ) : null}
+      {null}
     </div>
   );
 }
