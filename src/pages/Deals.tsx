@@ -763,39 +763,8 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Stale / Flag / Notification toggles */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Toggle
-                        pressed={filters.staleOnly}
-                        onPressedChange={(pressed) => {
-                          if (pressed) {
-                            updateFilters({ staleOnly: true, flaggedOnly: false, hasNotificationsOnly: false });
-                          } else {
-                            updateFilters({ staleOnly: false });
-                          }
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className={`h-9 w-9 p-0 shrink-0 rounded-md relative backdrop-blur-md border transition-all duration-200 ${filters.staleOnly ? 'bg-gradient-to-br from-amber-500/25 to-orange-600/20 border-amber-500/50 text-amber-400 shadow-[0_0_12px_hsl(38,90%,50%,0.2)] hover:from-amber-500/30 hover:to-orange-600/25' : 'bg-gradient-to-br from-amber-500/10 to-orange-600/5 border-amber-500/20 text-amber-400/60 hover:from-amber-500/15 hover:to-orange-600/10 hover:border-amber-500/35 hover:text-amber-400'}`}
-                      >
-                        <AlertTriangle className="h-4 w-4" />
-                        {staleDealCount > 0 && (
-                          <Badge 
-                            variant="destructive" 
-                            className="absolute -top-2 -right-2 h-5 min-w-5 px-1.5 text-xs rounded-full"
-                          >
-                            {staleDealCount}
-                          </Badge>
-                        )}
-                      </Toggle>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Show only stale deals ({preferences.staleDealsDays}+ days)</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {/* Stale toggle removed — stale deals are auto-flagged and
+                    surface via the Flag filter below (see useAutoStaleFlags). */}
 
                 <TooltipProvider>
                   <Tooltip>
