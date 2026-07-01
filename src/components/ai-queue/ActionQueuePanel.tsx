@@ -7,6 +7,20 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  STAGE_CONFIG,
+  STATUS_CONFIG,
+  LENDER_STATUS_CONFIG,
+  LENDER_STAGE_CONFIG,
+  LENDER_TRACKING_STATUS_CONFIG,
+} from '@/types/deal';
+import {
   X,
   Inbox as InboxIcon,
   Briefcase,
