@@ -284,6 +284,74 @@ function expiryDaysLabel(item: QueuedAiAction): string {
   return `in ${formatDistanceToNowStrict(new Date(item.expires_at))}`;
 }
 
+/** Returns dropdown options for enum-style fields ({value, label} pairs), or
+ *  null if the field is free-form text. Options are context-aware: the target
+ *  object type disambiguates lender substage vs deal substage, etc. */
+function getFieldOptions(
+  key: string,
+  item: QueuedAiAction,
+  lookups: { stages?: Record<string, string>; pipelines?: Record<string, string> },
+): Array<{ value: string; label: string }> | null {
+  const targetType = (item as any).target_object_type as string | undefined;
+  const isLenderCtx =
+    targetType === 'deal_lender' ||
+    targetType === 'funding_source' ||
+    item.action_type === 'update_funding_source' ||
+    item.action_type === 'update_lender_status';
+
+  const toOpts = (cfg: Record<string, { label: string }>) =>
+    Object.entries(cfg).map(([value, { label }]) => ({ value, label }));
+
+  switch (key) {
+    case 'stage':
+    case 'stage_id': {
+      // Prefer live pipeline stages when available; fall back to STAGE_CONFIG.
+      const stageMap = lookups.stages ?? {};
+      const entries = Object.entries(stageMap);
+      if (entries.length > 0) {
+        return entries.map(([value, label]) => ({ value, label }));
+      }
+      return toOpts(STAGE_CONFIG);
+    }
+    case 'pipeline_id': {
+      return Object.entries(lookups.pipelines ?? {}).map(([value, label]) => ({ value, label }));
+    }
+    case 'status':
+    case 'deal_status': {
+      if (isLenderCtx) return toOpts(LENDER_STATUS_CONFIG);
+      return toOpts(STATUS_CONFIG);
+    }
+    case 'tracking_status':
+    case 'lender_tracking_status': {
+      const base = toOpts(LENDER_TRACKING_STATUS_CONFIG);
+      // Enforced value used by the Deal Admin Agent.
+      if (!base.some((o) => o.value === 'unresponsive')) {
+        base.push({ value: 'unresponsive', label: 'Unresponsive' });
+      }
+      return base;
+    }
+    case 'substage':
+    case 'sub_stage':
+    case 'lender_status':
+    case 'funding_source_status': {
+      if (isLenderCtx || key === 'lender_status' || key === 'funding_source_status') {
+        return toOpts(LENDER_STAGE_CONFIG);
+      }
+      return null;
+    }
+    case 'priority': {
+      return [
+        { value: 'low', label: 'Low' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'high', label: 'High' },
+        { value: 'urgent', label: 'Urgent' },
+      ];
+    }
+    default:
+      return null;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Main panel
    ──────────────────────────────────────────────────────────────────────── */
