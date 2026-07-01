@@ -257,9 +257,18 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         setOriginBorderRadius(null);
       });
     });
+    // Safety net: some browsers (notably Safari) and slower machines
+    // occasionally miss the double-rAF release — the panel then stays
+    // pinned at the tile's size because the transform is never cleared.
+    // Guarantee a release after ~80ms regardless of rAF behavior.
+    const safety = window.setTimeout(() => {
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+    }, 80);
     return () => {
       cancelAnimationFrame(raf1);
       if (raf2) cancelAnimationFrame(raf2);
+      window.clearTimeout(safety);
     };
   }, [deal?.id, reduceMotion]);
 
