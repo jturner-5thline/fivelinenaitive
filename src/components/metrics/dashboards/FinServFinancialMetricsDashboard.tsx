@@ -1431,21 +1431,21 @@ function FinServFinancialMetricsDashboardInner() {
         </CardContent>
       </Card>
 
-      {/* ── Row 2: Gross Profit — $ / % toggle ── */}
-      <GrossProfitToggleCard
-        periodBadge={periodBadge}
-        totalRev={totalRev}
-        profits={profits}
-        openSinglePoint={openSinglePoint}
-      />
-
-      {/* ── Row 3: Operating Profit $ / Operating Margin % (toggle) ── */}
-      <OperatingProfitToggleCard
-        periodBadge={periodBadge}
-        totalRev={totalRev}
-        profits={profits}
-        openSinglePoint={openSinglePoint}
-      />
+      {/* ── Row 2: Gross Profit + Operating Profit side-by-side ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <GrossProfitToggleCard
+          periodBadge={periodBadge}
+          totalRev={totalRev}
+          profits={profits}
+          openSinglePoint={openSinglePoint}
+        />
+        <OperatingProfitToggleCard
+          periodBadge={periodBadge}
+          totalRev={totalRev}
+          profits={profits}
+          openSinglePoint={openSinglePoint}
+        />
+      </div>
 
       {/* ── Row 4 + 5: FinServ Cashflow + Active Clients ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
