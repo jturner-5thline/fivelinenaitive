@@ -1375,16 +1375,25 @@ function FinServFinancialMetricsDashboardInner() {
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={(() => {
-                    const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
-                    return totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
-                  })()}
-                >
+                {(() => {
+                  const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
+                  const chartData = totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
+                  return (
+                <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Revenue']} />
+                  <Tooltip
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="amount"
+                        format={fmtCurrencyFull}
+                        seriesName="Revenue"
+                      />
+                    )}
+                  />
                   <Bar
                     dataKey="amount"
                     fill="hsl(var(--primary))"
