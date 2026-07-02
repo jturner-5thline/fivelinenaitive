@@ -1355,6 +1355,14 @@ function FinServFinancialMetricsDashboardInner() {
           </div>
         </CardHeader>
         <CardContent>
+          {showTrendCashflow && (
+            <div className="mb-3">
+              <TrendDeltaText
+                values={cashflow.points.map((p) => p.value)}
+                format={fmtCurrencyFull}
+              />
+            </div>
+          )}
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
