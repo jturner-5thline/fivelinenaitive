@@ -27,6 +27,7 @@ import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 import { useMyTasks } from '@/hooks/useTasks';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
@@ -172,6 +173,8 @@ export function DealsHeader() {
   const approvalQueueCount = approvalQueueEnabled
     ? (actionQueueItems?.length || 0) + (dealAccessRequests?.length || 0)
     : 0;
+  const { overdueCount: tasksOverdueCount, dueTodayCount: tasksDueTodayCount } = useTaskNotifications();
+  const myTasksBadgeCount = tasksOverdueCount + tasksDueTodayCount;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
@@ -521,6 +524,7 @@ export function DealsHeader() {
               };
               const COUNT_BADGES: Record<string, number> = {
                 'Approval Queue': approvalQueueCount,
+                'Tasks': myTasksBadgeCount,
               };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
