@@ -145,6 +145,10 @@ function useNikiPipelineData() {
   return useQuery({
     queryKey: ['niki-perf-pipeline-data', assignee, 'v4-company-siblings'],
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
       //    deals still count for the stages they passed through).
@@ -163,54 +167,75 @@ function useNikiPipelineData() {
         (d: any) => nikiFilter(d) && !isExcludedDealName(d.company),
       );
 
-      // Widen scope to include sibling deals on the OTHER 5th Line pipeline
-      // for the same company. Reps commonly split a client into an Active
-      // Pipeline record (managed by Niki) and an In Development record
-      // (owner/manager may be blank or another rep). Stage events on either
-      // sibling should count toward Niki's actuals when she owns/manages
-      // the company through either record. Example: Back Bar Project —
-      // Active sibling is Niki's, In Development sibling entered "In Due
-      // Diligence" and must count toward her Terms Signed.
+      const primaryIds = primaryNiki.map((d: any) => d.id);
       const companyIds = Array.from(
         new Set(primaryNiki.map((d: any) => d.company_id).filter(Boolean)),
       );
-      let siblings: any[] = [];
-      if (companyIds.length > 0) {
-        const sibRes = await supabase
-          .from('deals')
-          .select('id, company, company_id, value, deal_owner, manager, stage, created_at, pipeline_id')
-          .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
-          .in('company_id', companyIds);
-        if (sibRes.error) throw sibRes.error;
-        const primaryIds = new Set(primaryNiki.map((d: any) => d.id));
-        siblings = (sibRes.data ?? []).filter(
-          (d: any) => !primaryIds.has(d.id) && !isExcludedDealName(d.company),
-        );
-      }
-      const allNiki = [...primaryNiki, ...siblings];
-      const nikiIds = allNiki.map((d: any) => d.id);
-      const dealsById = new Map<string, any>(allNiki.map((d: any) => [d.id, d]));
 
-      if (nikiIds.length === 0) {
-        return { allNiki, dealsById, eventsByStage: new Map<string, Map<string, string>>() };
+      if (primaryIds.length === 0) {
+        return {
+          allNiki: [] as any[],
+          dealsById: new Map<string, any>(),
+          eventsByStage: new Map<string, Map<string, string>>(),
+        };
       }
 
-      // 2. All stage-change events for these deals, from BOTH event sources.
-      //    activity_logs.metadata->>'to' is the canonical stage id.
-      const [alRes, dshRes] = await Promise.all([
+      // Fetch sibling deals AND primary stage events in parallel — sibling
+      // deals only add cross-pipeline records that share company_id (e.g.
+      // Back Bar Project's In Development twin). Running these three
+      // requests concurrently keeps the tab responsive.
+      const [sibRes, alPrimaryRes, dshPrimaryRes] = await Promise.all([
+        companyIds.length > 0
+          ? supabase
+              .from('deals')
+              .select('id, company, company_id, value, deal_owner, manager, stage, created_at, pipeline_id')
+              .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
+              .in('company_id', companyIds)
+          : Promise.resolve({ data: [] as any[], error: null } as any),
         supabase
           .from('activity_logs')
           .select('deal_id, created_at, metadata')
           .eq('activity_type', 'stage_change')
-          .in('deal_id', nikiIds),
+          .in('deal_id', primaryIds),
         supabase
           .from('deal_stage_history')
           .select('deal_id, changed_at, to_stage, to_stage_id')
           .eq('event_type', 'stage_enter')
-          .in('deal_id', nikiIds),
+          .in('deal_id', primaryIds),
       ]);
-      if (alRes.error) throw alRes.error;
-      if (dshRes.error) throw dshRes.error;
+      if ((sibRes as any).error) throw (sibRes as any).error;
+      if (alPrimaryRes.error) throw alPrimaryRes.error;
+      if (dshPrimaryRes.error) throw dshPrimaryRes.error;
+
+      const primaryIdSet = new Set(primaryIds);
+      const siblings = ((sibRes as any).data ?? []).filter(
+        (d: any) => !primaryIdSet.has(d.id) && !isExcludedDealName(d.company),
+      );
+      const allNiki = [...primaryNiki, ...siblings];
+      const dealsById = new Map<string, any>(allNiki.map((d: any) => [d.id, d]));
+      const siblingIds = siblings.map((d: any) => d.id);
+
+      // Top up stage events for sibling IDs only (skipped when none).
+      let alSiblingRows: any[] = [];
+      let dshSiblingRows: any[] = [];
+      if (siblingIds.length > 0) {
+        const [alSibRes, dshSibRes] = await Promise.all([
+          supabase
+            .from('activity_logs')
+            .select('deal_id, created_at, metadata')
+            .eq('activity_type', 'stage_change')
+            .in('deal_id', siblingIds),
+          supabase
+            .from('deal_stage_history')
+            .select('deal_id, changed_at, to_stage, to_stage_id')
+            .eq('event_type', 'stage_enter')
+            .in('deal_id', siblingIds),
+        ]);
+        if (alSibRes.error) throw alSibRes.error;
+        if (dshSibRes.error) throw dshSibRes.error;
+        alSiblingRows = alSibRes.data ?? [];
+        dshSiblingRows = dshSibRes.data ?? [];
+      }
 
       // Map<stageId, Map<deal_id, earliest_iso_date>>
       const eventsByStage = new Map<string, Map<string, string>>();
@@ -224,11 +249,11 @@ function useNikiPipelineData() {
         const prev = m.get(dealId);
         if (!prev || at < prev) m.set(dealId, at);
       };
-      for (const r of alRes.data ?? []) {
+      for (const r of [...(alPrimaryRes.data ?? []), ...alSiblingRows]) {
         const to = normalizeStageKey((r as any).metadata?.to);
         record(to, r.deal_id, r.created_at);
       }
-      for (const r of dshRes.data ?? []) {
+      for (const r of [...(dshPrimaryRes.data ?? []), ...dshSiblingRows]) {
         const key =
           normalizeStageKey((r as any).to_stage_id) ??
           normalizeStageKey((r as any).to_stage);
@@ -294,6 +319,10 @@ function usePipelineAddedDeals() {
   return useQuery({
     queryKey: ['niki-perf-added', assignee],
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<PerfDeal[]> => {
       const { data, error } = await supabase
         .from('deals')
