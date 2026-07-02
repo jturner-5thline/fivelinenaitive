@@ -1897,6 +1897,7 @@ function FinServFinancialMetricsDashboardInner() {
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
       emptyHint="No detail records available for this datapoint."
+      defaultSort={drill?.defaultSort}
       onRowClick={
         drill?.context?.sourceId === 'finserv:revenue-change-by-client'
           ? (row: any) => {
