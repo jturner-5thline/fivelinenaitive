@@ -11,6 +11,7 @@ import { differenceInDays } from 'date-fns';
 import { ReferralSourceEditDialog } from '@/components/channels/ReferralSourceEditDialog';
 import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { usePartnerInsightsCounts } from './PartnerInsightsFeed';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 interface StaleReferral {
   key: string;
@@ -25,6 +26,9 @@ interface StaleReferral {
 
 export function ReferralsNeedingAttention() {
   const { referralSources } = useDealReferralSources();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
   const [showAll, setShowAll] = useState(false);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
 
@@ -36,15 +40,24 @@ export function ReferralsNeedingAttention() {
   const [editThresholds, setEditThresholds] = useState(thresholds);
 
   const stale = useMemo(() => {
-    const now = new Date();
+    const realNow = new Date();
+    const now = rangeEnd && rangeEnd < realNow ? rangeEnd : realNow;
     const result: StaleReferral[] = [];
 
     referralSources.forEach(rs => {
-      const latest = rs.deals[0];
-      if (!latest) return;
+      // Restrict deals to the selected timeframe (if any) so this list
+      // reflects the active reporting period.
+      const scopedDeals = rs.deals.filter(d => {
+        const t = new Date(d.created_at).getTime();
+        if (rangeStart && t < rangeStart.getTime()) return false;
+        if (rangeEnd && t > rangeEnd.getTime()) return false;
+        return true;
+      });
+      if (scopedDeals.length === 0) return;
+      const latest = scopedDeals[0];
       const lastDate = new Date(latest.created_at);
       const daysSince = differenceInDays(now, lastDate);
-      const hasActive = rs.deals.some(d => d.status === 'active');
+      const hasActive = scopedDeals.some(d => d.status === 'active');
 
       if (daysSince >= thresholds.inactivity) {
         result.push({
@@ -75,7 +88,7 @@ export function ReferralsNeedingAttention() {
     });
 
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
-  }, [referralSources, thresholds]);
+  }, [referralSources, thresholds, rangeStart, rangeEnd]);
 
   const countsCtx = usePartnerInsightsCounts();
   useEffect(() => {
