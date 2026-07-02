@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -50,13 +50,18 @@ export function useFinservProjects(
   const [projects, setProjects] = useState<FinservProject[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const notifyTotal = useCallback(
-    (rows: FinservProject[]) => {
-      const total = rows.reduce((s, p) => s + (p.value || 0), 0);
-      onTotalChange?.(total);
-    },
-    [onTotalChange],
-  );
+  // Keep the callback in a ref so its identity doesn't invalidate `refresh`
+  // (parents commonly pass an inline arrow, which would otherwise cause
+  // the effect to re-run every render and flicker the empty state).
+  const onTotalChangeRef = useRef(onTotalChange);
+  useEffect(() => {
+    onTotalChangeRef.current = onTotalChange;
+  }, [onTotalChange]);
+
+  const notifyTotal = useCallback((rows: FinservProject[]) => {
+    const total = rows.reduce((s, p) => s + (p.value || 0), 0);
+    onTotalChangeRef.current?.(total);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!dealId) return;
