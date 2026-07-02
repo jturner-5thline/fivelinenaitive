@@ -1226,19 +1226,29 @@ function FinServFinancialMetricsDashboardInner() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle
-            className="text-sm font-medium cursor-help"
-            title='FinServ Cashflow net of "Due To 5th Line Payments"'
-          >
-            FinServ Cashflow
-          </CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle
+                className="text-sm font-medium cursor-help"
+                title='FinServ Cashflow net of "Due To 5th Line Payments"'
+              >
+                FinServ Cashflow
+              </CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendCashflow} onToggle={() => setShowTrendCashflow(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={cashflow.points}>
+                <ComposedChart
+                  data={(() => {
+                    const trend = computeLinearTrend(cashflow.points.map(p => p.value));
+                    return cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
+                  })()}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
@@ -1262,7 +1272,19 @@ function FinServFinancialMetricsDashboardInner() {
                       <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                     ))}
                   </Bar>
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={false} name="Trend" />
+                  {showTrendCashflow && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
