@@ -9,7 +9,7 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
  * month (UTC) of `changed_at`. Mirrors useProposalsIssuedByMonth but for a
  * configurable stage + the FinServ pipeline id.
  */
-export const FINSERV_PIPELINE_ID = '3f898317-5640-4217-91f9-0153f7f023d8';
+export const FINSERV_PIPELINE_ID = '6907be5e-b17c-4a95-a7c2-fd977c94e179';
 
 export interface FinservStageEntry {
   id: string;
