@@ -1530,6 +1530,70 @@ function trailing3(buckets: (number | null)[]): number | null {
 // ============================================================
 type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 
+// ---- Full-forecast draft model --------------------------------------------
+// The editor operates on this shape (full year + any user-appended
+// months/quarters/years) independent of the dashboard's timeframe view.
+interface FullForecastColumn {
+  key: string;   // "YYYY-M" (M = 0-based month)
+  label: string; // e.g. "Jan '26"
+}
+interface FullForecastDraft {
+  columns: FullForecastColumn[];
+  data: Record<MetricKey, number[]>;
+}
+
+function columnKey(year: number, monthIdx: number): string {
+  return `${year}-${monthIdx}`;
+}
+function columnLabel(year: number, monthIdx: number): string {
+  const yy = String(year).slice(-2);
+  return `${MONTHS_ALL[monthIdx]} '${yy}`;
+}
+
+function seedColumns(year: number): FullForecastColumn[] {
+  return MONTHS_ALL.map((_, i) => ({
+    key: columnKey(year, i),
+    label: columnLabel(year, i),
+  }));
+}
+
+function seedRowForYear(k: MetricKey, year: number): number[] {
+  // For the SEED_YEAR, fill from authored PLAN where available, else 0.
+  return MONTHS_ALL.map((_, monIdx) => {
+    if (year === SEED_YEAR) {
+      const seedIdx = SEED_MONTH_INDEXES.indexOf(monIdx);
+      if (seedIdx >= 0) return PLAN[k][seedIdx] ?? 0;
+    }
+    return 0;
+  });
+}
+
+function buildInitialFullDraft(): FullForecastDraft {
+  const columns = seedColumns(SEED_YEAR);
+  const data = {} as Record<MetricKey, number[]>;
+  (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+    data[k] = seedRowForYear(k, SEED_YEAR);
+  });
+  return { columns, data };
+}
+
+function appendMonthsToDraft(draft: FullForecastDraft, count: number): FullForecastDraft {
+  if (count <= 0) return draft;
+  const last = draft.columns[draft.columns.length - 1];
+  let [y, m] = last ? last.key.split('-').map(Number) : [SEED_YEAR, -1];
+  const newCols: FullForecastColumn[] = [];
+  for (let i = 0; i < count; i += 1) {
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
+    newCols.push({ key: columnKey(y, m), label: columnLabel(y, m) });
+  }
+  const data = {} as Record<MetricKey, number[]>;
+  (Object.keys(draft.data) as MetricKey[]).forEach((k) => {
+    data[k] = [...draft.data[k], ...newCols.map(() => 0)];
+  });
+  return { columns: [...draft.columns, ...newCols], data };
+}
+
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
   const view = useView();
