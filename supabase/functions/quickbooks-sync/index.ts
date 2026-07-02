@@ -593,6 +593,18 @@ serve(async (req) => {
                     ?? allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities");
 
                   const seen = new Set<string>();
+                  // Identify intercompany rows ("Due to/from 5th Line Capital LLC")
+                  // so we can net their cash-flow impact out downstream.
+                  const INTERCOMPANY_LABEL = /due\s+(to|from|to\s*\/\s*from|from\s*\/\s*to)\s+5th\s+line\s+capital/i;
+                  const intercompanyRows = allRows.filter((row: any) => {
+                    const label = String(
+                      row?.ColData?.[0]?.value
+                        ?? row?.Summary?.ColData?.[0]?.value
+                        ?? row?.Header?.ColData?.[0]?.value
+                        ?? "",
+                    );
+                    return INTERCOMPANY_LABEL.test(label);
+                  });
                   const upsertRows = monthColumns
                     .map(({ column, index }: any) => {
                       const title = String(column?.ColTitle ?? "").trim();
@@ -607,6 +619,12 @@ serve(async (req) => {
                       const value = parseAmount(
                         netRow?.Summary?.ColData?.[index]?.value ?? netRow?.ColData?.[index]?.value,
                       );
+                      const intercompanyAdjustment = intercompanyRows.reduce((sum: number, row: any) => {
+                        return sum + parseAmount(
+                          row?.ColData?.[index]?.value
+                            ?? row?.Summary?.ColData?.[index]?.value,
+                        );
+                      }, 0);
                       return {
                         company_id: fallbackCompanyId,
                         user_id: user.id,
@@ -618,6 +636,7 @@ serve(async (req) => {
                         bucket_end: bucketEnd,
                         bucket_label: title,
                         net_cash_flow: value,
+                        intercompany_adjustment: intercompanyAdjustment,
                         raw_response: report,
                         fetched_at: new Date().toISOString(),
                       };
