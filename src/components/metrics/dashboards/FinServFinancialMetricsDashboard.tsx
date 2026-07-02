@@ -99,6 +99,39 @@ function PlaceholderWidget({ title }: { title: string }) {
   );
 }
 
+function FinServSnapshotCard({
+  label,
+  value,
+  subtitle,
+  format,
+  isLoading,
+}: {
+  label: string;
+  value: number;
+  subtitle?: string;
+  format?: 'currency' | 'number';
+  isLoading?: boolean;
+}) {
+  const display = isLoading
+    ? '—'
+    : format === 'currency'
+      ? fmtCurrencyFull(value)
+      : value.toLocaleString();
+  return (
+    <Card className="glass-module">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-3xl font-semibold text-foreground tabular-nums">{display}</div>
+        {subtitle && <div className="mt-1 text-xs text-muted-foreground">{subtitle}</div>}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ────────────────────────────────────────────────────────────
 // Active Clients — matches the "Deals on Board" MetricWidget on the
 // Sales Dashboard (dark glass surface, icon chip, uppercase label,
