@@ -713,6 +713,131 @@ function BridgeBar({
 }
 
 // ============================================================
+// TOP SOURCED-VIA WIDGET (half width, below Performance-to-Plan)
+// Shows the top 5 "Sourced Via" values for deals created inside the
+// selected timeframe.
+// ============================================================
+const EXCLUDED_DEAL_NAMES = new Set(["Test-Niki's Store", 'Example Deal']);
+function isExcludedDeal(name: string | null | undefined): boolean {
+  if (!name) return false;
+  if (EXCLUDED_DEAL_NAMES.has(name)) return true;
+  return /^test\s/i.test(name);
+}
+
+function TopSourcedViaWidget() {
+  const view = useView();
+  const { company } = useCompany();
+  const startIso = view.rangeStart.toISOString();
+  const endIso = view.rangeEnd.toISOString();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['top-sourced-via', company?.id, startIso, endIso],
+    enabled: !!company?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company, sourced_via, created_at')
+        .eq('company_id', company!.id)
+        .neq('status', 'archived')
+        .gte('created_at', startIso)
+        .lte('created_at', endIso)
+        .not('sourced_via', 'is', null);
+      if (error) throw error;
+      return (data || []) as Array<{ id: string; company: string | null; sourced_via: string | null }>;
+    },
+  });
+
+  const rows = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    let total = 0;
+    for (const d of data ?? []) {
+      if (isExcludedDeal(d.company)) continue;
+      const key = (d.sourced_via || '').trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+      total += 1;
+    }
+    const sorted = Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count }));
+    return { rows: sorted, total };
+  }, [data]);
+
+  const max = rows.rows[0]?.count ?? 0;
+
+  return (
+    <div style={glassStyle} className="p-5 overflow-hidden">
+      <div
+        className="flex items-center gap-1.5 text-[10px] font-medium uppercase mb-3"
+        style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+      >
+        <Radio size={11} />
+        Top Sourced Via · Deals Created · {view.label}
+      </div>
+
+      {isLoading ? (
+        <div className="text-[12px]" style={{ color: C.textMuted }}>Loading…</div>
+      ) : rows.rows.length === 0 ? (
+        <div className="text-[12px]" style={{ color: C.textMuted }}>
+          No deals with a "Sourced Via" value were created in this period.
+        </div>
+      ) : (
+        <div className="flex flex-col">
+          {rows.rows.map((r, idx) => {
+            const widthPct = max === 0 ? 0 : (r.count / max) * 100;
+            const share = rows.total === 0 ? 0 : r.count / rows.total;
+            return (
+              <div
+                key={r.label}
+                className="grid grid-cols-[1fr_auto] items-center gap-3 py-2.5"
+                style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
+              >
+                <div className="min-w-0">
+                  <div
+                    className="text-[12px] truncate mb-1.5"
+                    style={{ color: C.textPrimary }}
+                    title={r.label}
+                  >
+                    {r.label}
+                  </div>
+                  <div
+                    className="relative w-full"
+                    style={{
+                      height: 6,
+                      background: 'rgba(255,255,255,0.04)',
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${widthPct}%`,
+                        height: '100%',
+                        background: `linear-gradient(90deg, rgba(157,162,245,0.85), rgba(157,162,245,0.45))`,
+                        borderRadius: 3,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div
+                  className="text-[11px] tabular-nums whitespace-nowrap"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  <span style={{ color: C.textPrimary }}>{r.count}</span>
+                  <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // CUMULATIVE PACE CHART
 // ============================================================
 function CumulativePace() {
