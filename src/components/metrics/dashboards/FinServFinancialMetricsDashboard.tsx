@@ -972,14 +972,15 @@ function PerHourWidget({
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(v: any, _name, p: any) => {
-                      const d = p?.payload;
-                      if (d?.rate == null) return ['—', `${numeratorLabel} / hr`];
-                      return [
-                        `${fmtCurrencyPrecise(d.rate)} (${fmtCurrency(d.numerator)} / ${d.hours.toLocaleString()} hrs)`,
-                        `${numeratorLabel} / hr`,
-                      ];
-                    }}
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="rate"
+                        format={fmtCurrencyPrecise}
+                        seriesName={`${numeratorLabel} / hr`}
+                      />
+                    )}
                   />
                   <Bar
                     dataKey="rate"
