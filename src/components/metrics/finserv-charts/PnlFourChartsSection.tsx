@@ -445,11 +445,13 @@ export function PnlFourChartsSection({
   cashflowTitle = 'Cashflow',
   sectionTitle,
   sectionSubtitle,
+  halfWidthCashflow = false,
 }: {
   realmId: string;
   cashflowTitle?: string;
   sectionTitle?: string;
   sectionSubtitle?: string;
+  halfWidthCashflow?: boolean;
 }) {
   return (
     <DrilldownProvider>
@@ -458,6 +460,7 @@ export function PnlFourChartsSection({
         cashflowTitle={cashflowTitle}
         sectionTitle={sectionTitle}
         sectionSubtitle={sectionSubtitle}
+        halfWidthCashflow={halfWidthCashflow}
       />
     </DrilldownProvider>
   );
@@ -468,11 +471,13 @@ function PnlFourChartsSectionInner({
   cashflowTitle,
   sectionTitle,
   sectionSubtitle,
+  halfWidthCashflow,
 }: {
   realmId: string;
   cashflowTitle: string;
   sectionTitle?: string;
   sectionSubtitle?: string;
+  halfWidthCashflow?: boolean;
 }) {
   const { timeframe } = useInsightsTimeframe();
   const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
