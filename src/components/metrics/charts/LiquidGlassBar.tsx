@@ -193,8 +193,12 @@ export function createGlassBarShape(options?: {
       height?: number;
     } | undefined;
 
+    // Preserve Recharts' original sign on `height` so LiquidGlassBar can
+    // detect negative bars via min/max anchoring below. We only overwrite
+    // these when the yAxis scale is available and we can compute explicit
+    // baseline/value anchors.
     let anchoredY = Number(props.y ?? 0);
-    let anchoredHeight = Math.abs(Number(props.height ?? 0));
+    let anchoredHeight = Number(props.height ?? 0);
     let baselineY: number | undefined;
     let anchoredValueY: number | undefined;
 
