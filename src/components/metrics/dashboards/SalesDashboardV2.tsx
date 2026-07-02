@@ -2823,32 +2823,48 @@ export function SalesDashboardV2() {
 
           {/* KPI strip */}
           <div className="mb-6">
-            <div className="flex items-center justify-end mb-2">
+            <div className="flex items-center justify-end gap-2 mb-2">
               <PipelineVariantToggle
                 value={kpiVariant}
                 onChange={setKpiVariant}
               />
+              <ValueModeToggle
+                value={kpiValueMode}
+                onChange={setKpiValueMode}
+              />
             </div>
             <ViewCtx.Provider value={kpiView}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {kpiValueMode === 'value' ? (
+                  <BlankKpiCard label="Sales Calls" />
+                ) : (
+                  <KpiCard
+                    label="Sales Calls"
+                    Icon={Phone}
+                    type="count"
+                    metricKey="salesCalls"
+                    mode="sum"
+                  />
+                )}
                 <KpiCard
-                  label="Sales Calls"
-                  Icon={Phone}
-                  type="count"
-                  metricKey="salesCalls"
-                  mode="sum"
-                />
-                <KpiCard
-                  label={kpiVariant === 'finserv' ? 'Deals on Board (FinServ)' : 'Deals on Board'}
+                  label={
+                    kpiValueMode === 'value'
+                      ? kpiVariant === 'finserv'
+                        ? 'Dollars on Board (FinServ)'
+                        : 'Dollars on Board'
+                      : kpiVariant === 'finserv'
+                        ? 'Deals on Board (FinServ)'
+                        : 'Deals on Board'
+                  }
                   Icon={Layers}
-                  type="count"
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
                   metricKey="dealsOnBoard"
                   mode="sum"
                 />
                 <KpiCard
-                  label="Proposals Issued"
+                  label={kpiValueMode === 'value' ? 'Dollars Proposed' : 'Proposals Issued'}
                   Icon={FileText}
-                  type="count"
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
                   metricKey="proposalsIssued"
                   mode="sum"
                 />
