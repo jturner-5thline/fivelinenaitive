@@ -1718,7 +1718,9 @@ function FinServFinancialMetricsDashboardInner() {
                     current: fmtCurrencyFull(c.current),
                     prior: fmtCurrencyFull(c.prior),
                     variance: fmtCurrencyFull(c.variance),
+                    _variance: c.variance,
                     pct: pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`,
+                    _pct: pct,
                   };
                 });
                 setDrill({
@@ -1732,8 +1734,26 @@ function FinServFinancialMetricsDashboardInner() {
                     { key: 'client', label: 'Client' },
                     { key: 'current', label: revenueByClient.selectedMonthLabel, align: 'right' },
                     { key: 'prior', label: revenueByClient.priorMonthLabel, align: 'right' },
-                    { key: 'variance', label: 'Δ $', align: 'right' },
-                    { key: 'pct', label: 'Δ %', align: 'right' },
+                    {
+                      key: 'variance',
+                      label: 'Δ $',
+                      align: 'right',
+                      render: (r: any) => (
+                        <span style={{ color: (r._variance ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._variance ?? 0) < 0 ? 600 : undefined }}>
+                          {r.variance}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'pct',
+                      label: 'Δ %',
+                      align: 'right',
+                      render: (r: any) => (
+                        <span style={{ color: (r._pct ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._pct ?? 0) < 0 ? 600 : undefined }}>
+                          {r.pct}
+                        </span>
+                      ),
+                    },
                   ],
                   rows,
                 });
@@ -1871,6 +1891,20 @@ function FinServFinancialMetricsDashboardInner() {
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
       emptyHint="No detail records available for this datapoint."
+      onRowClick={
+        drill?.context?.sourceId === 'finserv:revenue-change-by-client'
+          ? (row: any) => {
+              if (!row?.client) return;
+              openDrill({
+                kind: 'client-series',
+                sourceLabel: 'Revenue Change by Client',
+                selection: row.client,
+                period: { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label },
+                client: row.client,
+              });
+            }
+          : undefined
+      }
     />
     </>
   );

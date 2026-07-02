@@ -62,6 +62,8 @@ interface Props<T = any> {
   emptyHint?: string;
   /** Optional click target per row (e.g. open original record). */
   rowHref?: (row: T) => string | null;
+  /** Optional click handler per row (e.g. open a nested drilldown). Takes precedence over rowHref styling. */
+  onRowClick?: (row: T) => void;
   /** Optional summary metrics rendered above the table. */
   summary?: React.ReactNode;
   /** Optional full body override. When provided, renders instead of the columns/rows table. */
@@ -151,7 +153,7 @@ function TrendChart({ trend }: { trend: DrilldownTrend }) {
  * Renders a contextual table of records that explain a clicked KPI / chart point.
  */
 export function InsightsDrilldownDrawer<T = any>({
-  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading, defaultSort, trend,
+  open, onClose, context, columns, rows, emptyHint, rowHref, onRowClick, summary, body, loading, defaultSort, trend,
 }: Props<T>) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultSort?.dir ?? 'desc');
@@ -319,8 +321,19 @@ export function InsightsDrilldownDrawer<T = any>({
               <tbody>
                 {sortedRows.map((row, i) => {
                   const href = rowHref?.(row) || null;
+                  const clickable = !!onRowClick;
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid rgba(120,170,255,0.08)' }}>
+                    <tr
+                      key={i}
+                      style={{
+                        borderBottom: '1px solid rgba(120,170,255,0.08)',
+                        cursor: clickable ? 'pointer' : undefined,
+                        transition: 'background 120ms ease',
+                      }}
+                      onClick={clickable ? () => onRowClick!(row) : undefined}
+                      onMouseEnter={clickable ? (e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(120,170,255,0.06)'; } : undefined}
+                      onMouseLeave={clickable ? (e) => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; } : undefined}
+                    >
                       {columns.map((c) => (
                         <td key={c.key} style={{ padding: '10px 14px', textAlign: c.align || 'left', verticalAlign: 'top' }}>
                           {c.render ? c.render(row) : (row as any)[c.key] ?? '—'}
