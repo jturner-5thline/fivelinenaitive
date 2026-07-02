@@ -715,15 +715,25 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
         }
       }
 
-      // Asana sync: skip if this update was triggered by Asana webhook (loop prevention)
-      const updatedTask = tasks.find(t => t.id === id);
-      const asanaTaskGid = (updatedTask as any)?.asana_task_gid;
-      const syncSource = (updatedTask as any)?.sync_source;
+      // Asana sync: skip if this update was triggered by Asana webhook (loop prevention).
+      // NOTE: we intentionally fetch the row directly rather than reading from the
+      // hook's local `tasks` cache — the cache is filtered by owner/company and
+      // will be missing the row whenever the drawer/detail view is opened for a
+      // task the current user isn't assigned to. That silently killed outbound
+      // date-change sync to Asana for anyone editing someone else's task.
+      const { data: freshRow } = await supabase
+        .from('tasks')
+        .select('asana_task_gid, sync_source, company_id')
+        .eq('id', id)
+        .maybeSingle();
+      const asanaTaskGid = (freshRow as any)?.asana_task_gid;
+      const syncSource = (freshRow as any)?.sync_source;
+      const rowCompanyId = (freshRow as any)?.company_id ?? null;
 
       if (asanaTaskGid && syncSource !== 'asana') {
         (async () => {
           try {
-            const ctx = await getAsanaSyncContext((updatedTask as any)?.company_id || null);
+            const ctx = await getAsanaSyncContext(rowCompanyId);
             if (!ctx) return;
 
             const asanaUpdates: { title?: string; due_date?: string | null; assignee_email?: string | null; completed?: boolean } = {};
