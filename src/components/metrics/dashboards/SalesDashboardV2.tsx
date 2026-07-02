@@ -1973,9 +1973,10 @@ interface SalesCallEvent {
 function MetricDrilldownDialog({
   focus,
   onClose,
-  view,
+  countView,
+  valueView,
   pipelineVariant,
-  valueMode,
+  initialValueMode,
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
@@ -1988,9 +1989,10 @@ function MetricDrilldownDialog({
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
-  view: DashboardView;
+  countView: DashboardView;
+  valueView: DashboardView;
   pipelineVariant: 'debt' | 'finserv';
-  valueMode: 'count' | 'value';
+  initialValueMode: 'count' | 'value';
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
@@ -2005,12 +2007,20 @@ function MetricDrilldownDialog({
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
   if (!row) return null;
 
-  // In $ (value) mode the dealsOnBoard / proposalsIssued arrays coming in
-  // via `view.actual` are $MM totals rather than counts — format them as money.
+  // Local toggle so the user can flip between # and $ without closing the dialog.
+  // Sales Calls has no dollar equivalent — force count.
+  const canToggleValue = row.key === 'dealsOnBoard' || row.key === 'proposalsIssued';
+  const [valueMode, setValueMode] = React.useState<'count' | 'value'>(
+    canToggleValue ? initialValueMode : 'count',
+  );
+  React.useEffect(() => {
+    setValueMode(canToggleValue ? initialValueMode : 'count');
+    // Reset when focus changes so the toggle re-syncs with the parent choice.
+  }, [focus.metricKey, canToggleValue, initialValueMode]);
+
+  const view = valueMode === 'value' ? valueView : countView;
   const effectiveRowType: 'count' | 'money' =
-    valueMode === 'value' && (row.key === 'dealsOnBoard' || row.key === 'proposalsIssued')
-      ? 'money'
-      : row.type;
+    valueMode === 'value' && canToggleValue ? 'money' : row.type;
 
   const planArr = view.plan[row.key];
   const actualArr = view.actual[row.key];
@@ -2113,14 +2123,43 @@ function MetricDrilldownDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle style={{ color: C.textPrimary }}>
-            {row.label}
-            {focusedMonthLabel && (
-              <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
-                · {focusedMonthLabel}
-              </span>
+          <div className="flex items-start justify-between gap-3">
+            <DialogTitle style={{ color: C.textPrimary }}>
+              {row.label}
+              {focusedMonthLabel && (
+                <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
+                  · {focusedMonthLabel}
+                </span>
+              )}
+            </DialogTitle>
+            {canToggleValue && (
+              <div
+                role="group"
+                aria-label="Toggle count or dollar value"
+                className="inline-flex items-center rounded-md overflow-hidden shrink-0"
+                style={{ border: `1px solid ${C.surfaceBorder}`, background: 'rgba(255,255,255,0.04)' }}
+              >
+                {(['count', 'value'] as const).map((m) => {
+                  const active = valueMode === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setValueMode(m)}
+                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      style={{
+                        color: active ? C.textPrimary : C.textMuted,
+                        background: active ? 'rgba(157,162,245,0.18)' : 'transparent',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {m === 'count' ? '#' : '$'}
+                    </button>
+                  );
+                })}
+              </div>
             )}
-          </DialogTitle>
+          </div>
           <DialogDescription style={{ color: C.textMuted }}>
             {view.label} · breakdown of the underlying data
           </DialogDescription>
@@ -2748,54 +2787,56 @@ export function SalesDashboardV2() {
     [dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
   );
 
-  // View scoped ONLY to the top three KPI cards. When "FinServ" is
-  // selected, swap in the FinServ-sourced actuals for sales calls, deals
-  // on board, and proposals issued.
-  const kpiView = React.useMemo<DashboardView>(() => {
-    // Base variant swap (Debt vs FinServ) for count-mode actuals.
-    const variantView: DashboardView =
-      kpiVariant === 'finserv'
-        ? {
-            ...view,
-            actual: {
-              ...view.actual,
-              salesCalls: liveSalesCallsActualFinserv,
-              dealsOnBoard: liveDealsOnBoardActualFinserv,
-              proposalsIssued: liveProposalsIssuedActualFinserv,
-            },
-          }
-        : view;
-    if (kpiValueMode !== 'value') return variantView;
-    // In $ mode, remap dealsOnBoard/proposalsIssued actuals to $MM totals.
+  // Count-mode view scoped to the top three KPI cards, with variant swap.
+  const kpiCountView = React.useMemo<DashboardView>(() => {
+    if (kpiVariant !== 'finserv') return view;
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        salesCalls: liveSalesCallsActualFinserv,
+        dealsOnBoard: liveDealsOnBoardActualFinserv,
+        proposalsIssued: liveProposalsIssuedActualFinserv,
+      },
+    };
+  }, [
+    view,
+    kpiVariant,
+    liveSalesCallsActualFinserv,
+    liveDealsOnBoardActualFinserv,
+    liveProposalsIssuedActualFinserv,
+  ]);
+
+  // Value-mode view: swaps dealsOnBoard/proposalsIssued actuals + plan for $MM.
+  const kpiValueView = React.useMemo<DashboardView>(() => {
     const dollarsOnBoardArr =
       kpiVariant === 'finserv' ? liveDollarsOnBoardActualFinserv : liveDollarsOnBoardActual;
     const dollarsProposedArr =
       kpiVariant === 'finserv' ? liveDollarsProposedActualFinserv : liveDollarsProposedActual;
     return {
-      ...variantView,
+      ...kpiCountView,
       actual: {
-        ...variantView.actual,
+        ...kpiCountView.actual,
         dealsOnBoard: dollarsOnBoardArr,
         proposalsIssued: dollarsProposedArr,
       },
       plan: {
-        ...variantView.plan,
-        dealsOnBoard: variantView.plan.dollarsOnBoard,
-        proposalsIssued: variantView.plan.dollarsProposed,
+        ...kpiCountView.plan,
+        dealsOnBoard: kpiCountView.plan.dollarsOnBoard,
+        proposalsIssued: kpiCountView.plan.dollarsProposed,
       },
     };
   }, [
+    kpiCountView,
     kpiVariant,
-    kpiValueMode,
-    view,
-    liveSalesCallsActualFinserv,
-    liveDealsOnBoardActualFinserv,
-    liveProposalsIssuedActualFinserv,
     liveDollarsOnBoardActual,
     liveDollarsProposedActual,
     liveDollarsOnBoardActualFinserv,
     liveDollarsProposedActualFinserv,
   ]);
+
+  // Backwards-compatible active view for the KPI cards themselves (outside dialog).
+  const kpiView = kpiValueMode === 'value' ? kpiValueView : kpiCountView;
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
@@ -2944,11 +2985,10 @@ export function SalesDashboardV2() {
     <MetricDrilldownDialog
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
-      view={
-        kpiVariant === 'finserv' || kpiValueMode === 'value' ? kpiView : view
-      }
+      countView={kpiVariant === 'finserv' ? kpiCountView : view}
+      valueView={kpiValueView}
       pipelineVariant={kpiVariant}
-      valueMode={kpiValueMode}
+      initialValueMode={kpiValueMode}
       salesCallEvents={kpiVariant === 'finserv' ? salesCallEventsFinserv : salesCallEvents}
       salesCallsLoading={
         kpiVariant === 'finserv'
