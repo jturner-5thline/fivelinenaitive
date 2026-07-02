@@ -328,6 +328,12 @@ function OperatingProfitToggleCard({
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
   const isDollar = mode === '$';
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const source = profits.quarters.map(q => isDollar ? q.operatingProfit : q.operatingMargin);
+    const trend = computeLinearTrend(source);
+    return profits.quarters.map((q, i) => ({ ...q, trend: trend[i] }));
+  }, [profits.quarters, isDollar]);
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -338,22 +344,25 @@ function OperatingProfitToggleCard({
             </CardTitle>
             <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </div>
-          <div className="inline-flex rounded-md border border-border overflow-hidden">
-            {(['$', '%'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={
-                  'px-2.5 py-1 text-xs font-medium transition-colors ' +
-                  (mode === m
-                    ? 'bg-primary/20 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground')
-                }
-              >
-                {m}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <TrendToggleButton active={showTrend} onToggle={() => setShowTrend(v => !v)} />
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {(['$', '%'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={
+                    'px-2.5 py-1 text-xs font-medium transition-colors ' +
+                    (mode === m
+                      ? 'bg-primary/20 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground')
+                  }
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -371,7 +380,7 @@ function OperatingProfitToggleCard({
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.operatingProfit === 0 && q.revenue === 0) : q.operatingMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profits.quarters}>
+              <ComposedChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                 {isDollar ? (
@@ -416,7 +425,20 @@ function OperatingProfitToggleCard({
                     ))}
                   </Bar>
                 )}
-              </BarChart>
+                {showTrend && (
+                  <Line
+                    type="monotone"
+                    dataKey="trend"
+                    stroke="hsl(142 71% 45%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    activeDot={false}
+                    name="Best-fit trend"
+                    isAnimationActive={false}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
