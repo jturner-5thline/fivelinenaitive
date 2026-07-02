@@ -907,82 +907,13 @@ function FinServFinancialMetricsDashboardInner() {
         </CardContent>
       </Card>
 
-      {/* ── Row 2: Gross Profit $ + Gross Margin % ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Gross Profit $</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.grossProfit)}</div>
-              <div className="text-xs text-muted-foreground">Gross Profit from QuickBooks P&amp;L</div>
-            </div>
-            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.grossProfit === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={profits.quarters}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                    <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number, name: string) => [fmtCurrencyFull(v), name]} />
-                    <Bar
-                      dataKey="revenue"
-                      fill="hsl(var(--primary) / 0.35)"
-                      name="Revenue"
-                      shape={createGlassBarShape({ radius: 4 })}
-                    />
-                    <Bar
-                      dataKey="grossProfit"
-                      fill="hsl(var(--chart-2))"
-                      name="Gross Profit"
-                      shape={createGlassBarShape({ radius: 4 })}
-                      cursor="pointer"
-                      onClick={(d: any) => openSinglePoint('Gross Profit $', d?.quarter, 'Gross Profit', Number(d?.grossProfit) || 0, fmtCurrencyFull)}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Gross Profit Margin %</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="text-3xl font-semibold text-foreground">
-                {typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
-              </div>
-              <div className="text-xs text-muted-foreground">Gross Profit ÷ Revenue</div>
-            </div>
-            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.grossMargin === 0) ? <WidgetEmpty /> : (
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={profits.quarters}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                    <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
-                    <Tooltip formatter={(v: number) => [fmtPct(v), 'Gross Margin']} />
-                    <Bar
-                      dataKey="grossMargin"
-                      fill="hsl(160, 65%, 50%)"
-                      name="Gross Margin %"
-                      shape={createGlassBarShape({ radius: 4 })}
-                      cursor="pointer"
-                      onClick={(d: any) => openSinglePoint('Gross Profit Margin %', d?.quarter, 'Gross Margin', Number(d?.grossMargin) || 0, fmtPct)}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* ── Row 2: Gross Profit — $ / % toggle ── */}
+      <GrossProfitToggleCard
+        periodBadge={periodBadge}
+        totalRev={totalRev}
+        profits={profits}
+        openSinglePoint={openSinglePoint}
+      />
 
       {/* ── Row 3: Operating Profit $ + Operating Margin % ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
