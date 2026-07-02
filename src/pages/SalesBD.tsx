@@ -32,12 +32,6 @@ const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 function SalesBdHeaderRangeSelector() {
   const { setRange } = useSalesBdDateRange();
-  const TOP_TABS = [
-    { value: "partners-channels", label: "Partners & Channels", Icon: Handshake },
-    { value: "referral-sources", label: "Referral Sources", Icon: UserCheck },
-  ] as const;
-  const activeTopTab = TOP_TABS.find((t) => t.value === activeTab) ?? TOP_TABS[0];
-
   return (
     <InsightsTimeRangeSelector
       boardId="sales-bd"
@@ -47,6 +41,11 @@ function SalesBdHeaderRangeSelector() {
   );
 }
 
+const TOP_TABS = [
+  { value: "partners-channels", label: "Partners & Channels", Icon: Handshake },
+  { value: "referral-sources", label: "Referral Sources", Icon: UserCheck },
+] as const;
+
 function SalesBDInner() {
   const [activeTab, setActiveTab] = useState("partners-channels");
   const [channelsSubView, setChannelsSubView] = useState<"pipeline" | "channels" | "companies">("pipeline");
@@ -54,6 +53,7 @@ function SalesBDInner() {
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
   const canEditPartnerRules = useCanEditPartnerRules();
+  const activeTopTab = TOP_TABS.find((t) => t.value === activeTab) ?? TOP_TABS[0];
 
   return (
     <>
