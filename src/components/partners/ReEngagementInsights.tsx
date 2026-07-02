@@ -26,11 +26,8 @@ interface StalePartner {
 }
 
 export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partnerId: string) => void }) {
-  const dateCtx = useOptionalSalesBdDateRange();
-  const rangeStart = dateCtx?.start ?? null;
-  const rangeEnd = dateCtx?.end ?? null;
-  const granularity = dateCtx?.range.granularity ?? null;
-  const { data: partners = [] } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
+  // Attention list is absolute across all time — do NOT scope to the selected timeframe.
+  const { data: partners = [] } = usePartners();
   const { data: stages = [] } = usePipelineStages();
   const { company } = useCompany();
   const [showAll, setShowAll] = useState(false);
@@ -45,16 +42,14 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
 
   // Get latest stage notes for each partner (proxy for last activity)
   const { data: stageNotes = [] } = useQuery({
-    queryKey: ['partner_stage_notes_latest', company?.id, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
+    queryKey: ['partner_stage_notes_latest_all', company?.id],
     enabled: !!company?.id,
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('partner_stage_notes' as any)
         .select('partner_id, created_at, to_stage')
-        .eq('company_id', company!.id);
-      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
-      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
-      const { data, error } = await query.order('created_at', { ascending: false });
+        .eq('company_id', company!.id)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as unknown as { partner_id: string; created_at: string; to_stage: string }[];
     },
@@ -63,10 +58,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
 
   const stalePartners = useMemo(() => {
-    // Anchor "now" at the end of the selected timeframe (capped at today)
-    // so days-since values reflect the picked range rather than real-time.
-    const realNow = new Date();
-    const now = rangeEnd && rangeEnd < realNow ? rangeEnd : realNow;
+    const now = new Date();
     const result: StalePartner[] = [];
     const latestNoteByPartner = new Map<string, { created_at: string; to_stage: string }>();
 
@@ -113,7 +105,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
     });
 
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
-  }, [partners, stageNotes, stageMap, thresholds, rangeEnd]);
+  }, [partners, stageNotes, stageMap, thresholds]);
 
   const countsCtx = usePartnerInsightsCounts();
   useEffect(() => {
