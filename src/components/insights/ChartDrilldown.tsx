@@ -264,15 +264,16 @@ function parsePnlSnapshot(raw: any): PnlBreakdown {
 
 function PnlBreakdownView({ req }: { req: DrilldownRequest }) {
   const { company } = useCompany();
+  const realm = req.realm ?? FINSERV_REALM_ID;
   const { data, isLoading } = useQuery({
-    queryKey: ['drilldown-pnl', company?.id, req.period.start, req.period.end],
+    queryKey: ['drilldown-pnl', company?.id, realm, req.period.start, req.period.end],
     enabled: !!company?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('qbo_pnl_snapshots')
         .select('raw_response')
         .eq('company_id', company!.id)
-        .eq('realm_id', FINSERV_REALM_ID)
+        .eq('realm_id', realm)
         .eq('accounting_method', 'Accrual')
         .eq('period_start', req.period.start)
         .eq('period_end', req.period.end)
@@ -375,15 +376,16 @@ function parseCashflowSnapshot(raw: any): { sections: CashflowSection[]; netIncr
 
 function CashflowBreakdownView({ req }: { req: DrilldownRequest }) {
   const { company } = useCompany();
+  const realm = req.realm ?? FINSERV_REALM_ID;
   const { data, isLoading } = useQuery({
-    queryKey: ['drilldown-cashflow', company?.id, req.period.start, req.period.end],
+    queryKey: ['drilldown-cashflow', company?.id, realm, req.period.start, req.period.end],
     enabled: !!company?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('qbo_cashflow_snapshots')
         .select('raw_response, net_cash_flow')
         .eq('company_id', company!.id)
-        .eq('realm_id', FINSERV_REALM_ID)
+        .eq('realm_id', realm)
         .eq('accounting_method', 'Accrual')
         .eq('period_start', req.period.start)
         .eq('period_end', req.period.end)
