@@ -7,6 +7,17 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+const DEBT_FINANCING_RE = /5\s*th\s+line\s+financing\s+review/i;
+const FINSERV_FINANCIAL_RE = /^\s*5\s*th\s+line\s*(?:<>|[-–—|:/])\s*.+?\s+financial\s+review\s*$/i;
+
+function filterEventsForVariant(events: SalesCallEvent[], variant: 'debt' | 'finserv') {
+  if (variant !== 'finserv') return events;
+  return events.filter((event) => {
+    const title = event.title || '';
+    return FINSERV_FINANCIAL_RE.test(title) && !DEBT_FINANCING_RE.test(title);
+  });
+}
+
 export interface SalesCallEvent {
   id: string;
   dedupe_key: string;
@@ -49,9 +60,13 @@ export function useSalesCallsCount(
         body: { time_min: timeMin, time_max: timeMax, variant },
       });
       if (error) throw new Error(error.message || 'Failed to load sales calls');
+      const events = filterEventsForVariant(
+        Array.isArray(data?.events) ? (data.events as SalesCallEvent[]) : [],
+        variant,
+      );
       return {
-        count: Number(data?.count ?? 0),
-        events: Array.isArray(data?.events) ? (data.events as SalesCallEvent[]) : [],
+        count: variant === 'finserv' ? events.length : Number(data?.count ?? events.length),
+        events,
       };
     },
   });
