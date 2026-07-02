@@ -75,6 +75,7 @@ import {
 // DATA — Jan–Sep 2026 (actuals exist for Jan–Jun only)
 // ============================================================
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'] as const;
+const MONTHS_ALL = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 const ELAPSED = 6;
 
 // Calendar-month indexed (0=Jan ... 8=Sep) seeded data covers 2026 only.
@@ -1530,27 +1531,100 @@ function trailing3(buckets: (number | null)[]): number | null {
 // ============================================================
 type SheetTab = 'Forecast' | 'Actuals' | 'Variance';
 
+// ---- Full-forecast draft model --------------------------------------------
+// The editor operates on this shape (full year + any user-appended
+// months/quarters/years) independent of the dashboard's timeframe view.
+interface FullForecastColumn {
+  key: string;   // "YYYY-M" (M = 0-based month)
+  label: string; // e.g. "Jan '26"
+}
+interface FullForecastDraft {
+  columns: FullForecastColumn[];
+  data: Record<MetricKey, number[]>;
+}
+
+function columnKey(year: number, monthIdx: number): string {
+  return `${year}-${monthIdx}`;
+}
+function columnLabel(year: number, monthIdx: number): string {
+  const yy = String(year).slice(-2);
+  return `${MONTHS_ALL[monthIdx]} '${yy}`;
+}
+
+function seedColumns(year: number): FullForecastColumn[] {
+  return MONTHS_ALL.map((_, i) => ({
+    key: columnKey(year, i),
+    label: columnLabel(year, i),
+  }));
+}
+
+function seedRowForYear(k: MetricKey, year: number): number[] {
+  // For the SEED_YEAR, fill from authored PLAN where available, else 0.
+  return MONTHS_ALL.map((_, monIdx) => {
+    if (year === SEED_YEAR) {
+      const seedIdx = SEED_MONTH_INDEXES.indexOf(monIdx);
+      if (seedIdx >= 0) return PLAN[k][seedIdx] ?? 0;
+    }
+    return 0;
+  });
+}
+
+function buildInitialFullDraft(): FullForecastDraft {
+  const columns = seedColumns(SEED_YEAR);
+  const data = {} as Record<MetricKey, number[]>;
+  (Object.keys(PLAN) as MetricKey[]).forEach((k) => {
+    data[k] = seedRowForYear(k, SEED_YEAR);
+  });
+  return { columns, data };
+}
+
+function appendMonthsToDraft(draft: FullForecastDraft, count: number): FullForecastDraft {
+  if (count <= 0) return draft;
+  const last = draft.columns[draft.columns.length - 1];
+  let [y, m] = last ? last.key.split('-').map(Number) : [SEED_YEAR, -1];
+  const newCols: FullForecastColumn[] = [];
+  for (let i = 0; i < count; i += 1) {
+    m += 1;
+    if (m > 11) { m = 0; y += 1; }
+    newCols.push({ key: columnKey(y, m), label: columnLabel(y, m) });
+  }
+  const data = {} as Record<MetricKey, number[]>;
+  (Object.keys(draft.data) as MetricKey[]).forEach((k) => {
+    data[k] = [...draft.data[k], ...newCols.map(() => 0)];
+  });
+  return { columns: [...draft.columns, ...newCols], data };
+}
+
 function SalesModelSheet() {
   const [tab, setTab] = React.useState<SheetTab>('Forecast');
   const view = useView();
   const drill = useDrilldown();
   const E = view.elapsed;
-  const [planOverride, setPlanOverride] = React.useState<Record<MetricKey, number[]> | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
 
-  // Reset override when the underlying view (timeframe) changes shape
-  React.useEffect(() => {
-    setPlanOverride(null);
-  }, [view.months.length, view.label]);
+  // Full-forecast draft, keyed by "YYYY-M" (M is 0-based month) so the editor
+  // always shows the entire year (and any user-added months/quarters/years)
+  // regardless of the currently-selected timeframe. Persists across timeframe
+  // switches so edits aren't lost when the view is narrowed to a quarter.
+  const [fullDraft, setFullDraft] = React.useState<FullForecastDraft>(() => buildInitialFullDraft());
 
+  // Apply full-draft edits to the currently visible slice by mapping each
+  // visible month back to its calendar year/month key.
   const effectivePlan = React.useMemo<Record<MetricKey, number[]>>(() => {
-    if (!planOverride) return view.plan;
     const out = {} as Record<MetricKey, number[]>;
+    const startY = view.rangeStart.getUTCFullYear();
+    const startM = view.rangeStart.getUTCMonth();
     (Object.keys(view.plan) as MetricKey[]).forEach((k) => {
-      out[k] = planOverride[k] ?? view.plan[k];
+      out[k] = view.plan[k].map((base, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        const idx = fullDraft.columns.findIndex((c) => c.key === key);
+        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
+        return override === undefined ? base : override;
+      });
     });
     return out;
-  }, [planOverride, view.plan]);
+  }, [fullDraft, view.plan, view.rangeStart]);
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
     const planV = effectivePlan[row.key][i];
@@ -1752,11 +1826,10 @@ function SalesModelSheet() {
 
       {editorOpen && (
         <SalesModelForecastEditor
-          months={view.months}
-          initial={effectivePlan}
+          initialDraft={fullDraft}
           onClose={() => setEditorOpen(false)}
           onSave={(next) => {
-            setPlanOverride(next);
+            setFullDraft(next);
             setEditorOpen(false);
           }}
         />
@@ -1770,22 +1843,22 @@ function SalesModelSheet() {
 // Edits are held locally to the Sales Model widget's Forecast column.
 // ============================================================
 function SalesModelForecastEditor({
-  months,
-  initial,
+  initialDraft,
   onClose,
   onSave,
 }: {
-  months: string[];
-  initial: Record<MetricKey, number[]>;
+  initialDraft: FullForecastDraft;
   onClose: () => void;
-  onSave: (next: Record<MetricKey, number[]>) => void;
+  onSave: (next: FullForecastDraft) => void;
 }) {
-  const clone = (d: Record<MetricKey, number[]>): Record<MetricKey, number[]> => {
-    const out = {} as Record<MetricKey, number[]>;
-    (Object.keys(d) as MetricKey[]).forEach((k) => { out[k] = [...d[k]]; });
-    return out;
+  const cloneDraft = (d: FullForecastDraft): FullForecastDraft => {
+    const data = {} as Record<MetricKey, number[]>;
+    (Object.keys(d.data) as MetricKey[]).forEach((k) => { data[k] = [...d.data[k]]; });
+    return { columns: [...d.columns], data };
   };
-  const [draft, setDraft] = React.useState<Record<MetricKey, number[]>>(() => clone(initial));
+  const [draft, setDraft] = React.useState<FullForecastDraft>(() => cloneDraft(initialDraft));
+  const columns = draft.columns;
+  const months = React.useMemo(() => columns.map((c) => c.label), [columns]);
   const [active, setActive] = React.useState<{ r: number; c: number }>({ r: 0, c: 0 });
   const inputsRef = React.useRef<(HTMLInputElement | null)[][]>([]);
 
@@ -1820,10 +1893,14 @@ function SalesModelForecastEditor({
     const num = parseFloat(raw);
     if (Number.isNaN(num)) return;
     setDraft((prev) => {
-      const next = clone(prev);
-      next[ROW_ORDER[r].key][c] = num;
+      const next = cloneDraft(prev);
+      next.data[ROW_ORDER[r].key][c] = num;
       return next;
     });
+  };
+
+  const addMonths = (count: number) => {
+    setDraft((prev) => appendMonthsToDraft(prev, count));
   };
 
   return (
@@ -1915,8 +1992,8 @@ function SalesModelForecastEditor({
                           }}
                           type="text"
                           inputMode="decimal"
-                          defaultValue={String(draft[row.key][c] ?? 0)}
-                          key={`${r}-${c}-${draft[row.key][c]}`}
+                          defaultValue={String(draft.data[row.key][c] ?? 0)}
+                          key={`${r}-${c}-${draft.data[row.key][c]}-${columns[c].key}`}
                           onFocus={() => setActive({ r, c })}
                           onKeyDown={(e) => handleKey(e, r, c)}
                           onBlur={(e) => commit(r, c, e.target.value)}
@@ -1935,7 +2012,26 @@ function SalesModelForecastEditor({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t" style={{ borderColor: C.hairline, background: 'rgba(255,255,255,0.02)' }}>
+        <div className="flex items-center justify-between gap-2 px-6 py-3 border-t" style={{ borderColor: C.hairline, background: 'rgba(255,255,255,0.02)' }}>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: C.textFaint }}>Add</span>
+            {([['+ Month', 1], ['+ Quarter', 3], ['+ Year', 12]] as const).map(([label, n]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => addMonths(n)}
+                className="px-2 py-1 rounded-md text-[11px] font-medium transition-colors"
+                style={{
+                  color: C.textPrimary,
+                  background: 'rgba(157,162,245,0.10)',
+                  border: `1px solid ${C.surfaceBorder}`,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             className="px-3 py-1.5 rounded-md text-[12px]"
@@ -1951,6 +2047,7 @@ function SalesModelForecastEditor({
             <Save size={13} />
             Save
           </button>
+          </div>
         </div>
       </div>
     </div>
