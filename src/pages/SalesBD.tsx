@@ -8,7 +8,7 @@ import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
-import { PartnerInsightsFeed, PartnerInsightsProvider, PartnerInsightsHeaderActions } from "@/components/partners/PartnerInsightsFeed";
+import { PartnerInsightsFeed, PartnerInsightsProvider, PartnerInsightsHeaderActions, PartnerInsightsTabLabel } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
@@ -155,8 +155,8 @@ function SalesBDInner() {
                   <Tabs defaultValue="activity">
                     <div className="flex items-center justify-between gap-2">
                       <TabsList>
-                        <TabsTrigger value="activity">Activity</TabsTrigger>
-                        <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                        <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
+                        <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
                       </TabsList>
                       <PartnerInsightsHeaderActions />
                     </div>
@@ -181,8 +181,8 @@ function SalesBDInner() {
                     <Tabs defaultValue="activity">
                       <div className="flex items-center justify-between gap-2">
                         <TabsList>
-                          <TabsTrigger value="activity">Activity</TabsTrigger>
-                          <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                          <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
+                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
                         </TabsList>
                         <PartnerInsightsHeaderActions />
                       </div>
