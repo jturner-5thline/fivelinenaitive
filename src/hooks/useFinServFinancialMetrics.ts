@@ -9,7 +9,11 @@ import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 export const FINSERV_REALM_ID = '9341451968897660';
-export const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
+// Canonical FinServ pipeline id — matches the active `deal_pipelines` row
+// and the deals/deal_stage_history that live under it. The prior UUID
+// (`eb9db15a-…`) was an older stub with zero deals attached, which is why
+// Active Clients returned 0 and had to be papered over with a hard-coded 12.
+export const FINSERV_PIPELINE_ID = '6907be5e-b17c-4a95-a7c2-fd977c94e179';
 // Canonical "Active Client" stage id in the FinServ pipeline.
 // (Stage labelled "Active Client" in deal_pipelines is persisted as `fs-closed-won`.)
 export const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
@@ -677,11 +681,11 @@ export function useFinServActiveClients(
       const bars: ActiveClientMonth[] = buckets.map(b => {
         const bucketEnd = new Date(b.end_date + 'T23:59:59');
         const effectiveEnd = bucketEnd > today ? today : bucketEnd;
-        let count = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
-        // TODO: replace hard-coded 12 with stage-history-backed count once deal stage transitions are tracked.
-        if (b.key.startsWith('2026-')) {
-          count = 12;
-        }
+        // Count deals whose stage AT THE END OF THIS BUCKET was the Active
+        // Client stage. Uses deal_stage_history to reconstruct the point-in-
+        // time stage; falls back to the current stage for deals with no
+        // history (see stageAt).
+        const count = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
         return { month: b.label, monthKey: b.key, count, variance: 0 };
       });
 
@@ -689,7 +693,7 @@ export function useFinServActiveClients(
         bars[i].variance = bars[i].count - bars[i - 1].count;
       }
 
-      // Headline = most-recent bucket count (so 2026 YTD shows 12).
+      // Headline = count at the end of the selected period (last bucket).
       const headlineCount = bars.length > 0 ? bars[bars.length - 1].count : currentCount;
       const priorCount = bars.length >= 2 ? bars[bars.length - 2].count : 0;
       const variance = headlineCount - priorCount;
