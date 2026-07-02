@@ -1404,7 +1404,7 @@ function FinServFinancialMetricsDashboardInner() {
               <div className="text-3xl font-semibold text-foreground">
                 {avgRevenueByClient.hasAny ? fmtCurrencyPrecise(avgRevenueByClient.headline) : '—'}
               </div>
-              {avgRevenueByClient.headlineDelta != null && (
+              {showTrendAvgRevClient && avgRevenueByClient.headlineDelta != null && (
                 <span
                   className={`text-xs font-medium ${
                     avgRevenueByClient.headlineDelta > 0
