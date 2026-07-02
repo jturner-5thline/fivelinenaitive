@@ -29,6 +29,7 @@ function domainOf(email?: string | null): string | null {
 // insensitive. Company portion is captured for dedupe + display.
 // Debt variant: "[Company] <sep> 5th Line Financing Review".
 // FinServ variant: "5th Line <sep> [Company] Financial Review".
+const DEBT_FINANCING_RE = /5\s*th\s+line\s+financing\s+review/i;
 const TITLE_RE_DEBT =
   /^\s*(.+?)\s*(?:<>|[-–—|:/])\s*5\s*th\s+line\s+financing\s+review\s*$/i;
 const TITLE_RE_FINSERV =
@@ -99,6 +100,7 @@ async function fetchForGrant(
   endUnix: number,
   user: { email: string | null; name: string | null; domain: string | null },
   titleRe: RegExp,
+  excludeTitleRe?: RegExp,
 ): Promise<SalesCallEvent[]> {
   const out: SalesCallEvent[] = [];
   const calendars = await fetchCalendarsForGrant(grantId);
@@ -138,6 +140,7 @@ async function fetchForGrant(
       for (const e of raw) {
         if (e?.status === "cancelled") continue;
         const title: string = e?.title || "";
+        if (excludeTitleRe?.test(title)) continue;
         const m = titleRe.exec(title);
         if (!m) continue;
         const companyRaw = (m[1] || "").trim();
@@ -232,6 +235,7 @@ serve(async (req: Request): Promise<Response> => {
     }
     const variant: 'debt' | 'finserv' = body.variant === 'finserv' ? 'finserv' : 'debt';
     const titleRe = variant === 'finserv' ? TITLE_RE_FINSERV : TITLE_RE_DEBT;
+    const excludeTitleRe = variant === 'finserv' ? DEBT_FINANCING_RE : undefined;
 
     let callerDomain = domainOf(callerEmail);
     if (!callerDomain) {
@@ -336,7 +340,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const perGrant = await Promise.all(
       grants.map((g) =>
-        fetchForGrant(g.grantId, startUnix, endUnix, g.user, titleRe).catch(
+        fetchForGrant(g.grantId, startUnix, endUnix, g.user, titleRe, excludeTitleRe).catch(
           () => [] as SalesCallEvent[],
         ),
       ),
