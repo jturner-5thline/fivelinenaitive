@@ -712,6 +712,25 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 </div>
               )}
 
+              {scopedFlexRequests.length > 0 && (
+                <div className="space-y-1">
+                  <p
+                    className="px-1 pt-1 text-[9.5px] uppercase text-[#ecedf4]/45"
+                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                  >
+                    FLEx access requests
+                  </p>
+                  {scopedFlexRequests.map((req) => (
+                    <FlexAccessRequestRow
+                      key={req.id}
+                      req={req}
+                      onApprove={() => approveFlexRequest(req)}
+                      onDecline={() => declineFlexRequest(req)}
+                    />
+                  ))}
+                </div>
+              )}
+
               {groups.length > 0 ? (
                 <ul className="space-y-2">
                   {groups.map((g) => (
