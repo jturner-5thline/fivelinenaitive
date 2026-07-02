@@ -2123,14 +2123,43 @@ function MetricDrilldownDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle style={{ color: C.textPrimary }}>
-            {row.label}
-            {focusedMonthLabel && (
-              <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
-                · {focusedMonthLabel}
-              </span>
+          <div className="flex items-start justify-between gap-3">
+            <DialogTitle style={{ color: C.textPrimary }}>
+              {row.label}
+              {focusedMonthLabel && (
+                <span className="ml-2 text-xs font-normal" style={{ color: C.textMuted }}>
+                  · {focusedMonthLabel}
+                </span>
+              )}
+            </DialogTitle>
+            {canToggleValue && (
+              <div
+                role="group"
+                aria-label="Toggle count or dollar value"
+                className="inline-flex items-center rounded-md overflow-hidden shrink-0"
+                style={{ border: `1px solid ${C.surfaceBorder}`, background: 'rgba(255,255,255,0.04)' }}
+              >
+                {(['count', 'value'] as const).map((m) => {
+                  const active = valueMode === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setValueMode(m)}
+                      className="px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      style={{
+                        color: active ? C.textPrimary : C.textMuted,
+                        background: active ? 'rgba(157,162,245,0.18)' : 'transparent',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}
+                    >
+                      {m === 'count' ? '#' : '$'}
+                    </button>
+                  );
+                })}
+              </div>
             )}
-          </DialogTitle>
+          </div>
           <DialogDescription style={{ color: C.textMuted }}>
             {view.label} · breakdown of the underlying data
           </DialogDescription>
