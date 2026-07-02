@@ -275,6 +275,14 @@ function GrossProfitToggleCard({
           <div className="text-xs text-muted-foreground">
             {isDollar ? 'Gross Profit from QuickBooks P&L' : 'Gross Profit ÷ Revenue'}
           </div>
+          {showTrend && (
+            <div className="mt-1">
+              <TrendDeltaText
+                values={profits.quarters.map((q) => (isDollar ? q.grossProfit : q.grossMargin))}
+                format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)}%`}
+              />
+            </div>
+          )}
         </div>
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.grossProfit === 0 && q.revenue === 0) : q.grossMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
