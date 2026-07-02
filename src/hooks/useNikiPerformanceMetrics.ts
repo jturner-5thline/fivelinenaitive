@@ -294,7 +294,14 @@ function useNikiPipelineData() {
       };
       for (const r of [...alPrimaryRows, ...alSiblingRows]) {
         const to = normalizeStageKey((r as any).metadata?.to);
+        const from = normalizeStageKey((r as any).metadata?.from);
         record(to, r.deal_id, r.created_at);
+
+        // Some imported 5th Line history only captured a deal leaving a stage
+        // (e.g. Lango: final-credit-items → client-strategy-review) without a
+        // matching entry event. Treat the exit as evidence the deal reached
+        // that stage so YTD stage-based actuals include it.
+        record(from, r.deal_id, r.created_at);
       }
       for (const r of [...dshPrimaryRows, ...dshSiblingRows]) {
         const key =
