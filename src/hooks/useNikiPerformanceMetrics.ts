@@ -227,6 +227,20 @@ function entriesForStage(
     }
   }
 
+  // In Development pipeline fallback for "Proposals Issued": every deal that
+  // lives on the In Development pipeline is, by definition, a proposal the
+  // rep has already issued (that's the entry criterion for the pipeline).
+  // Count each such deal once, using its earliest known stage event or
+  // `created_at` as the entry timestamp — regardless of current stage
+  // (including on-hold / closed-lost, which still had a proposal issued).
+  if (stageId === 'proposal-issued') {
+    for (const d of data.allNiki) {
+      if (merged.has(d.id)) continue;
+      if (d.pipeline_id !== IN_DEVELOPMENT_PIPELINE_ID_5THLINE) continue;
+      merged.set(d.id, d.created_at);
+    }
+  }
+
   const out: PerfDeal[] = [];
   for (const [id, at] of merged.entries()) {
     const d = data.dealsById.get(id);
