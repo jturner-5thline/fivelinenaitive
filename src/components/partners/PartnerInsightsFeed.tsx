@@ -292,43 +292,6 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
 
   return (
     <div className="space-y-4">
-      {/* Header (hidden when consumed within PartnerInsightsProvider) */}
-      {!headerCtx && (
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Type filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Filter className="h-3.5 w-3.5" /> Filter
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-52">
-              <p className="text-xs font-medium text-muted-foreground mb-2">Insight Types</p>
-              <div className="space-y-2">
-                {(Object.entries(TYPE_CONFIG) as [InsightType, typeof TYPE_CONFIG.stage_move][]).map(([key, cfg]) => (
-                  <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={activeTypes.has(key)} onCheckedChange={() => toggleTypeInternal(key)} />
-                    <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
-                    {cfg.label}
-                  </label>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-
-          {/* Draft Report */}
-          <Button size="sm" className="gap-1.5" onClick={() => setShowReport(true)}>
-            <FileDown className="h-3.5 w-3.5" /> Draft Report
-          </Button>
-        </div>
-      </div>
-      )}
-
       {/* Feed — uses Insights card surface */}
       <div className="rounded-xl border bg-card border-border shadow-sm dark:bg-[rgba(255,255,255,0.04)] dark:border-[rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150 dark:shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] divide-y divide-border max-h-[420px] overflow-y-auto">
         {insights.length === 0 ? (
