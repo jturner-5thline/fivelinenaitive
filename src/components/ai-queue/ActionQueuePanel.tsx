@@ -642,7 +642,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </div>
           <StagedDraftsPanel />
         </div>
-      ) : (items.length + accessRequests.length) === 0 ? (
+      ) : (items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
@@ -654,7 +654,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   <div className="flex items-center gap-1.5">
                     <FilterChip
                       label="All"
-                      count={items.length + accessRequests.length}
+                      count={items.length + accessRequests.length + flexRequests.length}
                       active={scope === 'all'}
                       onClick={() => setScope('all')}
                     />
@@ -663,7 +663,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                       count={
                         (myDealIds
                           ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
-                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
+                            flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
                           : 0)
                       }
                       active={scope === 'me'}
