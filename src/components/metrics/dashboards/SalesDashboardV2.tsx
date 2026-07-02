@@ -515,6 +515,7 @@ function statusColor(att: number): string {
 function PerformancePanel() {
   const view = useView();
   const drill = useDrilldown();
+  const [driverMode, setDriverMode] = React.useState<'gap' | 'performance'>('gap');
   const E = view.elapsed;
   const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
   const actualYtd = sum(view.actual.dollarsFunded, E);
@@ -543,18 +544,33 @@ function PerformancePanel() {
 
   return (
     <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] overflow-hidden">
-      {/* LEFT — Gap to Plan by Driver */}
+      {/* LEFT — Gap to Plan / Performance to Plan by Driver */}
       <div className="p-5 lg:border-r" style={{ borderColor: C.surfaceBorder }}>
-        <div
-          className="text-[10px] font-medium uppercase mb-3"
-          style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
-        >
-          Gap to Plan · By Driver
+        <div className="flex items-center justify-between mb-3">
+          <Select value={driverMode} onValueChange={(v) => setDriverMode(v as 'gap' | 'performance')}>
+            <SelectTrigger
+              className="h-6 w-auto gap-1.5 border-0 bg-transparent px-1 py-0 text-[10px] font-medium uppercase focus:ring-0 focus:ring-offset-0 hover:bg-white/[0.04]"
+              style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+            >
+              <SelectValue />
+              <span style={{ color: C.textFaint }}>· By Driver</span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gap">Gap to Plan</SelectItem>
+              <SelectItem value="performance">Performance to Plan</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-col">
           {drivers.map((d, idx) => {
             const att = d.actual / d.plan;
             const color = statusColor(att);
+            const gapVal = d.actual - d.plan;
+            const shortfallPct = d.plan === 0 ? 0 : Math.round(Math.abs(1 - att) * 100);
+            const gapDisplay =
+              d.type === 'money'
+                ? `${gapVal >= 0 ? '+' : '−'}$${Math.abs(gapVal).toFixed(1)}`
+                : `${gapVal >= 0 ? '+' : '−'}${Math.round(Math.abs(gapVal))}`;
             return (
               <button
                 type="button"
@@ -584,7 +600,9 @@ function PerformancePanel() {
                     className="text-[12px] font-medium"
                     style={{ color, fontVariantNumeric: 'tabular-nums' }}
                   >
-                    {fmtPct(att)}
+                    {driverMode === 'performance'
+                      ? fmtPct(att)
+                      : `${gapDisplay} · ${shortfallPct}%`}
                   </span>
                 </div>
               </button>
