@@ -468,22 +468,63 @@ function KpiCard({
           {Math.abs(Math.round(deltaPct * 100))}%
         </div>
       </div>
-      <div className="text-[11px]" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-        vs plan {type === 'money' ? fmtMoney(comparePlan) : fmtCount(comparePlan)} ·{' '}
-        <span style={{ color: gap >= 0 ? C.cyan : C.rose }}>
-          {type === 'money' ? fmtSignedMoney(gap) : fmtSignedCount(gap)}
+      <div className="flex items-center justify-between text-[11px]" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
+        <span>
+          vs plan {type === 'money' ? fmtMoney(comparePlan) : fmtCount(comparePlan)} ·{' '}
+          <span style={{ color: gap >= 0 ? C.cyan : C.rose }}>
+            {type === 'money' ? fmtSignedMoney(gap) : fmtSignedCount(gap)}
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-[10px]">
+          <span className="flex items-center gap-1">
+            <span style={{ width: 12, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
+            Plan
+          </span>
+          <span className="flex items-center gap-1">
+            <span style={{ width: 12, height: 2, background: C.cyan, display: 'inline-block', borderRadius: 1 }} />
+            Actual
+          </span>
         </span>
       </div>
-      <div style={{ height: 44 }} className="mt-1">
+      <div style={{ height: 160 }} className="mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={sparkData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+          <LineChart
+            data={sparkData}
+            margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+            onClick={(state: { activeTooltipIndex?: number } | null) => {
+              if (state && typeof state.activeTooltipIndex === 'number') {
+                drill.open(metricKey, state.activeTooltipIndex);
+              }
+            }}
+          >
+            <CartesianGrid stroke={C.hairline} vertical={false} />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: C.textFaint, fontSize: 10 }}
+              axisLine={{ stroke: C.hairline }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: C.textFaint, fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <Tooltip
+              contentStyle={{
+                background: 'rgba(8,8,12,0.95)',
+                border: `1px solid ${C.surfaceBorder}`,
+                borderRadius: 8,
+                color: C.textPrimary,
+                fontSize: 12,
+              }}
+            />
             <Line
               type="monotone"
               dataKey="plan"
               stroke={C.periwinkle}
-              strokeWidth={1.2}
-              strokeDasharray="3 3"
-              strokeOpacity={0.6}
+              strokeWidth={1.4}
+              strokeDasharray="4 4"
               dot={false}
               isAnimationActive={false}
             />
@@ -491,8 +532,9 @@ function KpiCard({
               type="monotone"
               dataKey="actual"
               stroke={C.cyan}
-              strokeWidth={1.6}
-              dot={false}
+              strokeWidth={2}
+              dot={{ r: 2.5, fill: C.cyan }}
+              activeDot={{ r: 5, fill: C.cyan, stroke: C.cyan }}
               connectNulls={false}
               isAnimationActive={false}
             />
@@ -2178,13 +2220,6 @@ export function SalesDashboardV2() {
             <div style={{ minWidth: 600 }}>
               <CumulativePace />
             </div>
-          </div>
-
-          {/* Key-stat line charts */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <KeyStatCard title="Sales Calls" metricKey="salesCalls" />
-            <KeyStatCard title="Deals on Board" metricKey="dealsOnBoard" />
-            <KeyStatCard title="Proposals Issued" metricKey="proposalsIssued" />
           </div>
 
           {/* Conversion metric cards (trailing 3 months) */}
