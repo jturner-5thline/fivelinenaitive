@@ -542,9 +542,59 @@ function PerformancePanel() {
   const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
 
   return (
-    <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr] overflow-hidden">
-      {/* LEFT */}
+    <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] overflow-hidden">
+      {/* LEFT — Gap to Plan by Driver */}
       <div className="p-5 lg:border-r" style={{ borderColor: C.surfaceBorder }}>
+        <div
+          className="text-[10px] font-medium uppercase mb-3"
+          style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+        >
+          Gap to Plan · By Driver
+        </div>
+        <div className="flex flex-col">
+          {drivers.map((d, idx) => {
+            const att = d.actual / d.plan;
+            const color = statusColor(att);
+            return (
+              <button
+                type="button"
+                key={d.label}
+                onClick={() => drill.open(d.metricKey)}
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
+                style={{
+                  borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}`,
+                }}
+              >
+                <div className="text-[12px]" style={{ color: C.textPrimary }}>
+                  {d.label}
+                  {d.note && <span className="ml-1" style={{ color: C.textFaint }}>{d.note}</span>}
+                </div>
+                <div className="text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: C.textPrimary }}>
+                    {d.type === 'money' ? `$${d.actual.toFixed(1)}` : Math.round(d.actual)}
+                  </span>
+                  <span style={{ color: C.textFaint }}>
+                    {' / '}
+                    {d.type === 'money' ? `$${d.plan.toFixed(1)}` : Math.round(d.plan)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 min-w-[48px] justify-end">
+                  <span style={{ width: 6, height: 6, borderRadius: 999, background: color, display: 'inline-block' }} />
+                  <span
+                    className="text-[12px] font-medium"
+                    style={{ color, fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {fmtPct(att)}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* RIGHT — Performance to Plan */}
+      <div className="p-5">
         <div
           className="flex items-center gap-1.5 text-[10px] font-medium uppercase mb-3"
           style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
@@ -607,56 +657,6 @@ function PerformancePanel() {
             <span style={{ color: C.rose }}>Gap {fmtSignedMoney(gap)}</span>
             <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through {view.months[E - 1] ?? ''}</span>
           </div>
-        </div>
-      </div>
-
-      {/* RIGHT */}
-      <div className="p-5">
-        <div
-          className="text-[10px] font-medium uppercase mb-3"
-          style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
-        >
-          Gap to Plan · By Driver
-        </div>
-        <div className="flex flex-col">
-          {drivers.map((d, idx) => {
-            const att = d.actual / d.plan;
-            const color = statusColor(att);
-            return (
-              <button
-                type="button"
-                key={d.label}
-                onClick={() => drill.open(d.metricKey)}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
-                style={{
-                  borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}`,
-                }}
-              >
-                <div className="text-[12px]" style={{ color: C.textPrimary }}>
-                  {d.label}
-                  {d.note && <span className="ml-1" style={{ color: C.textFaint }}>{d.note}</span>}
-                </div>
-                <div className="text-[11px]" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  <span style={{ color: C.textPrimary }}>
-                    {d.type === 'money' ? `$${d.actual.toFixed(1)}` : Math.round(d.actual)}
-                  </span>
-                  <span style={{ color: C.textFaint }}>
-                    {' / '}
-                    {d.type === 'money' ? `$${d.plan.toFixed(1)}` : Math.round(d.plan)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 min-w-[48px] justify-end">
-                  <span style={{ width: 6, height: 6, borderRadius: 999, background: color, display: 'inline-block' }} />
-                  <span
-                    className="text-[12px] font-medium"
-                    style={{ color, fontVariantNumeric: 'tabular-nums' }}
-                  >
-                    {fmtPct(att)}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
         </div>
       </div>
     </div>
