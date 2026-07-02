@@ -26,7 +26,15 @@ export function useTaskNotifications() {
         .select('*')
         .eq('assigned_to', user.id)
         .is('archived_at', null)
-        .neq('status', 'complete')
+        // Canonical completion check — mirror `isTaskCompleted` from
+        // `@/lib/taskCache` so the badge only clears when the task is
+        // ACTUALLY marked complete (either historic status literal, or
+        // a populated completed_at). Viewing a task never touches these
+        // fields, so the count persists until real completion or a
+        // due-date change (which triggers cache invalidation via
+        // `invalidateAllTaskCaches`).
+        .is('completed_at', null)
+        .not('status', 'in', '("complete","completed")')
         .order('due_date', { ascending: true });
       if (error) throw error;
 
