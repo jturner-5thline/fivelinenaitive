@@ -44,9 +44,8 @@ export type InsightsSource = 'all' | 'partners' | 'referrals';
 type HeaderCtx = {
   activeTypes: Set<InsightType>;
   toggleType: (t: InsightType) => void;
-  openReport: () => void;
-  count: number;
-  setCount: (n: number) => void;
+  showReport: boolean;
+  setShowReport: (v: boolean) => void;
 };
 const InsightsHeaderContext = createContext<HeaderCtx | null>(null);
 
@@ -55,7 +54,6 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
     new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
   );
   const [showReport, setShowReport] = useState(false);
-  const [count, setCount] = useState(0);
   const toggleType = (t: InsightType) => {
     setActiveTypes(prev => {
       const next = new Set(prev);
@@ -64,21 +62,11 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
     });
   };
   return (
-    <InsightsHeaderContext.Provider
-      value={{ activeTypes, toggleType, openReport: () => setShowReport(true), count, setCount }}
-    >
-      <_ShowReportBridge value={showReport} setValue={setShowReport} />
+    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport }}>
       {children}
     </InsightsHeaderContext.Provider>
   );
 }
-
-const ShowReportBridgeContext = createContext<{ show: boolean; setShow: (v: boolean) => void } | null>(null);
-function _ShowReportBridge({ value, setValue }: { value: boolean; setValue: (v: boolean) => void }) {
-  // no-op renderer; consumed by feed via context below
-  return null;
-}
-// Instead of bridge component, embed values in main context by extending it.
 
 export function PartnerInsightsHeaderActions() {
   const ctx = useContext(InsightsHeaderContext);
@@ -104,7 +92,7 @@ export function PartnerInsightsHeaderActions() {
           </div>
         </PopoverContent>
       </Popover>
-      <Button size="sm" className="gap-1.5" onClick={ctx.openReport}>
+      <Button size="sm" className="gap-1.5" onClick={() => ctx.setShowReport(true)}>
         <FileDown className="h-3.5 w-3.5" /> Draft Report
       </Button>
     </div>
@@ -126,6 +114,16 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
   );
   const [internalShowReport, setInternalShowReport] = useState(false);
   const activeTypes = headerCtx?.activeTypes ?? internalActiveTypes;
+  const showReport = headerCtx?.showReport ?? internalShowReport;
+  const setShowReport = headerCtx?.setShowReport ?? setInternalShowReport;
+  const toggleTypeInternal = (t: InsightType) => {
+    if (headerCtx) return headerCtx.toggleType(t);
+    setInternalActiveTypes(prev => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  };
 
   const cutoff = rangeStart?.toISOString() ?? subDays(new Date(), 30).toISOString();
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
@@ -292,21 +290,13 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [stageMoves, memoUpdates, newDeals, partners, cutoff, activeTypes, partnerMap, stageMap, profileMap, sourceFilter]);
 
-  const toggleType = (t: InsightType) => {
-    setActiveTypes(prev => {
-      const next = new Set(prev);
-      next.has(t) ? next.delete(t) : next.add(t);
-      return next;
-    });
-  };
-
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header (hidden when consumed within PartnerInsightsProvider) */}
+      {!headerCtx && (
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Partners and Referrals Insights</h3>
           <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -322,7 +312,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
               <div className="space-y-2">
                 {(Object.entries(TYPE_CONFIG) as [InsightType, typeof TYPE_CONFIG.stage_move][]).map(([key, cfg]) => (
                   <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={activeTypes.has(key)} onCheckedChange={() => toggleType(key)} />
+                    <Checkbox checked={activeTypes.has(key)} onCheckedChange={() => toggleTypeInternal(key)} />
                     <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
                     {cfg.label}
                   </label>
@@ -337,6 +327,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
           </Button>
         </div>
       </div>
+      )}
 
       {/* Feed — uses Insights card surface */}
       <div className="rounded-xl border bg-card border-border shadow-sm dark:bg-[rgba(255,255,255,0.04)] dark:border-[rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150 dark:shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] divide-y divide-border max-h-[420px] overflow-y-auto">
