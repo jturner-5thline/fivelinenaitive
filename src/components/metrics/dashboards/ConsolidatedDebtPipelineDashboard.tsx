@@ -25,6 +25,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
+import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 /**
  * Debt Advisory Metrics Board currency display.
@@ -313,16 +314,16 @@ function DrilldownModal({
   const total = deals.reduce((s, d) => s + d.value, 0);
   const selectedBucket = selectedBucketKey ? buckets.find((b) => b.key === selectedBucketKey) ?? null : null;
 
-  return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileCheck className="h-4 w-4" />
-            {title}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex items-center gap-3 mb-3 flex-wrap">
+  const context: DrilldownContext = {
+    sourceId: `debt-advisory:${title}`,
+    sourceLabel: title,
+    selection: periodNote,
+    periodLabel: selectedQuarter?.label,
+  };
+
+  const body = (
+    <div className="p-4 space-y-4 text-foreground">
+      <div className="flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {deals.length} deal{deals.length !== 1 ? 's' : ''}
           </Badge>
@@ -337,7 +338,7 @@ function DrilldownModal({
         </div>
 
         {showChart && (
-          <div className="mb-4 rounded-lg border border-border/40 bg-muted/10 p-3">
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {chartMetricType === 'count' ? 'Deals' : chartMetricType === 'dollars' ? 'Dollar volume' : 'Average'} by {granularity === 'monthly' ? 'month' : 'quarter'}
@@ -416,8 +417,19 @@ function DrilldownModal({
             </table>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </div>
+  );
+
+  return (
+    <InsightsDrilldownDrawer
+      open={open}
+      onClose={onClose}
+      context={context}
+      columns={[]}
+      rows={[]}
+      body={body}
+      onBackToDashboard={onClose}
+    />
   );
 }
 
