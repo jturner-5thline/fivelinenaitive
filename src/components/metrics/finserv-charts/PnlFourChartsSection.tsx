@@ -15,41 +15,7 @@ import {
 } from '@/hooks/useFinServFinancialMetrics';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 import { DrilldownProvider, useDrilldown } from '@/components/insights/ChartDrilldown';
-
-// Build a resolver from a bucket key/label → concrete ymd start/end for the
-// drilldown drawer. Recharts hands us `month`/`quarter` labels only, so we
-// index everything the hooks return.
-function useBucketResolver(
-  timeframe: { start: string; end: string; label: string },
-  granularity: 'monthly' | 'quarterly' | 'yearly',
-  totalRev: ReturnType<typeof useFinServTotalRevenue>,
-  profits: ReturnType<typeof useFinServQuarterlyProfits>,
-  cashflow: ReturnType<typeof useFinServCashflow>,
-) {
-  return useMemo(() => {
-    const index = new Map<string, { start: string; end: string; label: string }>();
-    const add = (key: string | undefined, start?: string, end?: string, label?: string) => {
-      if (!key || !start || !end) return;
-      index.set(key, { start, end, label: label ?? key });
-    };
-    for (const m of totalRev.months ?? []) {
-      add(m.month, (m as any).start_date, (m as any).end_date, m.month);
-      add((m as any).monthKey, (m as any).start_date, (m as any).end_date, m.month);
-    }
-    for (const q of profits.quarters ?? []) {
-      add(q.quarter, (q as any).start_date, (q as any).end_date, q.quarter);
-      add((q as any).quarterKey, (q as any).start_date, (q as any).end_date, q.quarter);
-    }
-    for (const p of cashflow.points ?? []) {
-      add(p.month, (p as any).start_date, (p as any).end_date, p.month);
-      add((p as any).monthKey, (p as any).start_date, (p as any).end_date, p.month);
-    }
-    return (keyOrLabel: string | undefined) => {
-      if (keyOrLabel && index.has(keyOrLabel)) return index.get(keyOrLabel)!;
-      return { start: timeframe.start, end: timeframe.end, label: timeframe.label };
-    };
-  }, [timeframe.start, timeframe.end, timeframe.label, totalRev.months, profits.quarters, cashflow.points, granularity]);
-}
+import { buildBuckets } from '@/lib/insightsTimeRange';
 
 // ── Formatters (mirrors FinServFinancialMetricsDashboard) ──
 const fmtCurrency = (v: number) => {
