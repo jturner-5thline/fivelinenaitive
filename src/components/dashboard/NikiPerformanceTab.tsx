@@ -707,8 +707,9 @@ function NikiPerformanceTabInner() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Rep Performance &amp; Pipeline Model</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Plan vs Actual for Niki's 2026 production and revenue metrics. Live actuals from Active
-            Pipeline stage-entry events, scoped to deals where Niki is owner or deal manager.
+            Plan vs Actual for {assignee}'s 2026 production and revenue metrics. Live actuals from
+            Active Pipeline stage-entry events, scoped to deals where {assignee} is owner or deal
+            manager.
           </p>
         </div>
         <div className="flex items-center gap-2">
