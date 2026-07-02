@@ -8,6 +8,7 @@ import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/use
 import {
   useFinservDealsOnBoardByMonth,
   useFinservProposalsIssuedByMonth,
+  type FinservStageEntry,
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import {
@@ -1903,6 +1904,7 @@ function MetricDrilldownDialog({
   focus,
   onClose,
   view,
+  pipelineVariant,
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
@@ -1916,13 +1918,14 @@ function MetricDrilldownDialog({
   focus: DrilldownFocus | null;
   onClose: () => void;
   view: DashboardView;
+  pipelineVariant: 'debt' | 'finserv';
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
-  dealsOnBoard: DealOnBoardEntry[];
+  dealsOnBoard: Array<DealOnBoardEntry | FinservStageEntry>;
   dealsOnBoardLoading?: boolean;
   dealsOnBoardError?: Error | null;
-  proposalsIssued: ProposalIssuedEntry[];
+  proposalsIssued: Array<ProposalIssuedEntry | FinservStageEntry>;
   proposalsIssuedLoading?: boolean;
   proposalsIssuedError?: Error | null;
 }) {
@@ -1966,12 +1969,12 @@ function MetricDrilldownDialog({
 
   // Optional: list of underlying Deals on Board for the focused month/period
   const showDealsOnBoard = row.key === 'dealsOnBoard';
-  let dealsInPeriod: DealOnBoardEntry[] = [];
+  let dealsInPeriod: Array<DealOnBoardEntry | FinservStageEntry> = [];
   if (showDealsOnBoard) {
     const start = view.rangeStart;
     const end = view.rangeEnd;
     dealsInPeriod = dealsOnBoard.filter((d) => {
-      const c = new Date(d.created_at);
+      const c = new Date('created_at' in d ? d.created_at : d.entered_at);
       return c >= start && c <= end;
     });
     if (focus.monthIndex !== undefined && focus.monthIndex >= 0) {
@@ -1980,18 +1983,20 @@ function MetricDrilldownDialog({
       const fy = f.getUTCFullYear();
       const fm = f.getUTCMonth();
       dealsInPeriod = dealsInPeriod.filter((d) => {
-        const c = new Date(d.created_at);
+        const c = new Date('created_at' in d ? d.created_at : d.entered_at);
         return c.getUTCFullYear() === fy && c.getUTCMonth() === fm;
       });
     }
     dealsInPeriod = dealsInPeriod.sort((a, b) =>
-      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
+      (('created_at' in a ? a.created_at : a.entered_at) ?? '').localeCompare(
+        ('created_at' in b ? b.created_at : b.entered_at) ?? '',
+      ),
     );
   }
 
   // Optional: list of underlying Proposals Issued for the focused month/period
   const showProposalsIssued = row.key === 'proposalsIssued';
-  let proposalsInPeriod: ProposalIssuedEntry[] = [];
+  let proposalsInPeriod: Array<ProposalIssuedEntry | FinservStageEntry> = [];
   if (showProposalsIssued) {
     const start = view.rangeStart;
     const end = view.rangeEnd;
@@ -2139,7 +2144,9 @@ function MetricDrilldownDialog({
                     ? 'Loading qualifying calendar events…'
                     : salesCallsError
                       ? 'Could not load qualifying calendar events. The metric is unavailable until the calendar scan succeeds.'
-                      : 'No qualifying "[Company] <> 5th Line Financing Review" events in this period.'}
+                      : pipelineVariant === 'finserv'
+                        ? 'No qualifying "5th Line <> [Company] Financial Review" events in this period.'
+                        : 'No qualifying "[Company] <> 5th Line Financing Review" events in this period.'}
                 </div>
               ) : (
                 <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
@@ -2201,21 +2208,24 @@ function MetricDrilldownDialog({
                   {dealsOnBoardLoading
                     ? 'Loading deals…'
                     : dealsOnBoardError
-                      ? 'Could not load deals from the Active Pipeline.'
-                      : 'No deals added to the Active Pipeline in this period.'}
+                      ? `Could not load deals from the ${pipelineVariant === 'finserv' ? 'FinServ' : 'Active'} Pipeline.`
+                      : pipelineVariant === 'finserv'
+                        ? 'No FinServ deals entered Qualification in this period.'
+                        : 'No deals added to the Active Pipeline in this period.'}
                 </div>
               ) : (
                 <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ color: C.textMuted, fontSize: 10 }}>
                       <th className="text-left px-3 py-2 font-medium uppercase tracking-wider">Deal</th>
-                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">Added</th>
+                      <th className="text-left px-3 py-2 font-medium uppercase tracking-wider w-32">{pipelineVariant === 'finserv' ? 'Entered' : 'Added'}</th>
                       <th className="text-right px-3 py-2 font-medium uppercase tracking-wider w-32">Value</th>
                     </tr>
                   </thead>
                   <tbody>
                     {dealsInPeriod.map((d) => {
-                      const when = new Date(d.created_at).toLocaleDateString('en-US', {
+                      const eventDate = 'created_at' in d ? d.created_at : d.entered_at;
+                      const when = new Date(eventDate).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
@@ -2259,8 +2269,10 @@ function MetricDrilldownDialog({
                   {proposalsIssuedLoading
                     ? 'Loading proposals…'
                     : proposalsIssuedError
-                      ? 'Could not load proposals from the Active Pipeline.'
-                      : 'No deals entered "Proposal Issued" in this period.'}
+                      ? `Could not load proposals from the ${pipelineVariant === 'finserv' ? 'FinServ' : 'Active'} Pipeline.`
+                      : pipelineVariant === 'finserv'
+                        ? 'No FinServ deals entered "Proposal Sent" in this period.'
+                        : 'No deals entered "Proposal Issued" in this period.'}
                 </div>
               ) : (
                 <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
@@ -2747,6 +2759,7 @@ export function SalesDashboardV2() {
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
       view={kpiVariant === 'finserv' ? kpiView : view}
+      pipelineVariant={kpiVariant}
       salesCallEvents={kpiVariant === 'finserv' ? salesCallEventsFinserv : salesCallEvents}
       salesCallsLoading={
         kpiVariant === 'finserv'
@@ -2754,12 +2767,20 @@ export function SalesDashboardV2() {
           : salesCallsQuery.isLoading || salesCallsQuery.isFetching
       }
       salesCallsError={(kpiVariant === 'finserv' ? salesCallsFinservQuery.error : salesCallsQuery.error) ?? null}
-      dealsOnBoard={dealsOnBoardQuery.deals}
-      dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
-      dealsOnBoardError={dealsOnBoardQuery.error}
-      proposalsIssued={proposalsIssuedQuery.deals}
-      proposalsIssuedLoading={proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching}
-      proposalsIssuedError={proposalsIssuedQuery.error}
+      dealsOnBoard={kpiVariant === 'finserv' ? dealsOnBoardFinservQuery.deals : dealsOnBoardQuery.deals}
+      dealsOnBoardLoading={
+        kpiVariant === 'finserv'
+          ? dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching
+          : dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching
+      }
+      dealsOnBoardError={kpiVariant === 'finserv' ? dealsOnBoardFinservQuery.error : dealsOnBoardQuery.error}
+      proposalsIssued={kpiVariant === 'finserv' ? proposalsIssuedFinservQuery.deals : proposalsIssuedQuery.deals}
+      proposalsIssuedLoading={
+        kpiVariant === 'finserv'
+          ? proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching
+          : proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching
+      }
+      proposalsIssuedError={kpiVariant === 'finserv' ? proposalsIssuedFinservQuery.error : proposalsIssuedQuery.error}
     />
     </DrilldownCtx.Provider>
     </ViewCtx.Provider>
