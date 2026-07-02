@@ -356,9 +356,15 @@ function GrossProfitToggleCard({
                   <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
                 )}
                 <Tooltip
-                  formatter={(v: number, name: string) =>
-                    isDollar ? [fmtCurrencyFull(v), name] : [fmtPct(v), 'Gross Margin']
-                  }
+                  content={(props: any) => (
+                    <DeltaTooltip
+                      {...props}
+                      data={chartData}
+                      dataKey={isDollar ? 'grossProfit' : 'grossMargin'}
+                      format={isDollar ? fmtCurrencyFull : fmtPct}
+                      seriesName={isDollar ? 'Gross Profit' : 'Gross Margin'}
+                    />
+                  )}
                 />
                 {isDollar ? (
                   <>
