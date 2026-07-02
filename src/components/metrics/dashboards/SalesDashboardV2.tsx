@@ -55,6 +55,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Radio,
+  Table2,
+  X,
+  Save,
 } from 'lucide-react';
 
 /**
