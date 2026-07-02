@@ -1948,6 +1948,11 @@ export function SalesDashboardV2() {
             <PerformancePanel />
           </div>
 
+          {/* Top "Sourced Via" for deals created in the selected timeframe */}
+          <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TopSourcedViaWidget />
+          </div>
+
           {/* Cumulative pace */}
           <div className="mb-6">
             <SalesTeamBoardKpiGrid quarter={selectedQuarter} />
