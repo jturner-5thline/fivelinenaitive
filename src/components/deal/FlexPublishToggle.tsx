@@ -18,7 +18,7 @@ import { isFlexHiddenStage } from '@/lib/flexVisibility';
 
 interface Props {
   dealId: string;
-  stage: string | null | undefined;
+  stage?: string | null;
 }
 
 /**
@@ -29,6 +29,7 @@ interface Props {
  */
 export function FlexPublishToggle({ dealId, stage }: Props) {
   const [override, setOverride] = useState<'show' | 'hide' | null>(null);
+  const [stageFromDb, setStageFromDb] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [confirmUnpublish, setConfirmUnpublish] = useState(false);
@@ -39,11 +40,12 @@ export function FlexPublishToggle({ dealId, stage }: Props) {
       setLoading(true);
       const { data } = await supabase
         .from('deals')
-        .select('flex_visibility_override')
+        .select('flex_visibility_override, stage')
         .eq('id', dealId)
         .maybeSingle();
       if (cancelled) return;
       setOverride(((data as any)?.flex_visibility_override ?? null) as any);
+      setStageFromDb(((data as any)?.stage ?? null) as string | null);
       setLoading(false);
     })();
     return () => {
@@ -51,7 +53,8 @@ export function FlexPublishToggle({ dealId, stage }: Props) {
     };
   }, [dealId]);
 
-  const stageHides = isFlexHiddenStage(stage);
+  const effectiveStage = stage ?? stageFromDb;
+  const stageHides = isFlexHiddenStage(effectiveStage);
   // Toggle reflects "is this deal published on FLEx?"
   const isPublished =
     override === 'show' ? true : override === 'hide' ? false : !stageHides;
