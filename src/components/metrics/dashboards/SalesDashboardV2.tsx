@@ -2515,6 +2515,7 @@ export function SalesDashboardV2() {
   // Only affects the top three KPI cards; the rest of the dashboard keeps
   // its existing Debt-pipeline sourcing.
   const [kpiVariant, setKpiVariant] = React.useState<'debt' | 'finserv'>('debt');
+  const [kpiValueMode, setKpiValueMode] = React.useState<'count' | 'value'>('count');
 
   // FinServ Sales Calls — matches titles like
   // "5th Line <> [COMPANY] Financial Review" across teammate calendars.
@@ -2684,26 +2685,107 @@ export function SalesDashboardV2() {
     [proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
   );
 
+  // ---- Dollar-value actuals (in $MM) for the top three KPI cards --------
+  const sumDollarsMM = (deals: { value: number }[]): number =>
+    deals.reduce((s, d) => s + (Number(d.value) || 0), 0) / 1_000_000;
+
+  const dollarsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, dealsOnBoardQuery.byMonthKey]);
+  const dollarsProposedByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching, proposalsIssuedQuery.byMonthKey]);
+  const dollarsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardFinservQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, dealsOnBoardFinservQuery.byMonthKey]);
+  const dollarsProposedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedFinservQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, proposalsIssuedFinservQuery.byMonthKey]);
+
+  const liveDollarsOnBoardActual = React.useMemo(
+    () => lookup(dollarsOnBoardByMonthKey, dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching),
+    [dollarsOnBoardByMonthKey, dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, monthKeys],
+  );
+  const liveDollarsProposedActual = React.useMemo(
+    () => lookup(dollarsProposedByMonthKey, proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching),
+    [dollarsProposedByMonthKey, proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching, monthKeys],
+  );
+  const liveDollarsOnBoardActualFinserv = React.useMemo(
+    () => lookup(dollarsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching),
+    [dollarsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, monthKeys],
+  );
+  const liveDollarsProposedActualFinserv = React.useMemo(
+    () => lookup(dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching),
+    [dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
+  );
+
   // View scoped ONLY to the top three KPI cards. When "FinServ" is
   // selected, swap in the FinServ-sourced actuals for sales calls, deals
   // on board, and proposals issued.
   const kpiView = React.useMemo<DashboardView>(() => {
-    if (kpiVariant !== 'finserv') return view;
+    // Base variant swap (Debt vs FinServ) for count-mode actuals.
+    const variantView: DashboardView =
+      kpiVariant === 'finserv'
+        ? {
+            ...view,
+            actual: {
+              ...view.actual,
+              salesCalls: liveSalesCallsActualFinserv,
+              dealsOnBoard: liveDealsOnBoardActualFinserv,
+              proposalsIssued: liveProposalsIssuedActualFinserv,
+            },
+          }
+        : view;
+    if (kpiValueMode !== 'value') return variantView;
+    // In $ mode, remap dealsOnBoard/proposalsIssued actuals to $MM totals.
+    const dollarsOnBoardArr =
+      kpiVariant === 'finserv' ? liveDollarsOnBoardActualFinserv : liveDollarsOnBoardActual;
+    const dollarsProposedArr =
+      kpiVariant === 'finserv' ? liveDollarsProposedActualFinserv : liveDollarsProposedActual;
     return {
-      ...view,
+      ...variantView,
       actual: {
-        ...view.actual,
-        salesCalls: liveSalesCallsActualFinserv,
-        dealsOnBoard: liveDealsOnBoardActualFinserv,
-        proposalsIssued: liveProposalsIssuedActualFinserv,
+        ...variantView.actual,
+        dealsOnBoard: dollarsOnBoardArr,
+        proposalsIssued: dollarsProposedArr,
+      },
+      plan: {
+        ...variantView.plan,
+        dealsOnBoard: variantView.plan.dollarsOnBoard,
+        proposalsIssued: variantView.plan.dollarsProposed,
       },
     };
   }, [
     kpiVariant,
+    kpiValueMode,
     view,
     liveSalesCallsActualFinserv,
     liveDealsOnBoardActualFinserv,
     liveProposalsIssuedActualFinserv,
+    liveDollarsOnBoardActual,
+    liveDollarsProposedActual,
+    liveDollarsOnBoardActualFinserv,
+    liveDollarsProposedActualFinserv,
   ]);
 
   // Drilldown state
