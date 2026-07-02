@@ -9,6 +9,9 @@ import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 export const FINSERV_REALM_ID = '9341451968897660';
+// 5th Line Capital Advisors (Debt Advisory) realm — used to reuse the same
+// P&L / cashflow hooks against the Debt Advisory QuickBooks company.
+export const DEBT_ADVISORY_REALM_ID = '193514877331929';
 // Canonical FinServ pipeline id — matches the active `deal_pipelines` row
 // and the deals/deal_stage_history that live under it. The prior UUID
 // (`eb9db15a-…`) was an older stub with zero deals attached, which is why
@@ -165,7 +168,7 @@ function buildQuarterlySnapshotPeriods(end: string, count: number): SnapshotPeri
   });
 }
 
-async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
+async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[], realmId: string = FINSERV_REALM_ID) {
   if (periods.length === 0) return [];
 
   const startDates = periods.map((period) => period.start_date).sort();
@@ -176,7 +179,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
     .from('qbo_pnl_snapshots')
     .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income, fetched_at')
     .eq('company_id', companyId)
-    .eq('realm_id', FINSERV_REALM_ID)
+    .eq('realm_id', realmId)
     .eq('accounting_method', 'Accrual')
     .gte('period_start', startDates[0])
     .lte('period_start', startDates[startDates.length - 1])
@@ -189,12 +192,12 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
   return ((data ?? []) as FinServSnapshotRow[]).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
 }
 
-async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
+async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[], realmId: string = FINSERV_REALM_ID) {
   if (periods.length === 0) return;
 
   const request = {
     syncType: 'profit_and_loss',
-    realmId: FINSERV_REALM_ID,
+    realmId,
     company_id: companyId,
     accounting_method: 'Accrual',
     start_date: periods.length === 1 ? periods[0].start_date : undefined,
@@ -213,9 +216,9 @@ async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPerio
   if (error) throw error;
 }
 
-async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
+async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[], realmId: string = FINSERV_REALM_ID) {
   const requested = dedupePeriods(periods);
-  let rows = await fetchFinServPnlSnapshots(companyId, requested);
+  let rows = await fetchFinServPnlSnapshots(companyId, requested, realmId);
   const foundMap = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
 
   // Freshness policy: refetch from QBO if a period is missing OR its snapshot is stale.
@@ -236,8 +239,8 @@ async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPer
   });
 
   if (needsRefresh.length > 0) {
-    await syncFinServPnlSnapshots(companyId, needsRefresh);
-    rows = await fetchFinServPnlSnapshots(companyId, requested);
+    await syncFinServPnlSnapshots(companyId, needsRefresh, realmId);
+    rows = await fetchFinServPnlSnapshots(companyId, requested, realmId);
   }
 
   const refreshed = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
@@ -258,12 +261,13 @@ export interface MonthBar { month: string; monthKey: string; amount: number }
 export function useFinServTotalRevenue(
   period: SnapshotPeriod & { label: string } | null,
   granularity: Granularity = 'monthly',
+  realmId: string = FINSERV_REALM_ID,
 ) {
   const { user } = useAuth();
   const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date, granularity],
+    queryKey: ['finserv-total-revenue', user?.id, company?.id, realmId, period?.start_date, period?.end_date, granularity],
     queryFn: async () => {
       if (!period || !company?.id) return null;
 
@@ -272,7 +276,7 @@ export function useFinServTotalRevenue(
         { start_date: period.start_date, end_date: period.end_date },
         ...bucketPeriods.map((b) => ({ start_date: b.start_date, end_date: b.end_date })),
       ]);
-      const rows = await ensureFinServPnlSnapshots(company.id, requestedPeriods);
+      const rows = await ensureFinServPnlSnapshots(company.id, requestedPeriods, realmId);
       const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
       const periodRow = rowsByKey.get(periodKey(period));
 
@@ -334,6 +338,7 @@ export interface QuarterProfitBar {
 export function useFinServQuarterlyProfits(
   period: SnapshotPeriod | null,
   granularity: Granularity = 'quarterly',
+  realmId: string = FINSERV_REALM_ID,
 ) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -347,6 +352,7 @@ export function useFinServQuarterlyProfits(
       'finserv-profit-buckets',
       user?.id,
       company?.id,
+      realmId,
       period?.start_date,
       period?.end_date,
       granularity,
@@ -357,7 +363,7 @@ export function useFinServQuarterlyProfits(
         start_date: b.start_date,
         end_date: b.end_date,
       }));
-      const rows = await ensureFinServPnlSnapshots(company.id, reqPeriods);
+      const rows = await ensureFinServPnlSnapshots(company.id, reqPeriods, realmId);
       const rowsByKey = new Map(
         rows.map((row) => [`${row.period_start}_${row.period_end}`, row]),
       );
@@ -496,6 +502,7 @@ export interface CashflowPoint { month: string; monthKey: string; value: number 
 export function useFinServCashflow(
   period: (SnapshotPeriod & { label?: string }) | null = null,
   granularity: Granularity = 'monthly',
+  realmId: string = FINSERV_REALM_ID,
 ) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -504,7 +511,7 @@ export function useFinServCashflow(
   const endDate = period?.end_date ?? fallback[fallback.length - 1].end;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-cashflow-snapshots', user?.id, company?.id, startDate, endDate],
+    queryKey: ['finserv-cashflow-snapshots', user?.id, company?.id, realmId, startDate, endDate],
     queryFn: async () => {
       if (!company?.id) return [] as FinServCashflowSnapshotRow[];
 
@@ -513,7 +520,7 @@ export function useFinServCashflow(
           .from('qbo_cashflow_snapshots')
           .select('period_start, period_end, bucket_start, bucket_end, bucket_label, net_cash_flow, intercompany_adjustment')
           .eq('company_id', company.id)
-          .eq('realm_id', FINSERV_REALM_ID)
+          .eq('realm_id', realmId)
           .eq('accounting_method', 'Accrual')
           .eq('period_start', startDate)
           .eq('period_end', endDate)
@@ -527,7 +534,7 @@ export function useFinServCashflow(
       if (snapshotRows.length === 0) {
         const request = {
           syncType: 'cash_flow',
-          realmId: FINSERV_REALM_ID,
+          realmId,
           company_id: company.id,
           accounting_method: 'Accrual',
           start_date: startDate,
