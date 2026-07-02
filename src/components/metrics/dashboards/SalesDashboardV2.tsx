@@ -1975,6 +1975,7 @@ function MetricDrilldownDialog({
   onClose,
   view,
   pipelineVariant,
+  valueMode,
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
@@ -1989,6 +1990,7 @@ function MetricDrilldownDialog({
   onClose: () => void;
   view: DashboardView;
   pipelineVariant: 'debt' | 'finserv';
+  valueMode: 'count' | 'value';
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
@@ -2002,6 +2004,13 @@ function MetricDrilldownDialog({
   if (!focus) return null;
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
   if (!row) return null;
+
+  // In $ (value) mode the dealsOnBoard / proposalsIssued arrays coming in
+  // via `view.actual` are $MM totals rather than counts — format them as money.
+  const effectiveRowType: 'count' | 'money' =
+    valueMode === 'value' && (row.key === 'dealsOnBoard' || row.key === 'proposalsIssued')
+      ? 'money'
+      : row.type;
 
   const planArr = view.plan[row.key];
   const actualArr = view.actual[row.key];
