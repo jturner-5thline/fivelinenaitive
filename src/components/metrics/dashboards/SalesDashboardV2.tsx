@@ -457,6 +457,76 @@ function PipelineVariantToggle({
   );
 }
 
+function ValueModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'count' | 'value';
+  onChange: (v: 'count' | 'value') => void;
+}) {
+  const options: { key: 'count' | 'value'; label: string }[] = [
+    { key: 'count', label: '#' },
+    { key: 'value', label: '$' },
+  ];
+  return (
+    <div
+      className="inline-flex items-center rounded-md p-0.5"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+      role="tablist"
+      aria-label="KPI value mode"
+    >
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.key)}
+            className="px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors focus-visible:outline-none focus-visible:ring-1"
+            style={{
+              background: active ? 'rgba(157,162,245,0.16)' : 'transparent',
+              color: active ? C.textPrimary : C.textMuted,
+              letterSpacing: '0.04em',
+              minWidth: 22,
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BlankKpiCard({ label }: { label: string }) {
+  return (
+    <div
+      className="relative flex flex-col justify-center items-center text-center"
+      style={{
+        ...glassStyle,
+        padding: 18,
+        minHeight: 172,
+        color: C.textFaint,
+      }}
+    >
+      <div
+        className="text-[10px] uppercase tracking-[0.14em] mb-2"
+        style={{ color: C.textMuted }}
+      >
+        {label}
+      </div>
+      <div className="text-xs" style={{ color: C.textFaint }}>
+        Not applicable in $ view
+      </div>
+    </div>
+  );
+}
+
 function KpiCardInner({
   label,
   Icon,
@@ -2445,6 +2515,7 @@ export function SalesDashboardV2() {
   // Only affects the top three KPI cards; the rest of the dashboard keeps
   // its existing Debt-pipeline sourcing.
   const [kpiVariant, setKpiVariant] = React.useState<'debt' | 'finserv'>('debt');
+  const [kpiValueMode, setKpiValueMode] = React.useState<'count' | 'value'>('count');
 
   // FinServ Sales Calls — matches titles like
   // "5th Line <> [COMPANY] Financial Review" across teammate calendars.
@@ -2614,26 +2685,107 @@ export function SalesDashboardV2() {
     [proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
   );
 
+  // ---- Dollar-value actuals (in $MM) for the top three KPI cards --------
+  const sumDollarsMM = (deals: { value: number }[]): number =>
+    deals.reduce((s, d) => s + (Number(d.value) || 0), 0) / 1_000_000;
+
+  const dollarsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, dealsOnBoardQuery.byMonthKey]);
+  const dollarsProposedByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching, proposalsIssuedQuery.byMonthKey]);
+  const dollarsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardFinservQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, dealsOnBoardFinservQuery.byMonthKey]);
+  const dollarsProposedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedFinservQuery.byMonthKey)) {
+      out[k] = sumDollarsMM(arr);
+    }
+    return out;
+  }, [proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, proposalsIssuedFinservQuery.byMonthKey]);
+
+  const liveDollarsOnBoardActual = React.useMemo(
+    () => lookup(dollarsOnBoardByMonthKey, dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching),
+    [dollarsOnBoardByMonthKey, dealsOnBoardQuery.isLoading, dealsOnBoardQuery.isFetching, monthKeys],
+  );
+  const liveDollarsProposedActual = React.useMemo(
+    () => lookup(dollarsProposedByMonthKey, proposalsIssuedQuery.isLoading || proposalsIssuedQuery.isFetching),
+    [dollarsProposedByMonthKey, proposalsIssuedQuery.isLoading, proposalsIssuedQuery.isFetching, monthKeys],
+  );
+  const liveDollarsOnBoardActualFinserv = React.useMemo(
+    () => lookup(dollarsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching),
+    [dollarsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, monthKeys],
+  );
+  const liveDollarsProposedActualFinserv = React.useMemo(
+    () => lookup(dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching),
+    [dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
+  );
+
   // View scoped ONLY to the top three KPI cards. When "FinServ" is
   // selected, swap in the FinServ-sourced actuals for sales calls, deals
   // on board, and proposals issued.
   const kpiView = React.useMemo<DashboardView>(() => {
-    if (kpiVariant !== 'finserv') return view;
+    // Base variant swap (Debt vs FinServ) for count-mode actuals.
+    const variantView: DashboardView =
+      kpiVariant === 'finserv'
+        ? {
+            ...view,
+            actual: {
+              ...view.actual,
+              salesCalls: liveSalesCallsActualFinserv,
+              dealsOnBoard: liveDealsOnBoardActualFinserv,
+              proposalsIssued: liveProposalsIssuedActualFinserv,
+            },
+          }
+        : view;
+    if (kpiValueMode !== 'value') return variantView;
+    // In $ mode, remap dealsOnBoard/proposalsIssued actuals to $MM totals.
+    const dollarsOnBoardArr =
+      kpiVariant === 'finserv' ? liveDollarsOnBoardActualFinserv : liveDollarsOnBoardActual;
+    const dollarsProposedArr =
+      kpiVariant === 'finserv' ? liveDollarsProposedActualFinserv : liveDollarsProposedActual;
     return {
-      ...view,
+      ...variantView,
       actual: {
-        ...view.actual,
-        salesCalls: liveSalesCallsActualFinserv,
-        dealsOnBoard: liveDealsOnBoardActualFinserv,
-        proposalsIssued: liveProposalsIssuedActualFinserv,
+        ...variantView.actual,
+        dealsOnBoard: dollarsOnBoardArr,
+        proposalsIssued: dollarsProposedArr,
+      },
+      plan: {
+        ...variantView.plan,
+        dealsOnBoard: variantView.plan.dollarsOnBoard,
+        proposalsIssued: variantView.plan.dollarsProposed,
       },
     };
   }, [
     kpiVariant,
+    kpiValueMode,
     view,
     liveSalesCallsActualFinserv,
     liveDealsOnBoardActualFinserv,
     liveProposalsIssuedActualFinserv,
+    liveDollarsOnBoardActual,
+    liveDollarsProposedActual,
+    liveDollarsOnBoardActualFinserv,
+    liveDollarsProposedActualFinserv,
   ]);
 
   // Drilldown state
@@ -2671,32 +2823,48 @@ export function SalesDashboardV2() {
 
           {/* KPI strip */}
           <div className="mb-6">
-            <div className="flex items-center justify-end mb-2">
+            <div className="flex items-center justify-end gap-2 mb-2">
               <PipelineVariantToggle
                 value={kpiVariant}
                 onChange={setKpiVariant}
               />
+              <ValueModeToggle
+                value={kpiValueMode}
+                onChange={setKpiValueMode}
+              />
             </div>
             <ViewCtx.Provider value={kpiView}>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {kpiValueMode === 'value' ? (
+                  <BlankKpiCard label="Sales Calls" />
+                ) : (
+                  <KpiCard
+                    label="Sales Calls"
+                    Icon={Phone}
+                    type="count"
+                    metricKey="salesCalls"
+                    mode="sum"
+                  />
+                )}
                 <KpiCard
-                  label="Sales Calls"
-                  Icon={Phone}
-                  type="count"
-                  metricKey="salesCalls"
-                  mode="sum"
-                />
-                <KpiCard
-                  label={kpiVariant === 'finserv' ? 'Deals on Board (FinServ)' : 'Deals on Board'}
+                  label={
+                    kpiValueMode === 'value'
+                      ? kpiVariant === 'finserv'
+                        ? 'Dollars on Board (FinServ)'
+                        : 'Dollars on Board'
+                      : kpiVariant === 'finserv'
+                        ? 'Deals on Board (FinServ)'
+                        : 'Deals on Board'
+                  }
                   Icon={Layers}
-                  type="count"
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
                   metricKey="dealsOnBoard"
                   mode="sum"
                 />
                 <KpiCard
-                  label="Proposals Issued"
+                  label={kpiValueMode === 'value' ? 'Dollars Proposed' : 'Proposals Issued'}
                   Icon={FileText}
-                  type="count"
+                  type={kpiValueMode === 'value' ? 'money' : 'count'}
                   metricKey="proposalsIssued"
                   mode="sum"
                 />
