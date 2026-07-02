@@ -457,6 +457,76 @@ function PipelineVariantToggle({
   );
 }
 
+function ValueModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'count' | 'value';
+  onChange: (v: 'count' | 'value') => void;
+}) {
+  const options: { key: 'count' | 'value'; label: string }[] = [
+    { key: 'count', label: '#' },
+    { key: 'value', label: '$' },
+  ];
+  return (
+    <div
+      className="inline-flex items-center rounded-md p-0.5"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+      role="tablist"
+      aria-label="KPI value mode"
+    >
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.key)}
+            className="px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors focus-visible:outline-none focus-visible:ring-1"
+            style={{
+              background: active ? 'rgba(157,162,245,0.16)' : 'transparent',
+              color: active ? C.textPrimary : C.textMuted,
+              letterSpacing: '0.04em',
+              minWidth: 22,
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BlankKpiCard({ label }: { label: string }) {
+  return (
+    <div
+      className="relative flex flex-col justify-center items-center text-center"
+      style={{
+        ...glassStyle,
+        padding: 18,
+        minHeight: 172,
+        color: C.textFaint,
+      }}
+    >
+      <div
+        className="text-[10px] uppercase tracking-[0.14em] mb-2"
+        style={{ color: C.textMuted }}
+      >
+        {label}
+      </div>
+      <div className="text-xs" style={{ color: C.textFaint }}>
+        Not applicable in $ view
+      </div>
+    </div>
+  );
+}
+
 function KpiCardInner({
   label,
   Icon,
