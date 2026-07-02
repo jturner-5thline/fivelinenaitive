@@ -87,6 +87,7 @@ type FinServSnapshotRow = {
   gross_profit: number;
   operating_expenses: number;
   net_operating_income: number | null;
+  fetched_at?: string | null;
 };
 
 type FinServCashflowSnapshotRow = {
@@ -168,7 +169,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
 
   const { data, error } = await supabase
     .from('qbo_pnl_snapshots')
-    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income')
+    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income, fetched_at')
     .eq('company_id', companyId)
     .eq('realm_id', FINSERV_REALM_ID)
     .eq('accounting_method', 'Accrual')
@@ -210,11 +211,27 @@ async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPerio
 async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
   const requested = dedupePeriods(periods);
   let rows = await fetchFinServPnlSnapshots(companyId, requested);
-  const found = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
-  const missing = requested.filter((period) => !found.has(periodKey(period)));
+  const foundMap = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
 
-  if (missing.length > 0) {
-    await syncFinServPnlSnapshots(companyId, missing);
+  // Freshness policy: refetch from QBO if a period is missing OR its snapshot is stale.
+  // - Any period whose end_date is within the last 90 days: refresh if snapshot is older than 6h
+  //   (accounts for accruals, reclassifications, and late bill entry).
+  // - Older historical periods: keep cached (books are typically closed).
+  const now = Date.now();
+  const STALE_MS = 6 * 60 * 60 * 1000;
+  const RECENT_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+  const needsRefresh = requested.filter((period) => {
+    const row = foundMap.get(periodKey(period));
+    if (!row) return true; // missing
+    const endMs = new Date(`${period.end_date}T23:59:59`).getTime();
+    const isRecent = now - endMs < RECENT_WINDOW_MS;
+    if (!isRecent) return false;
+    const fetchedMs = row.fetched_at ? new Date(row.fetched_at).getTime() : 0;
+    return now - fetchedMs > STALE_MS;
+  });
+
+  if (needsRefresh.length > 0) {
+    await syncFinServPnlSnapshots(companyId, needsRefresh);
     rows = await fetchFinServPnlSnapshots(companyId, requested);
   }
 
