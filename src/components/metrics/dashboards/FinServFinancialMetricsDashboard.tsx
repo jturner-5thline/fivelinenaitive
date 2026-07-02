@@ -1701,10 +1701,49 @@ function FinServFinancialMetricsDashboardInner() {
       {/* ── Row 6: Revenue Change by Client ── */}
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Revenue Change by Client</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">
-            {revenueByClient.selectedMonthLabel} vs {revenueByClient.priorMonthLabel}
-          </Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium">Revenue Change by Client</CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">
+                {revenueByClient.selectedMonthLabel} vs {revenueByClient.priorMonthLabel}
+              </Badge>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const rows = revenueByClient.clients.map((c) => {
+                  const pct = c.prior !== 0 ? (c.variance / Math.abs(c.prior)) * 100 : null;
+                  return {
+                    client: c.client,
+                    current: fmtCurrencyFull(c.current),
+                    prior: fmtCurrencyFull(c.prior),
+                    variance: fmtCurrencyFull(c.variance),
+                    pct: pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`,
+                  };
+                });
+                setDrill({
+                  context: {
+                    sourceId: 'finserv:revenue-change-by-client',
+                    sourceLabel: 'Revenue Change by Client',
+                    selection: `${revenueByClient.selectedMonthLabel} vs ${revenueByClient.priorMonthLabel}`,
+                    periodLabel: selectedQuarter.label,
+                  },
+                  columns: [
+                    { key: 'client', label: 'Client' },
+                    { key: 'current', label: revenueByClient.selectedMonthLabel, align: 'right' },
+                    { key: 'prior', label: revenueByClient.priorMonthLabel, align: 'right' },
+                    { key: 'variance', label: 'Δ $', align: 'right' },
+                    { key: 'pct', label: 'Δ %', align: 'right' },
+                  ],
+                  rows,
+                });
+              }}
+              className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline underline-offset-2"
+              aria-label="View all clients"
+            >
+              View all
+            </button>
+          </div>
         </CardHeader>
         <CardContent>
           {revenueByClient.isLoading ? <WidgetLoading /> : revenueByClient.error ? <WidgetError /> : revenueByClient.clients.length === 0 ? <WidgetEmpty /> : (
