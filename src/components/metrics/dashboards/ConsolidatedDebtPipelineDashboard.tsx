@@ -1321,6 +1321,7 @@ export function ConsolidatedDebtPipelineDashboard({
         <PnlFourChartsSection
           realmId={DEBT_ADVISORY_REALM_ID}
           cashflowTitle="Debt Advisory Cashflow"
+          halfWidthCashflow
         />
       </div>
 
