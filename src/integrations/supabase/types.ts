@@ -20933,6 +20933,7 @@ export type Database = {
           created_at: string
           fetched_at: string
           id: string
+          intercompany_adjustment: number
           net_cash_flow: number
           period_end: string
           period_start: string
@@ -20950,6 +20951,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string
           id?: string
+          intercompany_adjustment?: number
           net_cash_flow?: number
           period_end: string
           period_start: string
@@ -20967,6 +20969,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string
           id?: string
+          intercompany_adjustment?: number
           net_cash_flow?: number
           period_end?: string
           period_start?: string
