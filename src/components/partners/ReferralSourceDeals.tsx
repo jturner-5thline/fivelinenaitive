@@ -16,7 +16,7 @@ import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConve
 import { useDealReferralSources } from '@/hooks/useDealReferralSources';
 
 const kpiCard = [
-  "@container relative isolate rounded-xl overflow-hidden p-4",
+  "[container-type:inline-size] relative isolate rounded-xl overflow-hidden p-4",
   "border border-[hsl(260,40%,50%,0.12)]",
   "ring-1 ring-inset ring-white/[0.05]",
   "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
