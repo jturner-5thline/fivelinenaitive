@@ -2746,10 +2746,14 @@ export function SalesDashboardV2() {
     <MetricDrilldownDialog
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
-      view={view}
-      salesCallEvents={salesCallEvents}
-      salesCallsLoading={salesCallsQuery.isLoading || salesCallsQuery.isFetching}
-      salesCallsError={salesCallsQuery.error ?? null}
+      view={kpiVariant === 'finserv' ? kpiView : view}
+      salesCallEvents={kpiVariant === 'finserv' ? salesCallEventsFinserv : salesCallEvents}
+      salesCallsLoading={
+        kpiVariant === 'finserv'
+          ? salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching
+          : salesCallsQuery.isLoading || salesCallsQuery.isFetching
+      }
+      salesCallsError={(kpiVariant === 'finserv' ? salesCallsFinservQuery.error : salesCallsQuery.error) ?? null}
       dealsOnBoard={dealsOnBoardQuery.deals}
       dealsOnBoardLoading={dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching}
       dealsOnBoardError={dealsOnBoardQuery.error}
