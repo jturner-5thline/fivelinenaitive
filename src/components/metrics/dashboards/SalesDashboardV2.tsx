@@ -137,15 +137,15 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
   salesCalls: pad([]),
   dealsOnBoard: pad([]), // overridden by live useDealsOnBoardByMonth
   dollarsOnBoard: pad([]),
-  proposalsIssued: pad([6, 7, 8, 6, 7, 9]),
+  proposalsIssued: pad([]), // overridden by live proposalsIssuedQuery
   dollarsProposed: pad([]),
   clientsSigned: pad([]),
-  dollarsSigned: pad([4.2, 7.5, 8.4, 7.1, 8.8, 7.6]),
+  dollarsSigned: pad([]), // overridden by live dollarsSignedQuery
   clientsReceivingTerms: pad([]),
   termsSigned: pad([]),
   volumeOfTermsSigned: pad([]),
-  dealsClosed: pad([1, 2, 2, 3, 1, 2]),
-  dollarsFunded: pad([5.1, 6.8, 5.9, 7.0, 5.5, 6.9]),
+  dealsClosed: pad([]),
+  dollarsFunded: pad([]),
 };
 
 function pad(actuals: number[]): (number | null)[] {
