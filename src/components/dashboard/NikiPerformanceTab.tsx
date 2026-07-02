@@ -33,6 +33,12 @@ import {
   NikiPerformancePlanProvider,
   useNikiPerformancePlan,
 } from '@/hooks/useNikiPerformancePlan';
+import {
+  PerformanceAssigneeProvider,
+  usePerformanceAssignee,
+  PERFORMANCE_ASSIGNEES,
+  type PerformanceAssigneeName,
+} from '@/hooks/usePerformanceAssignee';
 
 type PerfMode = 'quarterly' | 'ytd';
 const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -1019,6 +1025,16 @@ function NikiPerformanceTabInner() {
 }
 
 export function NikiPerformanceTab() {
+  return (
+    <PerformanceAssigneeProvider>
+      <NikiPerformancePlanProvider>
+        <NikiPerformanceTabInner />
+      </NikiPerformancePlanProvider>
+    </PerformanceAssigneeProvider>
+  );
+}
+
+function _legacy_NikiPerformanceTab_unused() {
   return (
     <NikiPerformancePlanProvider>
       <NikiPerformanceTabInner />
