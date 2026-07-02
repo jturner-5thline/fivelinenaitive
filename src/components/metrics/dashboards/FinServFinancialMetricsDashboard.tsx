@@ -1073,7 +1073,12 @@ function FinServFinancialMetricsDashboardInner() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">FinServ Cashflow</CardTitle>
+          <CardTitle
+            className="text-sm font-medium cursor-help"
+            title='FinServ Cashflow net of "Due To 5th Line Payments"'
+          >
+            FinServ Cashflow
+          </CardTitle>
           <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
         </CardHeader>
         <CardContent>
