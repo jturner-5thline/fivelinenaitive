@@ -1738,6 +1738,8 @@ function FinServFinancialMetricsDashboardInner() {
                       key: 'variance',
                       label: 'Δ $',
                       align: 'right',
+                      sortable: true,
+                      sortAccessor: (r: any) => r._variance ?? 0,
                       render: (r: any) => (
                         <span style={{ color: (r._variance ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._variance ?? 0) < 0 ? 600 : undefined }}>
                           {r.variance}
@@ -1748,6 +1750,8 @@ function FinServFinancialMetricsDashboardInner() {
                       key: 'pct',
                       label: 'Δ %',
                       align: 'right',
+                      sortable: true,
+                      sortAccessor: (r: any) => (r._pct ?? Number.NEGATIVE_INFINITY),
                       render: (r: any) => (
                         <span style={{ color: (r._pct ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._pct ?? 0) < 0 ? 600 : undefined }}>
                           {r.pct}
