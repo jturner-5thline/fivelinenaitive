@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { usePerformanceAssignee } from '@/hooks/usePerformanceAssignee';
 
 /**
  * Niki Performance metrics — actuals vs the Rep Performance Plan sheet.
@@ -92,8 +93,9 @@ function bucketize(deals: PerfDeal[]): Record<QuarterKey, PerfDeal[]> {
   return buckets;
 }
 
-function nikiFilter(row: any): boolean {
-  return row?.deal_owner === NIKI_NAME || row?.manager === NIKI_NAME;
+function makeAssigneeFilter(name: string) {
+  return (row: any): boolean =>
+    row?.deal_owner === name || row?.manager === name;
 }
 
 /**
@@ -114,8 +116,10 @@ function nikiFilter(row: any): boolean {
  */
 function useNikiPipelineData() {
   const { user } = useAuth();
+  const { assignee } = usePerformanceAssignee();
+  const nikiFilter = makeAssigneeFilter(assignee);
   return useQuery({
-    queryKey: ['niki-perf-pipeline-data'],
+    queryKey: ['niki-perf-pipeline-data', assignee],
     enabled: !!user,
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
@@ -208,8 +212,10 @@ function entriesForStage(
 
 function usePipelineAddedDeals() {
   const { user } = useAuth();
+  const { assignee } = usePerformanceAssignee();
+  const nikiFilter = makeAssigneeFilter(assignee);
   return useQuery({
-    queryKey: ['niki-perf-added'],
+    queryKey: ['niki-perf-added', assignee],
     enabled: !!user,
     queryFn: async (): Promise<PerfDeal[]> => {
       const { data, error } = await supabase
@@ -476,8 +482,9 @@ function classifyRevenueLine(blob: string): 'retainer' | 'milestone' | 'closing'
 
 function useNikiRevenueActuals() {
   const { user } = useAuth();
+  const { assignee } = usePerformanceAssignee();
   return useQuery({
-    queryKey: ['niki-perf-revenue-actuals'],
+    queryKey: ['niki-perf-revenue-actuals', assignee],
     enabled: !!user,
     queryFn: async (): Promise<RevenueBuckets> => {
       // 1. Niki deals — attribute on deal_owner OR manager. Two simple
@@ -487,11 +494,11 @@ function useNikiRevenueActuals() {
         supabase
           .from('deals')
           .select('id, company, crm_company_id, deal_owner, manager')
-          .eq('deal_owner', NIKI_NAME),
+          .eq('deal_owner', assignee),
         supabase
           .from('deals')
           .select('id, company, crm_company_id, deal_owner, manager')
-          .eq('manager', NIKI_NAME),
+          .eq('manager', assignee),
       ]);
       if (ownedRes.error) throw ownedRes.error;
       if (managedRes.error) throw managedRes.error;
