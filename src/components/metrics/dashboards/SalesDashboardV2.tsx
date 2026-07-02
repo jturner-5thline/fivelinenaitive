@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
+import { filterSalesCallEventsForVariant, isSalesCallEventForVariant, useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
 import {
@@ -1949,6 +1949,7 @@ function MetricDrilldownDialog({
     const start = view.rangeStart;
     const end = view.rangeEnd;
     eventsInPeriod = salesCallEvents.filter((ev) => {
+      if (!isSalesCallEventForVariant(ev.title || '', pipelineVariant)) return false;
       if (!ev.start) return false;
       const d = new Date(ev.start);
       return d >= start && d <= end;
@@ -2434,7 +2435,11 @@ export function SalesDashboardV2() {
   const yearStart = rangeStart;
   const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
-  const salesCallEvents = salesCallsQuery.data?.events ?? [];
+  const rawSalesCallEvents = salesCallsQuery.data?.events ?? [];
+  const salesCallEvents = React.useMemo(
+    () => filterSalesCallEventsForVariant(rawSalesCallEvents, 'debt'),
+    [rawSalesCallEvents],
+  );
 
   // ---- KPI pipeline variant toggle (Debt vs FinServ) ---------------------
   // Only affects the top three KPI cards; the rest of the dashboard keeps
@@ -2449,7 +2454,11 @@ export function SalesDashboardV2() {
     kpiVariant === 'finserv',
     'finserv',
   );
-  const salesCallEventsFinserv = salesCallsFinservQuery.data?.events ?? [];
+  const rawSalesCallEventsFinserv = salesCallsFinservQuery.data?.events ?? [];
+  const salesCallEventsFinserv = React.useMemo(
+    () => filterSalesCallEventsForVariant(rawSalesCallEventsFinserv, 'finserv'),
+    [rawSalesCallEventsFinserv],
+  );
   const salesCallsFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching) return {};
     const out: Record<string, number> = {};

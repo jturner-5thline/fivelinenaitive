@@ -29,7 +29,7 @@ function domainOf(email?: string | null): string | null {
 // insensitive. Company portion is captured for dedupe + display.
 // Debt variant: "[Company] <sep> 5th Line Financing Review".
 // FinServ variant: "5th Line <sep> [Company] Financial Review".
-const DEBT_FINANCING_RE = /5\s*th\s+line\s+financing\s+review/i;
+const DEBT_FINANCING_RE = /5\s*th\s*line[\s\S]{0,80}\bfinancing\s+review\b/i;
 const TITLE_RE_DEBT =
   /^\s*(.+?)\s*(?:<>|[-–—|:/])\s*5\s*th\s+line\s+financing\s+review\s*$/i;
 const TITLE_RE_FINSERV =
