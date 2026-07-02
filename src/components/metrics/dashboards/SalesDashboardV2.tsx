@@ -195,6 +195,22 @@ function useDrilldown(): DrilldownApi {
   return v;
 }
 
+// ------------------------------------------------------------
+// Forecast context — user-editable full-year plan overrides that
+// persist across timeframe changes. Owned by SalesDashboardV2 so
+// PerformancePanel and the Sales Model editor share the same source.
+// ------------------------------------------------------------
+interface ForecastCtxValue {
+  fullDraft: FullForecastDraft;
+  setFullDraft: React.Dispatch<React.SetStateAction<FullForecastDraft>>;
+}
+const ForecastCtx = React.createContext<ForecastCtxValue | null>(null);
+function useForecast(): ForecastCtxValue {
+  const v = React.useContext(ForecastCtx);
+  if (!v) throw new Error('Missing ForecastCtx');
+  return v;
+}
+
 function buildView(quarter: QuarterOption): DashboardView {
   // Determine which seeded month indexes fall inside the selected quarter.
   const indexes: number[] = [];
