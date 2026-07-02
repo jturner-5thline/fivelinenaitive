@@ -63,10 +63,9 @@ function SalesBDInner() {
                 <div className="flex items-center gap-2">
                   <SalesBdHeaderRangeSelector />
                   {canEditPartnerRules && (
-                    <Button asChild variant="outline" size="sm" className="gap-1.5">
-                      <Link to="/settings?tab=sales-bd" title="Configure tiers, stage criteria, and channel definitions">
+                    <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Rules & Definitions">
+                      <Link to="/settings?tab=sales-bd" aria-label="Rules & Definitions">
                         <SettingsIcon className="h-3.5 w-3.5" />
-                        Rules & Definitions
                       </Link>
                     </Button>
                   )}
