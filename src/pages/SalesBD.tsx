@@ -8,7 +8,7 @@ import { PartnerSourcedDeals } from "@/components/partners/PartnerSourcedDeals";
 import { ReferralSourceDeals } from "@/components/partners/ReferralSourceDeals";
 import { ReEngagementInsights } from "@/components/partners/ReEngagementInsights";
 import { ReferralsNeedingAttention } from "@/components/partners/ReferralsNeedingAttention";
-import { PartnerInsightsFeed } from "@/components/partners/PartnerInsightsFeed";
+import { PartnerInsightsFeed, PartnerInsightsProvider, PartnerInsightsHeaderActions } from "@/components/partners/PartnerInsightsFeed";
 import { PartnerDetailPanel } from "@/components/partners/PartnerDetailPanel";
 import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
@@ -151,11 +151,15 @@ function SalesBDInner() {
                     <h2 className="text-lg font-semibold">Partners Insights</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
                   </div>
+                  <PartnerInsightsProvider>
                   <Tabs defaultValue="activity">
-                    <TabsList>
-                      <TabsTrigger value="activity">Activity</TabsTrigger>
-                      <TabsTrigger value="attention">Needing Attention</TabsTrigger>
-                    </TabsList>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <TabsList>
+                        <TabsTrigger value="activity">Activity</TabsTrigger>
+                        <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                      </TabsList>
+                      <PartnerInsightsHeaderActions />
+                    </div>
                     <TabsContent value="activity" className="mt-4">
                       <PartnerInsightsFeed sourceFilter="partners" />
                     </TabsContent>
@@ -163,6 +167,7 @@ function SalesBDInner() {
                       <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
                     </TabsContent>
                   </Tabs>
+                  </PartnerInsightsProvider>
                 </div>
               </div>
             </TabsContent>
@@ -172,11 +177,15 @@ function SalesBDInner() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left: Referral Sources Insights */}
                   <div className="space-y-4">
+                    <PartnerInsightsProvider>
                     <Tabs defaultValue="activity">
-                      <TabsList>
-                        <TabsTrigger value="activity">Activity</TabsTrigger>
-                        <TabsTrigger value="attention">Needing Attention</TabsTrigger>
-                      </TabsList>
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <TabsList>
+                          <TabsTrigger value="activity">Activity</TabsTrigger>
+                          <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                        </TabsList>
+                        <PartnerInsightsHeaderActions />
+                      </div>
                       <TabsContent value="activity" className="mt-4">
                         <PartnerInsightsFeed sourceFilter="referrals" />
                       </TabsContent>
@@ -184,6 +193,7 @@ function SalesBDInner() {
                         <ReferralsNeedingAttention />
                       </TabsContent>
                     </Tabs>
+                    </PartnerInsightsProvider>
                   </div>
                   {/* Right: 2×3 metric widgets */}
                   <ReferralSourceDeals
