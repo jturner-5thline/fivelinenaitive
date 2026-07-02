@@ -400,6 +400,63 @@ function NavRail() {
 // KPI CARD
 // ============================================================
 function KpiCard({
+  ...args
+}: {
+  label: string;
+  Icon: LucideIcon;
+  type: 'count' | 'money';
+  metricKey: MetricKey;
+  mode: 'sum' | 'current';
+}) {
+  return <KpiCardInner {...args} />;
+}
+
+function PipelineVariantToggle({
+  value,
+  onChange,
+}: {
+  value: 'debt' | 'finserv';
+  onChange: (v: 'debt' | 'finserv') => void;
+}) {
+  const options: { key: 'debt' | 'finserv'; label: string }[] = [
+    { key: 'debt', label: 'Debt' },
+    { key: 'finserv', label: 'FinServ' },
+  ];
+  return (
+    <div
+      className="inline-flex items-center rounded-md p-0.5"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+      role="tablist"
+      aria-label="KPI pipeline variant"
+    >
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.key)}
+            className="px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors focus-visible:outline-none focus-visible:ring-1"
+            style={{
+              background: active ? 'rgba(157,162,245,0.16)' : 'transparent',
+              color: active ? C.textPrimary : C.textMuted,
+              letterSpacing: '0.04em',
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function KpiCardInner({
   label,
   Icon,
   type,
