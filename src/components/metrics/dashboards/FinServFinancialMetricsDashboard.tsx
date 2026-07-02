@@ -1110,6 +1110,7 @@ function FinServFinancialMetricsDashboardInner() {
     context: DrilldownContext;
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
+    defaultSort?: { key: string; dir: 'asc' | 'desc' };
   } | null>(null);
 
   // Per-widget "show best-fit trend line" toggles.
@@ -1738,6 +1739,8 @@ function FinServFinancialMetricsDashboardInner() {
                       key: 'variance',
                       label: 'Δ $',
                       align: 'right',
+                      sortable: true,
+                      sortAccessor: (r: any) => r._variance ?? 0,
                       render: (r: any) => (
                         <span style={{ color: (r._variance ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._variance ?? 0) < 0 ? 600 : undefined }}>
                           {r.variance}
@@ -1748,6 +1751,8 @@ function FinServFinancialMetricsDashboardInner() {
                       key: 'pct',
                       label: 'Δ %',
                       align: 'right',
+                      sortable: true,
+                      sortAccessor: (r: any) => (r._pct ?? Number.NEGATIVE_INFINITY),
                       render: (r: any) => (
                         <span style={{ color: (r._pct ?? 0) < 0 ? 'hsl(0, 85%, 65%)' : undefined, fontWeight: (r._pct ?? 0) < 0 ? 600 : undefined }}>
                           {r.pct}
@@ -1756,6 +1761,7 @@ function FinServFinancialMetricsDashboardInner() {
                     },
                   ],
                   rows,
+                  defaultSort: { key: 'variance', dir: 'desc' },
                 });
               }}
               className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline underline-offset-2"
@@ -1891,6 +1897,7 @@ function FinServFinancialMetricsDashboardInner() {
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
       emptyHint="No detail records available for this datapoint."
+      defaultSort={drill?.defaultSort}
       onRowClick={
         drill?.context?.sourceId === 'finserv:revenue-change-by-client'
           ? (row: any) => {
