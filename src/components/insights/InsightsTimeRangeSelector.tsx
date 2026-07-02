@@ -180,23 +180,25 @@ export function InsightsTimeRangeSelector({
         </PopoverContent>
       </Popover>
 
-      <div className="flex rounded-md border border-border overflow-hidden">
-        {GRANULARITIES.map((g) => (
-          <button
-            key={g.id}
-            type="button"
-            onClick={() => setGranularity(g.id)}
-            className={cn(
-              'px-2.5 py-1 text-xs font-medium transition-colors',
-              granularity === g.id
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background text-muted-foreground hover:bg-muted',
-            )}
-          >
-            {g.label}
-          </button>
-        ))}
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+            {GRANULARITIES.find((g) => g.id === granularity)?.label ?? 'Granularity'}
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[8rem]">
+          {GRANULARITIES.map((g) => (
+            <DropdownMenuItem
+              key={g.id}
+              onSelect={() => setGranularity(g.id)}
+              className={cn('text-xs', granularity === g.id && 'font-semibold text-primary')}
+            >
+              {g.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
