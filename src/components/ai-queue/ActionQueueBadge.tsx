@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
+import { useAllFlexInfoNotifications } from '@/hooks/useAllFlexInfoNotifications';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ActionQueuePanel } from './ActionQueuePanel';
 
@@ -17,7 +18,8 @@ export function ActionQueueBadge() {
   const aiCount = useAiActionQueueCount();
   const { data = [], refetch } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
-  const count = aiCount + accessRequests.length;
+  const { data: flexRequests = [] } = useAllFlexInfoNotifications();
+  const count = aiCount + accessRequests.length + flexRequests.length;
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
