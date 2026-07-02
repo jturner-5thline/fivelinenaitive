@@ -87,6 +87,9 @@ export function SalesModelForecastWidget({ onSave }: Props) {
           </h3>
           <p className="text-[11px] text-white/40 mt-0.5">Jan 2026 – Sep 2026 projection</p>
         </div>
+      </div>
+      <ReadOnlyTable data={data} />
+      <div className="flex items-center justify-end px-4 py-3 border-t border-white/[0.06]">
         <Button
           variant="outline"
           size="sm"
@@ -97,7 +100,6 @@ export function SalesModelForecastWidget({ onSave }: Props) {
           Edit Forecast
         </Button>
       </div>
-      <ReadOnlyTable data={data} />
       {open && (
         <SalesModelEditModal
           initial={data}
