@@ -1110,6 +1110,7 @@ function FinServFinancialMetricsDashboardInner() {
     context: DrilldownContext;
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
+    defaultSort?: { key: string; dir: 'asc' | 'desc' };
   } | null>(null);
 
   // Per-widget "show best-fit trend line" toggles.
@@ -1760,6 +1761,7 @@ function FinServFinancialMetricsDashboardInner() {
                     },
                   ],
                   rows,
+                  defaultSort: { key: 'variance', dir: 'desc' },
                 });
               }}
               className="text-[11px] font-medium text-muted-foreground hover:text-foreground underline underline-offset-2"
