@@ -2748,54 +2748,56 @@ export function SalesDashboardV2() {
     [dollarsProposedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
   );
 
-  // View scoped ONLY to the top three KPI cards. When "FinServ" is
-  // selected, swap in the FinServ-sourced actuals for sales calls, deals
-  // on board, and proposals issued.
-  const kpiView = React.useMemo<DashboardView>(() => {
-    // Base variant swap (Debt vs FinServ) for count-mode actuals.
-    const variantView: DashboardView =
-      kpiVariant === 'finserv'
-        ? {
-            ...view,
-            actual: {
-              ...view.actual,
-              salesCalls: liveSalesCallsActualFinserv,
-              dealsOnBoard: liveDealsOnBoardActualFinserv,
-              proposalsIssued: liveProposalsIssuedActualFinserv,
-            },
-          }
-        : view;
-    if (kpiValueMode !== 'value') return variantView;
-    // In $ mode, remap dealsOnBoard/proposalsIssued actuals to $MM totals.
+  // Count-mode view scoped to the top three KPI cards, with variant swap.
+  const kpiCountView = React.useMemo<DashboardView>(() => {
+    if (kpiVariant !== 'finserv') return view;
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        salesCalls: liveSalesCallsActualFinserv,
+        dealsOnBoard: liveDealsOnBoardActualFinserv,
+        proposalsIssued: liveProposalsIssuedActualFinserv,
+      },
+    };
+  }, [
+    view,
+    kpiVariant,
+    liveSalesCallsActualFinserv,
+    liveDealsOnBoardActualFinserv,
+    liveProposalsIssuedActualFinserv,
+  ]);
+
+  // Value-mode view: swaps dealsOnBoard/proposalsIssued actuals + plan for $MM.
+  const kpiValueView = React.useMemo<DashboardView>(() => {
     const dollarsOnBoardArr =
       kpiVariant === 'finserv' ? liveDollarsOnBoardActualFinserv : liveDollarsOnBoardActual;
     const dollarsProposedArr =
       kpiVariant === 'finserv' ? liveDollarsProposedActualFinserv : liveDollarsProposedActual;
     return {
-      ...variantView,
+      ...kpiCountView,
       actual: {
-        ...variantView.actual,
+        ...kpiCountView.actual,
         dealsOnBoard: dollarsOnBoardArr,
         proposalsIssued: dollarsProposedArr,
       },
       plan: {
-        ...variantView.plan,
-        dealsOnBoard: variantView.plan.dollarsOnBoard,
-        proposalsIssued: variantView.plan.dollarsProposed,
+        ...kpiCountView.plan,
+        dealsOnBoard: kpiCountView.plan.dollarsOnBoard,
+        proposalsIssued: kpiCountView.plan.dollarsProposed,
       },
     };
   }, [
+    kpiCountView,
     kpiVariant,
-    kpiValueMode,
-    view,
-    liveSalesCallsActualFinserv,
-    liveDealsOnBoardActualFinserv,
-    liveProposalsIssuedActualFinserv,
     liveDollarsOnBoardActual,
     liveDollarsProposedActual,
     liveDollarsOnBoardActualFinserv,
     liveDollarsProposedActualFinserv,
   ]);
+
+  // Backwards-compatible active view for the KPI cards themselves (outside dialog).
+  const kpiView = kpiValueMode === 'value' ? kpiValueView : kpiCountView;
 
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
