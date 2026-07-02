@@ -1265,6 +1265,14 @@ function FinServFinancialMetricsDashboardInner() {
           <div className="mb-4">
             <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.total)}</div>
             <div className="text-xs text-muted-foreground">Total Income from QuickBooks P&amp;L</div>
+            {showTrendRevenue && (
+              <div className="mt-1">
+                <TrendDeltaText
+                  values={totalRev.months.map((m) => m.amount)}
+                  format={fmtCurrencyFull}
+                />
+              </div>
+            )}
           </div>
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
