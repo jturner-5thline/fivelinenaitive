@@ -474,14 +474,19 @@ function KpiCardInner({
   const planArr = view.plan[metricKey];
   const actualArr = view.actual[metricKey];
   const E = view.elapsed;
-  const currentActual = actualArr[E - 1] ?? 0;
-  const currentPlan = planArr[E - 1] ?? 0;
+  // Big number honors `mode`:
+  //   - 'sum'     → cumulative through elapsed months in the selected range
+  //   - 'current' → value of the current (latest elapsed) month only
+  const currentActual =
+    mode === 'sum' ? sum(actualArr, E) : (actualArr[E - 1] ?? 0);
+  const currentPlan =
+    mode === 'sum'
+      ? planArr.slice(0, E).reduce((a, b) => a + b, 0)
+      : (planArr[E - 1] ?? 0);
   const deltaPct = currentPlan === 0 ? 0 : (currentActual - currentPlan) / currentPlan;
   const positive = deltaPct >= 0;
-
-  // sub-line uses comparison mode
-  const compareActual = mode === 'sum' ? sum(actualArr, E) : currentActual;
-  const comparePlan = mode === 'sum' ? planArr.slice(0, E).reduce((a, b) => a + b, 0) : currentPlan;
+  const compareActual = currentActual;
+  const comparePlan = currentPlan;
   const gap = compareActual - comparePlan;
 
   const sparkData = view.months.map((m, i) => ({
