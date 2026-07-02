@@ -177,6 +177,66 @@ function TrendDeltaText({
   );
 }
 
+function DeltaTooltip({
+  active,
+  payload,
+  label,
+  data,
+  dataKey,
+  format,
+  seriesName,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  data: any[];
+  dataKey: string;
+  format: (v: number) => string;
+  seriesName: string;
+}) {
+  if (!active || !payload || !payload.length) return null;
+  const current = payload.find((p: any) => p.dataKey === dataKey) ?? payload[0];
+  const row = current?.payload;
+  const idx = row ? data.indexOf(row) : -1;
+  const currentVal = Number(current?.value) || 0;
+  const prev = idx > 0 ? data[idx - 1] : null;
+  const prevVal = prev ? Number((prev as any)[dataKey]) : null;
+  const delta = prevVal != null ? currentVal - prevVal : null;
+  const pct =
+    prevVal != null && prevVal !== 0 ? ((currentVal - prevVal) / Math.abs(prevVal)) * 100 : null;
+  const positive = (delta ?? 0) >= 0;
+  return (
+    <div
+      style={{
+        background: 'rgba(8,8,12,0.95)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
+        padding: '8px 10px',
+        color: '#ECECF4',
+        fontSize: 12,
+      }}
+    >
+      <div style={{ color: '#8A8AA6', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontWeight: 500 }}>
+        {seriesName}: {format(currentVal)}
+      </div>
+      {delta != null && (
+        <div
+          style={{
+            color: positive ? '#5EEAD4' : '#FB7185',
+            fontSize: 11,
+            marginTop: 2,
+          }}
+        >
+          {positive ? '▲' : '▼'} {positive ? '+' : ''}
+          {format(delta)}
+          {pct != null ? ` (${positive ? '+' : ''}${pct.toFixed(1)}%)` : ''} vs prev
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
@@ -296,9 +356,15 @@ function GrossProfitToggleCard({
                   <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
                 )}
                 <Tooltip
-                  formatter={(v: number, name: string) =>
-                    isDollar ? [fmtCurrencyFull(v), name] : [fmtPct(v), 'Gross Margin']
-                  }
+                  content={(props: any) => (
+                    <DeltaTooltip
+                      {...props}
+                      data={chartData}
+                      dataKey={isDollar ? 'grossProfit' : 'grossMargin'}
+                      format={isDollar ? fmtCurrencyFull : fmtPct}
+                      seriesName={isDollar ? 'Gross Profit' : 'Gross Margin'}
+                    />
+                  )}
                 />
                 {isDollar ? (
                   <>
@@ -439,9 +505,15 @@ function OperatingProfitToggleCard({
                   <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} />
                 )}
                 <Tooltip
-                  formatter={(v: number) =>
-                    isDollar ? [fmtCurrencyFull(v), 'Operating Profit'] : [fmtPct(v), 'Operating Margin']
-                  }
+                  content={(props: any) => (
+                    <DeltaTooltip
+                      {...props}
+                      data={chartData}
+                      dataKey={isDollar ? 'operatingProfit' : 'operatingMargin'}
+                      format={isDollar ? fmtCurrencyFull : fmtPct}
+                      seriesName={isDollar ? 'Operating Profit' : 'Operating Margin'}
+                    />
+                  )}
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
                 {isDollar ? (
@@ -667,13 +739,15 @@ function ActiveClientsMetricWidget({
               />
               <Tooltip
                 cursor={{ fill: 'rgba(94,234,212,0.08)' }}
-                contentStyle={{
-                  background: 'rgba(8,8,12,0.95)',
-                  border: `1px solid ${T.surfaceBorder}`,
-                  borderRadius: 8,
-                  color: T.textPrimary,
-                  fontSize: 12,
-                }}
+                content={(props: any) => (
+                  <DeltaTooltip
+                    {...props}
+                    data={sparkDataWithTrend}
+                    dataKey="actual"
+                    format={(v: number) => Math.round(v).toLocaleString()}
+                    seriesName="Active Clients"
+                  />
+                )}
               />
               <Bar
                 dataKey="actual"
@@ -898,14 +972,15 @@ function PerHourWidget({
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(v: any, _name, p: any) => {
-                      const d = p?.payload;
-                      if (d?.rate == null) return ['—', `${numeratorLabel} / hr`];
-                      return [
-                        `${fmtCurrencyPrecise(d.rate)} (${fmtCurrency(d.numerator)} / ${d.hours.toLocaleString()} hrs)`,
-                        `${numeratorLabel} / hr`,
-                      ];
-                    }}
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="rate"
+                        format={fmtCurrencyPrecise}
+                        seriesName={`${numeratorLabel} / hr`}
+                      />
+                    )}
                   />
                   <Bar
                     dataKey="rate"
@@ -1301,16 +1376,25 @@ function FinServFinancialMetricsDashboardInner() {
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={(() => {
-                    const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
-                    return totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
-                  })()}
-                >
+                {(() => {
+                  const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
+                  const chartData = totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
+                  return (
+                <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Revenue']} />
+                  <Tooltip
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="amount"
+                        format={fmtCurrencyFull}
+                        seriesName="Revenue"
+                      />
+                    )}
+                  />
                   <Bar
                     dataKey="amount"
                     fill="hsl(var(--primary))"
@@ -1339,6 +1423,8 @@ function FinServFinancialMetricsDashboardInner() {
                     />
                   )}
                 </ComposedChart>
+                  );
+                })()}
               </ResponsiveContainer>
             </div>
           )}
@@ -1390,16 +1476,25 @@ function FinServFinancialMetricsDashboardInner() {
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={(() => {
-                    const trend = computeLinearTrend(cashflow.points.map(p => p.value));
-                    return cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
-                  })()}
-                >
+                {(() => {
+                  const trend = computeLinearTrend(cashflow.points.map(p => p.value));
+                  const chartData = cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
+                  return (
+                <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Free Cash Flow']} />
+                  <Tooltip
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="value"
+                        format={fmtCurrencyFull}
+                        seriesName="Free Cash Flow"
+                      />
+                    )}
+                  />
                   <ReferenceLine y={0} stroke="hsl(var(--border))" />
                   <Bar
                     dataKey="value"
@@ -1433,6 +1528,8 @@ function FinServFinancialMetricsDashboardInner() {
                     />
                   )}
                 </ComposedChart>
+                  );
+                })()}
               </ResponsiveContainer>
             </div>
           )}
