@@ -516,11 +516,8 @@ function PerformancePanel() {
   const view = useView();
   const drill = useDrilldown();
   const [driverMode, setDriverMode] = React.useState<'gap' | 'performance'>('gap');
+  const [selectedDriver, setSelectedDriver] = React.useState<MetricKey>('dollarsFunded');
   const E = view.elapsed;
-  const planYtd = view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0);
-  const actualYtd = sum(view.actual.dollarsFunded, E);
-  const attainment = planYtd === 0 ? 0 : actualYtd / planYtd;
-  const gap = actualYtd - planYtd;
 
   // Drivers
   type Driver = {
@@ -537,10 +534,23 @@ function PerformancePanel() {
     { label: 'Deals on Board', metricKey: 'dealsOnBoard', note: '· current', actual: view.actual.dealsOnBoard[E - 1] ?? 0, plan: view.plan.dealsOnBoard[E - 1] ?? 0, type: 'count' },
     { label: 'Dollars Signed', metricKey: 'dollarsSigned', actual: sum(view.actual.dollarsSigned, E), plan: view.plan.dollarsSigned.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
     { label: 'Deals Closed', metricKey: 'dealsClosed', actual: sum(view.actual.dealsClosed, E), plan: view.plan.dealsClosed.slice(0, E).reduce((a, b) => a + b, 0), type: 'count' },
-    { label: 'Dollars Funded', metricKey: 'dollarsFunded', actual: actualYtd, plan: planYtd, type: 'money' },
+    { label: 'Dollars Funded', metricKey: 'dollarsFunded', actual: sum(view.actual.dollarsFunded, E), plan: view.plan.dollarsFunded.slice(0, E).reduce((a, b) => a + b, 0), type: 'money' },
   ];
 
-  const actualWidthPct = planYtd === 0 ? 0 : Math.max(0, Math.min(100, (actualYtd / planYtd) * 100));
+  const activeDriver = drivers.find((d) => d.metricKey === selectedDriver) ?? drivers[drivers.length - 1];
+  const activePlan = activeDriver.plan;
+  const activeActual = activeDriver.actual;
+  const attainment = activePlan === 0 ? 0 : activeActual / activePlan;
+  const gap = activeActual - activePlan;
+  const actualWidthPct = activePlan === 0 ? 0 : Math.max(0, Math.min(100, (activeActual / activePlan) * 100));
+  const isMoney = activeDriver.type === 'money';
+  const fmtValue = (n: number) =>
+    isMoney ? fmtMoney(n) : Math.round(n).toLocaleString();
+  const fmtSignedValue = (n: number) =>
+    isMoney
+      ? fmtSignedMoney(n)
+      : `${n >= 0 ? '+' : '−'}${Math.round(Math.abs(n)).toLocaleString()}`;
+  const cumulativeLabel = activeDriver.note?.includes('current') ? 'Current' : 'YTD';
 
   return (
     <div style={glassStyle} className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] overflow-hidden">
@@ -571,14 +581,21 @@ function PerformancePanel() {
               d.type === 'money'
                 ? `${gapVal >= 0 ? '+' : '−'}$${Math.abs(gapVal).toFixed(1)}`
                 : `${gapVal >= 0 ? '+' : '−'}${Math.round(Math.abs(gapVal))}`;
+            const isActive = d.metricKey === selectedDriver;
             return (
               <button
                 type="button"
                 key={d.label}
-                onClick={() => drill.open(d.metricKey)}
+                onClick={() => setSelectedDriver(d.metricKey)}
+                onDoubleClick={() => drill.open(d.metricKey)}
+                title="Click to preview · Double-click to drill down"
                 className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
                 style={{
                   borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}`,
+                  background: isActive ? 'rgba(157,162,245,0.08)' : undefined,
+                  boxShadow: isActive
+                    ? `inset 2px 0 0 ${C.periwinkle}`
+                    : undefined,
                 }}
               >
                 <div className="text-[12px]" style={{ color: C.textPrimary }}>
@@ -611,14 +628,30 @@ function PerformancePanel() {
         </div>
       </div>
 
-      {/* RIGHT — Performance to Plan */}
+      {/* RIGHT — Performance to Plan (driver-driven) */}
       <div className="p-5">
-        <div
-          className="flex items-center gap-1.5 text-[10px] font-medium uppercase mb-3"
-          style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
-        >
-          <Target size={11} />
-          Performance to Plan · Dollars Funded YTD
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <div
+            className="flex items-center gap-1.5 text-[10px] font-medium uppercase min-w-0"
+            style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
+          >
+            <Target size={11} />
+            <span className="truncate">Performance to Plan · {activeDriver.label} {cumulativeLabel}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => drill.open(selectedDriver)}
+            className="flex items-center gap-1 text-[10px] uppercase px-2 py-1 rounded-md hover:bg-white/[0.05] transition-colors shrink-0"
+            style={{
+              color: C.textMuted,
+              border: `1px solid ${C.hairline}`,
+              letterSpacing: '0.06em',
+            }}
+            title="Open drill-down"
+          >
+            Drill down
+            <ArrowUpRight size={11} />
+          </button>
         </div>
         <div className="flex items-end gap-3">
           <div
@@ -636,7 +669,7 @@ function PerformancePanel() {
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {fmtSignedMoney(gap)} to plan
+            {fmtSignedValue(gap)} to plan
           </div>
         </div>
 
@@ -645,7 +678,7 @@ function PerformancePanel() {
           {/* Plan bar */}
           <BridgeBar
             label="Plan"
-            value={fmtMoney(planYtd)}
+            value={fmtValue(activePlan)}
             widthPct={100}
             fill={`repeating-linear-gradient(135deg, rgba(157,162,245,0.45) 0 6px, rgba(157,162,245,0.18) 6px 12px)`}
             valueColor={C.periwinkle}
@@ -653,7 +686,7 @@ function PerformancePanel() {
           {/* Actual bar */}
           <BridgeBar
             label="Actual"
-            value={fmtMoney(actualYtd)}
+            value={fmtValue(activeActual)}
             widthPct={actualWidthPct}
             fill={`linear-gradient(90deg, rgba(94,234,212,0.85), rgba(94,234,212,0.55))`}
             valueColor={C.cyan}
@@ -672,7 +705,7 @@ function PerformancePanel() {
             }}
           />
           <div className="text-[11px]" style={{ color: C.textMuted, fontVariantNumeric: 'tabular-nums' }}>
-            <span style={{ color: C.rose }}>Gap {fmtSignedMoney(gap)}</span>
+            <span style={{ color: C.rose }}>Gap {fmtSignedValue(gap)}</span>
             <span> · {Math.round(Math.abs(1 - attainment) * 100)}% short of pace through {view.months[E - 1] ?? ''}</span>
           </div>
         </div>
