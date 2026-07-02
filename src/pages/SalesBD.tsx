@@ -153,7 +153,7 @@ function SalesBDInner() {
                   </div>
                   <PartnerInsightsProvider>
                   <Tabs defaultValue="activity">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center justify-between gap-2">
                       <TabsList>
                         <TabsTrigger value="activity">Activity</TabsTrigger>
                         <TabsTrigger value="attention">Needing Attention</TabsTrigger>
@@ -179,7 +179,7 @@ function SalesBDInner() {
                   <div className="space-y-4">
                     <PartnerInsightsProvider>
                     <Tabs defaultValue="activity">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center justify-between gap-2">
                         <TabsList>
                           <TabsTrigger value="activity">Activity</TabsTrigger>
                           <TabsTrigger value="attention">Needing Attention</TabsTrigger>
