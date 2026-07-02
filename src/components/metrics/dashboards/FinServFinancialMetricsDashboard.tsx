@@ -177,6 +177,66 @@ function TrendDeltaText({
   );
 }
 
+function DeltaTooltip({
+  active,
+  payload,
+  label,
+  data,
+  dataKey,
+  format,
+  seriesName,
+}: {
+  active?: boolean;
+  payload?: any[];
+  label?: string;
+  data: any[];
+  dataKey: string;
+  format: (v: number) => string;
+  seriesName: string;
+}) {
+  if (!active || !payload || !payload.length) return null;
+  const current = payload.find((p: any) => p.dataKey === dataKey) ?? payload[0];
+  const row = current?.payload;
+  const idx = row ? data.indexOf(row) : -1;
+  const currentVal = Number(current?.value) || 0;
+  const prev = idx > 0 ? data[idx - 1] : null;
+  const prevVal = prev ? Number((prev as any)[dataKey]) : null;
+  const delta = prevVal != null ? currentVal - prevVal : null;
+  const pct =
+    prevVal != null && prevVal !== 0 ? ((currentVal - prevVal) / Math.abs(prevVal)) * 100 : null;
+  const positive = (delta ?? 0) >= 0;
+  return (
+    <div
+      style={{
+        background: 'rgba(8,8,12,0.95)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
+        padding: '8px 10px',
+        color: '#ECECF4',
+        fontSize: 12,
+      }}
+    >
+      <div style={{ color: '#8A8AA6', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontWeight: 500 }}>
+        {seriesName}: {format(currentVal)}
+      </div>
+      {delta != null && (
+        <div
+          style={{
+            color: positive ? '#5EEAD4' : '#FB7185',
+            fontSize: 11,
+            marginTop: 2,
+          }}
+        >
+          {positive ? '▲' : '▼'} {positive ? '+' : ''}
+          {format(delta)}
+          {pct != null ? ` (${positive ? '+' : ''}${pct.toFixed(1)}%)` : ''} vs prev
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
