@@ -2670,7 +2670,7 @@ export function SalesDashboardV2() {
                   Icon={Layers}
                   type="count"
                   metricKey="dealsOnBoard"
-                  mode={kpiVariant === 'finserv' ? 'sum' : 'current'}
+                  mode="sum"
                 />
                 <KpiCard
                   label="Proposals Issued"
