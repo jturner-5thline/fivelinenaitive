@@ -1506,7 +1506,7 @@ function MetricDrilldownDialog({
   return (
     <Dialog open={!!focus} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="max-w-3xl"
+        className="max-w-3xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6"
         style={{
           background: 'rgba(12,12,18,0.98)',
           border: `1px solid ${C.surfaceBorder}`,
