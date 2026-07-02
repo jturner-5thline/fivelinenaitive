@@ -292,6 +292,9 @@ export function InsightsTimeframeProvider({ children }: { children: React.ReactN
 
   const setTimeframe = useCallback((id: InsightsTimeframeId, custom?: { start: string; end: string }) => {
     setState({ id, custom });
+    // Selecting a rolling preset overrides any active Month/Quarter reporting period.
+    setReporting(null);
+    try { globalThis.localStorage?.removeItem(REPORTING_STORAGE_KEY); } catch { /* ignore */ }
     try {
       globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify({ id, custom }));
     } catch { /* ignore */ }
@@ -304,6 +307,9 @@ export function InsightsTimeframeProvider({ children }: { children: React.ReactN
       sp.delete('tfStart');
       sp.delete('tfEnd');
     }
+    // Strip reporting-period params so the preset actually takes effect.
+    sp.delete('view');
+    sp.delete('period');
     setSearchParams(sp, { replace: true });
   }, [searchParams, setSearchParams]);
 
