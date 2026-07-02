@@ -143,7 +143,7 @@ function useNikiPipelineData() {
   const { assignee } = usePerformanceAssignee();
   const nikiFilter = makeAssigneeFilter(assignee);
   return useQuery({
-    queryKey: ['niki-perf-pipeline-data', assignee],
+    queryKey: ['niki-perf-pipeline-data', assignee, 'v2-indev-proposal-fallback'],
     enabled: !!user,
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
