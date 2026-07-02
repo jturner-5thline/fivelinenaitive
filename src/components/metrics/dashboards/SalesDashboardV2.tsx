@@ -1992,8 +1992,8 @@ function SalesModelForecastEditor({
                           }}
                           type="text"
                           inputMode="decimal"
-                          defaultValue={String(draft[row.key][c] ?? 0)}
-                          key={`${r}-${c}-${draft[row.key][c]}`}
+                          defaultValue={String(draft.data[row.key][c] ?? 0)}
+                          key={`${r}-${c}-${draft.data[row.key][c]}-${columns[c].key}`}
                           onFocus={() => setActive({ r, c })}
                           onKeyDown={(e) => handleKey(e, r, c)}
                           onBlur={(e) => commit(r, c, e.target.value)}
@@ -2012,7 +2012,26 @@ function SalesModelForecastEditor({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t" style={{ borderColor: C.hairline, background: 'rgba(255,255,255,0.02)' }}>
+        <div className="flex items-center justify-between gap-2 px-6 py-3 border-t" style={{ borderColor: C.hairline, background: 'rgba(255,255,255,0.02)' }}>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] uppercase tracking-wider" style={{ color: C.textFaint }}>Add</span>
+            {([['+ Month', 1], ['+ Quarter', 3], ['+ Year', 12]] as const).map(([label, n]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => addMonths(n)}
+                className="px-2 py-1 rounded-md text-[11px] font-medium transition-colors"
+                style={{
+                  color: C.textPrimary,
+                  background: 'rgba(157,162,245,0.10)',
+                  border: `1px solid ${C.surfaceBorder}`,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             className="px-3 py-1.5 rounded-md text-[12px]"
@@ -2028,6 +2047,7 @@ function SalesModelForecastEditor({
             <Save size={13} />
             Save
           </button>
+          </div>
         </div>
       </div>
     </div>
