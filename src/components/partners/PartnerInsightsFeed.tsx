@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -41,6 +41,76 @@ interface InsightItem {
 
 export type InsightsSource = 'all' | 'partners' | 'referrals';
 
+type HeaderCtx = {
+  activeTypes: Set<InsightType>;
+  toggleType: (t: InsightType) => void;
+  openReport: () => void;
+  count: number;
+  setCount: (n: number) => void;
+};
+const InsightsHeaderContext = createContext<HeaderCtx | null>(null);
+
+export function PartnerInsightsProvider({ children }: { children: React.ReactNode }) {
+  const [activeTypes, setActiveTypes] = useState<Set<InsightType>>(
+    new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
+  );
+  const [showReport, setShowReport] = useState(false);
+  const [count, setCount] = useState(0);
+  const toggleType = (t: InsightType) => {
+    setActiveTypes(prev => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  };
+  return (
+    <InsightsHeaderContext.Provider
+      value={{ activeTypes, toggleType, openReport: () => setShowReport(true), count, setCount }}
+    >
+      <_ShowReportBridge value={showReport} setValue={setShowReport} />
+      {children}
+    </InsightsHeaderContext.Provider>
+  );
+}
+
+const ShowReportBridgeContext = createContext<{ show: boolean; setShow: (v: boolean) => void } | null>(null);
+function _ShowReportBridge({ value, setValue }: { value: boolean; setValue: (v: boolean) => void }) {
+  // no-op renderer; consumed by feed via context below
+  return null;
+}
+// Instead of bridge component, embed values in main context by extending it.
+
+export function PartnerInsightsHeaderActions() {
+  const ctx = useContext(InsightsHeaderContext);
+  if (!ctx) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Filter className="h-3.5 w-3.5" /> Filter
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-52">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Insight Types</p>
+          <div className="space-y-2">
+            {(Object.entries(TYPE_CONFIG) as [InsightType, typeof TYPE_CONFIG.stage_move][]).map(([key, cfg]) => (
+              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={ctx.activeTypes.has(key)} onCheckedChange={() => ctx.toggleType(key)} />
+                <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                {cfg.label}
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <Button size="sm" className="gap-1.5" onClick={ctx.openReport}>
+        <FileDown className="h-3.5 w-3.5" /> Draft Report
+      </Button>
+    </div>
+  );
+}
+
 export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: InsightsSource } = {}) {
   const { company } = useCompany();
   const { user } = useAuth();
@@ -50,10 +120,12 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
   const granularity = dateCtx?.range.granularity ?? null;
   const { data: partners = [] } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
   const { data: stages = [] } = usePipelineStages();
-  const [activeTypes, setActiveTypes] = useState<Set<InsightType>>(
+  const headerCtx = useContext(InsightsHeaderContext);
+  const [internalActiveTypes, setInternalActiveTypes] = useState<Set<InsightType>>(
     new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
   );
-  const [showReport, setShowReport] = useState(false);
+  const [internalShowReport, setInternalShowReport] = useState(false);
+  const activeTypes = headerCtx?.activeTypes ?? internalActiveTypes;
 
   const cutoff = rangeStart?.toISOString() ?? subDays(new Date(), 30).toISOString();
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
