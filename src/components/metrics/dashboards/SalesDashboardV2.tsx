@@ -1826,11 +1826,10 @@ function SalesModelSheet() {
 
       {editorOpen && (
         <SalesModelForecastEditor
-          months={view.months}
-          initial={effectivePlan}
+          initialDraft={fullDraft}
           onClose={() => setEditorOpen(false)}
           onSave={(next) => {
-            setPlanOverride(next);
+            setFullDraft(next);
             setEditorOpen(false);
           }}
         />
