@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -41,6 +41,64 @@ interface InsightItem {
 
 export type InsightsSource = 'all' | 'partners' | 'referrals';
 
+type HeaderCtx = {
+  activeTypes: Set<InsightType>;
+  toggleType: (t: InsightType) => void;
+  showReport: boolean;
+  setShowReport: (v: boolean) => void;
+};
+const InsightsHeaderContext = createContext<HeaderCtx | null>(null);
+
+export function PartnerInsightsProvider({ children }: { children: React.ReactNode }) {
+  const [activeTypes, setActiveTypes] = useState<Set<InsightType>>(
+    new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
+  );
+  const [showReport, setShowReport] = useState(false);
+  const toggleType = (t: InsightType) => {
+    setActiveTypes(prev => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  };
+  return (
+    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport }}>
+      {children}
+    </InsightsHeaderContext.Provider>
+  );
+}
+
+export function PartnerInsightsHeaderActions() {
+  const ctx = useContext(InsightsHeaderContext);
+  if (!ctx) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Filter className="h-3.5 w-3.5" /> Filter
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-52">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Insight Types</p>
+          <div className="space-y-2">
+            {(Object.entries(TYPE_CONFIG) as [InsightType, typeof TYPE_CONFIG.stage_move][]).map(([key, cfg]) => (
+              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={ctx.activeTypes.has(key)} onCheckedChange={() => ctx.toggleType(key)} />
+                <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
+                {cfg.label}
+              </label>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <Button size="sm" className="gap-1.5" onClick={() => ctx.setShowReport(true)}>
+        <FileDown className="h-3.5 w-3.5" /> Draft Report
+      </Button>
+    </div>
+  );
+}
+
 export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: InsightsSource } = {}) {
   const { company } = useCompany();
   const { user } = useAuth();
@@ -50,10 +108,22 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
   const granularity = dateCtx?.range.granularity ?? null;
   const { data: partners = [] } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
   const { data: stages = [] } = usePipelineStages();
-  const [activeTypes, setActiveTypes] = useState<Set<InsightType>>(
+  const headerCtx = useContext(InsightsHeaderContext);
+  const [internalActiveTypes, setInternalActiveTypes] = useState<Set<InsightType>>(
     new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
   );
-  const [showReport, setShowReport] = useState(false);
+  const [internalShowReport, setInternalShowReport] = useState(false);
+  const activeTypes = headerCtx?.activeTypes ?? internalActiveTypes;
+  const showReport = headerCtx?.showReport ?? internalShowReport;
+  const setShowReport = headerCtx?.setShowReport ?? setInternalShowReport;
+  const toggleTypeInternal = (t: InsightType) => {
+    if (headerCtx) return headerCtx.toggleType(t);
+    setInternalActiveTypes(prev => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  };
 
   const cutoff = rangeStart?.toISOString() ?? subDays(new Date(), 30).toISOString();
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
@@ -220,21 +290,13 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [stageMoves, memoUpdates, newDeals, partners, cutoff, activeTypes, partnerMap, stageMap, profileMap, sourceFilter]);
 
-  const toggleType = (t: InsightType) => {
-    setActiveTypes(prev => {
-      const next = new Set(prev);
-      next.has(t) ? next.delete(t) : next.add(t);
-      return next;
-    });
-  };
-
   return (
     <div className="space-y-4">
-      {/* Header */}
+      {/* Header (hidden when consumed within PartnerInsightsProvider) */}
+      {!headerCtx && (
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Lightbulb className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Partners and Referrals Insights</h3>
           <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -250,7 +312,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
               <div className="space-y-2">
                 {(Object.entries(TYPE_CONFIG) as [InsightType, typeof TYPE_CONFIG.stage_move][]).map(([key, cfg]) => (
                   <label key={key} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <Checkbox checked={activeTypes.has(key)} onCheckedChange={() => toggleType(key)} />
+                    <Checkbox checked={activeTypes.has(key)} onCheckedChange={() => toggleTypeInternal(key)} />
                     <cfg.icon className={`h-3.5 w-3.5 ${cfg.color}`} />
                     {cfg.label}
                   </label>
@@ -265,6 +327,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
           </Button>
         </div>
       </div>
+      )}
 
       {/* Feed — uses Insights card surface */}
       <div className="rounded-xl border bg-card border-border shadow-sm dark:bg-[rgba(255,255,255,0.04)] dark:border-[rgba(255,255,255,0.08)] dark:backdrop-blur-xl dark:backdrop-saturate-150 dark:shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] divide-y divide-border max-h-[420px] overflow-y-auto">
