@@ -505,9 +505,15 @@ function OperatingProfitToggleCard({
                   <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} />
                 )}
                 <Tooltip
-                  formatter={(v: number) =>
-                    isDollar ? [fmtCurrencyFull(v), 'Operating Profit'] : [fmtPct(v), 'Operating Margin']
-                  }
+                  content={(props: any) => (
+                    <DeltaTooltip
+                      {...props}
+                      data={chartData}
+                      dataKey={isDollar ? 'operatingProfit' : 'operatingMargin'}
+                      format={isDollar ? fmtCurrencyFull : fmtPct}
+                      seriesName={isDollar ? 'Operating Profit' : 'Operating Margin'}
+                    />
+                  )}
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
                 {isDollar ? (
