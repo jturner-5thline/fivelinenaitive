@@ -218,9 +218,10 @@ function ActiveClientsMetricWidget({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <BarChart
               data={sparkData}
               margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+              barCategoryGap="25%"
               onClick={(state: { activeTooltipIndex?: number } | null) => {
                 if (state && typeof state.activeTooltipIndex === 'number') {
                   onDrill(state.activeTooltipIndex);
@@ -242,6 +243,7 @@ function ActiveClientsMetricWidget({
                 allowDecimals={false}
               />
               <Tooltip
+                cursor={{ fill: 'rgba(94,234,212,0.08)' }}
                 contentStyle={{
                   background: 'rgba(8,8,12,0.95)',
                   border: `1px solid ${T.surfaceBorder}`,
@@ -250,17 +252,15 @@ function ActiveClientsMetricWidget({
                   fontSize: 12,
                 }}
               />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="actual"
-                name="Actual"
-                stroke={T.cyan}
-                strokeWidth={2}
-                dot={{ r: 2.5, fill: T.cyan }}
-                activeDot={{ r: 5, fill: T.cyan, stroke: T.cyan }}
+                name="Active Clients"
+                fill={T.cyan}
+                radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
+                cursor="pointer"
               />
-            </LineChart>
+            </BarChart>
           </ResponsiveContainer>
         )}
       </div>
