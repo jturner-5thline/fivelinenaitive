@@ -97,6 +97,7 @@ type FinServCashflowSnapshotRow = {
   bucket_end: string;
   bucket_label: string;
   net_cash_flow: number;
+  intercompany_adjustment?: number | null;
 };
 
 function periodKey(period: SnapshotPeriod) {
@@ -506,7 +507,7 @@ export function useFinServCashflow(
       const readRows = async () => {
         const { data: snapshotRows, error: snapshotError } = await supabase
           .from('qbo_cashflow_snapshots')
-          .select('period_start, period_end, bucket_start, bucket_end, bucket_label, net_cash_flow')
+          .select('period_start, period_end, bucket_start, bucket_end, bucket_label, net_cash_flow, intercompany_adjustment')
           .eq('company_id', company.id)
           .eq('realm_id', FINSERV_REALM_ID)
           .eq('accounting_method', 'Accrual')
@@ -558,7 +559,13 @@ export function useFinServCashflow(
       const bEnd = new Date(bucket.end_date + 'T00:00:00').getTime();
       const value = rows.reduce((sum, row) => {
         const rs = new Date(row.bucket_start + 'T00:00:00').getTime();
-        return rs >= bStart && rs <= bEnd ? sum + Number(row.net_cash_flow ?? 0) : sum;
+        if (rs < bStart || rs > bEnd) return sum;
+        // Net out any cashflow impact of the "Due to/from 5th Line Capital LLC"
+        // intercompany accounts. Subtracting the (typically negative) intercompany
+        // line effectively adds back cash out spent paying it down.
+        const raw = Number(row.net_cash_flow ?? 0);
+        const inter = Number(row.intercompany_adjustment ?? 0);
+        return sum + (raw - inter);
       }, 0);
       return { month: bucket.label, monthKey: bucket.key, value };
     });
