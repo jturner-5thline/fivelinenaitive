@@ -1843,22 +1843,22 @@ function SalesModelSheet() {
 // Edits are held locally to the Sales Model widget's Forecast column.
 // ============================================================
 function SalesModelForecastEditor({
-  months,
-  initial,
+  initialDraft,
   onClose,
   onSave,
 }: {
-  months: string[];
-  initial: Record<MetricKey, number[]>;
+  initialDraft: FullForecastDraft;
   onClose: () => void;
-  onSave: (next: Record<MetricKey, number[]>) => void;
+  onSave: (next: FullForecastDraft) => void;
 }) {
-  const clone = (d: Record<MetricKey, number[]>): Record<MetricKey, number[]> => {
-    const out = {} as Record<MetricKey, number[]>;
-    (Object.keys(d) as MetricKey[]).forEach((k) => { out[k] = [...d[k]]; });
-    return out;
+  const cloneDraft = (d: FullForecastDraft): FullForecastDraft => {
+    const data = {} as Record<MetricKey, number[]>;
+    (Object.keys(d.data) as MetricKey[]).forEach((k) => { data[k] = [...d.data[k]]; });
+    return { columns: [...d.columns], data };
   };
-  const [draft, setDraft] = React.useState<Record<MetricKey, number[]>>(() => clone(initial));
+  const [draft, setDraft] = React.useState<FullForecastDraft>(() => cloneDraft(initialDraft));
+  const columns = draft.columns;
+  const months = React.useMemo(() => columns.map((c) => c.label), [columns]);
   const [active, setActive] = React.useState<{ r: number; c: number }>({ r: 0, c: 0 });
   const inputsRef = React.useRef<(HTMLInputElement | null)[][]>([]);
 
@@ -1893,10 +1893,14 @@ function SalesModelForecastEditor({
     const num = parseFloat(raw);
     if (Number.isNaN(num)) return;
     setDraft((prev) => {
-      const next = clone(prev);
-      next[ROW_ORDER[r].key][c] = num;
+      const next = cloneDraft(prev);
+      next.data[ROW_ORDER[r].key][c] = num;
       return next;
     });
+  };
+
+  const addMonths = (count: number) => {
+    setDraft((prev) => appendMonthsToDraft(prev, count));
   };
 
   return (
