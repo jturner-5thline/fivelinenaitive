@@ -63,7 +63,10 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
 
   const stalePartners = useMemo(() => {
-    const now = new Date();
+    // Anchor "now" at the end of the selected timeframe (capped at today)
+    // so days-since values reflect the picked range rather than real-time.
+    const realNow = new Date();
+    const now = rangeEnd && rangeEnd < realNow ? rangeEnd : realNow;
     const result: StalePartner[] = [];
     const latestNoteByPartner = new Map<string, { created_at: string; to_stage: string }>();
 
@@ -110,7 +113,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
     });
 
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
-  }, [partners, stageNotes, stageMap, thresholds]);
+  }, [partners, stageNotes, stageMap, thresholds, rangeEnd]);
 
   const countsCtx = usePartnerInsightsCounts();
   useEffect(() => {
