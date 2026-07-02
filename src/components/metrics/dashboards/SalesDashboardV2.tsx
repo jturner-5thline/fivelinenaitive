@@ -2361,6 +2361,65 @@ export function SalesDashboardV2() {
   const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
   const salesCallEvents = salesCallsQuery.data?.events ?? [];
+
+  // ---- KPI pipeline variant toggle (Debt vs FinServ) ---------------------
+  // Only affects the top three KPI cards; the rest of the dashboard keeps
+  // its existing Debt-pipeline sourcing.
+  const [kpiVariant, setKpiVariant] = React.useState<'debt' | 'finserv'>('debt');
+
+  // FinServ Sales Calls — matches titles like
+  // "5th Line <> [COMPANY] Financial Review" across teammate calendars.
+  const salesCallsFinservQuery = useSalesCallsCount(
+    yearStart,
+    yearEnd,
+    kpiVariant === 'finserv',
+    'finserv',
+  );
+  const salesCallEventsFinserv = salesCallsFinservQuery.data?.events ?? [];
+  const salesCallsFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const ev of salesCallEventsFinserv) {
+      if (!ev.start) continue;
+      const d = new Date(ev.start);
+      const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      out[k] = (out[k] ?? 0) + 1;
+    }
+    return out;
+  }, [salesCallsFinservQuery.isFetching, salesCallsFinservQuery.isLoading, salesCallEventsFinserv]);
+
+  // FinServ Deals on Board — deals entering the "Qualification" stage on
+  // the FinServ pipeline.
+  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardFinservQuery.byMonthKey)) {
+      out[k] = arr.length;
+    }
+    return out;
+  }, [
+    dealsOnBoardFinservQuery.isLoading,
+    dealsOnBoardFinservQuery.isFetching,
+    dealsOnBoardFinservQuery.byMonthKey,
+  ]);
+
+  // FinServ Proposals Issued — deals entering the "Proposal Sent" stage on
+  // the FinServ pipeline.
+  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedFinservQuery.byMonthKey)) {
+      out[k] = arr.length;
+    }
+    return out;
+  }, [
+    proposalsIssuedFinservQuery.isLoading,
+    proposalsIssuedFinservQuery.isFetching,
+    proposalsIssuedFinservQuery.byMonthKey,
+  ]);
+
   /**
    * Live actuals keyed by absolute YYYY-MM so any selected window (within or
    * across calendar years) maps directly through buildView's month keys.
