@@ -119,6 +119,14 @@ function resolveExistingDebt(details: string | null | undefined, items: unknown)
   return nonEmpty(details) ?? formatExistingDebtItems(items);
 }
 
+function parseFlexJson(responseText: string): Record<string, any> {
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return { message: responseText };
+  }
+}
+
 interface PushToFlexRequest {
   dealId?: string;
   action?: "publish" | "unpublish" | "sync_data_room" | "bulk_sync";
@@ -431,7 +439,10 @@ serve(async (req) => {
       };
       activityDescription = "Deal unpublished from FLEx";
     } else if (action === "sync_data_room") {
-      // Get the flex_deal_id from the most recent successful sync
+      // Get the flex_deal_id from the most recent successful write-up sync.
+      // Data room rows in FLEx have a FK to the FLEx deals table, so if a user
+      // pushes documents before pressing the write-up publish button, create / refresh
+      // the deal shell first instead of letting FLEx reject every file insert.
       const { data: lastSync } = await supabase
         .from("flex_sync_history")
         .select("flex_deal_id")
@@ -441,21 +452,149 @@ serve(async (req) => {
         .limit(1)
         .single();
 
-      // FLEx's data_room_files table has a foreign key to its deals table.
-      // If the deal has never been published successfully, syncing files
-      // will fail with a FK violation. Fail fast with a clear message so
-      // the user knows to publish the write-up first.
+      let flexDealId = lastSync?.flex_deal_id || dealId;
+
       if (!lastSync?.flex_deal_id) {
-        console.error(
-          `sync_data_room blocked: deal ${dealId} has no prior successful publish to FLEx`
-        );
-        return new Response(
-          JSON.stringify({
-            error:
-              "This deal has not been published to FLEx yet. Publish the write-up to FLEx first, then push the data room.",
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.log(`No prior FLEx write-up sync found for ${dealId}; ensuring FLEx deal exists before data room sync`);
+
+        const { data: writeupRow, error: writeupError } = await supabase
+          .from("deal_writeups")
+          .select(`
+            company_name,
+            company_url,
+            linkedin_url,
+            industry,
+            location,
+            year_founded,
+            customer_base,
+            headcount,
+            deal_type,
+            billing_model,
+            profitability,
+            gross_margins,
+            capital_ask,
+            accounting_system,
+            description,
+            use_of_funds,
+            existing_debt_details,
+            existing_debt_items,
+            data_room_url,
+            key_items,
+            company_highlights,
+            financial_years,
+            financial_comments,
+            total_equity_raised,
+            visible_metrics,
+            publish_as_anonymous,
+            team
+          `)
+          .eq("deal_id", dealId)
+          .maybeSingle();
+
+        if (writeupError) {
+          console.error("Error fetching write-up for pre-data-room FLEx sync:", writeupError);
+          return new Response(
+            JSON.stringify({ error: "Failed to load the deal write-up before syncing the data room" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: ownershipRows } = await supabase
+          .from("deal_ownership")
+          .select("owner_name, ownership_percentage, owner_url")
+          .eq("deal_id", dealId)
+          .order("position", { ascending: true });
+
+        let companyDisclaimer: string | null = null;
+        if (deal.company_id) {
+          const { data: settings } = await supabase
+            .from("company_settings")
+            .select("disclaimer")
+            .eq("company_id", deal.company_id)
+            .maybeSingle();
+          companyDisclaimer = (settings as any)?.disclaimer || null;
+        }
+
+        const managingCompany = ((deal as any).companies?.name || '') as string;
+        const storedWriteup = (writeupRow || {}) as Record<string, any>;
+        const ensuredDeal = {
+          id: dealId,
+          company_name: nonEmpty(storedWriteup.company_name) || deal.company || "Untitled deal",
+          company_url: nonEmpty(storedWriteup.company_url),
+          linkedin_url: nonEmpty(storedWriteup.linkedin_url),
+          industry: storedWriteup.industry || undefined,
+          state: storedWriteup.location || undefined,
+          year_founded: storedWriteup.year_founded || undefined,
+          customer_base: storedWriteup.customer_base || undefined,
+          headcount: storedWriteup.headcount || undefined,
+          deal_type: storedWriteup.deal_type || undefined,
+          billing_model: nonEmpty(storedWriteup.billing_model),
+          profitability: nonEmpty(storedWriteup.profitability),
+          gross_margins: nonEmpty(storedWriteup.gross_margins),
+          capital_ask: nonEmpty(storedWriteup.capital_ask),
+          accounting_system: nonEmpty(storedWriteup.accounting_system),
+          description: nonEmpty(storedWriteup.description),
+          use_of_funds: nonEmpty(storedWriteup.use_of_funds),
+          existing_debt: resolveExistingDebt(storedWriteup.existing_debt_details, storedWriteup.existing_debt_items) ?? null,
+          data_room_url: nonEmpty(storedWriteup.data_room_url),
+          key_items: storedWriteup.key_items ?? [],
+          company_highlights: storedWriteup.company_highlights ?? [],
+          financial_years: storedWriteup.financial_years ?? [],
+          financial_comments: storedWriteup.financial_comments ?? [],
+          cap_table: (ownershipRows ?? []).map(o => ({
+            name: o.owner_name,
+            ownership: Number(o.ownership_percentage),
+            url: o.owner_url || undefined,
+          })),
+          total_equity_raised: storedWriteup.total_equity_raised || null,
+          is_published: !storedWriteup.publish_as_anonymous,
+          team: Array.isArray(storedWriteup.team) ? storedWriteup.team : [],
+          visible_metrics: storedWriteup.visible_metrics || undefined,
+          disclaimer: companyDisclaimer || null,
+          deal_manager_name: deal.manager || undefined,
+          managing_company: managingCompany.toLowerCase().includes('5th line') ? '5th Line' : (managingCompany || undefined),
+        };
+
+        const ensurePayload = { event: "sync_deals", deals: [ensuredDeal] };
+        const ensureResponse = await fetch(FLEX_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-sync-key": NAITIVE_FLEX_SYNC_KEY,
+          },
+          body: JSON.stringify(ensurePayload),
+        });
+        const ensureText = await ensureResponse.text();
+        console.log(`FLEx pre-data-room deal ensure response (${ensureResponse.status}):`, ensureText);
+
+        if (!ensureResponse.ok) {
+          await supabase.from("flex_sync_history").insert({
+            deal_id: dealId,
+            synced_by: user.id,
+            status: "failed",
+            payload: ensurePayload,
+            error_message: ensureText,
+          });
+          return new Response(
+            JSON.stringify({
+              error: "Failed to create the FLEx deal before syncing the data room",
+              details: ensureText,
+              status: ensureResponse.status,
+            }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const ensureData = parseFlexJson(ensureText);
+        flexDealId = ensureData?.results?.[0]?.id || ensureData?.deal_id || dealId;
+        await supabase.from("flex_sync_history").insert({
+          deal_id: dealId,
+          flex_deal_id: flexDealId,
+          synced_by: user.id,
+          status: "success",
+          payload: ensurePayload,
+          response: ensureData,
+        });
       }
 
       // Prepare the data room files payload matching FLEx expected format
@@ -468,7 +607,7 @@ serve(async (req) => {
       flexPayload = {
         event: "data_room_sync",
         company_name: deal.company,
-        deal_id: lastSync.flex_deal_id,
+        deal_id: flexDealId,
         files: filesPayload,
       };
       activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
