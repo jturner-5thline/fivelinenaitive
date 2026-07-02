@@ -612,28 +612,6 @@ function FinServFinancialMetricsDashboardInner() {
         )}
       </div>
 
-      {/* ── Row 0: Active Clients KPI ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-module">
-          <CardContent className="p-4">
-            {activeClients.isLoading ? (
-              <Skeleton className="h-16 w-full" />
-            ) : activeClients.error ? (
-              <WidgetError />
-            ) : (
-              <div>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Active Clients</p>
-                <div className="flex items-end gap-3 mt-1">
-                  <span className="text-3xl font-bold text-foreground">{activeClients.currentCount}</span>
-                  <VarianceIndicator value={activeClients.variance} />
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">vs prior period ({activeClients.priorCount})</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* ── Row 1: Total Revenue ── */}
       <Card className="glass-module">
         <CardHeader className="pb-2">
@@ -885,8 +863,25 @@ function FinServFinancialMetricsDashboardInner() {
           <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            {activeClients.isLoading ? (
+              <Skeleton className="h-10 w-32" />
+            ) : activeClients.error ? null : (
+              <>
+                <div className="flex items-end gap-3 flex-wrap">
+                  <div className="text-3xl font-semibold text-foreground leading-none tabular-nums">
+                    {activeClients.currentCount}
+                  </div>
+                  <VarianceIndicator value={activeClients.variance} />
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Count at end of period · vs prior period ({activeClients.priorCount})
+                </div>
+              </>
+            )}
+          </div>
           {activeClients.isLoading ? <WidgetLoading /> : activeClients.error ? <WidgetError /> : activeClients.trend.every(t => t.count === 0) ? <WidgetEmpty message="No active FinServ clients yet" /> : (
-            <div className="h-[200px]">
+            <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={activeClients.trend}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
