@@ -5,6 +5,10 @@ import { useCompany } from '@/hooks/useCompany';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
+import {
+  useFinservDealsOnBoardByMonth,
+  useFinservProposalsIssuedByMonth,
+} from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import {
   buildQuarterOptions,
