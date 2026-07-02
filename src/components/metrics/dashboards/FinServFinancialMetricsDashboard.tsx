@@ -496,6 +496,11 @@ function ActiveClientsMetricWidget({
   const deltaPct = prior === 0 ? 0 : (current - prior) / prior;
   const positive = deltaPct >= 0;
   const sparkData = data.trend.map((t) => ({ month: t.month, actual: t.count }));
+  const [showTrend, setShowTrend] = useState(false);
+  const sparkDataWithTrend = useMemo(() => {
+    const trend = computeLinearTrend(sparkData.map(d => d.actual));
+    return sparkData.map((d, i) => ({ ...d, trend: trend[i] }));
+  }, [sparkData]);
 
   const hasData = !data.isLoading && !data.error && data.trend.some((t) => t.count > 0);
 
@@ -520,8 +525,23 @@ function ActiveClientsMetricWidget({
         >
           Active Clients
         </div>
-        <div className="ml-auto text-[10px]" style={{ color: T.textFaint }}>
-          {periodBadge}
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); setShowTrend(v => !v); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setShowTrend(v => !v); }
+            }}
+            title="Toggle trend line"
+            className={
+              'text-[10px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+              (showTrend ? 'bg-primary/20 text-foreground' : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+            }
+          >
+            Trend
+          </span>
+          <span className="text-[10px]" style={{ color: T.textFaint }}>{periodBadge}</span>
         </div>
       </div>
       <div className="flex items-baseline gap-2 mt-1">
@@ -567,8 +587,8 @@ function ActiveClientsMetricWidget({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={sparkData}
+            <ComposedChart
+              data={sparkDataWithTrend}
               margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
               barCategoryGap="25%"
               onClick={(state: { activeTooltipIndex?: number } | null) => {
@@ -609,7 +629,20 @@ function ActiveClientsMetricWidget({
                 isAnimationActive={false}
                 cursor="pointer"
               />
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  name="Best-fit trend"
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
