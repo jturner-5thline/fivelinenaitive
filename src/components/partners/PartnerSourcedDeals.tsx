@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
-import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
+import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
@@ -26,7 +26,37 @@ interface DealRow {
   closing_date: string | null;
 }
 
-export function PartnerSourcedDeals() {
+const kpiCard = [
+  "[container-type:inline-size] relative isolate rounded-xl overflow-hidden p-4",
+  "border border-[hsl(260,40%,50%,0.12)]",
+  "ring-1 ring-inset ring-white/[0.05]",
+  "bg-[linear-gradient(145deg,hsl(260,25%,16%,0.72)_0%,hsl(255,20%,11%,0.58)_50%,hsl(250,18%,9%,0.65)_100%)]",
+  "backdrop-blur-2xl backdrop-saturate-150",
+  "shadow-[0_2px_4px_hsl(0,0%,0%,0.2),0_8px_32px_hsl(260,40%,8%,0.5)]",
+  "hover:border-[hsl(263,50%,55%,0.2)] transition-all duration-300",
+].join(" ");
+
+const metricValueClass =
+  "font-bold font-mono tabular-nums text-foreground truncate text-[clamp(1rem,2.2cqi+0.75rem,1.5rem)]";
+
+function formatCurrencyCompact(v: number): string {
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(2)}B`;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toLocaleString()}`;
+}
+
+interface PartnerSourcedDealsProps {
+  kpisOnly?: boolean;
+  hideKpis?: boolean;
+  kpiGridClassName?: string;
+}
+
+export function PartnerSourcedDeals({
+  kpisOnly = false,
+  hideKpis = false,
+  kpiGridClassName,
+}: PartnerSourcedDealsProps = {}) {
   const { company } = useCompany();
   const { data: partners = [] } = usePartners();
   const dateCtx = useOptionalSalesBdDateRange();
@@ -118,46 +148,62 @@ export function PartnerSourcedDeals() {
     </SortableHeader>
   );
 
-  return (
-    <div>
-      <h3 className={`${liquidGlassSectionTitle} mb-3`}>Partner-Sourced Deals</h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <Hash className="h-3.5 w-3.5" /> Total Referred
+  const kpiGrid = (
+    <div className={kpiGridClassName ?? 'grid grid-cols-1 md:grid-cols-3 gap-3 mb-3'}>
+      <div className={kpiCard}>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(263,60%,55%,0.15)] shrink-0">
+            <Hash className="h-4 w-4 text-primary" />
           </div>
-          <span className="text-2xl font-bold text-foreground">{matchedDeals.length}</span>
-        </div>
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <DollarSign className="h-3.5 w-3.5" /> Referred Value
+          <div className="min-w-0">
+            <p className={metricValueClass}>{matchedDeals.length}</p>
+            <p className="text-[10px] text-muted-foreground truncate">Total Referred</p>
           </div>
-          <span className="text-2xl font-bold text-foreground">
-            {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
-          </span>
         </div>
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={`${liquidGlassKPI} p-4 flex flex-col items-center cursor-help`}>
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
-                  <span className="ml-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] font-medium text-muted-foreground">
-                    TTM
-                  </span>
-                </div>
-                <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
-              Trailing-12-month conversion rate: deals added to active pipeline sourced via Partner that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Partner in the trailing 12 months. Independent of the header date filter.
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
       </div>
+      <div className={kpiCard}>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(160,65%,45%,0.15)] shrink-0">
+            <DollarSign className="h-4 w-4" style={{ color: 'hsl(160, 65%, 45%)' }} />
+          </div>
+          <div className="min-w-0">
+            <p className={metricValueClass}>{formatCurrencyCompact(totalValue)}</p>
+            <p className="text-[10px] text-muted-foreground truncate">Referred Value</p>
+          </div>
+        </div>
+      </div>
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={`${kpiCard} cursor-help`}>
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-[hsl(38,92%,55%,0.15)] shrink-0">
+                  <TrendingUp className="h-4 w-4" style={{ color: 'hsl(38, 92%, 55%)' }} />
+                </div>
+                <div className="min-w-0">
+                  <p className={metricValueClass}>{conversionRateLabel}</p>
+                  <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                    Conversion Rate
+                    <span className="rounded-full border border-border/60 bg-muted/40 px-1 py-px text-[9px] font-medium">TTM</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+            Trailing-12-month conversion rate: deals added to active pipeline sourced via Partner that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Partner in the trailing 12 months. Independent of the header date filter.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
 
-      <Collapsible open={showDetails} onOpenChange={setShowDetails}>
+  if (kpisOnly) {
+    return kpiGrid;
+  }
+
+  const details = (
+    <Collapsible open={showDetails} onOpenChange={setShowDetails}>
         <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors mb-2">
           {showDetails ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           View Details ({matchedDeals.length} deals)
@@ -196,7 +242,13 @@ export function PartnerSourcedDeals() {
             </div>
           )}
         </CollapsibleContent>
-      </Collapsible>
+    </Collapsible>
+  );
+
+  return (
+    <div>
+      {!hideKpis && kpiGrid}
+      {details}
     </div>
   );
 }
