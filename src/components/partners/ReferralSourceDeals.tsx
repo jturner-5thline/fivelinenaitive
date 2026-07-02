@@ -43,7 +43,18 @@ interface DealRow {
   closing_date: string | null;
 }
 
-export function ReferralSourceDeals() {
+export function ReferralSourceDeals({
+  kpisOnly = false,
+  hideKpis = false,
+  kpiGridClassName,
+}: {
+  /** Render only the 6 KPI tiles (no title, no details table). */
+  kpisOnly?: boolean;
+  /** Render title + collapsible details only (skip the 6 KPI tiles). */
+  hideKpis?: boolean;
+  /** Override the grid class used for the KPI tiles. */
+  kpiGridClassName?: string;
+} = {}) {
   const { company } = useCompany();
   const dateCtx = useOptionalSalesBdDateRange();
   const rangeStart = dateCtx?.start ?? null;
@@ -126,11 +137,13 @@ export function ReferralSourceDeals() {
     </SortableHeader>
   );
 
-  return (
-    <div>
-      <h3 className={`${liquidGlassSectionTitle} mb-3`}>Referral-Source Deals</h3>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3">
+  const kpiGrid = (
+    <div
+      className={
+        kpiGridClassName ??
+        'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-3'
+      }
+    >
         {/* 1. Total Referred (deals) */}
         <div className={kpiCard}>
           <div className="flex items-center gap-2">
@@ -215,7 +228,18 @@ export function ReferralSourceDeals() {
             </div>
           </div>
         </div>
-      </div>
+    </div>
+  );
+
+  if (kpisOnly) {
+    return kpiGrid;
+  }
+
+  return (
+    <div>
+      <h3 className={`${liquidGlassSectionTitle} mb-3`}>Referral-Source Deals</h3>
+
+      {!hideKpis && kpiGrid}
 
       <Collapsible open={showDetails} onOpenChange={setShowDetails}>
         <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors mb-2">
