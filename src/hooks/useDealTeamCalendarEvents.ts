@@ -31,7 +31,7 @@ export interface DealTeamCalendarEvent {
 export function useDealTeamCalendarEvents(dealId: string | undefined, range: { start: Date; end: Date }, enabled = true) {
   const timeMin = range.start.toISOString();
   const timeMax = range.end.toISOString();
-  const cacheKey = dealId ? `deal-team-cal:${dealId}` : null;
+  const cacheKey = dealId ? `deal-team-cal:${dealId}:${timeMin}:${timeMax}` : null;
   const initialData = (() => {
     if (typeof window === 'undefined' || !cacheKey) return undefined;
     try {
