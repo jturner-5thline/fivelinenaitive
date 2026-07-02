@@ -172,10 +172,6 @@ function SalesBDInner() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Left: Referral Sources Insights */}
                   <div className="space-y-4">
-                    <div>
-                      <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across referral sources</p>
-                    </div>
                     <Tabs defaultValue="activity">
                       <TabsList>
                         <TabsTrigger value="activity">Activity</TabsTrigger>
