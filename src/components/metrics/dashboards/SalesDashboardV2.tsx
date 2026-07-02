@@ -2587,28 +2587,38 @@ export function SalesDashboardV2() {
           {/* Timeframe lives in the shared /insights page header. */}
 
           {/* KPI strip */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <KpiCard
-              label="Sales Calls"
-              Icon={Phone}
-              type="count"
-              metricKey="salesCalls"
-              mode="sum"
-            />
-            <KpiCard
-              label="Deals on Board"
-              Icon={Layers}
-              type="count"
-              metricKey="dealsOnBoard"
-              mode="current"
-            />
-            <KpiCard
-              label="Proposals Issued"
-              Icon={FileText}
-              type="count"
-              metricKey="proposalsIssued"
-              mode="sum"
-            />
+          <div className="mb-6">
+            <div className="flex items-center justify-end mb-2">
+              <PipelineVariantToggle
+                value={kpiVariant}
+                onChange={setKpiVariant}
+              />
+            </div>
+            <ViewCtx.Provider value={kpiView}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <KpiCard
+                  label="Sales Calls"
+                  Icon={Phone}
+                  type="count"
+                  metricKey="salesCalls"
+                  mode="sum"
+                />
+                <KpiCard
+                  label={kpiVariant === 'finserv' ? 'Deals on Board (FinServ)' : 'Deals on Board'}
+                  Icon={Layers}
+                  type="count"
+                  metricKey="dealsOnBoard"
+                  mode={kpiVariant === 'finserv' ? 'sum' : 'current'}
+                />
+                <KpiCard
+                  label="Proposals Issued"
+                  Icon={FileText}
+                  type="count"
+                  metricKey="proposalsIssued"
+                  mode="sum"
+                />
+              </div>
+            </ViewCtx.Provider>
           </div>
 
           {/* Performance-to-plan panel */}
