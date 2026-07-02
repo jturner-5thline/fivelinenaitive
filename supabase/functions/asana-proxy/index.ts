@@ -270,7 +270,17 @@ serve(async (req) => {
               resource: projectGid,
               target: targetUrl,
               filters: [
-                { resource_type: "task", action: "changed", fields: ["completed", "name", "due_on", "assignee"] }
+                {
+                  resource_type: "task",
+                  action: "changed",
+                  // Include both `due_on` (date-only) and `due_at` (date+time).
+                  // Asana fires the filter matching the field the user edited,
+                  // so we need both or datetime edits are silently dropped.
+                  fields: ["completed", "name", "due_on", "due_at", "assignee"],
+                },
+                { resource_type: "task", action: "added" },
+                { resource_type: "task", action: "removed" },
+                { resource_type: "task", action: "deleted" }
               ]
             }
           }),
