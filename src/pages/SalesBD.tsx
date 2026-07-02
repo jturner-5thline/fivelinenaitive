@@ -89,7 +89,34 @@ function SalesBDInner() {
         >
             <TabsContent value="partners-channels" className="mt-4">
               <div className="space-y-8">
-                <PartnerSourcedDeals />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left: Partners Insights */}
+                  <div className="space-y-4">
+                    <PartnerInsightsProvider>
+                    <Tabs defaultValue="activity">
+                      <div className="flex items-center justify-between gap-2">
+                        <TabsList>
+                          <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
+                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
+                        </TabsList>
+                        <PartnerInsightsHeaderActions />
+                      </div>
+                      <TabsContent value="activity" className="mt-4">
+                        <PartnerInsightsFeed sourceFilter="partners" />
+                      </TabsContent>
+                      <TabsContent value="attention" className="mt-4">
+                        <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
+                      </TabsContent>
+                    </Tabs>
+                    </PartnerInsightsProvider>
+                  </div>
+                  {/* Right: Partner-sourced KPI widgets */}
+                  <PartnerSourcedDeals
+                    kpisOnly
+                    kpiGridClassName="grid grid-cols-1 gap-3 auto-rows-fr h-full"
+                  />
+                </div>
+                <PartnerSourcedDeals hideKpis />
                 <div className="space-y-6">
                   {/* Sub-navigation */}
                   <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
@@ -145,29 +172,6 @@ function SalesBDInner() {
                       <ChannelsBoard />
                     </div>
                   )}
-                </div>
-                <div className="space-y-4 md:w-1/2">
-                  <div>
-                    <h2 className="text-lg font-semibold">Partners Insights</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners</p>
-                  </div>
-                  <PartnerInsightsProvider>
-                  <Tabs defaultValue="activity">
-                    <div className="flex items-center justify-between gap-2">
-                      <TabsList>
-                        <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                        <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
-                      </TabsList>
-                      <PartnerInsightsHeaderActions />
-                    </div>
-                    <TabsContent value="activity" className="mt-4">
-                      <PartnerInsightsFeed sourceFilter="partners" />
-                    </TabsContent>
-                    <TabsContent value="attention" className="mt-4">
-                      <ReEngagementInsights onViewPartner={(id) => setViewPartnerId(id)} />
-                    </TabsContent>
-                  </Tabs>
-                  </PartnerInsightsProvider>
                 </div>
               </div>
             </TabsContent>
