@@ -119,61 +119,58 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
 
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
+  const settingsPopover = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Thresholds">
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64">
+        <p className="text-xs font-medium text-slate-400 mb-3">Inactivity Thresholds</p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">No activity (days)</Label>
+            <Input
+              type="number"
+              value={editThresholds.inactivity}
+              onChange={e => setEditThresholds(prev => ({ ...prev, inactivity: +e.target.value }))}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Stuck in Nurturing (days)</Label>
+            <Input
+              type="number"
+              value={editThresholds.nurturing}
+              onChange={e => setEditThresholds(prev => ({ ...prev, nurturing: +e.target.value }))}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">No deals referred (days)</Label>
+            <Input
+              type="number"
+              value={editThresholds.noDeals}
+              onChange={e => setEditThresholds(prev => ({ ...prev, noDeals: +e.target.value }))}
+              className="h-8"
+            />
+          </div>
+          <Button size="sm" className="w-full" onClick={() => setThresholds(editThresholds)}>
+            Save Thresholds
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+  useEffect(() => {
+    if (!countsCtx) return;
+    countsCtx.setSettingsNode(settingsPopover);
+    return () => countsCtx.setSettingsNode(null);
+  }, [countsCtx, editThresholds]);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className={liquidGlassSectionTitle}>Partners Needing Attention</h3>
-          {stalePartners.length > 0 && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-              {stalePartners.length}
-            </Badge>
-          )}
-        </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-              <Settings className="h-3.5 w-3.5 text-slate-400" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64">
-            <p className="text-xs font-medium text-slate-400 mb-3">Inactivity Thresholds</p>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs">No activity (days)</Label>
-                <Input
-                  type="number"
-                  value={editThresholds.inactivity}
-                  onChange={e => setEditThresholds(prev => ({ ...prev, inactivity: +e.target.value }))}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Stuck in Nurturing (days)</Label>
-                <Input
-                  type="number"
-                  value={editThresholds.nurturing}
-                  onChange={e => setEditThresholds(prev => ({ ...prev, nurturing: +e.target.value }))}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">No deals referred (days)</Label>
-                <Input
-                  type="number"
-                  value={editThresholds.noDeals}
-                  onChange={e => setEditThresholds(prev => ({ ...prev, noDeals: +e.target.value }))}
-                  className="h-8"
-                />
-              </div>
-              <Button size="sm" className="w-full" onClick={() => setThresholds(editThresholds)}>
-                Save Thresholds
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
       {stalePartners.length === 0 ? (
         <div className={`${liquidGlassCard} p-6 text-center`}>
           <p className="text-sm text-muted-foreground">All partners are active — no alerts right now.</p>

@@ -84,45 +84,49 @@ export function ReferralsNeedingAttention() {
 
   const displayed = showAll ? stale : stale.slice(0, 5);
 
+  const settingsPopover = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Thresholds">
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64">
+        <p className="text-xs font-medium text-slate-400 mb-3">Inactivity Thresholds</p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">No referrals (days)</Label>
+            <Input
+              type="number"
+              value={editThresholds.inactivity}
+              onChange={e => setEditThresholds(prev => ({ ...prev, inactivity: +e.target.value }))}
+              className="h-8"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">No active deals (days)</Label>
+            <Input
+              type="number"
+              value={editThresholds.noActiveDeals}
+              onChange={e => setEditThresholds(prev => ({ ...prev, noActiveDeals: +e.target.value }))}
+              className="h-8"
+            />
+          </div>
+          <Button size="sm" className="w-full" onClick={() => setThresholds(editThresholds)}>
+            Save Thresholds
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+  useEffect(() => {
+    if (!countsCtx) return;
+    countsCtx.setSettingsNode(settingsPopover);
+    return () => countsCtx.setSettingsNode(null);
+  }, [countsCtx, editThresholds]);
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <div />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-              <Settings className="h-3.5 w-3.5 text-slate-400" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-64">
-            <p className="text-xs font-medium text-slate-400 mb-3">Inactivity Thresholds</p>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs">No referrals (days)</Label>
-                <Input
-                  type="number"
-                  value={editThresholds.inactivity}
-                  onChange={e => setEditThresholds(prev => ({ ...prev, inactivity: +e.target.value }))}
-                  className="h-8"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">No active deals (days)</Label>
-                <Input
-                  type="number"
-                  value={editThresholds.noActiveDeals}
-                  onChange={e => setEditThresholds(prev => ({ ...prev, noActiveDeals: +e.target.value }))}
-                  className="h-8"
-                />
-              </div>
-              <Button size="sm" className="w-full" onClick={() => setThresholds(editThresholds)}>
-                Save Thresholds
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
       {stale.length === 0 ? (
         <div className={`${liquidGlassCard} p-6 text-center`}>
           <p className="text-sm text-muted-foreground">All referral sources are active — no alerts right now.</p>
