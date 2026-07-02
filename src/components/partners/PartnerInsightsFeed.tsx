@@ -46,6 +46,10 @@ type HeaderCtx = {
   toggleType: (t: InsightType) => void;
   showReport: boolean;
   setShowReport: (v: boolean) => void;
+  activityCount: number;
+  attentionCount: number;
+  setActivityCount: (n: number) => void;
+  setAttentionCount: (n: number) => void;
 };
 const InsightsHeaderContext = createContext<HeaderCtx | null>(null);
 
@@ -54,6 +58,8 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
     new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
   );
   const [showReport, setShowReport] = useState(false);
+  const [activityCount, setActivityCount] = useState(0);
+  const [attentionCount, setAttentionCount] = useState(0);
   const toggleType = (t: InsightType) => {
     setActiveTypes(prev => {
       const next = new Set(prev);
@@ -62,9 +68,28 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
     });
   };
   return (
-    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport }}>
+    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport, activityCount, attentionCount, setActivityCount, setAttentionCount }}>
       {children}
     </InsightsHeaderContext.Provider>
+  );
+}
+
+export function usePartnerInsightsCounts() {
+  return useContext(InsightsHeaderContext);
+}
+
+export function PartnerInsightsTabLabel({ label, kind }: { label: string; kind: 'activity' | 'attention' }) {
+  const ctx = useContext(InsightsHeaderContext);
+  const count = kind === 'activity' ? ctx?.activityCount ?? 0 : ctx?.attentionCount ?? 0;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      {count > 0 && (
+        <Badge variant="destructive" className="h-4 min-w-[18px] px-1 text-[10px] leading-none">
+          {count}
+        </Badge>
+      )}
+    </span>
   );
 }
 
