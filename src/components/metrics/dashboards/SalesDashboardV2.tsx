@@ -2967,6 +2967,7 @@ export function SalesDashboardV2() {
 
   return (
     <ViewCtx.Provider value={view}>
+    <ForecastCtx.Provider value={forecastCtxValue}>
     <DrilldownCtx.Provider value={drillApi}>
     <div
       className="sales-dashboard-v2 relative w-full"
