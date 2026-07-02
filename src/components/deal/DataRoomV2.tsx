@@ -93,14 +93,15 @@ export function DataRoomV2({ dealId }: DataRoomV2Props) {
             })
           )
         : [];
-      const { error } = await supabase.functions.invoke('push-to-flex', {
+      const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
         body: {
           dealId,
           action: 'sync_data_room',
           dataRoomFiles: attachmentData.filter(a => a.url !== null),
         },
       });
-      if (error) throw error;
+      const serverError = (result as any)?.error || (result as any)?.details;
+      if (error || serverError) throw new Error(serverError || (error as any)?.message || 'Failed to push to FLEx');
       const fileCount = attachments?.length || 0;
       toast.success('Data Room pushed to FLEx', { description: fileCount > 0 ? `${fileCount} file(s) synced successfully.` : 'Data room cleared on FLEx.' });
       logAction('push_to_flex', 'room', undefined, undefined, { file_count: fileCount });

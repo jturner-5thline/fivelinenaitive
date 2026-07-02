@@ -332,7 +332,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
         },
       });
       // Edge function returned a non-2xx: prefer the server's error message.
-      const serverError = (result as any)?.error;
+      const serverError = (result as any)?.error || (result as any)?.details;
       if (error || serverError) {
         throw new Error(serverError || (error as any)?.message || 'Failed to push to FLEx');
       }

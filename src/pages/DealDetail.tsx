@@ -2061,7 +2061,8 @@ export default function DealDetail() {
         },
       });
       
-      if (error) throw error;
+      const serverError = (data as any)?.error || (data as any)?.details;
+      if (error || serverError) throw new Error(serverError || (error as any)?.message || 'Failed to push to FLEx');
       
       toast({
         title: "Data Room pushed to FLEx",
