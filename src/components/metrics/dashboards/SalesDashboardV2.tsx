@@ -137,15 +137,15 @@ const ACTUAL: Record<MetricKey, (number | null)[]> = {
   salesCalls: pad([]),
   dealsOnBoard: pad([]), // overridden by live useDealsOnBoardByMonth
   dollarsOnBoard: pad([]),
-  proposalsIssued: pad([6, 7, 8, 6, 7, 9]),
+  proposalsIssued: pad([]), // overridden by live proposalsIssuedQuery
   dollarsProposed: pad([]),
   clientsSigned: pad([]),
-  dollarsSigned: pad([4.2, 7.5, 8.4, 7.1, 8.8, 7.6]),
+  dollarsSigned: pad([]), // overridden by live dollarsSignedQuery
   clientsReceivingTerms: pad([]),
   termsSigned: pad([]),
   volumeOfTermsSigned: pad([]),
-  dealsClosed: pad([1, 2, 2, 3, 1, 2]),
-  dollarsFunded: pad([5.1, 6.8, 5.9, 7.0, 5.5, 6.9]),
+  dealsClosed: pad([]),
+  dollarsFunded: pad([]),
 };
 
 function pad(actuals: number[]): (number | null)[] {
@@ -192,6 +192,22 @@ const DrilldownCtx = React.createContext<DrilldownApi | null>(null);
 function useDrilldown(): DrilldownApi {
   const v = React.useContext(DrilldownCtx);
   if (!v) throw new Error('Missing DrilldownCtx');
+  return v;
+}
+
+// ------------------------------------------------------------
+// Forecast context — user-editable full-year plan overrides that
+// persist across timeframe changes. Owned by SalesDashboardV2 so
+// PerformancePanel and the Sales Model editor share the same source.
+// ------------------------------------------------------------
+interface ForecastCtxValue {
+  fullDraft: FullForecastDraft;
+  setFullDraft: React.Dispatch<React.SetStateAction<FullForecastDraft>>;
+}
+const ForecastCtx = React.createContext<ForecastCtxValue | null>(null);
+function useForecast(): ForecastCtxValue {
+  const v = React.useContext(ForecastCtx);
+  if (!v) throw new Error('Missing ForecastCtx');
   return v;
 }
 
@@ -1602,29 +1618,11 @@ function SalesModelSheet() {
   const E = view.elapsed;
   const [editorOpen, setEditorOpen] = React.useState(false);
 
-  // Full-forecast draft, keyed by "YYYY-M" (M is 0-based month) so the editor
-  // always shows the entire year (and any user-added months/quarters/years)
-  // regardless of the currently-selected timeframe. Persists across timeframe
-  // switches so edits aren't lost when the view is narrowed to a quarter.
-  const [fullDraft, setFullDraft] = React.useState<FullForecastDraft>(() => buildInitialFullDraft());
-
-  // Apply full-draft edits to the currently visible slice by mapping each
-  // visible month back to its calendar year/month key.
-  const effectivePlan = React.useMemo<Record<MetricKey, number[]>>(() => {
-    const out = {} as Record<MetricKey, number[]>;
-    const startY = view.rangeStart.getUTCFullYear();
-    const startM = view.rangeStart.getUTCMonth();
-    (Object.keys(view.plan) as MetricKey[]).forEach((k) => {
-      out[k] = view.plan[k].map((base, i) => {
-        const d = new Date(Date.UTC(startY, startM + i, 1));
-        const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
-        const idx = fullDraft.columns.findIndex((c) => c.key === key);
-        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
-        return override === undefined ? base : override;
-      });
-    });
-    return out;
-  }, [fullDraft, view.plan, view.rangeStart]);
+  // Forecast draft is owned at the dashboard level so PerformancePanel and
+  // the Sales Model editor share the same source of truth. `view.plan` is
+  // already merged with these overrides upstream.
+  const { fullDraft, setFullDraft } = useForecast();
+  const effectivePlan = view.plan;
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
     const planV = effectivePlan[row.key][i];
@@ -2803,17 +2801,42 @@ export function SalesDashboardV2() {
   );
 
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
-  const view = React.useMemo<DashboardView>(() => ({
-    ...baseView,
-    actual: {
-      ...baseView.actual,
-      // Live actuals are already indexed 1:1 with the active timeframe months.
-      salesCalls: liveSalesCallsActual,
-      dealsOnBoard: liveDealsOnBoardActual,
-      proposalsIssued: liveProposalsIssuedActual,
-      dollarsSigned: liveDollarsSignedActual,
-    },
-  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
+  // Forecast draft — owned here so both PerformancePanel and the Sales Model
+  // editor read/write the same overrides. Persists across timeframe changes.
+  const [fullDraft, setFullDraft] = React.useState<FullForecastDraft>(() => buildInitialFullDraft());
+  const forecastCtxValue = React.useMemo<ForecastCtxValue>(
+    () => ({ fullDraft, setFullDraft }),
+    [fullDraft],
+  );
+
+  const view = React.useMemo<DashboardView>(() => {
+    // Merge user's forecast edits into the visible plan slice by mapping
+    // each month back to its calendar year/month key.
+    const startY = baseView.rangeStart.getUTCFullYear();
+    const startM = baseView.rangeStart.getUTCMonth();
+    const mergedPlan = {} as Record<MetricKey, number[]>;
+    (Object.keys(baseView.plan) as MetricKey[]).forEach((k) => {
+      mergedPlan[k] = baseView.plan[k].map((base, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        const idx = fullDraft.columns.findIndex((c) => c.key === key);
+        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
+        return override === undefined ? base : override;
+      });
+    });
+    return {
+      ...baseView,
+      plan: mergedPlan,
+      actual: {
+        ...baseView.actual,
+        // Live actuals are already indexed 1:1 with the active timeframe months.
+        salesCalls: liveSalesCallsActual,
+        dealsOnBoard: liveDealsOnBoardActual,
+        proposalsIssued: liveProposalsIssuedActual,
+        dollarsSigned: liveDollarsSignedActual,
+      },
+    };
+  }, [baseView, fullDraft, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
   // FinServ-scoped actuals for the top three KPI cards, indexed to the
   // active timeframe months just like the Debt actuals above.
@@ -2944,6 +2967,7 @@ export function SalesDashboardV2() {
 
   return (
     <ViewCtx.Provider value={view}>
+    <ForecastCtx.Provider value={forecastCtxValue}>
     <DrilldownCtx.Provider value={drillApi}>
     <div
       className="sales-dashboard-v2 relative w-full"
@@ -3109,6 +3133,7 @@ export function SalesDashboardV2() {
       proposalsIssuedError={kpiVariant === 'finserv' ? proposalsIssuedFinservQuery.error : proposalsIssuedQuery.error}
     />
     </DrilldownCtx.Provider>
+    </ForecastCtx.Provider>
     </ViewCtx.Provider>
   );
 }
