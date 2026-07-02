@@ -143,7 +143,7 @@ function useNikiPipelineData() {
   const { assignee } = usePerformanceAssignee();
   const nikiFilter = makeAssigneeFilter(assignee);
   return useQuery({
-    queryKey: ['niki-perf-pipeline-data', assignee, 'v3-server-scoped'],
+    queryKey: ['niki-perf-pipeline-data', assignee, 'v4-company-siblings'],
     enabled: !!user,
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
@@ -155,13 +155,39 @@ function useNikiPipelineData() {
       const escaped = assignee.replace(/"/g, '\\"');
       const dealsRes = await supabase
         .from('deals')
-        .select('id, company, value, deal_owner, manager, stage, created_at, pipeline_id')
+        .select('id, company, company_id, value, deal_owner, manager, stage, created_at, pipeline_id')
         .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
         .or(`deal_owner.eq."${escaped}",manager.eq."${escaped}"`);
       if (dealsRes.error) throw dealsRes.error;
-      const allNiki = (dealsRes.data ?? []).filter(
+      const primaryNiki = (dealsRes.data ?? []).filter(
         (d: any) => nikiFilter(d) && !isExcludedDealName(d.company),
       );
+
+      // Widen scope to include sibling deals on the OTHER 5th Line pipeline
+      // for the same company. Reps commonly split a client into an Active
+      // Pipeline record (managed by Niki) and an In Development record
+      // (owner/manager may be blank or another rep). Stage events on either
+      // sibling should count toward Niki's actuals when she owns/manages
+      // the company through either record. Example: Back Bar Project —
+      // Active sibling is Niki's, In Development sibling entered "In Due
+      // Diligence" and must count toward her Terms Signed.
+      const companyIds = Array.from(
+        new Set(primaryNiki.map((d: any) => d.company_id).filter(Boolean)),
+      );
+      let siblings: any[] = [];
+      if (companyIds.length > 0) {
+        const sibRes = await supabase
+          .from('deals')
+          .select('id, company, company_id, value, deal_owner, manager, stage, created_at, pipeline_id')
+          .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
+          .in('company_id', companyIds);
+        if (sibRes.error) throw sibRes.error;
+        const primaryIds = new Set(primaryNiki.map((d: any) => d.id));
+        siblings = (sibRes.data ?? []).filter(
+          (d: any) => !primaryIds.has(d.id) && !isExcludedDealName(d.company),
+        );
+      }
+      const allNiki = [...primaryNiki, ...siblings];
       const nikiIds = allNiki.map((d: any) => d.id);
       const dealsById = new Map<string, any>(allNiki.map((d: any) => [d.id, d]));
 
