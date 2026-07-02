@@ -92,16 +92,26 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
       setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', token));
       return; // keep open for a possible second click
     }
-    // Already have a month selection — extend or confirm.
-    if (!current.periodEnd && current.period === token) {
+    // Already have a month selection — collapse, extend, or confirm.
+    if (!current.periodEnd) {
+      if (current.period === token) { setOpen(false); return; }
+      setReportingPeriod(
+        reportingPeriodHelpers.computeReportingPeriod('month', current.period, token),
+      );
       setOpen(false);
       return;
     }
-    // Use the existing anchor (start of current selection) to form a range.
-    setReportingPeriod(
-      reportingPeriodHelpers.computeReportingPeriod('month', current.period, token),
-    );
-    setOpen(false);
+    // Range exists: clicking an endpoint removes it (collapse to the other endpoint).
+    if (token === current.periodEnd) {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', current.period));
+      return;
+    }
+    if (token === current.period) {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', current.periodEnd));
+      return;
+    }
+    // Any other chip starts a fresh single selection.
+    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', token));
   };
 
   const selectQuarter = (year: number, q: number) => {
@@ -111,14 +121,23 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
       setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
       return;
     }
-    if (!current.periodEnd && current.period === token) {
+    if (!current.periodEnd) {
+      if (current.period === token) { setOpen(false); return; }
+      setReportingPeriod(
+        reportingPeriodHelpers.computeReportingPeriod('quarter', current.period, token),
+      );
       setOpen(false);
       return;
     }
-    setReportingPeriod(
-      reportingPeriodHelpers.computeReportingPeriod('quarter', current.period, token),
-    );
-    setOpen(false);
+    if (token === current.periodEnd) {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', current.period));
+      return;
+    }
+    if (token === current.period) {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', current.periodEnd));
+      return;
+    }
+    setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', token));
   };
 
   // Disable future months/quarters.
