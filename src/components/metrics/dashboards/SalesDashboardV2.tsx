@@ -3133,6 +3133,7 @@ export function SalesDashboardV2() {
       proposalsIssuedError={kpiVariant === 'finserv' ? proposalsIssuedFinservQuery.error : proposalsIssuedQuery.error}
     />
     </DrilldownCtx.Provider>
+    </ForecastCtx.Provider>
     </ViewCtx.Provider>
   );
 }
