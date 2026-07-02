@@ -99,6 +99,54 @@ function PlaceholderWidget({ title }: { title: string }) {
   );
 }
 
+/**
+ * Least-squares linear best-fit trend across an ordered series.
+ * Nulls in the input are treated as gaps (skipped for fitting but keep index).
+ * Returns an array the same length as `values`, with the fitted y for every index
+ * (including the gap indexes so the line still spans across them).
+ */
+function computeLinearTrend(values: Array<number | null | undefined>): (number | null)[] {
+  const pts: Array<{ x: number; y: number }> = [];
+  values.forEach((v, i) => {
+    if (typeof v === 'number' && Number.isFinite(v)) pts.push({ x: i, y: v });
+  });
+  if (pts.length < 2) return values.map(() => null);
+  const n = pts.length;
+  const sumX = pts.reduce((a, p) => a + p.x, 0);
+  const sumY = pts.reduce((a, p) => a + p.y, 0);
+  const sumXY = pts.reduce((a, p) => a + p.x * p.y, 0);
+  const sumXX = pts.reduce((a, p) => a + p.x * p.x, 0);
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return values.map(() => null);
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return values.map((_, i) => intercept + slope * i);
+}
+
+function TrendToggleButton({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title="Toggle trend line"
+      className={
+        'text-[11px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+        (active
+          ? 'bg-primary/20 text-foreground'
+          : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+      }
+    >
+      Trend
+    </button>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
@@ -149,6 +197,12 @@ function GrossProfitToggleCard({
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
   const isDollar = mode === '$';
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const source = profits.quarters.map(q => isDollar ? q.grossProfit : q.grossMargin);
+    const trend = computeLinearTrend(source);
+    return profits.quarters.map((q, i) => ({ ...q, trend: trend[i] }));
+  }, [profits.quarters, isDollar]);
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -159,22 +213,25 @@ function GrossProfitToggleCard({
             </CardTitle>
             <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </div>
-          <div className="inline-flex rounded-md border border-border overflow-hidden">
-            {(['$', '%'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={
-                  'px-2.5 py-1 text-xs font-medium transition-colors ' +
-                  (mode === m
-                    ? 'bg-primary/20 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground')
-                }
-              >
-                {m}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <TrendToggleButton active={showTrend} onToggle={() => setShowTrend(v => !v)} />
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {(['$', '%'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={
+                    'px-2.5 py-1 text-xs font-medium transition-colors ' +
+                    (mode === m
+                      ? 'bg-primary/20 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground')
+                  }
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -192,7 +249,7 @@ function GrossProfitToggleCard({
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.grossProfit === 0 && q.revenue === 0) : q.grossMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profits.quarters}>
+              <ComposedChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                 {isDollar ? (
@@ -232,7 +289,20 @@ function GrossProfitToggleCard({
                     onClick={(d: any) => openSinglePoint('Gross Profit Margin %', d?.quarter, 'Gross Margin', Number(d?.grossMargin) || 0, fmtPct)}
                   />
                 )}
-              </BarChart>
+                {showTrend && (
+                  <Line
+                    type="monotone"
+                    dataKey="trend"
+                    stroke="hsl(142 71% 45%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    activeDot={false}
+                    name="Best-fit trend"
+                    isAnimationActive={false}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
@@ -258,6 +328,12 @@ function OperatingProfitToggleCard({
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
   const isDollar = mode === '$';
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const source = profits.quarters.map(q => isDollar ? q.operatingProfit : q.operatingMargin);
+    const trend = computeLinearTrend(source);
+    return profits.quarters.map((q, i) => ({ ...q, trend: trend[i] }));
+  }, [profits.quarters, isDollar]);
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -268,22 +344,25 @@ function OperatingProfitToggleCard({
             </CardTitle>
             <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </div>
-          <div className="inline-flex rounded-md border border-border overflow-hidden">
-            {(['$', '%'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={
-                  'px-2.5 py-1 text-xs font-medium transition-colors ' +
-                  (mode === m
-                    ? 'bg-primary/20 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground')
-                }
-              >
-                {m}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <TrendToggleButton active={showTrend} onToggle={() => setShowTrend(v => !v)} />
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {(['$', '%'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={
+                    'px-2.5 py-1 text-xs font-medium transition-colors ' +
+                    (mode === m
+                      ? 'bg-primary/20 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground')
+                  }
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -301,7 +380,7 @@ function OperatingProfitToggleCard({
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.operatingProfit === 0 && q.revenue === 0) : q.operatingMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={profits.quarters}>
+              <ComposedChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                 {isDollar ? (
@@ -346,7 +425,20 @@ function OperatingProfitToggleCard({
                     ))}
                   </Bar>
                 )}
-              </BarChart>
+                {showTrend && (
+                  <Line
+                    type="monotone"
+                    dataKey="trend"
+                    stroke="hsl(142 71% 45%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    activeDot={false}
+                    name="Best-fit trend"
+                    isAnimationActive={false}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}
@@ -404,6 +496,11 @@ function ActiveClientsMetricWidget({
   const deltaPct = prior === 0 ? 0 : (current - prior) / prior;
   const positive = deltaPct >= 0;
   const sparkData = data.trend.map((t) => ({ month: t.month, actual: t.count }));
+  const [showTrend, setShowTrend] = useState(false);
+  const sparkDataWithTrend = useMemo(() => {
+    const trend = computeLinearTrend(sparkData.map(d => d.actual));
+    return sparkData.map((d, i) => ({ ...d, trend: trend[i] }));
+  }, [sparkData]);
 
   const hasData = !data.isLoading && !data.error && data.trend.some((t) => t.count > 0);
 
@@ -428,8 +525,23 @@ function ActiveClientsMetricWidget({
         >
           Active Clients
         </div>
-        <div className="ml-auto text-[10px]" style={{ color: T.textFaint }}>
-          {periodBadge}
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); setShowTrend(v => !v); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); e.preventDefault(); setShowTrend(v => !v); }
+            }}
+            title="Toggle trend line"
+            className={
+              'text-[10px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+              (showTrend ? 'bg-primary/20 text-foreground' : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+            }
+          >
+            Trend
+          </span>
+          <span className="text-[10px]" style={{ color: T.textFaint }}>{periodBadge}</span>
         </div>
       </div>
       <div className="flex items-baseline gap-2 mt-1">
@@ -475,8 +587,8 @@ function ActiveClientsMetricWidget({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={sparkData}
+            <ComposedChart
+              data={sparkDataWithTrend}
               margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
               barCategoryGap="25%"
               onClick={(state: { activeTooltipIndex?: number } | null) => {
@@ -517,7 +629,20 @@ function ActiveClientsMetricWidget({
                 isAnimationActive={false}
                 cursor="pointer"
               />
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  name="Best-fit trend"
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -866,6 +991,11 @@ function FinServFinancialMetricsDashboardInner() {
     rows: Array<Record<string, unknown>>;
   } | null>(null);
 
+  // Per-widget "show best-fit trend line" toggles.
+  const [showTrendRevenue, setShowTrendRevenue] = useState(false);
+  const [showTrendCashflow, setShowTrendCashflow] = useState(true);
+  const [showTrendAvgRevClient, setShowTrendAvgRevClient] = useState(true);
+
   const selectedPeriod = useMemo(() => ({
     start_date: range.resolved.start,
     end_date: range.resolved.end,
@@ -1093,8 +1223,13 @@ function FinServFinancialMetricsDashboardInner() {
 
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendRevenue} onToggle={() => setShowTrendRevenue(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -1104,7 +1239,12 @@ function FinServFinancialMetricsDashboardInner() {
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={totalRev.months}>
+                <ComposedChart
+                  data={(() => {
+                    const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
+                    return totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
+                  })()}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
@@ -1123,7 +1263,20 @@ function FinServFinancialMetricsDashboardInner() {
                       granularity: range.granularity,
                     })}
                   />
-                </BarChart>
+                  {showTrendRevenue && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}
@@ -1150,19 +1303,29 @@ function FinServFinancialMetricsDashboardInner() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle
-            className="text-sm font-medium cursor-help"
-            title='FinServ Cashflow net of "Due To 5th Line Payments"'
-          >
-            FinServ Cashflow
-          </CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle
+                className="text-sm font-medium cursor-help"
+                title='FinServ Cashflow net of "Due To 5th Line Payments"'
+              >
+                FinServ Cashflow
+              </CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendCashflow} onToggle={() => setShowTrendCashflow(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={cashflow.points}>
+                <ComposedChart
+                  data={(() => {
+                    const trend = computeLinearTrend(cashflow.points.map(p => p.value));
+                    return cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
+                  })()}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
@@ -1186,7 +1349,19 @@ function FinServFinancialMetricsDashboardInner() {
                       <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                     ))}
                   </Bar>
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={false} name="Trend" />
+                  {showTrendCashflow && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -1215,8 +1390,13 @@ function FinServFinancialMetricsDashboardInner() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendAvgRevClient} onToggle={() => setShowTrendAvgRevClient(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -1339,17 +1519,19 @@ function FinServFinancialMetricsDashboardInner() {
                       }}
                     />
                   </Bar>
-                  <Line
-                    type="monotone"
-                    dataKey="trend"
-                    stroke="hsl(142 71% 45%)"
-                    strokeWidth={2}
-                    strokeDasharray="4 3"
-                    dot={false}
-                    activeDot={false}
-                    name="Best-fit trend"
-                    isAnimationActive={false}
-                  />
+                  {showTrendAvgRevClient && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
