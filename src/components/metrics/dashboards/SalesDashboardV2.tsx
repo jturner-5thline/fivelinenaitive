@@ -2801,17 +2801,42 @@ export function SalesDashboardV2() {
   );
 
   const baseView = React.useMemo(() => buildView(selectedQuarter), [selectedQuarter]);
-  const view = React.useMemo<DashboardView>(() => ({
-    ...baseView,
-    actual: {
-      ...baseView.actual,
-      // Live actuals are already indexed 1:1 with the active timeframe months.
-      salesCalls: liveSalesCallsActual,
-      dealsOnBoard: liveDealsOnBoardActual,
-      proposalsIssued: liveProposalsIssuedActual,
-      dollarsSigned: liveDollarsSignedActual,
-    },
-  }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
+  // Forecast draft — owned here so both PerformancePanel and the Sales Model
+  // editor read/write the same overrides. Persists across timeframe changes.
+  const [fullDraft, setFullDraft] = React.useState<FullForecastDraft>(() => buildInitialFullDraft());
+  const forecastCtxValue = React.useMemo<ForecastCtxValue>(
+    () => ({ fullDraft, setFullDraft }),
+    [fullDraft],
+  );
+
+  const view = React.useMemo<DashboardView>(() => {
+    // Merge user's forecast edits into the visible plan slice by mapping
+    // each month back to its calendar year/month key.
+    const startY = baseView.rangeStart.getUTCFullYear();
+    const startM = baseView.rangeStart.getUTCMonth();
+    const mergedPlan = {} as Record<MetricKey, number[]>;
+    (Object.keys(baseView.plan) as MetricKey[]).forEach((k) => {
+      mergedPlan[k] = baseView.plan[k].map((base, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        const idx = fullDraft.columns.findIndex((c) => c.key === key);
+        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
+        return override === undefined ? base : override;
+      });
+    });
+    return {
+      ...baseView,
+      plan: mergedPlan,
+      actual: {
+        ...baseView.actual,
+        // Live actuals are already indexed 1:1 with the active timeframe months.
+        salesCalls: liveSalesCallsActual,
+        dealsOnBoard: liveDealsOnBoardActual,
+        proposalsIssued: liveProposalsIssuedActual,
+        dollarsSigned: liveDollarsSignedActual,
+      },
+    };
+  }, [baseView, fullDraft, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
   // FinServ-scoped actuals for the top three KPI cards, indexed to the
   // active timeframe months just like the Debt actuals above.
