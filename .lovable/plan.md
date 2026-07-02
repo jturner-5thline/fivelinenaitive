@@ -1,56 +1,58 @@
-# Make the Global Timeframe Authoritative for Every Insights Widget
-
 ## Goal
-When you change the header timeframe (e.g. "Last 6 Months", a quarter, a custom range, a month), every KPI, chart, widget and drilldown on `/insights` reflects that exact window — no hardcoded years, no per-widget overrides, no "fixed 9-month plan" views.
 
-## Why this is bigger than a one-line fix
-A spot-check shows the timeframe context (`useInsightsTimeframe`) is already correct, but several dashboards bypass it:
+Add the four financial chart widgets that currently live at the top of the FinServ Financial Metrics dashboard to the Debt Advisory Metrics dashboard (`ConsolidatedDebtPipelineDashboard.tsx`), driven by the same live QuickBooks data pipeline but pointed at the "5th Line Capital Advisors LLC" realm (`193514877331929`) instead of "5th Line Financial Services, LLC" (`9341451968897660`).
 
-- **Sales Dashboard** — hardcodes `YEAR = 2026` and only renders Jan–Sep. KPI buckets, Sales Calls, Deals on Board, Proposals Issued, Dollars Signed all ignore the picker. `useSalesCallsCount(yearStart, yearEnd)` and the `*ByMonth(YEAR)` hooks need to accept the active range.
-- **Sales Team Board KPI grid** (now embedded in Sales Dashboard) — same hardcoded year.
-- **Cumulative Pace / Sales Model sheet** — `buildView(selectedQuarter)` collapses any range into a 9-month plan; needs a true N-month layout driven by `timeframe.start/end`.
-- **Management Review / Snapshot dashboards** — already partially wired but some carousels use their own period state.
-- **Revenue · Commissions · Profit, Revenue by Client, Income by Product/Service, Top Customers** — verify each chart/table reads `timeframe` and re-queries; today some default to the legacy `selectedQuarter` only.
-- **Forecasts and Key Metrics tabs** — ensure forecast horizon and KPI series both pivot off the active range.
-- **End of Day / Dashboard popup widgets** — outside `/insights`, untouched by this change (call out so we don't over-scope).
+### Widgets to replicate
+1. **Total Revenue** — monthly bars for the selected period, with the trend-line + Δ tooltip toggle.
+2. **Gross Profit** — single card with `$` / `%` toggle (GP $ bars vs GP margin % bars).
+3. **Operating Profit** — single card with `$` / `%` toggle (OP $ bars vs OP margin % bars).
+4. **Cashflow** — bar chart of QBO Statement of Cash Flows net cash flow, netted of intercompany adjustments, with trend toggle.
 
-## Plan
+Each chart keeps its current behavior: same visual language (dark glass, cyan/green/red bars), same tooltips (`DeltaTooltip` with period-over-period Δ$/Δ%), same trend-line toggle, same drill-down wiring, and the same global `useInsightsTimeframe` authority.
 
-### 1. Make the timeframe contract uniform
-- Standardize on `useInsightsTimeframe()` returning `{ start, end, label, months[] }` where `months[]` is the ordered list of `YYYY-MM` buckets inside the range.
-- Add a small helper `useTimeframeMonthBuckets()` so widgets that bucket by month don't each reimplement it.
+## Approach
 
-### 2. Sales Dashboard refactor (largest piece)
-- Remove the `YEAR = 2026` constant and the 9-month fixed array.
-- Drive `yearStart`, `yearEnd` and all `*ByMonth` hooks from `timeframe.start/end`.
-- Rebuild `buildView(...)` to accept arbitrary month ranges (1–24 months) and render the Sales Model sheet, cumulative pace chart, and KPI grid against that.
-- Update `useSalesCallsCount`, `useDealsOnBoardByMonth`, `useProposalsIssuedByMonth`, `useDollarsSignedByMonth` to accept `(start, end)` instead of `(YEAR)`. Keep the cached `sales_calls_cache` lookup; just pass through the range filter.
+### 1. Parameterize the data hooks by realm
+`src/hooks/useFinServFinancialMetrics.ts` currently hardcodes `FINSERV_REALM_ID`. Change the four hooks the debt dashboard needs to accept an optional `realmId` argument (default = FinServ realm so all existing FinServ callers keep working):
 
-### 3. Management Review + Snapshot
-- Replace any local quarter/month state with the shared context.
-- Carousel tabs (Agenda…SW) keep their own state, but every data widget reads `timeframe`.
+- `useFinServTotalRevenue(period, granularity, realmId?)`
+- `useFinServQuarterlyProfits(period, granularity, realmId?)`
+- `useFinServCashflow(period, granularity, realmId?)`
+- Internal helpers `fetchFinServPnlSnapshots`, `syncFinServPnlSnapshots`, `ensureFinServPnlSnapshots` take a `realmId` parameter and include it in the react-query keys so FinServ and Debt caches never collide.
 
-### 4. Revenue / Finance widgets
-- Audit `RevenueByMonthChart`, `IncomeByProductServiceCard`, `RevenueOverviewDashboard`, `HistoricalTrendChart`, drilldowns.
-- Convert any `selectedQuarter`-only consumers to read `timeframe.start/end` directly. Keep `selectedQuarter` available for legacy QBO hooks, but compute it from `timeframe` (already does).
+Also export a new constant `DEBT_ADVISORY_REALM_ID = '193514877331929'` from that hook file so all Debt callers reference a single source of truth.
 
-### 5. Forecasts + Key Metrics tabs
-- `BenchmarkForecastsPage`, `KeyMetricsPage`: tie series length and "as of" markers to `timeframe.end`; tie history horizon to `timeframe.start`.
+The QBO sync (`quickbooks-sync` edge function) is already realm-agnostic — it just receives `realmId` in the body — so no edge-function changes are required. Data lands in the same `qbo_pnl_snapshots` / `qbo_cashflow_snapshots` tables, keyed by realm.
 
-### 6. Verification pass
-For each dashboard tab:
-1. Set picker to "Last 6 Months", confirm every widget shows ~6 month buckets.
-2. Set picker to a single quarter, confirm widgets collapse to that quarter.
-3. Set picker to a custom 3-week range, confirm KPI cards and charts narrow accordingly (or hide month-bucketed widgets with a clear "Range too short" note when N<1 month).
-4. Drilldown pop-ups inherit the same window.
+### 2. Extract the four widget components
+The `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `DeltaTooltip`, and `TrendDeltaText` helpers are defined inline inside `FinServFinancialMetricsDashboard.tsx`. Extract them (plus the small formatting helpers `fmtCurrency`, `fmtCurrencyFull`, `fmtPercent`, `computeLinearTrend`, `TrendToggleButton`, `createGlassBarShape` reuse) into a shared file:
 
-## Out of scope (will not change)
-- Dashboard popup (End of Day / Performance) — its own timeframe model, unchanged.
-- Deals / CRM / Finance pages outside `/insights`.
-- Sales Calls cache refresh cadence (still 24h sweep).
+- `src/components/metrics/finserv-charts/PnlChartCards.tsx` — exports `TotalRevenueCard`, `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `CashflowCard`. Each card accepts the hook data + a `titleSuffix` / drilldown-source id so labels ("FinServ Cashflow" vs "Debt Advisory Cashflow") can differ per dashboard.
+- Re-import these into `FinServFinancialMetricsDashboard.tsx` so nothing visible changes for the existing dashboard.
 
-## Risk / open questions
-- Sales Model "plan" numbers are currently keyed to specific months of 2026. When the user picks a window outside 2026, should plan rows show blanks, prorate, or hide? Default: render plan only for months that exist in the seeded model; show actuals for everything else.
-- Cumulative Pace target curve same question — default: show pace only when plan exists for the selected months.
+### 3. Add a "Financial Performance" section to the Debt dashboard
+In `ConsolidatedDebtPipelineDashboard.tsx`, add a new section (above the existing Debt Advisory Metrics pipeline board) that:
 
-If you'd like a different default for those two edge cases, tell me and I'll wire it that way before implementing.
+- Reads the global `useInsightsTimeframe` range (same as FinServ dashboard).
+- Calls the four hooks with `realmId = DEBT_ADVISORY_REALM_ID`.
+- Renders the four cards in the same layout used on FinServ (Total Revenue full-width, then a 2-col grid for GP + OP, then Cashflow full-width).
+- Uses the same drill-down provider (`DrilldownProvider` / `useDrilldown`) — pass `realm: DEBT_ADVISORY_REALM_ID` on the click payloads so the `client-series` / `pnl` / `cashflow` drill-down bodies query the right realm. `ChartDrilldown.tsx` already accepts an optional `req.realm` and defaults to FinServ, so callers just need to pass it.
+
+### 4. Intercompany netting
+The FinServ cashflow subtracts an `intercompany_adjustment` column (the "Due to/from 5th Line Capital LLC" line). We keep the same subtraction logic for Debt so the two dashboards are symmetric — the column already exists on `qbo_cashflow_snapshots` for both realms; for Capital Advisors it captures the opposite side of the same intercompany pair.
+
+### 5. Access gating
+The Debt Advisory Metrics dashboard is already gated by the existing Insights permissions in `Insights.tsx`. No new gating needed — this addition inherits it.
+
+## Files touched
+
+- `src/hooks/useFinServFinancialMetrics.ts` — add optional `realmId` args + `DEBT_ADVISORY_REALM_ID` export; thread `realmId` through query keys and QBO fetch/sync calls. No behavior change for existing FinServ callers.
+- `src/components/metrics/finserv-charts/PnlChartCards.tsx` — new file. Extracted `TotalRevenueCard`, `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `CashflowCard` + shared helpers.
+- `src/components/metrics/dashboards/FinServFinancialMetricsDashboard.tsx` — replace inline definitions with imports from the new file (no visual change).
+- `src/components/metrics/dashboards/ConsolidatedDebtPipelineDashboard.tsx` — mount the four cards inside a new "Financial Performance" section using `realmId = DEBT_ADVISORY_REALM_ID`.
+- `src/components/insights/ChartDrilldown.tsx` — no changes required (already accepts `req.realm`); Debt callers just supply it.
+
+## Out of scope
+- No changes to QBO sync scheduling, edge functions, or database schema.
+- No changes to the FinServ dashboard's visible layout or data.
+- Not replicating the Average Revenue by Client, Revenue Change by Client, Active Clients, Total MRR, or Income by Product/Service widgets — only the four explicitly requested (Revenue, GP $/%, OP $/%, Cashflow).

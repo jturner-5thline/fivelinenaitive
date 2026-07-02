@@ -23,6 +23,8 @@ import {
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
+import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
+import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 
 /**
  * Debt Advisory Metrics Board currency display.
@@ -1311,6 +1313,19 @@ export function ConsolidatedDebtPipelineDashboard({
         />
 
         <StageTransitTimeChart />
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Financial Performance</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Revenue, Gross Profit, Operating Profit, and Cashflow sourced from 5th Line Capital Advisors in QuickBooks.
+          </p>
+        </div>
+        <PnlFourChartsSection
+          realmId={DEBT_ADVISORY_REALM_ID}
+          cashflowTitle="Debt Advisory Cashflow"
+        />
       </div>
 
       <DrilldownModal
