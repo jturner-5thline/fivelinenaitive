@@ -14,6 +14,42 @@ import {
   useFinServCashflow,
 } from '@/hooks/useFinServFinancialMetrics';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { DrilldownProvider, useDrilldown } from '@/components/insights/ChartDrilldown';
+
+// Build a resolver from a bucket key/label → concrete ymd start/end for the
+// drilldown drawer. Recharts hands us `month`/`quarter` labels only, so we
+// index everything the hooks return.
+function useBucketResolver(
+  timeframe: { start: string; end: string; label: string },
+  granularity: 'monthly' | 'quarterly' | 'yearly',
+  totalRev: ReturnType<typeof useFinServTotalRevenue>,
+  profits: ReturnType<typeof useFinServQuarterlyProfits>,
+  cashflow: ReturnType<typeof useFinServCashflow>,
+) {
+  return useMemo(() => {
+    const index = new Map<string, { start: string; end: string; label: string }>();
+    const add = (key: string | undefined, start?: string, end?: string, label?: string) => {
+      if (!key || !start || !end) return;
+      index.set(key, { start, end, label: label ?? key });
+    };
+    for (const m of totalRev.months ?? []) {
+      add(m.month, (m as any).start_date, (m as any).end_date, m.month);
+      add((m as any).monthKey, (m as any).start_date, (m as any).end_date, m.month);
+    }
+    for (const q of profits.quarters ?? []) {
+      add(q.quarter, (q as any).start_date, (q as any).end_date, q.quarter);
+      add((q as any).quarterKey, (q as any).start_date, (q as any).end_date, q.quarter);
+    }
+    for (const p of cashflow.points ?? []) {
+      add(p.month, (p as any).start_date, (p as any).end_date, p.month);
+      add((p as any).monthKey, (p as any).start_date, (p as any).end_date, p.month);
+    }
+    return (keyOrLabel: string | undefined) => {
+      if (keyOrLabel && index.has(keyOrLabel)) return index.get(keyOrLabel)!;
+      return { start: timeframe.start, end: timeframe.end, label: timeframe.label };
+    };
+  }, [timeframe.start, timeframe.end, timeframe.label, totalRev.months, profits.quarters, cashflow.points, granularity]);
+}
 
 // ── Formatters (mirrors FinServFinancialMetricsDashboard) ──
 const fmtCurrency = (v: number) => {
@@ -140,10 +176,11 @@ function DeltaTooltip({
 // ── Card variants ──
 
 function TotalRevenueCard({
-  periodBadge, totalRev,
+  periodBadge, totalRev, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
+  onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(false);
   const chartData = useMemo(() => {
@@ -181,7 +218,7 @@ function TotalRevenueCard({
                 <Tooltip content={(props: any) => (
                   <DeltaTooltip {...props} data={chartData} dataKey="amount" format={fmtCurrencyFull} seriesName="Revenue" />
                 )} />
-                <Bar dataKey="amount" fill="hsl(var(--primary))" name="Revenue" shape={createGlassBarShape({ radius: 4 })} />
+                <Bar dataKey="amount" fill="hsl(var(--primary))" name="Revenue" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d)} />
                 {showTrend && (
                   <Line type="monotone" dataKey="trend" stroke="hsl(142 71% 45%)" strokeWidth={2} strokeDasharray="4 3" dot={false} activeDot={false} isAnimationActive={false} />
                 )}
@@ -195,11 +232,12 @@ function TotalRevenueCard({
 }
 
 function GrossProfitToggleCard({
-  periodBadge, totalRev, profits,
+  periodBadge, totalRev, profits, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
   profits: ReturnType<typeof useFinServQuarterlyProfits>;
+  onBarClick?: (d: any, mode: '$' | '%') => void;
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
   const isDollar = mode === '$';
@@ -261,9 +299,9 @@ function GrossProfitToggleCard({
                   <DeltaTooltip {...props} data={chartData} dataKey={isDollar ? 'grossProfit' : 'grossMargin'} format={isDollar ? fmtCurrencyFull : fmtPct} seriesName={isDollar ? 'Gross Profit' : 'Gross Margin'} />
                 )} />
                 {isDollar ? (
-                  <Bar dataKey="grossProfit" fill="hsl(var(--chart-2))" name="Gross Profit" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar dataKey="grossProfit" fill="hsl(var(--chart-2))" name="Gross Profit" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d, '$')} />
                 ) : (
-                  <Bar dataKey="grossMargin" fill="hsl(160, 65%, 50%)" name="Gross Margin %" shape={createGlassBarShape({ radius: 4 })} />
+                  <Bar dataKey="grossMargin" fill="hsl(160, 65%, 50%)" name="Gross Margin %" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d, '%')} />
                 )}
                 {showTrend && (
                   <Line type="monotone" dataKey="trend" stroke="hsl(142 71% 45%)" strokeWidth={2} strokeDasharray="4 3" dot={false} activeDot={false} isAnimationActive={false} />
@@ -278,11 +316,12 @@ function GrossProfitToggleCard({
 }
 
 function OperatingProfitToggleCard({
-  periodBadge, totalRev, profits,
+  periodBadge, totalRev, profits, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
   profits: ReturnType<typeof useFinServQuarterlyProfits>;
+  onBarClick?: (d: any, mode: '$' | '%') => void;
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
   const isDollar = mode === '$';
@@ -345,13 +384,13 @@ function OperatingProfitToggleCard({
                 )} />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
                 {isDollar ? (
-                  <Bar dataKey="operatingProfit" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })}>
+                  <Bar dataKey="operatingProfit" name="Operating Profit" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d, '$')}>
                     {profits.quarters.map((entry, i) => (
                       <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                     ))}
                   </Bar>
                 ) : (
-                  <Bar dataKey="operatingMargin" name="Operating Margin %" shape={createGlassBarShape({ radius: 4 })}>
+                  <Bar dataKey="operatingMargin" name="Operating Margin %" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d, '%')}>
                     {profits.quarters.map((entry, i) => (
                       <Cell key={i} fill={entry.operatingMargin >= 0 ? 'hsl(35, 85%, 55%)' : 'hsl(var(--destructive))'} />
                     ))}
@@ -370,11 +409,12 @@ function OperatingProfitToggleCard({
 }
 
 function CashflowCard({
-  periodBadge, cashflow, title,
+  periodBadge, cashflow, title, onBarClick,
 }: {
   periodBadge: string;
   cashflow: ReturnType<typeof useFinServCashflow>;
   title: string;
+  onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(true);
   return (
@@ -409,7 +449,7 @@ function CashflowCard({
                       <DeltaTooltip {...props} data={chartData} dataKey="value" format={fmtCurrencyFull} seriesName="Free Cash Flow" />
                     )} />
                     <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                    <Bar dataKey="value" name="Cash Flow" shape={createGlassBarShape({ radius: 4 })}>
+                    <Bar dataKey="value" name="Cash Flow" shape={createGlassBarShape({ radius: 4 })} cursor="pointer" onClick={(d: any) => onBarClick?.(d)}>
                       {cashflow.points.map((entry, i) => (
                         <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
                       ))}
