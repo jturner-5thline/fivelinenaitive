@@ -81,14 +81,7 @@ export function ReferralsNeedingAttention() {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className={liquidGlassSectionTitle}>Referrals Needing Attention</h3>
-          {stale.length > 0 && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-              {stale.length}
-            </Badge>
-          )}
-        </div>
+        <div />
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
