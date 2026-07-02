@@ -143,15 +143,21 @@ function useNikiPipelineData() {
   const { assignee } = usePerformanceAssignee();
   const nikiFilter = makeAssigneeFilter(assignee);
   return useQuery({
-    queryKey: ['niki-perf-pipeline-data', assignee, 'v2-indev-proposal-fallback'],
+    queryKey: ['niki-perf-pipeline-data', assignee, 'v3-server-scoped'],
     enabled: !!user,
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
       //    deals still count for the stages they passed through).
+      // Filter by assignee SERVER-SIDE — the two pipelines combined exceed
+      // PostgREST's 1000-row default cap, so a naive client-side filter
+      // silently drops deals (bug: Phospholutions was missing from
+      // "Proposals Issued" until this scope was tightened).
+      const escaped = assignee.replace(/"/g, '\\"');
       const dealsRes = await supabase
         .from('deals')
         .select('id, company, value, deal_owner, manager, stage, created_at, pipeline_id')
-        .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[]);
+        .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
+        .or(`deal_owner.eq."${escaped}",manager.eq."${escaped}"`);
       if (dealsRes.error) throw dealsRes.error;
       const allNiki = (dealsRes.data ?? []).filter(
         (d: any) => nikiFilter(d) && !isExcludedDealName(d.company),
