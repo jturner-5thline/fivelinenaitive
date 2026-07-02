@@ -626,6 +626,14 @@ function ActiveClientsMetricWidget({
           </span>
         </span>
       </div>
+      {showTrend && (
+        <div className="mt-1">
+          <TrendDeltaText
+            values={sparkData.map((d) => d.actual)}
+            format={(v: number) => `${v >= 0 ? '' : ''}${Math.round(v).toLocaleString()}`}
+          />
+        </div>
+      )}
       <div style={{ height: 160 }} className="mt-2">
         {!hasData ? (
           <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: T.textFaint }}>
