@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MetricManualInputDialog } from './MetricManualInputDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,6 +95,176 @@ function PlaceholderWidget({ title }: { title: string }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+// Active Clients — matches the "Deals on Board" MetricWidget on the
+// Sales Dashboard (dark glass surface, icon chip, uppercase label,
+// big number + delta, sparkline trend). No plan series exists for
+// this metric, so the trend line renders as a single "Actual" line.
+// ────────────────────────────────────────────────────────────
+
+const MW_TOKENS = {
+  textPrimary: '#ECECF4',
+  textMuted: '#8A8AA6',
+  textFaint: '#5A5A72',
+  periwinkle: '#9DA2F5',
+  cyan: '#5EEAD4',
+  rose: '#FB7185',
+  surface: 'rgba(255,255,255,0.035)',
+  surfaceBorder: 'rgba(255,255,255,0.07)',
+  hairline: 'rgba(255,255,255,0.06)',
+};
+const MW_GLASS: React.CSSProperties = {
+  background: MW_TOKENS.surface,
+  border: `1px solid ${MW_TOKENS.surfaceBorder}`,
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  borderRadius: 8,
+};
+
+function ActiveClientsMetricWidget({
+  data,
+  periodBadge,
+  onDrill,
+}: {
+  data: {
+    currentCount: number;
+    priorCount: number;
+    variance: number | null;
+    trend: { month: string; monthKey: string; count: number }[];
+    isLoading: boolean;
+    error: unknown;
+  };
+  periodBadge: string;
+  onDrill: (index: number) => void;
+}) {
+  const T = MW_TOKENS;
+  const current = data.currentCount ?? 0;
+  const prior = data.priorCount ?? 0;
+  const gap = current - prior;
+  const deltaPct = prior === 0 ? 0 : (current - prior) / prior;
+  const positive = deltaPct >= 0;
+  const sparkData = data.trend.map((t) => ({ month: t.month, actual: t.count }));
+
+  const hasData = !data.isLoading && !data.error && data.trend.some((t) => t.count > 0);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onDrill(sparkData.length - 1)}
+      style={MW_GLASS}
+      className="relative p-4 flex flex-col gap-2 overflow-hidden text-left cursor-pointer transition-transform hover:-translate-y-[1px] hover:brightness-110 focus-visible:outline-none focus-visible:ring-2"
+      aria-label="Drill into Active Clients"
+    >
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center justify-center rounded-lg"
+          style={{ width: 28, height: 28, background: 'rgba(157,162,245,0.14)', color: T.periwinkle }}
+        >
+          <Users size={14} />
+        </div>
+        <div
+          className="text-[10px] font-medium uppercase"
+          style={{ color: T.textMuted, letterSpacing: '0.08em' }}
+        >
+          Active Clients
+        </div>
+        <div className="ml-auto text-[10px]" style={{ color: T.textFaint }}>
+          {periodBadge}
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2 mt-1">
+        <div
+          className="text-3xl font-semibold leading-none"
+          style={{ color: T.textPrimary, fontVariantNumeric: 'tabular-nums' }}
+        >
+          {data.isLoading ? '—' : current.toLocaleString()}
+        </div>
+        {prior > 0 && (
+          <div
+            className="flex items-center gap-0.5 text-xs font-medium"
+            style={{ color: positive ? T.cyan : T.rose, fontVariantNumeric: 'tabular-nums' }}
+          >
+            {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            {positive ? '+' : '−'}
+            {Math.abs(Math.round(deltaPct * 100))}%
+          </div>
+        )}
+      </div>
+      <div
+        className="flex items-center justify-between text-[11px]"
+        style={{ color: T.textMuted, fontVariantNumeric: 'tabular-nums' }}
+      >
+        <span>
+          vs prior {prior.toLocaleString()} ·{' '}
+          <span style={{ color: gap >= 0 ? T.cyan : T.rose }}>
+            {gap >= 0 ? '+' : '−'}
+            {Math.abs(gap).toLocaleString()}
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-[10px]">
+          <span className="flex items-center gap-1">
+            <span style={{ width: 12, height: 2, background: T.cyan, display: 'inline-block', borderRadius: 1 }} />
+            Actual
+          </span>
+        </span>
+      </div>
+      <div style={{ height: 160 }} className="mt-2">
+        {!hasData ? (
+          <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: T.textFaint }}>
+            {data.isLoading ? 'Loading…' : data.error ? 'Failed to load' : 'No active FinServ clients yet'}
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={sparkData}
+              margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+              onClick={(state: { activeTooltipIndex?: number } | null) => {
+                if (state && typeof state.activeTooltipIndex === 'number') {
+                  onDrill(state.activeTooltipIndex);
+                }
+              }}
+            >
+              <CartesianGrid stroke={T.hairline} vertical={false} />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: T.textFaint, fontSize: 10 }}
+                axisLine={{ stroke: T.hairline }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: T.textFaint, fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(8,8,12,0.95)',
+                  border: `1px solid ${T.surfaceBorder}`,
+                  borderRadius: 8,
+                  color: T.textPrimary,
+                  fontSize: 12,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual"
+                name="Actual"
+                stroke={T.cyan}
+                strokeWidth={2}
+                dot={{ r: 2.5, fill: T.cyan }}
+                activeDot={{ r: 5, fill: T.cyan, stroke: T.cyan }}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </button>
   );
 }
 
@@ -857,61 +1027,21 @@ function FinServFinancialMetricsDashboardInner() {
         </CardContent>
       </Card>
 
-      <Card className="glass-module">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            {activeClients.isLoading ? (
-              <Skeleton className="h-10 w-32" />
-            ) : activeClients.error ? null : (
-              <>
-                <div className="flex items-end gap-3 flex-wrap">
-                  <div className="text-3xl font-semibold text-foreground leading-none tabular-nums">
-                    {activeClients.currentCount}
-                  </div>
-                  <VarianceIndicator value={activeClients.variance} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Count at end of period · vs prior period ({activeClients.priorCount})
-                </div>
-              </>
-            )}
-          </div>
-          {activeClients.isLoading ? <WidgetLoading /> : activeClients.error ? <WidgetError /> : activeClients.trend.every(t => t.count === 0) ? <WidgetEmpty message="No active FinServ clients yet" /> : (
-            <div className="h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={activeClients.trend}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                  <Tooltip formatter={(v: number, name: string) => [
-                    name === 'Trend' ? v : v,
-                    name,
-                  ]} />
-                  <Bar
-                    dataKey="count"
-                    fill="hsl(var(--primary))"
-                    name="Active Clients"
-                    shape={createGlassBarShape({ radius: 4 })}
-                    cursor="pointer"
-                    onClick={(d: any) => openDrill({
-                      kind: 'active-clients',
-                      sourceLabel: 'Active Clients',
-                      selection: d?.month ?? '',
-                      period: resolveBucket(d?.monthKey ?? d?.month),
-                      granularity: range.granularity,
-                    })}
-                  />
-                  <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <ActiveClientsMetricWidget
+        data={activeClients}
+        periodBadge={periodBadge}
+        onDrill={(idx) => {
+          const point = activeClients.trend[idx];
+          if (!point) return;
+          openDrill({
+            kind: 'active-clients',
+            sourceLabel: 'Active Clients',
+            selection: point.month,
+            period: resolveBucket(point.monthKey ?? point.month),
+            granularity: range.granularity,
+          });
+        }}
+      />
       </div>
 
       {/* ── Row 5b + 6: Average Revenue by Client + Revenue Change by Client ── */}
