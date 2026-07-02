@@ -1,6 +1,12 @@
 import { Helmet } from "react-helmet-async";
-import { Handshake, Network, Settings as SettingsIcon, UserCheck } from "lucide-react";
+import { Handshake, Network, Settings as SettingsIcon, UserCheck, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { lazy, Suspense, useState } from "react";
 import { Building2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +32,12 @@ const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
 function SalesBdHeaderRangeSelector() {
   const { setRange } = useSalesBdDateRange();
+  const TOP_TABS = [
+    { value: "partners-channels", label: "Partners & Channels", Icon: Handshake },
+    { value: "referral-sources", label: "Referral Sources", Icon: UserCheck },
+  ] as const;
+  const activeTopTab = TOP_TABS.find((t) => t.value === activeTab) ?? TOP_TABS[0];
+
   return (
     <InsightsTimeRangeSelector
       boardId="sales-bd"
@@ -72,14 +84,23 @@ function SalesBDInner() {
                   <CrmUpdateQueueButton />
                 </div>
               </div>
-              <TabsList>
-                <TabsTrigger value="partners-channels" className="gap-1.5">
-                  <Handshake className="h-3.5 w-3.5" /> Partners & Channels
-                </TabsTrigger>
-                <TabsTrigger value="referral-sources" className="gap-1.5">
-                  <UserCheck className="h-3.5 w-3.5" /> Referral Sources
-                </TabsTrigger>
-              </TabsList>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                    <activeTopTab.Icon className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">{activeTopTab.label}</span>
+                    <ChevronDown className="h-3 w-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  {TOP_TABS.map(({ value, label, Icon }) => (
+                    <DropdownMenuItem key={value} onSelect={() => setActiveTab(value)} className="gap-2 text-xs">
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           }
         >
