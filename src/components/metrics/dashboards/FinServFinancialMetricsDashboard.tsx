@@ -132,6 +132,115 @@ function FinServSnapshotCard({
   );
 }
 
+function GrossProfitToggleCard({
+  periodBadge,
+  totalRev,
+  profits,
+  openSinglePoint,
+}: {
+  periodBadge: string;
+  totalRev: { grossProfit: number; grossMargin: number | null };
+  profits: {
+    isLoading: boolean;
+    error: unknown;
+    quarters: Array<{ quarter: string; revenue: number; grossProfit: number; grossMargin: number }>;
+  };
+  openSinglePoint: (metric: string, label: string, name: string, value: number, fmt: (v: number) => string) => void;
+}) {
+  const [mode, setMode] = useState<'$' | '%'>('$');
+  const isDollar = mode === '$';
+  return (
+    <Card className="glass-module">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-1">
+            <CardTitle className="text-sm font-medium">
+              {isDollar ? 'Gross Profit $' : 'Gross Profit Margin %'}
+            </CardTitle>
+            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          </div>
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            {(['$', '%'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={
+                  'px-2.5 py-1 text-xs font-medium transition-colors ' +
+                  (mode === m
+                    ? 'bg-primary/20 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
+                }
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4">
+          <div className="text-3xl font-semibold text-foreground">
+            {isDollar
+              ? fmtCurrencyPrecise(totalRev.grossProfit)
+              : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {isDollar ? 'Gross Profit from QuickBooks P&L' : 'Gross Profit ÷ Revenue'}
+          </div>
+        </div>
+        {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.grossProfit === 0 && q.revenue === 0) : q.grossMargin === 0) ? <WidgetEmpty /> : (
+          <div className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={profits.quarters}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
+                {isDollar ? (
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                ) : (
+                  <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} domain={[0, 100]} />
+                )}
+                <Tooltip
+                  formatter={(v: number, name: string) =>
+                    isDollar ? [fmtCurrencyFull(v), name] : [fmtPct(v), 'Gross Margin']
+                  }
+                />
+                {isDollar ? (
+                  <>
+                    <Bar
+                      dataKey="revenue"
+                      fill="hsl(var(--primary) / 0.35)"
+                      name="Revenue"
+                      shape={createGlassBarShape({ radius: 4 })}
+                    />
+                    <Bar
+                      dataKey="grossProfit"
+                      fill="hsl(var(--chart-2))"
+                      name="Gross Profit"
+                      shape={createGlassBarShape({ radius: 4 })}
+                      cursor="pointer"
+                      onClick={(d: any) => openSinglePoint('Gross Profit $', d?.quarter, 'Gross Profit', Number(d?.grossProfit) || 0, fmtCurrencyFull)}
+                    />
+                  </>
+                ) : (
+                  <Bar
+                    dataKey="grossMargin"
+                    fill="hsl(160, 65%, 50%)"
+                    name="Gross Margin %"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint('Gross Profit Margin %', d?.quarter, 'Gross Margin', Number(d?.grossMargin) || 0, fmtPct)}
+                  />
+                )}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ────────────────────────────────────────────────────────────
 // Active Clients — matches the "Deals on Board" MetricWidget on the
 // Sales Dashboard (dark glass surface, icon chip, uppercase label,
