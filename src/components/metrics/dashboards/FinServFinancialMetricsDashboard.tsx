@@ -1891,6 +1891,20 @@ function FinServFinancialMetricsDashboardInner() {
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
       emptyHint="No detail records available for this datapoint."
+      onRowClick={
+        drill?.context?.sourceId === 'finserv:revenue-change-by-client'
+          ? (row: any) => {
+              if (!row?.client) return;
+              openDrill({
+                kind: 'client-series',
+                sourceLabel: 'Revenue Change by Client',
+                selection: row.client,
+                period: { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label },
+                client: row.client,
+              });
+            }
+          : undefined
+      }
     />
     </>
   );
