@@ -612,28 +612,6 @@ function FinServFinancialMetricsDashboardInner() {
         )}
       </div>
 
-      {/* ── Row 0: Active Clients KPI ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-module">
-          <CardContent className="p-4">
-            {activeClients.isLoading ? (
-              <Skeleton className="h-16 w-full" />
-            ) : activeClients.error ? (
-              <WidgetError />
-            ) : (
-              <div>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Active Clients</p>
-                <div className="flex items-end gap-3 mt-1">
-                  <span className="text-3xl font-bold text-foreground">{activeClients.currentCount}</span>
-                  <VarianceIndicator value={activeClients.variance} />
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">vs prior period ({activeClients.priorCount})</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* ── Row 1: Total Revenue ── */}
       <Card className="glass-module">
         <CardHeader className="pb-2">
