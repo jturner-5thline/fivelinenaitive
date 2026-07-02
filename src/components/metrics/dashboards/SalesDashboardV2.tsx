@@ -55,6 +55,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Radio,
+  Table2,
+  X,
+  Save,
 } from 'lucide-react';
 
 /**
@@ -1395,9 +1398,25 @@ function SalesModelSheet() {
   const view = useView();
   const drill = useDrilldown();
   const E = view.elapsed;
+  const [planOverride, setPlanOverride] = React.useState<Record<MetricKey, number[]> | null>(null);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+
+  // Reset override when the underlying view (timeframe) changes shape
+  React.useEffect(() => {
+    setPlanOverride(null);
+  }, [view.months.length, view.label]);
+
+  const effectivePlan = React.useMemo<Record<MetricKey, number[]>>(() => {
+    if (!planOverride) return view.plan;
+    const out = {} as Record<MetricKey, number[]>;
+    (Object.keys(view.plan) as MetricKey[]).forEach((k) => {
+      out[k] = planOverride[k] ?? view.plan[k];
+    });
+    return out;
+  }, [planOverride, view.plan]);
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
-    const planV = view.plan[row.key][i];
+    const planV = effectivePlan[row.key][i];
     const actualV = view.actual[row.key][i];
     if (tab === 'Forecast') {
       return (
@@ -1576,6 +1595,226 @@ function SalesModelSheet() {
             {view.months[E]}–{view.months[view.months.length - 1]} forecast
           </span>
         )}
+      </div>
+
+      <div className="mt-3 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={() => setEditorOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors"
+          style={{
+            color: C.textPrimary,
+            background: 'rgba(157,162,245,0.10)',
+            border: `1px solid ${C.surfaceBorder}`,
+          }}
+        >
+          <Table2 size={12} style={{ color: C.periwinkle }} />
+          Edit Forecast
+        </button>
+      </div>
+
+      {editorOpen && (
+        <SalesModelForecastEditor
+          months={view.months}
+          initial={effectivePlan}
+          onClose={() => setEditorOpen(false)}
+          onSave={(next) => {
+            setPlanOverride(next);
+            setEditorOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// SALES MODEL — FORECAST EDITOR (Excel-style)
+// Edits are held locally to the Sales Model widget's Forecast column.
+// ============================================================
+function SalesModelForecastEditor({
+  months,
+  initial,
+  onClose,
+  onSave,
+}: {
+  months: string[];
+  initial: Record<MetricKey, number[]>;
+  onClose: () => void;
+  onSave: (next: Record<MetricKey, number[]>) => void;
+}) {
+  const clone = (d: Record<MetricKey, number[]>): Record<MetricKey, number[]> => {
+    const out = {} as Record<MetricKey, number[]>;
+    (Object.keys(d) as MetricKey[]).forEach((k) => { out[k] = [...d[k]]; });
+    return out;
+  };
+  const [draft, setDraft] = React.useState<Record<MetricKey, number[]>>(() => clone(initial));
+  const [active, setActive] = React.useState<{ r: number; c: number }>({ r: 0, c: 0 });
+  const inputsRef = React.useRef<(HTMLInputElement | null)[][]>([]);
+
+  React.useEffect(() => {
+    inputsRef.current = ROW_ORDER.map(() => months.map(() => null));
+  }, [months]);
+
+  React.useEffect(() => {
+    const el = inputsRef.current[active.r]?.[active.c];
+    if (el) el.focus();
+  }, [active]);
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const move = (r: number, c: number) => {
+    const nr = Math.max(0, Math.min(ROW_ORDER.length - 1, r));
+    const nc = Math.max(0, Math.min(months.length - 1, c));
+    setActive({ r: nr, c: nc });
+  };
+
+  const handleKey = (e: React.KeyboardEvent<HTMLInputElement>, r: number, c: number) => {
+    if (e.key === 'ArrowUp') { e.preventDefault(); move(r - 1, c); }
+    else if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); move(r + 1, c); }
+    else if (e.key === 'Tab') { e.preventDefault(); move(r, c + (e.shiftKey ? -1 : 1)); }
+  };
+
+  const commit = (r: number, c: number, raw: string) => {
+    const num = parseFloat(raw);
+    if (Number.isNaN(num)) return;
+    setDraft((prev) => {
+      const next = clone(prev);
+      next[ROW_ORDER[r].key][c] = num;
+      return next;
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div
+        className="relative w-full max-w-[1200px] max-h-[88vh] flex flex-col rounded-lg border shadow-[0_30px_80px_-20px_rgba(0,0,0,0.8)]"
+        style={{
+          fontFamily: 'Inter, system-ui, sans-serif',
+          background: 'linear-gradient(180deg, hsl(240 15% 8%), hsl(240 20% 5%))',
+          borderColor: C.surfaceBorder,
+        }}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: C.hairline }}>
+          <div>
+            <h2 className="text-base font-semibold tracking-tight" style={{ color: C.textPrimary }}>
+              Sales Model — Edit Forecast
+            </h2>
+            <p className="text-[11px] mt-0.5" style={{ color: C.textFaint }}>
+              Edits apply to the Sales Model widget's Forecast column.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded p-1.5 hover:bg-white/[0.08]"
+            style={{ color: C.textMuted }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-auto p-4">
+          <table className="border-separate border-spacing-0 text-xs" style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
+            <thead>
+              <tr>
+                <th
+                  className="sticky left-0 top-0 z-30 text-left font-medium px-3 py-2 border-b border-r min-w-[210px]"
+                  style={{ background: 'hsl(240 18% 10%)', color: C.textMuted, borderColor: C.hairline, fontFamily: 'Inter, sans-serif' }}
+                >
+                  Metric
+                </th>
+                {months.map((m, i) => (
+                  <th
+                    key={`${m}-${i}`}
+                    className="sticky top-0 z-20 text-right font-medium px-3 py-2 border-b whitespace-nowrap min-w-[110px]"
+                    style={{
+                      background: 'hsl(240 18% 10%)',
+                      color: active.c === i ? C.cyan : C.textMuted,
+                      borderColor: C.hairline,
+                    }}
+                  >
+                    {m}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROW_ORDER.map((row, r) => (
+                <tr key={row.key}>
+                  <td
+                    className="sticky left-0 z-10 px-3 py-1.5 border-b border-r whitespace-nowrap"
+                    style={{
+                      background: 'hsl(240 18% 10%)',
+                      color: active.r === r ? C.periwinkle : C.textPrimary,
+                      borderColor: C.hairline,
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {row.label}
+                    {row.type === 'money' && (
+                      <span className="ml-1 text-[10px]" style={{ color: C.textFaint }}>$MM</span>
+                    )}
+                  </td>
+                  {months.map((_, c) => {
+                    const isActive = active.r === r && active.c === c;
+                    return (
+                      <td
+                        key={c}
+                        className="border-b p-0"
+                        style={{
+                          borderColor: C.hairline,
+                          background: isActive ? 'rgba(157,162,245,0.08)' : 'transparent',
+                        }}
+                      >
+                        <input
+                          ref={(el) => {
+                            if (!inputsRef.current[r]) inputsRef.current[r] = [];
+                            inputsRef.current[r][c] = el;
+                          }}
+                          type="text"
+                          inputMode="decimal"
+                          defaultValue={String(draft[row.key][c] ?? 0)}
+                          key={`${r}-${c}-${draft[row.key][c]}`}
+                          onFocus={() => setActive({ r, c })}
+                          onKeyDown={(e) => handleKey(e, r, c)}
+                          onBlur={(e) => commit(r, c, e.target.value)}
+                          className="w-full bg-transparent text-right tabular-nums px-3 py-1.5 outline-none focus:ring-2 focus:ring-inset focus:ring-cyan-400/60"
+                          style={{ color: C.textPrimary }}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-3 text-[11px]" style={{ color: C.textFaint }}>
+            Tip: Arrow keys / Tab / Enter to navigate · dollar rows are stored as raw numbers and displayed as $MM.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t" style={{ borderColor: C.hairline, background: 'rgba(255,255,255,0.02)' }}>
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-md text-[12px]"
+            style={{ color: C.textMuted }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(draft)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium text-white"
+            style={{ background: 'linear-gradient(90deg, #6366F1, #22D3EE)' }}
+          >
+            <Save size={13} />
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );
