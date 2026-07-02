@@ -1535,22 +1535,31 @@ function SalesModelSheet() {
   const view = useView();
   const drill = useDrilldown();
   const E = view.elapsed;
-  const [planOverride, setPlanOverride] = React.useState<Record<MetricKey, number[]> | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
 
-  // Reset override when the underlying view (timeframe) changes shape
-  React.useEffect(() => {
-    setPlanOverride(null);
-  }, [view.months.length, view.label]);
+  // Full-forecast draft, keyed by "YYYY-M" (M is 0-based month) so the editor
+  // always shows the entire year (and any user-added months/quarters/years)
+  // regardless of the currently-selected timeframe. Persists across timeframe
+  // switches so edits aren't lost when the view is narrowed to a quarter.
+  const [fullDraft, setFullDraft] = React.useState<FullForecastDraft>(() => buildInitialFullDraft());
 
+  // Apply full-draft edits to the currently visible slice by mapping each
+  // visible month back to its calendar year/month key.
   const effectivePlan = React.useMemo<Record<MetricKey, number[]>>(() => {
-    if (!planOverride) return view.plan;
     const out = {} as Record<MetricKey, number[]>;
+    const startY = view.rangeStart.getUTCFullYear();
+    const startM = view.rangeStart.getUTCMonth();
     (Object.keys(view.plan) as MetricKey[]).forEach((k) => {
-      out[k] = planOverride[k] ?? view.plan[k];
+      out[k] = view.plan[k].map((base, i) => {
+        const d = new Date(Date.UTC(startY, startM + i, 1));
+        const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}`;
+        const idx = fullDraft.columns.findIndex((c) => c.key === key);
+        const override = idx >= 0 ? fullDraft.data[k]?.[idx] : undefined;
+        return override === undefined ? base : override;
+      });
     });
     return out;
-  }, [planOverride, view.plan]);
+  }, [fullDraft, view.plan, view.rangeStart]);
 
   const renderCell = (row: RowDef, i: number): React.ReactNode => {
     const planV = effectivePlan[row.key][i];
