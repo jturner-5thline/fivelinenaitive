@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, KeyboardEvent } from "react";
-import { Settings2, X, Save } from "lucide-react";
+import { Table2, X, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -88,13 +88,13 @@ export function SalesModelForecastWidget({ onSave }: Props) {
           <p className="text-[11px] text-white/40 mt-0.5">Jan 2026 – Sep 2026 projection</p>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => setOpen(true)}
-          className="h-8 gap-1.5 text-xs text-white/70 hover:text-white hover:bg-white/[0.06]"
+          className="h-8 gap-1.5 text-xs border-white/10 bg-white/[0.04] text-white/85 hover:text-white hover:bg-white/[0.08]"
         >
-          <Settings2 className="h-3.5 w-3.5" />
-          Edit Actuals
+          <Table2 className="h-3.5 w-3.5" />
+          Edit Forecast
         </Button>
       </div>
       <ReadOnlyTable data={data} />
