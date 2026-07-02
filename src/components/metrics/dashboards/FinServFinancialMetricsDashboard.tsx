@@ -1475,16 +1475,25 @@ function FinServFinancialMetricsDashboardInner() {
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart
-                  data={(() => {
-                    const trend = computeLinearTrend(cashflow.points.map(p => p.value));
-                    return cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
-                  })()}
-                >
+                {(() => {
+                  const trend = computeLinearTrend(cashflow.points.map(p => p.value));
+                  const chartData = cashflow.points.map((p, i) => ({ ...p, trend: trend[i] }));
+                  return (
+                <ComposedChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 9 }} angle={-45} textAnchor="end" height={50} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Free Cash Flow']} />
+                  <Tooltip
+                    content={(props: any) => (
+                      <DeltaTooltip
+                        {...props}
+                        data={chartData}
+                        dataKey="value"
+                        format={fmtCurrencyFull}
+                        seriesName="Free Cash Flow"
+                      />
+                    )}
+                  />
                   <ReferenceLine y={0} stroke="hsl(var(--border))" />
                   <Bar
                     dataKey="value"
@@ -1518,6 +1527,8 @@ function FinServFinancialMetricsDashboardInner() {
                     />
                   )}
                 </ComposedChart>
+                  );
+                })()}
               </ResponsiveContainer>
             </div>
           )}
