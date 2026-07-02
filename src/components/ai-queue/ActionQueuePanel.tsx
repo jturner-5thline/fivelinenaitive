@@ -76,6 +76,12 @@ import {
   useDeclineDealAccessRequest,
   type DealAccessRequest,
 } from '@/hooks/useDealAccessRequests';
+import {
+  useAllFlexInfoNotifications,
+  useApproveFlexAccessRequest,
+  useDeclineFlexAccessRequest,
+  type FlexAccessRequest,
+} from '@/hooks/useAllFlexInfoNotifications';
 
 /* ─────────────────────────────────────────────────────────────────────────
    naitive design tokens (scoped to the Approval Queue surface)
@@ -388,6 +394,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const approveAccess = useApproveDealAccessRequest();
   const declineAccess = useDeclineDealAccessRequest();
 
+  const { data: flexRequests = [] } = useAllFlexInfoNotifications();
+  const approveFlexRequest = useApproveFlexAccessRequest();
+  const declineFlexRequest = useDeclineFlexAccessRequest();
+
   const [tab, setTab] = useState<'queue' | 'staged'>('queue');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -410,6 +420,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     const ids = myDealIds ?? new Set<string>();
     return accessRequests.filter((r) => r.deal_id && ids.has(r.deal_id));
   }, [accessRequests, scopeActive, myDealIds]);
+
+  const scopedFlexRequests = useMemo(() => {
+    if (!scopeActive) return flexRequests;
+    const ids = myDealIds ?? new Set<string>();
+    return flexRequests.filter((r) => r.deal_id && ids.has(r.deal_id));
+  }, [flexRequests, scopeActive, myDealIds]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -626,7 +642,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </div>
           <StagedDraftsPanel />
         </div>
-      ) : (items.length + accessRequests.length) === 0 ? (
+      ) : (items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
@@ -638,7 +654,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   <div className="flex items-center gap-1.5">
                     <FilterChip
                       label="All"
-                      count={items.length + accessRequests.length}
+                      count={items.length + accessRequests.length + flexRequests.length}
                       active={scope === 'all'}
                       onClick={() => setScope('all')}
                     />
@@ -647,7 +663,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                       count={
                         (myDealIds
                           ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
-                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
+                            flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
                           : 0)
                       }
                       active={scope === 'me'}
@@ -690,6 +707,25 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                       req={req}
                       onApprove={() => approveAccess(req)}
                       onDecline={() => declineAccess(req)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {scopedFlexRequests.length > 0 && (
+                <div className="space-y-1">
+                  <p
+                    className="px-1 pt-1 text-[9.5px] uppercase text-[#ecedf4]/45"
+                    style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                  >
+                    FLEx access requests
+                  </p>
+                  {scopedFlexRequests.map((req) => (
+                    <FlexAccessRequestRow
+                      key={req.id}
+                      req={req}
+                      onApprove={() => approveFlexRequest(req)}
+                      onDecline={() => declineFlexRequest(req)}
                     />
                   ))}
                 </div>
@@ -1083,6 +1119,64 @@ function AccessRequestRow({
             style={{ ...FONT_MONO, letterSpacing: '0.04em' }}
           >
             wants access to {req.deal_name || 'Untitled deal'}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1 mt-1.5">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-[10px] text-[#ecedf4]/65 hover:text-[#ecedf4]"
+          disabled={busy !== null}
+          onClick={async () => {
+            setBusy('d');
+            await onDecline();
+            setBusy(null);
+          }}
+        >
+          Decline
+        </Button>
+        <Button
+          size="sm"
+          className="h-6 px-2 text-[10px] border border-white/[0.10] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
+          disabled={busy !== null}
+          onClick={async () => {
+            setBusy('a');
+            await onApprove();
+            setBusy(null);
+          }}
+        >
+          {busy === 'a' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FlexAccessRequestRow({
+  req,
+  onApprove,
+  onDecline,
+}: {
+  req: FlexAccessRequest;
+  onApprove: () => Promise<unknown>;
+  onDecline: () => Promise<unknown>;
+}) {
+  const [busy, setBusy] = useState<'a' | 'd' | null>(null);
+  const lender = req.lender_name || req.company_name || req.user_email || 'Lender';
+  return (
+    <div className="rounded-[13px] border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.05] p-2.5">
+      <div className="flex items-start gap-2">
+        <KeyRound className="h-3.5 w-3.5 text-[#5ecdf5] mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] truncate" style={FONT_BODY}>
+            Approve Access for {lender}
+          </p>
+          <p
+            className="text-[10px] text-[#ecedf4]/58 truncate"
+            style={{ ...FONT_MONO, letterSpacing: '0.04em' }}
+          >
+            FLEx request · {req.deal_name || 'Untitled deal'}
           </p>
         </div>
       </div>
