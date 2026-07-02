@@ -216,7 +216,7 @@ async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPerio
   if (error) throw error;
 }
 
-async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[], realmId: string = FINSERV_REALM_ID) {
+export async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[], realmId: string = FINSERV_REALM_ID) {
   const requested = dedupePeriods(periods);
   let rows = await fetchFinServPnlSnapshots(companyId, requested, realmId);
   const foundMap = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
