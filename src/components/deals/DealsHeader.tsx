@@ -27,6 +27,7 @@ import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useSidebar } from '@/components/ui/sidebar';
 import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 import { useMyTasks } from '@/hooks/useTasks';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { lazyRetry } from '@/lib/lazyRetry';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
