@@ -451,6 +451,29 @@ export function PnlFourChartsSection({
   sectionTitle?: string;
   sectionSubtitle?: string;
 }) {
+  return (
+    <DrilldownProvider>
+      <PnlFourChartsSectionInner
+        realmId={realmId}
+        cashflowTitle={cashflowTitle}
+        sectionTitle={sectionTitle}
+        sectionSubtitle={sectionSubtitle}
+      />
+    </DrilldownProvider>
+  );
+}
+
+function PnlFourChartsSectionInner({
+  realmId,
+  cashflowTitle,
+  sectionTitle,
+  sectionSubtitle,
+}: {
+  realmId: string;
+  cashflowTitle: string;
+  sectionTitle?: string;
+  sectionSubtitle?: string;
+}) {
   const { timeframe } = useInsightsTimeframe();
   const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
     const s = new Date(timeframe.start);
@@ -477,6 +500,53 @@ export function PnlFourChartsSection({
   const granularityLabel = granularity === 'monthly' ? 'Monthly' : granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
 
+  const { open: openDrill } = useDrilldown();
+  const bucketIndex = useMemo(() => {
+    const map = new Map<string, { start: string; end: string; label: string }>();
+    const buckets = buildBuckets(timeframe.start, timeframe.end, granularity);
+    for (const b of buckets) {
+      const entry = { start: b.start_date, end: b.end_date, label: b.label };
+      map.set(b.key, entry);
+      map.set(b.label, entry);
+    }
+    return map;
+  }, [timeframe.start, timeframe.end, granularity]);
+  const resolveBucket = (keyOrLabel: string | undefined) => {
+    if (keyOrLabel && bucketIndex.has(keyOrLabel)) return bucketIndex.get(keyOrLabel)!;
+    return { start: timeframe.start, end: timeframe.end, label: timeframe.label };
+  };
+
+  const openPnl = (
+    metric: 'revenue' | 'gross_profit' | 'gross_margin' | 'operating_profit' | 'operating_margin',
+    sourceLabel: string,
+    d: any,
+  ) => {
+    const label = d?.month ?? d?.quarter ?? '';
+    const key = d?.monthKey ?? d?.quarterKey ?? label;
+    openDrill({
+      kind: 'pnl',
+      metric,
+      sourceLabel,
+      selection: String(label),
+      period: resolveBucket(String(key)),
+      granularity,
+      realm: realmId,
+    });
+  };
+
+  const openCashflow = (d: any) => {
+    const label = d?.month ?? '';
+    const key = d?.monthKey ?? label;
+    openDrill({
+      kind: 'cashflow',
+      sourceLabel: cashflowTitle,
+      selection: String(label),
+      period: resolveBucket(String(key)),
+      granularity,
+      realm: realmId,
+    });
+  };
+
   return (
     <div className="space-y-4">
       {(sectionTitle || sectionSubtitle) && (
@@ -490,14 +560,33 @@ export function PnlFourChartsSection({
         </div>
       )}
 
-      <TotalRevenueCard periodBadge={periodBadge} totalRev={totalRev} />
+      <TotalRevenueCard
+        periodBadge={periodBadge}
+        totalRev={totalRev}
+        onBarClick={(d) => openPnl('revenue', 'Total Revenue', d)}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <GrossProfitToggleCard periodBadge={periodBadge} totalRev={totalRev} profits={profits} />
-        <OperatingProfitToggleCard periodBadge={periodBadge} totalRev={totalRev} profits={profits} />
+        <GrossProfitToggleCard
+          periodBadge={periodBadge}
+          totalRev={totalRev}
+          profits={profits}
+          onBarClick={(d, mode) => openPnl(mode === '$' ? 'gross_profit' : 'gross_margin', mode === '$' ? 'Gross Profit' : 'Gross Margin %', d)}
+        />
+        <OperatingProfitToggleCard
+          periodBadge={periodBadge}
+          totalRev={totalRev}
+          profits={profits}
+          onBarClick={(d, mode) => openPnl(mode === '$' ? 'operating_profit' : 'operating_margin', mode === '$' ? 'Operating Profit' : 'Operating Margin %', d)}
+        />
       </div>
 
-      <CashflowCard periodBadge={periodBadge} cashflow={cashflow} title={cashflowTitle} />
+      <CashflowCard
+        periodBadge={periodBadge}
+        cashflow={cashflow}
+        title={cashflowTitle}
+        onBarClick={(d) => openCashflow(d)}
+      />
     </div>
   );
 }
