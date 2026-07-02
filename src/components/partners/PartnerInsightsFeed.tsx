@@ -50,6 +50,8 @@ type HeaderCtx = {
   attentionCount: number;
   setActivityCount: (n: number) => void;
   setAttentionCount: (n: number) => void;
+  settingsNode: React.ReactNode | null;
+  setSettingsNode: (node: React.ReactNode | null) => void;
 };
 const InsightsHeaderContext = createContext<HeaderCtx | null>(null);
 
@@ -60,6 +62,7 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
   const [showReport, setShowReport] = useState(false);
   const [activityCount, setActivityCount] = useState(0);
   const [attentionCount, setAttentionCount] = useState(0);
+  const [settingsNode, setSettingsNode] = useState<React.ReactNode | null>(null);
   const toggleType = (t: InsightType) => {
     setActiveTypes(prev => {
       const next = new Set(prev);
@@ -68,7 +71,7 @@ export function PartnerInsightsProvider({ children }: { children: React.ReactNod
     });
   };
   return (
-    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport, activityCount, attentionCount, setActivityCount, setAttentionCount }}>
+    <InsightsHeaderContext.Provider value={{ activeTypes, toggleType, showReport, setShowReport, activityCount, attentionCount, setActivityCount, setAttentionCount, settingsNode, setSettingsNode }}>
       {children}
     </InsightsHeaderContext.Provider>
   );
@@ -97,11 +100,11 @@ export function PartnerInsightsHeaderActions() {
   const ctx = useContext(InsightsHeaderContext);
   if (!ctx) return null;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Filter className="h-3.5 w-3.5" /> Filter
+          <Button variant="outline" size="icon" className="h-8 w-8" aria-label="Filter">
+            <Filter className="h-3.5 w-3.5" />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-52">
@@ -117,8 +120,9 @@ export function PartnerInsightsHeaderActions() {
           </div>
         </PopoverContent>
       </Popover>
-      <Button size="sm" className="gap-1.5" onClick={() => ctx.setShowReport(true)}>
-        <FileDown className="h-3.5 w-3.5" /> Draft Report
+      {ctx.settingsNode}
+      <Button size="icon" className="h-8 w-8" onClick={() => ctx.setShowReport(true)} aria-label="Draft Report">
+        <FileDown className="h-3.5 w-3.5" />
       </Button>
     </div>
   );
