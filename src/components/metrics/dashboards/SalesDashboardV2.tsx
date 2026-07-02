@@ -1,4 +1,7 @@
 import * as React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
@@ -50,6 +53,7 @@ import {
   Activity,
   ArrowUpRight,
   ArrowDownRight,
+  Radio,
 } from 'lucide-react';
 
 /**
