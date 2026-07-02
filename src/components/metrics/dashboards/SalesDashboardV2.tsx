@@ -5,6 +5,10 @@ import { useCompany } from '@/hooks/useCompany';
 import { useSalesCallsCount } from '@/hooks/useSalesCallsCount';
 import { useDealsOnBoardByMonth, type DealOnBoardEntry } from '@/hooks/useDealsOnBoardByMonth';
 import { useProposalsIssuedByMonth, type ProposalIssuedEntry } from '@/hooks/useProposalsIssuedByMonth';
+import {
+  useFinservDealsOnBoardByMonth,
+  useFinservProposalsIssuedByMonth,
+} from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
 import {
   buildQuarterOptions,
@@ -396,6 +400,63 @@ function NavRail() {
 // KPI CARD
 // ============================================================
 function KpiCard({
+  ...args
+}: {
+  label: string;
+  Icon: LucideIcon;
+  type: 'count' | 'money';
+  metricKey: MetricKey;
+  mode: 'sum' | 'current';
+}) {
+  return <KpiCardInner {...args} />;
+}
+
+function PipelineVariantToggle({
+  value,
+  onChange,
+}: {
+  value: 'debt' | 'finserv';
+  onChange: (v: 'debt' | 'finserv') => void;
+}) {
+  const options: { key: 'debt' | 'finserv'; label: string }[] = [
+    { key: 'debt', label: 'Debt' },
+    { key: 'finserv', label: 'FinServ' },
+  ];
+  return (
+    <div
+      className="inline-flex items-center rounded-md p-0.5"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${C.surfaceBorder}`,
+      }}
+      role="tablist"
+      aria-label="KPI pipeline variant"
+    >
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.key)}
+            className="px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors focus-visible:outline-none focus-visible:ring-1"
+            style={{
+              background: active ? 'rgba(157,162,245,0.16)' : 'transparent',
+              color: active ? C.textPrimary : C.textMuted,
+              letterSpacing: '0.04em',
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function KpiCardInner({
   label,
   Icon,
   type,
@@ -2357,6 +2418,65 @@ export function SalesDashboardV2() {
   const yearEnd = rangeEnd;
   const salesCallsQuery = useSalesCallsCount(yearStart, yearEnd);
   const salesCallEvents = salesCallsQuery.data?.events ?? [];
+
+  // ---- KPI pipeline variant toggle (Debt vs FinServ) ---------------------
+  // Only affects the top three KPI cards; the rest of the dashboard keeps
+  // its existing Debt-pipeline sourcing.
+  const [kpiVariant, setKpiVariant] = React.useState<'debt' | 'finserv'>('debt');
+
+  // FinServ Sales Calls — matches titles like
+  // "5th Line <> [COMPANY] Financial Review" across teammate calendars.
+  const salesCallsFinservQuery = useSalesCallsCount(
+    yearStart,
+    yearEnd,
+    kpiVariant === 'finserv',
+    'finserv',
+  );
+  const salesCallEventsFinserv = salesCallsFinservQuery.data?.events ?? [];
+  const salesCallsFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const ev of salesCallEventsFinserv) {
+      if (!ev.start) continue;
+      const d = new Date(ev.start);
+      const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      out[k] = (out[k] ?? 0) + 1;
+    }
+    return out;
+  }, [salesCallsFinservQuery.isFetching, salesCallsFinservQuery.isLoading, salesCallEventsFinserv]);
+
+  // FinServ Deals on Board — deals entering the "Qualification" stage on
+  // the FinServ pipeline.
+  const dealsOnBoardFinservQuery = useFinservDealsOnBoardByMonth(activeYears);
+  const dealsOnBoardFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(dealsOnBoardFinservQuery.byMonthKey)) {
+      out[k] = arr.length;
+    }
+    return out;
+  }, [
+    dealsOnBoardFinservQuery.isLoading,
+    dealsOnBoardFinservQuery.isFetching,
+    dealsOnBoardFinservQuery.byMonthKey,
+  ]);
+
+  // FinServ Proposals Issued — deals entering the "Proposal Sent" stage on
+  // the FinServ pipeline.
+  const proposalsIssuedFinservQuery = useFinservProposalsIssuedByMonth(activeYears);
+  const proposalsIssuedFinservByMonthKey = React.useMemo<Record<string, number>>(() => {
+    if (proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching) return {};
+    const out: Record<string, number> = {};
+    for (const [k, arr] of Object.entries(proposalsIssuedFinservQuery.byMonthKey)) {
+      out[k] = arr.length;
+    }
+    return out;
+  }, [
+    proposalsIssuedFinservQuery.isLoading,
+    proposalsIssuedFinservQuery.isFetching,
+    proposalsIssuedFinservQuery.byMonthKey,
+  ]);
+
   /**
    * Live actuals keyed by absolute YYYY-MM so any selected window (within or
    * across calendar years) maps directly through buildView's month keys.
@@ -2453,6 +2573,43 @@ export function SalesDashboardV2() {
     },
   }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
+  // FinServ-scoped actuals for the top three KPI cards, indexed to the
+  // active timeframe months just like the Debt actuals above.
+  const liveSalesCallsActualFinserv = React.useMemo(
+    () => lookup(salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching),
+    [salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading, salesCallsFinservQuery.isFetching, monthKeys],
+  );
+  const liveDealsOnBoardActualFinserv = React.useMemo(
+    () => lookup(dealsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching),
+    [dealsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, monthKeys],
+  );
+  const liveProposalsIssuedActualFinserv = React.useMemo(
+    () => lookup(proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching),
+    [proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
+  );
+
+  // View scoped ONLY to the top three KPI cards. When "FinServ" is
+  // selected, swap in the FinServ-sourced actuals for sales calls, deals
+  // on board, and proposals issued.
+  const kpiView = React.useMemo<DashboardView>(() => {
+    if (kpiVariant !== 'finserv') return view;
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        salesCalls: liveSalesCallsActualFinserv,
+        dealsOnBoard: liveDealsOnBoardActualFinserv,
+        proposalsIssued: liveProposalsIssuedActualFinserv,
+      },
+    };
+  }, [
+    kpiVariant,
+    view,
+    liveSalesCallsActualFinserv,
+    liveDealsOnBoardActualFinserv,
+    liveProposalsIssuedActualFinserv,
+  ]);
+
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
   const drillApi = React.useMemo<DrilldownApi>(
@@ -2487,28 +2644,38 @@ export function SalesDashboardV2() {
           {/* Timeframe lives in the shared /insights page header. */}
 
           {/* KPI strip */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <KpiCard
-              label="Sales Calls"
-              Icon={Phone}
-              type="count"
-              metricKey="salesCalls"
-              mode="sum"
-            />
-            <KpiCard
-              label="Deals on Board"
-              Icon={Layers}
-              type="count"
-              metricKey="dealsOnBoard"
-              mode="current"
-            />
-            <KpiCard
-              label="Proposals Issued"
-              Icon={FileText}
-              type="count"
-              metricKey="proposalsIssued"
-              mode="sum"
-            />
+          <div className="mb-6">
+            <div className="flex items-center justify-end mb-2">
+              <PipelineVariantToggle
+                value={kpiVariant}
+                onChange={setKpiVariant}
+              />
+            </div>
+            <ViewCtx.Provider value={kpiView}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <KpiCard
+                  label="Sales Calls"
+                  Icon={Phone}
+                  type="count"
+                  metricKey="salesCalls"
+                  mode="sum"
+                />
+                <KpiCard
+                  label={kpiVariant === 'finserv' ? 'Deals on Board (FinServ)' : 'Deals on Board'}
+                  Icon={Layers}
+                  type="count"
+                  metricKey="dealsOnBoard"
+                  mode={kpiVariant === 'finserv' ? 'sum' : 'current'}
+                />
+                <KpiCard
+                  label="Proposals Issued"
+                  Icon={FileText}
+                  type="count"
+                  metricKey="proposalsIssued"
+                  mode="sum"
+                />
+              </div>
+            </ViewCtx.Provider>
           </div>
 
           {/* Performance-to-plan panel */}

@@ -27,8 +27,12 @@ function domainOf(email?: string | null): string | null {
 // "[Company] <sep> 5th Line Financing Review" — separators we tolerate:
 // <>, -, –, —, |, :, /. Whitespace around separator is collapsed. Case-
 // insensitive. Company portion is captured for dedupe + display.
-const TITLE_RE =
+// Debt variant: "[Company] <sep> 5th Line Financing Review".
+// FinServ variant: "5th Line <sep> [Company] Financial Review".
+const TITLE_RE_DEBT =
   /^\s*(.+?)\s*(?:<>|[-–—|:/])\s*5\s*th\s+line\s+financing\s+review\s*$/i;
+const TITLE_RE_FINSERV =
+  /^\s*5\s*th\s+line\s*(?:<>|[-–—|:/])\s*(.+?)\s+financial\s+review\s*$/i;
 
 function normalizeCompany(raw: string): string {
   return raw
@@ -43,6 +47,7 @@ interface ReqBody {
   time_min?: string;
   time_max?: string;
   force_refresh?: boolean;
+  variant?: 'debt' | 'finserv';
 }
 
 interface SalesCallEvent {
@@ -93,6 +98,7 @@ async function fetchForGrant(
   startUnix: number,
   endUnix: number,
   user: { email: string | null; name: string | null; domain: string | null },
+  titleRe: RegExp,
 ): Promise<SalesCallEvent[]> {
   const out: SalesCallEvent[] = [];
   const calendars = await fetchCalendarsForGrant(grantId);
@@ -132,7 +138,7 @@ async function fetchForGrant(
       for (const e of raw) {
         if (e?.status === "cancelled") continue;
         const title: string = e?.title || "";
-        const m = TITLE_RE.exec(title);
+        const m = titleRe.exec(title);
         if (!m) continue;
         const companyRaw = (m[1] || "").trim();
         const companyNorm = normalizeCompany(companyRaw);
@@ -224,6 +230,8 @@ serve(async (req: Request): Promise<Response> => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const variant: 'debt' | 'finserv' = body.variant === 'finserv' ? 'finserv' : 'debt';
+    const titleRe = variant === 'finserv' ? TITLE_RE_FINSERV : TITLE_RE_DEBT;
 
     let callerDomain = domainOf(callerEmail);
     if (!callerDomain) {
@@ -262,7 +270,7 @@ serve(async (req: Request): Promise<Response> => {
       endD.getUTCMonth() === 11 && endD.getUTCDate() === 31;
     const requestedYear = startD.getUTCFullYear();
 
-    if (targetCompanyId && isFullYearRequest && !body.force_refresh) {
+    if (variant === 'debt' && targetCompanyId && isFullYearRequest && !body.force_refresh) {
       const { data: cached } = await supabase
         .from("sales_calls_cache")
         .select("payload, refreshed_at")
@@ -328,7 +336,7 @@ serve(async (req: Request): Promise<Response> => {
 
     const perGrant = await Promise.all(
       grants.map((g) =>
-        fetchForGrant(g.grantId, startUnix, endUnix, g.user).catch(
+        fetchForGrant(g.grantId, startUnix, endUnix, g.user, titleRe).catch(
           () => [] as SalesCallEvent[],
         ),
       ),
@@ -370,7 +378,7 @@ serve(async (req: Request): Promise<Response> => {
 
     // Persist to cache when this is a full-year request so subsequent
     // dashboard loads serve instantly.
-    if (targetCompanyId && isFullYearRequest) {
+    if (variant === 'debt' && targetCompanyId && isFullYearRequest) {
       try {
         await supabase
           .from("sales_calls_cache")
