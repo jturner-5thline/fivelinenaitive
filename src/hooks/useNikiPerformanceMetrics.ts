@@ -20,6 +20,19 @@ import { usePerformanceAssignee } from '@/hooks/usePerformanceAssignee';
  */
 
 export const ACTIVE_PIPELINE_ID_5THLINE = 'b78ad452-b489-4c89-8a91-789347c05f79';
+/**
+ * "In Development" pipeline for 5th Line. Deals here are also owned/managed
+ * by reps and their stage transitions (Proposal Issued, Final Credit Items,
+ * Terms Issued, etc.) count toward the same Performance actuals as the
+ * Active pipeline. NOTE: In Development uses overloaded stage IDs, so we
+ * count these deals via explicit stage_history events only — never via the
+ * "current stage at-or-past target" fallback (see STAGE_ORDER_ACTIVE).
+ */
+export const IN_DEVELOPMENT_PIPELINE_ID_5THLINE = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+const PIPELINE_IDS_5THLINE = [
+  ACTIVE_PIPELINE_ID_5THLINE,
+  IN_DEVELOPMENT_PIPELINE_ID_5THLINE,
+] as const;
 export const NIKI_NAME = 'Niki Heikali';
 
 /**
@@ -56,8 +69,19 @@ function stageIdx(s: string | null | undefined): number {
   if (!s) return -1;
   return STAGE_ORDER_ACTIVE.indexOf(s as any);
 }
+
+/**
+ * Normalize any raw stage label (from activity_logs.metadata.to,
+ * deal_stage_history.to_stage / to_stage_id) into the canonical slug used
+ * throughout this file. Handles "Proposal Issued", "proposal-issued",
+ * "PROPOSAL_ISSUED", etc.
+ */
+function normalizeStageKey(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return String(s).toLowerCase().trim().replace(/[_\s]+/g, '-');
+}
 function isAtOrPast(currentStage: string | null | undefined, targetStage: string): boolean {
-  const c = stageIdx(currentStage);
+  const c = stageIdx(normalizeStageKey(currentStage) ?? currentStage);
   const t = stageIdx(targetStage);
   if (c < 0 || t < 0) return false;
   return c >= t;
@@ -126,8 +150,8 @@ function useNikiPipelineData() {
       //    deals still count for the stages they passed through).
       const dealsRes = await supabase
         .from('deals')
-        .select('id, company, value, deal_owner, manager, stage, created_at')
-        .eq('pipeline_id', ACTIVE_PIPELINE_ID_5THLINE);
+        .select('id, company, value, deal_owner, manager, stage, created_at, pipeline_id')
+        .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[]);
       if (dealsRes.error) throw dealsRes.error;
       const allNiki = (dealsRes.data ?? []).filter(
         (d: any) => nikiFilter(d) && !isExcludedDealName(d.company),
@@ -169,11 +193,14 @@ function useNikiPipelineData() {
         if (!prev || at < prev) m.set(dealId, at);
       };
       for (const r of alRes.data ?? []) {
-        const to = (r as any).metadata?.to;
+        const to = normalizeStageKey((r as any).metadata?.to);
         record(to, r.deal_id, r.created_at);
       }
       for (const r of dshRes.data ?? []) {
-        record((r as any).to_stage_id ?? (r as any).to_stage, r.deal_id, r.changed_at);
+        const key =
+          normalizeStageKey((r as any).to_stage_id) ??
+          normalizeStageKey((r as any).to_stage);
+        record(key, r.deal_id, r.changed_at);
       }
 
       return { allNiki, dealsById, eventsByStage };
@@ -188,9 +215,13 @@ function entriesForStage(
   if (!data) return [];
   const merged = new Map<string, string>(data.eventsByStage.get(stageId) ?? new Map());
 
-  // Fallback: any Niki deal currently at-or-past target stage with no event.
+  // Fallback: any Active-pipeline deal currently at-or-past the target stage
+  // with no explicit event. Skipped for In Development pipeline deals
+  // because that pipeline's stage IDs are overloaded (e.g. 'closed-won' =
+  // "Indication of Interest") and can't be ordered against STAGE_ORDER_ACTIVE.
   for (const d of data.allNiki) {
     if (merged.has(d.id)) continue;
+    if (d.pipeline_id && d.pipeline_id !== ACTIVE_PIPELINE_ID_5THLINE) continue;
     if (isAtOrPast(d.stage, stageId)) {
       merged.set(d.id, d.created_at);
     }
