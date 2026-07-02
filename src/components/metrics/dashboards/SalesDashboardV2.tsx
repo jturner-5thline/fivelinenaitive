@@ -2516,6 +2516,43 @@ export function SalesDashboardV2() {
     },
   }), [baseView, liveSalesCallsActual, liveDealsOnBoardActual, liveProposalsIssuedActual, liveDollarsSignedActual]);
 
+  // FinServ-scoped actuals for the top three KPI cards, indexed to the
+  // active timeframe months just like the Debt actuals above.
+  const liveSalesCallsActualFinserv = React.useMemo(
+    () => lookup(salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading || salesCallsFinservQuery.isFetching),
+    [salesCallsFinservByMonthKey, salesCallsFinservQuery.isLoading, salesCallsFinservQuery.isFetching, monthKeys],
+  );
+  const liveDealsOnBoardActualFinserv = React.useMemo(
+    () => lookup(dealsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading || dealsOnBoardFinservQuery.isFetching),
+    [dealsOnBoardFinservByMonthKey, dealsOnBoardFinservQuery.isLoading, dealsOnBoardFinservQuery.isFetching, monthKeys],
+  );
+  const liveProposalsIssuedActualFinserv = React.useMemo(
+    () => lookup(proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading || proposalsIssuedFinservQuery.isFetching),
+    [proposalsIssuedFinservByMonthKey, proposalsIssuedFinservQuery.isLoading, proposalsIssuedFinservQuery.isFetching, monthKeys],
+  );
+
+  // View scoped ONLY to the top three KPI cards. When "FinServ" is
+  // selected, swap in the FinServ-sourced actuals for sales calls, deals
+  // on board, and proposals issued.
+  const kpiView = React.useMemo<DashboardView>(() => {
+    if (kpiVariant !== 'finserv') return view;
+    return {
+      ...view,
+      actual: {
+        ...view.actual,
+        salesCalls: liveSalesCallsActualFinserv,
+        dealsOnBoard: liveDealsOnBoardActualFinserv,
+        proposalsIssued: liveProposalsIssuedActualFinserv,
+      },
+    };
+  }, [
+    kpiVariant,
+    view,
+    liveSalesCallsActualFinserv,
+    liveDealsOnBoardActualFinserv,
+    liveProposalsIssuedActualFinserv,
+  ]);
+
   // Drilldown state
   const [drillFocus, setDrillFocus] = React.useState<DrilldownFocus | null>(null);
   const drillApi = React.useMemo<DrilldownApi>(
