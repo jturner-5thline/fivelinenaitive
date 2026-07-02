@@ -2010,7 +2010,7 @@ function MetricDrilldownDialog({
   const effectiveRowType: 'count' | 'money' =
     valueMode === 'value' && (row.key === 'dealsOnBoard' || row.key === 'proposalsIssued')
       ? 'money'
-      : effectiveRowType;
+      : row.type;
 
   const planArr = view.plan[row.key];
   const actualArr = view.actual[row.key];
