@@ -319,6 +319,10 @@ function usePipelineAddedDeals() {
   return useQuery({
     queryKey: ['niki-perf-added', assignee],
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async (): Promise<PerfDeal[]> => {
       const { data, error } = await supabase
         .from('deals')
