@@ -124,9 +124,9 @@ export function CrmUpdateQueueButton({ variant = 'outline' as const }) {
       <SheetTrigger asChild>
         <Button variant={variant} size="sm" className="relative gap-1.5">
           <Sparkles className="h-4 w-4" />
-          CRM Updates
+          Updates
           {count > 0 && (
-            <Badge className="ml-1 h-5 min-w-5 px-1.5 text-[10px] bg-primary text-primary-foreground">
+            <Badge className="ml-1 h-5 min-w-5 px-1.5 text-[10px] bg-destructive text-destructive-foreground hover:bg-destructive">
               {count}
             </Badge>
           )}
