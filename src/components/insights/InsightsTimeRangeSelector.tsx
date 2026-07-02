@@ -103,8 +103,7 @@ export function InsightsTimeRangeSelector({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-8 gap-1.5">
             <CalendarIcon className="h-3.5 w-3.5" />
-            <span className="text-xs font-medium">{currentLabel}</span>
-            <span className="text-xs text-muted-foreground">· {resolved.label}</span>
+            <span className="text-xs font-medium">{resolved.label}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
