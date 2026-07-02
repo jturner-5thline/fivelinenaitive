@@ -21,6 +21,7 @@ import {
   useFinServCashflow,
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
+import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE } from '@/hooks/useFinServFinancialMetrics';
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
@@ -657,6 +658,35 @@ function FinServFinancialMetricsDashboardInner() {
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
 
+  // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
+  const pipelineSnapshot = useQuery({
+    queryKey: ['finserv-pipeline-snapshot', FINSERV_PIPELINE_ID],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, stage, mrr')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<{ id: string; stage: string | null; mrr: number | string | null }>;
+      const CURRENT_PIPELINE_STAGES = new Set([
+        'fs-qualification', 'fs-discovery', 'fs-qualified',
+        'fs-scoping', 'fs-proposal-sent', 'fs-negotiation',
+      ]);
+      const TERMINAL = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
+      let totalClients = 0;
+      let totalMrr = 0;
+      let currentPipeline = 0;
+      for (const r of rows) {
+        const stage = r.stage ?? '';
+        if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+        if (CURRENT_PIPELINE_STAGES.has(stage)) currentPipeline += 1;
+        if (!TERMINAL.has(stage)) totalMrr += Number(r.mrr ?? 0);
+      }
+      return { totalClients, totalMrr, currentPipeline };
+    },
+    staleTime: 60_000,
+  });
+
   const granularityLabel =
     range.granularity === 'monthly' ? 'Monthly' :
     range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
@@ -783,6 +813,28 @@ function FinServFinancialMetricsDashboardInner() {
       </div>
 
       {/* ── Row 1: Total Revenue ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <FinServSnapshotCard
+          label="Total Clients"
+          value={pipelineSnapshot.data?.totalClients ?? 0}
+          subtitle='Deals currently in "Active Client" stage'
+          isLoading={pipelineSnapshot.isLoading}
+        />
+        <FinServSnapshotCard
+          label="Total MRR"
+          value={pipelineSnapshot.data?.totalMrr ?? 0}
+          format="currency"
+          subtitle="Sum of MRR across active FinServ pipeline deals"
+          isLoading={pipelineSnapshot.isLoading}
+        />
+        <FinServSnapshotCard
+          label="Current Pipeline"
+          value={pipelineSnapshot.data?.currentPipeline ?? 0}
+          subtitle="Qualification → Negotiation"
+          isLoading={pipelineSnapshot.isLoading}
+        />
+      </div>
+
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
