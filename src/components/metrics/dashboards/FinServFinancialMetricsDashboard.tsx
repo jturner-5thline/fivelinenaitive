@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil } from 'lucide-react';
+import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock, Pencil, Users, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MetricManualInputDialog } from './MetricManualInputDialog';
 import { supabase } from '@/integrations/supabase/client';
