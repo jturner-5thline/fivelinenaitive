@@ -112,6 +112,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
   }, [partners, stageNotes, stageMap, thresholds]);
 
+  const countsCtx = usePartnerInsightsCounts();
+  useEffect(() => {
+    if (countsCtx) countsCtx.setAttentionCount(stalePartners.length);
+  }, [stalePartners.length, countsCtx]);
+
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
   return (
