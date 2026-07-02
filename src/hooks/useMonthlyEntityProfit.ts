@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -97,6 +98,7 @@ function sumStandaloneBucketExpenses(
 
 export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthDef[]) {
   const { user } = useAuth();
+  const { company } = useCompany();
   const realmId = ENTITY_REALM_MAP[entityName];
   const buckets = useMemo(
     () => quarterMonths.map((m) => ({
@@ -110,163 +112,63 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
   const startDate = buckets[0]?.start ?? '';
   const endDate = buckets[buckets.length - 1]?.end ?? '';
 
-  // Primary source: cached monthly P&L reports.
-  const { data: reports, isLoading: lR, isFetching: fR } = useQuery({
-    queryKey: ['entity-profit-pnl-reports', realmId, startDate, endDate],
+  // Pull the authoritative QBO P&L snapshots (accrual). This is the same
+  // source powering the FinServ Financial Metrics dashboard — the
+  // `net_operating_income` column is the QuickBooks "Net Operating Income"
+  // (a.k.a. Operating Profit) line for the requested period.
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['entity-monthly-operating-profit', company?.id, realmId, startDate, endDate, buckets.map(b => b.key).join(',')],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_reports')
-        .select('period_start, period_end, report_data')
+      if (!company?.id || !realmId || buckets.length === 0) return null;
+
+      // 1) Ensure snapshots exist for each month bucket. Reuses the same
+      //    fetch/sync pipeline as the FinServ dashboard so numbers match.
+      const periods = buckets.map((b) => ({ start_date: b.start, end_date: b.end }));
+      try {
+        const { ensureFinServPnlSnapshots } = await import('@/hooks/useFinServFinancialMetrics');
+        await ensureFinServPnlSnapshots(company.id, periods, realmId);
+      } catch (err) {
+        console.warn('[useMonthlyEntityProfit] ensurePnlSnapshots failed; falling back to whatever is cached', err);
+      }
+
+      // 2) Read the snapshots directly for this realm/company.
+      const { data: rows, error } = await supabase
+        .from('qbo_pnl_snapshots')
+        .select('period_start, period_end, income_total, gross_profit, operating_expenses, net_operating_income')
+        .eq('company_id', company.id)
         .eq('realm_id', realmId)
-        .eq('report_type', 'profit_and_loss')
+        .eq('accounting_method', 'Accrual')
         .gte('period_start', startDate)
         .lte('period_end', endDate);
       if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!realmId && !!startDate && !!endDate,
-  });
 
-  // Fallback ingredients (only used for buckets without a P&L report).
-  const { data: invoices, isLoading: lI, isFetching: fI } = useQuery({
-    queryKey: ['entity-profit-invoices', realmId, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
-        .eq('realm_id', realmId)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!realmId && !!startDate && !!endDate,
-  });
+      const byKey = new Map<string, typeof rows[number]>();
+      for (const r of rows ?? []) byKey.set(`${r.period_start}_${r.period_end}`, r);
 
-  const { data: expenses, isLoading: lE, isFetching: fE } = useQuery({
-    queryKey: ['entity-profit-expenses', realmId, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_expenses')
-        .select('txn_date, total_amt, account_ref_id, line_items')
-        .eq('realm_id', realmId)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!realmId && !!startDate && !!endDate,
-  });
-
-  const { data: bills, isLoading: lB, isFetching: fB } = useQuery({
-    queryKey: ['entity-profit-bills', realmId, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_bills')
-        .select('txn_date, total_amt, line_items')
-        .eq('realm_id', realmId)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!realmId && !!startDate && !!endDate,
-  });
-
-  // All accounts for this realm so we can filter expense lines to
-  // classification='Expense' (exclude intercompany "Due to ..." liability postings, etc.).
-  const { data: accounts, isLoading: lA, isFetching: fA } = useQuery({
-    queryKey: ['entity-profit-accounts', realmId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_accounts')
-        .select('qb_id, classification')
-        .eq('realm_id', realmId);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!realmId,
-  });
-
-  const isLoading = lR || fR || lI || fI || lE || fE || lB || fB || lA || fA;
-
-  return useMemo(() => {
-    // Profit must always represent THAT month's standalone result —
-    // never a YTD or rolling sum. We therefore compute every bucket
-    // directly from its month's transactions and intentionally ignore
-    // any cached P&L reports (which can be YTD/quarterly and would
-    // otherwise leak prior-month totals into a single bar).
-    void reports; // kept queried so cache stays warm; not used for math
-
-    // Build classification map: accountId -> classification.
-    const classificationById = new Map<string, string>();
-    for (const a of accounts ?? []) {
-      if (a.qb_id) classificationById.set(String(a.qb_id), String(a.classification ?? ''));
-    }
-
-    // Per-month transaction sums used by the chart.
-    const txnRevenue = new Map<string, number>();
-    const txnExpenses = new Map<string, number>();
-    for (const row of invoices ?? []) {
-      if (!row.txn_date) continue;
-      const k = String(row.txn_date).slice(0, 7);
-      txnRevenue.set(k, (txnRevenue.get(k) ?? 0) + (Number(row.total_amt) || 0));
-    }
-    for (const row of [...(expenses ?? []), ...(bills ?? [])]) {
-      if (!row.txn_date) continue;
-      const k = String(row.txn_date).slice(0, 7);
-      const refs = lineAccountRefs(row);
-      let bucketTotal = 0;
-      for (const { accountId, amount } of refs) {
-        if (classificationById.get(accountId) === 'Expense') bucketTotal += amount;
-      }
-      if (bucketTotal !== 0) {
-        txnExpenses.set(k, (txnExpenses.get(k) ?? 0) + bucketTotal);
-      }
-    }
-
-    const monthsFromGroupedKeys: ProfitMonthBucket[] = buckets.map((b) => {
-      const revenue = txnRevenue.get(b.key) ?? 0;
-      const exp = txnExpenses.get(b.key) ?? 0;
-      return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
-    });
-
-    // Internal safeguard: independently recompute each displayed month from the
-    // raw rows using the bucket's exact month boundaries. If grouped-key math is
-    // ever changed in a way that reintroduces running totals, fall back to the
-    // direct standalone-month recompute immediately.
-    const monthsValidated: ProfitMonthBucket[] = buckets.map((b) => {
-      const revenue = sumStandaloneBucketRevenue(invoices ?? [], b.start, b.end);
-      const exp = sumStandaloneBucketExpenses(
-        [...(expenses ?? []), ...(bills ?? [])],
-        b.start,
-        b.end,
-        classificationById,
-      );
-      return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
-    });
-
-    const hasStandaloneMismatch = monthsFromGroupedKeys.some((month, index) => {
-      const validated = monthsValidated[index];
-      return (
-        month.key !== validated.key ||
-        Math.abs(month.revenue - validated.revenue) > 0.005 ||
-        Math.abs(month.expenses - validated.expenses) > 0.005 ||
-        Math.abs(month.profit - validated.profit) > 0.005
-      );
-    });
-
-    if (hasStandaloneMismatch) {
-      console.warn('[useMonthlyEntityProfit] Standalone month validation failed; using direct bucket totals.', {
-        entityName,
-        grouped: monthsFromGroupedKeys,
-        validated: monthsValidated,
+      const months: ProfitMonthBucket[] = buckets.map((b) => {
+        const row = byKey.get(`${b.start}_${b.end}`);
+        const revenue = Number(row?.income_total ?? 0);
+        const grossProfit = Number(row?.gross_profit ?? 0);
+        const operatingExpenses = Number(row?.operating_expenses ?? 0);
+        const profit = row?.net_operating_income != null
+          ? Number(row.net_operating_income)
+          : grossProfit - operatingExpenses;
+        // "expenses" here == total cost to reach operating profit
+        // (COGS + OpEx) so the drilldown table's "Revenue − Expenses = OP" identity holds.
+        const expenses = revenue - profit;
+        return { label: b.label, key: b.key, revenue, expenses, profit };
       });
-    }
 
-    const months = hasStandaloneMismatch ? monthsValidated : monthsFromGroupedKeys;
+      const total = months.reduce((s, m) => s + m.profit, 0);
+      return { months, total };
+    },
+    enabled: !!user && !!company?.id && !!realmId && !!startDate && !!endDate,
+    staleTime: 30_000,
+  });
 
-    const total = months.reduce((s, m) => s + m.profit, 0);
-    return { months, total, isLoading };
-  }, [reports, invoices, expenses, bills, accounts, buckets, isLoading]);
+  return {
+    months: data?.months ?? [],
+    total: data?.total ?? 0,
+    isLoading: isLoading || isFetching,
+  };
 }
