@@ -324,14 +324,18 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
           };
         })
       );
-      const { error } = await supabase.functions.invoke('push-to-flex', {
+      const { data: result, error } = await supabase.functions.invoke('push-to-flex', {
         body: {
           dealId,
           action: 'sync_data_room',
           dataRoomFiles: fileData.filter(f => f.url !== null),
         },
       });
-      if (error) throw error;
+      // Edge function returned a non-2xx: prefer the server's error message.
+      const serverError = (result as any)?.error;
+      if (error || serverError) {
+        throw new Error(serverError || (error as any)?.message || 'Failed to push to FLEx');
+      }
       toast.success('Data Room pushed to FLEx', {
         description: files.length > 0 ? `${files.length} file(s) synced successfully.` : 'Data room cleared on FLEx.',
       });

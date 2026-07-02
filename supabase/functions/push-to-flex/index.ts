@@ -441,6 +441,23 @@ serve(async (req) => {
         .limit(1)
         .single();
 
+      // FLEx's data_room_files table has a foreign key to its deals table.
+      // If the deal has never been published successfully, syncing files
+      // will fail with a FK violation. Fail fast with a clear message so
+      // the user knows to publish the write-up first.
+      if (!lastSync?.flex_deal_id) {
+        console.error(
+          `sync_data_room blocked: deal ${dealId} has no prior successful publish to FLEx`
+        );
+        return new Response(
+          JSON.stringify({
+            error:
+              "This deal has not been published to FLEx yet. Publish the write-up to FLEx first, then push the data room.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Prepare the data room files payload matching FLEx expected format
       const filesPayload = dataRoomFiles!.map(file => ({
         name: file.name,
@@ -451,7 +468,7 @@ serve(async (req) => {
       flexPayload = {
         event: "data_room_sync",
         company_name: deal.company,
-        deal_id: lastSync?.flex_deal_id || dealId,
+        deal_id: lastSync.flex_deal_id,
         files: filesPayload,
       };
       activityDescription = `Data room synced to FLEx (${dataRoomFiles!.length} files)`;
