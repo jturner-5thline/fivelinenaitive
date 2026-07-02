@@ -1153,6 +1153,64 @@ function AccessRequestRow({
   );
 }
 
+function FlexAccessRequestRow({
+  req,
+  onApprove,
+  onDecline,
+}: {
+  req: FlexAccessRequest;
+  onApprove: () => Promise<unknown>;
+  onDecline: () => Promise<unknown>;
+}) {
+  const [busy, setBusy] = useState<'a' | 'd' | null>(null);
+  const lender = req.lender_name || req.company_name || req.user_email || 'Lender';
+  return (
+    <div className="rounded-[13px] border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.05] p-2.5">
+      <div className="flex items-start gap-2">
+        <KeyRound className="h-3.5 w-3.5 text-[#5ecdf5] mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] truncate" style={FONT_BODY}>
+            Approve Access for {lender}
+          </p>
+          <p
+            className="text-[10px] text-[#ecedf4]/58 truncate"
+            style={{ ...FONT_MONO, letterSpacing: '0.04em' }}
+          >
+            FLEx request · {req.deal_name || 'Untitled deal'}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-end gap-1 mt-1.5">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-[10px] text-[#ecedf4]/65 hover:text-[#ecedf4]"
+          disabled={busy !== null}
+          onClick={async () => {
+            setBusy('d');
+            await onDecline();
+            setBusy(null);
+          }}
+        >
+          Decline
+        </Button>
+        <Button
+          size="sm"
+          className="h-6 px-2 text-[10px] border border-white/[0.10] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
+          disabled={busy !== null}
+          onClick={async () => {
+            setBusy('a');
+            await onApprove();
+            setBusy(null);
+          }}
+        >
+          {busy === 'a' ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Approve'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Detail pane
    ──────────────────────────────────────────────────────────────────────── */
