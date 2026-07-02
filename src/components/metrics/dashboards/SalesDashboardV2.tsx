@@ -2985,11 +2985,10 @@ export function SalesDashboardV2() {
     <MetricDrilldownDialog
       focus={drillFocus}
       onClose={() => setDrillFocus(null)}
-      view={
-        kpiVariant === 'finserv' || kpiValueMode === 'value' ? kpiView : view
-      }
+      countView={kpiVariant === 'finserv' ? kpiCountView : view}
+      valueView={kpiValueView}
       pipelineVariant={kpiVariant}
-      valueMode={kpiValueMode}
+      initialValueMode={kpiValueMode}
       salesCallEvents={kpiVariant === 'finserv' ? salesCallEventsFinserv : salesCallEvents}
       salesCallsLoading={
         kpiVariant === 'finserv'
