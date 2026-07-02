@@ -586,12 +586,23 @@ function PnlFourChartsSectionInner({
         />
       </div>
 
-      <CashflowCard
-        periodBadge={periodBadge}
-        cashflow={cashflow}
-        title={cashflowTitle}
-        onBarClick={(d) => openCashflow(d)}
-      />
+      {halfWidthCashflow ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CashflowCard
+            periodBadge={periodBadge}
+            cashflow={cashflow}
+            title={cashflowTitle}
+            onBarClick={(d) => openCashflow(d)}
+          />
+        </div>
+      ) : (
+        <CashflowCard
+          periodBadge={periodBadge}
+          cashflow={cashflow}
+          title={cashflowTitle}
+          onBarClick={(d) => openCashflow(d)}
+        />
+      )}
     </div>
   );
 }
