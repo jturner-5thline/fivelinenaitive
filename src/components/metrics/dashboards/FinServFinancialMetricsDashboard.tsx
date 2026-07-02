@@ -147,6 +147,36 @@ function TrendToggleButton({
   );
 }
 
+function TrendDeltaText({
+  values,
+  format,
+  className = '',
+}: {
+  values: Array<number | null | undefined>;
+  format: (v: number) => string;
+  className?: string;
+}) {
+  const trend = useMemo(() => computeLinearTrend(values), [values]);
+  const first = trend.find((v) => v != null) as number | undefined;
+  const last = [...trend].reverse().find((v) => v != null) as number | undefined;
+  if (first == null || last == null) return null;
+  const delta = last - first;
+  const pct = first !== 0 ? (delta / first) * 100 : null;
+  const positive = delta >= 0;
+  const color =
+    delta > 0 ? 'text-green-500' : delta < 0 ? 'text-red-500' : 'text-muted-foreground';
+  return (
+    <span className={`text-xs font-medium ${color} ${className}`}>
+      Trend: {positive ? '+' : ''}
+      {pct != null ? `${pct.toFixed(1)}%` : '—'}
+      {' / '}
+      {positive ? '+' : ''}
+      {format(delta)}
+      <span className="text-muted-foreground font-normal"> vs start of period</span>
+    </span>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
@@ -245,6 +275,14 @@ function GrossProfitToggleCard({
           <div className="text-xs text-muted-foreground">
             {isDollar ? 'Gross Profit from QuickBooks P&L' : 'Gross Profit ÷ Revenue'}
           </div>
+          {showTrend && (
+            <div className="mt-1">
+              <TrendDeltaText
+                values={profits.quarters.map((q) => (isDollar ? q.grossProfit : q.grossMargin))}
+                format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)}%`}
+              />
+            </div>
+          )}
         </div>
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.grossProfit === 0 && q.revenue === 0) : q.grossMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
@@ -376,6 +414,14 @@ function OperatingProfitToggleCard({
           <div className="text-xs text-muted-foreground">
             {isDollar ? 'Gross Profit − Operating Expenses from QuickBooks P&L' : 'Operating Profit ÷ Revenue'}
           </div>
+          {showTrend && (
+            <div className="mt-1">
+              <TrendDeltaText
+                values={profits.quarters.map((q) => (isDollar ? q.operatingProfit : q.operatingMargin))}
+                format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)}%`}
+              />
+            </div>
+          )}
         </div>
         {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => isDollar ? (q.operatingProfit === 0 && q.revenue === 0) : q.operatingMargin === 0) ? <WidgetEmpty /> : (
           <div className="h-[200px]">
@@ -580,6 +626,14 @@ function ActiveClientsMetricWidget({
           </span>
         </span>
       </div>
+      {showTrend && (
+        <div className="mt-1">
+          <TrendDeltaText
+            values={sparkData.map((d) => d.actual)}
+            format={(v: number) => `${v >= 0 ? '' : ''}${Math.round(v).toLocaleString()}`}
+          />
+        </div>
+      )}
       <div style={{ height: 160 }} className="mt-2">
         {!hasData ? (
           <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: T.textFaint }}>
@@ -1235,6 +1289,14 @@ function FinServFinancialMetricsDashboardInner() {
           <div className="mb-4">
             <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.total)}</div>
             <div className="text-xs text-muted-foreground">Total Income from QuickBooks P&amp;L</div>
+            {showTrendRevenue && (
+              <div className="mt-1">
+                <TrendDeltaText
+                  values={totalRev.months.map((m) => m.amount)}
+                  format={fmtCurrencyFull}
+                />
+              </div>
+            )}
           </div>
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
@@ -1317,6 +1379,14 @@ function FinServFinancialMetricsDashboardInner() {
           </div>
         </CardHeader>
         <CardContent>
+          {showTrendCashflow && (
+            <div className="mb-3">
+              <TrendDeltaText
+                values={cashflow.points.map((p) => p.value)}
+                format={fmtCurrencyFull}
+              />
+            </div>
+          )}
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
