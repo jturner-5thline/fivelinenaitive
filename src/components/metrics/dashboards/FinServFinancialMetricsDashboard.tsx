@@ -914,6 +914,11 @@ function FinServFinancialMetricsDashboardInner() {
     rows: Array<Record<string, unknown>>;
   } | null>(null);
 
+  // Per-widget "show best-fit trend line" toggles.
+  const [showTrendRevenue, setShowTrendRevenue] = useState(false);
+  const [showTrendCashflow, setShowTrendCashflow] = useState(true);
+  const [showTrendAvgRevClient, setShowTrendAvgRevClient] = useState(true);
+
   const selectedPeriod = useMemo(() => ({
     start_date: range.resolved.start,
     end_date: range.resolved.end,
