@@ -1146,8 +1146,13 @@ function FinServFinancialMetricsDashboardInner() {
 
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendRevenue} onToggle={() => setShowTrendRevenue(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -1157,7 +1162,12 @@ function FinServFinancialMetricsDashboardInner() {
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={totalRev.months}>
+                <ComposedChart
+                  data={(() => {
+                    const trend = computeLinearTrend(totalRev.months.map(m => m.amount));
+                    return totalRev.months.map((m, i) => ({ ...m, trend: trend[i] }));
+                  })()}
+                >
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
@@ -1176,7 +1186,20 @@ function FinServFinancialMetricsDashboardInner() {
                       granularity: range.granularity,
                     })}
                   />
-                </BarChart>
+                  {showTrendRevenue && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}
