@@ -394,6 +394,10 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const approveAccess = useApproveDealAccessRequest();
   const declineAccess = useDeclineDealAccessRequest();
 
+  const { data: flexRequests = [] } = useAllFlexInfoNotifications();
+  const approveFlexRequest = useApproveFlexAccessRequest();
+  const declineFlexRequest = useDeclineFlexAccessRequest();
+
   const [tab, setTab] = useState<'queue' | 'staged'>('queue');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -416,6 +420,12 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     const ids = myDealIds ?? new Set<string>();
     return accessRequests.filter((r) => r.deal_id && ids.has(r.deal_id));
   }, [accessRequests, scopeActive, myDealIds]);
+
+  const scopedFlexRequests = useMemo(() => {
+    if (!scopeActive) return flexRequests;
+    const ids = myDealIds ?? new Set<string>();
+    return flexRequests.filter((r) => r.deal_id && ids.has(r.deal_id));
+  }, [flexRequests, scopeActive, myDealIds]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
