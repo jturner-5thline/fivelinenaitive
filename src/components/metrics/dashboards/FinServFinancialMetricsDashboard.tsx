@@ -147,6 +147,36 @@ function TrendToggleButton({
   );
 }
 
+function TrendDeltaText({
+  values,
+  format,
+  className = '',
+}: {
+  values: Array<number | null | undefined>;
+  format: (v: number) => string;
+  className?: string;
+}) {
+  const trend = useMemo(() => computeLinearTrend(values), [values]);
+  const first = trend.find((v) => v != null) as number | undefined;
+  const last = [...trend].reverse().find((v) => v != null) as number | undefined;
+  if (first == null || last == null) return null;
+  const delta = last - first;
+  const pct = first !== 0 ? (delta / first) * 100 : null;
+  const positive = delta >= 0;
+  const color =
+    delta > 0 ? 'text-green-500' : delta < 0 ? 'text-red-500' : 'text-muted-foreground';
+  return (
+    <span className={`text-xs font-medium ${color} ${className}`}>
+      Trend: {positive ? '+' : ''}
+      {pct != null ? `${pct.toFixed(1)}%` : '—'}
+      {' / '}
+      {positive ? '+' : ''}
+      {format(delta)}
+      <span className="text-muted-foreground font-normal"> vs start of period</span>
+    </span>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
