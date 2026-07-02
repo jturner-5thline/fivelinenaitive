@@ -739,13 +739,15 @@ function ActiveClientsMetricWidget({
               />
               <Tooltip
                 cursor={{ fill: 'rgba(94,234,212,0.08)' }}
-                contentStyle={{
-                  background: 'rgba(8,8,12,0.95)',
-                  border: `1px solid ${T.surfaceBorder}`,
-                  borderRadius: 8,
-                  color: T.textPrimary,
-                  fontSize: 12,
-                }}
+                content={(props: any) => (
+                  <DeltaTooltip
+                    {...props}
+                    data={sparkDataWithTrend}
+                    dataKey="actual"
+                    format={(v: number) => Math.round(v).toLocaleString()}
+                    seriesName="Active Clients"
+                  />
+                )}
               />
               <Bar
                 dataKey="actual"
