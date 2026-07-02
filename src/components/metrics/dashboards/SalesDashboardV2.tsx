@@ -780,6 +780,7 @@ function TopSourcedViaWidget() {
   const { company } = useCompany();
   const startIso = view.rangeStart.toISOString();
   const endIso = view.rangeEnd.toISOString();
+  const [selectedSource, setSelectedSource] = React.useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['top-sourced-via', company?.id, startIso, endIso],
@@ -788,14 +789,21 @@ function TopSourcedViaWidget() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
-        .select('id, company, sourced_via, created_at')
+        .select('id, company, sourced_via, created_at, referral_source, referral_source_id')
         .eq('company_id', company!.id)
         .neq('status', 'archived')
         .gte('created_at', startIso)
         .lte('created_at', endIso)
         .not('sourced_via', 'is', null);
       if (error) throw error;
-      return (data || []) as Array<{ id: string; company: string | null; sourced_via: string | null }>;
+      return (data || []) as Array<{
+        id: string;
+        company: string | null;
+        sourced_via: string | null;
+        referral_source: string | null;
+        referral_source_id: string | null;
+        created_at: string;
+      }>;
     },
   });
 
@@ -819,6 +827,7 @@ function TopSourcedViaWidget() {
   const max = rows.rows[0]?.count ?? 0;
 
   return (
+    <>
     <div style={glassStyle} className="p-5 overflow-hidden">
       <div
         className="flex items-center gap-1.5 text-[10px] font-medium uppercase mb-3"
@@ -840,9 +849,12 @@ function TopSourcedViaWidget() {
             const widthPct = max === 0 ? 0 : (r.count / max) * 100;
             const share = rows.total === 0 ? 0 : r.count / rows.total;
             return (
-              <div
+              <button
+                type="button"
                 key={r.label}
-                className="grid grid-cols-[1fr_auto] items-center gap-3 py-2.5"
+                onClick={() => setSelectedSource(r.label)}
+                title={`View ${r.count} deal${r.count === 1 ? '' : 's'} sourced via ${r.label}`}
+                className="grid grid-cols-[1fr_auto] items-center gap-3 py-2.5 text-left w-full cursor-pointer hover:bg-white/[0.03] rounded-md px-2 -mx-2 focus-visible:outline-none focus-visible:ring-1"
                 style={{ borderTop: idx === 0 ? 'none' : `1px solid ${C.hairline}` }}
               >
                 <div className="min-w-0">
@@ -879,12 +891,166 @@ function TopSourcedViaWidget() {
                   <span style={{ color: C.textPrimary }}>{r.count}</span>
                   <span style={{ color: C.textFaint }}>{' · '}{Math.round(share * 100)}%</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
       )}
     </div>
+    <SourcedViaDrilldownDialog
+      source={selectedSource}
+      deals={(data ?? []).filter(
+        (d) => !isExcludedDeal(d.company) && (d.sourced_via || '').trim() === selectedSource,
+      )}
+      viewLabel={view.label}
+      onClose={() => setSelectedSource(null)}
+    />
+    </>
+  );
+}
+
+// ------------------------------------------------------------
+// Sourced Via drill-down dialog
+// ------------------------------------------------------------
+function SourcedViaDrilldownDialog({
+  source,
+  deals,
+  viewLabel,
+  onClose,
+}: {
+  source: string | null;
+  deals: Array<{
+    id: string;
+    company: string | null;
+    sourced_via: string | null;
+    referral_source: string | null;
+    referral_source_id: string | null;
+    created_at: string;
+  }>;
+  viewLabel: string;
+  onClose: () => void;
+}) {
+  const open = !!source;
+  const referralIds = React.useMemo(
+    () => Array.from(new Set(deals.map((d) => d.referral_source_id).filter(Boolean))) as string[],
+    [deals],
+  );
+
+  const { data: sources } = useQuery({
+    queryKey: ['sourced-via-drilldown-refs', referralIds.sort().join(',')],
+    enabled: open && referralIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('id, name, channel, type, source_type, promoted_to_partner_id')
+        .in('id', referralIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const partnerIds = React.useMemo(
+    () => Array.from(new Set((sources ?? []).map((s) => s.promoted_to_partner_id).filter(Boolean))) as string[],
+    [sources],
+  );
+  const { data: partners } = useQuery({
+    queryKey: ['sourced-via-drilldown-partners', partnerIds.sort().join(',')],
+    enabled: open && partnerIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partners')
+        .select('id, name')
+        .in('id', partnerIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const srcById = React.useMemo(() => {
+    const m = new Map<string, { name: string; channel: string | null; type: string | null; source_type: string | null; promoted_to_partner_id: string | null }>();
+    for (const s of sources ?? []) m.set(s.id, s);
+    return m;
+  }, [sources]);
+  const partnerById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of partners ?? []) m.set(p.id, p.name);
+    return m;
+  }, [partners]);
+
+  const rows = deals
+    .slice()
+    .sort((a, b) => (a.created_at > b.created_at ? -1 : 1))
+    .map((d) => {
+      const s = d.referral_source_id ? srcById.get(d.referral_source_id) : undefined;
+      return {
+        id: d.id,
+        company: d.company || '—',
+        created: d.created_at,
+        referralName: s?.name ?? d.referral_source ?? '—',
+        channel: s?.channel ?? '—',
+        type: s?.type ?? s?.source_type ?? '—',
+        partner: s?.promoted_to_partner_id ? partnerById.get(s.promoted_to_partner_id) ?? '—' : '—',
+      };
+    });
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="max-w-3xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6"
+        style={{
+          background: 'rgba(12,12,18,0.98)',
+          border: `1px solid ${C.surfaceBorder}`,
+          color: C.textPrimary,
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle style={{ color: C.textPrimary }}>
+            Sourced via {source}
+          </DialogTitle>
+          <DialogDescription style={{ color: C.textMuted }}>
+            {viewLabel} · {rows.length} deal{rows.length === 1 ? '' : 's'} created
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-[12px]" style={{ borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ color: C.textMuted, textAlign: 'left' }}>
+                <th className="py-2 pr-3 font-medium">Deal</th>
+                <th className="py-2 pr-3 font-medium">Referral Source</th>
+                <th className="py-2 pr-3 font-medium">Channel</th>
+                <th className="py-2 pr-3 font-medium">Type</th>
+                <th className="py-2 pr-3 font-medium">Partner</th>
+                <th className="py-2 pr-3 font-medium whitespace-nowrap">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} style={{ borderTop: `1px solid ${C.hairline}` }}>
+                  <td className="py-2 pr-3" style={{ color: C.textPrimary }}>{r.company}</td>
+                  <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.referralName}</td>
+                  <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.channel}</td>
+                  <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.type}</td>
+                  <td className="py-2 pr-3" style={{ color: C.textMuted }}>{r.partner}</td>
+                  <td className="py-2 pr-3 whitespace-nowrap" style={{ color: C.textFaint }}>
+                    {new Date(r.created).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center" style={{ color: C.textMuted }}>
+                    No deals to display.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
