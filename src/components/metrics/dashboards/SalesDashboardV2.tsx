@@ -1973,9 +1973,10 @@ interface SalesCallEvent {
 function MetricDrilldownDialog({
   focus,
   onClose,
-  view,
+  countView,
+  valueView,
   pipelineVariant,
-  valueMode,
+  initialValueMode,
   salesCallEvents,
   salesCallsLoading,
   salesCallsError,
@@ -1988,9 +1989,10 @@ function MetricDrilldownDialog({
 }: {
   focus: DrilldownFocus | null;
   onClose: () => void;
-  view: DashboardView;
+  countView: DashboardView;
+  valueView: DashboardView;
   pipelineVariant: 'debt' | 'finserv';
-  valueMode: 'count' | 'value';
+  initialValueMode: 'count' | 'value';
   salesCallEvents: SalesCallEvent[];
   salesCallsLoading?: boolean;
   salesCallsError?: Error | null;
@@ -2005,12 +2007,20 @@ function MetricDrilldownDialog({
   const row = ROW_ORDER.find((r) => r.key === focus.metricKey);
   if (!row) return null;
 
-  // In $ (value) mode the dealsOnBoard / proposalsIssued arrays coming in
-  // via `view.actual` are $MM totals rather than counts — format them as money.
+  // Local toggle so the user can flip between # and $ without closing the dialog.
+  // Sales Calls has no dollar equivalent — force count.
+  const canToggleValue = row.key === 'dealsOnBoard' || row.key === 'proposalsIssued';
+  const [valueMode, setValueMode] = React.useState<'count' | 'value'>(
+    canToggleValue ? initialValueMode : 'count',
+  );
+  React.useEffect(() => {
+    setValueMode(canToggleValue ? initialValueMode : 'count');
+    // Reset when focus changes so the toggle re-syncs with the parent choice.
+  }, [focus.metricKey, canToggleValue, initialValueMode]);
+
+  const view = valueMode === 'value' ? valueView : countView;
   const effectiveRowType: 'count' | 'money' =
-    valueMode === 'value' && (row.key === 'dealsOnBoard' || row.key === 'proposalsIssued')
-      ? 'money'
-      : row.type;
+    valueMode === 'value' && canToggleValue ? 'money' : row.type;
 
   const planArr = view.plan[row.key];
   const actualArr = view.actual[row.key];
