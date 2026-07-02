@@ -46,6 +46,8 @@ export interface DrilldownRequest {
 
 interface DrilldownContextValue {
   open: (req: DrilldownRequest) => void;
+  back: () => void;
+  close: () => void;
 }
 
 const Ctx = createContext<DrilldownContextValue | null>(null);
@@ -78,31 +80,41 @@ function qboCashflowLink(start: string, end: string) {
 // ────────────────────────────────────────────────────────────
 
 export function DrilldownProvider({ children }: { children: React.ReactNode }) {
-  const [req, setReq] = useState<DrilldownRequest | null>(null);
-  const open = useCallback((r: DrilldownRequest) => setReq(r), []);
-  const close = useCallback(() => setReq(null), []);
+  const [stack, setStack] = useState<DrilldownRequest[]>([]);
+  const open = useCallback((r: DrilldownRequest) => setStack(s => [...s, r]), []);
+  const close = useCallback(() => setStack([]), []);
+  const back = useCallback(() => setStack(s => s.slice(0, -1)), []);
 
-  const value = useMemo(() => ({ open }), [open]);
+  const value = useMemo(() => ({ open, back, close }), [open, back, close]);
 
-  const context: DrilldownContext | null = req
+  const current = stack[stack.length - 1] ?? null;
+  const context: DrilldownContext | null = current
     ? {
-        sourceId: `drilldown:${req.kind}`,
-        sourceLabel: req.sourceLabel,
-        selection: req.selection,
-        periodLabel: req.period.label,
+        sourceId: `drilldown:${current.kind}`,
+        sourceLabel: current.sourceLabel,
+        selection: current.selection,
+        periodLabel: current.period.label,
       }
     : null;
+
+  const trail = stack.map((r, idx) => ({
+    label: r.selection || r.sourceLabel,
+    onClick: idx === stack.length - 1 ? undefined : () => setStack(s => s.slice(0, idx + 1)),
+  }));
 
   return (
     <Ctx.Provider value={value}>
       {children}
       <InsightsDrilldownDrawer
-        open={!!req}
+        open={!!current}
         onClose={close}
         context={context}
         columns={[]}
         rows={[]}
-        body={req ? <DrilldownBody req={req} /> : null}
+        body={current ? <DrilldownBody req={current} /> : null}
+        trail={trail}
+        onBack={stack.length > 1 ? back : undefined}
+        onBackToDashboard={close}
       />
     </Ctx.Provider>
   );

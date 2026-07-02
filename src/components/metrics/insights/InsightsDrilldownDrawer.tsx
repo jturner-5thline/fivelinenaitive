@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ExternalLink, Inbox, ArrowUp, ArrowDown } from 'lucide-react';
+import { X, ExternalLink, Inbox, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, LayoutDashboard } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -74,6 +74,12 @@ interface Props<T = any> {
   defaultSort?: { key: string; dir: 'asc' | 'desc' };
   /** Optional monthly/period trend rendered as the primary visual above the table. */
   trend?: DrilldownTrend;
+  /** Optional breadcrumb trail for nested drilldowns. Last item is treated as current. */
+  trail?: Array<{ label: string; onClick?: () => void }>;
+  /** Optional handler for the "Back" arrow (pops one level). */
+  onBack?: () => void;
+  /** Optional handler for the "Back to dashboard" button (fully closes). Defaults to onClose. */
+  onBackToDashboard?: () => void;
 }
 
 const PANEL_BG = 'rgba(10,18,36,0.97)';
@@ -154,6 +160,7 @@ function TrendChart({ trend }: { trend: DrilldownTrend }) {
  */
 export function InsightsDrilldownDrawer<T = any>({
   open, onClose, context, columns, rows, emptyHint, rowHref, onRowClick, summary, body, loading, defaultSort, trend,
+  trail, onBack, onBackToDashboard,
 }: Props<T>) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultSort?.dir ?? 'desc');
@@ -221,6 +228,92 @@ export function InsightsDrilldownDrawer<T = any>({
           overflow: 'hidden',
         }}
       >
+        {/* Breadcrumb / back bar */}
+        {(trail && trail.length > 0) || onBack ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+            padding: '8px 14px', borderBottom: `1px solid ${BORDER}`,
+            background: 'rgba(120,170,255,0.04)',
+          }}>
+            <button
+              type="button"
+              onClick={onBackToDashboard ?? onClose}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(80,140,255,0.14)', color: 'rgba(220,235,255,0.95)',
+                border: '1px solid rgba(120,170,255,0.28)', borderRadius: 6,
+                padding: '4px 10px', fontSize: 11, cursor: 'pointer',
+              }}
+              aria-label="Back to dashboard"
+              title="Back to dashboard"
+            >
+              <LayoutDashboard size={12} /> Back to dashboard
+            </button>
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: 'transparent', color: 'rgba(200,225,245,0.85)',
+                  border: '1px solid rgba(120,170,255,0.18)', borderRadius: 6,
+                  padding: '4px 8px', fontSize: 11, cursor: 'pointer',
+                }}
+                aria-label="Back one level"
+                title="Back one level"
+              >
+                <ChevronLeft size={12} /> Back
+              </button>
+            )}
+            {trail && trail.length > 0 && (
+              <nav aria-label="Breadcrumb" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', fontSize: 11, color: 'rgba(180,200,230,0.75)' }}>
+                <button
+                  type="button"
+                  onClick={onBackToDashboard ?? onClose}
+                  style={{
+                    background: 'transparent', border: 'none', padding: 0,
+                    color: 'rgba(180,200,230,0.75)', cursor: 'pointer', fontSize: 11,
+                  }}
+                >
+                  Dashboard
+                </button>
+                {trail.map((crumb, i) => {
+                  const isCurrent = i === trail.length - 1;
+                  return (
+                    <React.Fragment key={i}>
+                      <ChevronRight size={10} style={{ opacity: 0.5 }} />
+                      {isCurrent || !crumb.onClick ? (
+                        <span
+                          aria-current={isCurrent ? 'page' : undefined}
+                          style={{
+                            color: isCurrent ? '#dde8f8' : 'rgba(180,200,230,0.75)',
+                            fontWeight: isCurrent ? 600 : 400,
+                            maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {crumb.label}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={crumb.onClick}
+                          style={{
+                            background: 'transparent', border: 'none', padding: 0,
+                            color: '#7cc8f0', cursor: 'pointer', fontSize: 11,
+                            maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {crumb.label}
+                        </button>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+        ) : null}
+
         {/* Header */}
         <div style={{ padding: '14px 18px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
