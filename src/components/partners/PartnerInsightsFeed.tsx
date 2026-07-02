@@ -315,6 +315,10 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [stageMoves, memoUpdates, newDeals, partners, cutoff, activeTypes, partnerMap, stageMap, profileMap, sourceFilter]);
 
+  useEffect(() => {
+    if (headerCtx) headerCtx.setActivityCount(insights.length);
+  }, [insights.length, headerCtx]);
+
   return (
     <div className="space-y-4">
       {/* Feed — uses Insights card surface */}
