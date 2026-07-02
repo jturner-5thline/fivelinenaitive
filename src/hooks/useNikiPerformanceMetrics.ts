@@ -20,6 +20,19 @@ import { usePerformanceAssignee } from '@/hooks/usePerformanceAssignee';
  */
 
 export const ACTIVE_PIPELINE_ID_5THLINE = 'b78ad452-b489-4c89-8a91-789347c05f79';
+/**
+ * "In Development" pipeline for 5th Line. Deals here are also owned/managed
+ * by reps and their stage transitions (Proposal Issued, Final Credit Items,
+ * Terms Issued, etc.) count toward the same Performance actuals as the
+ * Active pipeline. NOTE: In Development uses overloaded stage IDs, so we
+ * count these deals via explicit stage_history events only — never via the
+ * "current stage at-or-past target" fallback (see STAGE_ORDER_ACTIVE).
+ */
+export const IN_DEVELOPMENT_PIPELINE_ID_5THLINE = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+const PIPELINE_IDS_5THLINE = [
+  ACTIVE_PIPELINE_ID_5THLINE,
+  IN_DEVELOPMENT_PIPELINE_ID_5THLINE,
+] as const;
 export const NIKI_NAME = 'Niki Heikali';
 
 /**
