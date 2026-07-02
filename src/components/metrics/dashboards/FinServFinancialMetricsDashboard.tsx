@@ -99,6 +99,54 @@ function PlaceholderWidget({ title }: { title: string }) {
   );
 }
 
+/**
+ * Least-squares linear best-fit trend across an ordered series.
+ * Nulls in the input are treated as gaps (skipped for fitting but keep index).
+ * Returns an array the same length as `values`, with the fitted y for every index
+ * (including the gap indexes so the line still spans across them).
+ */
+function computeLinearTrend(values: Array<number | null | undefined>): (number | null)[] {
+  const pts: Array<{ x: number; y: number }> = [];
+  values.forEach((v, i) => {
+    if (typeof v === 'number' && Number.isFinite(v)) pts.push({ x: i, y: v });
+  });
+  if (pts.length < 2) return values.map(() => null);
+  const n = pts.length;
+  const sumX = pts.reduce((a, p) => a + p.x, 0);
+  const sumY = pts.reduce((a, p) => a + p.y, 0);
+  const sumXY = pts.reduce((a, p) => a + p.x * p.y, 0);
+  const sumXX = pts.reduce((a, p) => a + p.x * p.x, 0);
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return values.map(() => null);
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return values.map((_, i) => intercept + slope * i);
+}
+
+function TrendToggleButton({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title="Toggle trend line"
+      className={
+        'text-[11px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+        (active
+          ? 'bg-primary/20 text-foreground'
+          : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+      }
+    >
+      Trend
+    </button>
+  );
+}
+
 function FinServSnapshotCard({
   label,
   value,
