@@ -75,6 +75,7 @@ import {
 // DATA — Jan–Sep 2026 (actuals exist for Jan–Jun only)
 // ============================================================
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'] as const;
+const MONTHS_ALL = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 const ELAPSED = 6;
 
 // Calendar-month indexed (0=Jan ... 8=Sep) seeded data covers 2026 only.
