@@ -1035,9 +1035,5 @@ export function NikiPerformanceTab() {
 }
 
 function _legacy_NikiPerformanceTab_unused() {
-  return (
-    <NikiPerformancePlanProvider>
-      <NikiPerformanceTabInner />
-    </NikiPerformancePlanProvider>
-  );
+  return null;
 }
