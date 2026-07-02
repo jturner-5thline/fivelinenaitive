@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FlexSyncStatusBadge, FlexSyncHistory } from '@/components/deal/FlexSyncHistory';
+import { FlexPublishToggle } from '@/components/deal/FlexPublishToggle';
 import { useLatestFlexSync } from '@/hooks/useFlexSyncHistory';
 import { useFlexChangedFields } from '@/hooks/useFlexChangedFields';
 import { useDealOwnership } from '@/hooks/useDealOwnership';
@@ -1308,6 +1309,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
             <CardDescription className="hidden sm:block">Create, edit, and manage deal listings</CardDescription>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            {canPushToFlex && <FlexPublishToggle dealId={dealId} />}
             <Button 
               variant="outline"
               size="sm"
