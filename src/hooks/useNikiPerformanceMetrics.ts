@@ -441,10 +441,10 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
   const pipelineData = useNikiPipelineData();
   const revenue = useNikiRevenueActuals();
 
-  const isLoading =
-    added.isLoading ||
-    pipelineData.isLoading ||
-    revenue.isLoading;
+  // Render the scorecard immediately with plan values / zeroed actuals, then
+  // hydrate actuals as each query completes. Blocking the whole tab on these
+  // queries made the Performance tab appear empty on slower requests.
+  const isLoading = false;
 
   const rows = useMemo<MetricRow[]>(() => {
     const proposal     = entriesForStage(pipelineData.data, 'proposal-issued');
