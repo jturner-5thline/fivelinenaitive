@@ -170,18 +170,26 @@ serve(async (req: Request): Promise<Response> => {
 
     const results = await Promise.all(Array.from(grantByUser.entries()).map(async ([userId, grantId]) => {
       try {
-        const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
-        url.searchParams.set("calendar_id", "primary");
-        url.searchParams.set("start", String(startUnix));
-        url.searchParams.set("end", String(endUnix));
-        url.searchParams.set("limit", "200");
-        url.searchParams.set("expand_recurring", "true");
-        const resp = await fetch(url.toString(), {
-          headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
-        });
-        if (!resp.ok) return [];
-        const data = await resp.json();
-        const raw = (data?.data || []) as any[];
+        const raw: any[] = [];
+        let cursor: string | null = null;
+        for (let page = 0; page < 6; page += 1) {
+          const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events`);
+          url.searchParams.set("calendar_id", "primary");
+          url.searchParams.set("start", String(startUnix));
+          url.searchParams.set("end", String(endUnix));
+          url.searchParams.set("limit", "200");
+          url.searchParams.set("expand_recurring", "true");
+          if (cursor) url.searchParams.set("page_token", cursor);
+          const resp = await fetch(url.toString(), {
+            headers: { Authorization: `Bearer ${NYLAS_API_KEY}`, Accept: "application/json" },
+          });
+          if (!resp.ok) break;
+          const data = await resp.json();
+          const batch = (data?.data || []) as any[];
+          raw.push(...batch);
+          cursor = data?.next_cursor || null;
+          if (!cursor || batch.length === 0) break;
+        }
         const prof = profByUser.get(userId);
         return raw
           .filter((e: any) => e.status !== "cancelled")

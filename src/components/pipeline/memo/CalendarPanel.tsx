@@ -81,15 +81,12 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
   const [selectedKey, setSelectedKey] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
 
-  // Team meetings: broad window around the visible range so week nav
-  // doesn't re-trigger network requests.
-  // Anchor to today (not windowStart) so paging through weeks keeps the
-  // same query key and the request only fires once per deal view.
+  // Team meetings: request only the visible two-week window. Broad calendar
+  // pulls can hit provider page limits before later visible meetings (e.g. the
+  // second week) are returned.
   const teamRange = useMemo(() => {
-    const today = defaultWindowStart();
-    return { start: addDays(today, -56), end: addDays(today, 84) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deal.id]);
+    return { start: windowStart, end: addDays(windowStart, 14) };
+  }, [windowStart]);
   const { data: teamEvents = [] } = useDealTeamCalendarEvents(deal.id, teamRange);
 
   // Add / edit form
