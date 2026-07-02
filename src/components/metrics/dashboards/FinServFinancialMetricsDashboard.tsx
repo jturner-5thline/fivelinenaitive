@@ -857,61 +857,21 @@ function FinServFinancialMetricsDashboardInner() {
         </CardContent>
       </Card>
 
-      <Card className="glass-module">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            {activeClients.isLoading ? (
-              <Skeleton className="h-10 w-32" />
-            ) : activeClients.error ? null : (
-              <>
-                <div className="flex items-end gap-3 flex-wrap">
-                  <div className="text-3xl font-semibold text-foreground leading-none tabular-nums">
-                    {activeClients.currentCount}
-                  </div>
-                  <VarianceIndicator value={activeClients.variance} />
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Count at end of period · vs prior period ({activeClients.priorCount})
-                </div>
-              </>
-            )}
-          </div>
-          {activeClients.isLoading ? <WidgetLoading /> : activeClients.error ? <WidgetError /> : activeClients.trend.every(t => t.count === 0) ? <WidgetEmpty message="No active FinServ clients yet" /> : (
-            <div className="h-[220px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={activeClients.trend}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                  <Tooltip formatter={(v: number, name: string) => [
-                    name === 'Trend' ? v : v,
-                    name,
-                  ]} />
-                  <Bar
-                    dataKey="count"
-                    fill="hsl(var(--primary))"
-                    name="Active Clients"
-                    shape={createGlassBarShape({ radius: 4 })}
-                    cursor="pointer"
-                    onClick={(d: any) => openDrill({
-                      kind: 'active-clients',
-                      sourceLabel: 'Active Clients',
-                      selection: d?.month ?? '',
-                      period: resolveBucket(d?.monthKey ?? d?.month),
-                      granularity: range.granularity,
-                    })}
-                  />
-                  <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <ActiveClientsMetricWidget
+        data={activeClients}
+        periodBadge={periodBadge}
+        onDrill={(idx) => {
+          const point = activeClients.trend[idx];
+          if (!point) return;
+          openDrill({
+            kind: 'active-clients',
+            sourceLabel: 'Active Clients',
+            selection: point.month,
+            period: resolveBucket(point.monthKey ?? point.month),
+            granularity: range.granularity,
+          });
+        }}
+      />
       </div>
 
       {/* ── Row 5b + 6: Average Revenue by Client + Revenue Change by Client ── */}
