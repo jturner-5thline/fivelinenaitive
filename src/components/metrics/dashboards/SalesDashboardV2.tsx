@@ -1736,8 +1736,17 @@ function MetricDrilldownDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <Tabs defaultValue="stats" className="mt-3">
+          <TabsList
+            className="mb-3"
+            style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.surfaceBorder}` }}
+          >
+            <TabsTrigger value="stats">Stats</TabsTrigger>
+            <TabsTrigger value="charts">Charts</TabsTrigger>
+          </TabsList>
+          <TabsContent value="stats" className="mt-0">
         {/* Summary tiles */}
-        <div className="grid grid-cols-4 gap-3 mt-2">
+        <div className="grid grid-cols-4 gap-3">
           <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
           <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
           <SummaryTile
@@ -1984,6 +1993,66 @@ function MetricDrilldownDialog({
             </div>
           </div>
         )}
+          </TabsContent>
+          <TabsContent value="charts" className="mt-0">
+            <div
+              className="p-3 rounded-md"
+              style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.surfaceBorder}` }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold" style={{ color: C.textPrimary }}>
+                  {row.label} · Plan vs Actual
+                </div>
+                <div className="flex items-center gap-3 text-[10px]" style={{ color: C.textMuted }}>
+                  <span className="flex items-center gap-1">
+                    <span style={{ width: 14, height: 0, borderTop: `1.5px dashed ${C.periwinkle}`, display: 'inline-block' }} />
+                    Plan
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span style={{ width: 14, height: 2, background: C.cyan, display: 'inline-block', borderRadius: 1 }} />
+                    Actual
+                  </span>
+                </div>
+              </div>
+              <div style={{ height: 420 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={view.months.map((m, i) => ({ month: m, plan: planArr[i], actual: actualArr[i] }))}
+                    margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid stroke={C.hairline} vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: C.textFaint, fontSize: 11 }} axisLine={{ stroke: C.hairline }} tickLine={false} />
+                    <YAxis tick={{ fill: C.textFaint, fontSize: 11 }} axisLine={false} tickLine={false} width={44} />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'rgba(8,8,12,0.95)',
+                        border: `1px solid ${C.surfaceBorder}`,
+                        borderRadius: 8,
+                        color: C.textPrimary,
+                        fontSize: 12,
+                      }}
+                    />
+                    {E > 0 && E < view.months.length && (
+                      <ReferenceLine x={view.months[E - 1]} stroke={C.periwinkle} strokeDasharray="2 3" strokeOpacity={0.5} />
+                    )}
+                    <Line type="monotone" dataKey="plan" stroke={C.periwinkle} strokeWidth={1.6} strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="actual" stroke={C.cyan} strokeWidth={2.4} dot={{ r: 3, fill: C.cyan }} connectNulls={false} isAnimationActive={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-3">
+                <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
+                <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
+                <SummaryTile
+                  label="Variance"
+                  value={row.type === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
+                  color={variance >= 0 ? C.cyan : C.rose}
+                />
+                <SummaryTile label="Attainment" value={fmtPct(attainment)} color={statusColor(attainment)} />
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
