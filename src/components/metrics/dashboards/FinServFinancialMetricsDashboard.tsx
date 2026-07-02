@@ -367,22 +367,14 @@ function GrossProfitToggleCard({
                   )}
                 />
                 {isDollar ? (
-                  <>
-                    <Bar
-                      dataKey="revenue"
-                      fill="hsl(var(--primary) / 0.35)"
-                      name="Revenue"
-                      shape={createGlassBarShape({ radius: 4 })}
-                    />
-                    <Bar
-                      dataKey="grossProfit"
-                      fill="hsl(var(--chart-2))"
-                      name="Gross Profit"
-                      shape={createGlassBarShape({ radius: 4 })}
-                      cursor="pointer"
-                      onClick={(d: any) => openSinglePoint('Gross Profit $', d?.quarter, 'Gross Profit', Number(d?.grossProfit) || 0, fmtCurrencyFull)}
-                    />
-                  </>
+                  <Bar
+                    dataKey="grossProfit"
+                    fill="hsl(var(--chart-2))"
+                    name="Gross Profit"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint('Gross Profit $', d?.quarter, 'Gross Profit', Number(d?.grossProfit) || 0, fmtCurrencyFull)}
+                  />
                 ) : (
                   <Bar
                     dataKey="grossMargin"
