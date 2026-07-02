@@ -25,11 +25,16 @@ export interface SalesCallsResult {
   events: SalesCallEvent[];
 }
 
-export function useSalesCallsCount(from: Date, to: Date, enabled = true) {
+export function useSalesCallsCount(
+  from: Date,
+  to: Date,
+  enabled = true,
+  variant: 'debt' | 'finserv' = 'debt',
+) {
   const timeMin = from.toISOString();
   const timeMax = to.toISOString();
   return useQuery<SalesCallsResult, Error>({
-    queryKey: ['sales-calls-count', timeMin, timeMax],
+    queryKey: ['sales-calls-count', variant, timeMin, timeMax],
     enabled,
     // Backed by sales_calls_cache (refreshed daily by sales-calls-refresh
     // cron). Stay fresh for 12h so page reloads serve instantly without
@@ -41,7 +46,7 @@ export function useSalesCallsCount(from: Date, to: Date, enabled = true) {
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('sales-calls-count', {
-        body: { time_min: timeMin, time_max: timeMax },
+        body: { time_min: timeMin, time_max: timeMax, variant },
       });
       if (error) throw new Error(error.message || 'Failed to load sales calls');
       return {
