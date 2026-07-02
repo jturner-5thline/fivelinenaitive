@@ -1138,90 +1138,13 @@ function FinServFinancialMetricsDashboardInner() {
         openSinglePoint={openSinglePoint}
       />
 
-      {/* ── Row 3: Operating Profit $ + Operating Margin % ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Operating Profit $</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.operatingProfit)}</div>
-              <div className="text-xs text-muted-foreground">Gross Profit − Operating Expenses from QuickBooks P&amp;L</div>
-            </div>
-            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.operatingProfit === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={profits.quarters}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                    <YAxis
-                      tickFormatter={fmtCurrency}
-                      tick={{ fontSize: 10 }}
-                      domain={[(min: number) => Math.min(min, 0), (max: number) => Math.max(max, 0)]}
-                    />
-                    <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Operating Profit']} />
-                    <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={0.75} />
-                    <Bar
-                      dataKey="operatingProfit"
-                      fill="hsl(var(--primary))"
-                      name="Operating Profit"
-                      shape={createGlassBarShape({ radius: 4 })}
-                      cursor="pointer"
-                      onClick={(d: any) => openSinglePoint('Operating Profit $', d?.quarter, 'Operating Profit', Number(d?.operatingProfit) || 0, fmtCurrencyFull)}
-                    >
-                      {profits.quarters.map((entry, i) => (
-                        <Cell key={i} fill={entry.operatingProfit >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Operating Margin %</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="text-3xl font-semibold text-foreground">
-                {typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
-              </div>
-              <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
-            </div>
-            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.operatingMargin === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={profits.quarters}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
-                    <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number) => [fmtPct(v), 'Operating Margin']} />
-                    <ReferenceLine y={0} stroke="hsl(var(--border))" />
-                    <Bar
-                      dataKey="operatingMargin"
-                      fill="hsl(35, 85%, 55%)"
-                      name="Operating Margin %"
-                      shape={createGlassBarShape({ radius: 4 })}
-                      cursor="pointer"
-                      onClick={(d: any) => openSinglePoint('Operating Margin %', d?.quarter, 'Operating Margin', Number(d?.operatingMargin) || 0, fmtPct)}
-                    >
-                      {profits.quarters.map((entry, i) => (
-                        <Cell key={i} fill={entry.operatingMargin >= 0 ? 'hsl(35, 85%, 55%)' : 'hsl(var(--destructive))'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* ── Row 3: Operating Profit $ / Operating Margin % (toggle) ── */}
+      <OperatingProfitToggleCard
+        periodBadge={periodBadge}
+        totalRev={totalRev}
+        profits={profits}
+        openSinglePoint={openSinglePoint}
+      />
 
       {/* ── Row 4 + 5: FinServ Cashflow + Active Clients ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
