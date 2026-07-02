@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -14,6 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { differenceInDays, format } from 'date-fns';
 import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { usePartnerInsightsCounts } from './PartnerInsightsFeed';
 
 interface StalePartner {
   id: string;
@@ -110,6 +111,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
 
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
   }, [partners, stageNotes, stageMap, thresholds]);
+
+  const countsCtx = usePartnerInsightsCounts();
+  useEffect(() => {
+    if (countsCtx) countsCtx.setAttentionCount(stalePartners.length);
+  }, [stalePartners.length, countsCtx]);
 
   const displayed = showAll ? stalePartners : stalePartners.slice(0, 5);
 
