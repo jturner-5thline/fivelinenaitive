@@ -50,10 +50,23 @@ export function LiquidGlassBar(props: LiquidGlassBarProps) {
   if (width <= 0 || height === 0) return null;
 
   const hasExplicitAnchors = Number.isFinite(baselineY) && Number.isFinite(valueY);
-  const barTop = hasExplicitAnchors ? Math.min(baselineY as number, valueY as number) : y;
-  const barBottom = hasExplicitAnchors ? Math.max(baselineY as number, valueY as number) : y + Math.abs(height);
-  const isNegative = valueSign ? valueSign === 'negative' : (hasExplicitAnchors ? (valueY as number) > (baselineY as number) : height < 0);
+  // When falling back to props.y/props.height, respect Recharts' sign
+  // convention: for negative-value bars Recharts hands us a *negative*
+  // height with `y` positioned at the value coordinate, and expects the
+  // renderer to extend UPWARD to the zero baseline. Anchor via min/max so
+  // the bar always touches the zero line regardless of sign.
+  const rawBottom = y + height;
+  const barTop = hasExplicitAnchors
+    ? Math.min(baselineY as number, valueY as number)
+    : Math.min(y, rawBottom);
+  const barBottom = hasExplicitAnchors
+    ? Math.max(baselineY as number, valueY as number)
+    : Math.max(y, rawBottom);
+  const isNegative = valueSign
+    ? valueSign === 'negative'
+    : (hasExplicitAnchors ? (valueY as number) > (baselineY as number) : height < 0);
   const absHeight = Math.max(0, barBottom - barTop);
+  if (absHeight === 0) return null;
   const r = isTopSegment ? Math.min(radius, width / 2, absHeight / 2) : 0;
 
   let path: string;
