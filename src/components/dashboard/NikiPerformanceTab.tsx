@@ -33,6 +33,12 @@ import {
   NikiPerformancePlanProvider,
   useNikiPerformancePlan,
 } from '@/hooks/useNikiPerformancePlan';
+import {
+  PerformanceAssigneeProvider,
+  usePerformanceAssignee,
+  PERFORMANCE_ASSIGNEES,
+  type PerformanceAssigneeName,
+} from '@/hooks/usePerformanceAssignee';
 
 type PerfMode = 'quarterly' | 'ytd';
 const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -404,6 +410,8 @@ function NikiPerformanceTabInner() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
   const { user } = useAuth();
   const { plan: planMap } = useNikiPerformancePlan();
+  const { assignee, setAssignee } = usePerformanceAssignee();
+  const canSwitchAssignee = user?.email === 'jturner@5thline.co';
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const canEditModel = canEditPerformanceModel(user);
@@ -699,11 +707,32 @@ function NikiPerformanceTabInner() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Rep Performance &amp; Pipeline Model</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Plan vs Actual for Niki's 2026 production and revenue metrics. Live actuals from Active
-            Pipeline stage-entry events, scoped to deals where Niki is owner or deal manager.
+            Plan vs Actual for {assignee}'s 2026 production and revenue metrics. Live actuals from
+            Active Pipeline stage-entry events, scoped to deals where {assignee} is owner or deal
+            manager.
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {canSwitchAssignee && (
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              {PERFORMANCE_ASSIGNEES.map((name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => setAssignee(name as PerformanceAssigneeName)}
+                  className={cn(
+                    'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                    assignee === name
+                      ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  title={`View performance for ${name}`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
           {canEditModel && (
             <Button
               variant={mode === 'edit' ? 'default' : 'outline'}
@@ -1020,8 +1049,14 @@ function NikiPerformanceTabInner() {
 
 export function NikiPerformanceTab() {
   return (
-    <NikiPerformancePlanProvider>
-      <NikiPerformanceTabInner />
-    </NikiPerformancePlanProvider>
+    <PerformanceAssigneeProvider>
+      <NikiPerformancePlanProvider>
+        <NikiPerformanceTabInner />
+      </NikiPerformancePlanProvider>
+    </PerformanceAssigneeProvider>
   );
+}
+
+function _legacy_NikiPerformanceTab_unused() {
+  return null;
 }
