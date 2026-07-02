@@ -2010,7 +2010,7 @@ function MetricDrilldownDialog({
   const effectiveRowType: 'count' | 'money' =
     valueMode === 'value' && (row.key === 'dealsOnBoard' || row.key === 'proposalsIssued')
       ? 'money'
-      : row.type;
+      : effectiveRowType;
 
   const planArr = view.plan[row.key];
   const actualArr = view.actual[row.key];
@@ -2137,11 +2137,11 @@ function MetricDrilldownDialog({
           <TabsContent value="stats" className="mt-0">
         {/* Summary tiles */}
         <div className="grid grid-cols-4 gap-3">
-          <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
-          <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
+          <SummaryTile label="Actual" value={fmtRow(totalActual, effectiveRowType)} color={C.cyan} />
+          <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color={C.periwinkle} />
           <SummaryTile
             label="Variance"
-            value={row.type === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
+            value={effectiveRowType === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
             color={variance >= 0 ? C.cyan : C.rose}
           />
           <SummaryTile label="Attainment" value={fmtPct(attainment)} color={statusColor(attainment)} />
@@ -2178,9 +2178,9 @@ function MetricDrilldownDialog({
                     }}
                   >
                     <td className="px-3 py-2">{m}</td>
-                    <td className="text-right px-3 py-2">{fmtRow(p, row.type)}</td>
+                    <td className="text-right px-3 py-2">{fmtRow(p, effectiveRowType)}</td>
                     <td className="text-right px-3 py-2" style={{ color: a == null ? C.textFaint : C.cyan }}>
-                      {a == null ? '—' : fmtRow(a, row.type)}
+                      {a == null ? '—' : fmtRow(a, effectiveRowType)}
                     </td>
                     <td
                       className="text-right px-3 py-2"
@@ -2188,7 +2188,7 @@ function MetricDrilldownDialog({
                     >
                       {v == null
                         ? '—'
-                        : row.type === 'money'
+                        : effectiveRowType === 'money'
                           ? fmtSignedMoney(v)
                           : fmtSignedCount(v)}
                     </td>
@@ -2438,11 +2438,11 @@ function MetricDrilldownDialog({
                 </ResponsiveContainer>
               </div>
               <div className="mt-3 grid grid-cols-4 gap-3">
-                <SummaryTile label="Actual" value={fmtRow(totalActual, row.type)} color={C.cyan} />
-                <SummaryTile label="Plan" value={fmtRow(totalPlan, row.type)} color={C.periwinkle} />
+                <SummaryTile label="Actual" value={fmtRow(totalActual, effectiveRowType)} color={C.cyan} />
+                <SummaryTile label="Plan" value={fmtRow(totalPlan, effectiveRowType)} color={C.periwinkle} />
                 <SummaryTile
                   label="Variance"
-                  value={row.type === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
+                  value={effectiveRowType === 'money' ? fmtSignedMoney(variance) : fmtSignedCount(variance)}
                   color={variance >= 0 ? C.cyan : C.rose}
                 />
                 <SummaryTile label="Attainment" value={fmtPct(attainment)} color={statusColor(attainment)} />
