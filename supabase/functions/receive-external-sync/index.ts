@@ -89,16 +89,19 @@ serve(async (req) => {
       
       console.log('Successfully inserted info notification for deal:', payload.deal_id);
       
-      // Send email notification to deal owner
+      // Send email notification to the deal manager (falls back to
+      // deal_owner, then to the deal creator).
       try {
         const { data: deal } = await supabase
           .from('deals')
-          .select('company, user_id')
+          .select('company, user_id, manager, deal_owner')
           .eq('id', payload.deal_id)
           .single();
-        
-        if (deal && deal.user_id) {
-          console.log('Sending email notification to deal owner:', deal.user_id);
+
+        const managerId = (deal as any)?.manager || (deal as any)?.deal_owner || deal?.user_id;
+
+        if (deal && managerId) {
+          console.log('Sending email notification to deal manager:', managerId);
           
           const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
           const emailResponse = await fetch(`${supabaseUrl}/functions/v1/send-flex-alert`, {
@@ -111,7 +114,7 @@ serve(async (req) => {
               alert_type: 'info_request',
               deal_id: payload.deal_id,
               deal_name: deal.company,
-              user_id: deal.user_id,
+              user_id: managerId,
               lender_name: resolvedLenderName,
               lender_email: user_email,
               message: notification_message,
@@ -121,7 +124,7 @@ serve(async (req) => {
           const emailResult = await emailResponse.json();
           console.log('Email notification result:', emailResult);
         } else {
-          console.log('Could not find deal owner for email notification');
+          console.log('Could not find deal manager for email notification');
         }
       } catch (emailError) {
         console.error('Error sending email notification:', emailError);
