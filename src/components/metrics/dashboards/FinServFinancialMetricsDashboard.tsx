@@ -1313,8 +1313,13 @@ function FinServFinancialMetricsDashboardInner() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card className="glass-module">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
+              <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+            </div>
+            <TrendToggleButton active={showTrendAvgRevClient} onToggle={() => setShowTrendAvgRevClient(v => !v)} />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -1437,17 +1442,19 @@ function FinServFinancialMetricsDashboardInner() {
                       }}
                     />
                   </Bar>
-                  <Line
-                    type="monotone"
-                    dataKey="trend"
-                    stroke="hsl(142 71% 45%)"
-                    strokeWidth={2}
-                    strokeDasharray="4 3"
-                    dot={false}
-                    activeDot={false}
-                    name="Best-fit trend"
-                    isAnimationActive={false}
-                  />
+                  {showTrendAvgRevClient && (
+                    <Line
+                      type="monotone"
+                      dataKey="trend"
+                      stroke="hsl(142 71% 45%)"
+                      strokeWidth={2}
+                      strokeDasharray="4 3"
+                      dot={false}
+                      activeDot={false}
+                      name="Best-fit trend"
+                      isAnimationActive={false}
+                    />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
