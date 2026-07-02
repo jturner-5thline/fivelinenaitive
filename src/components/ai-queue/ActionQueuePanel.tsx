@@ -76,6 +76,12 @@ import {
   useDeclineDealAccessRequest,
   type DealAccessRequest,
 } from '@/hooks/useDealAccessRequests';
+import {
+  useAllFlexInfoNotifications,
+  useApproveFlexAccessRequest,
+  useDeclineFlexAccessRequest,
+  type FlexAccessRequest,
+} from '@/hooks/useAllFlexInfoNotifications';
 
 /* ─────────────────────────────────────────────────────────────────────────
    naitive design tokens (scoped to the Approval Queue surface)
