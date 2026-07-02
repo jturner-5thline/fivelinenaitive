@@ -169,26 +169,34 @@ function SalesBDInner() {
 
             <TabsContent value="referral-sources" className="mt-4">
               <div className="space-y-8">
-                <ReferralSourceDeals />
-                <ReferralSourcesView hideKpis />
-                <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across referral sources</p>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left: Referral Sources Insights */}
+                  <div className="space-y-4">
+                    <div>
+                      <h2 className="text-lg font-semibold">Referral Sources Insights</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across referral sources</p>
+                    </div>
+                    <Tabs defaultValue="activity">
+                      <TabsList>
+                        <TabsTrigger value="activity">Activity</TabsTrigger>
+                        <TabsTrigger value="attention">Needing Attention</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="activity" className="mt-4">
+                        <PartnerInsightsFeed sourceFilter="referrals" />
+                      </TabsContent>
+                      <TabsContent value="attention" className="mt-4">
+                        <ReferralsNeedingAttention />
+                      </TabsContent>
+                    </Tabs>
                   </div>
-                  <Tabs defaultValue="activity">
-                    <TabsList>
-                      <TabsTrigger value="activity">Activity</TabsTrigger>
-                      <TabsTrigger value="attention">Needing Attention</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="activity" className="mt-4">
-                      <PartnerInsightsFeed sourceFilter="referrals" />
-                    </TabsContent>
-                    <TabsContent value="attention" className="mt-4">
-                      <ReferralsNeedingAttention />
-                    </TabsContent>
-                  </Tabs>
+                  {/* Right: 2×3 metric widgets */}
+                  <ReferralSourceDeals
+                    kpisOnly
+                    kpiGridClassName="grid grid-cols-2 gap-3 auto-rows-fr h-full"
+                  />
                 </div>
+                <ReferralSourceDeals hideKpis />
+                <ReferralSourcesView hideKpis />
               </div>
             </TabsContent>
         </DashboardPage>
