@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
 import { useDashboardPreference } from '@/hooks/useDashboardPreference';
 import { AlertTriangle, Settings, Eye, ChevronDown, ChevronRight } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { differenceInDays } from 'date-fns';
 import { ReferralSourceEditDialog } from '@/components/channels/ReferralSourceEditDialog';
 import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
+import { usePartnerInsightsCounts } from './PartnerInsightsFeed';
 
 interface StaleReferral {
   key: string;
@@ -75,6 +76,11 @@ export function ReferralsNeedingAttention() {
 
     return result.sort((a, b) => b.daysSinceActivity - a.daysSinceActivity);
   }, [referralSources, thresholds]);
+
+  const countsCtx = usePartnerInsightsCounts();
+  useEffect(() => {
+    if (countsCtx) countsCtx.setAttentionCount(stale.length);
+  }, [stale.length, countsCtx]);
 
   const displayed = showAll ? stale : stale.slice(0, 5);
 
