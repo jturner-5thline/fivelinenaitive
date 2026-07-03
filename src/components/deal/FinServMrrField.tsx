@@ -59,19 +59,21 @@ function ManualMrrDisplay({
 
   return (
     <>
-      <div className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between gap-2">
-        <span className="tabular-nums truncate">
-          {current == null ? <span className="text-muted-foreground">Not set</span> : fmtUSD(current)}
-        </span>
+      <div className="flex items-center gap-2 min-w-0 w-full">
+        <div className="min-w-0 flex-1 h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center">
+          <span className="tabular-nums truncate">
+            {current == null ? <span className="text-muted-foreground">Not set</span> : fmtUSD(current)}
+          </span>
+        </div>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="h-6 px-2 text-xs shrink-0"
+          className="h-8 px-2.5 text-xs shrink-0"
           onClick={() => setOpen(true)}
         >
           <Pencil className="h-3 w-3 mr-1" />
-          Update
+          Update MRR
         </Button>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
