@@ -225,6 +225,28 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
                 innerRadius={30}
                 paddingAngle={3}
                 activeShape={GlassActiveShape}
+                label={({ cx, cy, midAngle, outerRadius, value, percent }: any) => {
+                  if (!value || value <= 0) return null;
+                  const RADIAN = Math.PI / 180;
+                  const r = outerRadius + 14;
+                  const x = cx + r * Math.cos(-midAngle * RADIAN);
+                  const y = cy + r * Math.sin(-midAngle * RADIAN);
+                  const anchor = x > cx ? 'start' : 'end';
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      textAnchor={anchor}
+                      dominantBaseline="central"
+                      fontSize={11}
+                      fill="rgba(210, 225, 250, 0.92)"
+                      className="tabular-nums"
+                    >
+                      {`${formatCurrency(value)} · ${(percent * 100).toFixed(0)}%`}
+                    </text>
+                  );
+                }}
+                labelLine={{ stroke: 'rgba(160, 200, 255, 0.35)', strokeWidth: 1 }}
               >
                 {pieData.map((_, i) => (
                   <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.92} stroke={STATUS_COLORS[i]} strokeWidth={0.75} />
