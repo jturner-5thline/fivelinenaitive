@@ -2192,7 +2192,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_meeting_notes",
-      description: "Search the current user's personal meeting notes captured in the End of Day details panel. Use this whenever the user asks 'when did I talk with X', 'when was my call with X', 'what did we discuss with X', 'what were the notes on <meeting/company/person>', or any question about their own prior meeting notes. Results are scoped to the current user only. Match on note text, meeting title, and attendee name/email.",
+      description: "Search the current user's personal meeting notes (captured in the End of Day details panel) AND Claap recordings the user organized or attended. Results are always scoped to the current user. Supports filters for free-text query, attendee name/email, call date range (start_iso/end_iso or since_days), and linked deal_id. Use this whenever the user asks 'when did I talk with X', 'find my calls with X between <dates>', 'show my notes for deal Y', 'what did we discuss on <topic>', or similar questions about their own meetings.",
       parameters: {
         type: "object",
         properties: {
@@ -6400,51 +6400,114 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "search_meeting_notes": {
       if (!userId) return { error: "Not authenticated." };
       const limit = Math.min(Number(args.limit) || 25, 100);
-      let q = supabase
+      const query = typeof args.query === "string" ? args.query.trim() : "";
+      const attendee = typeof args.attendee === "string" ? args.attendee.trim() : "";
+      const dealId = args.deal_id || null;
+      let startIso: string | null = args.start_iso || null;
+      const endIso: string | null = args.end_iso || null;
+      if (args.since_days && !startIso) {
+        startIso = new Date(Date.now() - Number(args.since_days) * 86400000).toISOString();
+      }
+      const esc = query.replace(/[%,]/g, " ").trim();
+
+      // Fetch the caller's email so we can scope Claap recordings to
+      // meetings they organized or attended.
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("email")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const userEmail = (prof?.email || "").toLowerCase();
+
+      // ── 1) user_meeting_notes (End of Day personal notes) ─────────────
+      let unq = supabase
         .from("user_meeting_notes")
         .select("id, event_id, event_title, event_start, event_end, organizer_email, attendee_emails, attendee_names, linked_deal_id, note_text, created_at")
         .eq("user_id", userId)
         .order("event_start", { ascending: false, nullsFirst: false })
         .limit(limit);
-      const query = typeof args.query === "string" ? args.query.trim() : "";
-      if (query) {
-        const esc = query.replace(/[%,]/g, " ").trim();
-        // OR match across note text, event title, and attendee arrays.
-        q = q.or(
-          `note_text.ilike.%${esc}%,event_title.ilike.%${esc}%,organizer_email.ilike.%${esc}%`,
-        );
+      if (esc) {
+        unq = unq.or(`note_text.ilike.%${esc}%,event_title.ilike.%${esc}%,organizer_email.ilike.%${esc}%`);
       }
-      if (args.attendee) {
-        const term = String(args.attendee).trim();
-        // Fallback: rely on note_text/attendee_names ilike (arrays don't ilike directly).
-        q = q.or(`note_text.ilike.%${term}%,event_title.ilike.%${term}%,organizer_email.ilike.%${term}%`);
-      }
-      if (args.deal_id) q = q.eq("linked_deal_id", args.deal_id);
-      if (args.since_days) {
-        const since = new Date(Date.now() - Number(args.since_days) * 86400000).toISOString();
-        q = q.gte("event_start", since);
-      }
-      if (args.start_iso) q = q.gte("event_start", args.start_iso);
-      if (args.end_iso) q = q.lte("event_start", args.end_iso);
-      const { data, error } = await q;
-      if (error) return { error: error.message };
-      let rows = data || [];
-      // Post-filter attendees against array columns (Supabase JS doesn't
-      // support `ilike ANY(array)` directly, so do it in-memory).
-      if (args.attendee) {
-        const term = String(args.attendee).toLowerCase();
-        rows = rows.filter((r: any) => {
+      if (dealId) unq = unq.eq("linked_deal_id", dealId);
+      if (startIso) unq = unq.gte("event_start", startIso);
+      if (endIso) unq = unq.lte("event_start", endIso);
+      const { data: unRows, error: unErr } = await unq;
+      if (unErr) return { error: unErr.message };
+      let userNotes = unRows || [];
+      if (attendee) {
+        const t = attendee.toLowerCase();
+        userNotes = userNotes.filter((r: any) => {
           const emails: string[] = r.attendee_emails || [];
           const names: string[] = r.attendee_names || [];
-          return emails.some((e) => (e || "").toLowerCase().includes(term))
-            || names.some((n) => (n || "").toLowerCase().includes(term))
-            || (r.note_text || "").toLowerCase().includes(term)
-            || (r.event_title || "").toLowerCase().includes(term);
+          return emails.some((e) => (e || "").toLowerCase().includes(t))
+            || names.some((n) => (n || "").toLowerCase().includes(t))
+            || (r.note_text || "").toLowerCase().includes(t)
+            || (r.event_title || "").toLowerCase().includes(t);
         });
       }
-      return {
-        count: rows.length,
-        notes: rows.map((r: any) => ({
+
+      // ── 2) Claap recordings the user organized or attended ─────────────
+      let claapNotes: any[] = [];
+      if (userEmail) {
+        let cq = supabase
+          .from("claap_recordings")
+          .select("id, claap_id, title, organizer_email, deal_id, started_at, ai_summary, transcript, next_steps, key_decisions, raw_payload")
+          .order("started_at", { ascending: false, nullsFirst: false })
+          .limit(Math.max(limit * 2, 50));
+        if (dealId) cq = cq.eq("deal_id", dealId);
+        if (startIso) cq = cq.gte("started_at", startIso);
+        if (endIso) cq = cq.lte("started_at", endIso);
+        if (esc) {
+          cq = cq.or(`title.ilike.%${esc}%,ai_summary.ilike.%${esc}%,transcript.ilike.%${esc}%,next_steps.ilike.%${esc}%,key_decisions.ilike.%${esc}%,organizer_email.ilike.%${esc}%`);
+        }
+        const { data: cRows } = await cq;
+        const extractParticipants = (r: any): Array<{ name?: string; email?: string }> => {
+          const rp = r?.raw_payload || {};
+          const p = rp.participants || rp.attendees || rp.people || [];
+          if (!Array.isArray(p)) return [];
+          return p.map((x: any) => ({ name: x?.name || x?.full_name, email: x?.email }));
+        };
+        // Scope: user is organizer OR listed as a participant.
+        claapNotes = (cRows || []).filter((r: any) => {
+          if ((r.organizer_email || "").toLowerCase() === userEmail) return true;
+          return extractParticipants(r).some((p) => (p.email || "").toLowerCase() === userEmail);
+        });
+        if (attendee) {
+          const t = attendee.toLowerCase();
+          claapNotes = claapNotes.filter((r: any) => {
+            const parts = extractParticipants(r);
+            const hitParts = parts.some((p) => (p.email || "").toLowerCase().includes(t) || (p.name || "").toLowerCase().includes(t));
+            return hitParts
+              || (r.title || "").toLowerCase().includes(t)
+              || (r.ai_summary || "").toLowerCase().includes(t)
+              || (r.transcript || "").toLowerCase().includes(t)
+              || (r.organizer_email || "").toLowerCase().includes(t);
+          });
+        }
+        claapNotes = claapNotes.map((r: any) => {
+          const parts = extractParticipants(r);
+          return {
+            source: "claap",
+            id: r.id,
+            claap_id: r.claap_id,
+            event_title: r.title,
+            event_start: r.started_at,
+            organizer_email: r.organizer_email,
+            attendee_names: parts.map((p) => p.name).filter(Boolean),
+            attendee_emails: parts.map((p) => p.email).filter(Boolean),
+            linked_deal_id: r.deal_id,
+            note_text: r.ai_summary || r.next_steps
+              || (typeof r.transcript === "string" ? r.transcript.slice(0, 2000) : null),
+            key_decisions: r.key_decisions,
+            next_steps: r.next_steps,
+          };
+        });
+      }
+
+      const merged = [
+        ...userNotes.map((r: any) => ({
+          source: "user_note",
           id: r.id,
           event_id: r.event_id,
           event_title: r.event_title,
@@ -6457,6 +6520,25 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           note_text: r.note_text,
           created_at: r.created_at,
         })),
+        ...claapNotes,
+      ].sort((a: any, b: any) => {
+        const at = a.event_start ? new Date(a.event_start).getTime() : 0;
+        const bt = b.event_start ? new Date(b.event_start).getTime() : 0;
+        return bt - at;
+      }).slice(0, limit);
+
+      return {
+        count: merged.length,
+        filters_applied: {
+          query: query || null,
+          attendee: attendee || null,
+          deal_id: dealId,
+          start_iso: startIso,
+          end_iso: endIso,
+          scoped_to_user: true,
+          includes_claap: !!userEmail,
+        },
+        notes: merged,
       };
     }
     case "record_admin_agent_selection": {
