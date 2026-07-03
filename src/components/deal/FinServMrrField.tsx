@@ -290,50 +290,58 @@ export function FinServMrrField({
 
   return (
     <div className="space-y-2 min-w-0 w-full">
-      {/* Top row: label + mode select + value, aligned to the Deal Info grid */}
-      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-muted-foreground text-sm break-words">MRR</span>
-          {lastChange && (
-            <Badge
-              variant="outline"
-              className={
-                lastChange.type === 'expansion'
-                  ? 'h-5 px-1.5 gap-1 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-                  : 'h-5 px-1.5 gap-1 text-[10px] border-rose-500/40 bg-rose-500/10 text-rose-400'
-              }
-              title={`${lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'} of ${fmtUSD(Math.abs(lastChange.delta))}${lastChange.deltaPct != null ? ` (${lastChange.deltaPct > 0 ? '+' : ''}${lastChange.deltaPct.toFixed(1)}%)` : ''} on ${new Date(lastChange.at).toLocaleDateString()}`}
-            >
-              {lastChange.type === 'expansion'
-                ? <TrendingUp className="h-3 w-3" />
-                : <TrendingDown className="h-3 w-3" />}
-              {lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'}
-            </Badge>
-          )}
-        </div>
-        <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2 min-w-0">
-          <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
-            <SelectTrigger className="h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="manual">Manual</SelectItem>
-              <SelectItem value="calculated">Hourly</SelectItem>
-            </SelectContent>
-          </Select>
-          {isCalc ? (
-            <div
-              className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
-              title="Calculated from hourly-rate rows"
-            >
-              <span className="tabular-nums">{fmtUSD(total)}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
-            </div>
-          ) : (
-            <ManualMrrDisplay value={mrr} onCommit={onMrrCommit} />
-          )}
-        </div>
+      {/* Line 1: label + mode dropdown pill */}
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-muted-foreground text-sm">MRR</span>
+        <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
+          <SelectTrigger className="h-6 w-auto min-w-[6rem] px-2 py-0 text-xs rounded-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="manual">Manual</SelectItem>
+            <SelectItem value="calculated">Hourly</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {/* Line 2: value + Update MRR action */}
+      {isCalc ? (
+        <div
+          className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+          title="Calculated from hourly-rate rows"
+        >
+          <span className="tabular-nums">{fmtUSD(total)}</span>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
+        </div>
+      ) : (
+        <ManualMrrDisplay value={mrr} onCommit={onMrrCommit} />
+      )}
+
+      {/* Line 3: last change tag (only when present) */}
+      {lastChange && (
+        <div className="flex items-center">
+          <Badge
+            variant="outline"
+            className={
+              lastChange.type === 'expansion'
+                ? 'h-5 px-2 gap-1 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                : 'h-5 px-2 gap-1 text-[10px] border-rose-500/40 bg-rose-500/10 text-rose-400'
+            }
+            title={`On ${new Date(lastChange.at).toLocaleDateString()}`}
+          >
+            {lastChange.type === 'expansion'
+              ? <TrendingUp className="h-3 w-3" />
+              : <TrendingDown className="h-3 w-3" />}
+            <span>
+              Last change: {lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'}
+              {' '}{lastChange.delta >= 0 ? '+' : '−'}{fmtUSD(Math.abs(lastChange.delta))}
+              {lastChange.deltaPct != null && (
+                <> ({lastChange.deltaPct > 0 ? '+' : ''}{lastChange.deltaPct.toFixed(1)}%)</>
+              )}
+            </span>
+          </Badge>
+        </div>
+      )}
 
       {isCalc && (
         <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2 w-full min-w-0">
