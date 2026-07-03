@@ -1456,6 +1456,33 @@ function EventDetailPane({
   const [noteDraft, setNoteDraft] = useState('');
   const [noteDirty, setNoteDirty] = useState(false);
   const [savedNotes, setSavedNotes] = useState<{ id: string; text: string; at: string }[]>([]);
+  const { user: authUser } = useAuth();
+
+  // Load persisted meeting notes for this event so the user always sees
+  // their prior notes when the detail pane re-opens — and so the nAItive
+  // AI can search them via the copilot-chat tool.
+  useEffect(() => {
+    let cancelled = false;
+    if (!authUser?.id || !event.id) {
+      setSavedNotes([]);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('user_meeting_notes')
+        .select('id, note_text, created_at')
+        .eq('user_id', authUser.id)
+        .eq('event_id', event.id)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.warn('[EndOfDay] failed to load meeting notes', error.message);
+        return;
+      }
+      setSavedNotes((data || []).map((r: any) => ({ id: r.id, text: r.note_text, at: r.created_at })));
+    })();
+    return () => { cancelled = true; };
+  }, [authUser?.id, event.id]);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'local'>('local');
