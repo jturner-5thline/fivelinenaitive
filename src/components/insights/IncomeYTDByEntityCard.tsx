@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -201,6 +203,19 @@ export function IncomeYTDByEntityCard() {
   );
   const TOTAL_COLOR = "hsl(213 90% 70%)";
 
+  // Sum of all monthly totals across the selected period — matches the
+  // headline figure shown in the "Total Income" card.
+  const totalSum = useMemo(() => {
+    if (viewMode !== "total") return 0;
+    if (cumulative) {
+      return Number(chartData[chartData.length - 1]?.["Total Income"] ?? 0);
+    }
+    return chartData.reduce(
+      (a, r) => a + Number(r["Total Income"] ?? 0),
+      0,
+    );
+  }, [chartData, cumulative, viewMode]);
+
   return (
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
@@ -287,11 +302,22 @@ export function IncomeYTDByEntityCard() {
 
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div
-            className="text-[10px] tracking-wide"
-            style={{ color: "rgba(255,255,255,0.55)" }}
-          >
-            {cumulative ? `Cumulative ${activeMetric.label.toLowerCase()}` : `Monthly ${activeMetric.label.toLowerCase()}`} · {periodLabel}
+          <div>
+            <div
+              className="text-[10px] uppercase tracking-wide"
+              style={{ color: "rgba(255,255,255,0.55)" }}
+            >
+              {cumulative ? `Cumulative ${activeMetric.label.toLowerCase()}` : `Monthly ${activeMetric.label.toLowerCase()}`}
+              {viewMode === "total" ? " · 4 entities combined" : ""} · {periodLabel}
+            </div>
+            {viewMode === "total" && !isLoading ? (
+              <div
+                className="font-semibold tracking-tight text-foreground"
+                style={{ fontSize: 24, lineHeight: 1.1, marginTop: 2 }}
+              >
+                {fmtUSDFull(totalSum)}
+              </div>
+            ) : null}
           </div>
           <div
             className="inline-flex rounded-md overflow-hidden"
@@ -336,26 +362,52 @@ export function IncomeYTDByEntityCard() {
             <ChartSwap chartType={chartType}>
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === "line" ? (
-                  <LineChart
-                    data={chartData}
-                    margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.7)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
-                    <Tooltip
-                      contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
-                      formatter={(value: number, name) => [fmtUSDFull(Number(value)), name as string]}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
-                    {viewMode === "total" ? (
-                      <Line type="monotone" dataKey="Total Income" stroke={TOTAL_COLOR} strokeWidth={2} dot={{ r: 3, fill: TOTAL_COLOR }} activeDot={{ r: 5 }} />
-                    ) : (
-                      ENTITIES.map((e) => (
+                  viewMode === "total" ? (
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 16, right: 12, left: 4, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="incomeByEntityTotalFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsla(213,90%,70%,0.55)" />
+                          <stop offset="100%" stopColor="hsla(213,90%,70%,0.04)" />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.7)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
+                      <Tooltip
+                        cursor={{ stroke: "rgba(255,255,255,0.15)", strokeWidth: 1 }}
+                        contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
+                        formatter={(value: number, name) => [fmtUSDFull(Number(value)), name as string]}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="Total Income"
+                        stroke="hsla(213,90%,70%,0.95)"
+                        strokeWidth={2}
+                        fill="url(#incomeByEntityTotalFill)"
+                        activeDot={{ r: 5 }}
+                      />
+                    </AreaChart>
+                  ) : (
+                    <LineChart
+                      data={chartData}
+                      margin={{ top: 12, right: 12, left: 4, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.7)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
+                      <Tooltip
+                        contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
+                        formatter={(value: number, name) => [fmtUSDFull(Number(value)), name as string]}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
+                      {ENTITIES.map((e) => (
                         <Line key={e.realmId} type="monotone" dataKey={e.label} stroke={e.color} strokeWidth={2} dot={{ r: 3, fill: e.color }} activeDot={{ r: 5 }} />
-                      ))
-                    )}
-                  </LineChart>
+                      ))}
+                    </LineChart>
+                  )
                 ) : (
                   <BarChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
