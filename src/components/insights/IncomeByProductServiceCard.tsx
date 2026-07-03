@@ -2,18 +2,19 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  Cell,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
+import { useTimeframeRange } from "./useTimeframeRange";
 import {
   Dialog,
   DialogContent,
@@ -24,10 +25,12 @@ import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Income by Product/Service — primary view: FinServ vs Debt totals for the
- * selected period (driven by the global Insights timeframe). Clicking either
- * bar opens a centered modal showing income broken down by QuickBooks
- * Product/Service ("invoicing type"). No hardcoded amounts.
+ * FinServ vs Debt — monthly time series line chart with a metric toggle
+ * (Revenue / Gross Profit / Operating Profit). Data sourced from
+ * qbo_pnl_snapshots so all three metrics come from the same P&L run.
+ * When Revenue is selected, chips under the toggle open a modal breaking
+ * income down by QuickBooks Product/Service ("invoicing type") from
+ * quickbooks_invoices. No hardcoded amounts.
  */
 
 const FINSERV_REALM = "9341451968897660"; // 5th Line Financial Services, LLC
@@ -43,6 +46,13 @@ const REALM_TO_BUCKET: Record<string, BucketKey> = {
   [FINSERV_REALM]: "FinServ",
   [DEBT_REALM]: "Debt",
 };
+
+type MetricKey = "revenue" | "gross_profit" | "operating_profit";
+const METRICS: { key: MetricKey; label: string; field: "income_total" | "gross_profit" | "net_operating_income" }[] = [
+  { key: "revenue", label: "Revenue", field: "income_total" },
+  { key: "gross_profit", label: "Gross Profit", field: "gross_profit" },
+  { key: "operating_profit", label: "Operating Profit", field: "net_operating_income" },
+];
 
 function fmtCompact(n: number): string {
   const abs = Math.abs(n);
@@ -72,10 +82,66 @@ export function IncomeByProductServiceCard() {
   const start = tf?.timeframe.start ?? null;
   const end = tf?.timeframe.end ?? null;
   const rangeLabel = tf?.timeframe.label ?? "All time";
+  const { months, rangeStart, rangeEnd } = useTimeframeRange();
 
   const [openBucket, setOpenBucket] = useState<BucketKey | null>(null);
+  const [metric, setMetric] = useState<MetricKey>("revenue");
+  const activeMetric = METRICS.find((m) => m.key === metric)!;
 
-  const { data, isLoading } = useQuery({
+  // Monthly P&L series (Revenue / GP / OI per entity)
+  const { data: pnlData, isLoading: pnlLoading } = useQuery({
+    queryKey: ["finserv-vs-debt-pnl-monthly", user?.id, rangeStart, rangeEnd],
+    enabled: !!user,
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("qbo_pnl_snapshots")
+        .select("realm_id, period_start, period_end, income_total, gross_profit, net_operating_income, fetched_at, accounting_method")
+        .in("realm_id", REALM_IDS)
+        .gte("period_start", rangeStart)
+        .lte("period_end", rangeEnd)
+        .order("fetched_at", { ascending: true });
+      if (error) throw error;
+
+      // Pick the snapshot with the largest period_end per (realm, month),
+      // tiebreak on latest fetched_at, so we use the most complete monthly P&L.
+      const best: Record<string, { period_end: string; fetched_at: string; row: any }> = {};
+      let lastSync: string | null = null;
+      for (const r of rows ?? []) {
+        if (!r.period_start || !r.realm_id) continue;
+        if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
+        const d = new Date(r.period_start);
+        const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const key = `${r.realm_id}::${mKey}`;
+        const prev = best[key];
+        const pe = r.period_end ?? r.period_start;
+        const fa = r.fetched_at ?? "";
+        if (!prev || pe > prev.period_end || (pe === prev.period_end && fa > prev.fetched_at)) {
+          best[key] = { period_end: pe, fetched_at: fa, row: r };
+        }
+        if (r.fetched_at && (!lastSync || r.fetched_at > lastSync)) lastSync = r.fetched_at;
+      }
+
+      // realm -> monthKey -> { income_total, gross_profit, net_operating_income }
+      const monthly: Record<string, Record<string, { income_total: number; gross_profit: number; net_operating_income: number }>> = {
+        [FINSERV_REALM]: {},
+        [DEBT_REALM]: {},
+      };
+      for (const key of Object.keys(best)) {
+        const [realm, mKey] = key.split("::");
+        const row = best[key].row;
+        monthly[realm][mKey] = {
+          income_total: Number(row.income_total ?? 0),
+          gross_profit: Number(row.gross_profit ?? 0),
+          net_operating_income: Number(row.net_operating_income ?? 0),
+        };
+      }
+      return { monthly, lastSync };
+    },
+  });
+
+  // Invoices — only needed for the Revenue → invoicing-type drilldown modal
+  const { data: invoiceData } = useQuery({
     queryKey: ["income-by-product-service", user?.id, start, end],
     enabled: !!user,
     staleTime: 15 * 60 * 1000,
@@ -96,7 +162,6 @@ export function IncomeByProductServiceCard() {
         Debt: new Map(),
       };
       const bucketTotals: Record<BucketKey, number> = { FinServ: 0, Debt: 0 };
-      const bucketInvoiceCount: Record<BucketKey, number> = { FinServ: 0, Debt: 0 };
 
       for (const row of (rows ?? []) as Array<{
         realm_id: string | null;
@@ -110,7 +175,6 @@ export function IncomeByProductServiceCard() {
         if (!bucket) continue;
 
         const lines = Array.isArray(row.metadata?.Line) ? row.metadata.Line : [];
-        let invoiceHadLine = false;
         const seenProductsInInvoice = new Set<string>();
         for (const line of lines) {
           const detail = line?.SalesItemLineDetail;
@@ -122,7 +186,6 @@ export function IncomeByProductServiceCard() {
           const amount = Number(line?.Amount) || 0;
           if (!amount) continue;
 
-          invoiceHadLine = true;
           const m = agg[bucket];
           const existing = m.get(productName) ?? { total: 0, invoices: 0 };
           existing.total += amount;
@@ -133,7 +196,6 @@ export function IncomeByProductServiceCard() {
           m.set(productName, existing);
           bucketTotals[bucket] += amount;
         }
-        if (invoiceHadLine) bucketInvoiceCount[bucket] += 1;
       }
 
       const itemsByBucket: Record<BucketKey, InvoicingTypeRow[]> = {
@@ -146,18 +208,22 @@ export function IncomeByProductServiceCard() {
           .sort((a, b) => b.total - a.total);
       }
 
-      const chartRows = (["FinServ", "Debt"] as BucketKey[]).map((b) => ({
-        bucket: b,
-        total: bucketTotals[b],
-        invoices: bucketInvoiceCount[b],
-      }));
-
-      return { chartRows, itemsByBucket, bucketTotals, lastSync };
+      return { itemsByBucket, bucketTotals, lastSync };
     },
   });
 
-  const chartRows = data?.chartRows ?? [];
-  const hasData = chartRows.some((r) => r.total > 0);
+  const chartData = useMemo(() => {
+    const monthly = pnlData?.monthly;
+    return months.map((mo) => {
+      const finserv = monthly?.[FINSERV_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
+      const debt = monthly?.[DEBT_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
+      return { month: mo.label, FinServ: finserv, Debt: debt };
+    });
+  }, [pnlData, months, activeMetric.field]);
+
+  const hasData = chartData.some((r) => Math.abs(Number(r.FinServ) || 0) + Math.abs(Number(r.Debt) || 0) > 0);
+  const isLoading = pnlLoading;
+  const lastSync = pnlData?.lastSync ?? invoiceData?.lastSync ?? null;
 
   return (
     <div
@@ -187,26 +253,77 @@ export function IncomeByProductServiceCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · FinServ vs Debt
+          FinServ vs Debt · {activeMetric.label}
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
           QuickBooks ·{" "}
-          {data?.lastSync
-            ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
+          {lastSync
+            ? `synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}`
             : "—"}
         </span>
       </div>
 
       <div className="p-4 space-y-3">
-        <div
-          className="text-[10px] tracking-wide"
-          style={{ color: "rgba(255,255,255,0.55)" }}
-        >
-          {rangeLabel} · click a bar to see invoicing-type breakdown
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div
+            className="text-[10px] tracking-wide"
+            style={{ color: "rgba(255,255,255,0.55)" }}
+          >
+            {rangeLabel}
+            {metric === "revenue" ? " · click FinServ / Debt below to drill down invoicing types" : ""}
+          </div>
+          <div
+            className="inline-flex rounded-md overflow-hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.12)" }}
+            role="tablist"
+            aria-label="Metric"
+          >
+            {METRICS.map((m) => {
+              const active = m.key === metric;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMetric(m.key)}
+                  className={cn(
+                    "px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white/85 hover:bg-white/5",
+                  )}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {metric === "revenue" && (
+          <div className="flex items-center gap-2 text-[11px]">
+            <span style={{ color: "rgba(255,255,255,0.5)" }}>Invoicing detail:</span>
+            {(["FinServ", "Debt"] as BucketKey[]).map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setOpenBucket(b)}
+                className="px-2 py-0.5 rounded-full transition-colors"
+                style={{
+                  border: `1px solid ${BUCKET_COLOR[b]}55`,
+                  color: BUCKET_COLOR[b],
+                  background: `${BUCKET_COLOR[b]}12`,
+                }}
+              >
+                {b} ▸
+              </button>
+            ))}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="h-[320px] rounded bg-white/5 animate-pulse" />
@@ -220,31 +337,25 @@ export function IncomeByProductServiceCard() {
         ) : (
           <div style={{ height: 320 }} className="w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartRows}
-                margin={{ top: 16, right: 24, left: 8, bottom: 8 }}
-              >
+              <LineChart data={chartData} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="rgba(120,170,220,0.12)"
                   vertical={false}
                 />
                 <XAxis
-                  type="category"
-                  dataKey="bucket"
+                  dataKey="month"
                   tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                   axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                 />
                 <YAxis
-                  type="number"
                   tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
                   axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                   tickFormatter={fmtCompact}
                 />
                 <Tooltip
-                  cursor={{ fill: "rgba(255,255,255,0.15)" }}
                   contentStyle={{
                     background: "rgba(10,30,55,0.95)",
                     border: "1px solid rgba(255,255,255,0.15)",
@@ -252,22 +363,29 @@ export function IncomeByProductServiceCard() {
                     fontSize: 12,
                     color: "rgb(220,235,255)",
                   }}
-                  formatter={(v: number) => [fmtUSDFull(v), "Income"]}
+                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
                 />
-                <Bar
-                  dataKey="total"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={120}
-                  cursor="pointer"
-                  onClick={(d: any) => {
-                    if (d?.bucket) setOpenBucket(d.bucket as BucketKey);
-                  }}
-                >
-                  {chartRows.map((r) => (
-                    <Cell key={r.bucket} fill={BUCKET_COLOR[r.bucket as BucketKey]} />
-                  ))}
-                </Bar>
-              </BarChart>
+                <Legend
+                  wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
+                  iconType="circle"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="FinServ"
+                  stroke={BUCKET_COLOR.FinServ}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: BUCKET_COLOR.FinServ }}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Debt"
+                  stroke={BUCKET_COLOR.Debt}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: BUCKET_COLOR.Debt }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}
@@ -276,8 +394,8 @@ export function IncomeByProductServiceCard() {
       <InvoicingTypeModal
         bucket={openBucket}
         onClose={() => setOpenBucket(null)}
-        rows={openBucket ? data?.itemsByBucket[openBucket] ?? [] : []}
-        bucketTotal={openBucket ? data?.bucketTotals[openBucket] ?? 0 : 0}
+        rows={openBucket ? invoiceData?.itemsByBucket[openBucket] ?? [] : []}
+        bucketTotal={openBucket ? invoiceData?.bucketTotals[openBucket] ?? 0 : 0}
         rangeLabel={rangeLabel}
       />
     </div>
