@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import { ChartSwap } from "./ChartSwap";
+import { usePersistentChartType } from "@/hooks/usePersistentChartType";
 import { useTimeframeRange } from "./useTimeframeRange";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -225,7 +226,7 @@ export function FinServTopCustomersCard() {
     current: r.current,
     prior: r.prior,
   }));
-  const [chartType, setChartType] = useState<ChartType>("bar");
+  const [chartType, setChartType] = usePersistentChartType<ChartType>("finServTopCustomers", "bar");
   const [showPrior, setShowPrior] = useState(true);
 
   return (

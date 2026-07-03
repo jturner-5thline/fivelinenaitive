@@ -10,6 +10,7 @@ import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { useQBStackedDebtRevenue } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue } from '@/hooks/useQBStackedFinServRevenue';
 import { useMonthlyEntityProfit } from '@/hooks/useMonthlyEntityProfit';
+import { usePersistentChartType } from '@/hooks/usePersistentChartType';
 
 const RANGE_OPTIONS = [
   { value: 6, label: '6M' },
@@ -181,7 +182,7 @@ export function RevenueHistoricalTrend({
   color: string;
 }) {
   const [range, setRange] = useState<RangeMonths>(12);
-  const [chartType, setChartType] = useState<ChartType>('bar');
+  const [chartType, setChartType] = usePersistentChartType<ChartType>(`revenueHistoricalTrend.${variant}`, 'bar');
   const period = useMemo(() => trailingPeriod(range), [range]);
 
   const debt = useQBStackedDebtRevenue(variant === 'debt' ? period : null);
@@ -216,7 +217,7 @@ export function ProfitHistoricalTrend({
   color: string;
 }) {
   const [range, setRange] = useState<RangeMonths>(12);
-  const [chartType, setChartType] = useState<ChartType>('bar');
+  const [chartType, setChartType] = usePersistentChartType<ChartType>(`profitHistoricalTrend.${entityName}`, 'bar');
   const period = useMemo(() => trailingPeriod(range), [range]);
   const { months, isLoading } = useMonthlyEntityProfit(entityName, period.months);
 
