@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import { useTimeframeRange } from "./useTimeframeRange";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -223,6 +225,7 @@ export function FinServTopCustomersCard() {
     prior: r.prior,
   }));
   const [chartType, setChartType] = useState<ChartType>("bar");
+  const [showPrior, setShowPrior] = useState(true);
 
   return (
     <div
@@ -255,6 +258,21 @@ export function FinServTopCustomersCard() {
           FinServ Income · Top 5 Customers vs Prior Year
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 pr-1">
+            <Switch
+              id="finserv-top-cust-prior"
+              checked={showPrior}
+              onCheckedChange={setShowPrior}
+              className="scale-75"
+            />
+            <Label
+              htmlFor="finserv-top-cust-prior"
+              className="text-[10px] uppercase tracking-wider cursor-pointer"
+              style={{ color: "rgba(255,255,255,0.6)" }}
+            >
+              vs Prior Year
+            </Label>
+          </div>
           <ChartTypeToggle value={chartType} onChange={setChartType} />
           <Select value={entityId} onValueChange={setEntityId}>
             <SelectTrigger
