@@ -1250,14 +1250,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             ...(p ? [{ label: 'Window', value: `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` }] : []),
           ],
         },
-        columns: [
-          { key: 'window', label: 'Window' },
-          { key: 'revenue', label: 'TTM Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-        ],
-        rows: p
-          ? [{ window: `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}`, revenue: p.revenue }]
-          : [{ window: label, revenue: value }],
-        emptyHint: 'No QuickBooks invoice activity recorded for this trailing 12-month window.',
+        columns: [],
+        rows: [],
+        body: (
+          <TtmRevenueDrilldownBody
+            invoices={qbInvoices as any}
+            ttmRange={p ? { start: p.windowStart, end: p.windowEnd } : ttmRange}
+          />
+        ),
       });
     },
   );
