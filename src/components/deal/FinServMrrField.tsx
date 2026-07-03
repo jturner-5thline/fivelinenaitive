@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,50 +11,115 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { useFinservMrrComponents } from '@/hooks/useFinservMrrComponents';
 import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 
 const fmtUSD = (n: number) =>
   (n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
-/** Manual single-amount input (mirrors the FinServ currency UX). */
-function ManualMrrInput({
+/**
+ * Read-only MRR display + "Update" button. Clicking the button opens a
+ * confirmation dialog where the user enters the new MRR amount. This
+ * prevents accidental edits and ensures every change is intentional
+ * (feeding the Expansion/Contraction activity log).
+ */
+function ManualMrrDisplay({
   value,
   onCommit,
 }: {
   value: number | null | undefined;
   onCommit: (next: number | null) => void;
 }) {
-  const remote = value == null || Number.isNaN(value) ? '' : String(Math.round(value));
-  const fmt = remote ? Number(remote).toLocaleString() : '';
-  const { value: draft, setValue, flush, onFocus, onBlur } = useDebouncedFieldValue<string>(fmt, {
-    equals: (a, b) => a.replace(/[$,\s]/g, '') === b.replace(/[$,\s]/g, ''),
-    commit: (d) => {
-      const cleaned = d.replace(/[$,\s]/g, '');
-      onCommit(cleaned === '' ? null : Number(cleaned));
-    },
-    debounceMs: 500,
-  });
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const current = value == null || Number.isNaN(value) ? null : Math.round(value);
+
+  useEffect(() => {
+    if (open) setDraft(current == null ? '' : String(current));
+  }, [open, current]);
+
+  const cleaned = draft.replace(/[$,\s]/g, '');
+  const parsed = cleaned === '' ? null : Number(cleaned);
+  const valid = cleaned === '' || /^\d+(\.\d{0,2})?$/.test(cleaned);
+  const changed = parsed !== current;
+
+  const save = () => {
+    if (!valid || !changed) { setOpen(false); return; }
+    onCommit(parsed);
+    setOpen(false);
+  };
+
   return (
-    <div className="relative w-full">
-      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-      <Input
-        type="text"
-        inputMode="numeric"
-        value={draft}
-        onChange={(e) => {
-          const cleaned = e.target.value.replace(/[$,\s]/g, '');
-          if (cleaned === '' || /^\d+$/.test(cleaned)) {
-            setValue(cleaned === '' ? '' : Number(cleaned).toLocaleString());
-          }
-        }}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        onKeyDown={flushOnEnterOrTab(flush)}
-        placeholder="0"
-        className="pl-5 h-8 text-sm w-full"
-      />
-    </div>
+    <>
+      <div className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between gap-2">
+        <span className="tabular-nums truncate">
+          {current == null ? <span className="text-muted-foreground">Not set</span> : fmtUSD(current)}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs shrink-0"
+          onClick={() => setOpen(true)}
+        >
+          <Pencil className="h-3 w-3 mr-1" />
+          Update
+        </Button>
+      </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Update MRR</DialogTitle>
+            <DialogDescription>
+              Enter the new monthly recurring revenue amount. The change will be logged
+              as an Expansion or Contraction in the deal's activity.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">
+              Current: <span className="tabular-nums text-foreground">{current == null ? '—' : fmtUSD(current)}</span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <Input
+                autoFocus
+                inputMode="decimal"
+                value={draft}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[$,\s]/g, '');
+                  if (v === '' || /^\d+(\.\d{0,2})?$/.test(v)) setDraft(v);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); save(); }
+                }}
+                placeholder="0"
+                className="pl-5 h-9 text-sm w-full"
+              />
+            </div>
+            {valid && changed && parsed != null && current != null && (
+              <div className={`text-xs ${parsed > current ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {parsed > current ? 'Expansion' : 'Contraction'} of {fmtUSD(Math.abs(parsed - current))}
+                {current > 0 && (
+                  <> ({parsed > current ? '+' : ''}{(((parsed - current) / current) * 100).toFixed(1)}%)</>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={save} disabled={!valid || !changed}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -263,7 +328,7 @@ export function FinServMrrField({
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
             </div>
           ) : (
-            <ManualMrrInput value={mrr} onCommit={onMrrCommit} />
+            <ManualMrrDisplay value={mrr} onCommit={onMrrCommit} />
           )}
         </div>
       </div>
