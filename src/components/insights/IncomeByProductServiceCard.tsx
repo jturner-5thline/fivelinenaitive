@@ -476,14 +476,13 @@ export function IncomeByProductServiceCard() {
                   tickFormatter={fmtCompact}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    color: "rgb(220,235,255)",
-                  }}
-                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
+                  content={
+                    <BreakdownTooltip
+                      metricLabel={activeMetric.label}
+                      showBreakdown={metric === "revenue"}
+                      breakdown={invoiceData?.monthlyBreakdown}
+                    />
+                  }
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
@@ -513,8 +512,13 @@ export function IncomeByProductServiceCard() {
                 <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.08)" }}
-                  contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
-                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
+                  content={
+                    <BreakdownTooltip
+                      metricLabel={activeMetric.label}
+                      showBreakdown={metric === "revenue"}
+                      breakdown={invoiceData?.monthlyBreakdown}
+                    />
+                  }
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
                 <Bar dataKey="FinServ" fill={BUCKET_COLOR.FinServ} radius={[3, 3, 0, 0]} />
