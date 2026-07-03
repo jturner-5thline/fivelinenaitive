@@ -317,6 +317,23 @@ function EventTile({
         </div>
       </div>
 
+      {/* Hover action: dismiss (checkmark) */}
+      <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">Dismiss</TooltipContent>
+        </Tooltip>
+      </div>
+
     </div>
   );
 }
