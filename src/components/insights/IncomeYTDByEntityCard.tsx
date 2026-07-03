@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -14,6 +14,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeframeRange } from "./useTimeframeRange";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 /**
  * Income: YTD by Entity — cumulative YTD income per entity, one line each,
@@ -51,6 +53,7 @@ function fmtUSDFull(n: number): string {
 export function IncomeYTDByEntityCard() {
   const { user } = useAuth();
   const { rangeStart, rangeEnd, months, periodLabel } = useTimeframeRange();
+  const [cumulative, setCumulative] = useState(true);
 
   const realmIds = ENTITIES.map((e) => e.realmId);
 
@@ -90,12 +93,16 @@ export function IncomeYTDByEntityCard() {
       const row: Record<string, number | string> = { month: mo.label };
       for (const e of ENTITIES) {
         const amt = monthly?.[e.realmId]?.[mo.key] ?? 0;
-        running[e.realmId] += amt;
-        row[e.label] = running[e.realmId];
+        if (cumulative) {
+          running[e.realmId] += amt;
+          row[e.label] = running[e.realmId];
+        } else {
+          row[e.label] = amt;
+        }
       }
       return row;
     });
-  }, [data, months]);
+  }, [data, months, cumulative]);
 
   const hasAnyData = chartData.some((row) =>
     ENTITIES.some((e) => Number(row[e.label] ?? 0) > 0)
@@ -131,15 +138,30 @@ export function IncomeYTDByEntityCard() {
         >
           Income by Entity
         </div>
-        <span
-          className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(255,255,255,0.55)" }}
-        >
-          QuickBooks ·{" "}
-          {data?.lastSync
-            ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
-            : "—"}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <Switch
+              id="income-entity-cumulative"
+              checked={cumulative}
+              onCheckedChange={setCumulative}
+            />
+            <Label
+              htmlFor="income-entity-cumulative"
+              className="text-[10px] font-semibold uppercase tracking-wider text-white/70 cursor-pointer"
+            >
+              Cumulative
+            </Label>
+          </div>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+            style={{ color: "rgba(255,255,255,0.55)" }}
+          >
+            QuickBooks ·{" "}
+            {data?.lastSync
+              ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
+              : "—"}
+          </span>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -147,7 +169,7 @@ export function IncomeYTDByEntityCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          Cumulative income · {periodLabel}
+          {cumulative ? "Cumulative income" : "Monthly income"} · {periodLabel}
         </div>
 
         {isLoading ? (
