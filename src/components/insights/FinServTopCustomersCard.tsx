@@ -18,6 +18,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import { useTimeframeRange } from "./useTimeframeRange";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -223,6 +225,7 @@ export function FinServTopCustomersCard() {
     prior: r.prior,
   }));
   const [chartType, setChartType] = useState<ChartType>("bar");
+  const [showPrior, setShowPrior] = useState(true);
 
   return (
     <div
@@ -252,9 +255,24 @@ export function FinServTopCustomersCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          FinServ Income · Top 5 Customers vs Prior Year
+          FinServ Income · Top 5 Customers{showPrior ? " vs Prior Year" : ""}
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 pr-1">
+            <Switch
+              id="finserv-top-cust-prior"
+              checked={showPrior}
+              onCheckedChange={setShowPrior}
+              className="scale-75"
+            />
+            <Label
+              htmlFor="finserv-top-cust-prior"
+              className="text-[10px] uppercase tracking-wider cursor-pointer"
+              style={{ color: "rgba(255,255,255,0.6)" }}
+            >
+              vs Prior Year
+            </Label>
+          </div>
           <ChartTypeToggle value={chartType} onChange={setChartType} />
           <Select value={entityId} onValueChange={setEntityId}>
             <SelectTrigger
@@ -287,7 +305,8 @@ export function FinServTopCustomersCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          {periodLabel} vs prior-year same window
+          {periodLabel}
+          {showPrior ? " vs prior-year same window" : ""}
            · sum of invoice totals
         </div>
 
@@ -358,11 +377,13 @@ export function FinServTopCustomersCard() {
                       v === "current" ? periodLabel : priorLabel
                     }
                   />
-                  <Bar
-                    dataKey="prior"
-                    fill="rgba(140,160,200,0.55)"
-                    radius={[3, 3, 0, 0]}
-                  />
+                  {showPrior && (
+                    <Bar
+                      dataKey="prior"
+                      fill="rgba(140,160,200,0.55)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  )}
                   <Bar
                     dataKey="current"
                     fill="hsla(213,90%,70%,0.85)"
@@ -383,7 +404,9 @@ export function FinServTopCustomersCard() {
                     formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? periodLabel : priorLabel]}
                   />
                   <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? periodLabel : priorLabel)} />
-                  <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  {showPrior && (
+                    <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  )}
                   <Line type="monotone" dataKey="current" stroke="hsla(213,90%,70%,0.95)" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
                 )}
@@ -411,27 +434,31 @@ export function FinServTopCustomersCard() {
                       Current Period
                       <SortIcon k="current" />
                     </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("prior")}
-                    >
-                      Prior Year
-                      <SortIcon k="prior" />
-                    </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("variance")}
-                    >
-                      $ Variance
-                      <SortIcon k="variance" />
-                    </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("pct")}
-                    >
-                      % Variance
-                      <SortIcon k="pct" />
-                    </th>
+                    {showPrior && (
+                      <>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("prior")}
+                        >
+                          Prior Year
+                          <SortIcon k="prior" />
+                        </th>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("variance")}
+                        >
+                          $ Variance
+                          <SortIcon k="variance" />
+                        </th>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("pct")}
+                        >
+                          % Variance
+                          <SortIcon k="pct" />
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -453,24 +480,28 @@ export function FinServTopCustomersCard() {
                         <td className="py-2 text-right text-foreground font-medium">
                           {fmtUSD(r.current)}
                         </td>
-                        <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
-                          {fmtUSD(r.prior)}
-                        </td>
-                        <td
-                          className="py-2 text-right font-medium"
-                          style={{ color }}
-                        >
-                          {positive ? "+" : ""}
-                          {fmtUSD(r.variance)}
-                        </td>
-                        <td
-                          className="py-2 text-right font-medium"
-                          style={{ color }}
-                        >
-                          {r.pct == null
-                            ? "—"
-                            : `${positive ? "+" : ""}${r.pct.toFixed(1)}%`}
-                        </td>
+                        {showPrior && (
+                          <>
+                            <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
+                              {fmtUSD(r.prior)}
+                            </td>
+                            <td
+                              className="py-2 text-right font-medium"
+                              style={{ color }}
+                            >
+                              {positive ? "+" : ""}
+                              {fmtUSD(r.variance)}
+                            </td>
+                            <td
+                              className="py-2 text-right font-medium"
+                              style={{ color }}
+                            >
+                              {r.pct == null
+                                ? "—"
+                                : `${positive ? "+" : ""}${r.pct.toFixed(1)}%`}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
