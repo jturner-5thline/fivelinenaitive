@@ -378,6 +378,7 @@ export function EndOfDayTab({
 
   const { clear: clearResolved, restore: restoreResolved, isCleared: isResolvedRaw } = useDbPersistentClears('eod-agenda');
   const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissedRaw } = useDbPersistentClears('eod-dismissed');
+  const { recent: recentDismissals, undo: undoDismissal, undoLast: undoLastDismissal } = useRecentEodDismissals();
   const isResolved = useCallback((id: string) => isResolvedRaw(id), [isResolvedRaw]);
   // For dismissals, also honor a per-user cutoff date so historical backfills
   // don't require enumerating every event id.
