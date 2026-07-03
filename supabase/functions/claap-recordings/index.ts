@@ -172,6 +172,10 @@ Deno.serve(async (req) => {
           recordings = recordings.filter((r) =>
             r.title?.toLowerCase().includes(s) ||
             r.recorder?.name?.toLowerCase().includes(s) ||
+            r.recorder?.email?.toLowerCase().includes(s) ||
+            r.meeting?.participants?.some((p) =>
+              p.name?.toLowerCase().includes(s) || p.email?.toLowerCase().includes(s)
+            ) ||
             r.labels?.some((l: string) => l.toLowerCase().includes(s))
           );
         }
@@ -226,6 +230,10 @@ Deno.serve(async (req) => {
         recordings = recordings.filter((r: ClaapRecording) =>
           r.title?.toLowerCase().includes(searchLower) ||
           r.recorder?.name?.toLowerCase().includes(searchLower) ||
+          r.recorder?.email?.toLowerCase().includes(searchLower) ||
+          r.meeting?.participants?.some((p) =>
+            p.name?.toLowerCase().includes(searchLower) || p.email?.toLowerCase().includes(searchLower)
+          ) ||
           r.labels?.some((l: string) => l.toLowerCase().includes(searchLower))
         );
       }

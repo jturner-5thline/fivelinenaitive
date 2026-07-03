@@ -415,13 +415,19 @@ export function EventClaapLinker({
       // Also write the canonical primary_meeting link (best-effort, idempotent).
       try {
         const entry = rankedMap[selectedRecording.id];
-        await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
+        const { data: confirmData } = await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
           body: {
             action: 'confirm',
             event_id: eventId,
             recording: selectedRecording,
             confidence: entry?.score ?? 0,
             reasons: entry?.reasons ?? [],
+          },
+        });
+        await supabase.functions.invoke('claap-sync-recording-content', {
+          body: {
+            recording_id: (confirmData as any)?.recording_id || undefined,
+            external_id: selectedRecording.id,
           },
         });
       } catch (e) {
