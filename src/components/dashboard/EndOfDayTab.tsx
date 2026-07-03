@@ -1589,6 +1589,18 @@ function EventDetailPane({
               <Badge variant="outline" className="border-white/15 text-white/75 bg-white/[0.04] text-[10px]">
                 {ageDays <= 0 ? 'Today' : ageDays === 1 ? 'Yesterday' : `${ageDays} days ago`}
               </Badge>
+              {event.html_link && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" asChild>
+                      <a href={event.html_link} target="_blank" rel="noreferrer" aria-label="Open in Google Calendar">
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Open in Google Calendar</TooltipContent>
+                </Tooltip>
+              )}
               {snoozedUntil && (
                 <Badge variant="outline" className="border-blue-500/40 text-blue-300 bg-blue-500/10 text-[10px]">
                   Snoozed until {format(snoozedUntil, 'MMM d, h:mm a')}
@@ -1601,18 +1613,20 @@ function EventDetailPane({
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {event.html_link && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" asChild>
-                    <a href={event.html_link} target="_blank" rel="noreferrer" aria-label="Open in Google Calendar">
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Open in Google Calendar</TooltipContent>
-              </Tooltip>
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  onClick={onDismiss}
+                  aria-label="Dismiss"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Dismiss</TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>
