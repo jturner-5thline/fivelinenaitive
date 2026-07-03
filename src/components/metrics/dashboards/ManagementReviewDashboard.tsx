@@ -389,12 +389,12 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // authoritative and widgets will not reflow on refresh.
   { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 10, minW: 4, minH: 9 },
   { i: 'monthly-revenue', x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'ar-aging', x: 6, y: 4, w: 6, h: 6, minW: 3, minH: 3 },
+  { i: 'cashflow-12w', x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'ar-aging', x: 6, y: 8, w: 6, h: 6, minW: 3, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 10, w: 12, h: 5, minW: 6, minH: 3 },
   { i: 'liabilities', x: 0, y: 15, w: 4, h: 3, minW: 3, minH: 2 },
   { i: 'dscr', x: 4, y: 15, w: 4, h: 3, minW: 3, minH: 2 },
-  { i: 'cashflow-12w', x: 0, y: 18, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'debt-rating', x: 6, y: 18, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'debt-rating', x: 0, y: 18, w: 12, h: 4, minW: 4, minH: 3 },
   { i: 'asana-goals', x: 0, y: 22, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
