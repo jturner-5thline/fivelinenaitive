@@ -147,7 +147,7 @@ export function useQuickBooksMetrics(
     });
     const topCustomers = Object.values(customerRevenue)
       .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 10);
+      .slice(0, 5);
 
     // Top vendors by spend (in period)
     const vendorSpend: Record<string, { name: string; spend: number; count: number }> = {};
