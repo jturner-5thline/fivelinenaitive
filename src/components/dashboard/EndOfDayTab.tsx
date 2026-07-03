@@ -913,6 +913,14 @@ export function EndOfDayTab({
     [filtered, outstanding, selectedId],
   );
 
+  // Default to having the first visible item open in the detail pane so
+  // the right side never renders empty when there's work to review.
+  useEffect(() => {
+    if (selectedEvent) return;
+    const first = flatList[0];
+    if (first) setSelectedId(first.id);
+  }, [selectedEvent, flatList]);
+
   // Authoritative linked deal for the currently-selected event. Sourced
   // from `meeting_deal_links` (the same row written by "Link deal" via
   // MeetingDealInlineAction). The query key includes selectedId, so the
