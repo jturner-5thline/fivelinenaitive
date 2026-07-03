@@ -20,12 +20,12 @@ function ChartFallback() {
 
 export function RevenueCustomersDashboard() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 [&>*]:min-w-0 auto-rows-fr">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 [&>*]:min-w-0">
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2 h-full"><IncomeYTDByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2 h-full"><YTDIncomeBreakdownByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2 h-full"><IncomeYTDMoMVarianceCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2 h-full"><IncomeMoMCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4 h-full"><FinServTopCustomersCard /></div></Suspense>
+          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><FinServTopCustomersCard /></div></Suspense>
     </div>
   );
 }
