@@ -2176,6 +2176,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
               >
                 {TABS.map(tab => {
                   const Icon = tab.icon;
+                  const badgeCount = tab.value === 'end_of_day' ? eodOutstandingCount : 0;
                   return (
                     <Tooltip key={tab.value}>
                       <TooltipTrigger asChild>
@@ -2183,17 +2184,25 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           value={tab.value}
                           aria-label={tab.label}
                           className={cn(
-                            'h-10 w-10 inline-flex items-center justify-center rounded-lg',
+                            'relative h-10 w-10 inline-flex items-center justify-center rounded-lg',
                             'text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.06]',
                             'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                             'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
                           )}
                         >
                           <Icon className="h-5 w-5" />
+                          {badgeCount > 0 && (
+                            <span
+                              aria-label={`${tab.label} has ${badgeCount} outstanding`}
+                              className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-background tabular-nums pointer-events-none"
+                            >
+                              {badgeCount > 99 ? '99+' : badgeCount}
+                            </span>
+                          )}
                         </TabsPrimitive.Trigger>
                       </TooltipTrigger>
                       <TooltipContent side="right" align="center" sideOffset={6}>
-                        {tab.label}
+                        {tab.label}{badgeCount > 0 ? ` (${badgeCount})` : ''}
                       </TooltipContent>
                     </Tooltip>
                   );
