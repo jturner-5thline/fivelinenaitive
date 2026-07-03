@@ -1093,8 +1093,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
-  const monthlyTrendLabels = ttmSeries.map(p => p.month);
-  const monthlyTrendValues = ttmSeries.map(p => p.revenue);
+  const isQuarterView = reportingPeriod?.view === 'quarter';
+  // In quarter view the "Monthly" toggle becomes "Quarterly": show revenue
+  // per quarter for the last 4 quarters (aligned with the TTM buckets).
+  const monthlyTrendLabels = isQuarterView
+    ? ttmTrendSeries.map(p => p.month)
+    : ttmSeries.map(p => p.month);
+  const monthlyTrendValues = isQuarterView
+    ? ttmTrendSeries.map(p => sumAmountInRange(qbInvoices, { start: p.windowEnd && new Date(p.windowEnd.getFullYear(), p.windowEnd.getMonth() - 2, 1), end: p.windowEnd }, inv => inv.txn_date, inv => inv.total_amt))
+    : ttmSeries.map(p => p.revenue);
   const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
