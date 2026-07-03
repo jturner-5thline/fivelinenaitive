@@ -5,6 +5,68 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useQuery } from '@tanstack/react-query';
+
+const STATUS_BUCKETS = [
+  { key: 'on-track' as const,  label: 'On Track',  color: 'hsl(142 71% 45%)' },
+  { key: 'at-risk' as const,   label: 'At Risk',   color: 'hsl(48 96% 53%)' },
+  { key: 'off-track' as const, label: 'Off Track', color: 'hsl(0 84% 60%)' },
+];
+
+type StatusKey = typeof STATUS_BUCKETS[number]['key'];
+
+interface StatusDeal { id: string; name: string; fee: number; status: StatusKey }
+
+function formatFee(v: number): string {
+  if (!Number.isFinite(v) || v <= 0) return '$0';
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}MM`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
+/** Fetch the pie chart's underlying deals (same source rules as the chart itself). */
+function useDealsByStatusDrilldown(enabled: boolean) {
+  return useQuery({
+    queryKey: ['deals-by-status-drilldown', 'active-pipeline'],
+    enabled,
+    queryFn: async () => {
+      const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
+      const { data: pipelines, error: pipeErr } = await supabase
+        .from('deal_pipelines')
+        .select('id')
+        .eq('company_id', FIFTH_LINE_COMPANY_ID)
+        .eq('is_default', true)
+        .limit(1);
+      if (pipeErr) throw pipeErr;
+      const activePipelineId = pipelines?.[0]?.id;
+      if (!activePipelineId) return [] as StatusDeal[];
+
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company, status, total_fee')
+        .eq('pipeline_id', activePipelineId)
+        .in('status', ['on-track', 'at-risk', 'off-track']);
+      if (error) throw error;
+
+      const excluded = new Set(["Test-Niki's Store", 'Example Deal']);
+      return (data ?? [])
+        .filter((d) => {
+          const name = (d.company ?? '').trim();
+          if (!name) return false;
+          if (excluded.has(name)) return false;
+          if (name.toLowerCase().startsWith('test ')) return false;
+          return true;
+        })
+        .map<StatusDeal>((d) => ({
+          id: d.id as string,
+          name: (d.company ?? '').trim(),
+          fee: Number(d.total_fee) || 0,
+          status: d.status as StatusKey,
+        }));
+    },
+    staleTime: 60_000,
+  });
+}
 
 interface LatestReport {
   id: string;
@@ -104,6 +166,19 @@ export function LatestShareReportDialog({ open, onOpenChange }: Props) {
   const [report, setReport] = useState<LatestReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { deals } = useDealsContext();
+  const { data: drilldownDeals = [], isLoading: drilldownLoading } =
+    useDealsByStatusDrilldown(open);
+
+  const drilldownGrouped = useMemo(() => {
+    return STATUS_BUCKETS.map((b) => {
+      const items = drilldownDeals
+        .filter((d) => d.status === b.key)
+        .sort((a, b) => b.fee - a.fee);
+      const total = items.reduce((sum, d) => sum + (d.fee > 0 ? d.fee : 0), 0);
+      return { ...b, items, total };
+    });
+  }, [drilldownDeals]);
+  const grandTotal = drilldownGrouped.reduce((s, g) => s + g.total, 0);
 
   const dealIdByName = useMemo(() => {
     const map = new Map<string, string>();
@@ -166,6 +241,62 @@ export function LatestShareReportDialog({ open, onOpenChange }: Props) {
             </p>
           ) : (
             <div className="space-y-4">
+              {/* Pie chart drill-down: current Active Pipeline deals grouped by status. */}
+              <div className="rounded-md border border-border/60 bg-background p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-foreground">
+                    Active Pipeline — Deals by Status
+                  </div>
+                  <div className="text-xs text-muted-foreground tabular-nums">
+                    Total fee: <span className="text-foreground font-medium">{formatFee(grandTotal)}</span>
+                  </div>
+                </div>
+                {drilldownLoading ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : (
+                  <div className="space-y-3">
+                    {drilldownGrouped.map((g) => (
+                      <div key={g.key} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-block h-2.5 w-2.5 rounded-sm"
+                              style={{ backgroundColor: g.color }}
+                              aria-hidden
+                            />
+                            <span className="font-medium" style={{ color: g.color }}>{g.label}</span>
+                            <span className="text-muted-foreground">({g.items.length})</span>
+                          </div>
+                          <span className="tabular-nums text-foreground font-medium">{formatFee(g.total)}</span>
+                        </div>
+                        {g.items.length === 0 ? (
+                          <div className="pl-5 text-xs text-muted-foreground">No deals</div>
+                        ) : (
+                          <ul className="pl-5 space-y-1 list-disc marker:text-muted-foreground">
+                            {g.items.map((d) => (
+                              <li key={d.id} className="text-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                  <Link
+                                    to={`/deals/${d.id}`}
+                                    onClick={() => onOpenChange(false)}
+                                    className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                                  >
+                                    {d.name}
+                                  </Link>
+                                  <span className="tabular-nums text-muted-foreground text-xs">
+                                    {formatFee(d.fee)}
+                                  </span>
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-1 text-sm">
                 <div><span className="text-muted-foreground">Subject:</span> <span className="font-medium">{report.subject}</span></div>
                 <div><span className="text-muted-foreground">Sent:</span> {format(new Date(report.created_at), 'PPpp')}</div>
