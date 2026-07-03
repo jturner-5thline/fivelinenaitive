@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
 import { useQuery } from '@tanstack/react-query';
