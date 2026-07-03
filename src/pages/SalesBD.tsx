@@ -134,7 +134,7 @@ function SalesBDInner() {
                       <div className="flex items-center justify-between gap-2">
                         <TabsList>
                           <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
+                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needs Attention" kind="attention" /></TabsTrigger>
                         </TabsList>
                         <PartnerInsightsHeaderActions />
                       </div>
@@ -223,7 +223,7 @@ function SalesBDInner() {
                       <div className="flex items-center justify-between gap-2">
                         <TabsList>
                           <TabsTrigger value="activity"><PartnerInsightsTabLabel label="Activity" kind="activity" /></TabsTrigger>
-                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needing Attention" kind="attention" /></TabsTrigger>
+                          <TabsTrigger value="attention"><PartnerInsightsTabLabel label="Needs Attention" kind="attention" /></TabsTrigger>
                         </TabsList>
                         <PartnerInsightsHeaderActions />
                       </div>
