@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useClaapRecordings, type ClaapRecording } from '@/hooks/useClaapRecordings';
+import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
 import { toast } from 'sonner';
 
 interface Attendee { email?: string | null; displayName?: string | null; self?: boolean; responseStatus?: string | null }
@@ -69,22 +70,34 @@ export function MeetingClaapInlineAction(props: Props) {
     },
   });
 
+  // Canonical linked recording via claap_recording_links (auto-confirm path).
+  // If a recording is already linked here, treat this event as "linked" even
+  // if the org-scoped event_claap_recordings mirror hasn't been populated yet.
+  const canonical = useMeetingClaapContext({
+    eventId,
+    eventTitle,
+    eventStart,
+    organizerEmail,
+  });
+  const canonicalLinked = !!canonical.recording && canonical.source === 'claap';
+  const canonicalLoading = canonical.isLoading;
+
   // Lazy load recordings once per mount — but ONLY if this event isn't
   // already linked. Once a link exists (manual approve or prior match),
   // skip the Claap API pull entirely so we don't keep "Checking Claap…".
   useEffect(() => {
     if (!eventId || didFetch) return;
-    if (existingLoading || existingFetching) return; // wait for link query
-    if (existing) { setDidFetch(true); return; }
+    if (existingLoading || existingFetching || canonicalLoading) return; // wait for link queries
+    if (existing || canonicalLinked) { setDidFetch(true); return; }
     setDidFetch(true);
     fetchRecordings().catch((err) => console.warn('claap recordings fetch failed', err));
-  }, [eventId, didFetch, fetchRecordings, existing, existingLoading, existingFetching]);
+  }, [eventId, didFetch, fetchRecordings, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading]);
 
   // Run scoring once recordings load
   useEffect(() => {
     if (!eventId || !recordings || recordings.length === 0) return;
-    if (existing) return; // skip — already linked
-    if (existingLoading || existingFetching) return; // wait for link query
+    if (existing || canonicalLinked) return; // skip — already linked
+    if (existingLoading || existingFetching || canonicalLoading) return; // wait for link queries
     let cancelled = false;
     let timedOut = false;
     const timeoutId = setTimeout(() => {
@@ -129,15 +142,15 @@ export function MeetingClaapInlineAction(props: Props) {
       }
     })();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing, existingLoading, existingFetching]);
+  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading]);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
-    if (existing || locallyLinked) return 'linked';
+    if (existing || locallyLinked || canonicalLinked) return 'linked';
     if (userRejected || !ranked) return 'none';
     if (ranked.score >= 0.90) return 'auto';
     if (ranked.score >= 0.65) return 'review';
     return 'none';
-  }, [existing, locallyLinked, ranked, userRejected]);
+  }, [existing, locallyLinked, canonicalLinked, ranked, userRejected]);
 
   const handleApprove = async () => {
     if (!ranked) return;
@@ -230,8 +243,14 @@ export function MeetingClaapInlineAction(props: Props) {
   // Render variants ---------------------------------------------------------
   const title = existing
     ? (existing.recording_title || 'Linked recording')
-    : (ranked?.recording.title || 'Suggested recording');
-  const url = existing ? existing.recording_url : ranked?.recording.url || null;
+    : canonicalLinked
+      ? (canonical.recording?.title || 'Linked recording')
+      : (ranked?.recording.title || 'Suggested recording');
+  const url = existing
+    ? existing.recording_url
+    : canonicalLinked
+      ? (canonical.recording?.url || null)
+      : (ranked?.recording.url || null);
   const scorePct = ranked ? Math.round((ranked.score || 0) * 100) : null;
 
   const pill = (() => {
