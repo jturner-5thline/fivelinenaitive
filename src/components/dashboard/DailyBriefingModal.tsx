@@ -36,6 +36,7 @@ import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
+import { useEndOfDayOutstandingCount } from '@/hooks/useEndOfDayOutstandingCount';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { AddToDealCalendarProvider } from '@/components/calendar/AddToDealCalendarProvider';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
