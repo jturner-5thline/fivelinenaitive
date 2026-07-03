@@ -72,6 +72,7 @@ export function IncomeYTDByEntityCard() {
   const { rangeStart, rangeEnd, months, periodLabel } = useTimeframeRange();
   const [cumulative, setCumulative] = useState(true);
   const [metric, setMetric] = useState<MetricKey>("revenue");
+  const [viewMode, setViewMode] = useState<"entities" | "total">("entities");
   const [chartType, setChartType] = usePersistentChartType<ChartType>("incomeByEntity", "line");
   const activeMetric = METRICS.find((m) => m.key === metric)!;
 
@@ -139,10 +140,13 @@ export function IncomeYTDByEntityCard() {
     const monthly = data?.monthly;
     const running: Record<string, number> = {};
     for (const e of ENTITIES) running[e.realmId] = 0;
+    let runningTotal = 0;
     return months.map((mo) => {
       const row: Record<string, number | string> = { month: mo.label };
+      let monthTotal = 0;
       for (const e of ENTITIES) {
         const amt = monthly?.[e.realmId]?.[mo.key]?.[activeMetric.field] ?? 0;
+        monthTotal += amt;
         if (cumulative) {
           running[e.realmId] += amt;
           row[e.label] = running[e.realmId];
@@ -150,13 +154,22 @@ export function IncomeYTDByEntityCard() {
           row[e.label] = amt;
         }
       }
+      if (cumulative) {
+        runningTotal += monthTotal;
+        row["Total Income"] = runningTotal;
+      } else {
+        row["Total Income"] = monthTotal;
+      }
       return row;
     });
   }, [data, months, cumulative, activeMetric.field]);
 
   const hasAnyData = chartData.some((row) =>
-    ENTITIES.some((e) => Math.abs(Number(row[e.label] ?? 0)) > 0)
+    viewMode === "total"
+      ? Math.abs(Number(row["Total Income"] ?? 0)) > 0
+      : ENTITIES.some((e) => Math.abs(Number(row[e.label] ?? 0)) > 0),
   );
+  const TOTAL_COLOR = "hsl(213 90% 70%)";
 
   return (
     <div
@@ -190,6 +203,33 @@ export function IncomeYTDByEntityCard() {
         </div>
         <div className="flex items-center gap-3">
           <ChartTypeToggle value={chartType} onChange={setChartType} />
+          <div
+            className="inline-flex rounded-md overflow-hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.12)" }}
+            role="tablist"
+            aria-label="View"
+          >
+            {(["entities", "total"] as const).map((v) => {
+              const active = v === viewMode;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setViewMode(v)}
+                  className={cn(
+                    "px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                    active
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white/85 hover:bg-white/5",
+                  )}
+                >
+                  {v === "entities" ? "By Entity" : "Total"}
+                </button>
+              );
+            })}
+          </div>
           <div className="flex items-center gap-1.5">
             <Switch
               id="income-entity-cumulative"
@@ -278,9 +318,13 @@ export function IncomeYTDByEntityCard() {
                       formatter={(value: number, name) => [fmtUSDFull(Number(value)), name as string]}
                     />
                     <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
-                    {ENTITIES.map((e) => (
-                      <Line key={e.realmId} type="monotone" dataKey={e.label} stroke={e.color} strokeWidth={2} dot={{ r: 3, fill: e.color }} activeDot={{ r: 5 }} />
-                    ))}
+                    {viewMode === "total" ? (
+                      <Line type="monotone" dataKey="Total Income" stroke={TOTAL_COLOR} strokeWidth={2} dot={{ r: 3, fill: TOTAL_COLOR }} activeDot={{ r: 5 }} />
+                    ) : (
+                      ENTITIES.map((e) => (
+                        <Line key={e.realmId} type="monotone" dataKey={e.label} stroke={e.color} strokeWidth={2} dot={{ r: 3, fill: e.color }} activeDot={{ r: 5 }} />
+                      ))
+                    )}
                   </LineChart>
                 ) : (
                   <BarChart data={chartData} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
@@ -293,9 +337,13 @@ export function IncomeYTDByEntityCard() {
                       formatter={(value: number, name) => [fmtUSDFull(Number(value)), name as string]}
                     />
                     <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
-                    {ENTITIES.map((e) => (
-                      <Bar key={e.realmId} dataKey={e.label} fill={e.color} radius={[3, 3, 0, 0]} />
-                    ))}
+                    {viewMode === "total" ? (
+                      <Bar dataKey="Total Income" fill={TOTAL_COLOR} radius={[3, 3, 0, 0]} />
+                    ) : (
+                      ENTITIES.map((e) => (
+                        <Bar key={e.realmId} dataKey={e.label} fill={e.color} radius={[3, 3, 0, 0]} />
+                      ))
+                    )}
                   </BarChart>
                 )}
               </ResponsiveContainer>
