@@ -152,16 +152,16 @@ export function YTDIncomeBreakdownByEntityCard() {
         </div>
 
         {isLoading ? (
-          <div className="h-[320px] rounded bg-white/5 animate-pulse" />
+          <div className="h-[300px] rounded bg-white/5 animate-pulse" />
         ) : !hasData ? (
           <div
-            className="h-[320px] flex items-center justify-center text-sm"
+            className="h-[300px] flex items-center justify-center text-sm"
             style={{ color: "rgba(255,255,255,0.55)" }}
           >
             No data available
           </div>
         ) : (
-          <div className="h-[320px] w-full overflow-hidden">
+          <div className="h-[300px] w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Tooltip
