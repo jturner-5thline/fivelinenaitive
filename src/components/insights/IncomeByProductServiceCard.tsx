@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
 import { useTimeframeRange } from "./useTimeframeRange";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
+import { ChartSwap } from "./ChartSwap";
 import {
   Dialog,
   DialogContent,
@@ -343,6 +344,7 @@ export function IncomeByProductServiceCard() {
           </div>
         ) : (
           <div style={{ height: 320 }} className="w-full overflow-hidden">
+            <ChartSwap chartType={chartType}>
             <ResponsiveContainer width="100%" height="100%">
               {chartType === "line" ? (
               <LineChart data={chartData} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
@@ -410,6 +412,7 @@ export function IncomeByProductServiceCard() {
               </BarChart>
               )}
             </ResponsiveContainer>
+            </ChartSwap>
           </div>
         )}
       </div>
