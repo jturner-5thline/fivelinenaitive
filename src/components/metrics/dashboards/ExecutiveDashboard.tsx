@@ -111,7 +111,7 @@ function useDealsByStatusFee(_window?: { start: Date; end: Date }) {
 
       const { data, error } = await supabase
         .from('deals')
-        .select('name, status, total_fee, pipeline_id')
+        .select('company, status, total_fee, pipeline_id')
         .eq('pipeline_id', activePipelineId)
         .in('status', ['on-track', 'at-risk', 'off-track']);
       if (error) throw error;
@@ -123,7 +123,7 @@ function useDealsByStatusFee(_window?: { start: Date; end: Date }) {
       // pie slices meaningful.
       const excluded = new Set(["Test-Niki's Store", 'Example Deal']);
       const rows = (data ?? []).filter(d => {
-        const name = (d.name ?? '').trim();
+        const name = (d.company ?? '').trim();
         if (!name) return false;
         if (excluded.has(name)) return false;
         if (name.toLowerCase().startsWith('test ')) return false;
