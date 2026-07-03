@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles, UserRound } from 'lucide-react';
+import { useEndOfDayOutstandingCount } from '@/hooks/useEndOfDayOutstandingCount';
 
 // HeaderNotificationPreview removed: notifications are merged into the Flag system.
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -175,6 +176,7 @@ export function DealsHeader() {
     : 0;
   const { overdueCount: tasksOverdueCount, dueTodayCount: tasksDueTodayCount } = useTaskNotifications();
   const myTasksBadgeCount = tasksOverdueCount + tasksDueTodayCount;
+  const eodOutstandingCount = useEndOfDayOutstandingCount();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
@@ -525,6 +527,7 @@ export function DealsHeader() {
               const COUNT_BADGES: Record<string, number> = {
                 'Approval Queue': approvalQueueCount,
                 'Tasks': myTasksBadgeCount,
+                'Dashboard': eodOutstandingCount,
               };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
