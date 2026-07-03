@@ -39,7 +39,6 @@ import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
 import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustomersCard";
 import { IncomeYTDMoMVarianceCard } from "@/components/insights/IncomeYTDMoMVarianceCard";
 import { IncomeMoMCard } from "@/components/insights/IncomeMoMCard";
-import { TotalIncomeRolling12MoCard } from "@/components/insights/TotalIncomeRolling12MoCard";
 import { IncomeYTDByEntityCard } from "@/components/insights/IncomeYTDByEntityCard";
 import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeBreakdownByEntityCard";
 import { FinServTTMTop5CustomersCard } from "@/components/insights/FinServTTMTop5CustomersCard";
