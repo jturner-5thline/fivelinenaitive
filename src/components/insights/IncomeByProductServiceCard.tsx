@@ -168,17 +168,31 @@ export function IncomeByProductServiceCard() {
         Debt: new Map(),
       };
       const bucketTotals: Record<BucketKey, number> = { FinServ: 0, Debt: 0 };
+      // bucket -> monthKey (YYYY-MM) -> product -> total
+      const monthlyAgg: Record<BucketKey, Map<string, Map<string, number>>> = {
+        FinServ: new Map(),
+        Debt: new Map(),
+      };
 
       for (const row of (rows ?? []) as Array<{
         realm_id: string | null;
         metadata: any;
         synced_at: string | null;
+        txn_date: string | null;
       }>) {
         if (row.synced_at && (!lastSync || row.synced_at > lastSync)) {
           lastSync = row.synced_at;
         }
         const bucket = row.realm_id ? REALM_TO_BUCKET[row.realm_id] : undefined;
         if (!bucket) continue;
+
+        let monthKey: string | null = null;
+        if (row.txn_date) {
+          const d = new Date(row.txn_date);
+          if (!isNaN(d.getTime())) {
+            monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          }
+        }
 
         const lines = Array.isArray(row.metadata?.Line) ? row.metadata.Line : [];
         const seenProductsInInvoice = new Set<string>();
@@ -201,6 +215,15 @@ export function IncomeByProductServiceCard() {
           }
           m.set(productName, existing);
           bucketTotals[bucket] += amount;
+
+          if (monthKey) {
+            let byProduct = monthlyAgg[bucket].get(monthKey);
+            if (!byProduct) {
+              byProduct = new Map();
+              monthlyAgg[bucket].set(monthKey, byProduct);
+            }
+            byProduct.set(productName, (byProduct.get(productName) ?? 0) + amount);
+          }
         }
       }
 
@@ -214,7 +237,20 @@ export function IncomeByProductServiceCard() {
           .sort((a, b) => b.total - a.total);
       }
 
-      return { itemsByBucket, bucketTotals, lastSync };
+      // Serialize monthly breakdown as plain objects for downstream use.
+      const monthlyBreakdown: Record<BucketKey, Record<string, Array<{ product: string; total: number }>>> = {
+        FinServ: {},
+        Debt: {},
+      };
+      for (const bucket of ["FinServ", "Debt"] as BucketKey[]) {
+        for (const [mKey, byProduct] of monthlyAgg[bucket].entries()) {
+          monthlyBreakdown[bucket][mKey] = [...byProduct.entries()]
+            .map(([product, total]) => ({ product, total }))
+            .sort((a, b) => b.total - a.total);
+        }
+      }
+
+      return { itemsByBucket, bucketTotals, lastSync, monthlyBreakdown };
     },
   });
 
@@ -223,7 +259,7 @@ export function IncomeByProductServiceCard() {
     return months.map((mo) => {
       const finserv = monthly?.[FINSERV_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
       const debt = monthly?.[DEBT_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
-      return { month: mo.label, FinServ: finserv, Debt: debt };
+      return { month: mo.label, monthKey: mo.key, FinServ: finserv, Debt: debt };
     });
   }, [pnlData, months, activeMetric.field]);
 
