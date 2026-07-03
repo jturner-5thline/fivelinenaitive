@@ -89,9 +89,12 @@ export function IncomeYTDByEntityCard() {
         .gte("period_start", rangeStart)
         .lte("period_end", rangeEnd);
       if (error) throw error;
-      // Pick the snapshot with the largest period_end per (realm, month),
-      // tiebreak on latest fetched_at, so we use the most complete monthly P&L.
-      const best: Record<string, { period_end: string; fetched_at: string; row: any }> = {};
+      // Pick the best monthly snapshot per (realm, month): prefer rows whose
+      // period_end falls in the SAME calendar month as period_start (true
+      // monthly P&L) over YTD/quarter aggregates that share the same
+      // period_start. Within that preference, pick the largest period_end and
+      // then the latest fetched_at.
+      const best: Record<string, { sameMonth: boolean; period_end: string; fetched_at: string; row: any }> = {};
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.period_start || !r.realm_id) continue;
@@ -99,11 +102,19 @@ export function IncomeYTDByEntityCard() {
         const d = new Date(r.period_start);
         const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         const key = `${r.realm_id}::${mKey}`;
-        const prev = best[key];
         const pe = r.period_end ?? r.period_start;
         const fa = r.fetched_at ?? "";
-        if (!prev || pe > prev.period_end || (pe === prev.period_end && fa > prev.fetched_at)) {
-          best[key] = { period_end: pe, fetched_at: fa, row: r };
+        const endD = new Date(pe);
+        const sameMonth =
+          endD.getFullYear() === d.getFullYear() && endD.getMonth() === d.getMonth();
+        const prev = best[key];
+        const better =
+          !prev ||
+          (sameMonth && !prev.sameMonth) ||
+          (sameMonth === prev.sameMonth &&
+            (pe > prev.period_end || (pe === prev.period_end && fa > prev.fetched_at)));
+        if (better) {
+          best[key] = { sameMonth, period_end: pe, fetched_at: fa, row: r };
         }
         if (r.fetched_at && (!lastSync || r.fetched_at > lastSync)) lastSync = r.fetched_at;
       }
