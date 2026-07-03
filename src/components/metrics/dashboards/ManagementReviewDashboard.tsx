@@ -646,7 +646,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const chartMode = reportingPeriod?.view === 'quarter' ? 'quarter' : 'rolling';
   const chartWindowLabel = chartMode === 'quarter'
-    ? `${periodLabel} · monthly live data`
+    ? `4 quarters ending ${periodLabel}`
     : `12 months ending ${periodLabel}`;
 
   const monthLabels = revenueSeries.map(point => point.month);
