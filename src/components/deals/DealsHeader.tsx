@@ -527,6 +527,7 @@ export function DealsHeader() {
               const COUNT_BADGES: Record<string, number> = {
                 'Approval Queue': approvalQueueCount,
                 'Tasks': myTasksBadgeCount,
+                'Dashboard': eodOutstandingCount,
               };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
