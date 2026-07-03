@@ -170,6 +170,7 @@ const Signal = lazy(lazyRetry(() => import("./pages/Signal")));
 const Studio = lazy(lazyRetry(() => import("./pages/Studio")));
 const Integrations = lazy(lazyRetry(() => import("./pages/Integrations")));
 const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
+const MeetingNotesSearch = lazy(lazyRetry(() => import("./pages/MeetingNotesSearch")));
 
 const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
@@ -412,6 +413,7 @@ const App = () => (
                             <Route path="/pipeline" element={<NaitivePipeline />} />
                             <Route path="/news-feed" element={<NewsFeed />} />
                             <Route path="/tasks" element={<Tasks />} />
+                            <Route path="/meeting-notes" element={<MeetingNotesSearch />} />
                             <Route path="/tasks/:taskId" element={<TaskDetail />} />
                             <Route path="/tasks/preview/suggested" element={<SuggestedTaskPreview />} />
                             <Route path="/deals" element={<ErrorBoundary><Deals /></ErrorBoundary>} />
