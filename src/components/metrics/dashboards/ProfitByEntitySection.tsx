@@ -418,6 +418,13 @@ export function ProfitDrilldownModal({
   const totalRevenue = months.reduce((s, m) => s + m.revenue, 0);
   const totalExpenses = months.reduce((s, m) => s + m.expenses, 0);
 
+  const chartData = months.map((m) => ({
+    label: m.label,
+    Revenue: m.revenue,
+    Expenses: m.expenses,
+    Profit: m.profit,
+  }));
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-4xl max-h-[88vh] overflow-auto">
@@ -435,6 +442,45 @@ export function ProfitDrilldownModal({
           <Badge variant={total >= 0 ? 'default' : 'destructive'} className="text-xs font-mono">
             Profit: {formatCurrencyFull(total)}
           </Badge>
+        </div>
+
+        {/* Monthly chart — months on X, Revenue/Expenses/Profit on Y */}
+        <div className="border rounded-lg p-3 mb-3 bg-card/30" style={{ height: 320 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData} margin={{ top: 12, right: 16, left: 8, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                width={70}
+                tickFormatter={(v: number) => {
+                  const a = Math.abs(v);
+                  const s = v < 0 ? '-' : '';
+                  if (a >= 1_000_000) return `${s}$${(a / 1_000_000).toFixed(1)}M`;
+                  if (a >= 1_000) return `${s}$${(a / 1_000).toFixed(0)}K`;
+                  return `${s}$${a.toFixed(0)}`;
+                }}
+              />
+              <Tooltip
+                formatter={(v: number, name: string) => [formatCurrencyFull(Number(v) || 0), name]}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--popover))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: 'hsl(var(--popover-foreground))',
+                }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.12 }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <ReferenceLine y={0} stroke="rgba(220,232,255,0.5)" strokeWidth={0.75} />
+              <Bar dataKey="Revenue" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Expenses" fill="hsl(var(--chart-5))" radius={[4, 4, 0, 0]} />
+              <Line type="monotone" dataKey="Profit" stroke={total < 0 ? 'hsl(354, 62%, 56%)' : 'hsl(152, 58%, 52%)'} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="border rounded-lg overflow-hidden">
