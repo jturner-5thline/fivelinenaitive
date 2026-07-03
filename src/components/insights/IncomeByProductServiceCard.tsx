@@ -90,7 +90,7 @@ export function IncomeByProductServiceCard() {
 
   const [openBucket, setOpenBucket] = useState<BucketKey | null>(null);
   const [metric, setMetric] = useState<MetricKey>("revenue");
-  const [chartType, setChartType] = useState<ChartType>("line");
+  const [chartType, setChartType] = usePersistentChartType<ChartType>("incomeByProductService", "line");
   const activeMetric = METRICS.find((m) => m.key === metric)!;
 
   // Monthly P&L series (Revenue / GP / OI per entity)
