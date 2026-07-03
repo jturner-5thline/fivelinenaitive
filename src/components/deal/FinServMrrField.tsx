@@ -59,7 +59,7 @@ function ManualMrrDisplay({
 
   return (
     <>
-      <div className="flex items-center gap-2 min-w-0 w-full">
+      <div className="flex flex-wrap items-center gap-2 min-w-0 w-full">
         <div className="min-w-0 flex-1 h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center">
           <span className="tabular-nums truncate">
             {current == null ? <span className="text-muted-foreground">Not set</span> : fmtUSD(current)}
@@ -291,7 +291,7 @@ export function FinServMrrField({
   return (
     <div className="space-y-2 min-w-0 w-full">
       {/* Line 1: label + mode dropdown pill */}
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <span className="text-muted-foreground text-sm">MRR</span>
         <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
           <SelectTrigger className="h-6 w-auto min-w-[6rem] px-2 py-0 text-xs rounded-full">
