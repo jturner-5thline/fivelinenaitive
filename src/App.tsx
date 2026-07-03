@@ -170,6 +170,7 @@ const Signal = lazy(lazyRetry(() => import("./pages/Signal")));
 const Studio = lazy(lazyRetry(() => import("./pages/Studio")));
 const Integrations = lazy(lazyRetry(() => import("./pages/Integrations")));
 const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
+const MeetingNotesSearch = lazy(lazyRetry(() => import("./pages/MeetingNotesSearch")));
 
 const Agents = lazy(lazyRetry(() => import("./pages/Agents")));
 const Finance = lazy(lazyRetry(() => import("./pages/Finance")));
