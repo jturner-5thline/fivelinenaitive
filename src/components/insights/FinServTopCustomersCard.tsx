@@ -480,24 +480,28 @@ export function FinServTopCustomersCard() {
                         <td className="py-2 text-right text-foreground font-medium">
                           {fmtUSD(r.current)}
                         </td>
-                        <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
-                          {fmtUSD(r.prior)}
-                        </td>
-                        <td
-                          className="py-2 text-right font-medium"
-                          style={{ color }}
-                        >
-                          {positive ? "+" : ""}
-                          {fmtUSD(r.variance)}
-                        </td>
-                        <td
-                          className="py-2 text-right font-medium"
-                          style={{ color }}
-                        >
-                          {r.pct == null
-                            ? "—"
-                            : `${positive ? "+" : ""}${r.pct.toFixed(1)}%`}
-                        </td>
+                        {showPrior && (
+                          <>
+                            <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
+                              {fmtUSD(r.prior)}
+                            </td>
+                            <td
+                              className="py-2 text-right font-medium"
+                              style={{ color }}
+                            >
+                              {positive ? "+" : ""}
+                              {fmtUSD(r.variance)}
+                            </td>
+                            <td
+                              className="py-2 text-right font-medium"
+                              style={{ color }}
+                            >
+                              {r.pct == null
+                                ? "—"
+                                : `${positive ? "+" : ""}${r.pct.toFixed(1)}%`}
+                            </td>
+                          </>
+                        )}
                       </tr>
                     );
                   })}
