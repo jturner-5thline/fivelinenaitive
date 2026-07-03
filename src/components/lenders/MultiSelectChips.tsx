@@ -51,7 +51,7 @@ export function MultiSelectChips({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-64 p-2 z-[1400] bg-popover"
+        className="w-64 p-2 z-[1400]"
         align="start"
         onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation(); }}
       >
