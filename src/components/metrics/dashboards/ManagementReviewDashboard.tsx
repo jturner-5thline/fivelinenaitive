@@ -1868,7 +1868,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                             style={{ cursor: clickable ? 'pointer' : 'default' }}
                           >
                             <td style={{ ...tdBase, color: '#e8f6ff', fontWeight: 500 }}>
-                              {k.l}
+                              <span title={KPI_DESCRIPTIONS[registryId] || k.l} style={{ cursor: 'help' }}>{k.l}</span>
                               {!k.live && k.emptyHint && (
                                 <div style={{ fontSize: 10, color: NA_COLOR, marginTop: 2, fontWeight: 400 }}>
                                   {k.emptyHint}
