@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
