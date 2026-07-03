@@ -109,6 +109,24 @@ export function useChannelPerformanceData(
     },
   });
 
+  // Also pull `referral_sources` rows — many workspaces store real referrer
+  // names here (not in `channel_entries`, which is often just seed data).
+  // We treat each referral_source as a synthetic channel entry so deals with
+  // matching `referred_by` values get attributed to a channel.
+  const { data: referralSources = [], isLoading: refsLoading } = useQuery({
+    queryKey: ['channel_perf_referral_sources', company?.id],
+    enabled: !!company?.id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('referral_sources')
+        .select('id, name, contact_name, email, contact_id, channel, type, source_type, company')
+        .eq('company_id', company!.id);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
   const { data: deals = [], isLoading: dealsLoading } = useQuery({
     queryKey: ['channel_perf_deals', company?.id, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
@@ -129,17 +147,47 @@ export function useChannelPerformanceData(
     },
   });
 
-  const isLoading = channelsLoading || dealsLoading;
+  const isLoading = channelsLoading || dealsLoading || refsLoading;
 
   const channelSources = useMemo<ChannelSource[]>(() => {
-    return channelEntries.map((ce: any) => ({
+    const fromEntries = channelEntries.map((ce: any) => ({
       channelEntryId: ce.id,
       name: ce.crm_company?.name || ce.contact?.full_name || 'Unknown',
       channelType: ce.channel_type,
       contactName: ce.contact?.full_name || null,
       companyName: ce.crm_company?.name || null,
     }));
-  }, [channelEntries]);
+    const fromReferrals = (referralSources || []).map((r: any) => {
+      const rawChannel: string = (r.channel || r.type || r.source_type || 'Other') as string;
+      // Map free-text into the canonical CHANNEL_TYPE list where possible.
+      const lower = String(rawChannel).toLowerCase();
+      let channelType = 'Other';
+      if (/bank/i.test(lower)) channelType = 'Banks';
+      else if (/m&a|investment.bank|ib\b/i.test(lower)) channelType = 'M&A and Investment Bankers';
+      else if (/service|law|account|legal/i.test(lower)) channelType = 'Service Providers';
+      else if (/invest|pe\b|vc\b|fund/i.test(lower)) channelType = 'Investors';
+      else if (/advis/i.test(lower)) channelType = 'Advisors';
+      else if (/lender/i.test(lower)) channelType = 'Lenders';
+      return {
+        channelEntryId: `rs:${r.id}`,
+        name: r.company || r.name || r.contact_name || 'Referral',
+        channelType,
+        contactName: r.contact_name || r.name || null,
+        companyName: r.company || null,
+      } as ChannelSource;
+    });
+    // De-duplicate by (name + channelType) — prefer the channel_entries copy
+    // when both exist so the crm_company_id path still resolves.
+    const seen = new Set<string>();
+    const out: ChannelSource[] = [];
+    for (const s of [...fromEntries, ...fromReferrals]) {
+      const key = `${(s.name || '').toLowerCase()}|${s.channelType}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(s);
+    }
+    return out;
+  }, [channelEntries, referralSources]);
 
   const { attributedDeals, performanceRows, kpis } = useMemo(() => {
     const filteredDeals = deals;
