@@ -75,6 +75,79 @@ function fmtUSDFull(n: number): string {
   });
 }
 
+function BreakdownTooltip({
+  active,
+  payload,
+  label,
+  metricLabel,
+  showBreakdown,
+  breakdown,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string; payload?: { monthKey?: string } }>;
+  label?: string;
+  metricLabel: string;
+  showBreakdown: boolean;
+  breakdown: Record<BucketKey, Record<string, Array<{ product: string; total: number }>>> | undefined;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const monthKey = payload[0]?.payload?.monthKey;
+  return (
+    <div
+      style={{
+        background: "rgba(10,30,55,0.96)",
+        border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 6,
+        padding: "8px 10px",
+        fontSize: 12,
+        color: "rgb(220,235,255)",
+        maxWidth: 280,
+        boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      {payload.map((p) => {
+        const bucket = p.name as BucketKey;
+        const items = showBreakdown && monthKey ? breakdown?.[bucket]?.[monthKey] ?? [] : [];
+        const top = items.slice(0, 5);
+        const rest = items.slice(5);
+        const restTotal = rest.reduce((s, r) => s + r.total, 0);
+        return (
+          <div key={bucket} style={{ marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: p.color }} />
+                <span style={{ color: "rgba(255,255,255,0.85)" }}>{bucket}</span>
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>· {metricLabel}</span>
+              </span>
+              <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtUSDFull(Number(p.value ?? 0))}</span>
+            </div>
+            {showBreakdown && top.length > 0 && (
+              <div style={{ marginTop: 4, paddingLeft: 14 }}>
+                {top.map((it) => (
+                  <div key={it.product} style={{ display: "flex", justifyContent: "space-between", gap: 12, color: "rgba(255,255,255,0.75)", fontSize: 11 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.product}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtUSDFull(it.total)}</span>
+                  </div>
+                ))}
+                {rest.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+                    <span>+ {rest.length} more</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtUSDFull(restTotal)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {showBreakdown && monthKey && !(breakdown?.FinServ?.[monthKey] || breakdown?.Debt?.[monthKey]) && (
+        <div style={{ marginTop: 6, color: "rgba(255,255,255,0.5)", fontSize: 11 }}>No invoice detail for this month.</div>
+      )}
+    </div>
+  );
+}
+
 interface InvoicingTypeRow {
   product: string;
   total: number;
@@ -168,17 +241,31 @@ export function IncomeByProductServiceCard() {
         Debt: new Map(),
       };
       const bucketTotals: Record<BucketKey, number> = { FinServ: 0, Debt: 0 };
+      // bucket -> monthKey (YYYY-MM) -> product -> total
+      const monthlyAgg: Record<BucketKey, Map<string, Map<string, number>>> = {
+        FinServ: new Map(),
+        Debt: new Map(),
+      };
 
       for (const row of (rows ?? []) as Array<{
         realm_id: string | null;
         metadata: any;
         synced_at: string | null;
+        txn_date: string | null;
       }>) {
         if (row.synced_at && (!lastSync || row.synced_at > lastSync)) {
           lastSync = row.synced_at;
         }
         const bucket = row.realm_id ? REALM_TO_BUCKET[row.realm_id] : undefined;
         if (!bucket) continue;
+
+        let monthKey: string | null = null;
+        if (row.txn_date) {
+          const d = new Date(row.txn_date);
+          if (!isNaN(d.getTime())) {
+            monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          }
+        }
 
         const lines = Array.isArray(row.metadata?.Line) ? row.metadata.Line : [];
         const seenProductsInInvoice = new Set<string>();
@@ -201,6 +288,15 @@ export function IncomeByProductServiceCard() {
           }
           m.set(productName, existing);
           bucketTotals[bucket] += amount;
+
+          if (monthKey) {
+            let byProduct = monthlyAgg[bucket].get(monthKey);
+            if (!byProduct) {
+              byProduct = new Map();
+              monthlyAgg[bucket].set(monthKey, byProduct);
+            }
+            byProduct.set(productName, (byProduct.get(productName) ?? 0) + amount);
+          }
         }
       }
 
@@ -214,7 +310,20 @@ export function IncomeByProductServiceCard() {
           .sort((a, b) => b.total - a.total);
       }
 
-      return { itemsByBucket, bucketTotals, lastSync };
+      // Serialize monthly breakdown as plain objects for downstream use.
+      const monthlyBreakdown: Record<BucketKey, Record<string, Array<{ product: string; total: number }>>> = {
+        FinServ: {},
+        Debt: {},
+      };
+      for (const bucket of ["FinServ", "Debt"] as BucketKey[]) {
+        for (const [mKey, byProduct] of monthlyAgg[bucket].entries()) {
+          monthlyBreakdown[bucket][mKey] = [...byProduct.entries()]
+            .map(([product, total]) => ({ product, total }))
+            .sort((a, b) => b.total - a.total);
+        }
+      }
+
+      return { itemsByBucket, bucketTotals, lastSync, monthlyBreakdown };
     },
   });
 
@@ -223,7 +332,7 @@ export function IncomeByProductServiceCard() {
     return months.map((mo) => {
       const finserv = monthly?.[FINSERV_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
       const debt = monthly?.[DEBT_REALM]?.[mo.key]?.[activeMetric.field] ?? 0;
-      return { month: mo.label, FinServ: finserv, Debt: debt };
+      return { month: mo.label, monthKey: mo.key, FinServ: finserv, Debt: debt };
     });
   }, [pnlData, months, activeMetric.field]);
 
@@ -367,14 +476,13 @@ export function IncomeByProductServiceCard() {
                   tickFormatter={fmtCompact}
                 />
                 <Tooltip
-                  contentStyle={{
-                    background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    color: "rgb(220,235,255)",
-                  }}
-                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
+                  content={
+                    <BreakdownTooltip
+                      metricLabel={activeMetric.label}
+                      showBreakdown={metric === "revenue"}
+                      breakdown={invoiceData?.monthlyBreakdown}
+                    />
+                  }
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
@@ -404,8 +512,13 @@ export function IncomeByProductServiceCard() {
                 <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.08)" }}
-                  contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
-                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
+                  content={
+                    <BreakdownTooltip
+                      metricLabel={activeMetric.label}
+                      showBreakdown={metric === "revenue"}
+                      breakdown={invoiceData?.monthlyBreakdown}
+                    />
+                  }
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
                 <Bar dataKey="FinServ" fill={BUCKET_COLOR.FinServ} radius={[3, 3, 0, 0]} />
