@@ -20,7 +20,7 @@ import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
 import { useQuickBooksStatus, useQuickBooksInvoices } from '@/hooks/useQuickBooks';
 import {
   endOfDay, endOfMonth, endOfQuarter, endOfYear, startOfDay, startOfMonth,
-  startOfQuarter, startOfYear, subYears,
+  startOfQuarter, startOfYear, subYears, format,
 } from 'date-fns';
 import { StatDrilldownBody, type DateRange } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
