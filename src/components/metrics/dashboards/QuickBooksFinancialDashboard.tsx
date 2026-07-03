@@ -361,54 +361,6 @@ export function QuickBooksFinancialDashboard({
         </Card>
       </div>
 
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Customers */}
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Top Customers by Revenue</CardTitle>
-            <CardDescription>Based on invoice totals</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div style={{ height: 280 }}>
-              {enrichedTopCustomers.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={enrichedTopCustomers} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
-                    <Tooltip formatter={(v: number) => [formatCurrency(v), "Revenue"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                    <Bar
-                      dataKey="revenue"
-                      shape={createGlassBarShape({ radius: 3 })}
-                      cursor="pointer"
-                      onClick={(d: any) => showDrill('Top Customers by Revenue', d?.name, [
-                        { metric: 'Customer', value: String(d?.name ?? '') },
-                        { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
-                      ])}
-                    >
-                      {enrichedTopCustomers.map((_, index) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                      {showDataLabels && (
-                        <LabelList
-                          dataKey="revenue"
-                          position="right"
-                          formatter={makeLabelFormatter(enrichedTopCustomers.map(d => d.revenue))}
-                          style={dataLabelStyle}
-                        />
-                      )}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">No customer data</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-      </div>
     </div>
     <InsightsDrilldownDrawer
       open={!!drill}
