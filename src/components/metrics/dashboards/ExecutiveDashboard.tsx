@@ -32,6 +32,7 @@ import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar'
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/components/metrics/GlassCard';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { LatestShareReportDialog } from './LatestShareReportDialog';
 
 // ── Shared chart primitives (axis/grid/tooltip) ──────────────────────────────
 // Mirrors the Liquid Glass treatment used by Profit by Entity / Revenue
@@ -133,6 +134,7 @@ function useDealsByStatusFee(window?: { start: Date; end: Date }) {
 
 function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date } }) {
   const { data, isLoading } = useDealsByStatusFee(window);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -157,7 +159,20 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
   }));
 
   return (
-    <GlassCard interactive className="h-full flex flex-col">
+    <GlassCard
+      interactive
+      className="h-full flex flex-col cursor-pointer"
+      onClick={() => setReportOpen(true)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setReportOpen(true);
+        }
+      }}
+      aria-label="Open latest shared pipeline report"
+    >
       <GlassCardHeader
         title="Deals by Status"
         subtitle="By total fee · current pipeline"
@@ -243,6 +258,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           })}
         </ul>
       </GlassCardBody>
+      <LatestShareReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </GlassCard>
   );
 }
