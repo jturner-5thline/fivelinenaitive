@@ -23,58 +23,113 @@ interface Bucket {
 const BORDER = 'rgba(120,170,255,0.16)';
 const CELL_PAD = '8px 10px';
 
-function Sparkline({
-  values,
-  labels,
-  color = '#7cc8f0',
-  height = 60,
-  fill = true,
-}: {
+const SERIES_PALETTE = [
+  '#7cc8f0', '#a78bfa', '#f0a37c', '#7cf0b5', '#f07cb5', '#f0d97c',
+  '#8fd3ff', '#c4a1ff', '#ffb98f', '#8fe4b5', '#ff9ec6', '#ffe38f',
+];
+
+interface ChartSeries {
+  id: string;
+  label: string;
   values: number[];
+  color: string;
+}
+
+function MultiLineChart({
+  series,
+  labels,
+  height = 240,
+}: {
+  series: ChartSeries[];
   labels: string[];
-  color?: string;
   height?: number;
-  fill?: boolean;
 }) {
-  const width = Math.max(240, values.length * 44);
-  const pad = { l: 8, r: 8, t: 8, b: 16 };
+  const [hoverIdx, setHoverIdx] = React.useState<number | null>(null);
+  const pad = { l: 56, r: 16, t: 12, b: 26 };
+  const width = Math.max(560, labels.length * 60);
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
-  const max = Math.max(1, ...values);
-  const min = Math.min(0, ...values);
+  const allVals = series.flatMap(s => s.values);
+  const max = Math.max(1, ...allVals);
+  const min = Math.min(0, ...allVals);
   const span = max - min || 1;
-  const stepX = values.length > 1 ? innerW / (values.length - 1) : 0;
-  const pts = values.map((v, i) => {
-    const x = pad.l + (values.length > 1 ? i * stepX : innerW / 2);
-    const y = pad.t + innerH - ((v - min) / span) * innerH;
-    return { x, y, v };
-  });
-  const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  const area = fill && pts.length > 0
-    ? `${path} L${pts[pts.length - 1].x.toFixed(1)},${(pad.t + innerH).toFixed(1)} L${pts[0].x.toFixed(1)},${(pad.t + innerH).toFixed(1)} Z`
-    : '';
+  const stepX = labels.length > 1 ? innerW / (labels.length - 1) : 0;
+  const xAt = (i: number) => pad.l + (labels.length > 1 ? i * stepX : innerW / 2);
+  const yAt = (v: number) => pad.t + innerH - ((v - min) / span) * innerH;
+
+  const ticks = 4;
+  const tickVals = Array.from({ length: ticks + 1 }, (_, i) => min + ((max - min) * i) / ticks);
+
   return (
-    <svg width={width} height={height} style={{ display: 'block' }}>
-      {fill && <path d={area} fill={color} opacity={0.14} />}
-      <path d={path} fill="none" stroke={color} strokeWidth={1.5} />
-      {pts.map((p, i) => (
-        <g key={i}>
-          <circle cx={p.x} cy={p.y} r={2.2} fill={color} />
-          <title>{`${labels[i]}: ${formatUSD(p.v)}`}</title>
-        </g>
-      ))}
-      {labels.map((l, i) => (
-        <text
-          key={i}
-          x={pts[i]?.x ?? 0}
-          y={height - 3}
-          textAnchor="middle"
-          style={{ fontSize: 9, fill: 'rgba(160,200,255,0.55)' }}
-        >
-          {l}
-        </text>
-      ))}
-    </svg>
+    <div style={{ overflow: 'auto' }}>
+      <svg
+        width={width}
+        height={height}
+        style={{ display: 'block' }}
+        onMouseLeave={() => setHoverIdx(null)}
+        onMouseMove={(e) => {
+          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+          const x = e.clientX - rect.left - pad.l;
+          if (stepX <= 0) return;
+          const i = Math.max(0, Math.min(labels.length - 1, Math.round(x / stepX)));
+          setHoverIdx(i);
+        }}
+      >
+        {tickVals.map((t, i) => (
+          <g key={i}>
+            <line
+              x1={pad.l} x2={pad.l + innerW} y1={yAt(t)} y2={yAt(t)}
+              stroke="rgba(120,170,255,0.08)"
+            />
+            <text
+              x={pad.l - 6} y={yAt(t) + 3} textAnchor="end"
+              style={{ fontSize: 9, fill: 'rgba(160,200,255,0.55)' }}
+            >
+              {formatUSD(t)}
+            </text>
+          </g>
+        ))}
+        {labels.map((l, i) => (
+          <text
+            key={i} x={xAt(i)} y={height - 8} textAnchor="middle"
+            style={{ fontSize: 9, fill: 'rgba(160,200,255,0.55)' }}
+          >
+            {l}
+          </text>
+        ))}
+        {series.map(s => {
+          const d = s.values.map((v, i) => `${i === 0 ? 'M' : 'L'}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
+          return (
+            <g key={s.id}>
+              <path d={d} fill="none" stroke={s.color} strokeWidth={1.75} />
+              {s.values.map((v, i) => (
+                <circle key={i} cx={xAt(i)} cy={yAt(v)} r={2.4} fill={s.color} />
+              ))}
+            </g>
+          );
+        })}
+        {hoverIdx !== null && (
+          <line
+            x1={xAt(hoverIdx)} x2={xAt(hoverIdx)} y1={pad.t} y2={pad.t + innerH}
+            stroke="rgba(200,225,245,0.35)" strokeDasharray="3 3"
+          />
+        )}
+      </svg>
+      {hoverIdx !== null && (
+        <div style={{
+          margin: '4px 0 0 8px', fontSize: 11, color: 'rgba(220,235,255,0.9)',
+          display: 'flex', flexWrap: 'wrap', gap: 12,
+        }}>
+          <span style={{ color: 'rgba(160,200,255,0.7)' }}>{labels[hoverIdx]}</span>
+          {series.map(s => (
+            <span key={s.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
+              {s.label}: <strong>{formatUSD(s.values[hoverIdx] || 0)}</strong>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -139,6 +194,8 @@ interface Props {
 export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
   const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set(['__all__']));
+  const [userTouched, setUserTouched] = useState(false);
 
   const buckets = useMemo(() => buildBuckets(ttmRange.end, granularity), [ttmRange.end, granularity]);
   const rangeStart = buckets[0].start;
@@ -227,6 +284,53 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
     });
   };
 
+  const toggleSeries = (id: string) => {
+    setUserTouched(true);
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.size === 0) next.add('__all__');
+      return next;
+    });
+  };
+
+  // Build available series (entity totals + expanded products) with stable colors.
+  const availableSeries = useMemo(() => {
+    const list: ChartSeries[] = [];
+    list.push({ id: '__all__', label: 'All entities', values: grandBucketTotals, color: '#dde8f8' });
+    entities.forEach((e, i) => {
+      list.push({
+        id: `entity:${e.entity.realmId}`,
+        label: e.entity.label,
+        values: e.bucketTotals,
+        color: SERIES_PALETTE[i % SERIES_PALETTE.length],
+      });
+      if (expanded.has(e.entity.realmId)) {
+        e.products.slice(0, 8).forEach((p, pi) => {
+          list.push({
+            id: `product:${e.entity.realmId}:${p.product}`,
+            label: `${e.entity.label} · ${p.product}`,
+            values: p.bucketTotals,
+            color: SERIES_PALETTE[(i + pi + 3) % SERIES_PALETTE.length],
+          });
+        });
+      }
+    });
+    return list;
+  }, [entities, expanded, grandBucketTotals]);
+
+  // Auto-select newly expanded entities' products until the user takes control.
+  React.useEffect(() => {
+    if (userTouched) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      availableSeries.forEach(s => { if (s.id.startsWith('product:')) next.add(s.id); });
+      return next;
+    });
+  }, [availableSeries, userTouched]);
+
+  const chartSeries = availableSeries.filter(s => selected.has(s.id));
+
   const th: React.CSSProperties = {
     padding: CELL_PAD, fontSize: 9, fontWeight: 700, letterSpacing: '.08em',
     textTransform: 'uppercase', color: 'rgba(160,200,255,0.55)',
@@ -272,6 +376,41 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
           <ToggleBtn value="quarterly" label="Quarterly" />
         </div>
       </div>
+
+      {entities.length > 0 && (
+        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${BORDER}` }}>
+          <MultiLineChart
+            series={chartSeries.length > 0 ? chartSeries : [availableSeries[0]]}
+            labels={buckets.map(b => b.label)}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            {availableSeries.map(s => {
+              const on = selected.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleSeries(s.id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '3px 8px', fontSize: 11, borderRadius: 999,
+                    border: `1px solid ${on ? s.color : BORDER}`,
+                    background: on ? `${s.color}22` : 'transparent',
+                    color: on ? '#dde8f8' : 'rgba(200,225,245,0.6)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: 2, background: s.color,
+                    opacity: on ? 1 : 0.4, display: 'inline-block',
+                  }} />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -329,63 +468,6 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
                       </td>
                     </tr>
                   ))}
-                  {isOpen && (
-                    <tr style={{ background: 'rgba(120,170,255,0.04)' }}>
-                      <td colSpan={buckets.length + 2} style={{ ...td, padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          <div>
-                            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: 'rgba(160,200,255,0.6)', marginBottom: 4 }}>
-                              {row.entity.label} · Revenue trend
-                            </div>
-                            <Sparkline
-                              values={row.bucketTotals}
-                              labels={buckets.map(b => b.label)}
-                              color="#7cc8f0"
-                              height={72}
-                            />
-                          </div>
-                          {row.products.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: 'rgba(160,200,255,0.6)', marginBottom: 4 }}>
-                                Top products / services
-                              </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                                {row.products.slice(0, 6).map((p, idx) => {
-                                  const palette = ['#7cc8f0', '#a78bfa', '#f0a37c', '#7cf0b5', '#f07cb5', '#f0d97c'];
-                                  const color = palette[idx % palette.length];
-                                  return (
-                                    <div
-                                      key={p.product}
-                                      style={{
-                                        border: `1px solid ${BORDER}`,
-                                        borderRadius: 6,
-                                        padding: 8,
-                                        background: 'rgba(10,18,36,0.4)',
-                                      }}
-                                    >
-                                      <div style={{
-                                        display: 'flex', justifyContent: 'space-between', gap: 8,
-                                        fontSize: 11, color: '#dde8f8', marginBottom: 4,
-                                      }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.product}</span>
-                                        <span style={{ fontWeight: 600, color }}>{formatUSD(p.total)}</span>
-                                      </div>
-                                      <Sparkline
-                                        values={p.bucketTotals}
-                                        labels={buckets.map(b => b.label)}
-                                        color={color}
-                                        height={56}
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               );
             })}
