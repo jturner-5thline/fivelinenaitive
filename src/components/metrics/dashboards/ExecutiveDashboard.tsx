@@ -85,36 +85,49 @@ const STATUS_BUCKETS = [
 ];
 const STATUS_COLORS = STATUS_BUCKETS.map(b => b.color);
 
-function useDealsByStatusFee(window?: { start: Date; end: Date }) {
+function useDealsByStatusFee(_window?: { start: Date; end: Date }) {
   return useQuery({
     queryKey: [
       'executive-dashboard',
       'deals-by-status-fee',
-      window?.start.toISOString() ?? 'all',
-      window?.end.toISOString() ?? 'all',
+      'active-pipeline',
     ],
     queryFn: async () => {
-      let q = supabase
-        .from('deals')
-        .select('status, total_fee, company, updated_at')
-        .not('total_fee', 'is', null);
-      if (window) {
-        q = q
-          .gte('updated_at', window.start.toISOString())
-          .lte('updated_at', window.end.toISOString());
+      // Resolve the 5th Line "Active Pipeline" (default pipeline for this
+      // workspace). Executive Dashboard is 5th Line-only, so scope directly
+      // to the default pipeline for that company.
+      const FIFTH_LINE_COMPANY_ID = '44556c46-9127-4b12-b14e-d6fee784afcf';
+      const { data: pipelines, error: pipeErr } = await supabase
+        .from('deal_pipelines')
+        .select('id')
+        .eq('company_id', FIFTH_LINE_COMPANY_ID)
+        .eq('is_default', true)
+        .limit(1);
+      if (pipeErr) throw pipeErr;
+      const activePipelineId = pipelines?.[0]?.id;
+      if (!activePipelineId) {
+        return { totals: { 'on-track': 0, 'at-risk': 0, 'off-track': 0 }, total: 0 };
       }
-      const { data, error } = await q;
+
+      const { data, error } = await supabase
+        .from('deals')
+        .select('name, status, total_fee, pipeline_id')
+        .eq('pipeline_id', activePipelineId)
+        .in('status', ['on-track', 'at-risk', 'off-track']);
       if (error) throw error;
 
       // Apply the global test-deal exclusion (Test-Niki's Store, Example Deal,
-      // anything starting with "test ").
+      // anything starting with "test ") — matched against the deal NAME, not
+      // the associated company. Deals without a total fee still count toward
+      // status distribution as zero-value; drop them from the sum but keep
+      // pie slices meaningful.
       const excluded = new Set(["Test-Niki's Store", 'Example Deal']);
       const rows = (data ?? []).filter(d => {
-        const name = (d.company ?? '').trim();
+        const name = (d.name ?? '').trim();
+        if (!name) return false;
         if (excluded.has(name)) return false;
         if (name.toLowerCase().startsWith('test ')) return false;
-        const fee = Number(d.total_fee);
-        return Number.isFinite(fee) && fee > 0;
+        return true;
       });
 
       const totals = { 'on-track': 0, 'at-risk': 0, 'off-track': 0 } as Record<
@@ -123,7 +136,10 @@ function useDealsByStatusFee(window?: { start: Date; end: Date }) {
       >;
       for (const r of rows) {
         const s = r.status as keyof typeof totals;
-        if (s in totals) totals[s] += Number(r.total_fee);
+        if (s in totals) {
+          const fee = Number(r.total_fee);
+          if (Number.isFinite(fee) && fee > 0) totals[s] += fee;
+        }
       }
       const total = totals['on-track'] + totals['at-risk'] + totals['off-track'];
       return { totals, total };
