@@ -1092,18 +1092,65 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
   const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
+  const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
   const monthlyTrendLabels = ttmSeries.map(p => p.month);
   const monthlyTrendValues = ttmSeries.map(p => p.revenue);
   const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
+  const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+  const trendDeltasPct = activeTrendValues.map((v, i) => {
+    if (i === 0) return null;
+    const prev = activeTrendValues[i - 1];
+    if (!prev || prev === 0) return null;
+    return ((v - prev) / Math.abs(prev)) * 100;
+  });
+  const trendDeltasAbs = activeTrendValues.map((v, i) => i === 0 ? null : v - activeTrendValues[i - 1]);
   useChart(
     ncRef,
     qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
       ? {
           type: 'bar',
           data: trendMode === 'ttm'
-            ? { labels: ttmLabels, datasets: [{ label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4 }] }
-            : { labels: monthlyTrendLabels, datasets: [{ label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 1, borderRadius: 4 }] },
+            ? {
+                labels: ttmLabels,
+                datasets: [
+                  { label: 'TTM Revenue', data: ttmTrendValues, backgroundColor: ttmCol, borderColor: ttmBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  ...(showTrendDelta ? [{
+                    type: 'line' as const,
+                    label: '% Change vs Prior',
+                    data: trendDeltasPct,
+                    borderColor: 'hsl(38, 92%, 62%)',
+                    backgroundColor: 'hsl(38, 92%, 62%)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.25,
+                    spanGaps: true,
+                    order: 1,
+                    yAxisID: 'y1',
+                  }] : []),
+                ],
+              }
+            : {
+                labels: monthlyTrendLabels,
+                datasets: [
+                  { label: 'Monthly Revenue', data: monthlyTrendValues, backgroundColor: monthlyCol, borderColor: monthlyBrd, borderWidth: 1, borderRadius: 4, order: 2, yAxisID: 'y' },
+                  ...(showTrendDelta ? [{
+                    type: 'line' as const,
+                    label: '% Change vs Prior',
+                    data: trendDeltasPct,
+                    borderColor: 'hsl(38, 92%, 62%)',
+                    backgroundColor: 'hsl(38, 92%, 62%)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.25,
+                    spanGaps: true,
+                    order: 1,
+                    yAxisID: 'y1',
+                  }] : []),
+                ],
+              },
           options: {
             ...def,
             plugins: {
@@ -1120,8 +1167,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     return monthlyTrendLabels[idx] ?? '';
                   },
                   label: (item: any) => {
+                    const idx = item.dataIndex;
+                    if (item.dataset?.yAxisID === 'y1') {
+                      const pct = trendDeltasPct[idx];
+                      const abs = trendDeltasAbs[idx];
+                      if (pct === null || abs === null) return 'Δ vs prior: n/a';
+                      const sign = pct >= 0 ? '+' : '';
+                      return `Δ vs prior: ${sign}${fmtUSD(abs)}  (${sign}${pct.toFixed(1)}%)`;
+                    }
                     if (trendMode === 'ttm') {
-                      const p = ttmTrendSeries[item.dataIndex];
+                      const p = ttmTrendSeries[idx];
                       const range = p ? `${format(p.windowStart, 'MMM d, yyyy')} – ${format(p.windowEnd, 'MMM d, yyyy')}` : '';
                       return `TTM Revenue: ${fmtUSD(item.parsed.y)}${range ? `  (${range})` : ''}`;
                     }
@@ -1130,11 +1185,25 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 },
               },
             },
-            scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } } },
+            scales: {
+              x: gx,
+              y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => fmtUSD(v) } },
+              ...(showTrendDelta ? {
+                y1: {
+                  position: 'right' as const,
+                  grid: { drawOnChartArea: false },
+                  ticks: {
+                    color: 'hsl(38, 92%, 62%)',
+                    font: { size: 10 },
+                    callback: (v: number) => `${v >= 0 ? '+' : ''}${Number(v).toFixed(0)}%`,
+                  },
+                },
+              } : {}),
+            },
           },
         }
       : null,
-    [qbConnected, trendMode, JSON.stringify(ttmLabels), JSON.stringify(ttmTrendValues), JSON.stringify(monthlyTrendLabels), JSON.stringify(monthlyTrendValues), periodToken],
+    [qbConnected, trendMode, showTrendDelta, JSON.stringify(ttmLabels), JSON.stringify(ttmTrendValues), JSON.stringify(monthlyTrendLabels), JSON.stringify(monthlyTrendValues), JSON.stringify(trendDeltasPct), periodToken],
     (idx, label, value) => {
       if (trendMode === 'monthly') {
         setDrilldown({
