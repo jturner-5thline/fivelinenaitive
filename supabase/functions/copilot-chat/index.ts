@@ -6397,6 +6397,68 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "verify_deal_information": {
       return await verifyDealInformation(supabase, args, scope, userId);
     }
+    case "search_meeting_notes": {
+      if (!userId) return { error: "Not authenticated." };
+      const limit = Math.min(Number(args.limit) || 25, 100);
+      let q = supabase
+        .from("user_meeting_notes")
+        .select("id, event_id, event_title, event_start, event_end, organizer_email, attendee_emails, attendee_names, linked_deal_id, note_text, created_at")
+        .eq("user_id", userId)
+        .order("event_start", { ascending: false, nullsFirst: false })
+        .limit(limit);
+      const query = typeof args.query === "string" ? args.query.trim() : "";
+      if (query) {
+        const esc = query.replace(/[%,]/g, " ").trim();
+        // OR match across note text, event title, and attendee arrays.
+        q = q.or(
+          `note_text.ilike.%${esc}%,event_title.ilike.%${esc}%,organizer_email.ilike.%${esc}%`,
+        );
+      }
+      if (args.attendee) {
+        const term = String(args.attendee).trim();
+        // Fallback: rely on note_text/attendee_names ilike (arrays don't ilike directly).
+        q = q.or(`note_text.ilike.%${term}%,event_title.ilike.%${term}%,organizer_email.ilike.%${term}%`);
+      }
+      if (args.deal_id) q = q.eq("linked_deal_id", args.deal_id);
+      if (args.since_days) {
+        const since = new Date(Date.now() - Number(args.since_days) * 86400000).toISOString();
+        q = q.gte("event_start", since);
+      }
+      if (args.start_iso) q = q.gte("event_start", args.start_iso);
+      if (args.end_iso) q = q.lte("event_start", args.end_iso);
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      let rows = data || [];
+      // Post-filter attendees against array columns (Supabase JS doesn't
+      // support `ilike ANY(array)` directly, so do it in-memory).
+      if (args.attendee) {
+        const term = String(args.attendee).toLowerCase();
+        rows = rows.filter((r: any) => {
+          const emails: string[] = r.attendee_emails || [];
+          const names: string[] = r.attendee_names || [];
+          return emails.some((e) => (e || "").toLowerCase().includes(term))
+            || names.some((n) => (n || "").toLowerCase().includes(term))
+            || (r.note_text || "").toLowerCase().includes(term)
+            || (r.event_title || "").toLowerCase().includes(term);
+        });
+      }
+      return {
+        count: rows.length,
+        notes: rows.map((r: any) => ({
+          id: r.id,
+          event_id: r.event_id,
+          event_title: r.event_title,
+          event_start: r.event_start,
+          event_end: r.event_end,
+          organizer_email: r.organizer_email,
+          attendee_names: r.attendee_names,
+          attendee_emails: r.attendee_emails,
+          linked_deal_id: r.linked_deal_id,
+          note_text: r.note_text,
+          created_at: r.created_at,
+        })),
+      };
+    }
     case "record_admin_agent_selection": {
       return await recordAdminAgentSelection(supabase, args, scope, userId);
     }
