@@ -17,7 +17,12 @@ import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAx
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
-import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
+import { useQuickBooksStatus, useQuickBooksInvoices } from '@/hooks/useQuickBooks';
+import {
+  endOfDay, endOfMonth, endOfQuarter, endOfYear, startOfDay, startOfMonth,
+  startOfQuarter, startOfYear, subYears,
+} from 'date-fns';
+import { StatDrilldownBody, type DateRange } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type NegativeStylingConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
