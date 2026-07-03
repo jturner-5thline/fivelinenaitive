@@ -913,6 +913,14 @@ export function EndOfDayTab({
     [filtered, outstanding, selectedId],
   );
 
+  // Default to having the first visible item open in the detail pane so
+  // the right side never renders empty when there's work to review.
+  useEffect(() => {
+    if (selectedEvent) return;
+    const first = flatList[0];
+    if (first) setSelectedId(first.id);
+  }, [selectedEvent, flatList]);
+
   // Authoritative linked deal for the currently-selected event. Sourced
   // from `meeting_deal_links` (the same row written by "Link deal" via
   // MeetingDealInlineAction). The query key includes selectedId, so the
@@ -976,39 +984,57 @@ export function EndOfDayTab({
     });
   }, [restoreResolved, restoreDismissed, activity, userId]);
 
+  // Pick the id of the next item to auto-select after the current one is
+  // cleared, so the detail pane keeps flowing through the queue instead of
+  // collapsing back to an empty state.
+  const pickNextId = useCallback((clearedId: string): string | null => {
+    const idx = flatList.findIndex(e => e.id === clearedId);
+    if (idx === -1) {
+      const first = flatList.find(e => e.id !== clearedId);
+      return first ? first.id : null;
+    }
+    const after = flatList.slice(idx + 1).find(e => e.id !== clearedId);
+    if (after) return after.id;
+    const before = [...flatList.slice(0, idx)].reverse().find(e => e.id !== clearedId);
+    return before ? before.id : null;
+  }, [flatList]);
+
   const handleResolve = useCallback((id: string) => {
     clearResolved(id);
     activity.append(id, { kind: 'resolved', by: userId });
-    if (selectedId === id) setSelectedId(null);
+    if (selectedId === id) setSelectedId(pickNextId(id));
     bumpCleared(1);
     undoToast(id, 'resolved', 'Marked as resolved');
-  }, [clearResolved, activity, userId, selectedId, undoToast, bumpCleared]);
+  }, [clearResolved, activity, userId, selectedId, undoToast, bumpCleared, pickNextId]);
 
   const handleDismiss = useCallback((id: string) => {
     clearDismissed(id);
     activity.append(id, { kind: 'dismissed', by: userId });
-    if (selectedId === id) setSelectedId(null);
+    if (selectedId === id) setSelectedId(pickNextId(id));
     bumpCleared(1);
     undoToast(id, 'dismissed', 'Dismissed');
-  }, [clearDismissed, activity, userId, selectedId, undoToast, bumpCleared]);
+  }, [clearDismissed, activity, userId, selectedId, undoToast, bumpCleared, pickNextId]);
 
   const handleSnooze = useCallback((id: string, until: Date, label: string) => {
     snooze(id, until);
     activity.append(id, { kind: 'snoozed', by: userId, detail: `Until ${format(until, 'PPp')}` });
-    if (selectedId === id) setSelectedId(null);
+    if (selectedId === id) setSelectedId(pickNextId(id));
     bumpCleared(1);
     toast(`Snoozed ${label}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => { unsnooze(id); activity.append(id, { kind: 'restored', by: userId, detail: 'Undid snooze' }); } },
     });
-  }, [snooze, unsnooze, activity, userId, selectedId, bumpCleared]);
+  }, [snooze, unsnooze, activity, userId, selectedId, bumpCleared, pickNextId]);
 
   // Bulk actions ─────────────────────────────────────────────
   const bulkResolve = () => {
     const ids = Array.from(bulkSelected);
     ids.forEach(id => { clearResolved(id); activity.append(id, { kind: 'resolved', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
-    if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    if (selectedId && ids.includes(selectedId)) {
+      const next = flatList.find(e => !ids.includes(e.id));
+      setSelectedId(next ? next.id : null);
+    }
     bumpCleared(ids.length);
     toast(`Resolved ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
@@ -1019,7 +1045,10 @@ export function EndOfDayTab({
     const ids = Array.from(bulkSelected);
     ids.forEach(id => { clearDismissed(id); activity.append(id, { kind: 'dismissed', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
-    if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    if (selectedId && ids.includes(selectedId)) {
+      const next = flatList.find(e => !ids.includes(e.id));
+      setSelectedId(next ? next.id : null);
+    }
     bumpCleared(ids.length);
     toast(`Dismissed ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
