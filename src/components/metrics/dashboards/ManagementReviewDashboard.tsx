@@ -1093,8 +1093,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const [showTrendDelta, setShowTrendDelta] = useState<boolean>(false);
-  const monthlyTrendLabels = ttmSeries.map(p => p.month);
-  const monthlyTrendValues = ttmSeries.map(p => p.revenue);
+  const isQuarterView = reportingPeriod?.view === 'quarter';
+  // In quarter view the "Monthly" toggle becomes "Quarterly": show revenue
+  // per quarter for the last 4 quarters (aligned with the TTM buckets).
+  const monthlyTrendLabels = isQuarterView
+    ? ttmTrendSeries.map(p => p.month)
+    : ttmSeries.map(p => p.month);
+  const monthlyTrendValues = isQuarterView
+    ? ttmTrendSeries.map(p => sumAmountInRange(
+        qbInvoices,
+        { start: startOfQuarter(p.windowEnd), end: p.windowEnd },
+        inv => inv.txn_date,
+        inv => inv.total_amt,
+      ))
+    : ttmSeries.map(p => p.revenue);
   const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
@@ -1745,7 +1757,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               trendMode === 'ttm'
                 ? `TTM Revenue Trend (${chartWindowLabel})`
                 : trendMode === 'monthly'
-                ? 'Monthly Revenue Trend'
+                ? (isQuarterView ? 'Quarterly Revenue Trend' : 'Monthly Revenue Trend')
                 : 'Quarterly Revenue Growth (YoY)'
             }
             headerExtra={
@@ -1781,7 +1793,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       background: trendMode === m ? 'linear-gradient(180deg, hsl(213,90%,75%), hsl(213,90%,70%))' : 'transparent',
                     }}
                   >
-                    {m === 'ttm' ? 'TTM' : m === 'monthly' ? 'Monthly' : 'Quarterly Growth'}
+                    {m === 'ttm' ? 'TTM' : m === 'monthly' ? (isQuarterView ? 'Quarterly' : 'Monthly') : 'Quarterly Growth'}
                   </button>
                 ))}
                 </div>
@@ -1793,7 +1805,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 <SectionLabel>
                   {trendMode === 'ttm'
                     ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
-                    : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities'}
+                    : (isQuarterView
+                        ? 'Quarterly Revenue — each bar shows total revenue for that calendar quarter across all QuickBooks entities'
+                        : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities')}
                 </SectionLabel>
               )}
               {trendMode === 'quarterly-yoy' ? (
