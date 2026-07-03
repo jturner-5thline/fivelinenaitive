@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { differenceInDays } from 'date-fns';
 import { ReferralSourceEditDialog } from '@/components/channels/ReferralSourceEditDialog';
+import { ContactLookupDialog } from '@/components/contacts/ContactLookupDialog';
 import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { usePartnerInsightsCounts } from './PartnerInsightsFeed';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
@@ -28,6 +29,7 @@ export function ReferralsNeedingAttention() {
   const { referralSources } = useDealReferralSources();
   const [showAll, setShowAll] = useState(false);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
+  const [contactLookup, setContactLookup] = useState<{ name: string } | null>(null);
 
   const { value: thresholds, setValue: setThresholds } = useDashboardPreference<{
     inactivity: number;
@@ -138,7 +140,11 @@ export function ReferralsNeedingAttention() {
           {displayed.map(sr => (
             <div
               key={sr.key}
-              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors`}
+              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors hover:border-primary/30 cursor-pointer`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setContactLookup({ name: sr.name })}
+              onKeyDown={(e) => { if (e.key === 'Enter') setContactLookup({ name: sr.name }); }}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
@@ -156,7 +162,7 @@ export function ReferralsNeedingAttention() {
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs gap-1"
-                  onClick={() => setEditTarget(sr.entry)}
+                  onClick={(e) => { e.stopPropagation(); setEditTarget(sr.entry); }}
                 >
                   <Eye className="h-3 w-3" /> View
                 </Button>
@@ -182,6 +188,12 @@ export function ReferralsNeedingAttention() {
           onOpenChange={(v) => { if (!v) setEditTarget(null); }}
           referredBy={editTarget.referredBy}
           initialCompany={editTarget.companyName}
+        />
+      )}
+      {contactLookup && (
+        <ContactLookupDialog
+          name={contactLookup.name}
+          onClose={() => setContactLookup(null)}
         />
       )}
     </div>
