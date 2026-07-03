@@ -2278,15 +2278,19 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
   color: rgba(255, 255, 255, 0.92) !important;
   background: transparent !important;
 }
-.app-dropdown-surface [data-slot="select-item"][data-highlighted],
-.app-dropdown-surface [role="option"][data-highlighted],
-.app-dropdown-surface [role="option"]:hover,
-.app-dropdown-surface [role="menuitem"][data-highlighted],
-.app-dropdown-surface [role="menuitem"]:hover,
-.app-dropdown-surface [role="menuitemcheckbox"][data-highlighted],
-.app-dropdown-surface [role="menuitemradio"][data-highlighted],
-.app-dropdown-surface [cmdk-item][data-selected="true"],
-.app-dropdown-surface button:hover {
+/* Doubled class selector (.app-dropdown-surface.app-dropdown-surface) bumps
+   specificity to (0,4,0) so it beats the overlay neutralizer above which
+   otherwise strips the highlight background from cmdk/select/menu items. */
+.app-dropdown-surface.app-dropdown-surface [data-slot="select-item"][data-highlighted],
+.app-dropdown-surface.app-dropdown-surface [role="option"][data-highlighted],
+.app-dropdown-surface.app-dropdown-surface [role="option"]:hover,
+.app-dropdown-surface.app-dropdown-surface [role="menuitem"][data-highlighted],
+.app-dropdown-surface.app-dropdown-surface [role="menuitem"]:hover,
+.app-dropdown-surface.app-dropdown-surface [role="menuitemcheckbox"][data-highlighted],
+.app-dropdown-surface.app-dropdown-surface [role="menuitemradio"][data-highlighted],
+.app-dropdown-surface.app-dropdown-surface [cmdk-item][data-selected="true"],
+.app-dropdown-surface.app-dropdown-surface [cmdk-item]:hover,
+.app-dropdown-surface.app-dropdown-surface button:hover {
   background-color: rgba(255, 255, 255, 0.10) !important;
   color: #fff !important;
 }
