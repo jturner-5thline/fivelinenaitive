@@ -21,6 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 /**
  * Income: MoM (last 12 months).
@@ -38,6 +46,17 @@ const REALM_IDS = [
   { id: "123146077561874", name: "5th Line Capital, LLC" },
 ];
 const REALM_NAMES = Object.fromEntries(REALM_IDS.map((r) => [r.id, r.name]));
+
+type MetricKey = "revenue" | "gross_profit" | "operating_profit";
+const METRICS: {
+  key: MetricKey;
+  label: string;
+  field: "income_total" | "gross_profit" | "net_operating_income";
+}[] = [
+  { key: "revenue", label: "Revenue", field: "income_total" },
+  { key: "gross_profit", label: "Gross Profit", field: "gross_profit" },
+  { key: "operating_profit", label: "Operating Income", field: "net_operating_income" },
+];
 
 function isoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -74,8 +93,15 @@ function monthLabel(y: number, m: number): string {
 export function IncomeMoMCard() {
   const { user } = useAuth();
   const [drill, setDrill] = useState<
-    { year: number; month: number; label: string } | null
+    { year: number; month: number; label: string; realmId: string | null } | null
   >(null);
+  const [entityId, setEntityId] = useState<string>("__all__");
+  const [metric, setMetric] = useState<MetricKey>("revenue");
+  const activeMetric = METRICS.find((m) => m.key === metric)!;
+  const activeRealmIds = entityId === "__all__" ? REALM_IDS.map((r) => r.id) : [entityId];
+  const entityLabel = entityId === "__all__"
+    ? "Total (all entities)"
+    : REALM_NAMES[entityId] ?? "—";
   const tfRange = useTimeframeRange();
   const months = tfRange.months;
   const periodLabel = tfRange.periodLabel;
@@ -83,14 +109,17 @@ export function IncomeMoMCard() {
   const rangeStart = tfRange.priorRangeStart;
   const rangeEnd = tfRange.rangeEnd;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["income-mom-12mo", user?.id, rangeStart, rangeEnd],
-    enabled: !!user,
+  // Revenue path — invoice-based (matches existing behavior). Fetches all
+  // entities so we can filter/aggregate client-side without re-querying on
+  // entity toggle.
+  const { data: invoiceData, isLoading: invoiceLoading } = useQuery({
+    queryKey: ["income-mom-12mo-invoices", user?.id, rangeStart, rangeEnd],
+    enabled: !!user && metric === "revenue",
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("quickbooks_invoices")
-        .select("txn_date, total_amt, synced_at")
+        .select("realm_id, txn_date, total_amt, synced_at")
         .in(
           "realm_id",
           REALM_IDS.map((r) => r.id),
@@ -98,12 +127,13 @@ export function IncomeMoMCard() {
         .gte("txn_date", rangeStart)
         .lte("txn_date", rangeEnd);
       if (error) throw error;
+      // totals[realmId::ymKey] = amount
       const totals = new Map<string, number>();
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
-        if (!r.txn_date) continue;
+        if (!r.txn_date || !r.realm_id) continue;
         const d = new Date(r.txn_date);
-        const k = ymKey(d.getFullYear(), d.getMonth());
+        const k = `${r.realm_id}::${ymKey(d.getFullYear(), d.getMonth())}`;
         totals.set(k, (totals.get(k) ?? 0) + Number(r.total_amt ?? 0));
         if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
       }
@@ -111,11 +141,72 @@ export function IncomeMoMCard() {
     },
   });
 
-  const totals = data?.totals ?? new Map<string, number>();
+  // P&L snapshot path — used for Gross Profit / Operating Income.
+  const { data: pnlData, isLoading: pnlLoading } = useQuery({
+    queryKey: ["income-mom-12mo-pnl", user?.id, rangeStart, rangeEnd],
+    enabled: !!user && metric !== "revenue",
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("qbo_pnl_snapshots")
+        .select("realm_id, period_start, period_end, income_total, gross_profit, net_operating_income, fetched_at, accounting_method")
+        .in("realm_id", REALM_IDS.map((r) => r.id))
+        .gte("period_start", rangeStart)
+        .lte("period_end", rangeEnd);
+      if (error) throw error;
+      // Best snapshot per (realm, month): prefer true monthly (period_end in
+      // the same calendar month as period_start) over YTD/quarter aggregates.
+      const best: Record<string, { sameMonth: boolean; period_end: string; fetched_at: string; row: any }> = {};
+      let lastSync: string | null = null;
+      for (const r of rows ?? []) {
+        if (!r.period_start || !r.realm_id) continue;
+        if ((r.accounting_method ?? "Accrual") !== "Accrual") continue;
+        const d = new Date(r.period_start);
+        const mKey = ymKey(d.getFullYear(), d.getMonth());
+        const key = `${r.realm_id}::${mKey}`;
+        const pe = r.period_end ?? r.period_start;
+        const fa = r.fetched_at ?? "";
+        const endD = new Date(pe);
+        const sameMonth =
+          endD.getFullYear() === d.getFullYear() && endD.getMonth() === d.getMonth();
+        const prev = best[key];
+        const better =
+          !prev ||
+          (sameMonth && !prev.sameMonth) ||
+          (sameMonth === prev.sameMonth &&
+            (pe > prev.period_end || (pe === prev.period_end && fa > prev.fetched_at)));
+        if (better) best[key] = { sameMonth, period_end: pe, fetched_at: fa, row: r };
+        if (r.fetched_at && (!lastSync || r.fetched_at > lastSync)) lastSync = r.fetched_at;
+      }
+      const totals = new Map<string, { income_total: number; gross_profit: number; net_operating_income: number }>();
+      for (const key of Object.keys(best)) {
+        const row = best[key].row;
+        totals.set(key, {
+          income_total: Number(row.income_total ?? 0),
+          gross_profit: Number(row.gross_profit ?? 0),
+          net_operating_income: Number(row.net_operating_income ?? 0),
+        });
+      }
+      return { totals, lastSync };
+    },
+  });
+
+  const isLoading = metric === "revenue" ? invoiceLoading : pnlLoading;
+  const lastSync = metric === "revenue" ? invoiceData?.lastSync : pnlData?.lastSync;
+
+  const valueFor = (realmId: string, k: string): number => {
+    if (metric === "revenue") {
+      return invoiceData?.totals.get(`${realmId}::${k}`) ?? 0;
+    }
+    return pnlData?.totals.get(`${realmId}::${k}`)?.[activeMetric.field] ?? 0;
+  };
+
+  const sumFor = (k: string): number =>
+    activeRealmIds.reduce((a, rid) => a + valueFor(rid, k), 0);
 
   const chartData = months.map(({ y, m }) => {
-    const cur = totals.get(ymKey(y, m)) ?? 0;
-    const prior = totals.get(ymKey(y - 1, m)) ?? 0;
+    const cur = sumFor(ymKey(y, m));
+    const prior = sumFor(ymKey(y - 1, m));
     return {
       key: ymKey(y, m),
       year: y,
@@ -126,7 +217,8 @@ export function IncomeMoMCard() {
     };
   });
 
-  const hasAnyData = chartData.some((d) => d.income > 0 || d.priorYear > 0);
+  const hasAnyData = chartData.some((d) => d.income !== 0 || d.priorYear !== 0);
+  const canDrill = metric === "revenue";
 
   return (
     <div
@@ -156,17 +248,59 @@ export function IncomeMoMCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          Income · MoM
+          {activeMetric.label} · MoM
         </div>
-        <span
-          className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(255,255,255,0.55)" }}
-        >
-          QuickBooks ·{" "}
-          {data?.lastSync
-            ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
-            : "—"}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div
+            className="inline-flex rounded-md overflow-hidden"
+            style={{ border: "1px solid rgba(255,255,255,0.12)" }}
+            role="tablist"
+            aria-label="Metric"
+          >
+            {METRICS.map((m) => {
+              const active = m.key === metric;
+              return (
+                <button
+                  key={m.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setMetric(m.key)}
+                  className={cn(
+                    "px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider transition-colors",
+                    active
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:text-white/85 hover:bg-white/5",
+                  )}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          <Select value={entityId} onValueChange={setEntityId}>
+            <SelectTrigger className="h-7 text-[11px] bg-transparent border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.85)] min-w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Total (all entities)</SelectItem>
+              {REALM_IDS.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+            style={{ color: "rgba(255,255,255,0.55)" }}
+          >
+            QuickBooks ·{" "}
+            {lastSync
+              ? `synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}`
+              : "—"}
+          </span>
+        </div>
       </div>
 
       <div className="p-4 space-y-2">
@@ -174,7 +308,8 @@ export function IncomeMoMCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          Total income · {periodLabel} · click a bar for account-level breakdown
+          {activeMetric.label} · {entityLabel} · {periodLabel}
+          {canDrill ? " · click a bar for account-level breakdown" : ""}
         </div>
 
         {isLoading ? (
@@ -193,11 +328,17 @@ export function IncomeMoMCard() {
                 data={chartData}
                 margin={{ top: 16, right: 12, left: 4, bottom: 0 }}
                 onClick={(state) => {
+                  if (!canDrill) return;
                   const p = state?.activePayload?.[0]?.payload as
                     | (typeof chartData)[number]
                     | undefined;
                   if (p)
-                    setDrill({ year: p.year, month: p.month, label: p.label });
+                    setDrill({
+                      year: p.year,
+                      month: p.month,
+                      label: p.label,
+                      realmId: entityId === "__all__" ? null : entityId,
+                    });
                 }}
               >
                 <CartesianGrid
@@ -228,19 +369,19 @@ export function IncomeMoMCard() {
                   }}
                   formatter={(v: number, n: string) => [
                     fmtUSD(v),
-                    n === "income" ? "Income" : "Prior year same month",
+                    n === "income" ? activeMetric.label : "Prior year same month",
                   ]}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
-                  formatter={(v) => (v === "income" ? "Income" : "Prior year")}
+                  formatter={(v) => (v === "income" ? activeMetric.label : "Prior year")}
                 />
                 <Bar
                   dataKey="income"
                   fill="hsla(213,90%,70%,0.85)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={36}
-                  cursor="pointer"
+                  cursor={canDrill ? "pointer" : "default"}
                 />
                 <Line
                   type="monotone"
@@ -273,7 +414,7 @@ function MonthDrilldownDialog({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  drill: { year: number; month: number; label: string } | null;
+  drill: { year: number; month: number; label: string; realmId: string | null } | null;
 }) {
   const { rangeStart, rangeEnd } = useMemo(() => {
     if (!drill) return { rangeStart: "", rangeEnd: "" };
@@ -283,17 +424,15 @@ function MonthDrilldownDialog({
   }, [drill]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["income-mom-drill", drill?.year, drill?.month],
+    queryKey: ["income-mom-drill", drill?.year, drill?.month, drill?.realmId ?? "all"],
     enabled: open && !!drill,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
+      const realmFilter = drill?.realmId ? [drill.realmId] : REALM_IDS.map((r) => r.id);
       const { data: rows, error } = await supabase
         .from("quickbooks_invoices")
         .select("realm_id, customer_id, customer_name, total_amt")
-        .in(
-          "realm_id",
-          REALM_IDS.map((r) => r.id),
-        )
+        .in("realm_id", realmFilter)
         .gte("txn_date", rangeStart)
         .lte("txn_date", rangeEnd);
       if (error) throw error;
