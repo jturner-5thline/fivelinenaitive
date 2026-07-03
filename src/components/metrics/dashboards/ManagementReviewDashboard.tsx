@@ -27,6 +27,7 @@ import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyReven
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { TtmRevenueDrilldownBody } from '@/components/metrics/dashboards/qir/TtmRevenueDrilldownBody';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -419,6 +420,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     rows: Record<string, any>[];
     emptyHint?: string;
     trend?: DrilldownTrend;
+    body?: React.ReactNode;
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
@@ -1621,16 +1623,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                   ];
                   rows = activeDeals;
                 } else if (reg === 'ttm-revenue') {
-                  columns = [
-                    { key: 'month', label: 'Month' },
-                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                  ];
-                  rows = ttmSeries;
-                  trend = {
-                    unit: 'currency',
-                    seriesLabel: 'TTM Revenue',
-                    data: ttmSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
-                  };
+                  setDrilldown({
+                    context: {
+                      sourceId: `kpi:${reg}`,
+                      sourceLabel: k.l,
+                      selection: k.v,
+                      periodLabel,
+                      filters: [
+                        { label: 'Window', value: `${format(ttmRange.start, 'MMM d, yyyy')} – ${format(ttmRange.end, 'MMM d, yyyy')}` },
+                        { label: 'Source', value: 'QuickBooks invoices · all entities' },
+                      ],
+                    },
+                    columns: [],
+                    rows: [],
+                    body: <TtmRevenueDrilldownBody invoices={qbInvoices as any} ttmRange={ttmRange} />,
+                  });
+                  return;
                 } else if (reg === 'ytd-revenue') {
                   columns = [
                     { key: 'month', label: 'Month' },
@@ -1960,6 +1968,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         rows={drilldown?.rows ?? []}
         emptyHint={drilldown?.emptyHint}
         trend={drilldown?.trend}
+        body={drilldown?.body}
       />
 
       <NaitiveDealOverlay
