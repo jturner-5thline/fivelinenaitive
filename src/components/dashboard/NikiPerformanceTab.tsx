@@ -410,7 +410,7 @@ function NikiPerformanceTabInner() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
   const { user } = useAuth();
   const { plan: planMap } = useNikiPerformancePlan();
-  const { assignee, setAssignee } = usePerformanceAssignee();
+  const { assignee, selected, toggleSelected, isTeamView } = usePerformanceAssignee();
   const canSwitchAssignee = user?.email === 'jturner@5thline.co';
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
@@ -707,30 +707,46 @@ function NikiPerformanceTabInner() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Rep Performance &amp; Pipeline Model</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Plan vs Actual for {assignee}'s 2026 production and revenue metrics. Live actuals from
-            Active Pipeline stage-entry events, scoped to deals where {assignee} is owner or deal
-            manager.
+            Plan vs Actual for {isTeamView ? 'the whole team' : `${selected.join(' + ')}`}'s 2026
+            production and revenue metrics. Live actuals from Active Pipeline stage-entry events,
+            scoped to deals where {isTeamView ? 'anyone on the team' : (selected.length === 1 ? selected[0] : 'the selected reps')} is
+            owner or deal manager.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {canSwitchAssignee && (
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-              {PERFORMANCE_ASSIGNEES.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => setAssignee(name as PerformanceAssigneeName)}
-                  className={cn(
-                    'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
-                    assignee === name
-                      ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                  title={`View performance for ${name}`}
-                >
-                  {name}
-                </button>
-              ))}
+            <div
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1"
+              role="group"
+              aria-label="Filter performance by rep"
+            >
+              {PERFORMANCE_ASSIGNEES.map((name) => {
+                const active = selected.includes(name as PerformanceAssigneeName);
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleSelected(name as PerformanceAssigneeName)}
+                    className={cn(
+                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                      active
+                        ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
+                    )}
+                    title={
+                      active
+                        ? `Remove ${name} from filter`
+                        : `Add ${name} to filter`
+                    }
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+              <span className="ml-1 text-[10px] text-muted-foreground pr-1">
+                {isTeamView ? 'Whole team' : selected.length === PERFORMANCE_ASSIGNEES.length ? 'Both' : '1 selected'}
+              </span>
             </div>
           )}
           {canEditModel && (
