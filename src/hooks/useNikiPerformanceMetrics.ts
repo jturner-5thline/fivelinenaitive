@@ -117,9 +117,18 @@ function bucketize(deals: PerfDeal[]): Record<QuarterKey, PerfDeal[]> {
   return buckets;
 }
 
-function makeAssigneeFilter(name: string) {
+/**
+ * Build a client-side assignee filter.
+ * - `names` empty  → whole-team view: every row passes.
+ * - `names` non-empty → keep rows where deal_owner OR manager matches any of
+ *   the selected names.
+ */
+function makeAssigneeFilter(names: readonly string[]) {
+  if (!names || names.length === 0) return (_row: any): boolean => true;
+  const set = new Set(names);
   return (row: any): boolean =>
-    row?.deal_owner === name || row?.manager === name;
+    (row?.deal_owner && set.has(row.deal_owner)) ||
+    (row?.manager && set.has(row.manager));
 }
 
 // Keep `.in(...)` REST URLs small. Large sibling groups can otherwise create
@@ -186,10 +195,11 @@ async function fetchDealStageHistoryRows(dealIds: string[]): Promise<any[]> {
  */
 function useNikiPipelineData() {
   const { user } = useAuth();
-  const { assignee } = usePerformanceAssignee();
-  const nikiFilter = makeAssigneeFilter(assignee);
+  const { selected } = usePerformanceAssignee();
+  const nikiFilter = makeAssigneeFilter(selected);
+  const scopeKey = selected.length === 0 ? '__team__' : selected.slice().sort().join('|');
   return useQuery({
-    queryKey: ['niki-perf-pipeline-data', assignee, 'v5-name-siblings'],
+    queryKey: ['niki-perf-pipeline-data', scopeKey, 'v5-name-siblings'],
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -198,28 +208,41 @@ function useNikiPipelineData() {
     queryFn: async () => {
       // 1. All deals on the Active Pipeline (regardless of status — Closed Lost
       //    deals still count for the stages they passed through).
-      // Filter by assignee SERVER-SIDE — the two pipelines combined exceed
-      // PostgREST's 1000-row default cap, so a naive client-side filter
-      // silently drops deals (bug: Phospholutions was missing from
-      // "Proposals Issued" until this scope was tightened).
+      // Filter by assignee SERVER-SIDE when a name filter is active. The two
+      // pipelines combined exceed PostgREST's 1000-row default cap, so a
+      // naive client-side filter silently drops deals (bug: Phospholutions
+      // was missing from "Proposals Issued" until this scope was tightened).
+      // When `selected` is empty we're in whole-team view and pull every deal
+      // in the two 5th Line pipelines (no owner/manager restriction).
       const baseSelect = 'id, company, company_id, value, deal_owner, manager, stage, created_at, pipeline_id';
-      const [ownedRes, managedRes] = await Promise.all([
-        supabase
+      let rows: any[] = [];
+      if (selected.length === 0) {
+        const { data, error } = await supabase
           .from('deals')
           .select(baseSelect)
-          .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
-          .eq('deal_owner', assignee),
-        supabase
-          .from('deals')
-          .select(baseSelect)
-          .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
-          .eq('manager', assignee),
-      ]);
-      if (ownedRes.error) throw ownedRes.error;
-      if (managedRes.error) throw managedRes.error;
+          .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[]);
+        if (error) throw error;
+        rows = data ?? [];
+      } else {
+        const [ownedRes, managedRes] = await Promise.all([
+          supabase
+            .from('deals')
+            .select(baseSelect)
+            .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
+            .in('deal_owner', selected as unknown as string[]),
+          supabase
+            .from('deals')
+            .select(baseSelect)
+            .in('pipeline_id', PIPELINE_IDS_5THLINE as unknown as string[])
+            .in('manager', selected as unknown as string[]),
+        ]);
+        if (ownedRes.error) throw ownedRes.error;
+        if (managedRes.error) throw managedRes.error;
+        rows = [...(ownedRes.data ?? []), ...(managedRes.data ?? [])];
+      }
 
       const primaryById = new Map<string, any>();
-      for (const d of [...(ownedRes.data ?? []), ...(managedRes.data ?? [])]) {
+      for (const d of rows) {
         if (!d?.id || isExcludedDealName(d.company)) continue;
         if (!primaryById.has(d.id)) primaryById.set(d.id, d);
       }
@@ -364,10 +387,11 @@ function entriesForStage(
 
 function usePipelineAddedDeals() {
   const { user } = useAuth();
-  const { assignee } = usePerformanceAssignee();
-  const nikiFilter = makeAssigneeFilter(assignee);
+  const { selected } = usePerformanceAssignee();
+  const nikiFilter = makeAssigneeFilter(selected);
+  const scopeKey = selected.length === 0 ? '__team__' : selected.slice().sort().join('|');
   return useQuery({
-    queryKey: ['niki-perf-added', assignee],
+    queryKey: ['niki-perf-added', scopeKey],
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -638,28 +662,38 @@ function classifyRevenueLine(blob: string): 'retainer' | 'milestone' | 'closing'
 
 function useNikiRevenueActuals() {
   const { user } = useAuth();
-  const { assignee } = usePerformanceAssignee();
+  const { selected } = usePerformanceAssignee();
+  const scopeKey = selected.length === 0 ? '__team__' : selected.slice().sort().join('|');
   return useQuery({
-    queryKey: ['niki-perf-revenue-actuals', assignee],
+    queryKey: ['niki-perf-revenue-actuals', scopeKey],
     enabled: !!user,
     queryFn: async (): Promise<RevenueBuckets> => {
-      // 1. Niki deals — attribute on deal_owner OR manager. Two simple
-      // queries are easier to reason about than a PostgREST .or() filter
-      // on string columns and avoid quoting surprises.
-      const [ownedRes, managedRes] = await Promise.all([
-        supabase
+      // 1. Attribute deals on deal_owner OR manager against the current
+      // assignee selection. Empty selection = whole-team view (no filter).
+      let rows: any[] = [];
+      if (selected.length === 0) {
+        const { data, error } = await supabase
           .from('deals')
-          .select('id, company, crm_company_id, deal_owner, manager')
-          .eq('deal_owner', assignee),
-        supabase
-          .from('deals')
-          .select('id, company, crm_company_id, deal_owner, manager')
-          .eq('manager', assignee),
-      ]);
-      if (ownedRes.error) throw ownedRes.error;
-      if (managedRes.error) throw managedRes.error;
+          .select('id, company, crm_company_id, deal_owner, manager');
+        if (error) throw error;
+        rows = data ?? [];
+      } else {
+        const [ownedRes, managedRes] = await Promise.all([
+          supabase
+            .from('deals')
+            .select('id, company, crm_company_id, deal_owner, manager')
+            .in('deal_owner', selected as unknown as string[]),
+          supabase
+            .from('deals')
+            .select('id, company, crm_company_id, deal_owner, manager')
+            .in('manager', selected as unknown as string[]),
+        ]);
+        if (ownedRes.error) throw ownedRes.error;
+        if (managedRes.error) throw managedRes.error;
+        rows = [...(ownedRes.data ?? []), ...(managedRes.data ?? [])];
+      }
       const dedup = new Map<string, any>();
-      for (const d of [...(ownedRes.data ?? []), ...(managedRes.data ?? [])]) {
+      for (const d of rows) {
         if (!d?.id) continue;
         if (isExcludedDealName(d.company)) continue;
         if (!dedup.has(d.id)) dedup.set(d.id, d);
