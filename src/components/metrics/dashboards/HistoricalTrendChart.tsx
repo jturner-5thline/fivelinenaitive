@@ -10,6 +10,7 @@ import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { useQBStackedDebtRevenue } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue } from '@/hooks/useQBStackedFinServRevenue';
 import { useMonthlyEntityProfit } from '@/hooks/useMonthlyEntityProfit';
+import { usePersistentChartType } from '@/hooks/usePersistentChartType';
 
 const RANGE_OPTIONS = [
   { value: 6, label: '6M' },
