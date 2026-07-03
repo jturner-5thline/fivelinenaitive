@@ -144,8 +144,8 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
   const unassignedInConsideredCount = considered.filter((s) => !s.assignee_user_id).length;
 
   return (
-    <div className="mt-3 w-full max-w-full min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2.5">
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+    <div className="mt-2 w-full max-w-full min-w-0 rounded-lg border border-white/[0.08] bg-white/[0.02] p-2">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
         <div className="flex items-center gap-1.5 min-w-0 flex-1 basis-[160px]">
           <Sparkles className="h-3 w-3 text-primary shrink-0" />
           <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 truncate">
@@ -233,7 +233,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
       ) : (
         <>
         <ul className={cn(
-          'space-y-1',
+          'space-y-0.5',
           visible.length > 2 && expanded && 'max-h-72 overflow-y-auto pr-1',
         )}>
           {(visible.length > 2 && !expanded ? visible.slice(0, 2) : visible).map((s) => {
@@ -248,7 +248,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                 key={s.suggestion_id}
                 data-suggestion-id={s.suggestion_id}
                 className={cn(
-                  'flex items-start gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors',
+                  'flex items-start gap-2 rounded-md border px-2 py-1 text-xs transition-colors',
                   isConverted && 'border-emerald-500/30 bg-emerald-500/[0.06]',
                   isDismissed && 'border-white/[0.06] bg-white/[0.015] opacity-60',
                   isPending && 'border-white/[0.08] bg-white/[0.015] hover:bg-white/[0.04]',
@@ -258,14 +258,14 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                   checked={isConverted || (isPending && isSelected)}
                   disabled={!isPending || busyId === s.suggestion_id}
                   onCheckedChange={() => { if (isPending) toggleSelected(s.suggestion_id); }}
-                  className="mt-0.5"
+                  className="mt-[3px] h-4 w-4"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className={cn('text-white/90', isDismissed && 'line-through text-muted-foreground')}>
+                  <div className={cn('text-white/90 leading-snug', isDismissed && 'line-through text-muted-foreground')}>
                     {s.text}
                   </div>
                   {(s.assignee_user_id || s.external_mention || s.due_date) && (
-                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-0.5 text-[9px] leading-none">
                       {s.assignee_user_id && s.assignee_name ? (
                         <Badge
                           data-assignee-chip={
@@ -279,7 +279,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                           }
                           variant="outline"
                           className={cn(
-                            'h-4 px-1 text-[9px] gap-0.5',
+                            'h-3.5 px-1 text-[9px] leading-none gap-0.5',
                             s.assignment_source === 'deal-manager'
                               ? 'border-sky-500/30 text-sky-200/90 bg-sky-500/[0.06]'
                               : s.assignment_source === 'viewer'
@@ -310,7 +310,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                             <button
                               type="button"
                               data-assignee-chip="unassigned"
-                              className="inline-flex items-center gap-0.5 h-4 px-1 rounded border text-[9px] border-amber-500/40 text-amber-200/90 bg-amber-500/[0.06] hover:bg-amber-500/[0.12] transition-colors"
+                              className="inline-flex items-center gap-0.5 h-3.5 px-1 rounded border text-[9px] leading-none border-amber-500/40 text-amber-200/90 bg-amber-500/[0.06] hover:bg-amber-500/[0.12] transition-colors"
                               aria-label="Choose assignee"
                             >
                               <UserIcon className="h-2.5 w-2.5" /> Unassigned
@@ -318,113 +318,115 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                           }
                         />
                       ) : (
-                        <Badge data-assignee-chip="unassigned" variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
+                        <Badge data-assignee-chip="unassigned" variant="outline" className="h-3.5 px-1 text-[9px] leading-none gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <UserIcon className="h-2.5 w-2.5" /> Unassigned
                         </Badge>
                       )}
                       {s.assignee_user_id && s.assignee_email && s.assignment_source !== 'viewer' && (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
+                        <Badge variant="outline" className="h-3.5 px-1 text-[9px] leading-none gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <AtSign className="h-2.5 w-2.5" /> {s.assignee_email}
                         </Badge>
                       )}
                       {s.external_mention && (
                         <Badge
                           variant="outline"
-                          className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground/80 bg-transparent italic"
+                          className="h-3.5 px-1 text-[9px] leading-none gap-0.5 border-white/15 text-muted-foreground/80 bg-transparent italic"
                           title="External contact — cannot be assigned"
                         >
                           External contact: {s.external_mention}
                         </Badge>
                       )}
                       {s.due_date && (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
+                        <Badge variant="outline" className="h-3.5 px-1 text-[9px] leading-none gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <CalIcon className="h-2.5 w-2.5" /> {s.due_date}
                         </Badge>
                       )}
                     </div>
                   )}
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {isConverted && (
-                    <>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300">
-                        <CheckCircle2 className="h-3 w-3" /> Created
-                      </span>
-                      {s.created_task_id && (
-                        <Link
-                          to={`/tasks/${s.created_task_id}`}
-                          className="text-[10px] text-muted-foreground hover:text-white underline inline-flex items-center gap-0.5"
+                  {/* Actions row — pinned to the bottom of the tile, wraps on small screens */}
+                  <div className="mt-1 flex flex-wrap items-center justify-end gap-1">
+                    {isConverted && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300">
+                          <CheckCircle2 className="h-3 w-3" /> Created
+                        </span>
+                        {s.created_task_id && (
+                          <Link
+                            to={`/tasks/${s.created_task_id}`}
+                            className="text-[10px] text-muted-foreground hover:text-white underline inline-flex items-center gap-0.5"
+                          >
+                            View <ExternalLink className="h-2.5 w-2.5" />
+                          </Link>
+                        )}
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 min-w-[24px] px-1.5 text-[10px] text-muted-foreground hover:text-white"
+                          onClick={() => void undo(s)}
+                          aria-label="Undo"
                         >
-                          View <ExternalLink className="h-2.5 w-2.5" />
-                        </Link>
-                      )}
-                      <Button
-                        size="sm" variant="ghost"
-                        className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-white"
-                        onClick={() => void undo(s)}
-                      >
-                        <Undo2 className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
-                  {isDismissed && (
-                    <>
-                      <span className="text-[10px] text-muted-foreground italic">Dismissed</span>
-                      <Button
-                        size="sm" variant="ghost"
-                        className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-white"
-                        onClick={() => void undo(s)}
-                      >
-                        Undo
-                      </Button>
-                    </>
-                  )}
-                  {isPending && (
-                    <>
-                      <CreateTaskButton
-                        disabled={createDisabled}
-                        hasAssignee={hasAssignee}
-                        busy={busyId === s.suggestion_id}
-                        onClick={() => {
-                          if (!hasAssignee) {
-                            toast.error('Please choose an assignee before creating this task.');
-                            return;
-                          }
-                          void handleApprove(s);
-                        }}
-                      />
-                      {linkedDealId && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                              size="sm" variant="ghost"
-                              className="h-6 px-1.5 text-[10px] text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10"
-                              disabled={outstandingBusyId === s.suggestion_id}
-                              onClick={() => void handleMakeOutstanding(s)}
-                              aria-label="Make outstanding item"
-                              data-testid="make-outstanding"
-                              >
-                                {outstandingBusyId === s.suggestion_id
-                                  ? <Loader2 className="h-3 w-3 animate-spin" />
-                                  : <Flag className="h-3 w-3" />}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Make outstanding item</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      <Button
-                        size="sm" variant="ghost"
-                        className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-white"
-                        disabled={busyId === s.suggestion_id}
-                        onClick={() => void handleDismiss(s)}
-                        aria-label="Dismiss suggestion"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </>
-                  )}
+                          <Undo2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                    {isDismissed && (
+                      <>
+                        <span className="text-[10px] text-muted-foreground italic">Dismissed</span>
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 min-w-[24px] px-2 text-[10px] text-muted-foreground hover:text-white"
+                          onClick={() => void undo(s)}
+                        >
+                          Undo
+                        </Button>
+                      </>
+                    )}
+                    {isPending && (
+                      <>
+                        <CreateTaskButton
+                          disabled={createDisabled}
+                          hasAssignee={hasAssignee}
+                          busy={busyId === s.suggestion_id}
+                          onClick={() => {
+                            if (!hasAssignee) {
+                              toast.error('Please choose an assignee before creating this task.');
+                              return;
+                            }
+                            void handleApprove(s);
+                          }}
+                        />
+                        {linkedDealId && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm" variant="ghost"
+                                  className="h-6 min-w-[24px] px-1.5 text-[10px] text-amber-200/80 hover:text-amber-100 hover:bg-amber-500/10"
+                                  disabled={outstandingBusyId === s.suggestion_id}
+                                  onClick={() => void handleMakeOutstanding(s)}
+                                  aria-label="Make outstanding item"
+                                  data-testid="make-outstanding"
+                                >
+                                  {outstandingBusyId === s.suggestion_id
+                                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                                    : <Flag className="h-3 w-3" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Make outstanding item</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <Button
+                          size="sm" variant="ghost"
+                          className="h-6 min-w-[24px] px-1.5 text-[10px] text-muted-foreground hover:text-white"
+                          disabled={busyId === s.suggestion_id}
+                          onClick={() => void handleDismiss(s)}
+                          aria-label="Dismiss suggestion"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </li>
             );
