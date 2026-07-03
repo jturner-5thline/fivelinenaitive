@@ -2188,6 +2188,25 @@ const tools = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "search_meeting_notes",
+      description: "Search the current user's personal meeting notes captured in the End of Day details panel. Use this whenever the user asks 'when did I talk with X', 'when was my call with X', 'what did we discuss with X', 'what were the notes on <meeting/company/person>', or any question about their own prior meeting notes. Results are scoped to the current user only. Match on note text, meeting title, and attendee name/email.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Free-text keywords to match against note body, meeting title, and attendee names/emails. Optional if attendee/date filters are provided." },
+          attendee: { type: "string", description: "Optional attendee name or email substring (e.g. 'jane', 'jane@acme.com')." },
+          since_days: { type: "number", description: "Optional lookback window in days from today." },
+          start_iso: { type: "string", description: "Optional ISO start of meeting-time range (event_start >=)." },
+          end_iso: { type: "string", description: "Optional ISO end of meeting-time range (event_start <=)." },
+          deal_id: { type: "string", description: "Optional deal UUID to restrict to notes linked to a specific deal." },
+          limit: { type: "number", description: "Max notes to return (default 25, max 100)." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
