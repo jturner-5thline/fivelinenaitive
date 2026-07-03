@@ -428,6 +428,18 @@ export function StackedDebtRevenueChart({
     );
   }
 
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const totals = data.map((d) =>
+      STACKED_CATEGORIES.reduce(
+        (s, c) => s + (Number((d as any)[c.key]) || 0),
+        0,
+      ),
+    );
+    const trend = computeLinearTrend(totals);
+    return data.map((d, i) => ({ ...d, __total: totals[i], trend: trend[i] }));
+  }, [data]);
+
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
@@ -435,16 +447,26 @@ export function StackedDebtRevenueChart({
           <CardTitle className="text-sm font-medium text-foreground">Debt Revenue</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">5th Line Capital Advisors, LLC</p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Period Total</p>
+        <div className="flex items-start gap-2">
+          <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
+          <div className="text-right">
+            <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+            <p className="text-[10px] text-muted-foreground">Period Total</p>
+            {showTrend && (
+              <TrendDeltaText
+                className="block mt-1"
+                values={chartData.map((d) => d.__total)}
+                format={formatCurrencyFull}
+              />
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
         <div className="h-full min-h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
+            <ComposedChart
+              data={chartData}
               margin={{ top: 8, right: 8, left: -10, bottom: 0 }}
             >
               <CartesianGrid
@@ -524,7 +546,20 @@ export function StackedDebtRevenueChart({
                   })}
                 />
               ))}
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  name="Best-fit trend"
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
@@ -562,6 +597,15 @@ export function StackedGenericRevenueChart({
     );
   }
 
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const totals = data.map((d) =>
+      categories.reduce((s, c) => s + (Number(d[c.key]) || 0), 0),
+    );
+    const trend = computeLinearTrend(totals);
+    return data.map((d, i) => ({ ...d, __total: totals[i], trend: trend[i] }));
+  }, [data, categories]);
+
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
@@ -569,15 +613,25 @@ export function StackedGenericRevenueChart({
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-          <p className="text-[10px] text-muted-foreground">Period Total</p>
+        <div className="flex items-start gap-2">
+          <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
+          <div className="text-right">
+            <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+            <p className="text-[10px] text-muted-foreground">Period Total</p>
+            {showTrend && (
+              <TrendDeltaText
+                className="block mt-1"
+                values={chartData.map((d) => d.__total)}
+                format={formatCurrencyFull}
+              />
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0">
         <div className="h-full min-h-[220px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={{ stroke: 'hsl(var(--border))' }} tickLine={false} />
               <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -614,7 +668,20 @@ export function StackedGenericRevenueChart({
                   })}
                 />
               ))}
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  name="Best-fit trend"
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
