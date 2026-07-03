@@ -9,7 +9,7 @@ import {
   Search, ChevronDown, ChevronRight, Loader2, ListPlus, Link2,
   ExternalLink, Sparkles, StickyNote, Inbox,
   PartyPopper, GripVertical, ArrowLeft, Copy as CopyIcon,
-  Briefcase, Video,
+  Briefcase, Video, Undo2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
+import { useRecentEodDismissals } from '@/hooks/useRecentEodDismissals';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
 import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlineAction';
@@ -377,6 +378,7 @@ export function EndOfDayTab({
 
   const { clear: clearResolved, restore: restoreResolved, isCleared: isResolvedRaw } = useDbPersistentClears('eod-agenda');
   const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissedRaw } = useDbPersistentClears('eod-dismissed');
+  const { recent: recentDismissals, undo: undoDismissal, undoLast: undoLastDismissal } = useRecentEodDismissals();
   const isResolved = useCallback((id: string) => isResolvedRaw(id), [isResolvedRaw]);
   // For dismissals, also honor a per-user cutoff date so historical backfills
   // don't require enumerating every event id.
@@ -1152,6 +1154,63 @@ export function EndOfDayTab({
             );
           })}
           <div className="ml-auto flex items-center gap-2">
+            {recentDismissals.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="h-6 px-2 rounded-full text-[10px] font-medium border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors inline-flex items-center gap-1"
+                    title="Undo recent dismissals"
+                  >
+                    <Undo2 className="h-3 w-3" />
+                    Undo ({recentDismissals.length})
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 p-0">
+                  <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+                    <span className="text-[11px] font-medium text-foreground">
+                      Recent dismissals
+                    </span>
+                    <button
+                      type="button"
+                      className="text-[10px] text-primary hover:underline"
+                      onClick={async () => {
+                        const last = await undoLastDismissal();
+                        if (last) toast.success('Restored last dismissal');
+                      }}
+                    >
+                      Undo last
+                    </button>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto py-1">
+                    {recentDismissals.map((d, idx) => (
+                      <button
+                        key={d.rowId}
+                        type="button"
+                        onClick={async () => {
+                          await undoDismissal(d.rowId);
+                          toast.success('Restored dismissal');
+                        }}
+                        className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-white/[0.04] transition-colors"
+                      >
+                        <Undo2 className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] text-foreground truncate">
+                            {idx === 0 ? 'Most recent' : `#${idx + 1}`} · {d.scope === 'eod-agenda' ? 'Resolved' : 'Dismissed'}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            {d.itemId}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground/70">
+                            {formatDistanceToNow(new Date(d.clearedAt), { addSuffix: true })}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
             {unreadVisibleIds.length > 0 && (
               <button
                 type="button"
