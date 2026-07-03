@@ -11,8 +11,6 @@ const FinServTTMTop5CustomersCard = lazy(() => import('../FinServTTMTop5Customer
 const TotalIncomeRolling12MoCard = lazy(() => import('../TotalIncomeRolling12MoCard').then(m => ({ default: m.TotalIncomeRolling12MoCard })));
 const IncomeMoMCard = lazy(() => import('../IncomeMoMCard').then(m => ({ default: m.IncomeMoMCard })));
 const FinServTopCustomersCard = lazy(() => import('../FinServTopCustomersCard').then(m => ({ default: m.FinServTopCustomersCard })));
-const IncomeByProductServiceCard = lazy(() => import('../IncomeByProductServiceCard').then(m => ({ default: m.IncomeByProductServiceCard })));
-
 function ChartFallback() {
   return (
     <div className="rounded-xl border border-border/60 bg-card p-4 min-h-[280px]">
@@ -32,7 +30,6 @@ export function RevenueCustomersDashboard() {
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTTMTop5CustomersCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTopCustomersCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeByProductServiceCard /></div></Suspense>
     </div>
   );
 }
