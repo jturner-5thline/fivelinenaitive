@@ -193,6 +193,7 @@ interface Props {
 
 export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
   const [granularity, setGranularity] = useState<Granularity>('monthly');
+  const [cumulative, setCumulative] = useState<boolean>(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(new Set(['__all__']));
   const [userTouched, setUserTouched] = useState(false);
@@ -267,14 +268,30 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [invoicesInRange, buckets]);
 
+  const runCum = (arr: number[]) => {
+    let s = 0;
+    return arr.map(v => (s += v || 0));
+  };
+
+  const displayEntities = useMemo(() => {
+    if (!cumulative) return entities;
+    return entities.map(e => ({
+      ...e,
+      bucketTotals: runCum(e.bucketTotals),
+      products: e.products.map(p => ({ ...p, bucketTotals: runCum(p.bucketTotals) })),
+    }));
+  }, [entities, cumulative]);
+
   const grandBucketTotals = useMemo(() => {
     const totals = buckets.map(() => 0);
-    for (const e of entities) {
+    for (const e of displayEntities) {
       e.bucketTotals.forEach((v, i) => { totals[i] += v; });
     }
     return totals;
-  }, [entities, buckets]);
-  const grandTotal = grandBucketTotals.reduce((s, v) => s + v, 0);
+  }, [displayEntities, buckets]);
+  const grandTotal = cumulative
+    ? grandBucketTotals[grandBucketTotals.length - 1] || 0
+    : grandBucketTotals.reduce((s, v) => s + v, 0);
 
   const toggle = (realmId: string) => {
     setExpanded(prev => {
@@ -298,7 +315,7 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
   const availableSeries = useMemo(() => {
     const list: ChartSeries[] = [];
     list.push({ id: '__all__', label: 'All entities', values: grandBucketTotals, color: '#dde8f8' });
-    entities.forEach((e, i) => {
+    displayEntities.forEach((e, i) => {
       list.push({
         id: `entity:${e.entity.realmId}`,
         label: e.entity.label,
@@ -317,7 +334,7 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
       }
     });
     return list;
-  }, [entities, expanded, grandBucketTotals]);
+  }, [displayEntities, expanded, grandBucketTotals]);
 
   // Auto-select newly expanded entities' products until the user takes control.
   React.useEffect(() => {
@@ -372,6 +389,20 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
           </span>
         </div>
         <div style={{ display: 'inline-flex', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setCumulative(v => !v)}
+            title={cumulative ? 'Showing running cumulative totals' : 'Showing values for each period'}
+            style={{
+              padding: '4px 10px', fontSize: 11, fontWeight: 600,
+              border: `1px solid ${BORDER}`,
+              background: cumulative ? 'rgba(120,170,255,0.22)' : 'transparent',
+              color: cumulative ? '#dde8f8' : 'rgba(200,225,245,0.7)',
+              borderRadius: 6, cursor: 'pointer',
+            }}
+          >
+            {cumulative ? 'Cumulative · On' : 'Cumulative'}
+          </button>
           <ToggleBtn value="monthly" label="Monthly" />
           <ToggleBtn value="quarterly" label="Quarterly" />
         </div>
@@ -431,7 +462,7 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
                 </td>
               </tr>
             )}
-            {entities.map(row => {
+            {displayEntities.map(row => {
               const isOpen = expanded.has(row.entity.realmId);
               return (
                 <React.Fragment key={row.entity.realmId}>
