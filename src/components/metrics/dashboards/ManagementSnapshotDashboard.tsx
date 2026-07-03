@@ -916,14 +916,31 @@ export function ManagementSnapshotDashboard({
         open={!!kpiDrill}
         onClose={() => setKpiDrill(null)}
         context={kpiDrill ? {
-          sourceId: 'kpi:total-revenue',
+          sourceId: `kpi:${kpiDrill.kind ?? 'unknown'}`,
           sourceLabel: kpiDrill.label,
           periodLabel,
+          filters: [
+            { label: 'Window', value: `${format(drillCurrentRange.start, 'MMM d, yyyy')} – ${format(drillCurrentRange.end, 'MMM d, yyyy')}` },
+            { label: 'Source', value: 'QuickBooks invoices · live' },
+          ],
         } : null}
         columns={[
           { key: 'message', label: 'Detail' },
         ]}
         rows={[]}
+        body={kpiDrill && kpiDrillSpec ? (
+          <StatDrilldownBody
+            label={kpiDrill.label}
+            explainer={kpiDrillSpec.explainer}
+            compute={kpiDrillSpec.compute}
+            entities={kpiDrillSpec.entities}
+            currentRange={drillCurrentRange}
+            priorRange={drillPriorRange}
+            anchorEnd={drillAnchorEnd}
+            initialGranularity="monthly"
+            comparisonBasisLabel="YTD"
+          />
+        ) : undefined}
         emptyHint="Open the Revenue Overview widgets below to see contributing invoices for the selected period."
       />
     </div>
