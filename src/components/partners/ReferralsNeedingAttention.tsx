@@ -158,14 +158,6 @@ export function ReferralsNeedingAttention() {
                   <p className="text-xs text-muted-foreground">{sr.daysSinceActivity}d ago</p>
                   <p className="text-[10px] text-muted-foreground/70">Last: {sr.lastActivityType}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={(e) => { e.stopPropagation(); setEditTarget(sr.entry); }}
-                >
-                  <Eye className="h-3 w-3" /> View
-                </Button>
               </div>
             </div>
           ))}

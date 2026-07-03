@@ -195,14 +195,6 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
                   <p className="text-xs text-muted-foreground">{sp.stageName}</p>
                   <p className="text-[10px] text-muted-foreground/70">Last: {sp.lastActivityType}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={(e) => { e.stopPropagation(); onViewPartner?.(sp.id); }}
-                >
-                  <Eye className="h-3 w-3" /> View
-                </Button>
               </div>
             </div>
           ))}
