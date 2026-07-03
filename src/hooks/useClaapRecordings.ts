@@ -42,6 +42,91 @@ export interface ClaapRecording {
   };
 }
 
+function mapLocalRecording(row: any): ClaapRecording {
+  const payload = (row.source_payload && typeof row.source_payload === 'object') ? row.source_payload : {};
+  const participants: ClaapParticipant[] = Array.isArray(row.participants)
+    ? row.participants.map((p: any) => ({
+        attended: !!p?.attended,
+        email: String(p?.email || ''),
+        id: String(p?.id || p?.email || ''),
+        name: String(p?.name || p?.displayName || ''),
+      }))
+    : [];
+
+  return {
+    id: row.external_id,
+    title: row.title || '',
+    createdAt: row.started_at || '',
+    durationSeconds: typeof payload.durationSeconds === 'number' ? payload.durationSeconds : 0,
+    labels: Array.isArray(payload.labels) ? payload.labels : [],
+    recorder: {
+      attended: false,
+      email: row.organizer_email || '',
+      id: row.organizer_email || '',
+      name: payload?.recorder?.name || row.organizer_email || '',
+    },
+    state: payload.state || 'ready',
+    thumbnailUrl: payload.thumbnailUrl || '',
+    transcripts: Array.isArray(payload.transcripts) ? payload.transcripts : [],
+    url: payload.url || row.recording_url || '',
+    meeting: {
+      participants,
+      startingAt: row.started_at || undefined,
+    },
+  } as ClaapRecording;
+}
+
+function mapApiRecording(r: any): ClaapRecording | null {
+  if (!r?.id) return null;
+  return {
+    id: String(r.id),
+    title: r.title || '',
+    createdAt: r.meeting?.startingAt || r.createdAt || '',
+    durationSeconds: typeof r.durationSeconds === 'number' ? r.durationSeconds : 0,
+    labels: Array.isArray(r.labels) ? r.labels : [],
+    recorder: {
+      attended: !!r.recorder?.attended,
+      email: r.recorder?.email || '',
+      id: r.recorder?.id || r.recorder?.email || '',
+      name: r.recorder?.name || r.recorder?.email || '',
+    },
+    state: r.state || 'ready',
+    thumbnailUrl: r.thumbnailUrl || '',
+    transcripts: Array.isArray(r.transcripts) ? r.transcripts : [],
+    url: r.url || r.videoUrl || r.video?.url || '',
+    videoUrl: r.videoUrl || r.video?.url,
+    embedUrl: r.embedUrl,
+    meeting: {
+      participants: Array.isArray(r.meeting?.participants)
+        ? r.meeting.participants.map((p: any) => ({
+            attended: !!p?.attended,
+            email: String(p?.email || ''),
+            id: String(p?.id || p?.email || ''),
+            name: String(p?.name || ''),
+          }))
+        : [],
+      startingAt: r.meeting?.startingAt || undefined,
+      endingAt: r.meeting?.endingAt || undefined,
+      type: r.meeting?.type,
+      conferenceUrl: r.meeting?.conferenceUrl,
+    },
+  };
+}
+
+function mergeByRecordingId(primary: ClaapRecording[], secondary: ClaapRecording[]) {
+  const byId = new Map<string, ClaapRecording>();
+  for (const rec of primary) if (rec.id) byId.set(rec.id, rec);
+  for (const rec of secondary) {
+    if (!rec.id || byId.has(rec.id)) continue;
+    byId.set(rec.id, rec);
+  }
+  return Array.from(byId.values()).sort((a, b) => {
+    const at = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return bt - at;
+  });
+}
+
 export function useClaapRecordings() {
   const [recordings, setRecordings] = useState<ClaapRecording[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,40 +156,34 @@ export function useClaapRecordings() {
       const { data, error: qErr } = await query;
       if (qErr) throw qErr;
 
-      const mapped: ClaapRecording[] = (data || []).map((row: any) => {
-        const payload = (row.source_payload && typeof row.source_payload === 'object') ? row.source_payload : {};
-        const participants: ClaapParticipant[] = Array.isArray(row.participants)
-          ? row.participants.map((p: any) => ({
-              attended: !!p?.attended,
-              email: String(p?.email || ''),
-              id: String(p?.id || p?.email || ''),
-              name: String(p?.name || p?.displayName || ''),
-            }))
-          : [];
-        return {
-          id: row.external_id,
-          title: row.title || '',
-          createdAt: row.started_at || '',
-          durationSeconds: typeof payload.durationSeconds === 'number' ? payload.durationSeconds : 0,
-          labels: Array.isArray(payload.labels) ? payload.labels : [],
-          recorder: {
-            attended: false,
-            email: row.organizer_email || '',
-            id: row.organizer_email || '',
-            name: payload?.recorder?.name || row.organizer_email || '',
-          },
-          state: payload.state || 'ready',
-          thumbnailUrl: payload.thumbnailUrl || '',
-          transcripts: Array.isArray(payload.transcripts) ? payload.transcripts : [],
-          url: payload.url || row.recording_url || '',
-          meeting: {
-            participants,
-            startingAt: row.started_at || undefined,
-          },
-        } as ClaapRecording;
+      const localRecordings: ClaapRecording[] = (data || []).map(mapLocalRecording);
+      setRecordings(localRecordings);
+
+      // Also hydrate from the live Claap API. The local mirror can lag behind
+      // when someone else on the team owned the recorder, but the current user
+      // was an attendee; merging live results lets them find and link/sync it.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const params = new URLSearchParams({ action: 'list', limit: '100' });
+      if (search && search.trim().length > 0) params.set('search', search.trim());
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/claap-recordings?${params.toString()}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
-      setRecordings(mapped);
+      if (response.ok) {
+        const apiData = await response.json();
+        const liveRecordings = (Array.isArray(apiData?.recordings) ? apiData.recordings : [])
+          .map(mapApiRecording)
+          .filter(Boolean) as ClaapRecording[];
+        if (liveRecordings.length > 0) {
+          setRecordings(mergeByRecordingId(localRecordings, liveRecordings));
+        }
+      }
     } catch (err: any) {
       console.error('Error fetching Claap recordings:', err);
       setError(err.message);
