@@ -30,6 +30,13 @@ const formatCurrencyFull = (value: number) => {
   return neg ? `(${str})` : str;
 };
 
+const formatPct = (value: number) => {
+  if (!Number.isFinite(value)) return '—';
+  const neg = value < 0;
+  const s = `${Math.abs(value).toFixed(1)}%`;
+  return neg ? `(${s})` : s;
+};
+
 /* Restrained loss/profit palette tuned for dark navy UI */
 const LOSS_COLOR = 'hsl(354, 62%, 56%)';     // muted rose, not neon
 const LOSS_COLOR_SOFT = 'hsl(354, 62%, 56%, 0.65)';
@@ -108,30 +115,48 @@ export function ProfitBarChart({
   const isLossQuarter = total < 0;
 
   const [showTrend, setShowTrend] = useState(false);
+  const [mode, setMode] = useState<'$' | '%'>('$');
+  const isDollar = mode === '$';
+  const totalRevenue = months.reduce((s, m) => s + (m.revenue || 0), 0);
+  const totalMargin = totalRevenue > 0 ? (total / totalRevenue) * 100 : 0;
   const chartData = useMemo(() => {
-    const trend = computeLinearTrend(months.map((m) => m.profit));
-    return months.map((m, i) => ({ ...m, trend: trend[i] }));
-  }, [months]);
+    const values = months.map((m) =>
+      isDollar ? m.profit : (m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0),
+    );
+    const trend = computeLinearTrend(values);
+    return months.map((m, i) => ({
+      ...m,
+      value: values[i],
+      margin: m.revenue > 0 ? (m.profit / m.revenue) * 100 : 0,
+      trend: trend[i],
+    }));
+  }, [months, isDollar]);
 
   // Auto-scale: include 0 in range, pad so bars don't touch edges. When the
   // chart contains both losses and profits, force a *symmetric* domain around
   // zero so that negative bars are visually as tall as positive bars of the
   // same magnitude — this makes "below zero" instantly readable.
-  const minVal = Math.min(...months.map(m => m.profit), 0);
-  const maxVal = Math.max(...months.map(m => m.profit), 0);
+  const valueSeries = chartData.map((d) => d.value);
+  const minVal = Math.min(...valueSeries, 0);
+  const maxVal = Math.max(...valueSeries, 0);
+  const hasMixed = valueSeries.some((v) => v < 0) && valueSeries.some((v) => v > 0);
   const mixed = hasNegative && hasPositive;
   let domainMin: number;
   let domainMax: number;
-  if (mixed) {
-    const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal), 1000);
+  if (isDollar ? mixed : hasMixed) {
+    const floor = isDollar ? 1000 : 1;
+    const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal), floor);
     const pad = absMax * 0.18;
     domainMin = -(absMax + pad);
     domainMax = absMax + pad;
   } else {
-    const range = Math.max(maxVal - minVal, 1000);
+    const range = Math.max(maxVal - minVal, isDollar ? 1000 : 1);
     domainMin = minVal - range * 0.15;
     domainMax = maxVal + range * 0.2;
   }
+
+  const fmtValue = isDollar ? formatCurrency : formatPct;
+  const fmtValueFull = isDollar ? formatCurrencyFull : formatPct;
 
   return (
     <Card
@@ -156,6 +181,23 @@ export function ProfitBarChart({
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+          <div className="inline-flex rounded-md border border-border/60 overflow-hidden">
+            {(['$', '%'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={
+                  'px-2 py-0.5 text-[11px] font-medium transition-colors ' +
+                  (mode === m
+                    ? 'bg-primary/20 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground')
+                }
+              >
+                {m}
+              </button>
+            ))}
+          </div>
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <span
             className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0"
@@ -184,19 +226,19 @@ export function ProfitBarChart({
             className="text-3xl font-semibold tabular-nums leading-none tracking-tight"
             style={{ color: isLossQuarter ? LOSS_COLOR : '#dde8f8' }}
           >
-            {formatCurrency(total)}
+            {isDollar ? formatCurrency(total) : formatPct(totalMargin)}
           </p>
           <p
             className="text-[10px] mt-1.5 uppercase tracking-wider"
             style={{ color: 'rgba(120, 170, 255, 0.40)' }}
           >
-            {months.length}-Month Total
+            {isDollar ? `${months.length}-Month Total` : `${months.length}-Month Margin`}
           </p>
           {showTrend && (
             <div className="mt-1.5">
               <TrendDeltaText
-                values={months.map((m) => m.profit)}
-                format={formatCurrencyFull}
+                values={chartData.map((d) => d.value)}
+                format={fmtValueFull}
               />
             </div>
           )}
@@ -222,7 +264,7 @@ export function ProfitBarChart({
               <YAxis
                 domain={[domainMin, domainMax]}
                 allowDataOverflow
-                tickFormatter={formatCurrency}
+                tickFormatter={fmtValue}
                 tick={{ fontSize: 10, fill: 'rgba(160, 200, 255, 0.40)' }}
                 axisLine={false}
                 tickLine={false}
@@ -231,8 +273,8 @@ export function ProfitBarChart({
               />
               <Tooltip
                 formatter={(v: number) => [
-                  `${v < 0 ? '−' : ''}${formatCurrencyFull(Math.abs(v)).replace(/^\(|\)$/g, '')}`,
-                  v < 0 ? 'Loss' : 'Profit',
+                  `${v < 0 ? '−' : ''}${fmtValueFull(Math.abs(v)).replace(/^\(|\)$/g, '')}`,
+                  isDollar ? (v < 0 ? 'Loss' : 'Profit') : (v < 0 ? 'Loss Margin' : 'Profit Margin'),
                 ]}
                 labelFormatter={(label) => `${label} · ${entityName.split(',')[0]}`}
                 contentStyle={{
@@ -262,27 +304,27 @@ export function ProfitBarChart({
                 }}
               />
               <Bar
-                dataKey="profit"
-                shape={createGlassBarShape({ radius: 4, dataKey: 'profit' })}
+                dataKey="value"
+                shape={createGlassBarShape({ radius: 4, dataKey: 'value' })}
                 maxBarSize={44}
                 cursor={onBarClick ? 'pointer' : undefined}
                 onClick={onBarClick ? ((d: ProfitMonthBucket) => onBarClick(d)) : undefined}
               >
-                {months.map((m, i) => (
+                {chartData.map((m, i) => (
                   <Cell
                     key={i}
-                    fill={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
-                    fillOpacity={m.profit >= 0 ? 0.95 : 0.92}
-                    stroke={m.profit >= 0 ? PROFIT_COLOR : LOSS_COLOR}
+                    fill={m.value >= 0 ? PROFIT_COLOR : LOSS_COLOR}
+                    fillOpacity={m.value >= 0 ? 0.95 : 0.92}
+                    stroke={m.value >= 0 ? PROFIT_COLOR : LOSS_COLOR}
                     strokeOpacity={0.6}
                     strokeWidth={0.38}
                   />
                 ))}
                 <LabelList
-                  dataKey="profit"
+                  dataKey="value"
                   position="top"
                   formatter={(v: number) =>
-                    v === 0 ? '' : `${v < 0 ? '−' : '+'}${formatCurrency(Math.abs(v))}`
+                    v === 0 ? '' : `${v < 0 ? '−' : '+'}${fmtValue(Math.abs(v))}`
                   }
                   content={(props: any) => {
                     const { x, y, width, value, height } = props;
@@ -302,7 +344,7 @@ export function ProfitBarChart({
                         fill={isNeg ? LOSS_COLOR : PROFIT_COLOR}
                       >
                         {isNeg ? '−' : '+'}
-                        {formatCurrency(Math.abs(value))}
+                        {fmtValue(Math.abs(value))}
                       </text>
                     );
                   }}
