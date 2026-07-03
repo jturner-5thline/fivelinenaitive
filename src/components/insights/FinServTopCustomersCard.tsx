@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
+import { ChartSwap } from "./ChartSwap";
 import { useTimeframeRange } from "./useTimeframeRange";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -322,6 +323,7 @@ export function FinServTopCustomersCard() {
         ) : (
           <>
             <div className="h-[300px] w-full">
+              <ChartSwap chartType={chartType}>
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === "bar" ? (
                 <BarChart
@@ -411,6 +413,7 @@ export function FinServTopCustomersCard() {
                 </LineChart>
                 )}
               </ResponsiveContainer>
+              </ChartSwap>
             </div>
 
             <div className="w-full overflow-x-auto">

@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, Cell, ReferenceLine,
 } from 'recharts';
 import { ChartTypeToggle, type ChartType } from '@/components/insights/ChartTypeToggle';
+import { ChartSwap } from '@/components/insights/ChartSwap';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { useQBStackedDebtRevenue } from '@/hooks/useQBStackedDebtRevenue';
@@ -107,6 +108,7 @@ function HistoricalTrendChart({
         {isLoading ? (
           <Skeleton className="h-full w-full" />
         ) : (
+          <ChartSwap chartType={chartType}>
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'bar' ? (
               <BarChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
@@ -155,6 +157,7 @@ function HistoricalTrendChart({
               </LineChart>
             )}
           </ResponsiveContainer>
+          </ChartSwap>
         )}
       </div>
     </div>
