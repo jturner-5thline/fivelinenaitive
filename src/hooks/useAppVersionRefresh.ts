@@ -26,6 +26,29 @@ import { toast } from 'sonner';
  */
 const INTERVAL_MS = 60_000; // poll once a minute
 const TOAST_ID = 'app-version-update';
+/** Per-user suppression window: don't re-prompt about a new version more than once per day. */
+const SUPPRESS_MS = 24 * 60 * 60 * 1000;
+const SUPPRESS_KEY = 'app-version-refresh:last-shown';
+
+function wasRecentlyShown(): boolean {
+  try {
+    const raw = window.localStorage.getItem(SUPPRESS_KEY);
+    if (!raw) return false;
+    const ts = Number(raw);
+    if (!Number.isFinite(ts)) return false;
+    return Date.now() - ts < SUPPRESS_MS;
+  } catch {
+    return false;
+  }
+}
+
+function markShown() {
+  try {
+    window.localStorage.setItem(SUPPRESS_KEY, String(Date.now()));
+  } catch {
+    // ignore — storage unavailable
+  }
+}
 
 async function fingerprintIndexHtml(): Promise<string | null> {
   try {
@@ -84,7 +107,14 @@ export function useAppVersionRefresh() {
         return;
       }
       if (fp !== baselineRef.current && !notifiedRef.current) {
+        // Only prompt once per 24h per browser, even across reloads that
+        // pick up newer builds — avoids nagging users on every deploy.
+        if (wasRecentlyShown()) {
+          notifiedRef.current = true;
+          return;
+        }
         notifiedRef.current = true;
+        markShown();
         toast.message('A new version of naitive is available', {
           id: TOAST_ID,
           description: 'Reload to get the latest updates.',
