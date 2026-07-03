@@ -646,6 +646,7 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { dismissed, dismiss, isDismissed } = useDailyDismissals('news');
   const [showDismissed, setShowDismissed] = useState(false);
+  const [compIntelActive, setCompIntelActive] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -701,18 +702,42 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
               {topic}
             </button>
           ))}
+          <button
+            key="comp-intel"
+            onClick={() => setCompIntelActive(v => !v)}
+            className={cn(
+              'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all duration-150',
+              compIntelActive
+                ? 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                : 'bg-white/[0.02] text-muted-foreground/60 glass-border-softer hover:bg-white/[0.04]',
+            )}
+          >
+            Comp Intel
+          </button>
         </div>
         <Button
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={handleRefresh}
-          disabled={isRefreshing}
+          disabled={isRefreshing || compIntelActive}
         >
           <RefreshCw className={cn('h-3.5 w-3.5', isRefreshing && 'animate-spin')} />
         </Button>
       </div>
 
+      {compIntelActive ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-2 rounded-xl border border-amber-400/20 bg-amber-500/[0.04]">
+          <div className="text-xs uppercase tracking-[0.2em] text-amber-300/80 font-semibold">
+            Comp Intel
+          </div>
+          <div className="text-2xl font-semibold text-foreground">COMING SOON</div>
+          <p className="text-xs text-muted-foreground max-w-xs text-center">
+            Competitive intelligence briefings will surface here shortly.
+          </p>
+        </div>
+      ) : (
+      <>
       {dismissed.size > 0 && (
         <div className="flex items-center justify-end -mt-1">
           <button
@@ -743,6 +768,8 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );
