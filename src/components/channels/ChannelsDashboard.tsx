@@ -418,11 +418,12 @@ export function ChannelsDashboard() {
         </div>
       ) : (
         <>
-          <PartnersFunnelChart />
-          {/* ── Stage Funnel ── */}
-          <div className={`${glassCard} p-4`}>
-            <h3 className="text-base font-semibold tracking-tight text-foreground mb-4">Stage Progression — Sourced Deals</h3>
-            <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+            <PartnersFunnelChart />
+            {/* ── Stage Funnel ── */}
+            <div className={`${glassCard} p-4`}>
+              <h3 className="text-base font-semibold tracking-tight text-foreground mb-4">Stage Progression — Sourced Deals</h3>
+              <div className="grid grid-cols-4 gap-2">
               {funnelData.map((stage, i) => {
                 const maxCount = Math.max(...funnelData.map(f => f.count), 1);
                 const pct = (stage.count / maxCount) * 100;
@@ -454,6 +455,7 @@ export function ChannelsDashboard() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
 
