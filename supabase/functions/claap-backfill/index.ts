@@ -1,9 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import {
-  shouldDefer,
-  getQuotaStatus,
-  markRateLimited as _markRateLimited,
-} from "../_shared/claap-quota.ts";
+import { shouldDefer, getQuotaStatus } from "../_shared/claap-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
