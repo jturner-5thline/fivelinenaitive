@@ -401,6 +401,26 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
 
+// Plain-language descriptions for hover tooltips on Key Stats labels.
+const KPI_DESCRIPTIONS: Record<string, string> = {
+  'total-revenue-curr': 'Total revenue booked for the current reporting period across all QuickBooks entities.',
+  'operating-profit-curr': 'Revenue minus operating expenses for the current reporting period across all QuickBooks entities.',
+  'outstanding-ar': 'Sum of all open QuickBooks invoice balances as of today, across every entity.',
+  'active-pipeline-value': 'Total value of active debt-advisory deals currently in flight in the Debt Pipeline.',
+  'ttm-revenue': 'Trailing 12 months of revenue ending on the current reporting period end date.',
+  'ytd-revenue': 'Year-to-date revenue for the current calendar year across all QuickBooks entities.',
+  'debt-solutions-revenue': 'Revenue for the current period from the QuickBooks Debt Advisory entity.',
+  'debt-solutions-profit': 'Revenue minus expenses for the current period, QuickBooks Debt Advisory entity.',
+  'finserv-revenue': 'Revenue for the current period from the QuickBooks FinServ entity.',
+  'finserv-profit': 'Revenue minus expenses for the current period, QuickBooks FinServ entity.',
+  'liq-operating': 'Bank balance — Operating account. Not yet wired to a live data source.',
+  'liq-mt': 'Bank balance — M&T account. Not yet wired to a live data source.',
+  'liq-tax-reserves': 'Balance of tax reserves. Not yet wired to a live data source.',
+  'liq-5lt': 'Balance for 5LT entity. Not yet wired to a live data source.',
+  'liq-5lca': 'Balance for 5LCA entity. Not yet wired to a live data source.',
+  'liq-5lfs': 'Balance for 5LFS entity. Not yet wired to a live data source.',
+};
+
 interface ManagementReviewDashboardProps {
   isEditMode?: boolean;
   onExitEditMode?: () => void;
