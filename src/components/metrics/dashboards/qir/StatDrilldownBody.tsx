@@ -215,8 +215,14 @@ export function StatDrilldownBody(props: StatDrilldownBodyProps) {
   } = props;
 
   const [gran, setGran] = useState<Granularity>(initialGranularity);
+  const [cumulative, setCumulative] = useState<boolean>(false);
   const buckets = useMemo(() => buildBuckets(anchorEnd, gran), [anchorEnd, gran]);
-  const values = useMemo(() => buckets.map(b => compute(b.range)), [buckets, compute]);
+  const periodValues = useMemo(() => buckets.map(b => compute(b.range)), [buckets, compute]);
+  const values = useMemo(() => {
+    if (!cumulative) return periodValues;
+    let running = 0;
+    return periodValues.map(v => (running += v || 0));
+  }, [periodValues, cumulative]);
   const current = useMemo(() => compute(currentRange), [compute, currentRange]);
   const prior = useMemo(() => compute(priorRange), [compute, priorRange]);
   const delta = current - prior;
@@ -229,14 +235,19 @@ export function StatDrilldownBody(props: StatDrilldownBodyProps) {
 
   const entityRows = useMemo(() => {
     if (!entities.length) return [] as Array<{ id: string; label: string; bucketValues: number[]; curr: number; prior: number }>;
-    return entities.map(e => ({
-      id: e.id,
-      label: e.label,
-      bucketValues: buckets.map(b => e.compute(b.range)),
-      curr: e.compute(currentRange),
-      prior: e.compute(priorRange),
-    }));
-  }, [entities, buckets, currentRange, priorRange]);
+    return entities.map(e => {
+      const periods = buckets.map(b => e.compute(b.range));
+      let running = 0;
+      const bucketValues = cumulative ? periods.map(v => (running += v || 0)) : periods;
+      return {
+        id: e.id,
+        label: e.label,
+        bucketValues,
+        curr: e.compute(currentRange),
+        prior: e.compute(priorRange),
+      };
+    });
+  }, [entities, buckets, currentRange, priorRange, cumulative]);
 
   const noData = totalAll === 0 && current === 0 && prior === 0;
 
@@ -266,9 +277,24 @@ export function StatDrilldownBody(props: StatDrilldownBodyProps) {
       {/* Granularity toggle */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ fontSize: 10, letterSpacing: '1px', textTransform: 'uppercase', color: MUTED, fontWeight: 700 }}>
-          Trend · {gran === 'monthly' ? 'trailing 12 months' : 'trailing 8 quarters'}
+          Trend · {gran === 'monthly' ? 'trailing 12 months' : 'trailing 8 quarters'}{cumulative ? ' · cumulative' : ''}
         </div>
-        {granularities.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => setCumulative(v => !v)}
+            title={cumulative ? 'Showing running cumulative totals' : 'Showing values for each period'}
+            style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase',
+              padding: '5px 10px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: cumulative ? 'hsl(228,22%,14%)' : 'rgba(255,255,255,0.75)',
+              background: cumulative ? 'linear-gradient(180deg, hsl(213,90%,75%), hsl(213,90%,70%))' : 'rgba(255,255,255,0.05)',
+            }}
+          >
+            {cumulative ? 'Cumulative · On' : 'Cumulative'}
+          </button>
+          {granularities.length > 1 && (
           <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
             {granularities.map(g => (
               <button
@@ -286,7 +312,8 @@ export function StatDrilldownBody(props: StatDrilldownBodyProps) {
               </button>
             ))}
           </div>
-        )}
+          )}
+        </div>
       </div>
 
       {noData ? (
