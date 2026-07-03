@@ -1605,51 +1605,136 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               };
               const handleRowClick = (reg: string, k: KpiTile) => {
                 if (isEditMode || !k.live) return;
-                let columns: DrilldownColumn<Record<string, any>>[] = [
-                  { key: 'metric', label: 'Metric' },
-                  { key: 'value', label: 'Value', align: 'right' },
+                const explainer = KPI_DESCRIPTIONS[reg];
+                const initialGran: 'monthly' | 'quarterly' = isQuarterView ? 'quarterly' : 'monthly';
+                const basis = isQuarterView ? 'quarter' : 'month';
+                const commonCtx = {
+                  sourceId: `kpi:${reg}`,
+                  sourceLabel: k.l,
+                  selection: k.v,
+                  periodLabel,
+                };
+
+                // Aggregators over QuickBooks data
+                const sumInvoices = (r: DateRange, realmId?: string) => sumAmountInRange(
+                  realmId ? qbInvoices.filter((row: any) => row.realm_id === realmId) : qbInvoices,
+                  r, inv => inv.txn_date, inv => inv.total_amt,
+                );
+                const sumExpenses = (r: DateRange, realmId?: string) => sumAmountInRange(
+                  realmId ? qbExpenses.filter((row: any) => row.realm_id === realmId) : qbExpenses,
+                  r, exp => exp.txn_date, exp => exp.total_amt,
+                );
+                const revenueEntities = [
+                  { id: 'debt', label: 'Debt Advisory', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID) },
+                  { id: 'finserv', label: 'FinServ', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID) },
+                  { id: 'other', label: 'Other entities', compute: (r: DateRange) => {
+                    const total = sumInvoices(r);
+                    const debt = sumInvoices(r, KEY_STATS_DEBT_REALM_ID);
+                    const fs = sumInvoices(r, KEY_STATS_FINSERV_REALM_ID);
+                    return total - debt - fs;
+                  } },
                 ];
-                let rows: Record<string, any>[] = [{ metric: k.l, value: k.v }];
-                let emptyHint: string | undefined = k.emptyHint;
-                let trend: DrilldownTrend | undefined = undefined;
-                if (reg === 'total-revenue-curr' || reg === 'operating-profit-curr') {
-                  columns = [
-                    { key: 'month', label: 'Month' },
-                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                    { key: 'payments', label: 'Payments', align: 'right', render: (r) => fmtUSD(r.payments) },
-                    { key: 'expenses', label: 'Expenses', align: 'right', render: (r) => fmtUSD(r.expenses) },
-                    { key: 'net', label: 'Net', align: 'right', render: (r) => fmtUSD((r.revenue || 0) - (r.expenses || 0)) },
-                  ];
-                  rows = revenueSeries.map(row => ({ ...row, net: row.revenue - row.expenses }));
-                  const isOp = reg === 'operating-profit-curr';
-                  trend = {
-                    unit: 'currency',
-                    seriesLabel: isOp ? 'Operating Profit' : 'Revenue',
-                    data: revenueSeries.map(row => ({
-                      label: row.month,
-                      value: isOp ? (row.revenue || 0) - (row.expenses || 0) : (row.revenue || 0),
-                    })),
-                  };
-                } else if (reg === 'outstanding-ar') {
-                  columns = [
-                    { key: 'bucket', label: 'Bucket' },
-                    { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
-                  ];
-                  rows = arBuckets;
-                } else if (reg === 'active-pipeline-value') {
-                  columns = [
-                    { key: 'company', label: 'Deal' },
-                    { key: 'stage', label: 'Stage' },
-                    { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
-                  ];
-                  rows = activeDeals;
-                } else if (reg === 'ttm-revenue') {
+                const profitEntities = [
+                  { id: 'debt', label: 'Debt Advisory', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID) - sumExpenses(r, KEY_STATS_DEBT_REALM_ID) },
+                  { id: 'finserv', label: 'FinServ', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID) - sumExpenses(r, KEY_STATS_FINSERV_REALM_ID) },
+                  { id: 'other', label: 'Other entities', compute: (r: DateRange) => {
+                    const totalRev = sumInvoices(r), totalExp = sumExpenses(r);
+                    const dRev = sumInvoices(r, KEY_STATS_DEBT_REALM_ID), dExp = sumExpenses(r, KEY_STATS_DEBT_REALM_ID);
+                    const fRev = sumInvoices(r, KEY_STATS_FINSERV_REALM_ID), fExp = sumExpenses(r, KEY_STATS_FINSERV_REALM_ID);
+                    return (totalRev - dRev - fRev) - (totalExp - dExp - fExp);
+                  } },
+                ];
+
+                const openStat = (opts: {
+                  compute: (r: DateRange) => number;
+                  anchorEnd: Date;
+                  currentRange: DateRange;
+                  priorRange: DateRange;
+                  entities?: Array<{ id: string; label: string; compute: (r: DateRange) => number }>;
+                  filters?: Array<{ label: string; value: string }>;
+                  comparisonBasisLabel?: string;
+                }) => {
+                  setDrilldown({
+                    context: { ...commonCtx, filters: opts.filters },
+                    columns: [],
+                    rows: [],
+                    body: (
+                      <StatDrilldownBody
+                        label={k.l}
+                        explainer={explainer}
+                        compute={opts.compute}
+                        currentRange={opts.currentRange}
+                        priorRange={opts.priorRange}
+                        anchorEnd={opts.anchorEnd}
+                        entities={opts.entities}
+                        formatValue={(v) => fmtUSD(v)}
+                        initialGranularity={initialGran}
+                        comparisonBasisLabel={opts.comparisonBasisLabel ?? basis}
+                      />
+                    ),
+                  });
+                };
+
+                if (reg === 'total-revenue-curr') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    entities: revenueEntities,
+                    filters: [{ label: 'Source', value: 'QuickBooks invoices · all entities' }],
+                  });
+                }
+                if (reg === 'operating-profit-curr') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r) - sumExpenses(r),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    entities: profitEntities,
+                    filters: [{ label: 'Source', value: 'QuickBooks invoices − expenses · all entities' }],
+                  });
+                }
+                if (reg === 'debt-solutions-revenue') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    filters: [{ label: 'Entity', value: 'QuickBooks · Debt Advisory' }],
+                  });
+                }
+                if (reg === 'debt-solutions-profit') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID) - sumExpenses(r, KEY_STATS_DEBT_REALM_ID),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    filters: [{ label: 'Entity', value: 'QuickBooks · Debt Advisory' }],
+                  });
+                }
+                if (reg === 'finserv-revenue') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    filters: [{ label: 'Entity', value: 'QuickBooks · FinServ' }],
+                  });
+                }
+                if (reg === 'finserv-profit') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID) - sumExpenses(r, KEY_STATS_FINSERV_REALM_ID),
+                    anchorEnd: periodRange.end,
+                    currentRange: periodRange,
+                    priorRange: previousRange,
+                    filters: [{ label: 'Entity', value: 'QuickBooks · FinServ' }],
+                  });
+                }
+                if (reg === 'ttm-revenue') {
                   setDrilldown({
                     context: {
-                      sourceId: `kpi:${reg}`,
-                      sourceLabel: k.l,
-                      selection: k.v,
-                      periodLabel,
+                      ...commonCtx,
                       filters: [
                         { label: 'Window', value: `${format(ttmRange.start, 'MMM d, yyyy')} – ${format(ttmRange.end, 'MMM d, yyyy')}` },
                         { label: 'Source', value: 'QuickBooks invoices · all entities' },
@@ -1660,21 +1745,53 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     body: <TtmRevenueDrilldownBody invoices={qbInvoices as any} ttmRange={ttmRange} />,
                   });
                   return;
-                } else if (reg === 'ytd-revenue') {
-                  columns = [
-                    { key: 'month', label: 'Month' },
-                    { key: 'revenue', label: 'Revenue', align: 'right', render: (r) => fmtUSD(r.revenue) },
-                  ];
-                  rows = ytdSeries;
-                  trend = {
-                    unit: 'currency',
-                    seriesLabel: 'YTD Revenue',
-                    data: ytdSeries.map(p => ({ label: p.month, value: Number(p.revenue) || 0 })),
-                  };
                 }
+                if (reg === 'ytd-revenue') {
+                  return openStat({
+                    compute: (r) => sumInvoices(r),
+                    anchorEnd: ytdRange.end,
+                    currentRange: ytdRange,
+                    priorRange: priorYtdRange,
+                    entities: revenueEntities,
+                    comparisonBasisLabel: 'YTD',
+                    filters: [{ label: 'Source', value: 'QuickBooks invoices · YTD, all entities' }],
+                  });
+                }
+                if (reg === 'outstanding-ar') {
+                  setDrilldown({
+                    context: { ...commonCtx, filters: [{ label: 'Snapshot source', value: 'Current open invoice balances' }] },
+                    columns: [
+                      { key: 'bucket', label: 'Aging bucket' },
+                      { key: 'value', label: 'Outstanding', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                    ],
+                    rows: arBuckets,
+                    emptyHint: arUnavailableReason,
+                  });
+                  return;
+                }
+                if (reg === 'active-pipeline-value') {
+                  setDrilldown({
+                    context: { ...commonCtx, filters: [{ label: 'Snapshot source', value: 'Live active pipeline' }] },
+                    columns: [
+                      { key: 'company', label: 'Deal' },
+                      { key: 'stage', label: 'Stage' },
+                      { key: 'value', label: 'Value', align: 'right', render: (r) => fmtUSD(Number(r.value || 0)) },
+                    ],
+                    rows: activeDeals,
+                    emptyHint: pipelineUnavailableReason,
+                  });
+                  return;
+                }
+
+                // Fallback (non-live stats and anything else)
                 setDrilldown({
-                  context: { sourceId: `kpi:${reg}`, sourceLabel: k.l, selection: k.v, periodLabel },
-                  columns, rows, emptyHint, trend,
+                  context: commonCtx,
+                  columns: [
+                    { key: 'metric', label: 'Metric' },
+                    { key: 'value', label: 'Value', align: 'right' },
+                  ],
+                  rows: [{ metric: k.l, value: k.v }],
+                  emptyHint: k.emptyHint,
                 });
               };
               const thStyle: React.CSSProperties = {
