@@ -44,7 +44,6 @@ import { IncomeYTDByEntityCard } from "@/components/insights/IncomeYTDByEntityCa
 import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeBreakdownByEntityCard";
 import { IncomeYTDChangeByEntityCard } from "@/components/insights/IncomeYTDChangeByEntityCard";
 import { FinServTTMTop5CustomersCard } from "@/components/insights/FinServTTMTop5CustomersCard";
-import { IncomeVsCOGSRolling12MoCard } from "@/components/insights/IncomeVsCOGSRolling12MoCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { RevenueCustomersDashboard } from "@/components/insights/revenue-customers/RevenueCustomersDashboard";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
