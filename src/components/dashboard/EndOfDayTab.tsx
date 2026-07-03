@@ -1936,12 +1936,42 @@ function EventDetailPane({
             </p>
             <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
-                onClick={() => {
+                onClick={async () => {
                   const text = noteDraft.trim();
                   onNoteAdded(text);
+                  const nowIso = new Date().toISOString();
+                  let insertedId = `${Date.now()}`;
+                  if (authUser?.id) {
+                    const attendeeEmails = (event.attendees || [])
+                      .map((a) => a.email).filter(Boolean) as string[];
+                    const attendeeNames = (event.attendees || [])
+                      .map((a) => a.display_name || a.email || '').filter(Boolean) as string[];
+                    const { data, error } = await supabase
+                      .from('user_meeting_notes')
+                      .insert({
+                        user_id: authUser.id,
+                        event_id: event.id,
+                        event_title: eventTitle,
+                        event_start: event.start || null,
+                        event_end: event.end || null,
+                        organizer_email: organizerEmail,
+                        attendee_emails: attendeeEmails,
+                        attendee_names: attendeeNames,
+                        linked_deal_id: linkedDealId ?? null,
+                        note_text: text,
+                      })
+                      .select('id, created_at')
+                      .single();
+                    if (error) {
+                      console.warn('[EndOfDay] failed to save meeting note', error.message);
+                      toast.error('Note added locally — save failed');
+                    } else if (data) {
+                      insertedId = data.id;
+                    }
+                  }
                   setSavedNotes((prev) => [
                     ...prev,
-                    { id: `${Date.now()}`, text, at: new Date().toISOString() },
+                    { id: insertedId, text, at: nowIso },
                   ]);
                   setNoteDraft('');
                   setNoteDirty(false);
