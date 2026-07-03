@@ -434,27 +434,31 @@ export function FinServTopCustomersCard() {
                       Current Period
                       <SortIcon k="current" />
                     </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("prior")}
-                    >
-                      Prior Year
-                      <SortIcon k="prior" />
-                    </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("variance")}
-                    >
-                      $ Variance
-                      <SortIcon k="variance" />
-                    </th>
-                    <th
-                      className="text-right py-2 font-semibold cursor-pointer select-none"
-                      onClick={() => toggleSort("pct")}
-                    >
-                      % Variance
-                      <SortIcon k="pct" />
-                    </th>
+                    {showPrior && (
+                      <>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("prior")}
+                        >
+                          Prior Year
+                          <SortIcon k="prior" />
+                        </th>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("variance")}
+                        >
+                          $ Variance
+                          <SortIcon k="variance" />
+                        </th>
+                        <th
+                          className="text-right py-2 font-semibold cursor-pointer select-none"
+                          onClick={() => toggleSort("pct")}
+                        >
+                          % Variance
+                          <SortIcon k="pct" />
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
