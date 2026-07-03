@@ -328,7 +328,7 @@ export function FinServMrrField({
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
             </div>
           ) : (
-            <ManualMrrInput value={mrr} onCommit={onMrrCommit} />
+            <ManualMrrDisplay value={mrr} onCommit={onMrrCommit} />
           )}
         </div>
       </div>
