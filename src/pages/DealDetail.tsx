@@ -3973,7 +3973,7 @@ export default function DealDetail() {
                                 );
                               case 'dealManager':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Deal Manager</span>
                                     <Select value={deal.manager} onValueChange={(value) => updateDeal('manager', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select manager" /></SelectTrigger>
@@ -3987,7 +3987,7 @@ export default function DealDetail() {
                                 );
                               case 'dealOwner':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Deal Owner</span>
                                     <Select value={deal.dealOwner || ''} onValueChange={(value) => updateDeal('dealOwner', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select owner" /></SelectTrigger>
@@ -4001,7 +4001,7 @@ export default function DealDetail() {
                                 );
                               case 'type':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Type</span>
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -4049,7 +4049,7 @@ export default function DealDetail() {
                                 );
                               case 'engagement':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Engagement</span>
                                     <Select value={deal.engagementType} onValueChange={(value: EngagementType) => updateDeal('engagementType', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue /></SelectTrigger>
@@ -4063,7 +4063,7 @@ export default function DealDetail() {
                                 );
                               case 'exclusivity':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Exclusivity</span>
                                     <Select value={deal.exclusivity || ''} onValueChange={(value: ExclusivityType) => updateDeal('exclusivity', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select..." /></SelectTrigger>
@@ -4077,7 +4077,7 @@ export default function DealDetail() {
                                 );
                               case 'companyUrl':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Company URL</span>
                                     <DebouncedInput
                                       value={deal.companyUrl || ''}
@@ -4089,7 +4089,7 @@ export default function DealDetail() {
                                 );
                               case 'businessModel':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Business Model</span>
                                     <Select value={deal.businessModel || ''} onValueChange={(value) => updateDeal('businessModel', value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select industry..." /></SelectTrigger>
@@ -4115,7 +4115,7 @@ export default function DealDetail() {
                               }
                               case 'referralSource':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Referral Source</span>
                                     <ReferralSourceContactInput
                                       value={
@@ -4145,7 +4145,7 @@ export default function DealDetail() {
                                 );
                               case 'analyst':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Analyst</span>
                                     <Select value={deal.analyst || ''} onValueChange={(value: string) => updateDeal('analyst', value === '__none__' ? '' : value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select analyst..." /></SelectTrigger>
@@ -4162,7 +4162,7 @@ export default function DealDetail() {
                                 );
                               case 'sourcedVia':
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                  <div key={fieldId} className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                     <span className="text-muted-foreground text-sm">Sourced Via</span>
                                     <Select value={deal.sourcedVia || ''} onValueChange={(value: string) => updateDeal('sourcedVia', value === '__none__' ? '' : value)}>
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select source..." /></SelectTrigger>
@@ -4208,21 +4208,21 @@ export default function DealDetail() {
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Hours */}
                                         <div className="space-y-3 min-w-0">
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Pre-Signing</span>
                                             <DebouncedInput type="number" step="0.25" value={deal.preSigningHours ?? ''} onChange={(value) => updateDeal('preSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Post-Signing</span>
                                             <DebouncedInput type="number" step="0.25" value={deal.postSigningHours ?? ''} onChange={(value) => updateDeal('postSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Total Hours</span>
                                             <span className="text-sm font-medium h-8 flex items-center">
                                               {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
                                             </span>
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Revenue / Hour</span>
                                             <span className="text-sm font-medium h-8 flex items-center">
                                               {(() => {
@@ -4237,7 +4237,7 @@ export default function DealDetail() {
                                         {/* Fees */}
                                         <div className="space-y-3 min-w-0">
                                           {feesVisibility.retainerEnabled && (
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-retainer">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2" data-testid="fee-retainer">
                                             <span className="text-muted-foreground text-sm">Retainer Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -4255,7 +4255,7 @@ export default function DealDetail() {
                                           </div>
                                           )}
                                           {feesVisibility.milestoneEnabled && (
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-milestone">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2" data-testid="fee-milestone">
                                             <span className="text-muted-foreground text-sm">Milestone Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -4272,7 +4272,7 @@ export default function DealDetail() {
                                             </div>
                                           </div>
                                           )}
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Success Fee %</span>
                                             <div className="flex items-center gap-2">
                                               <div className="relative w-16 shrink-0">
@@ -4308,7 +4308,7 @@ export default function DealDetail() {
                                               </Tooltip>
                                             </div>
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-total">
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2" data-testid="fee-total">
                                             <span className="text-muted-foreground text-sm">Total Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -4415,7 +4415,7 @@ export default function DealDetail() {
                                           }
                                         />
                                       </div>
-                                      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+                                      <div className="flex flex-col gap-1 md:grid md:grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] md:items-center md:gap-2 min-w-0">
                                         <span className="text-muted-foreground text-sm break-words">One-Time Revenue</span>
                                         <div
                                           className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
