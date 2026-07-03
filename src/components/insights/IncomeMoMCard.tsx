@@ -360,17 +360,79 @@ export function IncomeMoMCard() {
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,0.15)" }}
-                  contentStyle={{
-                    background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    color: "rgb(220,235,255)",
+                  content={(props: any) => {
+                    const payload = props?.payload?.[0]?.payload as
+                      | (typeof chartData)[number]
+                      | undefined;
+                    if (!payload) return null;
+                    const idx = chartData.findIndex((d) => d.key === payload.key);
+                    const prevMoMo = idx > 0 ? chartData[idx - 1] : null;
+                    const cur = Number(payload.income ?? 0);
+                    const prior = Number(payload.priorYear ?? 0);
+                    const yoyDelta = cur - prior;
+                    const yoyPct = prior !== 0 ? (yoyDelta / Math.abs(prior)) * 100 : null;
+                    const prevCur = prevMoMo ? Number(prevMoMo.income ?? 0) : null;
+                    const momDelta = prevCur !== null ? cur - prevCur : null;
+                    const momPct =
+                      prevCur !== null && prevCur !== 0
+                        ? ((cur - prevCur) / Math.abs(prevCur)) * 100
+                        : null;
+                    const deltaColor = (n: number | null) =>
+                      n === null
+                        ? "rgba(220,235,255,0.65)"
+                        : n >= 0
+                          ? "hsl(142 71% 60%)"
+                          : "hsl(0 84% 68%)";
+                    const fmtDelta = (n: number | null) =>
+                      n === null ? "—" : `${n >= 0 ? "+" : ""}${fmtUSD(n)}`;
+                    const fmtPct = (n: number | null) =>
+                      n === null ? "—" : `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
+                    return (
+                      <div
+                        style={{
+                          background: "rgba(10,30,55,0.95)",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          borderRadius: 6,
+                          padding: "8px 10px",
+                          fontSize: 12,
+                          color: "rgb(220,235,255)",
+                          minWidth: 200,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>{payload.label}</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <span style={{ color: "rgba(220,235,255,0.75)" }}>{activeMetric.label}</span>
+                          <span style={{ fontWeight: 600 }}>{fmtUSD(cur)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <span style={{ color: "rgba(220,235,255,0.75)" }}>Prior year</span>
+                          <span>{fmtUSD(prior)}</span>
+                        </div>
+                        <div
+                          style={{
+                            borderTop: "1px solid rgba(255,255,255,0.1)",
+                            marginTop: 6,
+                            paddingTop: 6,
+                            display: "grid",
+                            rowGap: 3,
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <span style={{ color: "rgba(220,235,255,0.75)" }}>YoY Δ</span>
+                            <span style={{ color: deltaColor(yoyDelta), fontWeight: 600 }}>
+                              {fmtDelta(yoyDelta)} ({fmtPct(yoyPct)})
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <span style={{ color: "rgba(220,235,255,0.75)" }}>MoM Δ</span>
+                            <span style={{ color: deltaColor(momDelta), fontWeight: 600 }}>
+                              {fmtDelta(momDelta)} ({fmtPct(momPct)})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
                   }}
-                  formatter={(v: number, n: string) => [
-                    fmtUSD(v),
-                    n === "income" ? activeMetric.label : "Prior year same month",
-                  ]}
                 />
                 <Legend
                   wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
