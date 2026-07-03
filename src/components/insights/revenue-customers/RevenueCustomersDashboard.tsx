@@ -12,7 +12,6 @@ const FinServTTMTop5CustomersCard = lazy(() => import('../FinServTTMTop5Customer
 const TotalIncomeRolling12MoCard = lazy(() => import('../TotalIncomeRolling12MoCard').then(m => ({ default: m.TotalIncomeRolling12MoCard })));
 const IncomeVsCOGSRolling12MoCard = lazy(() => import('../IncomeVsCOGSRolling12MoCard').then(m => ({ default: m.IncomeVsCOGSRolling12MoCard })));
 const IncomeMoMCard = lazy(() => import('../IncomeMoMCard').then(m => ({ default: m.IncomeMoMCard })));
-const IncomeTop5CustomersMoMCard = lazy(() => import('../IncomeTop5CustomersMoMCard').then(m => ({ default: m.IncomeTop5CustomersMoMCard })));
 const FinServTopCustomersCard = lazy(() => import('../FinServTopCustomersCard').then(m => ({ default: m.FinServTopCustomersCard })));
 const IncomeByProductServiceCard = lazy(() => import('../IncomeByProductServiceCard').then(m => ({ default: m.IncomeByProductServiceCard })));
 
@@ -36,7 +35,6 @@ export function RevenueCustomersDashboard() {
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDChangeByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTTMTop5CustomersCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeMoMCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeTop5CustomersMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTopCustomersCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><IncomeByProductServiceCard /></div></Suspense>
     </div>
