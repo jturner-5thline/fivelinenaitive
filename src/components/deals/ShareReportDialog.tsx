@@ -320,7 +320,7 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
       const html = assembleEmailHtml({ introHtml, outroHtml, grouped, statusTexts, stageTitles });
       const text = stripHtml(html);
       const { data, error } = await supabase.functions.invoke('share-pipeline-report', {
-        body: { to: toList, cc: ccList, subject: subject.trim(), body: text, bodyHtml: html },
+        body: { to: toList, cc: ccList, subject: subject.trim(), body: text, bodyHtml: html, pipelineName: pipelineName ?? null },
       });
       if (error || (data as any)?.error) {
         throw new Error((error as any)?.message || (data as any)?.error || 'Failed to send');

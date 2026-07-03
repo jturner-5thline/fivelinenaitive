@@ -14,6 +14,7 @@ interface Payload {
   subject: string;
   body: string; // plain text, newlines preserved
   bodyHtml?: string; // optional pre-rendered HTML from rich text editor
+  pipelineName?: string | null;
 }
 
 function escapeHtml(s: string) {
@@ -107,6 +108,24 @@ serve(async (req) => {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Persist the sent report so it can be surfaced as a drill-down from
+    // the "Deals by Status" chart. Failures here should not fail the send.
+    try {
+      await sb.from("shared_pipeline_reports").insert({
+        sent_by: user.id,
+        sender_name: fromName,
+        sender_email: user.email ?? null,
+        subject,
+        body_text: body,
+        body_html: html,
+        recipients: to,
+        cc,
+        pipeline_name: payload.pipelineName ?? null,
+      });
+    } catch (persistErr) {
+      console.error("share-pipeline-report persist error:", persistErr);
     }
 
     return new Response(JSON.stringify({ ok: true, id: (sent as any)?.data?.id ?? null }), {
