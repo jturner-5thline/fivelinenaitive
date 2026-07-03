@@ -136,11 +136,38 @@ export function IncomeYTDByEntityCard() {
     },
   });
 
+  // Secondary source: invoice-based totals, matching the "Total Income" card
+  // exactly (sum of quickbooks_invoices.total_amt by month across the same
+  // four realms). Used only when the Total toggle + Revenue metric are active.
+  const { data: invoiceTotals } = useQuery({
+    queryKey: ["income-ytd-by-entity-invoice-totals", user?.id, rangeStart, rangeEnd],
+    enabled: !!user,
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("quickbooks_invoices")
+        .select("txn_date, total_amt")
+        .in("realm_id", realmIds)
+        .gte("txn_date", rangeStart)
+        .lte("txn_date", rangeEnd);
+      if (error) throw error;
+      const totals: Record<string, number> = {};
+      for (const r of rows ?? []) {
+        if (!r.txn_date) continue;
+        const d = new Date(r.txn_date);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        totals[k] = (totals[k] ?? 0) + Number(r.total_amt ?? 0);
+      }
+      return totals;
+    },
+  });
+
   const chartData = useMemo(() => {
     const monthly = data?.monthly;
     const running: Record<string, number> = {};
     for (const e of ENTITIES) running[e.realmId] = 0;
     let runningTotal = 0;
+    const useInvoiceTotals = viewMode === "total" && metric === "revenue";
     return months.map((mo) => {
       const row: Record<string, number | string> = { month: mo.label };
       let monthTotal = 0;
@@ -154,6 +181,9 @@ export function IncomeYTDByEntityCard() {
           row[e.label] = amt;
         }
       }
+      if (useInvoiceTotals) {
+        monthTotal = invoiceTotals?.[mo.key] ?? 0;
+      }
       if (cumulative) {
         runningTotal += monthTotal;
         row["Total Income"] = runningTotal;
@@ -162,7 +192,7 @@ export function IncomeYTDByEntityCard() {
       }
       return row;
     });
-  }, [data, months, cumulative, activeMetric.field]);
+  }, [data, invoiceTotals, months, cumulative, activeMetric.field, viewMode, metric]);
 
   const hasAnyData = chartData.some((row) =>
     viewMode === "total"
