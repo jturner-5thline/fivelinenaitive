@@ -3412,6 +3412,42 @@ export type Database = {
           },
         ]
       }
+      claap_api_usage: {
+        Row: {
+          calls_made: number
+          created_at: string
+          daily_limit: number
+          first_429_at: string | null
+          last_429_at: string | null
+          last_call_at: string | null
+          reset_at: string
+          updated_at: string
+          usage_date: string
+        }
+        Insert: {
+          calls_made?: number
+          created_at?: string
+          daily_limit?: number
+          first_429_at?: string | null
+          last_429_at?: string | null
+          last_call_at?: string | null
+          reset_at?: string
+          updated_at?: string
+          usage_date?: string
+        }
+        Update: {
+          calls_made?: number
+          created_at?: string
+          daily_limit?: number
+          first_429_at?: string | null
+          last_429_at?: string | null
+          last_call_at?: string | null
+          reset_at?: string
+          updated_at?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       claap_integration_config: {
         Row: {
           company_id: string
@@ -4040,6 +4076,8 @@ export type Database = {
           created_at: string
           ended_at: string | null
           external_id: string
+          hydrated_at: string | null
+          hydration_complete: boolean
           id: string
           key_takeaways: Json
           last_scored_at: string | null
@@ -4050,6 +4088,8 @@ export type Database = {
           organizer_email: string | null
           participants: Json
           recording_url: string | null
+          refresh_priority: string
+          refresh_requested_at: string | null
           source_payload: Json | null
           started_at: string | null
           status: string
@@ -4069,6 +4109,8 @@ export type Database = {
           created_at?: string
           ended_at?: string | null
           external_id: string
+          hydrated_at?: string | null
+          hydration_complete?: boolean
           id?: string
           key_takeaways?: Json
           last_scored_at?: string | null
@@ -4079,6 +4121,8 @@ export type Database = {
           organizer_email?: string | null
           participants?: Json
           recording_url?: string | null
+          refresh_priority?: string
+          refresh_requested_at?: string | null
           source_payload?: Json | null
           started_at?: string | null
           status?: string
@@ -4098,6 +4142,8 @@ export type Database = {
           created_at?: string
           ended_at?: string | null
           external_id?: string
+          hydrated_at?: string | null
+          hydration_complete?: boolean
           id?: string
           key_takeaways?: Json
           last_scored_at?: string | null
@@ -4108,6 +4154,8 @@ export type Database = {
           organizer_email?: string | null
           participants?: Json
           recording_url?: string | null
+          refresh_priority?: string
+          refresh_requested_at?: string | null
           source_payload?: Json | null
           started_at?: string | null
           status?: string
@@ -28280,9 +28328,30 @@ export type Database = {
       claap_assert_prefill_examples: { Args: never; Returns: undefined }
       claap_assert_tenant_isolation: { Args: never; Returns: Json }
       claap_link_orphan_recordings: { Args: never; Returns: Json }
+      claap_mark_rate_limited: { Args: never; Returns: undefined }
       claap_mark_unrelated: {
         Args: { p_entity_type: string; p_recording_id: string }
         Returns: undefined
+      }
+      claap_quota_status: {
+        Args: never
+        Returns: {
+          calls_made: number
+          daily_limit: number
+          first_429_at: string
+          out_of_quota: boolean
+          protect_mode: boolean
+          reset_at: string
+          usage_date: string
+        }[]
+      }
+      claap_record_api_call: {
+        Args: { _count?: number }
+        Returns: {
+          calls_made: number
+          daily_limit: number
+          protect_mode: boolean
+        }[]
       }
       claap_reject_suggestion: {
         Args: { p_candidate_id: string; p_reason?: string }

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { shouldDefer, getQuotaStatus } from "../_shared/claap-quota.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -431,6 +432,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Backfill is LOW-priority. Bail out early if quota-protect mode is on so
+    // we don't burn the daily budget on historical recordings.
+    const _gate = await shouldDefer("low");
+    if (_gate.defer) {
+      return new Response(JSON.stringify({
+        ok: false, deferred: true,
+        reason: _gate.quota.outOfQuota ? "out_of_quota" : "quota_protect",
+        quota: _gate.quota,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const companyId = body.company_id;
     let internalDomains = ["5thlinefinancing.com", "5thline.co"];
     let minDurationSeconds = 300;
@@ -771,7 +783,22 @@ Deno.serve(async (req) => {
         }
 
         let transcript: string | null = null;
+
+        // Hydrate-once: if we already stored a transcript for this recording,
+        // skip the Claap fetch entirely.
+        const { data: existingRec } = await supabaseAdmin
+          .from("claap_recordings")
+          .select("id, hydration_complete, transcript_available")
+          .eq("external_id", claapId)
+          .maybeSingle();
+        const alreadyHydrated = !!existingRec?.hydration_complete;
+
+        // Also stop calling Claap if quota flipped mid-run.
+        const _midQuota = await getQuotaStatus();
+        const _canCall = !alreadyHydrated && !_midQuota.outOfQuota;
+
         try {
+         if (_canCall) {
           const txResp = await fetch(`https://api.claap.io/v1/recordings/${claapId}/transcript?format=text`, {
             headers: { "X-Claap-Key": claapApiKey, "Content-Type": "application/json" },
           });
@@ -783,9 +810,16 @@ Deno.serve(async (req) => {
             } else {
               transcript = await txResp.text();
             }
+            await supabaseAdmin.rpc("claap_record_api_call", { _count: 1 });
+          } else if (txResp.status === 429) {
+            await supabaseAdmin.rpc("claap_mark_rate_limited");
+            await supabaseAdmin.rpc("claap_record_api_call", { _count: 1 });
+            await txResp.text();
           } else {
             await txResp.text();
+            await supabaseAdmin.rpc("claap_record_api_call", { _count: 1 });
           }
+         }
         } catch (e) {
           console.error(`Failed to fetch transcript for ${claapId}:`, e);
         }
