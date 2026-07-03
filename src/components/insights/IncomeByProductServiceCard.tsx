@@ -19,6 +19,7 @@ import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContex
 import { useTimeframeRange } from "./useTimeframeRange";
 import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import { ChartSwap } from "./ChartSwap";
+import { usePersistentChartType } from "@/hooks/usePersistentChartType";
 import {
   Dialog,
   DialogContent,

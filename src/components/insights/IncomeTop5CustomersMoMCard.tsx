@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChartTypeToggle } from "./ChartTypeToggle";
 import { ChartSwap } from "./ChartSwap";
+import { usePersistentChartType } from "@/hooks/usePersistentChartType";
 import { useTimeframeRange } from "./useTimeframeRange";
 
 /**
@@ -147,7 +148,7 @@ export function IncomeTop5CustomersMoMCard() {
     prior: r.prior,
   }));
   const hasAny = rows.length > 0;
-  const [chartType, setChartType] = useState<"bar" | "line">("bar");
+  const [chartType, setChartType] = usePersistentChartType<"bar" | "line">("incomeTop5CustomersMoM", "bar");
 
   return (
     <div
