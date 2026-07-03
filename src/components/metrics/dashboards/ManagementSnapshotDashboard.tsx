@@ -838,7 +838,7 @@ export function ManagementSnapshotDashboard({
                       entityFilter={props.entityFilter}
                       isEditMode={isEditMode}
                       selectedPeriod={selectedQuarter}
-                      onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue' })}
+                      onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue', kind: 'total-revenue' })}
                     />
                   ) : cardId === 'avg-rev-per-client' ? (
                     <AvgRevenuePerClientWidget />
