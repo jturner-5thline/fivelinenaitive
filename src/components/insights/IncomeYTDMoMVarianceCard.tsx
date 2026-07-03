@@ -137,7 +137,7 @@ export function IncomeYTDMoMVarianceCard() {
 
   return (
     <div
-      className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
+      className="w-full h-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
         background: "rgba(255,255,255,0.04)",
         border: "1px solid rgba(255,255,255,0.08)",
