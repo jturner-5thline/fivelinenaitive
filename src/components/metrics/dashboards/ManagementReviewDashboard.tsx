@@ -1749,7 +1749,25 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 : 'Quarterly Revenue Growth (YoY)'
             }
             headerExtra={
-              <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {trendMode !== 'quarterly-yoy' && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setShowTrendDelta(v => !v); }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    title="Toggle period-over-period change line ($ and %)"
+                    style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase',
+                      padding: '3px 9px', borderRadius: 999, cursor: 'pointer',
+                      border: '1px solid ' + (showTrendDelta ? 'hsl(38, 92%, 62%)' : 'rgba(255,255,255,0.12)'),
+                      color: showTrendDelta ? 'hsl(38, 92%, 62%)' : 'rgba(255,255,255,0.75)',
+                      background: showTrendDelta ? 'hsla(38, 92%, 62%, 0.12)' : 'rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    Δ Trend
+                  </button>
+                )}
+                <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {(['ttm', 'monthly', 'quarterly-yoy'] as const).map(m => (
                   <button
                     key={m}
@@ -1766,6 +1784,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     {m === 'ttm' ? 'TTM' : m === 'monthly' ? 'Monthly' : 'Quarterly Growth'}
                   </button>
                 ))}
+                </div>
               </div>
             }
           >
