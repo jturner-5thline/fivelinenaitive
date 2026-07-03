@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 const IncomeYTDMoMVarianceCard = lazy(() => import('../IncomeYTDMoMVarianceCard').then(m => ({ default: m.IncomeYTDMoMVarianceCard })));
 const IncomeYTDByEntityCard = lazy(() => import('../IncomeYTDByEntityCard').then(m => ({ default: m.IncomeYTDByEntityCard })));
 const YTDIncomeBreakdownByEntityCard = lazy(() => import('../YTDIncomeBreakdownByEntityCard').then(m => ({ default: m.YTDIncomeBreakdownByEntityCard })));
-const IncomeYTDChangeByEntityCard = lazy(() => import('../IncomeYTDChangeByEntityCard').then(m => ({ default: m.IncomeYTDChangeByEntityCard })));
 const FinServTTMTop5CustomersCard = lazy(() => import('../FinServTTMTop5CustomersCard').then(m => ({ default: m.FinServTTMTop5CustomersCard })));
 const TotalIncomeRolling12MoCard = lazy(() => import('../TotalIncomeRolling12MoCard').then(m => ({ default: m.TotalIncomeRolling12MoCard })));
 const IncomeMoMCard = lazy(() => import('../IncomeMoMCard').then(m => ({ default: m.IncomeMoMCard })));
@@ -30,7 +29,6 @@ export function RevenueCustomersDashboard() {
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDMoMVarianceCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><YTDIncomeBreakdownByEntityCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDChangeByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTTMTop5CustomersCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTopCustomersCard /></div></Suspense>
