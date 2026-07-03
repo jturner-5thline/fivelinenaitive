@@ -75,6 +75,79 @@ function fmtUSDFull(n: number): string {
   });
 }
 
+function BreakdownTooltip({
+  active,
+  payload,
+  label,
+  metricLabel,
+  showBreakdown,
+  breakdown,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string; payload?: { monthKey?: string } }>;
+  label?: string;
+  metricLabel: string;
+  showBreakdown: boolean;
+  breakdown: Record<BucketKey, Record<string, Array<{ product: string; total: number }>>> | undefined;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const monthKey = payload[0]?.payload?.monthKey;
+  return (
+    <div
+      style={{
+        background: "rgba(10,30,55,0.96)",
+        border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 6,
+        padding: "8px 10px",
+        fontSize: 12,
+        color: "rgb(220,235,255)",
+        maxWidth: 280,
+        boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      {payload.map((p) => {
+        const bucket = p.name as BucketKey;
+        const items = showBreakdown && monthKey ? breakdown?.[bucket]?.[monthKey] ?? [] : [];
+        const top = items.slice(0, 5);
+        const rest = items.slice(5);
+        const restTotal = rest.reduce((s, r) => s + r.total, 0);
+        return (
+          <div key={bucket} style={{ marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: p.color }} />
+                <span style={{ color: "rgba(255,255,255,0.85)" }}>{bucket}</span>
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>· {metricLabel}</span>
+              </span>
+              <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtUSDFull(Number(p.value ?? 0))}</span>
+            </div>
+            {showBreakdown && top.length > 0 && (
+              <div style={{ marginTop: 4, paddingLeft: 14 }}>
+                {top.map((it) => (
+                  <div key={it.product} style={{ display: "flex", justifyContent: "space-between", gap: 12, color: "rgba(255,255,255,0.75)", fontSize: 11 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.product}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtUSDFull(it.total)}</span>
+                  </div>
+                ))}
+                {rest.length > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, color: "rgba(255,255,255,0.5)", fontSize: 11 }}>
+                    <span>+ {rest.length} more</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums" }}>{fmtUSDFull(restTotal)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {showBreakdown && monthKey && !(breakdown?.FinServ?.[monthKey] || breakdown?.Debt?.[monthKey]) && (
+        <div style={{ marginTop: 6, color: "rgba(255,255,255,0.5)", fontSize: 11 }}>No invoice detail for this month.</div>
+      )}
+    </div>
+  );
+}
+
 interface InvoicingTypeRow {
   product: string;
   total: number;
