@@ -1,10 +1,15 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
-  claapGetRecording,
   extractClaapExternalId,
   hasClaapToken,
 } from "../_shared/claap-api.ts";
+import {
+  claapFetchRecording,
+  markHydrated,
+  markRateLimitedRow,
+  CallPriority,
+} from "../_shared/claap-quota.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -18,6 +23,10 @@ Deno.serve(async (req) => {
 
   const recordingId = (body.recording_id as string | undefined) || null;
   const externalIdInput = (body.external_id as string | undefined) || (body.url as string | undefined) || null;
+  // Callers can request priority: user-initiated links/refreshes should send
+  // "high"; scheduled backfill sends "low". Default is "normal".
+  const priority = ((body.priority as string) || "normal") as CallPriority;
+  const force = body.force === true;
 
   if (!hasClaapToken()) {
     return new Response(JSON.stringify({
@@ -34,7 +43,7 @@ Deno.serve(async (req) => {
   if (recordingId) {
     const { data, error } = await supabase
       .from("claap_recordings")
-      .select("id, org_company_id, external_id, title")
+      .select("id, org_company_id, external_id, title, hydration_complete")
       .eq("id", recordingId)
       .maybeSingle();
     if (error) {
@@ -54,14 +63,42 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  let normalized;
-  try {
-    normalized = await claapGetRecording(externalId);
-  } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: String((e as Error).message || e) }),
+  const fetched = await claapFetchRecording({
+    externalId,
+    recordingRowId: row?.id ?? null,
+    priority,
+    force,
+  });
+
+  if (fetched.skipped === "already_hydrated") {
+    return new Response(JSON.stringify({
+      ok: true, skipped: "already_hydrated", recording_id: row?.id ?? null,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (fetched.skipped === "out_of_quota" || fetched.skipped === "quota_protect") {
+    // Mark a pending refresh so it runs after the quota resets.
+    if (row?.id) {
+      await supabase.from("claap_recordings").update({
+        refresh_requested_at: new Date().toISOString(),
+        refresh_priority: priority,
+      }).eq("id", row.id);
+    }
+    return new Response(JSON.stringify({
+      ok: false, deferred: true, reason: fetched.skipped, quota: fetched.quota,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (fetched.rateLimited) {
+    if (row?.id) await markRateLimitedRow(row.id, fetched.error || "429");
+    return new Response(JSON.stringify({
+      ok: false, rate_limited: true, error: fetched.error, quota: fetched.quota,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (!fetched.ok || !fetched.recording) {
+    return new Response(JSON.stringify({ ok: false, error: fetched.error || "claap_recording_not_found", external_id: externalId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  const normalized = fetched.recording;
   if (!normalized) {
     return new Response(JSON.stringify({ ok: false, error: "claap_recording_not_found", external_id: externalId }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -92,6 +129,7 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     updated = data;
+    await markHydrated(row.id);
   } else {
     // No DB row yet — try to find by external_id across companies.
     const { data, error } = await supabase
