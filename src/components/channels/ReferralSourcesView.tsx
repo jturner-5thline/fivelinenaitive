@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDealReferralSources, type DealReferralSourceEntry } from '@/hooks/useDealReferralSources';
 import { useQuery } from '@tanstack/react-query';
@@ -165,13 +165,16 @@ function ExpandedDeals({ entry }: { entry: DealReferralSourceEntry }) {
   );
 }
 
-export function ReferralSourcesView({ hideKpis = false }: { hideKpis?: boolean } = {}) {
+export function ReferralSourcesView({ hideKpis = false, initialSearch }: { hideKpis?: boolean; initialSearch?: string } = {}) {
   const [channelFilter, setChannelFilter] = useState<string[]>([]);
   const [pipelineFilter, setPipelineFilter] = useState<'all' | 'active' | 'in-development'>('all');
   const [tierFilter, setTierFilter] = useState<TierValue[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editTarget, setEditTarget] = useState<DealReferralSourceEntry | null>(null);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(initialSearch || '');
+  useEffect(() => {
+    if (typeof initialSearch === 'string') setSearch(initialSearch);
+  }, [initialSearch]);
   const { sortField, sortDir, handleSort } = useTriStateSort({ field: 'totalVolume', direction: 'desc' });
 
   const { referralSources, isLoading, totalCount, totalVolume, totalDeals, companyOptions } = useDealReferralSources({
