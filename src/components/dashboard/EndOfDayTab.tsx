@@ -317,40 +317,6 @@ function EventTile({
         </div>
       </div>
 
-      {/* hover actions */}
-      <div
-        className={cn(
-          'flex items-center gap-0.5 shrink-0',
-          active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 transition-opacity',
-        )}
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/15"
-              onClick={(e) => { e.stopPropagation(); onResolve(); }}
-              aria-label="Mark resolved"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Mark resolved (E)</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-white/70 hover:text-rose-300 hover:bg-rose-500/15"
-              onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-              aria-label="Dismiss"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Dismiss (D)</TooltipContent>
-        </Tooltip>
-      </div>
     </div>
   );
 }
