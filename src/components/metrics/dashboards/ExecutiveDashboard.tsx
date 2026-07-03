@@ -159,6 +159,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
   }));
 
   return (
+    <>
     <GlassCard
       interactive
       className="h-full flex flex-col cursor-pointer"
@@ -258,8 +259,9 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           })}
         </ul>
       </GlassCardBody>
-      <LatestShareReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </GlassCard>
+    <LatestShareReportDialog open={reportOpen} onOpenChange={setReportOpen} />
+    </>
   );
 }
 
