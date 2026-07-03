@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Select,
   SelectContent,
@@ -181,11 +183,67 @@ export function FinServMrrField({
 
   const isCalc = mode === 'calculated';
 
+  // Load the most recent MRR expansion/contraction change to surface a tag
+  // beside the MRR value. Refreshes when mrr changes so a fresh edit updates
+  // the badge immediately after the log entry is written.
+  const [lastChange, setLastChange] = useState<{
+    type: 'expansion' | 'contraction';
+    delta: number;
+    deltaPct: number | null;
+    at: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!dealId) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from('activity_logs')
+        .select('activity_type, metadata, created_at')
+        .eq('deal_id', dealId)
+        .in('activity_type', ['mrr_expansion', 'mrr_contraction'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (cancelled) return;
+      const row = data?.[0];
+      if (!row) { setLastChange(null); return; }
+      const meta = (row.metadata || {}) as Record<string, any>;
+      setLastChange({
+        type: row.activity_type === 'mrr_expansion' ? 'expansion' : 'contraction',
+        delta: Number(meta.delta ?? 0),
+        deltaPct: meta.deltaPct == null ? null : Number(meta.deltaPct),
+        at: row.created_at,
+      });
+    };
+    load();
+    // Refresh shortly after an MRR value change so newly-logged entry appears.
+    const t = setTimeout(load, 1200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [dealId, mrr]);
+
   return (
     <div className="space-y-2 min-w-0 w-full">
       {/* Top row: label + mode select + value, aligned to the Deal Info grid */}
       <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
-        <span className="text-muted-foreground text-sm break-words">MRR</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-muted-foreground text-sm break-words">MRR</span>
+          {lastChange && (
+            <Badge
+              variant="outline"
+              className={
+                lastChange.type === 'expansion'
+                  ? 'h-5 px-1.5 gap-1 text-[10px] border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                  : 'h-5 px-1.5 gap-1 text-[10px] border-rose-500/40 bg-rose-500/10 text-rose-400'
+              }
+              title={`${lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'} of ${fmtUSD(Math.abs(lastChange.delta))}${lastChange.deltaPct != null ? ` (${lastChange.deltaPct > 0 ? '+' : ''}${lastChange.deltaPct.toFixed(1)}%)` : ''} on ${new Date(lastChange.at).toLocaleDateString()}`}
+            >
+              {lastChange.type === 'expansion'
+                ? <TrendingUp className="h-3 w-3" />
+                : <TrendingDown className="h-3 w-3" />}
+              {lastChange.type === 'expansion' ? 'Expansion' : 'Contraction'}
+            </Badge>
+          )}
+        </div>
         <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2 min-w-0">
           <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
             <SelectTrigger className="h-8 text-sm">

@@ -2917,7 +2917,7 @@ export default function DealDetail() {
   };
 
   // Fields that should log activity (significant changes only)
-  const ACTIVITY_LOG_FIELDS: (keyof Deal)[] = ['status', 'stage', 'value', 'manager', 'dealOwner', 'engagementType', 'exclusivity', 'dealTypes'];
+  const ACTIVITY_LOG_FIELDS: (keyof Deal)[] = ['status', 'stage', 'value', 'manager', 'dealOwner', 'engagementType', 'exclusivity', 'dealTypes', 'mrr' as keyof Deal];
   
   const updateDeal = (field: keyof Deal, value: string | number | string[] | boolean | Referrer | null | undefined) => {
     setDeal(prev => {
@@ -2967,6 +2967,31 @@ export default function DealDetail() {
             field,
             oldValue: String(oldValue), 
             newValue: String(value) 
+          });
+        } else if (field === 'mrr') {
+          const oldNum = Number(oldValue ?? 0) || 0;
+          const newNum = Number(value ?? 0) || 0;
+          const delta = newNum - oldNum;
+          const deltaPct = oldNum !== 0 ? (delta / oldNum) * 100 : null;
+          const isExpansion = delta > 0;
+          const isContraction = delta < 0;
+          const activityType = isExpansion
+            ? 'mrr_expansion'
+            : isContraction
+              ? 'mrr_contraction'
+              : 'deal_updated';
+          const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+          const label = isExpansion ? 'Expansion' : isContraction ? 'Contraction' : 'MRR updated';
+          const description = isExpansion || isContraction
+            ? `MRR ${label}: ${fmt(oldNum)} → ${fmt(newNum)} (${delta > 0 ? '+' : ''}${fmt(delta)}${deltaPct !== null ? `, ${delta > 0 ? '+' : ''}${deltaPct.toFixed(1)}%` : ''})`
+            : `MRR updated`;
+          logActivity(activityType, description, {
+            field: 'mrr',
+            oldValue: String(oldNum),
+            newValue: String(newNum),
+            delta,
+            deltaPct,
+            changeType: isExpansion ? 'expansion' : isContraction ? 'contraction' : 'unchanged',
           });
         } else {
           logActivity('deal_updated', `${field.charAt(0).toUpperCase() + field.slice(1)} updated`, { 

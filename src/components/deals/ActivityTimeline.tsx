@@ -3,7 +3,8 @@ import {
   Clock, 
   UserPlus, 
   FileText, 
-  TrendingUp, 
+  TrendingUp,
+  TrendingDown,
   MessageSquare, 
   CheckCircle,
   ArrowRight,
@@ -46,7 +47,7 @@ import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 
 export interface ActivityItem {
   id: string;
-  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed' | 'lender_added' | 'lender_stage_change' | 'lender_substage_change' | 'deal_updated';
+  type: 'status_change' | 'stage_change' | 'note_added' | 'contact_added' | 'value_updated' | 'comment' | 'created' | 'lender_removed' | 'lender_added' | 'lender_stage_change' | 'lender_substage_change' | 'deal_updated' | 'mrr_expansion' | 'mrr_contraction';
   description: string;
   user: string;
   timestamp: string;
@@ -74,6 +75,8 @@ const activityTypeFilters: { value: string; label: string; group?: string }[] = 
   { value: 'stage_change', label: 'Stage Changes' },
   { value: 'deal_updated', label: 'Field Updates' },
   { value: 'value_updated', label: 'Value Updates' },
+  { value: 'mrr_expansion', label: 'MRR Expansion' },
+  { value: 'mrr_contraction', label: 'MRR Contraction' },
   { value: 'lender_added', label: 'Lender Added' },
   { value: 'lender_removed', label: 'Lender Removed' },
   { value: 'lender_stage_change', label: 'Lender Stage Changes' },
@@ -94,6 +97,8 @@ const activityIcons: Record<string, typeof Clock> = {
   note_added: FileText,
   contact_added: UserPlus,
   value_updated: DollarSign,
+  mrr_expansion: TrendingUp,
+  mrr_contraction: TrendingDown,
   comment: MessageSquare,
   created: CheckCircle,
   lender_removed: Trash2,
@@ -118,6 +123,8 @@ const activityColors: Record<string, string> = {
   note_added: 'bg-muted-foreground/20',
   contact_added: 'bg-muted-foreground/20',
   value_updated: 'bg-muted-foreground/20',
+  mrr_expansion: 'bg-emerald-500/20',
+  mrr_contraction: 'bg-rose-500/20',
   comment: 'bg-muted-foreground/20',
   created: 'bg-brand/20',
   lender_removed: 'bg-destructive/20',
@@ -149,6 +156,7 @@ const fieldLabels: Record<string, string> = {
   status: 'Deal Status',
   stage: 'Deal Stage',
   value: 'Deal Value',
+  mrr: 'MRR',
   company: 'Company Name',
   manager: 'Manager',
   dealOwner: 'Deal Owner',
