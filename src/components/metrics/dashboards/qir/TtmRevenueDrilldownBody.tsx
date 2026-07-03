@@ -194,6 +194,8 @@ interface Props {
 export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
   const [granularity, setGranularity] = useState<Granularity>('monthly');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set(['__all__']));
+  const [userTouched, setUserTouched] = useState(false);
 
   const buckets = useMemo(() => buildBuckets(ttmRange.end, granularity), [ttmRange.end, granularity]);
   const rangeStart = buckets[0].start;
@@ -282,6 +284,53 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
     });
   };
 
+  const toggleSeries = (id: string) => {
+    setUserTouched(true);
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.size === 0) next.add('__all__');
+      return next;
+    });
+  };
+
+  // Build available series (entity totals + expanded products) with stable colors.
+  const availableSeries = useMemo(() => {
+    const list: ChartSeries[] = [];
+    list.push({ id: '__all__', label: 'All entities', values: grandBucketTotals, color: '#dde8f8' });
+    entities.forEach((e, i) => {
+      list.push({
+        id: `entity:${e.entity.realmId}`,
+        label: e.entity.label,
+        values: e.bucketTotals,
+        color: SERIES_PALETTE[i % SERIES_PALETTE.length],
+      });
+      if (expanded.has(e.entity.realmId)) {
+        e.products.slice(0, 8).forEach((p, pi) => {
+          list.push({
+            id: `product:${e.entity.realmId}:${p.product}`,
+            label: `${e.entity.label} · ${p.product}`,
+            values: p.bucketTotals,
+            color: SERIES_PALETTE[(i + pi + 3) % SERIES_PALETTE.length],
+          });
+        });
+      }
+    });
+    return list;
+  }, [entities, expanded, grandBucketTotals]);
+
+  // Auto-select newly expanded entities' products until the user takes control.
+  React.useEffect(() => {
+    if (userTouched) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      availableSeries.forEach(s => { if (s.id.startsWith('product:')) next.add(s.id); });
+      return next;
+    });
+  }, [availableSeries, userTouched]);
+
+  const chartSeries = availableSeries.filter(s => selected.has(s.id));
+
   const th: React.CSSProperties = {
     padding: CELL_PAD, fontSize: 9, fontWeight: 700, letterSpacing: '.08em',
     textTransform: 'uppercase', color: 'rgba(160,200,255,0.55)',
@@ -327,6 +376,41 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
           <ToggleBtn value="quarterly" label="Quarterly" />
         </div>
       </div>
+
+      {entities.length > 0 && (
+        <div style={{ padding: '12px 14px', borderBottom: `1px solid ${BORDER}` }}>
+          <MultiLineChart
+            series={chartSeries.length > 0 ? chartSeries : [availableSeries[0]]}
+            labels={buckets.map(b => b.label)}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            {availableSeries.map(s => {
+              const on = selected.has(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleSeries(s.id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '3px 8px', fontSize: 11, borderRadius: 999,
+                    border: `1px solid ${on ? s.color : BORDER}`,
+                    background: on ? `${s.color}22` : 'transparent',
+                    color: on ? '#dde8f8' : 'rgba(200,225,245,0.6)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{
+                    width: 8, height: 8, borderRadius: 2, background: s.color,
+                    opacity: on ? 1 : 0.4, display: 'inline-block',
+                  }} />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div style={{ overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
