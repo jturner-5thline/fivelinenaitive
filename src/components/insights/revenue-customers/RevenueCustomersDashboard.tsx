@@ -21,9 +21,9 @@ function ChartFallback() {
 export function RevenueCustomersDashboard() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 [&>*]:min-w-0">
+          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDMoMVarianceCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><YTDIncomeBreakdownByEntityCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeYTDByEntityCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><FinServTopCustomersCard /></div></Suspense>
     </div>
