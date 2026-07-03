@@ -207,6 +207,22 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
             <X className="h-3 w-3" />
             Dismiss all
           </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-white"
+                  onClick={() => setDialogOpen(true)}
+                  aria-label="Expand suggested tasks"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Expand to manage all</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -215,8 +231,12 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
           <Loader2 className="h-3 w-3 animate-spin" /> Loading suggestions…
         </div>
       ) : (
-        <ul className="space-y-1">
-          {visible.map((s) => {
+        <>
+        <ul className={cn(
+          'space-y-1',
+          visible.length > 2 && expanded && 'max-h-72 overflow-y-auto pr-1',
+        )}>
+          {(visible.length > 2 && !expanded ? visible.slice(0, 2) : visible).map((s) => {
             const isConverted = s.status === 'converted';
             const isDismissed = s.status === 'dismissed';
             const isPending = s.status === 'pending';
