@@ -181,7 +181,7 @@ export function RevenueHistoricalTrend({
   color: string;
 }) {
   const [range, setRange] = useState<RangeMonths>(12);
-  const [chartType, setChartType] = useState<ChartType>('bar');
+  const [chartType, setChartType] = usePersistentChartType<ChartType>(`revenueHistoricalTrend.${variant}`, 'bar');
   const period = useMemo(() => trailingPeriod(range), [range]);
 
   const debt = useQBStackedDebtRevenue(variant === 'debt' ? period : null);
@@ -216,7 +216,7 @@ export function ProfitHistoricalTrend({
   color: string;
 }) {
   const [range, setRange] = useState<RangeMonths>(12);
-  const [chartType, setChartType] = useState<ChartType>('bar');
+  const [chartType, setChartType] = usePersistentChartType<ChartType>(`profitHistoricalTrend.${entityName}`, 'bar');
   const period = useMemo(() => trailingPeriod(range), [range]);
   const { months, isLoading } = useMonthlyEntityProfit(entityName, period.months);
 
