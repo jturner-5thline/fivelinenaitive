@@ -13,6 +13,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,6 +73,21 @@ function fmtUSD(n: number): string {
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
+
+function fmtCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${(abs / 1_000).toFixed(0)}K`;
+  return `$${abs.toFixed(0)}`;
+}
+
+const PIE_SLICE_COLORS = [
+  "hsl(200 90% 60%)",
+  "hsl(142 71% 50%)",
+  "hsl(45 90% 60%)",
+  "hsl(280 70% 65%)",
+  "hsl(15 85% 60%)",
+];
 
 type Row = {
   customerId: string;
@@ -323,7 +341,9 @@ export function FinServTopCustomersCard() {
           </div>
         ) : (
           <>
-            <div className="h-[300px] w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+              <div className="min-w-0 space-y-3">
+                <div className="h-[300px] w-full">
               <ChartSwap chartType={chartType}>
               <ResponsiveContainer width="100%" height="100%">
                 {chartType === "bar" ? (
@@ -415,9 +435,9 @@ export function FinServTopCustomersCard() {
                 )}
               </ResponsiveContainer>
               </ChartSwap>
-            </div>
+                </div>
 
-            <div className="w-full overflow-x-auto">
+                <div className="w-full overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr
@@ -511,6 +531,68 @@ export function FinServTopCustomersCard() {
                   })}
                 </tbody>
               </table>
+                </div>
+              </div>
+
+              <div className="min-w-0 h-[560px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Tooltip
+                      contentStyle={{
+                        background: "rgba(10,30,55,0.95)",
+                        border: "1px solid rgba(255,255,255,0.15)",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        color: "rgb(220,235,255)",
+                      }}
+                      formatter={(value: number, name) => {
+                        const totalCur = rows.reduce((a, r) => a + r.current, 0);
+                        const pct = totalCur > 0 ? (Number(value) / totalCur) * 100 : 0;
+                        return [`${fmtUSD(Number(value))} (${pct.toFixed(1)}%)`, name as string];
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
+                      formatter={(value, entry) => {
+                        const v = (entry?.payload as { value?: number } | undefined)?.value ?? 0;
+                        const totalCur = rows.reduce((a, r) => a + r.current, 0);
+                        const pct = totalCur > 0 ? (v / totalCur) * 100 : 0;
+                        return (
+                          <span style={{ color: "rgba(220,235,255,0.85)" }}>
+                            {value} · {fmtCompact(v)} ({pct.toFixed(1)}%)
+                          </span>
+                        );
+                      }}
+                    />
+                    <Pie
+                      data={rows.map((r) => ({ name: r.customer, value: r.current, id: r.customerId }))}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="45%"
+                      outerRadius={140}
+                      innerRadius={70}
+                      paddingAngle={2}
+                      stroke="rgba(10,30,55,0.6)"
+                      label={({ name, value }) => `${truncate(String(name), 18)}: ${fmtCompact(Number(value))}`}
+                      labelLine={false}
+                      onClick={(p) => {
+                        const payload = p?.payload as { id?: string; name?: string } | undefined;
+                        if (payload?.id && payload?.name) {
+                          setDrill({ id: payload.id, name: payload.name });
+                        }
+                      }}
+                      cursor="pointer"
+                    >
+                      {rows.map((_, i) => (
+                        <Cell key={i} fill={PIE_SLICE_COLORS[i % PIE_SLICE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </>
         )}
