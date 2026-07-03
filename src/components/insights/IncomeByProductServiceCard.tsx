@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -15,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
 import { useTimeframeRange } from "./useTimeframeRange";
+import { ChartTypeToggle, type ChartType } from "./ChartTypeToggle";
 import {
   Dialog,
   DialogContent,
@@ -86,6 +89,7 @@ export function IncomeByProductServiceCard() {
 
   const [openBucket, setOpenBucket] = useState<BucketKey | null>(null);
   const [metric, setMetric] = useState<MetricKey>("revenue");
+  const [chartType, setChartType] = useState<ChartType>("line");
   const activeMetric = METRICS.find((m) => m.key === metric)!;
 
   // Monthly P&L series (Revenue / GP / OI per entity)
@@ -255,7 +259,9 @@ export function IncomeByProductServiceCard() {
         >
           FinServ vs Debt · {activeMetric.label}
         </div>
-        <span
+        <div className="flex items-center gap-2">
+          <ChartTypeToggle value={chartType} onChange={setChartType} />
+          <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
@@ -263,7 +269,8 @@ export function IncomeByProductServiceCard() {
           {lastSync
             ? `synced ${formatDistanceToNow(new Date(lastSync), { addSuffix: true })}`
             : "—"}
-        </span>
+          </span>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -337,6 +344,7 @@ export function IncomeByProductServiceCard() {
         ) : (
           <div style={{ height: 320 }} className="w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
+              {chartType === "line" ? (
               <LineChart data={chartData} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -386,6 +394,21 @@ export function IncomeByProductServiceCard() {
                   activeDot={{ r: 5 }}
                 />
               </LineChart>
+              ) : (
+              <BarChart data={chartData} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,170,220,0.12)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} tickFormatter={fmtCompact} />
+                <Tooltip
+                  cursor={{ fill: "rgba(255,255,255,0.08)" }}
+                  contentStyle={{ background: "rgba(10,30,55,0.95)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, fontSize: 12, color: "rgb(220,235,255)" }}
+                  formatter={(v: number, name) => [fmtUSDFull(Number(v)), name as string]}
+                />
+                <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }} iconType="circle" />
+                <Bar dataKey="FinServ" fill={BUCKET_COLOR.FinServ} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Debt" fill={BUCKET_COLOR.Debt} radius={[3, 3, 0, 0]} />
+              </BarChart>
+              )}
             </ResponsiveContainer>
           </div>
         )}
