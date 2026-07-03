@@ -49,6 +49,8 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
   const [bulkBusy, setBulkBusy] = useState<null | 'approve' | 'dismiss'>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [outstandingBusyId, setOutstandingBusyId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleMakeOutstanding = async (s: MeetingTaskSuggestion) => {
     if (!linkedDealId) {
