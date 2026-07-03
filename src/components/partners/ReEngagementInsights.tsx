@@ -15,6 +15,7 @@ import { differenceInDays, format } from 'date-fns';
 import { liquidGlassCard, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 import { usePartnerInsightsCounts } from './PartnerInsightsFeed';
+import { ContactLookupDialog } from '@/components/contacts/ContactLookupDialog';
 
 interface StalePartner {
   id: string;
@@ -31,6 +32,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
   const { data: stages = [] } = usePipelineStages();
   const { company } = useCompany();
   const [showAll, setShowAll] = useState(false);
+  const [contactLookup, setContactLookup] = useState<{ name: string } | null>(null);
 
   const { value: thresholds, setValue: setThresholds } = useDashboardPreference<{
     inactivity: number;
@@ -175,7 +177,11 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
           {displayed.map(sp => (
             <div
               key={sp.id}
-              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors`}
+              className={`${liquidGlassCard} flex items-center justify-between px-4 py-3 transition-colors hover:border-primary/30 cursor-pointer`}
+              role="button"
+              tabIndex={0}
+              onClick={() => setContactLookup({ name: sp.name })}
+              onKeyDown={(e) => { if (e.key === 'Enter') setContactLookup({ name: sp.name }); }}
             >
               <div className="flex items-center gap-3 min-w-0">
                 <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
@@ -193,7 +199,7 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
                   variant="ghost"
                   size="sm"
                   className="h-7 text-xs gap-1"
-                  onClick={() => onViewPartner?.(sp.id)}
+                  onClick={(e) => { e.stopPropagation(); onViewPartner?.(sp.id); }}
                 >
                   <Eye className="h-3 w-3" /> View
                 </Button>
@@ -211,6 +217,13 @@ export function ReEngagementInsights({ onViewPartner }: { onViewPartner?: (partn
             </button>
           )}
         </div>
+      )}
+
+      {contactLookup && (
+        <ContactLookupDialog
+          name={contactLookup.name}
+          onClose={() => setContactLookup(null)}
+        />
       )}
     </div>
   );
