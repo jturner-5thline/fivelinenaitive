@@ -646,7 +646,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const chartMode = reportingPeriod?.view === 'quarter' ? 'quarter' : 'rolling';
   const chartWindowLabel = chartMode === 'quarter'
-    ? `${periodLabel} · monthly live data`
+    ? `4 quarters ending ${periodLabel}`
     : `12 months ending ${periodLabel}`;
 
   const monthLabels = revenueSeries.map(point => point.month);
@@ -657,10 +657,35 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // TTM Revenue trend: for each bucket in revenueSeries, plot the trailing
   // 12-month total revenue ending at that bucket's end (sum across all QBO
   // entities). Each point recalculates its own rolling 12-month window.
+  // In quarter view: show current quarter + previous 3 quarters (4 points),
+  // each point = TTM revenue ending at that quarter's end. In month/rolling
+  // view: 12 trailing months ending at period end.
   const ttmTrendSeries = useMemo(() => {
-    const buckets = reportingPeriod?.view === 'quarter'
-      ? buildMonthBuckets(periodRange.start, periodRange.end)
-      : buildTrailingMonthBuckets(periodRange.end, 12);
+    if (reportingPeriod?.view === 'quarter') {
+      const anchor = endOfQuarter(periodRange.end);
+      const buckets = Array.from({ length: 4 }, (_, i) => {
+        const qStart = startOfQuarter(subQuarters(anchor, 3 - i));
+        const qEnd = endOfQuarter(qStart);
+        return {
+          key: format(qStart, "yyyy-'Q'Q"),
+          label: format(qStart, "'Q'Q yy"),
+          start: qStart,
+          end: qEnd,
+        };
+      });
+      return buckets.map((bucket) => {
+        const end = bucket.end;
+        const start = startOfMonth(subMonths(end, 11));
+        const revenue = sumAmountInRange(
+          qbInvoices,
+          { start, end },
+          inv => inv.txn_date,
+          inv => inv.total_amt,
+        );
+        return { key: bucket.key, month: bucket.label, windowStart: start, windowEnd: end, revenue };
+      });
+    }
+    const buckets = buildTrailingMonthBuckets(periodRange.end, 12);
     return buckets.map((bucket) => {
       const end = bucket.end;
       const start = startOfMonth(subMonths(end, 11));
