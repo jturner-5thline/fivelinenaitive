@@ -23,7 +23,7 @@ type NoteRow = {
   updated_at: string;
 };
 
-type DealLite = { id: string; deal_name: string | null };
+type DealLite = { id: string; company: string | null };
 
 function highlight(text: string, query: string) {
   if (!query.trim()) return text;
@@ -94,10 +94,10 @@ export default function MeetingNotesSearch() {
       if (dealIds.length) {
         const { data: dealRows } = await supabase
           .from("deals")
-          .select("id, deal_name")
+          .select("id, company")
           .in("id", dealIds);
         const map: Record<string, string> = {};
-        (dealRows as DealLite[] | null)?.forEach((d) => { map[d.id] = d.deal_name ?? "Untitled deal"; });
+        (dealRows as DealLite[] | null)?.forEach((d) => { map[d.id] = d.company ?? "Untitled deal"; });
         setDeals(map);
       } else {
         setDeals({});
