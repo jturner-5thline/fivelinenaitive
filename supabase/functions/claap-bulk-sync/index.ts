@@ -1,6 +1,13 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { hasClaapToken, claapGetRecording } from "../_shared/claap-api.ts";
+import { hasClaapToken } from "../_shared/claap-api.ts";
+import {
+  claapFetchRecording,
+  markHydrated,
+  markRateLimitedRow,
+  shouldDefer,
+  getQuotaStatus,
+} from "../_shared/claap-quota.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -14,14 +21,15 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  // Recordings missing a summary OR with stale (>24h) sync.
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: stale } = await supabase
-    .from("claap_recordings")
-    .select("id, external_id, title, summary, claap_summary_synced_at")
-    .or(`summary.is.null,claap_summary_synced_at.is.null,claap_summary_synced_at.lt.${cutoff}`)
-    .order("started_at", { ascending: false })
-    .limit(50);
+  // Bulk sync is a LOW-priority job. If we're in quota-protect mode, bail out
+  // early so we don't burn the remaining daily quota on historical backfill.
+  const gate = await shouldDefer("low");
+  if (gate.defer) {
+    return new Response(JSON.stringify({
+      ok: false, deferred: true, reason: gate.quota.outOfQuota ? "out_of_quota" : "quota_protect",
+      quota: gate.quota,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   const results: any[] = [];
 
@@ -30,26 +38,51 @@ Deno.serve(async (req) => {
   //    one INSERT covers everything, then one INSERT for the link rows.
   await supabase.rpc("backfill_claap_recordings_from_meetings");
 
-  // Re-pull the stale list so newly-inserted rows get summaries fetched too.
-  const { data: stale2 } = await supabase
+  // "Hydrate once" — only pick recordings that have NEVER been hydrated (no
+  // stored summary + transcript). We deliberately do NOT include the
+  // "stale >24h" clause any more: once hydrated, Claap is not called again.
+  // Explicit user-triggered refreshes go via `claap-sync-recording-content`
+  // with force=true.
+  const { data: unhydrated } = await supabase
     .from("claap_recordings")
-    .select("id, external_id, title, summary, claap_summary_synced_at")
-    .or(`summary.is.null,claap_summary_synced_at.is.null,claap_summary_synced_at.lt.${cutoff}`)
+    .select("id, external_id, title, hydration_complete, next_sync_at, last_sync_status")
+    .eq("hydration_complete", false)
+    .or("next_sync_at.is.null,next_sync_at.lt." + new Date().toISOString())
     .order("started_at", { ascending: false })
     .limit(40);
-  const toSync = stale2 ?? stale ?? [];
+  const toSync = unhydrated ?? [];
   for (const row of toSync) {
+    // Re-check quota mid-run so we stop the second we cross the threshold.
+    const q = await getQuotaStatus();
+    if (q.outOfQuota) { results.push({ id: row.id, ok: false, deferred: "out_of_quota" }); break; }
     if (!row.external_id) {
       results.push({ id: row.id, ok: false, error: "no_external_id" });
       continue;
     }
-    try {
-      const norm = await claapGetRecording(row.external_id);
-      if (!norm) {
-        results.push({ id: row.id, ok: false, error: "not_found" });
-        continue;
-      }
-      const { error } = await supabase.from("claap_recordings").update({
+    const fetched = await claapFetchRecording({
+      externalId: row.external_id,
+      recordingRowId: row.id,
+      priority: "low",
+    });
+    if (fetched.skipped === "already_hydrated") {
+      results.push({ id: row.id, ok: true, skipped: "already_hydrated" });
+      continue;
+    }
+    if (fetched.skipped === "out_of_quota" || fetched.skipped === "quota_protect") {
+      results.push({ id: row.id, ok: false, deferred: fetched.skipped });
+      break; // stop the batch — every subsequent call would also defer.
+    }
+    if (fetched.rateLimited) {
+      await markRateLimitedRow(row.id, fetched.error || "429");
+      results.push({ id: row.id, ok: false, rate_limited: true });
+      break;
+    }
+    if (!fetched.ok || !fetched.recording) {
+      results.push({ id: row.id, ok: false, error: fetched.error || "not_found" });
+      continue;
+    }
+    const norm = fetched.recording;
+    const { error } = await supabase.from("claap_recordings").update({
         summary: norm.summary_md,
         action_items: norm.action_items,
         key_takeaways: norm.key_takeaways,
@@ -60,9 +93,10 @@ Deno.serve(async (req) => {
         claap_summary_synced_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq("id", row.id);
-      if (error) {
+    if (error) {
         results.push({ id: row.id, ok: false, error: error.message });
-      } else {
+    } else {
+        await markHydrated(row.id);
         results.push({
           id: row.id,
           title: row.title,
@@ -70,9 +104,6 @@ Deno.serve(async (req) => {
           summary_bytes: norm.summary_md?.length || 0,
           action_items: norm.action_items.length,
         });
-      }
-    } catch (e) {
-      results.push({ id: row.id, ok: false, error: String((e as Error).message || e) });
     }
   }
 
