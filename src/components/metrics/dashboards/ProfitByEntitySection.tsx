@@ -1,4 +1,4 @@
-import { Component, ReactNode, useState } from 'react';
+import { Component, ReactNode, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import {
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { useMonthlyEntityProfit, type ProfitMonthBucket } from '@/hooks/useMonthlyEntityProfit';
 import { ProfitHistoricalTrend } from './HistoricalTrendChart';
+import { computeLinearTrend, TrendToggleButton, TrendDeltaText } from '@/components/metrics/charts/trendLine';
 
 const formatCurrency = (value: number) => {
   const neg = value < 0;
@@ -106,6 +107,12 @@ export function ProfitBarChart({
   const hasPositive = months.some(m => m.profit > 0);
   const isLossQuarter = total < 0;
 
+  const [showTrend, setShowTrend] = useState(false);
+  const chartData = useMemo(() => {
+    const trend = computeLinearTrend(months.map((m) => m.profit));
+    return months.map((m, i) => ({ ...m, trend: trend[i] }));
+  }, [months]);
+
   // Auto-scale: include 0 in range, pad so bars don't touch edges. When the
   // chart contains both losses and profits, force a *symmetric* domain around
   // zero so that negative bars are visually as tall as positive bars of the
@@ -148,6 +155,8 @@ export function ProfitBarChart({
               Operating Profit · {entityName.split(',')[0]}
             </p>
           </div>
+          <div className="flex items-center gap-2 shrink-0">
+          <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <span
             className="text-[10px] font-medium uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0"
             style={
@@ -166,6 +175,7 @@ export function ProfitBarChart({
           >
             {isLossQuarter ? 'Loss' : 'Profit'}
           </span>
+          </div>
         </div>
 
         {/* Focal quarter total */}
@@ -182,12 +192,20 @@ export function ProfitBarChart({
           >
             {months.length}-Month Total
           </p>
+          {showTrend && (
+            <div className="mt-1.5">
+              <TrendDeltaText
+                values={months.map((m) => m.profit)}
+                format={formatCurrencyFull}
+              />
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="relative pt-1 flex-1 min-h-0 flex flex-col">
         <div className="flex-1 min-h-[236px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={months} margin={{ top: 12, right: 8, left: -10, bottom: 28 }} barCategoryGap="28%">
+            <ComposedChart data={chartData} margin={{ top: 12, right: 8, left: -10, bottom: 28 }} barCategoryGap="28%">
               <CartesianGrid
                 strokeDasharray="2 4"
                 stroke="rgba(160, 200, 255, 0.10)"
@@ -290,7 +308,20 @@ export function ProfitBarChart({
                   }}
                 />
               </Bar>
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  name="Best-fit trend"
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
