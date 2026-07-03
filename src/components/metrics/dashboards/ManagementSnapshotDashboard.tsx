@@ -17,7 +17,12 @@ import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAx
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
 import { type MetricWidgetConfig } from '@/contexts/MetricsWidgetsContext';
-import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
+import { useQuickBooksStatus, useQuickBooksInvoices } from '@/hooks/useQuickBooks';
+import {
+  endOfDay, endOfMonth, endOfQuarter, endOfYear, startOfDay, startOfMonth,
+  startOfQuarter, startOfYear, subYears, format,
+} from 'date-fns';
+import { StatDrilldownBody, type DateRange } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useDashboardCardData } from '@/hooks/useDashboardCardData';
 import { type WidgetConfig, type TimeWindow, type KPIDetailCardConfig, type NegativeStylingConfig, DEFAULT_KPI_DETAIL_CARD_CONFIG } from '@/components/widget-editor/widgetTypes';
 import { KPIDetailCard } from '@/components/metrics/KPIDetailCard';
@@ -577,8 +582,76 @@ export function ManagementSnapshotDashboard({
   const globalCustomRange = tf?.customRange;
   const periodLabel = tf?.timeframe?.label ?? selectedQuarter?.label ?? '';
 
-  // Shared drilldown for top-level KPI tiles that don't have their own modal
-  const [kpiDrill, setKpiDrill] = useState<{ label: string } | null>(null);
+  // Shared drilldown for top-level KPI tiles that don't have their own modal.
+  // `kind` distinguishes tiles so we can render a rich, tile-specific body.
+  const [kpiDrill, setKpiDrill] = useState<{
+    label: string;
+    kind?: 'total-revenue' | 'debt-revenue' | 'finserv-revenue';
+  } | null>(null);
+
+  // Live QuickBooks invoices (all realms) — used to power the rich
+  // Monthly/Quarterly drilldown for revenue tiles.
+  const { data: allInvoices = [] } = useQuickBooksInvoices();
+
+  // Anchor to the end of the current month so trailing series are complete.
+  const drillAnchorEnd = useMemo(() => endOfMonth(new Date()), []);
+  const drillCurrentRange = useMemo<DateRange>(() => ({
+    start: startOfDay(startOfYear(drillAnchorEnd)),
+    end: endOfDay(drillAnchorEnd),
+  }), [drillAnchorEnd]);
+  const drillPriorRange = useMemo<DateRange>(() => {
+    const priorEnd = subYears(drillAnchorEnd, 1);
+    return {
+      start: startOfDay(startOfYear(priorEnd)),
+      end: endOfDay(priorEnd),
+    };
+  }, [drillAnchorEnd]);
+
+  const DEBT_REALM = '193514877331929';
+  const FINSERV_REALM = '9341451968897660';
+
+  const sumInvoicesInRange = useCallback((r: DateRange, realmId?: string) => {
+    const startYmd = format(r.start, 'yyyy-MM-dd');
+    const endYmd = format(r.end, 'yyyy-MM-dd');
+    return (allInvoices as any[]).reduce((sum, inv) => {
+      if (!inv.txn_date) return sum;
+      if (inv.txn_date < startYmd || inv.txn_date > endYmd) return sum;
+      if (realmId && inv.realm_id !== realmId) return sum;
+      return sum + Number(inv.total_amt || 0);
+    }, 0);
+  }, [allInvoices]);
+
+  const revenueEntities = useMemo(() => ([
+    { id: 'debt', label: 'Debt Advisory', compute: (r: DateRange) => sumInvoicesInRange(r, DEBT_REALM) },
+    { id: 'finserv', label: 'FinServ', compute: (r: DateRange) => sumInvoicesInRange(r, FINSERV_REALM) },
+    { id: 'other', label: 'Other entities', compute: (r: DateRange) => {
+      const total = sumInvoicesInRange(r);
+      return total - sumInvoicesInRange(r, DEBT_REALM) - sumInvoicesInRange(r, FINSERV_REALM);
+    } },
+  ]), [sumInvoicesInRange]);
+
+  const kpiDrillSpec = useMemo(() => {
+    if (!kpiDrill?.kind) return null;
+    if (kpiDrill.kind === 'total-revenue') {
+      return {
+        compute: (r: DateRange) => sumInvoicesInRange(r),
+        entities: revenueEntities,
+        explainer: 'Total revenue booked across every QuickBooks entity. Toggle Monthly/Quarterly to change the trend granularity; hover any point for period-over-period change.',
+      };
+    }
+    if (kpiDrill.kind === 'debt-revenue') {
+      return {
+        compute: (r: DateRange) => sumInvoicesInRange(r, DEBT_REALM),
+        entities: undefined,
+        explainer: 'Revenue booked for the QuickBooks Debt Advisory entity.',
+      };
+    }
+    return {
+      compute: (r: DateRange) => sumInvoicesInRange(r, FINSERV_REALM),
+      entities: undefined,
+      explainer: 'Revenue booked for the QuickBooks FinServ entity.',
+    };
+  }, [kpiDrill?.kind, sumInvoicesInRange, revenueEntities]);
 
   const resolveEntityName = (entityFilter?: string) => {
     if (!entityFilter || entityFilter === 'all') return null;
@@ -765,7 +838,7 @@ export function ManagementSnapshotDashboard({
                       entityFilter={props.entityFilter}
                       isEditMode={isEditMode}
                       selectedPeriod={selectedQuarter}
-                      onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue' })}
+                      onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue', kind: 'total-revenue' })}
                     />
                   ) : cardId === 'avg-rev-per-client' ? (
                     <AvgRevenuePerClientWidget />
@@ -843,14 +916,31 @@ export function ManagementSnapshotDashboard({
         open={!!kpiDrill}
         onClose={() => setKpiDrill(null)}
         context={kpiDrill ? {
-          sourceId: 'kpi:total-revenue',
+          sourceId: `kpi:${kpiDrill.kind ?? 'unknown'}`,
           sourceLabel: kpiDrill.label,
           periodLabel,
+          filters: [
+            { label: 'Window', value: `${format(drillCurrentRange.start, 'MMM d, yyyy')} – ${format(drillCurrentRange.end, 'MMM d, yyyy')}` },
+            { label: 'Source', value: 'QuickBooks invoices · live' },
+          ],
         } : null}
         columns={[
           { key: 'message', label: 'Detail' },
         ]}
         rows={[]}
+        body={kpiDrill && kpiDrillSpec ? (
+          <StatDrilldownBody
+            label={kpiDrill.label}
+            explainer={kpiDrillSpec.explainer}
+            compute={kpiDrillSpec.compute}
+            entities={kpiDrillSpec.entities}
+            currentRange={drillCurrentRange}
+            priorRange={drillPriorRange}
+            anchorEnd={drillAnchorEnd}
+            initialGranularity="monthly"
+            comparisonBasisLabel="YTD"
+          />
+        ) : undefined}
         emptyHint="Open the Revenue Overview widgets below to see contributing invoices for the selected period."
       />
     </div>
