@@ -1757,7 +1757,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               trendMode === 'ttm'
                 ? `TTM Revenue Trend (${chartWindowLabel})`
                 : trendMode === 'monthly'
-                ? 'Monthly Revenue Trend'
+                ? (isQuarterView ? 'Quarterly Revenue Trend' : 'Monthly Revenue Trend')
                 : 'Quarterly Revenue Growth (YoY)'
             }
             headerExtra={
@@ -1793,7 +1793,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       background: trendMode === m ? 'linear-gradient(180deg, hsl(213,90%,75%), hsl(213,90%,70%))' : 'transparent',
                     }}
                   >
-                    {m === 'ttm' ? 'TTM' : m === 'monthly' ? 'Monthly' : 'Quarterly Growth'}
+                    {m === 'ttm' ? 'TTM' : m === 'monthly' ? (isQuarterView ? 'Quarterly' : 'Monthly') : 'Quarterly Growth'}
                   </button>
                 ))}
                 </div>
@@ -1805,7 +1805,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 <SectionLabel>
                   {trendMode === 'ttm'
                     ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
-                    : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities'}
+                    : (isQuarterView
+                        ? 'Quarterly Revenue — each bar shows total revenue for that calendar quarter across all QuickBooks entities'
+                        : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities')}
                 </SectionLabel>
               )}
               {trendMode === 'quarterly-yoy' ? (
