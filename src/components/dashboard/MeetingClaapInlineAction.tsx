@@ -243,8 +243,14 @@ export function MeetingClaapInlineAction(props: Props) {
   // Render variants ---------------------------------------------------------
   const title = existing
     ? (existing.recording_title || 'Linked recording')
-    : (ranked?.recording.title || 'Suggested recording');
-  const url = existing ? existing.recording_url : ranked?.recording.url || null;
+    : canonicalLinked
+      ? (canonical.recording?.title || 'Linked recording')
+      : (ranked?.recording.title || 'Suggested recording');
+  const url = existing
+    ? existing.recording_url
+    : canonicalLinked
+      ? (canonical.recording?.url || null)
+      : (ranked?.recording.url || null);
   const scorePct = ranked ? Math.round((ranked.score || 0) * 100) : null;
 
   const pill = (() => {
