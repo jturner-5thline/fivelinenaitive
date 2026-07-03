@@ -9,7 +9,7 @@ import {
   Search, ChevronDown, ChevronRight, Loader2, ListPlus, Link2,
   ExternalLink, Sparkles, StickyNote, Inbox,
   PartyPopper, GripVertical, ArrowLeft, Copy as CopyIcon,
-  Briefcase, Video,
+  Briefcase, Video, Undo2,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
+import { useRecentEodDismissals } from '@/hooks/useRecentEodDismissals';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
 import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlineAction';
