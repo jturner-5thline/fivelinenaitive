@@ -13,6 +13,9 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
+  Pie,
+  PieChart,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,6 +73,21 @@ function fmtUSD(n: number): string {
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
+
+function fmtCompact(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${(abs / 1_000).toFixed(0)}K`;
+  return `$${abs.toFixed(0)}`;
+}
+
+const PIE_SLICE_COLORS = [
+  "hsl(200 90% 60%)",
+  "hsl(142 71% 50%)",
+  "hsl(45 90% 60%)",
+  "hsl(280 70% 65%)",
+  "hsl(15 85% 60%)",
+];
 
 type Row = {
   customerId: string;
