@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton as RowSkeleton } from '@/components/ui/skeleton';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+  ComposedChart, Line,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
+import { computeLinearTrend, TrendToggleButton, TrendDeltaText } from '@/components/metrics/charts/trendLine';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
 import { RevenueHistoricalTrend } from './HistoricalTrendChart';
