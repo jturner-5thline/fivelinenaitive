@@ -23231,6 +23231,48 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_pipeline_reports: {
+        Row: {
+          body_html: string
+          body_text: string | null
+          cc: string[]
+          created_at: string
+          id: string
+          pipeline_name: string | null
+          recipients: string[]
+          sender_email: string | null
+          sender_name: string | null
+          sent_by: string
+          subject: string
+        }
+        Insert: {
+          body_html: string
+          body_text?: string | null
+          cc?: string[]
+          created_at?: string
+          id?: string
+          pipeline_name?: string | null
+          recipients?: string[]
+          sender_email?: string | null
+          sender_name?: string | null
+          sent_by: string
+          subject: string
+        }
+        Update: {
+          body_html?: string
+          body_text?: string | null
+          cc?: string[]
+          created_at?: string
+          id?: string
+          pipeline_name?: string | null
+          recipients?: string[]
+          sender_email?: string | null
+          sender_name?: string | null
+          sent_by?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       sheet_cell_config: {
         Row: {
           cell_type: string
