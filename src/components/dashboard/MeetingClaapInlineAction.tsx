@@ -43,15 +43,8 @@ export function MeetingClaapInlineAction(props: Props) {
   const [userRejected, setUserRejected] = useState(false);
   const [locallyLinked, setLocallyLinked] = useState(false);
 
-  // Lazy load recordings once per mount
-  useEffect(() => {
-    if (!eventId || didFetch) return;
-    setDidFetch(true);
-    fetchRecordings().catch((err) => console.warn('claap recordings fetch failed', err));
-  }, [eventId, didFetch, fetchRecordings]);
-
   // Existing manual link for this event
-  const { data: existing } = useQuery<ExistingLinkRow | null>({
+  const { data: existing, isLoading: existingLoading, isFetching: existingFetching } = useQuery<ExistingLinkRow | null>({
     queryKey: ['event-claap-inline-link', eventId, company?.id],
     enabled: !!company?.id && !!eventId,
     queryFn: async () => {
@@ -75,6 +68,17 @@ export function MeetingClaapInlineAction(props: Props) {
       }
     },
   });
+
+  // Lazy load recordings once per mount — but ONLY if this event isn't
+  // already linked. Once a link exists (manual approve or prior match),
+  // skip the Claap API pull entirely so we don't keep "Checking Claap…".
+  useEffect(() => {
+    if (!eventId || didFetch) return;
+    if (existingLoading || existingFetching) return; // wait for link query
+    if (existing) { setDidFetch(true); return; }
+    setDidFetch(true);
+    fetchRecordings().catch((err) => console.warn('claap recordings fetch failed', err));
+  }, [eventId, didFetch, fetchRecordings, existing, existingLoading, existingFetching]);
 
   // Run scoring once recordings load
   useEffect(() => {
