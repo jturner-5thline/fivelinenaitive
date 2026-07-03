@@ -36,7 +36,7 @@ export function RevenueCustomersDashboard() {
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTTMTop5CustomersCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><FinServTopCustomersCard /></div></Suspense>
-          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><IncomeByProductServiceCard /></div></Suspense>
+          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeByProductServiceCard /></div></Suspense>
     </div>
   );
 }
