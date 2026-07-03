@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext, type DrilldownTrend } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { TtmRevenueDrilldownBody } from '@/components/metrics/dashboards/qir/TtmRevenueDrilldownBody';
+import { StatDrilldownBody } from '@/components/metrics/dashboards/qir/StatDrilldownBody';
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
