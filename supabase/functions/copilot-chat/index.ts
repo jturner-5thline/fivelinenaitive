@@ -2192,7 +2192,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_meeting_notes",
-      description: "Search the current user's personal meeting notes captured in the End of Day details panel. Use this whenever the user asks 'when did I talk with X', 'when was my call with X', 'what did we discuss with X', 'what were the notes on <meeting/company/person>', or any question about their own prior meeting notes. Results are scoped to the current user only. Match on note text, meeting title, and attendee name/email.",
+      description: "Search the current user's personal meeting notes (captured in the End of Day details panel) AND Claap recordings the user organized or attended. Results are always scoped to the current user. Supports filters for free-text query, attendee name/email, call date range (start_iso/end_iso or since_days), and linked deal_id. Use this whenever the user asks 'when did I talk with X', 'find my calls with X between <dates>', 'show my notes for deal Y', 'what did we discuss on <topic>', or similar questions about their own meetings.",
       parameters: {
         type: "object",
         properties: {
