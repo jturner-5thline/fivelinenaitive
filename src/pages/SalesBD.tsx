@@ -20,6 +20,9 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
+import { ChannelEntityDetailModal } from "@/components/channels/ChannelEntityDetailModal";
+import type { ChannelEntry } from "@/hooks/useChannelEntries";
+import { SalesBdSearch } from "@/components/partners/SalesBdSearch";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
@@ -50,6 +53,8 @@ function SalesBDInner() {
   const [activeTab, setActiveTab] = useState("partners-channels");
   const [channelsSubView, setChannelsSubView] = useState<"pipeline" | "channels" | "companies">("pipeline");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
+  const [viewChannelEntry, setViewChannelEntry] = useState<ChannelEntry | null>(null);
+  const [referralSearchSeed, setReferralSearchSeed] = useState<string>('');
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
   const canEditPartnerRules = useCanEditPartnerRules();
@@ -73,6 +78,21 @@ function SalesBDInner() {
                   <h1 className="text-3xl font-bold tracking-tight">Sales & BD</h1>
                 </div>
                 <div className="flex items-center gap-2">
+                  <SalesBdSearch
+                    onSelectPartner={(p) => {
+                      setActiveTab("partners-channels");
+                      setViewPartnerId(p.id);
+                    }}
+                    onSelectChannelEntry={(e) => {
+                      setActiveTab("partners-channels");
+                      setChannelsSubView("channels");
+                      setViewChannelEntry(e);
+                    }}
+                    onSelectReferralSource={(r) => {
+                      setActiveTab("referral-sources");
+                      setReferralSearchSeed(r.name);
+                    }}
+                  />
                   <SalesBdHeaderRangeSelector />
                   {canEditPartnerRules && (
                     <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Rules & Definitions">
@@ -223,13 +243,16 @@ function SalesBDInner() {
                   />
                 </div>
                 <ReferralSourceDeals hideKpis />
-                <ReferralSourcesView hideKpis />
+                <ReferralSourcesView hideKpis initialSearch={referralSearchSeed} />
               </div>
             </TabsContent>
         </DashboardPage>
       </div>
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
+      {viewChannelEntry && (
+        <ChannelEntityDetailModal entry={viewChannelEntry} onClose={() => setViewChannelEntry(null)} />
+      )}
     </>
   );
 }
