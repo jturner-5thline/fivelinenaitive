@@ -84,6 +84,7 @@ export function MeetingClaapInlineAction(props: Props) {
   useEffect(() => {
     if (!eventId || !recordings || recordings.length === 0) return;
     if (existing) return; // skip — already linked
+    if (existingLoading || existingFetching) return; // wait for link query
     let cancelled = false;
     let timedOut = false;
     const timeoutId = setTimeout(() => {
@@ -128,7 +129,7 @@ export function MeetingClaapInlineAction(props: Props) {
       }
     })();
     return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing]);
+  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing, existingLoading, existingFetching]);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
     if (existing || locallyLinked) return 'linked';
