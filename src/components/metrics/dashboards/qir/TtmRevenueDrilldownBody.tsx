@@ -468,63 +468,6 @@ export function TtmRevenueDrilldownBody({ invoices, ttmRange }: Props) {
                       </td>
                     </tr>
                   ))}
-                  {isOpen && (
-                    <tr style={{ background: 'rgba(120,170,255,0.04)' }}>
-                      <td colSpan={buckets.length + 2} style={{ ...td, padding: '12px 14px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          <div>
-                            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: 'rgba(160,200,255,0.6)', marginBottom: 4 }}>
-                              {row.entity.label} · Revenue trend
-                            </div>
-                            <Sparkline
-                              values={row.bucketTotals}
-                              labels={buckets.map(b => b.label)}
-                              color="#7cc8f0"
-                              height={72}
-                            />
-                          </div>
-                          {row.products.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.08em', color: 'rgba(160,200,255,0.6)', marginBottom: 4 }}>
-                                Top products / services
-                              </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
-                                {row.products.slice(0, 6).map((p, idx) => {
-                                  const palette = ['#7cc8f0', '#a78bfa', '#f0a37c', '#7cf0b5', '#f07cb5', '#f0d97c'];
-                                  const color = palette[idx % palette.length];
-                                  return (
-                                    <div
-                                      key={p.product}
-                                      style={{
-                                        border: `1px solid ${BORDER}`,
-                                        borderRadius: 6,
-                                        padding: 8,
-                                        background: 'rgba(10,18,36,0.4)',
-                                      }}
-                                    >
-                                      <div style={{
-                                        display: 'flex', justifyContent: 'space-between', gap: 8,
-                                        fontSize: 11, color: '#dde8f8', marginBottom: 4,
-                                      }}>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.product}</span>
-                                        <span style={{ fontWeight: 600, color }}>{formatUSD(p.total)}</span>
-                                      </div>
-                                      <Sparkline
-                                        values={p.bucketTotals}
-                                        labels={buckets.map(b => b.label)}
-                                        color={color}
-                                        height={56}
-                                      />
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               );
             })}
