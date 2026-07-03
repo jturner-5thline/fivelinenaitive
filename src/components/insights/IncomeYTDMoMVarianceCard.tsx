@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -16,6 +16,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeframeRange } from "./useTimeframeRange";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /**
  * Income: YTD MoM Variance.
@@ -26,12 +33,14 @@ import { useTimeframeRange } from "./useTimeframeRange";
  * income as a summary metric.
  */
 
-const REALM_IDS = [
-  "9341451968897660",
-  "193514877331929",
-  "9130350272677286",
-  "123146077561874",
+const REALMS = [
+  { id: "9341451968897660", name: "5th Line Financial Services, LLC" },
+  { id: "193514877331929", name: "5th Line Capital Advisors LLC" },
+  { id: "9130350272677286", name: "5th Line Technologies LLC" },
+  { id: "123146077561874", name: "5th Line Capital, LLC" },
 ];
+const REALM_IDS = REALMS.map((r) => r.id);
+const REALM_NAMES = Object.fromEntries(REALMS.map((r) => [r.id, r.name]));
 
 function isoDate(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -57,6 +66,9 @@ function fmtCompact(n: number): string {
 export function IncomeYTDMoMVarianceCard() {
   const { user } = useAuth();
   const { rangeStart, rangeEnd, months, periodLabel } = useTimeframeRange();
+  const [entityId, setEntityId] = useState<string>("__all__");
+  const entityLabel =
+    entityId === "__all__" ? "Total (all entities)" : REALM_NAMES[entityId] ?? "—";
 
   // Pull the month immediately before the window so the first bar has a baseline.
   const priorMonthStart = useMemo(() => {
@@ -73,17 +85,19 @@ export function IncomeYTDMoMVarianceCard() {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("quickbooks_invoices")
-        .select("txn_date, total_amt, synced_at")
+        .select("realm_id, txn_date, total_amt, synced_at")
         .in("realm_id", REALM_IDS)
         .gte("txn_date", priorMonthStart)
         .lte("txn_date", rangeEnd);
       if (error) throw error;
+      // totals[`${realmId}::${ymKey}`] = amount — allows client-side filtering
       const totals = new Map<string, number>();
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
-        if (!r.txn_date) continue;
+        if (!r.txn_date || !r.realm_id) continue;
         const d = new Date(r.txn_date);
-        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        const k = `${r.realm_id}::${ym}`;
         const amt = Number(r.total_amt ?? 0);
         totals.set(k, (totals.get(k) ?? 0) + amt);
         if (r.synced_at && (!lastSync || r.synced_at > lastSync)) lastSync = r.synced_at;
@@ -93,9 +107,12 @@ export function IncomeYTDMoMVarianceCard() {
   });
 
   const totals = data?.totals ?? new Map<string, number>();
-  const monthly = months.map((mo) => totals.get(mo.key) ?? 0);
+  const activeRealms = entityId === "__all__" ? REALM_IDS : [entityId];
+  const sumFor = (ym: string) =>
+    activeRealms.reduce((a, rid) => a + (totals.get(`${rid}::${ym}`) ?? 0), 0);
+  const monthly = months.map((mo) => sumFor(mo.key));
   const priorMonthKey = priorMonthStart.slice(0, 7);
-  const priorTotal = totals.get(priorMonthKey) ?? 0;
+  const priorTotal = sumFor(priorMonthKey);
   const ytdTotal = monthly.reduce((a, b) => a + b, 0);
 
   const chartData = months.map((mo, i) => {
@@ -148,15 +165,30 @@ export function IncomeYTDMoMVarianceCard() {
         >
           Income · MoM Variance
         </div>
-        <span
-          className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(255,255,255,0.55)" }}
-        >
-          QuickBooks ·{" "}
-          {data?.lastSync
-            ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
-            : "—"}
-        </span>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Select value={entityId} onValueChange={setEntityId}>
+            <SelectTrigger className="h-7 text-[11px] bg-transparent border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.85)] min-w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Total (all entities)</SelectItem>
+              {REALMS.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+            style={{ color: "rgba(255,255,255,0.55)" }}
+          >
+            QuickBooks ·{" "}
+            {data?.lastSync
+              ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
+              : "—"}
+          </span>
+        </div>
       </div>
 
       <div className="p-4 space-y-3">
@@ -166,7 +198,7 @@ export function IncomeYTDMoMVarianceCard() {
               className="text-[10px] tracking-wide uppercase"
               style={{ color: "rgba(255,255,255,0.55)" }}
             >
-              Total Income · {periodLabel}
+              Total Income · {entityLabel} · {periodLabel}
             </div>
             {isLoading ? (
               <div className="h-9 w-40 rounded bg-white/5 animate-pulse mt-1" />
