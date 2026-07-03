@@ -117,8 +117,33 @@ function mergeByRecordingId(primary: ClaapRecording[], secondary: ClaapRecording
   const byId = new Map<string, ClaapRecording>();
   for (const rec of primary) if (rec.id) byId.set(rec.id, rec);
   for (const rec of secondary) {
-    if (!rec.id || byId.has(rec.id)) continue;
-    byId.set(rec.id, rec);
+    if (!rec.id) continue;
+    const existing = byId.get(rec.id);
+    if (!existing) {
+      byId.set(rec.id, rec);
+      continue;
+    }
+    const existingParticipants = existing.meeting?.participants || [];
+    const liveParticipants = rec.meeting?.participants || [];
+    if (existingParticipants.length === 0 && liveParticipants.length > 0) {
+      byId.set(rec.id, {
+        ...existing,
+        durationSeconds: existing.durationSeconds || rec.durationSeconds,
+        labels: existing.labels.length ? existing.labels : rec.labels,
+        recorder: existing.recorder?.email ? existing.recorder : rec.recorder,
+        state: existing.state || rec.state,
+        thumbnailUrl: existing.thumbnailUrl || rec.thumbnailUrl,
+        transcripts: existing.transcripts.length ? existing.transcripts : rec.transcripts,
+        url: existing.url || rec.url,
+        videoUrl: existing.videoUrl || rec.videoUrl,
+        embedUrl: existing.embedUrl || rec.embedUrl,
+        meeting: {
+          ...existing.meeting,
+          ...rec.meeting,
+          startingAt: existing.meeting?.startingAt || rec.meeting?.startingAt,
+        },
+      });
+    }
   }
   return Array.from(byId.values()).sort((a, b) => {
     const at = a.createdAt ? Date.parse(a.createdAt) : 0;
