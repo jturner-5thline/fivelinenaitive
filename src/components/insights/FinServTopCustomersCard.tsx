@@ -33,11 +33,13 @@ import {
 } from "@/components/ui/select";
 
 /**
- * FinServ Income: Top 10 Customers Breakdown vs. Previous Year.
+ * FinServ Income: Top 5 Customers Breakdown vs. Previous Year.
  *
  * Aggregates QuickBooks invoice totals by customer for the selected entity
  * over the current YTD window, compares to the same window prior year,
- * surfaces the top 10 customers by current-period revenue, and supports a
+ * surfaces the top 5 company customers by current-period revenue (individual
+ * contacts are excluded — only QuickBooks customers with a `company_name`
+ * are counted), and supports a
  * click-through invoice-level drilldown per customer.
  */
 
@@ -110,13 +112,37 @@ export function FinServTopCustomersCard() {
         .gte("txn_date", prevStart)
         .lte("txn_date", curEnd);
       if (error) throw error;
+
+      // Resolve customer_id → company_name so we can (a) exclude individual
+      // contacts (customers without a company_name) and (b) always render
+      // the company name rather than a person's display name.
+      const customerIds = Array.from(
+        new Set((rows ?? []).map((r) => r.customer_id).filter((v): v is string => !!v)),
+      );
+      const companyByQbId = new Map<string, string>();
+      if (customerIds.length > 0) {
+        const { data: customers, error: cErr } = await supabase
+          .from("quickbooks_customers")
+          .select("qb_id, company_name")
+          .eq("realm_id", entityId)
+          .in("qb_id", customerIds);
+        if (cErr) throw cErr;
+        for (const c of customers ?? []) {
+          const cn = (c.company_name ?? "").trim();
+          if (c.qb_id && cn) companyByQbId.set(c.qb_id, cn);
+        }
+      }
+
       const byCustomer = new Map<string, Row>();
       let lastSync: string | null = null;
       for (const r of rows ?? []) {
         if (!r.txn_date) continue;
-        const id = r.customer_id || r.customer_name;
+        const id = r.customer_id;
         if (!id) continue;
-        const name = r.customer_name || r.customer_id || "Unknown";
+        // Skip individuals — only keep QuickBooks customers that carry a
+        // company_name in the customer directory.
+        const name = companyByQbId.get(id);
+        if (!name) continue;
         const amt = Number(r.total_amt ?? 0);
         let row = byCustomer.get(id);
         if (!row) {
@@ -143,7 +169,7 @@ export function FinServTopCustomersCard() {
       const top = all
         .filter((r) => r.current > 0 || r.prior > 0)
         .sort((a, b) => b.current - a.current)
-        .slice(0, 10);
+        .slice(0, 5);
       return { top, lastSync };
     },
   });
@@ -226,7 +252,7 @@ export function FinServTopCustomersCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          FinServ Income · Top 10 Customers vs Prior Year
+          FinServ Income · Top 5 Customers vs Prior Year
         </div>
         <div className="flex items-center gap-2">
           <ChartTypeToggle value={chartType} onChange={setChartType} />
