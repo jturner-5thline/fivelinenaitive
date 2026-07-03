@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { useDealsContext } from '@/contexts/DealsContext';
 
 interface LatestReport {
   id: string;
@@ -21,10 +23,100 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+interface ParsedItem {
+  dealName: string;
+  amount: string;
+  stage: string;
+  note: string;
+}
+
+interface ParsedGroup {
+  label: string;
+  color: string;
+  items: ParsedItem[];
+}
+
+interface ParsedReport {
+  introHtml: string;
+  groups: ParsedGroup[];
+  outroHtml: string;
+}
+
+/**
+ * Parse the HTML the Share Report edge function stored. Structure:
+ *   <p>intro…</p>
+ *   <p><strong><span style="color:…">Status</span></strong> (n)</p>
+ *   <ul><li><strong>Name</strong> — <strong>Amt</strong> — <strong>Stage</strong> — note</li>…</ul>
+ *   … (repeat) …
+ *   <p>outro…</p>
+ * Falls back gracefully if the structure ever drifts.
+ */
+function parseReport(html: string): ParsedReport {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const nodes = Array.from(doc.body.childNodes);
+    const groups: ParsedGroup[] = [];
+    const introParts: string[] = [];
+    const outroParts: string[] = [];
+    let phase: 'intro' | 'groups' | 'outro' = 'intro';
+    let current: ParsedGroup | null = null;
+
+    for (const node of nodes) {
+      if (!(node instanceof HTMLElement)) continue;
+      const isGroupHeader =
+        node.tagName === 'P' &&
+        node.querySelector('strong > span[style*="color"]') !== null;
+      if (isGroupHeader) {
+        phase = 'groups';
+        const span = node.querySelector('strong > span[style*="color"]') as HTMLElement;
+        const color = span.style.color || 'inherit';
+        const label = span.textContent?.trim() || 'Status';
+        current = { label, color, items: [] };
+        groups.push(current);
+        continue;
+      }
+      if (node.tagName === 'UL' && current) {
+        for (const li of Array.from(node.querySelectorAll('li'))) {
+          const strongs = Array.from(li.querySelectorAll('strong'));
+          const dealName = strongs[0]?.textContent?.trim() || '';
+          const amount = strongs[1]?.textContent?.trim() || '';
+          const stage = strongs[2]?.textContent?.trim() || '';
+          // Note = full li text minus the three strong pieces and the em dashes.
+          const full = li.textContent || '';
+          const parts = full.split('—').map((s) => s.trim());
+          const note = parts.slice(3).join(' — ');
+          current.items.push({ dealName, amount, stage, note });
+        }
+        continue;
+      }
+      // Any other paragraph before groups → intro; after groups → outro.
+      if (phase === 'intro') introParts.push(node.outerHTML);
+      else { phase = 'outro'; outroParts.push(node.outerHTML); }
+    }
+    return { introHtml: introParts.join(''), groups, outroHtml: outroParts.join('') };
+  } catch {
+    return { introHtml: html, groups: [], outroHtml: '' };
+  }
+}
+
 export function LatestShareReportDialog({ open, onOpenChange }: Props) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<LatestReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { deals } = useDealsContext();
+
+  const dealIdByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of deals) {
+      if (d?.name) map.set(d.name.trim().toLowerCase(), d.id);
+    }
+    return map;
+  }, [deals]);
+
+  const parsed = useMemo(
+    () => (report ? parseReport(report.body_html) : null),
+    [report],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -56,7 +148,7 @@ export function LatestShareReportDialog({ open, onOpenChange }: Props) {
         <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0">
           <DialogTitle>Latest Shared Pipeline Report</DialogTitle>
           <DialogDescription>
-            The most recent Share Report sent from the Deals page.
+            The most recent Share Report sent from the Deals page. Click a deal name to open its details.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
@@ -85,10 +177,61 @@ export function LatestShareReportDialog({ open, onOpenChange }: Props) {
                   <div><span className="text-muted-foreground">Cc:</span> {report.cc.join(', ')}</div>
                 )}
               </div>
-              <div
-                className="rounded-md border border-border/60 bg-background p-4 prose prose-sm max-w-none prose-invert"
-                dangerouslySetInnerHTML={{ __html: report.body_html }}
-              />
+              <div className="rounded-md border border-border/60 bg-background p-4 space-y-5">
+                {parsed?.introHtml && (
+                  <div
+                    className="prose prose-sm max-w-none prose-invert"
+                    dangerouslySetInnerHTML={{ __html: parsed.introHtml }}
+                  />
+                )}
+                {parsed?.groups.map((g) => (
+                  <div key={g.label} className="space-y-2">
+                    <div className="text-sm font-semibold" style={{ color: g.color }}>
+                      {g.label} <span className="text-muted-foreground font-normal">({g.items.length})</span>
+                    </div>
+                    <ul className="space-y-1.5 list-disc pl-5 marker:text-muted-foreground">
+                      {g.items.map((it, idx) => {
+                        const dealId = dealIdByName.get(it.dealName.trim().toLowerCase());
+                        const nameEl = dealId ? (
+                          <Link
+                            to={`/deals/${dealId}`}
+                            onClick={() => onOpenChange(false)}
+                            className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary hover:bg-primary/20 hover:border-primary/50 transition-colors"
+                          >
+                            {it.dealName}
+                          </Link>
+                        ) : (
+                          <span className="font-semibold text-foreground">{it.dealName}</span>
+                        );
+                        return (
+                          <li key={`${g.label}-${idx}`} className="text-sm leading-relaxed">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              {nameEl}
+                              {it.amount && (
+                                <span className="tabular-nums font-medium text-foreground">{it.amount}</span>
+                              )}
+                              {it.stage && (
+                                <span className="text-xs rounded-md bg-muted px-1.5 py-0.5 text-muted-foreground">
+                                  {it.stage}
+                                </span>
+                              )}
+                            </div>
+                            {it.note && (
+                              <div className="mt-0.5 text-sm text-muted-foreground">{it.note}</div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+                {parsed?.outroHtml && (
+                  <div
+                    className="prose prose-sm max-w-none prose-invert"
+                    dangerouslySetInnerHTML={{ __html: parsed.outroHtml }}
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>
