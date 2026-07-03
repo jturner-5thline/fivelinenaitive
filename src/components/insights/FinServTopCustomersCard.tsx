@@ -255,7 +255,7 @@ export function FinServTopCustomersCard() {
             color: "rgba(255,255,255,0.6)",
           }}
         >
-          FinServ Income · Top 5 Customers vs Prior Year
+          FinServ Income · Top 5 Customers{showPrior ? " vs Prior Year" : ""}
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 pr-1">
@@ -305,7 +305,8 @@ export function FinServTopCustomersCard() {
           className="text-[10px] tracking-wide"
           style={{ color: "rgba(255,255,255,0.55)" }}
         >
-          {periodLabel} vs prior-year same window
+          {periodLabel}
+          {showPrior ? " vs prior-year same window" : ""}
            · sum of invoice totals
         </div>
 
@@ -376,11 +377,13 @@ export function FinServTopCustomersCard() {
                       v === "current" ? periodLabel : priorLabel
                     }
                   />
-                  <Bar
-                    dataKey="prior"
-                    fill="rgba(140,160,200,0.55)"
-                    radius={[3, 3, 0, 0]}
-                  />
+                  {showPrior && (
+                    <Bar
+                      dataKey="prior"
+                      fill="rgba(140,160,200,0.55)"
+                      radius={[3, 3, 0, 0]}
+                    />
+                  )}
                   <Bar
                     dataKey="current"
                     fill="hsla(213,90%,70%,0.85)"
@@ -401,7 +404,9 @@ export function FinServTopCustomersCard() {
                     formatter={(v: number, name: string) => [fmtUSD(v), name === "current" ? periodLabel : priorLabel]}
                   />
                   <Legend wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }} formatter={(v) => (v === "current" ? periodLabel : priorLabel)} />
-                  <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  {showPrior && (
+                    <Line type="monotone" dataKey="prior" stroke="rgba(140,160,200,0.85)" strokeWidth={2} dot={{ r: 3 }} />
+                  )}
                   <Line type="monotone" dataKey="current" stroke="hsla(213,90%,70%,0.95)" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
                 )}
