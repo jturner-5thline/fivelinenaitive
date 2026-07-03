@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, User as UserIcon, ExternalLink, UserPlus, Search, Flag } from 'lucide-react';
+import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, User as UserIcon, ExternalLink, UserPlus, Search, Flag, ChevronDown, ChevronUp, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
