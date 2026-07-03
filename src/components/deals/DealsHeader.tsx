@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles, UserRound } from 'lucide-react';
+import { useEndOfDayOutstandingCount } from '@/hooks/useEndOfDayOutstandingCount';
 
 // HeaderNotificationPreview removed: notifications are merged into the Flag system.
 import { DemoModeBadge } from '@/components/DemoModeBadge';
