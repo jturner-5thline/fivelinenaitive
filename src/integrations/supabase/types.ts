@@ -25327,6 +25327,57 @@ export type Database = {
         }
         Relationships: []
       }
+      user_meeting_notes: {
+        Row: {
+          attendee_emails: string[] | null
+          attendee_names: string[] | null
+          created_at: string
+          event_end: string | null
+          event_id: string
+          event_start: string | null
+          event_title: string | null
+          id: string
+          linked_deal_id: string | null
+          note_text: string
+          organizer_email: string | null
+          search_tsv: unknown
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendee_emails?: string[] | null
+          attendee_names?: string[] | null
+          created_at?: string
+          event_end?: string | null
+          event_id: string
+          event_start?: string | null
+          event_title?: string | null
+          id?: string
+          linked_deal_id?: string | null
+          note_text: string
+          organizer_email?: string | null
+          search_tsv?: unknown
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendee_emails?: string[] | null
+          attendee_names?: string[] | null
+          created_at?: string
+          event_end?: string | null
+          event_id?: string
+          event_start?: string | null
+          event_title?: string | null
+          id?: string
+          linked_deal_id?: string | null
+          note_text?: string
+          organizer_email?: string | null
+          search_tsv?: unknown
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_notification_preferences: {
         Row: {
           channel_overrides: Json

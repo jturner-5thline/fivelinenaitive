@@ -1456,6 +1456,33 @@ function EventDetailPane({
   const [noteDraft, setNoteDraft] = useState('');
   const [noteDirty, setNoteDirty] = useState(false);
   const [savedNotes, setSavedNotes] = useState<{ id: string; text: string; at: string }[]>([]);
+  const { user: authUser } = useAuth();
+
+  // Load persisted meeting notes for this event so the user always sees
+  // their prior notes when the detail pane re-opens — and so the nAItive
+  // AI can search them via the copilot-chat tool.
+  useEffect(() => {
+    let cancelled = false;
+    if (!authUser?.id || !event.id) {
+      setSavedNotes([]);
+      return;
+    }
+    (async () => {
+      const { data, error } = await supabase
+        .from('user_meeting_notes')
+        .select('id, note_text, created_at')
+        .eq('user_id', authUser.id)
+        .eq('event_id', event.id)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.warn('[EndOfDay] failed to load meeting notes', error.message);
+        return;
+      }
+      setSavedNotes((data || []).map((r: any) => ({ id: r.id, text: r.note_text, at: r.created_at })));
+    })();
+    return () => { cancelled = true; };
+  }, [authUser?.id, event.id]);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'local'>('local');
@@ -1909,12 +1936,42 @@ function EventDetailPane({
             </p>
             <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
-                onClick={() => {
+                onClick={async () => {
                   const text = noteDraft.trim();
                   onNoteAdded(text);
+                  const nowIso = new Date().toISOString();
+                  let insertedId = `${Date.now()}`;
+                  if (authUser?.id) {
+                    const attendeeEmails = (event.attendees || [])
+                      .map((a) => a.email).filter(Boolean) as string[];
+                    const attendeeNames = (event.attendees || [])
+                      .map((a) => a.display_name || a.email || '').filter(Boolean) as string[];
+                    const { data, error } = await supabase
+                      .from('user_meeting_notes')
+                      .insert({
+                        user_id: authUser.id,
+                        event_id: event.id,
+                        event_title: eventTitle,
+                        event_start: event.start || null,
+                        event_end: event.end || null,
+                        organizer_email: organizerEmail,
+                        attendee_emails: attendeeEmails,
+                        attendee_names: attendeeNames,
+                        linked_deal_id: linkedDealId ?? null,
+                        note_text: text,
+                      })
+                      .select('id, created_at')
+                      .single();
+                    if (error) {
+                      console.warn('[EndOfDay] failed to save meeting note', error.message);
+                      toast.error('Note added locally — save failed');
+                    } else if (data) {
+                      insertedId = data.id;
+                    }
+                  }
                   setSavedNotes((prev) => [
                     ...prev,
-                    { id: `${Date.now()}`, text, at: new Date().toISOString() },
+                    { id: insertedId, text, at: nowIso },
                   ]);
                   setNoteDraft('');
                   setNoteDirty(false);
