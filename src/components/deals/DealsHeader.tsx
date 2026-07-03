@@ -175,6 +175,7 @@ export function DealsHeader() {
     : 0;
   const { overdueCount: tasksOverdueCount, dueTodayCount: tasksDueTodayCount } = useTaskNotifications();
   const myTasksBadgeCount = tasksOverdueCount + tasksDueTodayCount;
+  const eodOutstandingCount = useEndOfDayOutstandingCount();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
