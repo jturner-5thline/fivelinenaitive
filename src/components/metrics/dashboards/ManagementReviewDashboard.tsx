@@ -388,14 +388,18 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // Frozen default layout — matches the currently-shipped visible arrangement.
   // compactType is disabled at the grid level so these coordinates are
   // authoritative and widgets will not reflow on refresh.
-  { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 10, minW: 4, minH: 9 },
+  // Heights sized so the primary widgets fit their content without an
+  // internal scrollbar. Key Stats (14 rows + 3 section headers) fits in
+  // 9 rows; Debt Pipeline (deal table + inline 6-month revenue chart)
+  // fits in 10 rows at the standard 70px row height.
+  { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 9, minW: 4, minH: 8 },
   { i: 'monthly-revenue', x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'cashflow-12w', x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'active-deals-list', x: 0, y: 10, w: 6, h: 12, minW: 4, minH: 8 },
-  { i: 'liabilities', x: 6, y: 14, w: 3, h: 4, minW: 3, minH: 2 },
-  { i: 'dscr', x: 9, y: 14, w: 3, h: 4, minW: 3, minH: 2 },
-  { i: 'debt-rating', x: 6, y: 18, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'asana-goals', x: 0, y: 22, w: 12, h: 6, minW: 6, minH: 4 },
+  { i: 'active-deals-list', x: 0, y: 9, w: 6, h: 10, minW: 4, minH: 8 },
+  { i: 'liabilities', x: 6, y: 8, w: 3, h: 4, minW: 3, minH: 2 },
+  { i: 'dscr', x: 9, y: 8, w: 3, h: 4, minW: 3, minH: 2 },
+  { i: 'debt-rating', x: 6, y: 12, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'asana-goals', x: 0, y: 19, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
