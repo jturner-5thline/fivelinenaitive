@@ -391,7 +391,6 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 10, minW: 4, minH: 9 },
   { i: 'monthly-revenue', x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'cashflow-12w', x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'ar-aging', x: 6, y: 8, w: 6, h: 6, minW: 3, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 10, w: 6, h: 12, minW: 4, minH: 8 },
   { i: 'liabilities', x: 6, y: 14, w: 3, h: 4, minW: 3, minH: 2 },
   { i: 'dscr', x: 9, y: 14, w: 3, h: 4, minW: 3, minH: 2 },
@@ -449,7 +448,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v12', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v13', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
@@ -1965,24 +1964,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="ar-aging" className="h-full">
-          <GridShell isEditMode={isEditMode} title={`A/R Aging${isCurrentReportingPeriod ? '' : ' · unavailable for selected period'}`}>
-            {arBuckets.length > 0
-              ? <div style={{ position: 'relative', height: 130 }}><canvas ref={arRef} /></div>
-              : <NaPlaceholder height={130} label={isLoading ? 'Loading…' : arUnavailableReason} />}
-            <Sep />
-            <Row label="Total A/R">{isCurrentReportingPeriod ? fmtUSD(totalAR) : '—'}</Row>
-            <Row label="Overdue">
-              <span style={{ color: overdueAR && overdueAR > 0 ? '#ff6b7a' : '#3de89a' }}>{isCurrentReportingPeriod ? fmtUSD(overdueAR) : '—'}</span>
-            </Row>
-            <Row label="Open Invoices">
-              <span style={{ color: 'hsl(0,0%,100%)' }}>{isCurrentReportingPeriod ? qbInvoices.filter(inv => Number(inv.balance || 0) > 0).length : '—'}</span>
-            </Row>
-            <Row label="Payments in Period">
-              <span style={{ color: 'hsl(0,0%,100%)' }}>{qbConnected ? fmtUSD(periodPayments) : '—'}</span>
-            </Row>
-          </GridShell>
-        </div>
 
         <div key="active-deals-list" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt Pipeline">
