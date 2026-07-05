@@ -14,7 +14,7 @@ import {
 } from 'date-fns';
 import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
 import WhatWorkingSections from './WhatWorkingSections';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
@@ -46,6 +46,84 @@ const gx: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } },
 const gy: any = { ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const NA_COLOR = 'rgba(255,255,255,0.35)';
+
+// ============================================================================
+// Liabilities & Debt Service table — pulls live account balances from QBO
+// (5th Line Capital Advisors LLC realm) for the accounts we can wire today.
+// Rows without a mapped QBO account render em-dashes until sourced.
+// ============================================================================
+const LIAB_REALM_ID = '193514877331929'; // 5th Line Capital Advisors LLC
+
+interface LiabRow {
+  name: string;
+  qboAccountName?: string; // exact QBO account "name" to match on
+}
+
+const LIAB_ROWS: LiabRow[] = [
+  { name: 'SBA Loan' },
+  { name: 'Headway LOC', qboAccountName: 'Headway Capital Loan' },
+  { name: 'AMEX LOC' },
+  { name: 'M&T LOC' },
+  { name: 'Other Loans' },
+  { name: "CC's (Est.)" },
+];
+
+function formatLiabCurrency(val: number | null | undefined): string {
+  if (val === null || val === undefined || isNaN(Number(val))) return '—';
+  const num = Math.abs(Number(val));
+  return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function LiabilitiesDebtServiceTable() {
+  const mappedNames = LIAB_ROWS.map(r => r.qboAccountName).filter((n): n is string => !!n);
+  const { data: balances = {} } = useQuery({
+    queryKey: ['liabilities-account-balances', LIAB_REALM_ID, mappedNames],
+    queryFn: async () => {
+      if (mappedNames.length === 0) return {} as Record<string, number>;
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('name, current_balance, account_type')
+        .eq('realm_id', LIAB_REALM_ID)
+        .in('name', mappedNames);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (row.name && row.current_balance !== null && row.current_balance !== undefined) {
+          map[row.name] = Number(row.current_balance);
+        }
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="text-xs">
+      <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 pb-2 border-b border-white/10 text-[10px] uppercase tracking-wide text-muted-foreground">
+        <div>Account</div>
+        <div className="text-right">Current Balance</div>
+        <div className="text-right">$ Change</div>
+        <div className="text-right">% Change</div>
+      </div>
+      {LIAB_ROWS.map((row) => {
+        const bal = row.qboAccountName ? balances[row.qboAccountName] : undefined;
+        return (
+          <div
+            key={row.name}
+            className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0"
+          >
+            <div className="text-foreground/90 truncate">{row.name}</div>
+            <div className="text-right text-foreground/90">
+              {bal !== undefined ? formatLiabCurrency(bal) : '—'}
+            </div>
+            <div className="text-right text-muted-foreground">—</div>
+            <div className="text-right text-muted-foreground">—</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const renderDelta = (current: number | null, prior: number | null, label: string) => {
   if (current === null || prior === null) {
@@ -2058,25 +2136,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <div className="text-xs">
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 pb-2 border-b border-white/10 text-[10px] uppercase tracking-wide text-muted-foreground">
-                <div>Account</div>
-                <div className="text-right">Current Balance</div>
-                <div className="text-right">$ Change</div>
-                <div className="text-right">% Change</div>
-              </div>
-              {['SBA Loan', 'Headway LOC', 'AMEX LOC', 'M&T LOC', 'Other Loans', "CC's (Est.)"].map((name) => (
-                <div
-                  key={name}
-                  className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0"
-                >
-                  <div className="text-foreground/90 truncate">{name}</div>
-                  <div className="text-right text-muted-foreground">—</div>
-                  <div className="text-right text-muted-foreground">—</div>
-                  <div className="text-right text-muted-foreground">—</div>
-                </div>
-              ))}
-            </div>
+            <LiabilitiesDebtServiceTable />
           </GridShell>
         </div>
         <div key="dscr" className="h-full">
