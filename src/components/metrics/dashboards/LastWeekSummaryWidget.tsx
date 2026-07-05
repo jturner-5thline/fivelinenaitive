@@ -471,7 +471,7 @@ function DrilldownDialog({
       const cfg = stage!.config;
       const { data: rows, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, changed_at, to_stage_id, to_stage, deals!inner(company, value)')
+        .select('deal_id, changed_at, to_stage_id, to_stage, from_stage, from_stage_id, deals!inner(company, value)')
         .eq('company_id', companyId!)
         .eq('event_type', 'stage_enter')
         .or(
@@ -490,6 +490,11 @@ function DrilldownDialog({
         const deal = row.deals;
         if (!deal) continue;
         if (isExcludedDealName(deal.company)) continue;
+        // Exclude re-activations from paused/dead/closed stages — mirrors the widget rule.
+        if (
+          isReactivationFromStage(row.from_stage) ||
+          isReactivationFromStage(row.from_stage_id)
+        ) continue;
         seen.add(row.deal_id);
         const t = new Date(row.changed_at).getTime();
         const idx = result.findIndex(
