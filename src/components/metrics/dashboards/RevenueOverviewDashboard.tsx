@@ -403,6 +403,33 @@ export function RevenueDrilldownModal({
   );
 }
 
+function ByServiceToggleButton({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title="Toggle breakdown by service"
+      className={
+        'text-[11px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+        (active
+          ? 'bg-primary/20 text-foreground'
+          : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+      }
+    >
+      By Service
+    </button>
+  );
+}
+
 export function StackedDebtRevenueChart({
   data,
   isLoading,
