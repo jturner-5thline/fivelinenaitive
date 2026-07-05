@@ -31,7 +31,6 @@ const WEEKLY_RUNDOWN_WIDGET_FILES = [
   'ManagementSnapshotDashboard.tsx',
   'SignedDealsAndARSection.tsx',
   'PipelineMetricsSection.tsx',
-  'ProfitByEntitySection.tsx',
   'RevenueOverviewDashboard.tsx',
   'WeeklyRundownCarousel.tsx',
   'WeeklyRundownPipelineClientsPage.tsx',
