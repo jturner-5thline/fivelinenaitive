@@ -451,6 +451,7 @@ function DrilldownDialog({
   const rangeStart = buckets[0]?.weekStart;
   const rangeEnd = buckets[buckets.length - 1]?.weekEnd;
   const [selectedIdx, setSelectedIdx] = useState<number>(buckets.length - 1);
+  const [chartMode, setChartMode] = useState<'both' | 'count' | 'dollars'>('both');
 
   // Reset selection to the most-recent (last) week whenever the dialog opens
   // for a different metric.
@@ -565,6 +566,17 @@ function DrilldownDialog({
             </div>
 
             {/* Chart */}
+            <div className="flex items-center justify-end gap-1">
+              <ChartModeButton active={chartMode === 'count'} onClick={() => setChartMode('count')}>
+                # Deals
+              </ChartModeButton>
+              <ChartModeButton active={chartMode === 'dollars'} onClick={() => setChartMode('dollars')}>
+                $ Value
+              </ChartModeButton>
+              <ChartModeButton active={chartMode === 'both'} onClick={() => setChartMode('both')}>
+                Both
+              </ChartModeButton>
+            </div>
             <div className="h-56 rounded-lg border border-border/40 bg-card/40 p-2">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
@@ -586,8 +598,16 @@ function DrilldownDialog({
                       </text>
                     )}
                   />
-                  <YAxis yAxisId="left" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} allowDecimals={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  {chartMode !== 'dollars' && (
+                    <YAxis yAxisId="left" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} allowDecimals={false} />
+                  )}
+                  {chartMode !== 'count' && (
+                    <YAxis
+                      yAxisId="right"
+                      orientation={chartMode === 'dollars' ? 'left' : 'right'}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    />
+                  )}
                   <Tooltip
                     contentStyle={{
                       background: 'hsl(var(--card))',
@@ -600,25 +620,49 @@ function DrilldownDialog({
                     }
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar
-                    yAxisId="left"
-                    dataKey="deals"
-                    name="Deals"
-                    radius={[4, 4, 0, 0]}
-                    onClick={(_d: any, i: number) => setSelectedIdx(i)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {chartData.map((_, i) => (
-                      <Cell
-                        key={i}
-                        fill="hsl(var(--primary))"
-                        fillOpacity={i === clampedIdx ? 1 : 0.45}
-                        stroke={i === clampedIdx ? 'hsl(var(--primary))' : 'transparent'}
-                        strokeWidth={i === clampedIdx ? 1.5 : 0}
-                      />
-                    ))}
-                  </Bar>
-                  <Line yAxisId="right" dataKey="dollarsMM" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Dollars ($MM)" />
+                  {chartMode !== 'dollars' && (
+                    <Bar
+                      yAxisId="left"
+                      dataKey="deals"
+                      name="Deals"
+                      radius={[4, 4, 0, 0]}
+                      onClick={(_d: any, i: number) => setSelectedIdx(i)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {chartData.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill="hsl(var(--primary))"
+                          fillOpacity={i === clampedIdx ? 1 : 0.45}
+                          stroke={i === clampedIdx ? 'hsl(var(--primary))' : 'transparent'}
+                          strokeWidth={i === clampedIdx ? 1.5 : 0}
+                        />
+                      ))}
+                    </Bar>
+                  )}
+                  {chartMode === 'dollars' && (
+                    <Bar
+                      yAxisId="right"
+                      dataKey="dollarsMM"
+                      name="Dollars ($MM)"
+                      radius={[4, 4, 0, 0]}
+                      onClick={(_d: any, i: number) => setSelectedIdx(i)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {chartData.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill="hsl(var(--success))"
+                          fillOpacity={i === clampedIdx ? 1 : 0.45}
+                          stroke={i === clampedIdx ? 'hsl(var(--success))' : 'transparent'}
+                          strokeWidth={i === clampedIdx ? 1.5 : 0}
+                        />
+                      ))}
+                    </Bar>
+                  )}
+                  {chartMode === 'both' && (
+                    <Line yAxisId="right" dataKey="dollarsMM" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Dollars ($MM)" />
+                  )}
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -699,5 +743,30 @@ function HeadlineTile({
         {dollarsPct !== undefined && <DeltaBadge pct={dollarsPct ?? null} />}
       </div>
     </div>
+  );
+}
+
+function ChartModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border transition-colors',
+        active
+          ? 'bg-primary/15 border-primary/40 text-primary'
+          : 'bg-transparent border-border/40 text-muted-foreground hover:bg-primary/5 hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
   );
 }
