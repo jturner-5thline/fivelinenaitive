@@ -677,7 +677,7 @@ function makeBarValueDeltaLabel(
             {absText && (
               <text
                 x={cx} y={absY} textAnchor="middle"
-                fill="#ffffff" fontSize={10} fontWeight={700}
+                fill={abs! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={10} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {absText}
@@ -686,7 +686,7 @@ function makeBarValueDeltaLabel(
             {pctText && (
               <text
                 x={cx} y={pctY} textAnchor="middle"
-                fill="#ffffff" fontSize={9} fontWeight={700}
+                fill={pct! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={9} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {pctText}
@@ -830,6 +830,18 @@ function ConsolidatedOpexWidget() {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
+              <defs>
+                <linearGradient id="opexBarGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(22, 90%, 58%)" stopOpacity={0.98} />
+                  <stop offset="55%" stopColor="hsl(20, 88%, 42%)" stopOpacity={0.92} />
+                  <stop offset="100%" stopColor="hsl(18, 85%, 28%)" stopOpacity={0.85} />
+                </linearGradient>
+                <linearGradient id="opexBarSheen" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,255,255,0.35)" />
+                  <stop offset="45%" stopColor="rgba(255,255,255,0.05)" />
+                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -861,7 +873,27 @@ function ConsolidatedOpexWidget() {
                   return [formatUSD((v as number) / 1000), 'OPEX'];
                 }}
               />
-              <Bar yAxisId="left" dataKey="value" name="OPEX" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]}>
+              <Bar
+                yAxisId="left"
+                dataKey="value"
+                name="OPEX"
+                fill="url(#opexBarGradient)"
+                stroke="hsl(20, 85%, 34%)"
+                strokeWidth={0.75}
+                radius={[4, 4, 0, 0]}
+                shape={(props: any) => {
+                  const { x, y, width, height } = props;
+                  const w = Number(width) || 0;
+                  const h = Number(height) || 0;
+                  const r = 4;
+                  return (
+                    <g>
+                      <rect x={x} y={y} width={w} height={h} rx={r} ry={r} fill="url(#opexBarGradient)" stroke="hsl(20, 85%, 34%)" strokeWidth={0.75} />
+                      <rect x={x} y={y} width={w} height={Math.min(h * 0.55, 22)} rx={r} ry={r} fill="url(#opexBarSheen)" pointerEvents="none" />
+                    </g>
+                  );
+                }}
+              >
                 <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000))} />
               </Bar>
               {showDelta && (
@@ -2088,22 +2120,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 const midY = bar.y + barH / 2;
                 const absY = midY - 2;
                 const pctY = midY + 11;
-                const drawStroked = (txt: string, cx: number, cy: number, size: number) => {
+                const drawStroked = (txt: string, cx: number, cy: number, size: number, color: string) => {
                   ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
                   ctx.lineWidth = 3;
                   ctx.lineJoin = 'round';
                   ctx.strokeStyle = 'rgba(0,0,0,0.85)';
                   ctx.strokeText(txt, cx, cy);
-                  ctx.fillStyle = '#ffffff';
+                  ctx.fillStyle = color;
                   ctx.fillText(txt, cx, cy);
                 };
                 if (abs != null && abs !== 0) {
                   const s = abs > 0 ? '+' : '−';
-                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10);
+                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10, abs > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
                 }
                 if (pct != null && isFinite(pct) && pct !== 0) {
                   const s = pct > 0 ? '+' : '−';
-                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9);
+                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9, pct > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
                 }
               });
               ctx.restore();
