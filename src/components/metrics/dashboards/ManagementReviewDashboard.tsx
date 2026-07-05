@@ -34,6 +34,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
+import { BarChart, Bar } from 'recharts';
+import { useCompany } from '@/hooks/useCompany';
+import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
+import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
+import { QBO_ENTITIES } from '@/config/qboEntities';
+import { formatUSD } from '@/lib/formatters/currency';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
