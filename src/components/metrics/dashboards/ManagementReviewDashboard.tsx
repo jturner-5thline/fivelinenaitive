@@ -906,6 +906,7 @@ function ConsolidatedCashflowWidget() {
                 width={64}
                 tickFormatter={(v: number) => fmt(v as number)}
               />
+              <ReferenceLine y={0} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
               <RTooltip
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
