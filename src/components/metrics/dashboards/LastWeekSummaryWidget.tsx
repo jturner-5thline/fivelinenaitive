@@ -108,7 +108,9 @@ export function LastWeekSummaryWidget() {
           <Row label="Clients Signed | Revenue Signed" placeholder />
         </Group>
         <Group title="Naitive">
-          <Row label="Deals | Dollars on the Board" placeholder />
+          <Row label="Demos Created" placeholder />
+          <Row label="Proposals Issued" placeholder />
+          <Row label="Clients Signed" placeholder />
         </Group>
       </CardContent>
     </Card>
