@@ -85,10 +85,9 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
       goToPrevious();
     } else if (e.key === 'ArrowRight') {
       goToNext();
-    } else if (e.key === 'Escape') {
-      onClose();
     }
-  }, [goToPrevious, goToNext, onClose]);
+    // Escape is handled by Radix Dialog via onOpenChange.
+  }, [goToPrevious, goToNext]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.touches[0].clientX);
