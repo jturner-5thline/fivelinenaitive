@@ -1667,7 +1667,6 @@ function MetricsInner() {
   const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
     'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
     'revenue-by-month',
-    'clients-signed-debt', 'clients-signed-finserv', 'outstanding-ar',
   ];
 
   // Unified layout IDs: snapshot cards + section blocks + custom widgets in ONE grid.
@@ -1714,12 +1713,6 @@ function MetricsInner() {
       // Below Total Revenue: "Last Week" summary tile.
       { i: 'last-week-summary', x: 0, y: 6, w: 6, h: 3, minW: 4, minH: 3 },
 
-      // Bottom-left: smaller table/list area + medium chart adjacent
-      { i: 'outstanding-ar',         x: 0, y: 9,  w: 3, h: 3, minW: 3, minH: 2 },
-      { i: 'total-revenue',          x: 3, y: 9,  w: 3, h: 3, minW: 3, minH: 3 },
-      { i: 'clients-signed-debt',    x: 0, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
-      { i: 'clients-signed-finserv', x: 3, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
-
       // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
       { i: 'rev-debt',    x: 0, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
       { i: 'rev-finserv', x: 6, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
@@ -1735,7 +1728,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v14', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v15', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
