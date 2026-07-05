@@ -657,12 +657,32 @@ function ConsolidatedOpexWidget() {
   const rangeStart = buckets[0]?.start_date ?? '';
   const rangeEnd = buckets[buckets.length - 1]?.end_date ?? '';
 
+  // One extra prior bucket used only to seed the Δ Trend line at index 0
+  // so it starts on the first visible bar rather than the second.
+  const priorBucket = useMemo(() => {
+    if (!anchorEnd) return null;
+    const end = new Date(anchorEnd + 'T00:00:00');
+    if (view === 'quarter') {
+      const qEndAnchor = endOfQuarter(end);
+      const priorEnd = endOfQuarter(subQuarters(qEndAnchor, 4));
+      const priorStart = startOfQuarter(priorEnd);
+      return { start_date: format(priorStart, 'yyyy-MM-dd'), end_date: format(priorEnd, 'yyyy-MM-dd') };
+    }
+    const mEndAnchor = endOfMonth(end);
+    const priorEnd = endOfMonth(subMonths(mEndAnchor, 12));
+    const priorStart = startOfMonth(priorEnd);
+    return { start_date: format(priorStart, 'yyyy-MM-dd'), end_date: format(priorEnd, 'yyyy-MM-dd') };
+  }, [anchorEnd, view]);
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['consolidated-opex', company?.id, rangeStart, rangeEnd, granularity],
+    queryKey: ['consolidated-opex', company?.id, rangeStart, rangeEnd, granularity, priorBucket?.start_date],
     enabled: !!company?.id && buckets.length > 0,
     staleTime: 60_000,
     queryFn: async () => {
-      const periods = buckets.map(b => ({ start_date: b.start_date, end_date: b.end_date }));
+      const periods = [
+        ...(priorBucket ? [priorBucket] : []),
+        ...buckets.map(b => ({ start_date: b.start_date, end_date: b.end_date })),
+      ];
       const perRealm = await Promise.all(
         QBO_ENTITIES.map(async (e) => {
           try {
@@ -675,10 +695,13 @@ function ConsolidatedOpexWidget() {
       );
       const byKey = new Map<string, number>();
       buckets.forEach(b => byKey.set(`${b.start_date}_${b.end_date}`, 0));
+      const priorKey = priorBucket ? `${priorBucket.start_date}_${priorBucket.end_date}` : null;
+      let priorValue = 0;
       for (const rows of perRealm) {
         for (const r of rows) {
           const k = `${r.period_start}_${r.period_end}`;
           if (byKey.has(k)) byKey.set(k, (byKey.get(k) ?? 0) + Number(r.operating_expenses ?? 0));
+          if (priorKey && k === priorKey) priorValue += Number(r.operating_expenses ?? 0);
         }
       }
       const series = buckets.map(b => ({
@@ -687,19 +710,21 @@ function ConsolidatedOpexWidget() {
         value: byKey.get(`${b.start_date}_${b.end_date}`) ?? 0,
       }));
       const total = series.reduce((s, p) => s + p.value, 0);
-      return { series, total };
+      return { series, total, priorValue };
     },
   });
 
   const series = data?.series ?? [];
   const total = data?.total ?? 0;
+  const priorValue = data?.priorValue ?? null;
   const loading = isLoading || isFetching;
   const granularityLabel = view === 'quarter' ? 'Quarterly' : 'Monthly';
 
-  // Period-over-period change trendline data (Δ Trend). $ delta drives the
-  // secondary axis; % delta is shown alongside in the tooltip.
+  // Period-over-period change trendline data (Δ Trend). Index 0 uses the
+  // immediately preceding period as the baseline so the line starts on the
+  // first visible bar. $ delta drives the secondary axis; % is in the tooltip.
   const chartData = series.map((p, i) => {
-    const prev = i === 0 ? null : series[i - 1].value;
+    const prev = i === 0 ? priorValue : series[i - 1].value;
     const deltaAbs = prev == null ? null : p.value - prev;
     const deltaPct = prev == null || prev === 0 ? null : ((p.value - prev) / Math.abs(prev)) * 100;
     return { ...p, deltaAbs, deltaPct };
@@ -820,7 +845,23 @@ function ConsolidatedCashflowWidget() {
   // granularity per (realm, period_start, period_end). We request the full
   // span in one call per realm; the sync populates monthly rows within that
   // range which we then aggregate into the widget's buckets.
-  const spanStart = buckets[0]?.start_date ?? '';
+  // Extend the fetch span one bucket earlier so the Δ Trend line has a
+  // baseline for index 0 and starts on the first visible bar.
+  const priorBucket = useMemo(() => {
+    if (!anchorEnd) return null;
+    const end = new Date(anchorEnd + 'T00:00:00');
+    if (view === 'quarter') {
+      const qEndAnchor = endOfQuarter(end);
+      const priorEnd = endOfQuarter(subQuarters(qEndAnchor, 4));
+      const priorStart = startOfQuarter(priorEnd);
+      return { start_date: format(priorStart, 'yyyy-MM-dd'), end_date: format(priorEnd, 'yyyy-MM-dd') };
+    }
+    const mEndAnchor = endOfMonth(end);
+    const priorEnd = endOfMonth(subMonths(mEndAnchor, 12));
+    const priorStart = startOfMonth(priorEnd);
+    return { start_date: format(priorStart, 'yyyy-MM-dd'), end_date: format(priorEnd, 'yyyy-MM-dd') };
+  }, [anchorEnd, view]);
+  const spanStart = (priorBucket?.start_date ?? buckets[0]?.start_date) ?? '';
   const spanEnd = buckets[buckets.length - 1]?.end_date ?? '';
 
   const { data, isLoading, isFetching } = useQuery({
@@ -913,12 +954,27 @@ function ConsolidatedCashflowWidget() {
         return { label: b.label, key: b.key, value };
       });
       const total = series.reduce((s, p) => s + p.value, 0);
-      return { series, total };
+      // Compute the prior-bucket baseline value (used to seed Δ Trend at
+      // index 0) from the same aggregated snapshot map.
+      let priorValue: number | null = null;
+      if (priorBucket) {
+        const pStart = new Date(priorBucket.start_date + 'T00:00:00').getTime();
+        const pEnd = new Date(priorBucket.end_date + 'T00:00:00').getTime();
+        let v = 0;
+        for (const r of best.values()) {
+          const rs = new Date(r.bucket_start + 'T00:00:00').getTime();
+          if (rs < pStart || rs > pEnd) continue;
+          v += Number(r.operating_activities ?? 0);
+        }
+        priorValue = v;
+      }
+      return { series, total, priorValue };
     },
   });
 
   const series = data?.series ?? [];
   const total = data?.total ?? 0;
+  const priorValue = data?.priorValue ?? null;
   const loading = isLoading || isFetching;
   const granularityLabel = view === 'quarter' ? 'Quarterly' : 'Monthly';
 
@@ -929,7 +985,7 @@ function ConsolidatedCashflowWidget() {
   };
   const [showDelta, setShowDelta] = useState(false);
   const chartData = series.map((p, i) => {
-    const prev = i === 0 ? null : series[i - 1].value;
+    const prev = i === 0 ? priorValue : series[i - 1].value;
     const deltaAbs = prev == null ? null : p.value - prev;
     const deltaPct = prev == null || prev === 0 ? null : ((p.value - prev) / Math.abs(prev)) * 100;
     return { ...p, deltaAbs, deltaPct };
