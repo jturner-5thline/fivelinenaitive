@@ -642,15 +642,20 @@ function CashflowForecastWidget() {
 function makeBarValueDeltaLabel(
   chartData: Array<{ value: number; deltaAbs: number | null; deltaPct: number | null }>,
   formatValue: (v: number) => string,
-  opts?: { invertDeltaColors?: boolean },
+  opts?: { invertDeltaColors?: boolean; polarity?: 'higher-is-better' | 'lower-is-better' },
 ) {
-  const invert = opts?.invertDeltaColors === true;
-  const goodColor = 'hsl(150, 80%, 62%)';
-  const badColor = 'hsl(0, 82%, 66%)';
-  const colorFor = (delta: number) => {
-    const positive = delta > 0;
-    // Default: positive = good (green). Invert: positive = bad (red).
-    return (invert ? !positive : positive) ? goodColor : badColor;
+  // Polarity-based semantic coloring. `polarity` is preferred; `invertDeltaColors`
+  // is kept for backward compat and maps to lower-is-better.
+  const polarity: 'higher-is-better' | 'lower-is-better' =
+    opts?.polarity ?? (opts?.invertDeltaColors ? 'lower-is-better' : 'higher-is-better');
+  // Softer semantic tokens tuned for the dark analytics surface.
+  const goodColor = 'hsl(152, 55%, 60%)';
+  const badColor = 'hsl(0, 65%, 65%)';
+  const neutralColor = 'hsl(220, 10%, 62%)';
+  const colorFor = (delta: number | null | undefined) => {
+    if (delta == null || !isFinite(delta) || delta === 0) return neutralColor;
+    const favorable = polarity === 'higher-is-better' ? delta > 0 : delta < 0;
+    return favorable ? goodColor : badColor;
   };
   return function BarValueDeltaLabel(props: any) {
     const { x, y, width, height, index } = props;
@@ -699,7 +704,7 @@ function makeBarValueDeltaLabel(
             {absText && (
               <text
                 x={cx} y={absY} textAnchor="middle"
-                fill={colorFor(abs!)} fontSize={10} fontWeight={700}
+                fill={colorFor(abs)} fontSize={10} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {absText}
@@ -708,7 +713,7 @@ function makeBarValueDeltaLabel(
             {pctText && (
               <text
                 x={cx} y={pctY} textAnchor="middle"
-                fill={colorFor(pct!)} fontSize={9} fontWeight={700}
+                fill={colorFor(pct)} fontSize={9} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {pctText}
@@ -890,7 +895,7 @@ function ConsolidatedOpexWidget() {
                 fill="hsl(35, 85%, 55%)"
                 radius={[4, 4, 0, 0]}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { invertDeltaColors: true })} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { polarity: 'lower-is-better' })} />
               </Bar>
               {showDelta && (
                 <>
@@ -1164,7 +1169,7 @@ function ConsolidatedCashflowWidget() {
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v))} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v), { polarity: 'higher-is-better' })} />
               </Bar>
               {showDelta && (
                 <>
