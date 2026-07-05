@@ -803,7 +803,7 @@ function ConsolidatedOpexWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No OPEX data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -835,7 +835,9 @@ function ConsolidatedOpexWidget() {
                   return [formatUSD((v as number) / 1000), 'OPEX'];
                 }}
               />
-              <Bar yAxisId="left" dataKey="value" name="OPEX" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="value" name="OPEX" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000))} />
+              </Bar>
               {showDelta && (
                 <>
                   <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
