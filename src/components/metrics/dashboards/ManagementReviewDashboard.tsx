@@ -1034,23 +1034,27 @@ const KEY_STATS_DEBT_REALM_ID = '193514877331929';
 const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
-  // Frozen default layout — matches the currently-shipped visible arrangement.
-  // compactType is disabled at the grid level so these coordinates are
-  // authoritative and widgets will not reflow on refresh.
-  // Heights sized so the primary widgets fit their content without an
-  // internal scrollbar. Key Stats (14 rows + 3 section headers) fits in
-  // 9 rows; Debt Pipeline (deal table + inline 6-month revenue chart)
-  // fits in 10 rows at the standard 70px row height.
-  { i: 'kpi-summary', x: 0, y: 0, w: 6, h: 9, minW: 4, minH: 8 },
-  { i: 'monthly-revenue', x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'cashflow-12w', x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'active-deals-list', x: 0, y: 9, w: 6, h: 10, minW: 4, minH: 8 },
-  { i: 'finserv-next3', x: 6, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'liabilities', x: 6, y: 12, w: 6, h: 3, minW: 4, minH: 2 },
-  { i: 'dscr', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 2 },
-  { i: 'debt-rating', x: 6, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'opex', x: 0, y: 23, w: 12, h: 5, minW: 6, minH: 4 },
-  { i: 'cashflow-ops', x: 0, y: 28, w: 12, h: 5, minW: 6, minH: 4 },
+  // FROZEN canonical layout — locked at the user's explicit request.
+  // Do NOT modify these coordinates without an explicit instruction to
+  // reorder/resize widgets. compactType is disabled at the grid level
+  // so these coordinates are authoritative and widgets will not reflow
+  // on refresh. Bump the dashboardId version below when the canonical
+  // layout intentionally changes so saved user rows are re-hydrated.
+  //
+  // LEFT column (x=0, w=6)
+  { i: 'kpi-summary',       x: 0, y: 0,  w: 6, h: 9,  minW: 4, minH: 8 },
+  { i: 'cashflow-12w',      x: 0, y: 9,  w: 6, h: 4,  minW: 4, minH: 3 },
+  { i: 'active-deals-list', x: 0, y: 13, w: 6, h: 10, minW: 4, minH: 8 },
+  // RIGHT column (x=6, w=6)
+  { i: 'monthly-revenue',   x: 6, y: 0,  w: 6, h: 4,  minW: 4, minH: 3 },
+  { i: 'opex',              x: 6, y: 4,  w: 6, h: 5,  minW: 4, minH: 4 },
+  { i: 'cashflow-ops',      x: 6, y: 9,  w: 6, h: 5,  minW: 4, minH: 4 },
+  { i: 'finserv-next3',     x: 6, y: 14, w: 6, h: 4,  minW: 4, minH: 3 },
+  // Auxiliary widgets kept in place at the bottom (not removed —
+  // may render empty when their data source is unavailable).
+  { i: 'liabilities', x: 0, y: 23, w: 6,  h: 3, minW: 4, minH: 2 },
+  { i: 'dscr',        x: 6, y: 23, w: 6,  h: 4, minW: 4, minH: 2 },
+  { i: 'debt-rating', x: 0, y: 27, w: 12, h: 4, minW: 6, minH: 3 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -1103,7 +1107,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v17', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v18', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
