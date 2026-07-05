@@ -2345,6 +2345,38 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           <GridShell isEditMode={isEditMode} title="Debt Pipeline">
             <TooltipProvider>
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(() => {
+                  const leftMetrics = [
+                    "Next 3 Months' Revenue",
+                    "Next 3 Months' Profit",
+                    'Client Signings',
+                    'Deals Closing',
+                    'Dollars Funding',
+                  ];
+                  const rightMetrics = [
+                    'Deal Count',
+                    'Dollar Volume',
+                    'Potential Revenue',
+                    'Active Revenue',
+                  ];
+                  const rows = Math.max(leftMetrics.length, rightMetrics.length);
+                  const labelStyle: React.CSSProperties = { padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase', whiteSpace: 'nowrap' };
+                  const valueStyle: React.CSSProperties = { padding: '6px 8px', color: 'hsl(0,0%,100%)', fontWeight: 600, textAlign: 'right' };
+                  return (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <tbody>
+                        {Array.from({ length: rows }).map((_, i) => (
+                          <tr key={i} style={{ borderBottom: i === rows - 1 ? 'none' : '1px solid rgba(255,255,255,0.04)' }}>
+                            <td style={labelStyle}>{leftMetrics[i] ?? ''}</td>
+                            <td style={valueStyle}>{leftMetrics[i] ? '—' : ''}</td>
+                            <td style={{ ...labelStyle, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>{rightMetrics[i] ?? ''}</td>
+                            <td style={valueStyle}>{rightMetrics[i] ? '—' : ''}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
                 {activeDealsList.length === 0 ? (
                   <NaPlaceholder height={140} label="No active deals in Final Credit through In Due Diligence." />
                 ) : (
