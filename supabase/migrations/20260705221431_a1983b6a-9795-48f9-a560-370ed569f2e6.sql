@@ -1,0 +1,1 @@
+DELETE FROM public.user_ui_preferences WHERE preference_key = 'grid_layout:management-snapshot-unified-v21';
