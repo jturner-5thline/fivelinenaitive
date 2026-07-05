@@ -1345,6 +1345,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     const d = parseValueDate(dateStr);
     return d ? format(d, 'MMM yyyy') : '—';
   };
+  // Deal close date can live in one of three fields depending on how it was
+  // entered (Insights dashboard vs. deal detail vs. legacy FinServ flow).
+  // Fall back in priority order so a user-entered date always surfaces.
+  const resolveDealCloseDate = (d: any): string | null =>
+    d?.projected_close_date ?? d?.dashboard_closing_date ?? d?.closing_date ?? null;
   const activeDealCount = activeDeals.length;
   const activePipelineValue = activeDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
   const avgDealSize = activeDealCount > 0 ? activePipelineValue / activeDealCount : 0;
