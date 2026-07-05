@@ -20983,6 +20983,7 @@ export type Database = {
           id: string
           intercompany_adjustment: number
           net_cash_flow: number
+          operating_activities: number | null
           period_end: string
           period_start: string
           raw_response: Json
@@ -21001,6 +21002,7 @@ export type Database = {
           id?: string
           intercompany_adjustment?: number
           net_cash_flow?: number
+          operating_activities?: number | null
           period_end: string
           period_start: string
           raw_response: Json
@@ -21019,6 +21021,7 @@ export type Database = {
           id?: string
           intercompany_adjustment?: number
           net_cash_flow?: number
+          operating_activities?: number | null
           period_end?: string
           period_start?: string
           raw_response?: Json

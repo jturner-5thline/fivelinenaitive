@@ -1,0 +1,1 @@
+ALTER TABLE public.qbo_cashflow_snapshots ADD COLUMN IF NOT EXISTS operating_activities numeric;
