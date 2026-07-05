@@ -66,7 +66,7 @@ interface LiabRow {
 }
 
 const LIAB_ROWS: LiabRow[] = [
-  { name: 'SBA Loan' },
+  { name: 'SBA Loan', qbo: { realmId: LIAB_REALM_CAPITAL, accountName: 'SBA Loan 2 (IC)' } },
   { name: 'Headway LOC', qbo: { realmId: LIAB_REALM_ADVISORS, accountName: 'Headway Capital Loan' } },
   { name: 'AMEX LOC' },
   { name: 'M&T LOC' },
