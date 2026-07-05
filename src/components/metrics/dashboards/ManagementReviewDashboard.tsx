@@ -677,7 +677,7 @@ function makeBarValueDeltaLabel(
             {absText && (
               <text
                 x={cx} y={absY} textAnchor="middle"
-                fill="#ffffff" fontSize={10} fontWeight={700}
+                fill={abs! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={10} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {absText}
@@ -686,7 +686,7 @@ function makeBarValueDeltaLabel(
             {pctText && (
               <text
                 x={cx} y={pctY} textAnchor="middle"
-                fill="#ffffff" fontSize={9} fontWeight={700}
+                fill={pct! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={9} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {pctText}
