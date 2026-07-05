@@ -34,6 +34,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
+import { BarChart, Bar } from 'recharts';
+import { useCompany } from '@/hooks/useCompany';
+import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
+import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
+import { QBO_ENTITIES } from '@/config/qboEntities';
+import { formatUSD } from '@/lib/formatters/currency';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
@@ -623,6 +629,108 @@ function CashflowForecastWidget() {
   );
 }
 
+// ============================================================================
+// Consolidated OPEX — sums "Total for Expenses" (operating_expenses) across
+// all 4 QBO entities for each bucket in the selected timeframe. Buckets are
+// monthly or quarterly based on the Reporting Period toggle.
+// ============================================================================
+function ConsolidatedOpexWidget() {
+  const { company } = useCompany();
+  const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const view: 'month' | 'quarter' = reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
+  const rangeStart = reportingPeriod?.start ?? timeframe.start;
+  const rangeEnd = reportingPeriod?.end ?? timeframe.end;
+  const granularity: Granularity = view === 'quarter' ? 'quarterly' : 'monthly';
+
+  const buckets = useMemo(
+    () => (rangeStart && rangeEnd ? buildBuckets(rangeStart, rangeEnd, granularity) : []),
+    [rangeStart, rangeEnd, granularity],
+  );
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['consolidated-opex', company?.id, rangeStart, rangeEnd, granularity],
+    enabled: !!company?.id && buckets.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const periods = buckets.map(b => ({ start_date: b.start_date, end_date: b.end_date }));
+      const perRealm = await Promise.all(
+        QBO_ENTITIES.map(async (e) => {
+          try {
+            return await ensureFinServPnlSnapshots(company!.id, periods, e.realmId);
+          } catch (err) {
+            console.warn('[opex] snapshot fetch failed', e.label, err);
+            return [];
+          }
+        }),
+      );
+      const byKey = new Map<string, number>();
+      buckets.forEach(b => byKey.set(`${b.start_date}_${b.end_date}`, 0));
+      for (const rows of perRealm) {
+        for (const r of rows) {
+          const k = `${r.period_start}_${r.period_end}`;
+          if (byKey.has(k)) byKey.set(k, (byKey.get(k) ?? 0) + Number(r.operating_expenses ?? 0));
+        }
+      }
+      const series = buckets.map(b => ({
+        label: b.label,
+        key: b.key,
+        value: byKey.get(`${b.start_date}_${b.end_date}`) ?? 0,
+      }));
+      const total = series.reduce((s, p) => s + p.value, 0);
+      return { series, total };
+    },
+  });
+
+  const series = data?.series ?? [];
+  const total = data?.total ?? 0;
+  const loading = isLoading || isFetching;
+  const granularityLabel = view === 'quarter' ? 'Quarterly' : 'Monthly';
+
+  return (
+    <div className="h-full w-full flex flex-col gap-2">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <SectionLabel>
+          {granularityLabel} OPEX — Total for Expenses (Consolidated View, all QBO entities)
+        </SectionLabel>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+          Total: <span style={{ color: 'hsl(0,0%,100%)', fontWeight: 600 }}>
+            {loading && !data ? '…' : formatUSD(total / 1000)}
+          </span>
+        </div>
+      </div>
+      <div style={{ flex: 1, minHeight: 140 }}>
+        {series.length === 0 || (loading && !data) ? (
+          <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No OPEX data for the selected period.'} />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                width={56}
+                tickFormatter={(v: number) => formatUSD((v as number) / 1000)}
+              />
+              <RTooltip
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
+                labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                formatter={(v: number) => [formatUSD((v as number) / 1000), 'OPEX']}
+              />
+              <Bar dataKey="value" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
+        Source: QuickBooks P&L (accrual) — Operating Expenses summed across Debt, FinServ, Tech, and Capital entities
+      </div>
+    </div>
+  );
+}
+
 function GridShell({
   isEditMode,
   title,
@@ -737,6 +845,7 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'liabilities', x: 6, y: 12, w: 6, h: 3, minW: 4, minH: 2 },
   { i: 'dscr', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 2 },
   { i: 'debt-rating', x: 6, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'opex', x: 0, y: 23, w: 12, h: 5, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -2517,6 +2626,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         <div key="debt-rating" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
             <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
+          </GridShell>
+        </div>
+        <div key="opex" className="h-full">
+          <GridShell isEditMode={isEditMode} title="OPEX">
+            <ConsolidatedOpexWidget />
           </GridShell>
         </div>
       </DraggableGridLayout>
