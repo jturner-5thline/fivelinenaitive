@@ -727,7 +727,6 @@ export function ManagementSnapshotDashboard({
 
   const allCards: CardEntry[] = [
     { cardId: 'total-revenue-detail', props: getCardProps('total-revenue-detail', 'Total Revenue Detail', 'hsl(var(--chart-2))', 'ytd', 'metric') },
-    { cardId: 'revenue-by-month',     props: getCardProps('revenue-by-month',     'Revenue by Month',     'hsl(var(--chart-2))', 'ytd', 'chart') },
   ];
 
   const visibleCards = allCards.filter(c => !isHidden(c.cardId));
