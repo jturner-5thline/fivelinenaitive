@@ -18,6 +18,13 @@ const DEBT_STAGES = {
   fundedInvoiced: { ids: ['funded-invoiced'],                           labels: ['Funded/Invoiced', 'Funded / Invoiced', 'funded-invoiced'] },
 } as const;
 
+// FinServ Pipeline stage identifiers.
+const FINSERV_STAGES = {
+  qualification: { ids: ['fs-qualification'], labels: ['Qualification', 'fs-qualification'] },
+  proposalSent:  { ids: ['fs-proposal-sent'], labels: ['Proposal Sent', 'fs-proposal-sent'] },
+  activeClient:  { ids: ['fs-closed-won'],    labels: ['Active Client', 'fs-closed-won'] },
+} as const;
+
 type StageConfig = { ids: readonly string[]; labels: readonly string[] };
 
 function formatCurrencyMM(value: number) {
