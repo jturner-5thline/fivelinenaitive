@@ -902,7 +902,7 @@ function ConsolidatedOpexWidget() {
                   );
                 }}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000))} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { invertDeltaColors: true })} />
               </Bar>
               {showDelta && (
                 <>
