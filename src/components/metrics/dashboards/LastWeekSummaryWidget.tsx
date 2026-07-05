@@ -104,6 +104,8 @@ export function LastWeekSummaryWidget() {
         </Group>
         <Group title="FinServ">
           <Row label="FinServ Deals | $ On the Board" placeholder />
+          <Row label="Proposals Sent | Revenue Proposed" placeholder />
+          <Row label="Clients Signed | Revenue Signed" placeholder />
         </Group>
         <Group title="Naitive">
           <Row label="Deals | Dollars on the Board" placeholder />
