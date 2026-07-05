@@ -169,6 +169,25 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+function StageRow({
+  label,
+  q,
+}: {
+  label: string;
+  q: { data?: { count: number; dollars: number; prevCount: number; prevDollars: number }; isLoading: boolean };
+}) {
+  return (
+    <Row
+      label={label}
+      count={q.data?.count ?? 0}
+      dollars={q.data?.dollars ?? 0}
+      prevCount={q.data?.prevCount ?? 0}
+      prevDollars={q.data?.prevDollars ?? 0}
+      isLoading={q.isLoading}
+    />
+  );
+}
+
 function Row({
   label,
   count,
