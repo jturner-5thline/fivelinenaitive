@@ -2088,22 +2088,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 const midY = bar.y + barH / 2;
                 const absY = midY - 2;
                 const pctY = midY + 11;
-                const drawStroked = (txt: string, cx: number, cy: number, size: number) => {
+                const drawStroked = (txt: string, cx: number, cy: number, size: number, color: string) => {
                   ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
                   ctx.lineWidth = 3;
                   ctx.lineJoin = 'round';
                   ctx.strokeStyle = 'rgba(0,0,0,0.85)';
                   ctx.strokeText(txt, cx, cy);
-                  ctx.fillStyle = '#ffffff';
+                  ctx.fillStyle = color;
                   ctx.fillText(txt, cx, cy);
                 };
                 if (abs != null && abs !== 0) {
                   const s = abs > 0 ? '+' : '−';
-                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10);
+                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10, abs > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
                 }
                 if (pct != null && isFinite(pct) && pct !== 0) {
                   const s = pct > 0 ? '+' : '−';
-                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9);
+                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9, pct > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)');
                 }
               });
               ctx.restore();
