@@ -887,6 +887,8 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
           data={debtRevenue.months}
           isLoading={debtRevenue.isLoading}
           total={debtRevenue.total}
+          realmId={DEBT_REALM_ID}
+          quarter={selectedQuarter}
           onBarClick={(monthKey) =>
             setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })
           }
@@ -898,6 +900,9 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
           isLoading={finservRevenue.isLoading}
           total={finservRevenue.total}
           categories={FINSERV_STACKED_CATEGORIES}
+          realmId={FINSERV_REALM_ID}
+          quarter={selectedQuarter}
+          metricLabelPrefix="FinServ"
           onBarClick={(monthKey) =>
             setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })
           }
@@ -939,6 +944,8 @@ export function DebtRevenueWidget({ selectedQuarter }: { selectedQuarter: Quarte
         data={debtRevenue.months}
         isLoading={debtRevenue.isLoading}
         total={debtRevenue.total}
+        realmId={DEBT_REALM_ID}
+        quarter={selectedQuarter}
         onBarClick={(monthKey) => setDrilldown({ title: 'Debt Revenue', monthKey, realmIds: [DEBT_REALM_ID] })}
       />
       <RevenueDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} drilldown={drilldown} quarter={selectedQuarter} />
@@ -958,6 +965,9 @@ export function FinServRevenueWidget({ selectedQuarter }: { selectedQuarter: Qua
         isLoading={finservRevenue.isLoading}
         total={finservRevenue.total}
         categories={FINSERV_STACKED_CATEGORIES}
+        realmId={FINSERV_REALM_ID}
+        quarter={selectedQuarter}
+        metricLabelPrefix="FinServ"
         onBarClick={(monthKey) => setDrilldown({ title: 'FinServ Revenue', monthKey, realmIds: [FINSERV_REALM_ID] })}
       />
       <RevenueDrilldownModal open={!!drilldown} onClose={() => setDrilldown(null)} drilldown={drilldown} quarter={selectedQuarter} />
