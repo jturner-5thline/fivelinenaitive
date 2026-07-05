@@ -117,6 +117,10 @@ export function LastWeekSummaryWidget() {
   const termsSign  = useStageWindow('in-due-diligence', DEBT_STAGES.inDueDiligence);
   const funded     = useStageWindow('funded-invoiced', DEBT_STAGES.fundedInvoiced);
 
+  const fsQualification = useStageWindow('fs-qualification', FINSERV_STAGES.qualification);
+  const fsProposal      = useStageWindow('fs-proposal-sent', FINSERV_STAGES.proposalSent);
+  const fsActive        = useStageWindow('fs-active-client', FINSERV_STAGES.activeClient);
+
   const rangeLabel = `${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
   return (
@@ -149,9 +153,9 @@ export function LastWeekSummaryWidget() {
           <StageRow label="Deals Closed | Dollars Funded"   q={funded} />
         </Group>
         <Group title="FinServ">
-          <Row label="FinServ Deals | $ On the Board" placeholder />
-          <Row label="Proposals Sent | Revenue Proposed" placeholder />
-          <Row label="Clients Signed | Revenue Signed" placeholder />
+          <StageRow label="FinServ Deals | $ On the Board"  q={fsQualification} />
+          <StageRow label="Proposals Sent | Revenue Proposed" q={fsProposal} />
+          <StageRow label="Clients Signed | Revenue Signed"   q={fsActive} />
         </Group>
         <Group title="Naitive">
           <Row label="Demos Created" placeholder />
