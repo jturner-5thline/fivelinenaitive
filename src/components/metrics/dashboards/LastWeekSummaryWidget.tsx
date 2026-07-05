@@ -335,35 +335,44 @@ function Row({
           : undefined
       }
       className={cn(
-        'flex items-center justify-between gap-3 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
+        'grid items-center gap-2 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
+        'grid-cols-[minmax(0,1fr)_4.5rem_0.5rem_5rem_3rem_0.5rem_3rem]',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate flex-1 min-w-0">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate min-w-0">
         {label}
       </p>
-      <div className="flex items-baseline gap-2 shrink-0">
-        {placeholder ? (
-          <>
-            <span className="text-lg font-bold font-mono tabular-nums text-muted-foreground/60">—</span>
-            <DeltaBadge pct={null} />
-          </>
-        ) : isLoading ? (
+      {placeholder ? (
+        <>
+          <span className="text-base font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-muted-foreground/50 font-light text-center">|</span>
+          <span className="text-base font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <DeltaBadge pct={null} />
+          <span className="text-muted-foreground/40 font-light text-center">|</span>
+          <DeltaBadge pct={null} />
+        </>
+      ) : isLoading ? (
+        <div className="col-span-6 flex justify-end">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        ) : (
-          <>
-            <span className="text-lg font-bold font-mono tabular-nums text-foreground">
-              {count} <span className="text-xs font-medium text-muted-foreground">Deal{count === 1 ? '' : 's'}</span>
+        </div>
+      ) : (
+        <>
+          <span className="text-base font-bold font-mono tabular-nums text-foreground text-right">
+            {count}
+            <span className="ml-1 text-[10px] font-medium text-muted-foreground">
+              Deal{count === 1 ? '' : 's'}
             </span>
-            <DeltaBadge pct={countChange} />
-            <span className="text-muted-foreground/60 font-light">|</span>
-            <span className="text-lg font-bold font-mono tabular-nums text-foreground">
-              {formatCurrencyMM(dollars ?? 0)}
-            </span>
-            <DeltaBadge pct={dollarsChange} />
-          </>
-        )}
-      </div>
+          </span>
+          <span className="text-muted-foreground/50 font-light text-center">|</span>
+          <span className="text-base font-bold font-mono tabular-nums text-foreground text-right">
+            {formatCurrencyMM(dollars ?? 0)}
+          </span>
+          <DeltaBadge pct={countChange} />
+          <span className="text-muted-foreground/40 font-light text-center">|</span>
+          <DeltaBadge pct={dollarsChange} />
+        </>
+      )}
     </div>
   );
 }
