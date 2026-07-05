@@ -203,56 +203,87 @@ function aggregateByCustomer(rows: OpenInvoiceRow[], realmId: string): { rows: C
 }
 
 function ARCustomerTable({
-  title,
-  subtitle,
+  label,
+  entity,
   rows,
   total,
+  accent,
 }: {
-  title: string;
-  subtitle: string;
+  label: string;
+  entity: string;
   rows: CustomerARRow[];
   total: number;
+  accent: string;
 }) {
+  const MAX_ROWS = 5;
+  const visible = rows.slice(0, MAX_ROWS);
+  const rest = rows.slice(MAX_ROWS);
+  const otherTotal = rest.reduce((s, r) => s + r.balance, 0);
+  const otherAvgDays = otherTotal > 0
+    ? Math.round(rest.reduce((s, r) => s + r.avgDays * r.balance, 0) / otherTotal)
+    : 0;
+
+  const agingPill = (days: number) => {
+    const cls = days >= 60
+      ? 'bg-red-500/15 text-red-400 ring-red-500/30'
+      : days >= 30
+        ? 'bg-amber-500/15 text-amber-400 ring-amber-500/30'
+        : 'bg-muted/40 text-muted-foreground ring-border/40';
+    return (
+      <span className={`inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ring-1 ring-inset tabular-nums ${cls}`}>
+        {days}d
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col min-w-0">
-      <div className="flex items-baseline justify-between px-1 pb-1.5">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-foreground truncate">{title}</p>
-          <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+      <div className="flex items-baseline justify-between gap-2 pb-1">
+        <div className="min-w-0 flex items-baseline gap-2">
+          <span className={`inline-block h-2 w-2 rounded-full ${accent}`} />
+          <p className="text-xs font-semibold text-foreground">{label}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{entity}</p>
         </div>
-        <p className="text-sm font-bold font-mono text-foreground flex-shrink-0 ml-2">
-          {formatCurrency(total)}
-        </p>
       </div>
-      <div className="border border-border/60 rounded-md overflow-hidden">
+      <div className="rounded-md overflow-hidden">
         <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-muted/30 border-b border-border/60">
-              <th className="text-left px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground">Customer</th>
-              <th className="text-right px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground">Balance</th>
-              <th className="text-right px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">Avg Days</th>
-            </tr>
-          </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {visible.length === 0 ? (
               <tr>
                 <td colSpan={3} className="px-2 py-3 text-center text-[11px] text-muted-foreground">
                   No outstanding A/R
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
-                <tr key={r.customer} className="border-b border-border/30 last:border-0 hover:bg-muted/20">
-                  <td className="px-2 py-1.5 truncate max-w-0" title={r.customer}>{r.customer}</td>
-                  <td className="px-2 py-1.5 text-right font-mono tabular-nums">{formatCurrency(r.balance)}</td>
-                  <td className={
-                    'px-2 py-1.5 text-right font-mono tabular-nums ' +
-                    (r.avgDays >= 60 ? 'text-red-500' : r.avgDays >= 30 ? 'text-amber-500' : 'text-muted-foreground')
-                  }>
-                    {r.avgDays}d
-                  </td>
-                </tr>
-              ))
+              <>
+                {visible.map((r, i) => (
+                  <tr
+                    key={r.customer}
+                    className={`border-b border-border/20 last:border-0 hover:bg-muted/20 ${i % 2 === 1 ? 'bg-muted/10' : ''}`}
+                  >
+                    <td className="px-2 py-1 truncate max-w-0 text-[11px] text-muted-foreground" title={r.customer}>
+                      {r.customer}
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-xs font-semibold text-foreground">
+                      {formatCurrency(r.balance)}
+                    </td>
+                    <td className="px-2 py-1 text-right w-[52px]">
+                      {agingPill(r.avgDays)}
+                    </td>
+                  </tr>
+                ))}
+                {rest.length > 0 && (
+                  <tr className="border-t border-border/40">
+                    <td className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      +{rest.length} other
+                    </td>
+                    <td className="px-2 py-1 text-right font-mono tabular-nums text-xs font-semibold text-foreground">
+                      {formatCurrency(otherTotal)}
+                    </td>
+                    <td className="px-2 py-1 text-right">{agingPill(otherAvgDays)}</td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>
@@ -293,26 +324,46 @@ export function OutstandingARPieChart() {
           <p className="text-[10px] text-muted-foreground">Total Outstanding</p>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 overflow-auto">
+      <CardContent className="flex-1 min-h-0 overflow-auto pt-0 pb-3 space-y-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <ARCustomerTable
-              title="Debt"
-              subtitle="5th Line Capital Advisors, LLC"
-              rows={debt.rows}
-              total={debt.total}
-            />
-            <ARCustomerTable
-              title="FinServ"
-              subtitle="5th Line Financial Services, LLC"
-              rows={finserv.rows}
-              total={finserv.total}
-            />
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-md border border-border/40 bg-muted/10 px-2.5 py-1.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Debt</span>
+                </div>
+                <span className="text-sm font-bold font-mono tabular-nums text-foreground">{formatCurrency(debt.total)}</span>
+              </div>
+              <div className="rounded-md border border-border/40 bg-muted/10 px-2.5 py-1.5 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="inline-block h-2 w-2 rounded-full bg-[hsl(var(--chart-2))]" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">FinServ</span>
+                </div>
+                <span className="text-sm font-bold font-mono tabular-nums text-foreground">{formatCurrency(finserv.total)}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+              <ARCustomerTable
+                label="Debt"
+                entity="5th Line Capital Advisors, LLC"
+                rows={debt.rows}
+                total={debt.total}
+                accent="bg-primary"
+              />
+              <ARCustomerTable
+                label="FinServ"
+                entity="5th Line Financial Services, LLC"
+                rows={finserv.rows}
+                total={finserv.total}
+                accent="bg-[hsl(var(--chart-2))]"
+              />
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
