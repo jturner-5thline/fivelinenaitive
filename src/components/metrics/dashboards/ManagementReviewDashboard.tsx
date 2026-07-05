@@ -155,27 +155,32 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
     queryFn: async () => {
       if (!realmId) return [] as { label: string; asOf: string; value: number | null }[];
       // Build 12 trailing month-end anchors, ending with today's month.
+      // Always show the last 12 months regardless of the currently selected
+      // Insights timeframe (drilldown is intentionally longer-horizon).
       const now = new Date();
       const anchors: { label: string; date: Date }[] = [];
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i + 1, 0); // last day of that month
+        // Last day of the month (now.month - i)
+        const d = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
         anchors.push({
           label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
           date: d,
         });
       }
-      const earliest = anchors[0].date;
-      earliest.setDate(1);
-      earliest.setMonth(earliest.getMonth() - 1); // buffer one prior month
       const pad = (n: number) => String(n).padStart(2, '0');
       const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      // Fetch snapshots going back a further ~3 months before the earliest
+      // anchor so we can still resolve a "latest snapshot at-or-before" match
+      // for the oldest month even when snapshots are sparse historically.
+      const earliestAnchor = anchors[0].date;
+      const fetchFrom = new Date(earliestAnchor.getFullYear(), earliestAnchor.getMonth() - 3, 1);
 
       const { data, error } = await supabase
         .from('quickbooks_reports')
         .select('report_data, period_end')
         .eq('report_type', 'balance_sheet')
         .eq('realm_id', realmId)
-        .gte('period_end', iso(earliest))
+        .gte('period_end', iso(fetchFrom))
         .order('period_end', { ascending: true });
       if (error) throw error;
       const snaps = (data ?? []).map(r => ({
