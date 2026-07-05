@@ -235,22 +235,6 @@ const MANAGEMENT_SNAPSHOT_CARD_DEFAULTS: Record<EditableManagementSnapshotCardId
     size: 'medium',
     color: 'hsl(var(--primary))',
   },
-  'debt-profit': {
-    title: 'Debt Profit',
-    type: 'chart',
-    chartType: 'composed',
-    dataSource: 'manager-performance',
-    size: 'medium',
-    color: 'hsl(var(--primary))',
-  },
-  'finserv-profit': {
-    title: 'FinServ Revenue',
-    type: 'chart',
-    chartType: 'composed',
-    dataSource: 'ytd-cumulative',
-    size: 'medium',
-    color: 'hsl(var(--chart-4))',
-  },
   'avg-rev-per-client': {
     title: 'Avg Revenue per New Client Signed',
     type: 'stat',
@@ -1685,7 +1669,6 @@ function MetricsInner() {
     'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
     'revenue-by-month',
     'clients-signed-debt', 'clients-signed-finserv', 'outstanding-ar',
-    'debt-profit', 'finserv-profit',
   ];
 
   // Unified layout IDs: snapshot cards + section blocks + custom widgets in ONE grid.
@@ -1695,7 +1678,6 @@ function MetricsInner() {
     'rev-debt','rev-finserv',
     'last-week-summary',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
-    'pe-debt-profit','pe-finserv-profit',
     'exec-deals-by-status',
   ];
   // Executive Dashboard is now broken into individual sub-widgets above; the
@@ -1740,18 +1722,12 @@ function MetricsInner() {
       { i: 'clients-signed-finserv', x: 3, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
 
       // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
-      { i: 'debt-profit',    x: 0, y: 15, w: 6, h: 3, minW: 3, minH: 3 },
-      { i: 'finserv-profit', x: 6, y: 15, w: 6, h: 3, minW: 3, minH: 3 },
-
       { i: 'rev-debt',    x: 0, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
       { i: 'rev-finserv', x: 6, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
 
       { i: 'sd-deals-signed',           x: 0, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'sd-finserv-clients-signed', x: 4, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
       { i: 'exec-deals-by-status',      x: 8, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
-
-      { i: 'pe-debt-profit',    x: 0, y: 30, w: 6, h: 6, minW: 4, minH: 4 },
-      { i: 'pe-finserv-profit', x: 6, y: 30, w: 6, h: 6, minW: 4, minH: 4 },
     ];
     return defaults;
   }, []);
@@ -1760,7 +1736,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v12', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v13', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
