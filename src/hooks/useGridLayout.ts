@@ -11,6 +11,8 @@ export interface GridLayoutItem {
   h: number;
   minW?: number;
   minH?: number;
+  maxW?: number;
+  maxH?: number;
 }
 
 /**
