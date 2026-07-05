@@ -16,6 +16,7 @@ import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
 import WhatWorkingSections from './WhatWorkingSections';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
+import { computeClosingFee } from '@/lib/fees';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
