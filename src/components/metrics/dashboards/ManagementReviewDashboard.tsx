@@ -641,7 +641,16 @@ function CashflowForecastWidget() {
 function makeBarValueDeltaLabel(
   chartData: Array<{ value: number; deltaAbs: number | null; deltaPct: number | null }>,
   formatValue: (v: number) => string,
+  opts?: { invertDeltaColors?: boolean },
 ) {
+  const invert = opts?.invertDeltaColors === true;
+  const goodColor = 'hsl(150, 80%, 62%)';
+  const badColor = 'hsl(0, 82%, 66%)';
+  const colorFor = (delta: number) => {
+    const positive = delta > 0;
+    // Default: positive = good (green). Invert: positive = bad (red).
+    return (invert ? !positive : positive) ? goodColor : badColor;
+  };
   return function BarValueDeltaLabel(props: any) {
     const { x, y, width, height, index } = props;
     const w = Number(width) || 0;
@@ -677,7 +686,7 @@ function makeBarValueDeltaLabel(
             {absText && (
               <text
                 x={cx} y={absY} textAnchor="middle"
-                fill={abs! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={10} fontWeight={700}
+                fill={colorFor(abs!)} fontSize={10} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {absText}
@@ -686,7 +695,7 @@ function makeBarValueDeltaLabel(
             {pctText && (
               <text
                 x={cx} y={pctY} textAnchor="middle"
-                fill={pct! > 0 ? 'hsl(150, 80%, 62%)' : 'hsl(0, 82%, 66%)'} fontSize={9} fontWeight={700}
+                fill={colorFor(pct!)} fontSize={9} fontWeight={700}
                 stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
               >
                 {pctText}
@@ -893,7 +902,7 @@ function ConsolidatedOpexWidget() {
                   );
                 }}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000))} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { invertDeltaColors: true })} />
               </Bar>
               {showDelta && (
                 <>
