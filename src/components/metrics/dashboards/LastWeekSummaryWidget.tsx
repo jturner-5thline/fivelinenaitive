@@ -225,7 +225,7 @@ export function LastWeekSummaryWidget() {
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), transparent)' }}
       />
-      <CardContent className="p-4 flex flex-col gap-3 h-full">
+      <CardContent className="p-3 flex flex-col gap-1.5 h-full overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-primary" />
@@ -296,11 +296,11 @@ export function LastWeekSummaryWidget() {
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-primary/80">
+    <div className="flex flex-col gap-0.5">
+      <p className="text-[9px] uppercase tracking-[0.15em] font-semibold text-primary/80 leading-tight">
         {title}
       </p>
-      <div className="flex flex-col gap-2 pl-2 border-l border-primary/20">
+      <div className="flex flex-col gap-0 pl-1.5 border-l border-primary/20">
         {children}
       </div>
     </div>
@@ -368,37 +368,37 @@ function Row({
           : undefined
       }
       className={cn(
-        'flex flex-col gap-1 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
+        'grid items-center gap-1.5 border-t border-border/30 py-0.5 first:border-t-0 -mx-1 px-1 rounded',
+        'grid-cols-[minmax(0,1fr)_3.25rem_0.25rem_3.75rem_2.25rem_0.25rem_2.25rem]',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-tight break-words">
+      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-tight break-words min-w-0">
         {label}
       </p>
-      <div className="grid items-center gap-2 grid-cols-[4.5rem_0.5rem_5rem_3rem_0.5rem_3rem] justify-end ml-auto">
       {placeholder ? (
         <>
-          <span className="text-base font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-xs font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-base font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-xs font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <DeltaBadge pct={null} />
           <span className="text-muted-foreground/40 font-light text-center">|</span>
           <DeltaBadge pct={null} />
         </>
       ) : isLoading ? (
         <div className="col-span-6 flex justify-end">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <>
-          <span className="text-base font-bold font-mono tabular-nums text-foreground text-right">
+          <span className="text-xs font-bold font-mono tabular-nums text-foreground text-right">
             {count}
-            <span className="ml-1 text-[10px] font-medium text-muted-foreground">
+            <span className="ml-0.5 text-[9px] font-medium text-muted-foreground">
               Deal{count === 1 ? '' : 's'}
             </span>
           </span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-base font-bold font-mono tabular-nums text-foreground text-right">
+          <span className="text-xs font-bold font-mono tabular-nums text-foreground text-right">
             {formatCurrencyMM(dollars ?? 0)}
           </span>
           <DeltaBadge pct={countChange} />
@@ -406,7 +406,6 @@ function Row({
           <DeltaBadge pct={dollarsChange} />
         </>
       )}
-      </div>
     </div>
   );
 }
@@ -431,11 +430,11 @@ function DeltaBadge({ pct }: { pct: number | null }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold min-w-[3rem] justify-end',
+        'inline-flex items-center gap-0.5 text-[9px] font-mono font-semibold min-w-[2.25rem] justify-end',
         positive ? 'text-success' : 'text-destructive',
       )}
     >
-      <Icon className="h-2.5 w-2.5" />
+      <Icon className="h-2 w-2" />
       {Math.abs(pct).toFixed(0)}%
     </span>
   );
