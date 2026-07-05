@@ -429,6 +429,7 @@ export function StackedDebtRevenueChart({
   }
 
   const [showTrend, setShowTrend] = useState(false);
+  const [byService, setByService] = useState(false);
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       STACKED_CATEGORIES.reduce(
@@ -448,6 +449,7 @@ export function StackedDebtRevenueChart({
           <p className="text-xs text-muted-foreground mt-0.5">5th Line Capital Advisors, LLC</p>
         </div>
         <div className="flex items-start gap-2">
+          <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <div className="text-right">
             <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
@@ -530,7 +532,7 @@ export function StackedDebtRevenueChart({
                 wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                 formatter={(value) => STACKED_CATEGORIES.find(c => c.key === value)?.label ?? value}
               />
-              {STACKED_CATEGORIES.map((cat, catIdx) => (
+              {byService ? STACKED_CATEGORIES.map((cat, catIdx) => (
                 <Bar
                   key={cat.key}
                   dataKey={cat.key}
@@ -545,7 +547,18 @@ export function StackedDebtRevenueChart({
                     dataKey: cat.key,
                   })}
                 />
-              ))}
+              )) : (
+                <Bar
+                  key="__total"
+                  dataKey="__total"
+                  name="Total"
+                  fill="hsl(200, 80%, 55%)"
+                  fillOpacity={0.85}
+                  cursor="pointer"
+                  onClick={(d: StackedDebtMonth) => onBarClick(d.monthKey)}
+                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__total', dataKey: '__total' })}
+                />
+              )}
               {showTrend && (
                 <Line
                   type="monotone"
