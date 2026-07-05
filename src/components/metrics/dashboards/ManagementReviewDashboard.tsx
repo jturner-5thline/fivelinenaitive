@@ -169,38 +169,29 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
       }
       const pad = (n: number) => String(n).padStart(2, '0');
       const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-      // Fetch all snapshots up to the latest anchor so each trailing month can
-      // resolve the latest snapshot at-or-before that month-end, even when the
-      // historical snapshots are sparse or fall before the 12-month window.
-      const latestAnchor = anchors[anchors.length - 1].date;
-
-      const { data, error } = await supabase
-        .from('quickbooks_reports')
-        .select('report_data, period_end')
-        .eq('report_type', 'balance_sheet')
-        .eq('realm_id', realmId)
-        .lte('period_end', iso(latestAnchor))
-        .order('period_end', { ascending: true });
-      if (error) throw error;
-      const snaps = (data ?? []).map(r => ({
-        periodEnd: r.period_end as string,
-        report: r.report_data,
-      }));
-
+      // Ask QuickBooks for a true "as-of" BalanceSheet for each month-end
+      // anchor. Stored `quickbooks_reports` snapshots are only captured when
+      // a sync happens to run, so they drift from the real month-end balance
+      // (e.g. the May 26 sync misses the actual May 31 and June 30 numbers).
+      // Fetching fresh reports per anchor gives per-account balances that
+      // exactly match what a user would see running the report in QBO today.
+      const asOfDates = anchors.map((a) => iso(a.date));
+      const { data: fnData, error: fnError } = await supabase.functions.invoke(
+        'quickbooks-balance-history',
+        { body: { realmId, asOfDates, accounting_method: 'Accrual' } },
+      );
+      if (fnError) throw fnError;
+      const results: Array<{ asOf: string; report: any | null }> = fnData?.results ?? [];
+      const byDate = new Map(results.map((r) => [r.asOf, r.report] as const));
       return anchors.map((a) => {
         const anchorISO = iso(a.date);
-        // latest snapshot at-or-before this month-end
-        let match: any = null;
-        for (const s of snaps) {
-          if (s.periodEnd <= anchorISO) match = s;
-          else break;
-        }
-        const value = match ? extractRowValue(match.report, row) : null;
+        const report = byDate.get(anchorISO) ?? null;
+        const value = report ? extractRowValue(report, row) : null;
         return { label: a.label, asOf: anchorISO, value };
       });
     },
     enabled: !!realmId,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 
   const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
