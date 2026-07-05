@@ -927,17 +927,41 @@ function ConsolidatedCashflowWidget() {
     const s = formatUSD(abs / 1000);
     return v < 0 ? `(${s})` : s;
   };
+  const [showDelta, setShowDelta] = useState(false);
+  const chartData = series.map((p, i) => {
+    const prev = i === 0 ? null : series[i - 1].value;
+    const deltaAbs = prev == null ? null : p.value - prev;
+    const deltaPct = prev == null || prev === 0 ? null : ((p.value - prev) / Math.abs(prev)) * 100;
+    return { ...p, deltaAbs, deltaPct };
+  });
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <SectionLabel>
           {granularityLabel} Operating Cash Flow (Consolidated View, all QBO entities)
         </SectionLabel>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
-          Total: <span style={{ color: 'hsl(0,0%,100%)', fontWeight: 600 }}>
-            {loading && !data ? '…' : fmt(total)}
-          </span>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowDelta(v => !v); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            title="Toggle period-over-period change line ($ and %)"
+            style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase',
+              padding: '3px 9px', borderRadius: 999, cursor: 'pointer',
+              border: '1px solid ' + (showDelta ? 'hsl(38, 92%, 62%)' : 'rgba(255,255,255,0.12)'),
+              color: showDelta ? 'hsl(38, 92%, 62%)' : 'rgba(255,255,255,0.75)',
+              background: showDelta ? 'hsla(38, 92%, 62%, 0.12)' : 'rgba(255,255,255,0.05)',
+            }}
+          >
+            Δ Trend
+          </button>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+            Total: <span style={{ color: 'hsl(0,0%,100%)', fontWeight: 600 }}>
+              {loading && !data ? '…' : fmt(total)}
+            </span>
+          </div>
         </div>
       </div>
       <div style={{ flex: 1, minHeight: 140 }}>
@@ -945,24 +969,40 @@ function ConsolidatedCashflowWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No cash flow data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
+                yAxisId="left"
                 tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
                 axisLine={false}
                 tickLine={false}
                 width={64}
                 tickFormatter={(v: number) => fmt(v as number)}
               />
-              <ReferenceLine y={0} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+              {showDelta && (
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tick={{ fill: 'hsl(38, 92%, 62%)', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={48}
+                  tickFormatter={(v: number) => fmt(v as number)}
+                />
+              )}
+              <ReferenceLine yAxisId="left" y={0} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
               <RTooltip
                 cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
                 labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                formatter={(v: number) => [fmt(v as number), 'Operating CF']}
+                formatter={(v: number, name: string) => {
+                  if (name === 'Δ $') return [fmt(v as number), 'Δ $'];
+                  if (name === 'Δ %') return [`${(v as number).toFixed(1)}%`, 'Δ %'];
+                  return [fmt(v as number), 'Operating CF'];
+                }}
               />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}
+              <Bar yAxisId="left" dataKey="value" name="Operating CF" radius={[4, 4, 0, 0]}
                 fill="hsl(160, 70%, 55%)"
                 shape={(props: any) => {
                   const { x, y, width, height, value } = props;
@@ -973,7 +1013,13 @@ function ConsolidatedCashflowWidget() {
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
               />
-            </BarChart>
+              {showDelta && (
+                <>
+                  <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="deltaPct" name="Δ %" stroke="transparent" dot={false} activeDot={false} legendType="none" />
+                </>
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
