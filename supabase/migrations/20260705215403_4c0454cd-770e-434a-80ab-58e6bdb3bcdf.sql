@@ -1,0 +1,1 @@
+delete from public.user_ui_preferences where preference_key in ('grid_layout:management-snapshot-unified-v17','grid_layout:management-snapshot-unified-v18');
