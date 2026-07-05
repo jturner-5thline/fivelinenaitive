@@ -223,8 +223,9 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
             total fee (revenue / closing fees). */}
         <div className="mt-2">
           <div
-            className="flex w-full h-9 rounded-md overflow-hidden"
+            className="flex w-full rounded-md overflow-hidden"
             style={{
+              minHeight: 88,
               border: '1px solid rgba(160, 200, 255, 0.18)',
               background: 'rgba(20, 30, 50, 0.35)',
             }}
@@ -234,12 +235,12 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
             {total > 0 ? (
               segments.map((s) => {
                 if (s.pct <= 0) return null;
-                const showInline = s.pct >= 12;
+                const wide = s.pct >= 18;
                 return (
                   <div
                     key={s.key}
                     title={`${s.label} · ${s.count} deals · ${formatCurrencyFull(s.fee)} (${s.pct.toFixed(1)}%)`}
-                    className="flex items-center justify-center px-2 text-[11px] font-semibold tabular-nums"
+                    className="flex flex-col items-center justify-center px-2 py-2 gap-0.5 text-center"
                     style={{
                       width: `${s.pct}%`,
                       background: s.color,
@@ -249,7 +250,17 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
                       overflow: 'hidden',
                     }}
                   >
-                    {showInline ? `${s.pct.toFixed(0)}%` : ''}
+                    {wide && (
+                      <span className="text-[10px] font-semibold uppercase tracking-wider leading-none opacity-90">
+                        {s.label}
+                      </span>
+                    )}
+                    <span className="text-[13px] font-bold tabular-nums leading-tight">
+                      {formatCurrency(s.fee)}
+                    </span>
+                    <span className="text-[10px] font-semibold tabular-nums leading-none opacity-85">
+                      {s.count} {s.count === 1 ? 'deal' : 'deals'} · {s.pct.toFixed(0)}%
+                    </span>
                   </div>
                 );
               })
