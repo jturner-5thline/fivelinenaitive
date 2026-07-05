@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -7,6 +7,24 @@ import { cn } from '@/lib/utils';
 import { CalendarClock, Loader2 } from 'lucide-react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+} from 'recharts';
 
 // Stage identifiers in the default (Active) pipeline. Some legacy rows have
 // an empty `to_stage_id` — match by `to_stage` label as a fallback.
@@ -33,6 +51,25 @@ const NAITIVE_STAGES = {
 } as const;
 
 type StageConfig = { ids: readonly string[]; labels: readonly string[] };
+
+type StageKey =
+  | 'nda' | 'signed' | 'termsIssued' | 'termsSigned' | 'funded'
+  | 'fsQualification' | 'fsProposal' | 'fsActive'
+  | 'naDemos' | 'naProposals' | 'naClients';
+
+const STAGE_REGISTRY: Record<StageKey, { label: string; config: StageConfig }> = {
+  nda:              { label: 'Deals | Dollars on the Board',      config: DEBT_STAGES.ndaNeedsList },
+  signed:           { label: 'Deals Signed | Dollars Signed',     config: DEBT_STAGES.finalCredit },
+  termsIssued:      { label: 'Terms Issued | $ Terms Issued',     config: DEBT_STAGES.termsIssued },
+  termsSigned:      { label: 'Terms Signed | $ Terms Signed',     config: DEBT_STAGES.inDueDiligence },
+  funded:           { label: 'Deals Closed | Dollars Funded',     config: DEBT_STAGES.fundedInvoiced },
+  fsQualification:  { label: 'FinServ Deals | $ On the Board',    config: FINSERV_STAGES.qualification },
+  fsProposal:       { label: 'Proposals Sent | Revenue Proposed', config: FINSERV_STAGES.proposalSent },
+  fsActive:         { label: 'Clients Signed | Revenue Signed',   config: FINSERV_STAGES.activeClient },
+  naDemos:          { label: 'Demos Created',                     config: NAITIVE_STAGES.demoAccess },
+  naProposals:      { label: 'Proposals Issued',                  config: NAITIVE_STAGES.pilotAgreed },
+  naClients:        { label: 'Clients Signed',                    config: NAITIVE_STAGES.active },
+};
 
 function formatCurrencyMM(value: number) {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
@@ -77,6 +114,7 @@ export function LastWeekSummaryWidget() {
   const companyId = company?.id;
   const range = useMemo(() => lastMonSunRange(), []);
   const priorRange = useMemo(() => priorWeekRange(), []);
+  const [drilldown, setDrilldown] = useState<StageKey | null>(null);
 
   const fetchWindow = async (start: Date, end: Date, stage: StageConfig) => {
     const { data: rows, error } = await supabase
@@ -135,6 +173,7 @@ export function LastWeekSummaryWidget() {
   const rangeLabel = `${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
   return (
+    <>
     <Card
       className={cn(
         'relative overflow-hidden h-full glass-module',
@@ -157,24 +196,30 @@ export function LastWeekSummaryWidget() {
         </div>
 
         <Group title="Debt Advisory">
-          <StageRow label="Deals | Dollars on the Board"    q={nda} />
-          <StageRow label="Deals Signed | Dollars Signed"   q={signed} />
-          <StageRow label="Terms Issued | $ Terms Issued"   q={termsIss} />
-          <StageRow label="Terms Signed | $ Terms Signed"   q={termsSign} />
-          <StageRow label="Deals Closed | Dollars Funded"   q={funded} />
+          <StageRow stageKey="nda"          q={nda}       onOpen={setDrilldown} />
+          <StageRow stageKey="signed"       q={signed}    onOpen={setDrilldown} />
+          <StageRow stageKey="termsIssued"  q={termsIss}  onOpen={setDrilldown} />
+          <StageRow stageKey="termsSigned"  q={termsSign} onOpen={setDrilldown} />
+          <StageRow stageKey="funded"       q={funded}    onOpen={setDrilldown} />
         </Group>
         <Group title="FinServ">
-          <StageRow label="FinServ Deals | $ On the Board"  q={fsQualification} />
-          <StageRow label="Proposals Sent | Revenue Proposed" q={fsProposal} />
-          <StageRow label="Clients Signed | Revenue Signed"   q={fsActive} />
+          <StageRow stageKey="fsQualification" q={fsQualification} onOpen={setDrilldown} />
+          <StageRow stageKey="fsProposal"      q={fsProposal}      onOpen={setDrilldown} />
+          <StageRow stageKey="fsActive"        q={fsActive}        onOpen={setDrilldown} />
         </Group>
         <Group title="Naitive">
-          <StageRow label="Demos Created"    q={naDemos} />
-          <StageRow label="Proposals Issued" q={naProposals} />
-          <StageRow label="Clients Signed"   q={naClients} />
+          <StageRow stageKey="naDemos"     q={naDemos}     onOpen={setDrilldown} />
+          <StageRow stageKey="naProposals" q={naProposals} onOpen={setDrilldown} />
+          <StageRow stageKey="naClients"   q={naClients}   onOpen={setDrilldown} />
         </Group>
       </CardContent>
     </Card>
+    <DrilldownDialog
+      stageKey={drilldown}
+      companyId={companyId}
+      onClose={() => setDrilldown(null)}
+    />
+    </>
   );
 }
 
@@ -192,12 +237,15 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 }
 
 function StageRow({
-  label,
+  stageKey,
   q,
+  onOpen,
 }: {
-  label: string;
+  stageKey: StageKey;
   q: { data?: { count: number; dollars: number; prevCount: number; prevDollars: number }; isLoading: boolean };
+  onOpen: (k: StageKey) => void;
 }) {
+  const label = STAGE_REGISTRY[stageKey].label;
   return (
     <Row
       label={label}
@@ -206,6 +254,7 @@ function StageRow({
       prevCount={q.data?.prevCount ?? 0}
       prevDollars={q.data?.prevDollars ?? 0}
       isLoading={q.isLoading}
+      onClick={() => onOpen(stageKey)}
     />
   );
 }
@@ -218,6 +267,7 @@ function Row({
   prevDollars,
   isLoading,
   placeholder,
+  onClick,
 }: {
   label: string;
   count?: number;
@@ -226,11 +276,31 @@ function Row({
   prevDollars?: number;
   isLoading?: boolean;
   placeholder?: boolean;
+  onClick?: () => void;
 }) {
   const countChange = !placeholder ? pctChange(count ?? 0, prevCount ?? 0) : null;
   const dollarsChange = !placeholder ? pctChange(dollars ?? 0, prevDollars ?? 0) : null;
+  const clickable = !!onClick && !placeholder;
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border/30 pt-3 first:border-t-0 first:pt-0">
+    <div
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick!();
+              }
+            }
+          : undefined
+      }
+      className={cn(
+        'flex items-center justify-between gap-3 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
+        clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
+      )}
+    >
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate flex-1 min-w-0">
         {label}
       </p>
