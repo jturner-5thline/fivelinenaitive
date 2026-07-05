@@ -7,6 +7,7 @@ import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
+import { LastWeekSummaryWidget } from './LastWeekSummaryWidget';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -502,6 +503,8 @@ export type ManagementSnapshotSectionId =
 export type WeeklyRundownSubWidgetId =
   // Revenue Overview charts
   | 'rev-debt' | 'rev-finserv'
+  // "Last Week" summary tile
+  | 'last-week-summary'
   // Pipeline Metrics KPIs (combined debt count+$ tiles, plus FinServ tiles)
   | 'pm-debt-on-board-combined' | 'pm-debt-signed-combined' | 'pm-debt-closed-combined'
   | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed' | 'pm-finserv-active-clients'
@@ -515,6 +518,7 @@ export type WeeklyRundownSubWidgetId =
 export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'rev-debt': 'Debt Revenue',
   'rev-finserv': 'FinServ Revenue',
+  'last-week-summary': 'Last Week',
   'pm-debt-on-board-combined': 'Deals on the Board',
   'pm-debt-signed-combined': 'Deals Signed',
   'pm-debt-closed-combined': 'Deals Closed',
@@ -741,6 +745,7 @@ export function ManagementSnapshotDashboard({
   const subWidgetRenderers: Record<WeeklyRundownSubWidgetId, React.ReactNode> = {
     'rev-debt': <DebtRevenueWidget selectedQuarter={selectedQuarter} />,
     'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
+    'last-week-summary': <LastWeekSummaryWidget />,
     'pm-debt-on-board-combined': <CombinedPipelineMetricWidget cardId="debt-on-board-combined" selectedQuarter={selectedQuarter} />,
     'pm-debt-signed-combined':   <CombinedPipelineMetricWidget cardId="debt-signed-combined"   selectedQuarter={selectedQuarter} />,
     'pm-debt-closed-combined':   <CombinedPipelineMetricWidget cardId="debt-closed-combined"   selectedQuarter={selectedQuarter} />,
