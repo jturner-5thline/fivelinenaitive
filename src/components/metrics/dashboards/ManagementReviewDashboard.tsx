@@ -733,9 +733,10 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'monthly-revenue', x: 6, y: 0, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'cashflow-12w', x: 6, y: 4, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'active-deals-list', x: 0, y: 9, w: 6, h: 10, minW: 4, minH: 8 },
-  { i: 'liabilities', x: 6, y: 8, w: 6, h: 3, minW: 4, minH: 2 },
-  { i: 'dscr', x: 6, y: 11, w: 6, h: 4, minW: 4, minH: 2 },
-  { i: 'debt-rating', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'finserv-next3', x: 6, y: 8, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'liabilities', x: 6, y: 12, w: 6, h: 3, minW: 4, minH: 2 },
+  { i: 'dscr', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 2 },
+  { i: 'debt-rating', x: 6, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -2493,6 +2494,24 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         <div key="cashflow-12w" className="h-full">
           <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
             <CashflowForecastWidget />
+          </GridShell>
+        </div>
+        <div key="finserv-next3" className="h-full">
+          <GridShell isEditMode={isEditMode} title="FinServ: Next 3 Months">
+            <div className="flex flex-col divide-y divide-border">
+              {[
+                "Next 3 Months' Revenue",
+                "Next 3 Months' Profit",
+                'Operating Cashflow',
+                'Client Signings',
+                'Current Run Rate',
+              ].map((label) => (
+                <div key={label} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-foreground">—</span>
+                </div>
+              ))}
+            </div>
           </GridShell>
         </div>
         <div key="debt-rating" className="h-full">
