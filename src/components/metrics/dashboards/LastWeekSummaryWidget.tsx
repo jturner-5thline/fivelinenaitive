@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -24,6 +24,7 @@ import {
   Tooltip,
   CartesianGrid,
   Legend,
+  Cell,
 } from 'recharts';
 
 // Stage identifiers in the default (Active) pipeline. Some legacy rows have
@@ -412,6 +413,13 @@ function DrilldownDialog({
   const buckets = useMemo(() => buildTrailingWeeks(), []);
   const rangeStart = buckets[0]?.weekStart;
   const rangeEnd = buckets[buckets.length - 1]?.weekEnd;
+  const [selectedIdx, setSelectedIdx] = useState<number>(buckets.length - 1);
+
+  // Reset selection to the most-recent (last) week whenever the dialog opens
+  // for a different metric.
+  useEffect(() => {
+    setSelectedIdx(buckets.length - 1);
+  }, [stageKey, buckets.length]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -471,10 +479,13 @@ function DrilldownDialog({
     dollarsMM: +(b.dollars / 1_000_000).toFixed(2),
   }));
 
-  const latest = data?.[data.length - 1];
-  const prior = data?.[data.length - 2];
-  const countPct = latest && prior ? pctChange(latest.count, prior.count) : null;
-  const dollarsPct = latest && prior ? pctChange(latest.dollars, prior.dollars) : null;
+  const source = data ?? buckets;
+  const clampedIdx = Math.min(Math.max(selectedIdx, 0), source.length - 1);
+  const selected = source[clampedIdx];
+  const prior = clampedIdx > 0 ? source[clampedIdx - 1] : undefined;
+  const countPct = selected && prior ? pctChange(selected.count, prior.count) : null;
+  const dollarsPct = selected && prior ? pctChange(selected.dollars, prior.dollars) : null;
+  const isLatestWeek = clampedIdx === source.length - 1;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -498,9 +509,9 @@ function DrilldownDialog({
             {/* Headline */}
             <div className="grid grid-cols-2 gap-3">
               <HeadlineTile
-                label={`Last week (${latest?.label ?? '—'})`}
-                primary={`${latest?.count ?? 0} deal${latest?.count === 1 ? '' : 's'}`}
-                secondary={formatCurrencyMM(latest?.dollars ?? 0)}
+                label={`${isLatestWeek ? 'Last week' : 'Selected week'} (${selected?.label ?? '—'})`}
+                primary={`${selected?.count ?? 0} deal${selected?.count === 1 ? '' : 's'}`}
+                secondary={formatCurrencyMM(selected?.dollars ?? 0)}
                 countPct={countPct}
                 dollarsPct={dollarsPct}
               />
@@ -516,7 +527,23 @@ function DrilldownDialog({
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
                   <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.3} vertical={false} />
-                  <XAxis dataKey="week" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <XAxis
+                    dataKey="week"
+                    tick={({ x, y, payload, index }: any) => (
+                      <text
+                        x={x}
+                        y={y + 12}
+                        textAnchor="middle"
+                        fontSize={10}
+                        fill={index === clampedIdx ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'}
+                        fontWeight={index === clampedIdx ? 700 : 400}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => setSelectedIdx(index)}
+                      >
+                        {payload.value}
+                      </text>
+                    )}
+                  />
                   <YAxis yAxisId="left" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} allowDecimals={false} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
                   <Tooltip
@@ -531,24 +558,44 @@ function DrilldownDialog({
                     }
                   />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Bar yAxisId="left" dataKey="deals" fill="hsl(var(--primary))" opacity={0.7} name="Deals" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="deals"
+                    name="Deals"
+                    radius={[4, 4, 0, 0]}
+                    onClick={(_d: any, i: number) => setSelectedIdx(i)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell
+                        key={i}
+                        fill="hsl(var(--primary))"
+                        fillOpacity={i === clampedIdx ? 1 : 0.45}
+                        stroke={i === clampedIdx ? 'hsl(var(--primary))' : 'transparent'}
+                        strokeWidth={i === clampedIdx ? 1.5 : 0}
+                      />
+                    ))}
+                  </Bar>
                   <Line yAxisId="right" dataKey="dollarsMM" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Dollars ($MM)" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+            <p className="text-[10px] text-muted-foreground text-center -mt-2">
+              Click a week to inspect it.
+            </p>
 
-            {/* Deal list — last week */}
+            {/* Deal list — selected week */}
             <div className="flex flex-col gap-2 overflow-hidden">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Deals — last week
+                  Deals — {isLatestWeek ? 'last week' : 'selected week'}
                 </p>
                 <span className="text-[10px] font-mono text-muted-foreground/70">
-                  {latest?.label} → {latest?.weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {selected?.label} → {selected?.weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </div>
               <div className="overflow-y-auto max-h-56 rounded-md border border-border/40">
-                {latest && latest.deals.length > 0 ? (
+                {selected && selected.deals.length > 0 ? (
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-card/95 backdrop-blur">
                       <tr className="text-left text-muted-foreground border-b border-border/40">
@@ -558,7 +605,7 @@ function DrilldownDialog({
                       </tr>
                     </thead>
                     <tbody>
-                      {latest.deals.map((d) => (
+                      {selected.deals.map((d) => (
                         <tr key={d.deal_id} className="border-b border-border/20 last:border-b-0">
                           <td className="px-3 py-2 truncate max-w-[280px]">{d.company}</td>
                           <td className="px-3 py-2 text-right font-mono tabular-nums">
@@ -573,7 +620,7 @@ function DrilldownDialog({
                   </table>
                 ) : (
                   <p className="text-xs text-muted-foreground text-center py-6">
-                    No deals entered this stage last week.
+                    No deals entered this stage during this week.
                   </p>
                 )}
               </div>
