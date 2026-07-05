@@ -1477,13 +1477,42 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
   const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const activeTrendValues = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+  // Compute a "prior" value for the FIRST bucket so the trend line starts at
+  // the first period rather than the second. Prior = the same-shape window
+  // immediately preceding bucket 0 (prior TTM window, prior quarter, or prior
+  // month depending on the active trend mode / view).
+  const priorFirstValue = useMemo<number | null>(() => {
+    if (!qbConnected || activeTrendValues.length === 0) return null;
+    if (trendMode === 'ttm') {
+      const firstEnd = ttmTrendSeries[0]?.windowEnd;
+      if (!firstEnd) return null;
+      const prevEnd = isQuarterView
+        ? endOfQuarter(subQuarters(firstEnd, 1))
+        : endOfMonth(subMonths(firstEnd, 1));
+      const prevStart = startOfMonth(subMonths(prevEnd, 11));
+      return sumAmountInRange(qbInvoices, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
+    }
+    if (isQuarterView) {
+      const firstEnd = ttmTrendSeries[0]?.windowEnd;
+      if (!firstEnd) return null;
+      const prevQEnd = endOfQuarter(subQuarters(firstEnd, 1));
+      const prevQStart = startOfQuarter(prevQEnd);
+      return sumAmountInRange(qbInvoices, { start: prevQStart, end: prevQEnd }, inv => inv.txn_date, inv => inv.total_amt);
+    }
+    const prevEnd = endOfMonth(subMonths(ttmRange.start, 1));
+    const prevStart = startOfMonth(prevEnd);
+    return sumAmountInRange(qbInvoices, { start: prevStart, end: prevEnd }, inv => inv.txn_date, inv => inv.total_amt);
+  }, [qbConnected, trendMode, isQuarterView, ttmTrendSeries, ttmRange, qbInvoices, activeTrendValues.length]);
   const trendDeltasPct = activeTrendValues.map((v, i) => {
-    if (i === 0) return null;
-    const prev = activeTrendValues[i - 1];
-    if (!prev || prev === 0) return null;
+    const prev = i === 0 ? priorFirstValue : activeTrendValues[i - 1];
+    if (prev == null || prev === 0) return null;
     return ((v - prev) / Math.abs(prev)) * 100;
   });
-  const trendDeltasAbs = activeTrendValues.map((v, i) => i === 0 ? null : v - activeTrendValues[i - 1]);
+  const trendDeltasAbs = activeTrendValues.map((v, i) => {
+    const prev = i === 0 ? priorFirstValue : activeTrendValues[i - 1];
+    if (prev == null) return null;
+    return v - prev;
+  });
   useChart(
     ncRef,
     qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
