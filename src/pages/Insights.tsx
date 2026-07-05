@@ -1693,6 +1693,7 @@ function MetricsInner() {
   // widget across, above, below, or between sections in edit mode.
   const SNAPSHOT_SUB_WIDGET_IDS: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').WeeklyRundownSubWidgetId[] = [
     'rev-debt','rev-finserv',
+    'last-week-summary',
     'pm-debt-on-board-combined','pm-debt-signed-combined','pm-debt-closed-combined','pm-finserv-deals-on-board','pm-finserv-clients-signed','pm-finserv-active-clients',
     'sd-deals-signed','sd-finserv-clients-signed','sd-outstanding-ar',
     'pe-debt-profit','pe-finserv-profit',
@@ -1727,36 +1728,39 @@ function MetricsInner() {
       // Mid-right: wide chart spanning the full right section width
       { i: 'revenue-by-month', x: 6, y: 3, w: 6, h: 3, minW: 5, minH: 3 },
 
+      // Below Total Revenue: "Last Week" summary tile.
+      { i: 'last-week-summary', x: 0, y: 6, w: 6, h: 3, minW: 4, minH: 3 },
+
       // Bottom-left: smaller table/list area + medium chart adjacent
-      { i: 'outstanding-ar',         x: 0, y: 6, w: 3, h: 3, minW: 3, minH: 2 },
-      { i: 'total-revenue',          x: 3, y: 6, w: 3, h: 3, minW: 3, minH: 3 },
-      { i: 'clients-signed-debt',    x: 0, y: 9, w: 3, h: 3, minW: 3, minH: 2 },
-      { i: 'clients-signed-finserv', x: 3, y: 9, w: 3, h: 3, minW: 3, minH: 2 },
+      { i: 'outstanding-ar',         x: 0, y: 9,  w: 3, h: 3, minW: 3, minH: 2 },
+      { i: 'total-revenue',          x: 3, y: 9,  w: 3, h: 3, minW: 3, minH: 3 },
+      { i: 'clients-signed-debt',    x: 0, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
+      { i: 'clients-signed-finserv', x: 3, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
 
       // Bottom-right: wide chart spanning the right section
       { i: 'sd-outstanding-ar', x: 6, y: 6, w: 6, h: 6, minW: 3, minH: 3 },
 
       // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
-      { i: 'debt-profit',    x: 0, y: 12, w: 6, h: 3, minW: 3, minH: 3 },
-      { i: 'finserv-profit', x: 6, y: 12, w: 6, h: 3, minW: 3, minH: 3 },
+      { i: 'debt-profit',    x: 0, y: 15, w: 6, h: 3, minW: 3, minH: 3 },
+      { i: 'finserv-profit', x: 6, y: 15, w: 6, h: 3, minW: 3, minH: 3 },
 
-      { i: 'rev-debt',    x: 0, y: 15, w: 6, h: 6, minW: 3, minH: 4 },
-      { i: 'rev-finserv', x: 6, y: 15, w: 6, h: 6, minW: 3, minH: 4 },
+      { i: 'rev-debt',    x: 0, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
+      { i: 'rev-finserv', x: 6, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
 
-      { i: 'pm-debt-on-board-combined', x: 0, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-debt-signed-combined',   x: 4, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-debt-closed-combined',   x: 8, y: 21, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-on-board-combined', x: 0, y: 24, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-signed-combined',   x: 4, y: 24, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-debt-closed-combined',   x: 8, y: 24, w: 4, h: 2, minW: 3, minH: 2 },
 
-      { i: 'pm-finserv-deals-on-board', x: 0, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-clients-signed', x: 4, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
-      { i: 'pm-finserv-active-clients', x: 8, y: 23, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-deals-on-board', x: 0, y: 26, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-clients-signed', x: 4, y: 26, w: 4, h: 2, minW: 3, minH: 2 },
+      { i: 'pm-finserv-active-clients', x: 8, y: 26, w: 4, h: 2, minW: 3, minH: 2 },
 
-      { i: 'sd-deals-signed',           x: 0, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'sd-finserv-clients-signed', x: 4, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'exec-deals-by-status',      x: 8, y: 25, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'sd-deals-signed',           x: 0, y: 28, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'sd-finserv-clients-signed', x: 4, y: 28, w: 4, h: 6, minW: 3, minH: 3 },
+      { i: 'exec-deals-by-status',      x: 8, y: 28, w: 4, h: 6, minW: 3, minH: 3 },
 
-      { i: 'pe-debt-profit',    x: 0, y: 31, w: 6, h: 6, minW: 4, minH: 4 },
-      { i: 'pe-finserv-profit', x: 6, y: 31, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pe-debt-profit',    x: 0, y: 34, w: 6, h: 6, minW: 4, minH: 4 },
+      { i: 'pe-finserv-profit', x: 6, y: 34, w: 6, h: 6, minW: 4, minH: 4 },
     ];
     return defaults;
   }, []);
@@ -1765,7 +1769,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v9', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v10', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
