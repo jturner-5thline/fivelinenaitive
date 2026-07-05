@@ -1066,7 +1066,7 @@ function ConsolidatedCashflowWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No cash flow data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 18 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -1109,7 +1109,9 @@ function ConsolidatedCashflowWidget() {
                   const yy = negative ? y + height : y;
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
-              />
+              >
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v))} />
+              </Bar>
               {showDelta && (
                 <>
                   <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
