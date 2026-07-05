@@ -110,6 +110,38 @@ function pctChange(curr: number, prev: number): number | null {
   return ((curr - prev) / prev) * 100;
 }
 
+/**
+ * Stage-enter events whose *previous* stage is any of these are excluded —
+ * they represent re-activation of a paused/dead deal, not a genuine new
+ * entry onto the board. Match by normalized substring so slugs and labels
+ * ("on-hold", "On Hold", "Deal/Diligence Paused/On Hold", "Client Paused
+ * Deal", "Do Not Contact / Dead Deal", "dormant", "closed-lost", …) all hit.
+ */
+const REACTIVATION_FROM_KEYWORDS = [
+  'hold',
+  'paused',
+  'dormant',
+  'dead',
+  'do not contact',
+  'closed',
+  'lost',
+  'won',
+  'churn',
+  'unqualified',
+  'not a fit',
+  'archived',
+];
+
+function isReactivationFromStage(from: unknown): boolean {
+  const s = String(from ?? '')
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s) return false;
+  return REACTIVATION_FROM_KEYWORDS.some((k) => s.includes(k));
+}
+
 export function LastWeekSummaryWidget() {
   const { company } = useCompany();
   const companyId = company?.id;
@@ -120,7 +152,7 @@ export function LastWeekSummaryWidget() {
   const fetchWindow = async (start: Date, end: Date, stage: StageConfig) => {
     const { data: rows, error } = await supabase
       .from('deal_stage_history')
-      .select('deal_id, changed_at, to_stage_id, to_stage, deals!inner(company, value)')
+      .select('deal_id, changed_at, to_stage_id, to_stage, from_stage, from_stage_id, deals!inner(company, value)')
       .eq('company_id', companyId!)
       .eq('event_type', 'stage_enter')
       .or(
@@ -136,6 +168,11 @@ export function LastWeekSummaryWidget() {
       const deal = row.deals;
       if (!deal) continue;
       if (isExcludedDealName(deal.company)) continue;
+      // Skip re-activations from on-hold / paused / dormant / dead / closed stages.
+      if (
+        isReactivationFromStage(row.from_stage) ||
+        isReactivationFromStage(row.from_stage_id)
+      ) continue;
       seen.set(row.deal_id, Number(deal.value) || 0);
     }
     return {
