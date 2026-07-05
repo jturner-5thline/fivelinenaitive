@@ -2074,16 +2074,36 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 if (w < 26) return;
                 const pct = trendDeltasPct[i];
                 const abs = trendDeltasAbs[i];
+                // Value above the bar top.
                 const topY = Math.max(bar.y - 6, chartArea.top + 12);
                 ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.strokeStyle = 'transparent';
                 ctx.font = '600 10px system-ui, -apple-system, sans-serif';
                 ctx.fillText(fmtUSD(v), bar.x, topY);
-                if (pct != null && isFinite(pct)) {
-                  const sign = pct >= 0 ? '+' : '−';
-                  const absTxt = abs != null && abs !== 0 ? ` (${abs > 0 ? '+' : '−'}${fmtUSD(Math.abs(abs))})` : '';
-                  ctx.fillStyle = pct >= 0 ? 'hsl(150, 70%, 62%)' : 'hsl(0, 75%, 68%)';
-                  ctx.font = '600 9px system-ui, -apple-system, sans-serif';
-                  ctx.fillText(`${sign}${Math.abs(pct).toFixed(1)}%${absTxt}`, bar.x, topY + 11);
+                // Δ$ and Δ% stacked INSIDE the bar (Δ$ top, Δ% below),
+                // white text with dark stroke for contrast against any bar color.
+                const barBottom = bar.base ?? chartArea.bottom;
+                const barH = Math.abs(barBottom - bar.y);
+                if (barH < 28) return;
+                const midY = bar.y + barH / 2;
+                const absY = midY - 2;
+                const pctY = midY + 11;
+                const drawStroked = (txt: string, cx: number, cy: number, size: number) => {
+                  ctx.font = `700 ${size}px system-ui, -apple-system, sans-serif`;
+                  ctx.lineWidth = 3;
+                  ctx.lineJoin = 'round';
+                  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+                  ctx.strokeText(txt, cx, cy);
+                  ctx.fillStyle = '#ffffff';
+                  ctx.fillText(txt, cx, cy);
+                };
+                if (abs != null && abs !== 0) {
+                  const s = abs > 0 ? '+' : '−';
+                  drawStroked(`${s}${fmtUSD(Math.abs(abs))}`, bar.x, absY, 10);
+                }
+                if (pct != null && isFinite(pct) && pct !== 0) {
+                  const s = pct > 0 ? '+' : '−';
+                  drawStroked(`${s}${Math.abs(pct).toFixed(1)}%`, bar.x, pctY, 9);
                 }
               });
               ctx.restore();
