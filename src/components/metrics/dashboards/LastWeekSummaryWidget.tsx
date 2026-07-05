@@ -90,15 +90,35 @@ export function LastWeekSummaryWidget() {
           <span className="text-[10px] font-mono text-muted-foreground/70">{rangeLabel}</span>
         </div>
 
-        <Row
-          label="Deals | Dollars on the Board"
-          count={data?.count ?? 0}
-          dollars={data?.dollars ?? 0}
-          isLoading={isLoading}
-        />
-        <Row label="FinServ Deals | $ On the Board" placeholder />
+        <Group title="Debt Advisory">
+          <Row
+            label="Deals | Dollars on the Board"
+            count={data?.count ?? 0}
+            dollars={data?.dollars ?? 0}
+            isLoading={isLoading}
+          />
+        </Group>
+        <Group title="FinServ">
+          <Row label="FinServ Deals | $ On the Board" placeholder />
+        </Group>
+        <Group title="Naitive">
+          <Row label="Deals | Dollars on the Board" placeholder />
+        </Group>
       </CardContent>
     </Card>
+  );
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-primary/80">
+        {title}
+      </p>
+      <div className="flex flex-col gap-2 pl-2 border-l border-primary/20">
+        {children}
+      </div>
+    </div>
   );
 }
 
