@@ -20,7 +20,6 @@ import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
-import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
 import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
@@ -742,7 +741,6 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'liabilities', x: 6, y: 8, w: 6, h: 3, minW: 4, minH: 2 },
   { i: 'dscr', x: 6, y: 11, w: 6, h: 4, minW: 4, minH: 2 },
   { i: 'debt-rating', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'asana-goals', x: 0, y: 19, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -795,7 +793,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v16', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v17', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
@@ -2437,11 +2435,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         <div key="debt-rating" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
             <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
-          </GridShell>
-        </div>
-        <div key="asana-goals" className="h-full overflow-auto">
-          <GridShell isEditMode={isEditMode} title="Asana Goals & Portfolios">
-            <AsanaGoalsPortfoliosSection />
           </GridShell>
         </div>
       </DraggableGridLayout>
