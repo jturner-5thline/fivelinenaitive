@@ -218,14 +218,18 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
           </div>
         }
       />
-      <GlassCardBody className="flex-1 min-h-0 flex flex-col">
+      <GlassCardBody className="flex-1 min-h-0 flex flex-col justify-center">
         {/* Single horizontal stacked bar — each segment sized by share of
-            total fee (revenue / closing fees). */}
-        <div className="mt-2">
+            total fee (revenue / closing fees). All per-status detail
+            (label · $ · count · %) is rendered inline inside the bar so
+            the widget fits the compact TOTAL REVENUE row height without
+            enlarging padding or spawning an external legend. */}
+        <div>
           <div
             className="flex w-full rounded-md overflow-hidden"
             style={{
-              minHeight: 88,
+              height: '100%',
+              minHeight: 56,
               border: '1px solid rgba(160, 200, 255, 0.18)',
               background: 'rgba(20, 30, 50, 0.35)',
             }}
@@ -235,12 +239,12 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
             {total > 0 ? (
               segments.map((s) => {
                 if (s.pct <= 0) return null;
-                const wide = s.pct >= 18;
+                const wide = s.pct >= 20;
                 return (
                   <div
                     key={s.key}
                     title={`${s.label} · ${s.count} deals · ${formatCurrencyFull(s.fee)} (${s.pct.toFixed(1)}%)`}
-                    className="flex flex-col items-center justify-center px-2 py-2 gap-0.5 text-center"
+                    className="flex flex-col items-center justify-center px-1.5 py-1 gap-0 text-center"
                     style={{
                       width: `${s.pct}%`,
                       background: s.color,
@@ -251,14 +255,14 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
                     }}
                   >
                     {wide && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider leading-none opacity-90">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider leading-none opacity-90">
                         {s.label}
                       </span>
                     )}
-                    <span className="text-[13px] font-bold tabular-nums leading-tight">
+                    <span className="text-[12px] font-bold tabular-nums leading-tight">
                       {formatCurrency(s.fee)}
                     </span>
-                    <span className="text-[10px] font-semibold tabular-nums leading-none opacity-85">
+                    <span className="text-[9px] font-semibold tabular-nums leading-none opacity-85">
                       {s.count} {s.count === 1 ? 'deal' : 'deals'} · {s.pct.toFixed(0)}%
                     </span>
                   </div>
@@ -272,47 +276,6 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
             )}
           </div>
         </div>
-
-        {/* Legend rows — count · $ volume · % of revenue per status */}
-        <ul className="mt-3 space-y-1.5" aria-label="Deals by status legend">
-          {segments.map((s) => (
-            <li key={s.key} className="flex items-center gap-2 text-xs">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: s.color, opacity: 0.95 }}
-                aria-hidden="true"
-              />
-              <span
-                className="truncate flex-1"
-                style={{ color: 'rgba(210, 225, 250, 0.88)' }}
-                title={s.label}
-              >
-                {s.label}
-              </span>
-              <span
-                className="tabular-nums flex-shrink-0 text-[10px]"
-                style={{ color: 'rgba(200, 220, 250, 0.72)' }}
-                title="Deal count"
-              >
-                {s.count} {s.count === 1 ? 'deal' : 'deals'}
-              </span>
-              <span
-                className="tabular-nums flex-shrink-0 text-[10px]"
-                style={{ color: 'rgba(200, 220, 250, 0.65)' }}
-                title="Share of closing fees"
-              >
-                {s.pct.toFixed(1)}%
-              </span>
-              <span
-                className="font-medium tabular-nums flex-shrink-0 min-w-[56px] text-right"
-                style={{ color: GLASS_TOKENS.valueColor }}
-                title="Total fee"
-              >
-                {formatCurrency(s.fee)}
-              </span>
-            </li>
-          ))}
-        </ul>
       </GlassCardBody>
     </GlassCard>
     <LatestShareReportDialog open={reportOpen} onOpenChange={setReportOpen} />
