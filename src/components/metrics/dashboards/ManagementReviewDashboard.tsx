@@ -779,34 +779,58 @@ function ConsolidatedCashflowWidget() {
     enabled: !!company?.id && !!spanStart && !!spanEnd,
     staleTime: 60_000,
     queryFn: async () => {
-      type CfRow = { realm_id: string; bucket_start: string; bucket_end: string; operating_activities: number | null };
-      const readRows = async (): Promise<CfRow[]> => {
+      type CfRow = {
+        realm_id: string;
+        bucket_start: string;
+        bucket_end: string;
+        operating_activities: number | null;
+        fetched_at: string | null;
+      };
+      // Snapshots may exist under multiple (period_start, period_end)
+      // request bounds. We collapse to one authoritative row per
+      // (realm_id, bucket_start) by taking the most-recent fetched_at row
+      // that has a non-null operating_activities value.
+      const readRows = async (): Promise<Map<string, CfRow>> => {
         const { data: rows, error } = await supabase
           .from('qbo_cashflow_snapshots')
-          .select('realm_id, bucket_start, bucket_end, operating_activities')
+          .select('realm_id, bucket_start, bucket_end, operating_activities, fetched_at')
           .eq('company_id', company!.id)
           .eq('accounting_method', 'Accrual')
-          .eq('period_start', spanStart)
-          .eq('period_end', spanEnd)
-          .in('realm_id', QBO_ENTITIES.map(e => e.realmId));
+          .gte('bucket_start', spanStart)
+          .lte('bucket_start', spanEnd)
+          .in('realm_id', QBO_ENTITIES.map(e => e.realmId))
+          .order('fetched_at', { ascending: false });
         if (error) throw error;
-        return (rows ?? []) as CfRow[];
+        const best = new Map<string, CfRow>();
+        for (const r of (rows ?? []) as CfRow[]) {
+          const key = `${r.realm_id}|${r.bucket_start}`;
+          const existing = best.get(key);
+          // Prefer non-null operating_activities; otherwise keep first (newest).
+          if (!existing) {
+            best.set(key, r);
+          } else if (existing.operating_activities == null && r.operating_activities != null) {
+            best.set(key, r);
+          }
+        }
+        return best;
       };
 
-      // For each realm: ensure snapshots exist AND operating_activities is
-      // populated (older cached rows may pre-date the new column).
-      let rows = await readRows();
-      const byRealm = new Map<string, CfRow[]>();
-      for (const r of rows) {
-        const arr = byRealm.get(r.realm_id) ?? [];
-        arr.push(r);
-        byRealm.set(r.realm_id, arr);
+      // Expected (realm × bucket_start) coverage for the target range.
+      const monthBuckets = buildBuckets(spanStart, spanEnd, 'monthly');
+      const expectedKeys: string[] = [];
+      for (const e of QBO_ENTITIES) {
+        for (const mb of monthBuckets) expectedKeys.push(`${e.realmId}|${mb.start_date}`);
       }
+
+      let best = await readRows();
+      // A realm needs a resync if ANY expected month bucket is missing OR
+      // present but with a null operating_activities value.
       const realmsToSync = QBO_ENTITIES.filter(e => {
-        const rs = byRealm.get(e.realmId) ?? [];
-        if (rs.length === 0) return true;
-        // If any bucket in the span has a null operating_activities → resync
-        return rs.some(r => r.operating_activities == null);
+        for (const mb of monthBuckets) {
+          const row = best.get(`${e.realmId}|${mb.start_date}`);
+          if (!row || row.operating_activities == null) return true;
+        }
+        return false;
       });
       if (realmsToSync.length > 0) {
         await Promise.all(realmsToSync.map(async (e) => {
@@ -825,17 +849,18 @@ function ConsolidatedCashflowWidget() {
             console.warn('[cashflow] sync failed', e.label, err);
           }
         }));
-        rows = await readRows();
+        best = await readRows();
       }
 
       const series = buckets.map(b => {
         const bStart = new Date(b.start_date + 'T00:00:00').getTime();
         const bEnd = new Date(b.end_date + 'T00:00:00').getTime();
-        const value = rows.reduce((sum, r) => {
+        let value = 0;
+        for (const r of best.values()) {
           const rs = new Date(r.bucket_start + 'T00:00:00').getTime();
-          if (rs < bStart || rs > bEnd) return sum;
-          return sum + Number(r.operating_activities ?? 0);
-        }, 0);
+          if (rs < bStart || rs > bEnd) continue;
+          value += Number(r.operating_activities ?? 0);
+        }
         return { label: b.label, key: b.key, value };
       });
       const total = series.reduce((s, p) => s + p.value, 0);
