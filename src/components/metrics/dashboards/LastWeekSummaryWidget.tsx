@@ -8,8 +8,17 @@ import { CalendarClock, Loader2 } from 'lucide-react';
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 
-// "NDA/Needs List Sent" stage id in the default (Active) pipeline.
-const NDA_NEEDS_LIST_STAGE_IDS = ['ndaneeds-list-sent', 'nda_needs_list_sent'];
+// Stage identifiers in the default (Active) pipeline. Some legacy rows have
+// an empty `to_stage_id` — match by `to_stage` label as a fallback.
+const DEBT_STAGES = {
+  ndaNeedsList:   { ids: ['ndaneeds-list-sent', 'nda_needs_list_sent'], labels: ['NDA/Needs List Sent', 'ndaneeds-list-sent'] },
+  finalCredit:    { ids: ['final-credit-items'],                        labels: ['Final Credit Items', 'final-credit-items'] },
+  termsIssued:    { ids: ['terms-issued'],                              labels: ['Terms Issued', 'terms-issued'] },
+  inDueDiligence: { ids: ['in-due-diligence'],                          labels: ['In Due Diligence', 'in-due-diligence'] },
+  fundedInvoiced: { ids: ['funded-invoiced'],                           labels: ['Funded/Invoiced', 'Funded / Invoiced', 'funded-invoiced'] },
+} as const;
+
+type StageConfig = { ids: readonly string[]; labels: readonly string[] };
 
 function formatCurrencyMM(value: number) {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}MM`;
@@ -55,13 +64,15 @@ export function LastWeekSummaryWidget() {
   const range = useMemo(() => lastMonSunRange(), []);
   const priorRange = useMemo(() => priorWeekRange(), []);
 
-  const fetchWindow = async (start: Date, end: Date) => {
+  const fetchWindow = async (start: Date, end: Date, stage: StageConfig) => {
     const { data: rows, error } = await supabase
       .from('deal_stage_history')
-      .select('deal_id, changed_at, to_stage_id, deals!inner(company, value)')
+      .select('deal_id, changed_at, to_stage_id, to_stage, deals!inner(company, value)')
       .eq('company_id', companyId!)
       .eq('event_type', 'stage_enter')
-      .in('to_stage_id', NDA_NEEDS_LIST_STAGE_IDS)
+      .or(
+        `to_stage_id.in.(${stage.ids.map((s) => `"${s}"`).join(',')}),to_stage.in.(${stage.labels.map((s) => `"${s}"`).join(',')})`,
+      )
       .gte('changed_at', start.toISOString())
       .lte('changed_at', end.toISOString())
       .order('changed_at', { ascending: true });
@@ -80,17 +91,24 @@ export function LastWeekSummaryWidget() {
     };
   };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['last-week-nda-needs-list', companyId, range.start.toISOString(), range.end.toISOString()],
-    enabled: !!companyId,
-    queryFn: async () => {
-      const [curr, prev] = await Promise.all([
-        fetchWindow(range.start, range.end),
-        fetchWindow(priorRange.start, priorRange.end),
-      ]);
-      return { ...curr, prevCount: prev.count, prevDollars: prev.dollars };
-    },
-  });
+  const useStageWindow = (key: string, stage: StageConfig) =>
+    useQuery({
+      queryKey: ['last-week-stage', key, companyId, range.start.toISOString(), range.end.toISOString()],
+      enabled: !!companyId,
+      queryFn: async () => {
+        const [curr, prev] = await Promise.all([
+          fetchWindow(range.start, range.end, stage),
+          fetchWindow(priorRange.start, priorRange.end, stage),
+        ]);
+        return { ...curr, prevCount: prev.count, prevDollars: prev.dollars };
+      },
+    });
+
+  const nda        = useStageWindow('nda-needs-list', DEBT_STAGES.ndaNeedsList);
+  const signed     = useStageWindow('final-credit-items', DEBT_STAGES.finalCredit);
+  const termsIss   = useStageWindow('terms-issued', DEBT_STAGES.termsIssued);
+  const termsSign  = useStageWindow('in-due-diligence', DEBT_STAGES.inDueDiligence);
+  const funded     = useStageWindow('funded-invoiced', DEBT_STAGES.fundedInvoiced);
 
   const rangeLabel = `${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
@@ -117,18 +135,11 @@ export function LastWeekSummaryWidget() {
         </div>
 
         <Group title="Debt Advisory">
-          <Row
-            label="Deals | Dollars on the Board"
-            count={data?.count ?? 0}
-            dollars={data?.dollars ?? 0}
-            prevCount={data?.prevCount ?? 0}
-            prevDollars={data?.prevDollars ?? 0}
-            isLoading={isLoading}
-          />
-          <Row label="Deals Signed | Dollars Signed" placeholder />
-          <Row label="Terms Issued | $ Terms Issued" placeholder />
-          <Row label="Terms Signed | $ Terms Signed" placeholder />
-          <Row label="Deals Closed | Dollars Funded" placeholder />
+          <StageRow label="Deals | Dollars on the Board"    q={nda} />
+          <StageRow label="Deals Signed | Dollars Signed"   q={signed} />
+          <StageRow label="Terms Issued | $ Terms Issued"   q={termsIss} />
+          <StageRow label="Terms Signed | $ Terms Signed"   q={termsSign} />
+          <StageRow label="Deals Closed | Dollars Funded"   q={funded} />
         </Group>
         <Group title="FinServ">
           <Row label="FinServ Deals | $ On the Board" placeholder />
