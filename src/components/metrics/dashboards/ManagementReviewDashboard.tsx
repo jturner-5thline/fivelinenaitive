@@ -2812,6 +2812,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <ConsolidatedOpexWidget />
           </GridShell>
         </div>
+        <div key="cashflow-ops" className="h-full">
+          <GridShell isEditMode={isEditMode} title="CashFlow">
+            <ConsolidatedCashflowWidget />
+          </GridShell>
+        </div>
       </DraggableGridLayout>
 
       <InsightsDrilldownDrawer
