@@ -16,6 +16,7 @@ import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
 import WhatWorkingSections from './WhatWorkingSections';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
+import { computeClosingFee } from '@/lib/fees';
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -3000,9 +3001,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                         <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
-                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Success Fee</th>
-                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Retainer</th>
-                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Milestone Fee</th>
+                        <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Closing Fee $</th>
                         <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
                         <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
                       </tr>
@@ -3040,14 +3039,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                               </Tooltip>
                             </td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{(() => {
-                              const pct = Number(d.success_fee_percent);
-                              const val = Number(d.value);
-                              if (!pct || !val || !isFinite(pct) || !isFinite(val)) return '—';
-                              const sf = (val * pct) / 100;
-                              return sf === 0 ? '—' : fmtUSD(sf);
+                              const closing = computeClosingFee(d.value, d.success_fee_percent, d.milestone_fee);
+                              return closing > 0 ? fmtUSD(closing) : '—';
                             })()}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.retainer_fee == null || Number(d.retainer_fee) === 0 ? '—' : fmtUSD(Number(d.retainer_fee))}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.milestone_fee == null || Number(d.milestone_fee) === 0 ? '—' : fmtUSD(Number(d.milestone_fee))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(resolveDealCloseDate(d))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                               <Tooltip>
