@@ -1712,7 +1712,7 @@ function MetricsInner() {
       // exec-deals-by-status (y:6 + h:6 = 12) in the right column. minH == maxH
       // prevents any auto-shrink on refresh / re-render / data change.
       { i: 'last-week-summary',    x: 0, y: 3,  w: 6, h: 9, minW: 6, minH: 9, maxH: 9 },
-      { i: 'exec-deals-by-status', x: 6, y: 6,  w: 3, h: 3, minW: 3, minH: 3, maxH: 3 },
+      { i: 'exec-deals-by-status', x: 6, y: 6,  w: 3, h: 6, minW: 3, minH: 6, maxH: 6 },
       // Row 3 — Debt/FinServ revenue charts
       { i: 'rev-debt',             x: 0, y: 12, w: 6, h: 6, minW: 6, minH: 6 },
       { i: 'rev-finserv',          x: 6, y: 12, w: 6, h: 6, minW: 6, minH: 6 },
@@ -1727,7 +1727,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useUserGridLayout('management-snapshot-unified-v22', unifiedLayoutIds, {
+  } = useUserGridLayout('management-snapshot-unified-v23', unifiedLayoutIds, {
     layoutDefaults: unifiedLayoutDefaults,
   });
 
