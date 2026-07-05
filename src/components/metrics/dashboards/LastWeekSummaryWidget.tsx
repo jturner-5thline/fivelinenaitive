@@ -97,6 +97,10 @@ export function LastWeekSummaryWidget() {
             dollars={data?.dollars ?? 0}
             isLoading={isLoading}
           />
+          <Row label="Deals Signed | Dollars Signed" placeholder />
+          <Row label="Terms Issued | $ Terms Issued" placeholder />
+          <Row label="Terms Signed | $ Terms Signed" placeholder />
+          <Row label="Deals Closed | Dollars Funded" placeholder />
         </Group>
         <Group title="FinServ">
           <Row label="FinServ Deals | $ On the Board" placeholder />
