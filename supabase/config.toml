@@ -111,6 +111,8 @@ project_id = "tgkksvazruzbghssnxde"
     verify_jwt = false
   [functions.quickbooks-sync]
     verify_jwt = false
+  [functions.quickbooks-balance-history]
+    verify_jwt = false
   [functions.rate-limit]
     verify_jwt = false
   [functions.rate-tracking]
