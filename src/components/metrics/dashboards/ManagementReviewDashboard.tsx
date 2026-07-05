@@ -672,20 +672,19 @@ function makeBarValueDeltaLabel(
     // they render OUTSIDE the bar next to the value label (above positive
     // bars, below negative bars) so short bars still show the change.
     const fitInside = h >= 28 && !!(pctText || absText);
-    // Value label anchors just outside the bar: above positive, below negative.
-    const valueY = negative ? barBottom + 12 : barTop - 6;
+    // Value label anchors just above the bar top for both positive and
+    // negative bars (for negatives the "top" is the zero baseline, so labels
+    // read cleanly above the bar rather than crowded far below).
+    const valueY = barTop - 6;
     let absY: number;
     let pctY: number;
     if (fitInside) {
       const midY = barTop + h / 2;
       absY = midY - 2;   // Δ$ on top
       pctY = midY + 11;  // Δ% below Δ$
-    } else if (negative) {
-      // Stack below the value label (which is below the bar): Δ$ above Δ%.
-      absY = valueY + 12;
-      pctY = valueY + 23;
     } else {
-      // Stack above the value label (which is above the bar): Δ$ above Δ%.
+      // Stack above the value label: Δ$ on top, Δ% just below Δ$, value
+      // closest to the bar. Works for both positive and negative bars.
       pctY = valueY - 12;
       absY = valueY - 23;
     }
