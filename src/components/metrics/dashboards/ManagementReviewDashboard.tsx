@@ -2033,6 +2033,36 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
       ? {
           type: 'bar',
+          plugins: [{
+            id: 'revenueBarValueDeltaLabels',
+            afterDatasetsDraw(chart: any) {
+              const { ctx, chartArea } = chart;
+              const barDs = chart.getDatasetMeta(0);
+              if (!barDs || !barDs.data) return;
+              ctx.save();
+              ctx.textAlign = 'center';
+              barDs.data.forEach((bar: any, i: number) => {
+                const v = Number(chart.data.datasets[0].data[i] ?? 0);
+                if (!isFinite(v) || v === 0) return;
+                const w = bar.width ?? 0;
+                if (w < 26) return;
+                const pct = trendDeltasPct[i];
+                const abs = trendDeltasAbs[i];
+                const topY = Math.max(bar.y - 6, chartArea.top + 12);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+                ctx.fillText(fmtUSD(v), bar.x, topY);
+                if (pct != null && isFinite(pct)) {
+                  const sign = pct >= 0 ? '+' : '−';
+                  const absTxt = abs != null && abs !== 0 ? ` (${abs > 0 ? '+' : '−'}${fmtUSD(Math.abs(abs))})` : '';
+                  ctx.fillStyle = pct >= 0 ? 'hsl(150, 70%, 62%)' : 'hsl(0, 75%, 68%)';
+                  ctx.font = '600 9px system-ui, -apple-system, sans-serif';
+                  ctx.fillText(`${sign}${Math.abs(pct).toFixed(1)}%${absTxt}`, bar.x, topY + 11);
+                }
+              });
+              ctx.restore();
+            },
+          }],
           data: trendMode === 'ttm'
             ? {
                 labels: ttmLabels,
