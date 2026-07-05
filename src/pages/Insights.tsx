@@ -1717,8 +1717,11 @@ function MetricsInner() {
   const unifiedLayoutDefaults = useMemo(() => {
     const defaults: import('@/hooks/useGridLayout').GridLayoutItem[] = [
       // === PRIMARY REFERENCE BAND ===
-      // Top-left: large Key Stats summary block (≈ 2 cols × 2 rows)
-      { i: 'total-revenue-detail', x: 0, y: 0, w: 6, h: 6, minW: 4, minH: 4 },
+      // Top-left: Total Revenue summary block (shrunk to make room for A/R alongside)
+      { i: 'total-revenue-detail', x: 0, y: 0, w: 4, h: 6, minW: 4, minH: 4 },
+
+      // Next to Total Revenue: Outstanding A/R table
+      { i: 'sd-outstanding-ar', x: 4, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
 
       // Top-right: two small chart cards side-by-side
       { i: 'debt-revenue',    x: 6, y: 0, w: 3, h: 3, minW: 3, minH: 3 },
@@ -1735,9 +1738,6 @@ function MetricsInner() {
       { i: 'total-revenue',          x: 3, y: 9,  w: 3, h: 3, minW: 3, minH: 3 },
       { i: 'clients-signed-debt',    x: 0, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
       { i: 'clients-signed-finserv', x: 3, y: 12, w: 3, h: 3, minW: 3, minH: 2 },
-
-      // Bottom-right: wide chart spanning the right section
-      { i: 'sd-outstanding-ar', x: 6, y: 6, w: 6, h: 6, minW: 3, minH: 3 },
 
       // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
       { i: 'debt-profit',    x: 0, y: 15, w: 6, h: 3, minW: 3, minH: 3 },
@@ -1760,7 +1760,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v11', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v12', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
