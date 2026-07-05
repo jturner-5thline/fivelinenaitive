@@ -2359,7 +2359,27 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <LiabilitiesDebtServiceTable />
+            <LiabilitiesDebtServiceTable
+              onOpenDrilldown={(row) => {
+                setDrilldown({
+                  context: {
+                    sourceId: `liabilities:${row.name}`,
+                    sourceLabel: `${row.name} · Liabilities & Debt Service`,
+                    selection: row.name,
+                    periodLabel,
+                    filters: [
+                      { label: 'Source', value: row.qbo
+                          ? `QuickBooks · ${row.qbo.accountName}`
+                          : `QuickBooks · Credit Cards (aggregate)` },
+                      { label: 'Reporting period', value: periodLabel },
+                    ],
+                  },
+                  columns: [],
+                  rows: [],
+                  body: <LiabilityHistoryDrilldownBody row={row} />,
+                });
+              }}
+            />
           </GridShell>
         </div>
         <div key="dscr" className="h-full">
