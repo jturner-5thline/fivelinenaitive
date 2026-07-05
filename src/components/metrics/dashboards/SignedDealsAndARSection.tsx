@@ -261,7 +261,7 @@ function ARCustomerTable({
                     key={r.customer}
                     className={`border-b border-border/20 last:border-0 hover:bg-muted/20 ${i % 2 === 1 ? 'bg-muted/10' : ''}`}
                   >
-                    <td className="px-2 py-1 truncate max-w-0 text-[11px] text-muted-foreground" title={r.customer}>
+                    <td className="px-2 py-1 text-[11px] text-muted-foreground break-words" title={r.customer}>
                       {r.customer}
                     </td>
                     <td className="px-2 py-1 text-right font-mono tabular-nums text-xs font-semibold text-foreground">
