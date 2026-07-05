@@ -694,7 +694,7 @@ function makeBarValueDeltaLabel(
         <text x={cx} y={valueY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize={10} fontWeight={600}>
           {formatValue(d.value)}
         </text>
-        {canFitDeltas && (
+        {(pctText || absText) && (
           <>
             {absText && (
               <text
