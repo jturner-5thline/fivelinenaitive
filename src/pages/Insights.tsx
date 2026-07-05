@@ -1712,9 +1712,9 @@ function MetricsInner() {
       //   MID   : TOTAL REVENUE
       //   RIGHT : DEALS BY STATUS stacked over OUTSTANDING A/R
       { i: 'last-week-summary',    x: 0, y: 0, w: 4, h: 9, minW: 4, maxW: 4, minH: 9, maxH: 9 },
-      { i: 'total-revenue-detail', x: 4, y: 0, w: 4, h: 4, minW: 4, maxW: 4, minH: 4, maxH: 4 },
-      { i: 'exec-deals-by-status', x: 8, y: 0, w: 4, h: 4, minW: 4, maxW: 4, minH: 4, maxH: 4 },
-      { i: 'sd-outstanding-ar',    x: 8, y: 4, w: 4, h: 5, minW: 4, maxW: 4, minH: 5, maxH: 5 },
+      { i: 'total-revenue-detail', x: 4, y: 0, w: 3, h: 4, minW: 3, maxW: 3, minH: 4, maxH: 4 },
+      { i: 'exec-deals-by-status', x: 7, y: 0, w: 3, h: 4, minW: 3, maxW: 3, minH: 4, maxH: 4 },
+      { i: 'sd-outstanding-ar',    x: 7, y: 4, w: 5, h: 5, minW: 5, maxW: 5, minH: 5, maxH: 5 },
       // ROW 2 (y:9..15) — Debt / FinServ revenue charts
       { i: 'rev-debt',             x: 0, y: 9,  w: 6, h: 6, minW: 6, maxW: 6, minH: 6, maxH: 6 },
       { i: 'rev-finserv',          x: 6, y: 9,  w: 6, h: 6, minW: 6, maxW: 6, minH: 6, maxH: 6 },
@@ -1729,7 +1729,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useUserGridLayout('management-snapshot-unified-v26', unifiedLayoutIds, {
+  } = useUserGridLayout('management-snapshot-unified-v27', unifiedLayoutIds, {
     layoutDefaults: unifiedLayoutDefaults,
   });
 
