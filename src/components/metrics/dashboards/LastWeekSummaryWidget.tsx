@@ -606,6 +606,9 @@ function DrilldownDialog({
                       yAxisId="right"
                       orientation={chartMode === 'dollars' ? 'left' : 'right'}
                       tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                      tickFormatter={(v: number) =>
+                        v === 0 ? '$0' : v < 1 ? `$${(v * 1000).toFixed(0)}K` : `$${v}MM`
+                      }
                     />
                   )}
                   <Tooltip
