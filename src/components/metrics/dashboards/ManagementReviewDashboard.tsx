@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
