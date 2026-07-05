@@ -501,9 +501,6 @@ export type WeeklyRundownSubWidgetId =
   | 'rev-debt' | 'rev-finserv'
   // "Last Week" summary tile
   | 'last-week-summary'
-  // Pipeline Metrics KPIs (combined debt count+$ tiles, plus FinServ tiles)
-  | 'pm-debt-on-board-combined' | 'pm-debt-signed-combined' | 'pm-debt-closed-combined'
-  | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed' | 'pm-finserv-active-clients'
   // Signed Deals & AR
   | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
   // Executive Dashboard tiles
@@ -513,12 +510,6 @@ export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'rev-debt': 'Debt Revenue',
   'rev-finserv': 'FinServ Revenue',
   'last-week-summary': 'Last Week',
-  'pm-debt-on-board-combined': 'Deals on the Board',
-  'pm-debt-signed-combined': 'Deals Signed',
-  'pm-debt-closed-combined': 'Deals Closed',
-  'pm-finserv-deals-on-board': 'FinServ: Deals on the Board',
-  'pm-finserv-clients-signed': 'FinServ Clients Signed',
-  'pm-finserv-active-clients': 'FinServ: Active Clients',
   'sd-deals-signed': 'Deals Signed',
   'sd-finserv-clients-signed': 'FinServ Clients Signed',
   'sd-outstanding-ar': 'Outstanding A/R',
