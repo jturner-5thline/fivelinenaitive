@@ -368,7 +368,7 @@ function Row({
           : undefined
       }
       className={cn(
-        'grid items-center gap-1 border-t border-border/30 pt-1.5 first:border-t-0 first:pt-0 rounded',
+        'grid items-center gap-x-1 gap-y-0 border-t border-border/30 pt-1.5 first:border-t-0 first:pt-0 rounded',
         'grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto_auto]',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
@@ -393,9 +393,6 @@ function Row({
         <>
           <span className="text-[11px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
             {count}
-            <span className="ml-0.5 text-[9px] font-medium text-muted-foreground">
-              Deal{count === 1 ? '' : 's'}
-            </span>
           </span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
           <span className="text-[11px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
@@ -413,14 +410,14 @@ function Row({
 function DeltaBadge({ pct }: { pct: number | null }) {
   if (pct === null) {
     return (
-      <span className="text-[9px] font-mono text-muted-foreground/40 min-w-[2rem] text-right">
+      <span className="text-[9px] font-mono text-muted-foreground/40 min-w-[1.5rem] text-right">
         —
       </span>
     );
   }
   if (!isFinite(pct)) {
     return (
-      <span className="text-[9px] font-mono font-semibold text-success min-w-[2rem] text-right">
+      <span className="text-[9px] font-mono font-semibold text-success min-w-[1.5rem] text-right">
         new
       </span>
     );
