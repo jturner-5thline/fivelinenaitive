@@ -200,7 +200,7 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
     >
       <GlassCardHeader
         title="Deals by Status"
-        subtitle="By total fee · current pipeline"
+        subtitle=""
         right={
           <div className="text-right">
             <p
