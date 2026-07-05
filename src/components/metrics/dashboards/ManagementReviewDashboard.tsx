@@ -660,28 +660,40 @@ function makeBarValueDeltaLabel(
     const negative = Number(d.value) < 0;
     const cx = Number(x) + w / 2;
     const h = Math.abs(Number(height) || 0);
-    // Value sits outside the bar: above (positive) or below (negative).
-    const valueY = negative ? Number(y) + h + 12 : Number(y) - 6;
-    // Δ labels stack INSIDE the bar, centered vertically.
-    const barTop = negative ? Number(y) : Number(y);
-    const barMidY = barTop + h / 2;
+    const barTop = Number(y);
+    const barBottom = barTop + h;
     const pct = d.deltaPct;
     const abs = d.deltaAbs;
     const pctSign = pct == null || pct === 0 ? '' : pct > 0 ? '+' : '−';
     const absSign = abs == null || abs === 0 ? '' : abs > 0 ? '+' : '−';
     const pctText = pct == null ? '' : `${pctSign}${Math.abs(pct).toFixed(1)}%`;
     const absText = abs == null ? '' : `${absSign}${formatValue(Math.abs(abs))}`;
-    // Only render inside-bar deltas when there is enough vertical room.
-    const canFitDeltas = h >= 28 && !!(pctText || absText);
-    // Slight vertical stack: Δ$ above midline, Δ% below.
-    const absY = barMidY - 2;
-    const pctY = barMidY + 11;
+    // Δ labels prefer sitting INSIDE the bar when it's tall enough; otherwise
+    // they render OUTSIDE the bar next to the value label (above positive
+    // bars, below negative bars) so short bars still show the change.
+    const fitInside = h >= 28 && !!(pctText || absText);
+    // Value label anchors just above the bar top for both positive and
+    // negative bars (for negatives the "top" is the zero baseline, so labels
+    // read cleanly above the bar rather than crowded far below).
+    const valueY = barTop - 6;
+    let absY: number;
+    let pctY: number;
+    if (fitInside) {
+      const midY = barTop + h / 2;
+      absY = midY - 2;   // Δ$ on top
+      pctY = midY + 11;  // Δ% below Δ$
+    } else {
+      // Stack above the value label: Δ$ on top, Δ% just below Δ$, value
+      // closest to the bar. Works for both positive and negative bars.
+      pctY = valueY - 12;
+      absY = valueY - 23;
+    }
     return (
       <g>
         <text x={cx} y={valueY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize={10} fontWeight={600}>
           {formatValue(d.value)}
         </text>
-        {canFitDeltas && (
+        {(pctText || absText) && (
           <>
             {absText && (
               <text
