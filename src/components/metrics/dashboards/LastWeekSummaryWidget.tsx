@@ -5,7 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { CalendarClock, Loader2 } from 'lucide-react';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import {
   Dialog,
@@ -14,6 +14,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -78,31 +83,27 @@ function formatCurrencyMM(value: number) {
   return `$${value.toFixed(0)}`;
 }
 
-/** Returns the [start, end] of the previous Mon–Sun week in the user's local tz. */
-function lastMonSunRange(now = new Date()): { start: Date; end: Date } {
+/**
+ * Returns the [start, end] of a completed Mon–Sun week, offset back from
+ * "last week" (weekOffset = 0). weekOffset = 1 → week before last, etc.
+ */
+function weekRange(weekOffset = 0, now = new Date()): { start: Date; end: Date } {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
-  // JS: 0=Sun, 1=Mon ... 6=Sat. Compute this-week Monday, then subtract 7.
   const dow = d.getDay();
-  const daysSinceMonday = (dow + 6) % 7; // Mon=0, Tue=1, ... Sun=6
+  const daysSinceMonday = (dow + 6) % 7;
   const thisMon = new Date(d);
   thisMon.setDate(d.getDate() - daysSinceMonday);
-  const lastMon = new Date(thisMon);
-  lastMon.setDate(thisMon.getDate() - 7);
-  const lastSun = new Date(lastMon);
-  lastSun.setDate(lastMon.getDate() + 6);
-  lastSun.setHours(23, 59, 59, 999);
-  return { start: lastMon, end: lastSun };
+  const start = new Date(thisMon);
+  start.setDate(thisMon.getDate() - 7 * (weekOffset + 1));
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
 }
 
-/** Returns the [start, end] of the week before last (Mon–Sun) in local tz. */
-function priorWeekRange(now = new Date()): { start: Date; end: Date } {
-  const last = lastMonSunRange(now);
-  const start = new Date(last.start);
-  start.setDate(start.getDate() - 7);
-  const end = new Date(last.end);
-  end.setDate(end.getDate() - 7);
-  return { start, end };
+function lastMonSunRange(now = new Date()) {
+  return weekRange(0, now);
 }
 
 function pctChange(curr: number, prev: number): number | null {
@@ -145,8 +146,12 @@ function isReactivationFromStage(from: unknown): boolean {
 export function LastWeekSummaryWidget() {
   const { company } = useCompany();
   const companyId = company?.id;
-  const range = useMemo(() => lastMonSunRange(), []);
-  const priorRange = useMemo(() => priorWeekRange(), []);
+  // Selected week offset. 0 = last completed week (default). Not persisted —
+  // resets to last week on refresh by design.
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const range = useMemo(() => weekRange(weekOffset), [weekOffset]);
+  const priorRange = useMemo(() => weekRange(weekOffset + 1), [weekOffset]);
   const [drilldown, setDrilldown] = useState<StageKey | null>(null);
 
   const fetchWindow = async (start: Date, end: Date, stage: StageConfig) => {
@@ -209,6 +214,27 @@ export function LastWeekSummaryWidget() {
   const naClients   = useStageWindow('naitive-active',       NAITIVE_STAGES.active);
 
   const rangeLabel = `${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const weekTitle = weekOffset === 0 ? 'Last Week' : `${weekOffset + 1} Weeks Ago`;
+
+  // Build 12 recent completed weeks for the picker.
+  const weekOptions = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => {
+        const r = weekRange(i);
+        return {
+          offset: i,
+          label:
+            i === 0
+              ? 'Last Week'
+              : `${r.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          sub:
+            i === 0
+              ? `${r.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${r.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+              : `${i + 1} weeks ago`,
+        };
+      }),
+    [],
+  );
 
   return (
     <>
@@ -227,10 +253,48 @@ export function LastWeekSummaryWidget() {
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Last Week
+              {weekTitle}
             </span>
           </div>
-          <span className="text-[10px] font-mono text-muted-foreground/70">{rangeLabel}</span>
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-1 text-[10px] font-mono rounded px-1.5 py-0.5 -mr-1.5 transition-colors',
+                  'text-muted-foreground/70 hover:text-foreground hover:bg-primary/5',
+                )}
+              >
+                {rangeLabel}
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-56 p-1">
+              <div className="max-h-72 overflow-y-auto flex flex-col">
+                {weekOptions.map((opt) => (
+                  <button
+                    key={opt.offset}
+                    type="button"
+                    onClick={() => {
+                      setWeekOffset(opt.offset);
+                      setPickerOpen(false);
+                    }}
+                    className={cn(
+                      'flex flex-col items-start gap-0.5 px-2 py-1.5 rounded text-left transition-colors',
+                      opt.offset === weekOffset
+                        ? 'bg-primary/15 text-primary'
+                        : 'hover:bg-primary/5 text-foreground',
+                    )}
+                  >
+                    <span className="text-xs font-medium">{opt.label}</span>
+                    {opt.offset !== 0 && (
+                      <span className="text-[10px] text-muted-foreground">{opt.sub}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <Group title="Debt Advisory">
