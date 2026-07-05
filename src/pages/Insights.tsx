@@ -1665,9 +1665,12 @@ function MetricsInner() {
     saveHiddenSnapshotSections({ items: [] });
   };
 
+  // Locked Weekly Rundown widget set — matches the canonical layout below.
+  // Small header revenue cards and the revenue-by-month tile were removed
+  // from the layout at the user's request; the 2-column arrangement in
+  // `unifiedLayoutDefaults` is the only source of truth for placement.
   const SNAPSHOT_CARD_IDS: EditableManagementSnapshotCardId[] = [
-    'debt-revenue', 'finserv-revenue', 'total-revenue', 'total-revenue-detail',
-    'revenue-by-month',
+    'total-revenue-detail',
   ];
 
   // Unified layout IDs: snapshot cards + section blocks + custom widgets in ONE grid.
@@ -1695,32 +1698,24 @@ function MetricsInner() {
   //   • Bottom-left smaller table/list + medium chart adjacent
   //   • Bottom-right wide chart spanning the right section
   // Additional existing widgets are preserved below the primary band.
+  // LOCKED Weekly Rundown layout — two equal columns, four rows.
+  // Do not modify without an explicit user request. The layout key below is
+  // bumped whenever this arrangement changes so every user re-hydrates the
+  // canonical version on next load.
   const unifiedLayoutDefaults = useMemo(() => {
     const defaults: import('@/hooks/useGridLayout').GridLayoutItem[] = [
-      // === PRIMARY REFERENCE BAND ===
-      // Top-left: Total Revenue summary block (shrunk to make room for A/R alongside)
-      { i: 'total-revenue-detail', x: 0, y: 0, w: 4, h: 3, minW: 4, minH: 2 },
-
-      // Next to Total Revenue: Outstanding A/R table
-      { i: 'sd-outstanding-ar', x: 4, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
-
-      // Top-right: two small chart cards side-by-side
-      { i: 'debt-revenue',    x: 6, y: 0, w: 3, h: 3, minW: 3, minH: 3 },
-      { i: 'finserv-revenue', x: 9, y: 0, w: 3, h: 3, minW: 3, minH: 3 },
-
-      // Mid-right: wide chart spanning the full right section width
-      { i: 'revenue-by-month', x: 6, y: 3, w: 6, h: 3, minW: 5, minH: 3 },
-
-      // Below Total Revenue: "Last Week" summary tile.
-      { i: 'last-week-summary', x: 0, y: 6, w: 6, h: 3, minW: 4, minH: 3 },
-
-      // === PRESERVED SUPPLEMENTARY WIDGETS (kept below primary band) ===
-      { i: 'rev-debt',    x: 0, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
-      { i: 'rev-finserv', x: 6, y: 18, w: 6, h: 6, minW: 3, minH: 4 },
-
-      { i: 'sd-deals-signed',           x: 0, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'sd-finserv-clients-signed', x: 4, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
-      { i: 'exec-deals-by-status',      x: 8, y: 24, w: 4, h: 6, minW: 3, minH: 3 },
+      // Row 1
+      { i: 'total-revenue-detail', x: 0, y: 0,  w: 6, h: 3, minW: 6, minH: 3 },
+      { i: 'sd-outstanding-ar',    x: 6, y: 0,  w: 6, h: 6, minW: 6, minH: 6 },
+      // Row 2 (last-week sits under total-revenue-detail; deals-by-status under A/R)
+      { i: 'last-week-summary',    x: 0, y: 3,  w: 6, h: 6, minW: 6, minH: 6 },
+      { i: 'exec-deals-by-status', x: 6, y: 6,  w: 6, h: 6, minW: 6, minH: 6 },
+      // Row 3 — Debt/FinServ revenue charts
+      { i: 'rev-debt',             x: 0, y: 12, w: 6, h: 6, minW: 6, minH: 6 },
+      { i: 'rev-finserv',          x: 6, y: 12, w: 6, h: 6, minW: 6, minH: 6 },
+      // Row 4 — Deals Signed / FinServ Clients Signed
+      { i: 'sd-deals-signed',           x: 0, y: 18, w: 6, h: 6, minW: 6, minH: 6 },
+      { i: 'sd-finserv-clients-signed', x: 6, y: 18, w: 6, h: 6, minW: 6, minH: 6 },
     ];
     return defaults;
   }, []);
@@ -1729,7 +1724,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useUserGridLayout('management-snapshot-unified-v17', unifiedLayoutIds, {
+  } = useUserGridLayout('management-snapshot-unified-v18', unifiedLayoutIds, {
     layoutDefaults: unifiedLayoutDefaults,
   });
 
