@@ -369,18 +369,18 @@ function Row({
       }
       className={cn(
         'grid items-center gap-x-1 gap-y-0 border-t border-border/30 pt-1.5 first:border-t-0 first:pt-0 rounded',
-        'grid-cols-[minmax(0,1fr)_auto_auto_auto_auto_auto_auto]',
+        'grid-cols-[minmax(0,1fr)_1.75rem_0.5rem_3.5rem_2.25rem_0.5rem_2.25rem]',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
-      <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-tight truncate min-w-0">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium leading-tight truncate min-w-0">
         {label}
       </p>
       {placeholder ? (
         <>
-          <span className="text-[11px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-[12px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-[11px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-[12px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <DeltaBadge pct={null} />
           <span className="text-muted-foreground/40 font-light text-center">|</span>
           <DeltaBadge pct={null} />
@@ -391,11 +391,11 @@ function Row({
         </div>
       ) : (
         <>
-          <span className="text-[11px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
+          <span className="text-[12px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
             {count}
           </span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-[11px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
+          <span className="text-[12px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
             {formatCurrencyMM(dollars ?? 0)}
           </span>
           <DeltaBadge pct={countChange} />
@@ -410,14 +410,14 @@ function Row({
 function DeltaBadge({ pct }: { pct: number | null }) {
   if (pct === null) {
     return (
-      <span className="text-[9px] font-mono text-muted-foreground/40 min-w-[1.5rem] text-right">
+      <span className="text-[10px] font-mono text-muted-foreground/40 w-full text-right">
         —
       </span>
     );
   }
   if (!isFinite(pct)) {
     return (
-      <span className="text-[9px] font-mono font-semibold text-success min-w-[1.5rem] text-right">
+      <span className="text-[10px] font-mono font-semibold text-success w-full text-right">
         new
       </span>
     );
@@ -427,7 +427,7 @@ function DeltaBadge({ pct }: { pct: number | null }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-0.5 text-[9px] font-mono font-semibold min-w-[2.25rem] justify-end',
+        'inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold w-full justify-end',
         positive ? 'text-success' : 'text-destructive',
       )}
     >
