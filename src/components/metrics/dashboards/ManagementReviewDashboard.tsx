@@ -634,9 +634,10 @@ function CashflowForecastWidget() {
 // all 4 QBO entities for each bucket in the selected timeframe. Buckets are
 // monthly or quarterly based on the Reporting Period toggle.
 // ============================================================================
-// Shared bar-value label with period-over-period Δ ($ + %) rendered above
-// (positive values) or below (negative values) each bar. Renders nothing
-// when the bar is too narrow to fit legibly.
+// Shared bar label: absolute value sits above (positive) / below (negative)
+// the bar; Δ$ and Δ% are stacked INSIDE the bar (Δ$ on top, Δ% below),
+// drawn in white with a dark stroke for guaranteed contrast against any
+// bar color. Renders nothing when the bar is too narrow to fit legibly.
 function makeBarValueDeltaLabel(
   chartData: Array<{ value: number; deltaAbs: number | null; deltaPct: number | null }>,
   formatValue: (v: number) => string,
@@ -649,24 +650,49 @@ function makeBarValueDeltaLabel(
     if (!d) return null;
     const negative = Number(d.value) < 0;
     const cx = Number(x) + w / 2;
-    // Positive bar: label sits above bar top (y). Negative: below bar bottom (y + |h|).
     const h = Math.abs(Number(height) || 0);
-    const baseY = negative ? Number(y) + h + 12 : Number(y) - 6;
+    // Value sits outside the bar: above (positive) or below (negative).
+    const valueY = negative ? Number(y) + h + 12 : Number(y) - 6;
+    // Δ labels stack INSIDE the bar, centered vertically.
+    const barTop = negative ? Number(y) : Number(y);
+    const barMidY = barTop + h / 2;
     const pct = d.deltaPct;
     const abs = d.deltaAbs;
-    const pctColor = pct == null ? 'rgba(255,255,255,0.55)' : pct >= 0 ? 'hsl(150, 70%, 62%)' : 'hsl(0, 75%, 68%)';
-    const sign = pct == null || pct === 0 ? '' : pct > 0 ? '+' : '−';
-    const pctText = pct == null ? '' : `${sign}${Math.abs(pct).toFixed(1)}%`;
-    const absText = abs == null || abs === 0 ? '' : ` (${abs > 0 ? '+' : '−'}${formatValue(Math.abs(abs))})`;
+    const pctSign = pct == null || pct === 0 ? '' : pct > 0 ? '+' : '−';
+    const absSign = abs == null || abs === 0 ? '' : abs > 0 ? '+' : '−';
+    const pctText = pct == null ? '' : `${pctSign}${Math.abs(pct).toFixed(1)}%`;
+    const absText = abs == null ? '' : `${absSign}${formatValue(Math.abs(abs))}`;
+    // Only render inside-bar deltas when there is enough vertical room.
+    const canFitDeltas = h >= 28 && !!(pctText || absText);
+    // Slight vertical stack: Δ$ above midline, Δ% below.
+    const absY = barMidY - 2;
+    const pctY = barMidY + 11;
     return (
       <g>
-        <text x={cx} y={baseY} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize={10} fontWeight={600}>
+        <text x={cx} y={valueY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize={10} fontWeight={600}>
           {formatValue(d.value)}
         </text>
-        {pctText && (
-          <text x={cx} y={baseY + 11} textAnchor="middle" fill={pctColor} fontSize={9} fontWeight={600}>
-            {pctText}{absText}
-          </text>
+        {canFitDeltas && (
+          <>
+            {absText && (
+              <text
+                x={cx} y={absY} textAnchor="middle"
+                fill="#ffffff" fontSize={10} fontWeight={700}
+                stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
+              >
+                {absText}
+              </text>
+            )}
+            {pctText && (
+              <text
+                x={cx} y={pctY} textAnchor="middle"
+                fill="#ffffff" fontSize={9} fontWeight={700}
+                stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
+              >
+                {pctText}
+              </text>
+            )}
+          </>
         )}
       </g>
     );
