@@ -359,3 +359,256 @@ function DeltaBadge({ pct }: { pct: number | null }) {
     </span>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Drilldown
+// -----------------------------------------------------------------------------
+
+const WEEKS_BACK = 8;
+
+interface WeekBucket {
+  weekStart: Date;
+  weekEnd: Date;
+  label: string; // e.g. "Nov 24"
+  count: number;
+  dollars: number;
+  deals: { deal_id: string; company: string; value: number; entered_at: string }[];
+}
+
+function buildTrailingWeeks(now = new Date(), weeks = WEEKS_BACK): WeekBucket[] {
+  // Most recent complete week is "last week" (Mon-Sun); go back N-1 more.
+  const last = lastMonSunRange(now);
+  const buckets: WeekBucket[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = new Date(last.start);
+    start.setDate(start.getDate() - 7 * i);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    buckets.push({
+      weekStart: start,
+      weekEnd: end,
+      label: start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      count: 0,
+      dollars: 0,
+      deals: [],
+    });
+  }
+  return buckets;
+}
+
+function DrilldownDialog({
+  stageKey,
+  companyId,
+  onClose,
+}: {
+  stageKey: StageKey | null;
+  companyId: string | undefined;
+  onClose: () => void;
+}) {
+  const open = !!stageKey;
+  const stage = stageKey ? STAGE_REGISTRY[stageKey] : null;
+
+  const buckets = useMemo(() => buildTrailingWeeks(), []);
+  const rangeStart = buckets[0]?.weekStart;
+  const rangeEnd = buckets[buckets.length - 1]?.weekEnd;
+
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      'last-week-drilldown',
+      stageKey,
+      companyId,
+      rangeStart?.toISOString(),
+      rangeEnd?.toISOString(),
+    ],
+    enabled: open && !!companyId && !!stage,
+    queryFn: async () => {
+      const cfg = stage!.config;
+      const { data: rows, error } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id, changed_at, to_stage_id, to_stage, deals!inner(company, value)')
+        .eq('company_id', companyId!)
+        .eq('event_type', 'stage_enter')
+        .or(
+          `to_stage_id.in.(${cfg.ids.map((s) => `"${s}"`).join(',')}),to_stage.in.(${cfg.labels.map((s) => `"${s}"`).join(',')})`,
+        )
+        .gte('changed_at', rangeStart!.toISOString())
+        .lte('changed_at', rangeEnd!.toISOString())
+        .order('changed_at', { ascending: true });
+      if (error) throw error;
+
+      // First stage_enter per deal within the full window (avoid double-counting).
+      const seen = new Set<string>();
+      const result = buckets.map((b) => ({ ...b, deals: [] as WeekBucket['deals'] }));
+      for (const row of (rows ?? []) as any[]) {
+        if (seen.has(row.deal_id)) continue;
+        const deal = row.deals;
+        if (!deal) continue;
+        if (isExcludedDealName(deal.company)) continue;
+        seen.add(row.deal_id);
+        const t = new Date(row.changed_at).getTime();
+        const idx = result.findIndex(
+          (b) => t >= b.weekStart.getTime() && t <= b.weekEnd.getTime(),
+        );
+        if (idx < 0) continue;
+        const val = Number(deal.value) || 0;
+        result[idx].deals.push({
+          deal_id: row.deal_id,
+          company: deal.company ?? '—',
+          value: val,
+          entered_at: row.changed_at,
+        });
+        result[idx].count += 1;
+        result[idx].dollars += val;
+      }
+      return result;
+    },
+  });
+
+  const chartData = (data ?? buckets).map((b) => ({
+    week: b.label,
+    deals: b.count,
+    dollarsMM: +(b.dollars / 1_000_000).toFixed(2),
+  }));
+
+  const latest = data?.[data.length - 1];
+  const prior = data?.[data.length - 2];
+  const countPct = latest && prior ? pctChange(latest.count, prior.count) : null;
+  const dollarsPct = latest && prior ? pctChange(latest.dollars, prior.dollars) : null;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-primary" />
+            {stage?.label ?? ''}
+          </DialogTitle>
+          <DialogDescription>
+            Week-over-week stage entries · Trailing {WEEKS_BACK} weeks (Mon–Sun)
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 overflow-hidden">
+            {/* Headline */}
+            <div className="grid grid-cols-2 gap-3">
+              <HeadlineTile
+                label={`Last week (${latest?.label ?? '—'})`}
+                primary={`${latest?.count ?? 0} deal${latest?.count === 1 ? '' : 's'}`}
+                secondary={formatCurrencyMM(latest?.dollars ?? 0)}
+                countPct={countPct}
+                dollarsPct={dollarsPct}
+              />
+              <HeadlineTile
+                label={`Prior week (${prior?.label ?? '—'})`}
+                primary={`${prior?.count ?? 0} deal${prior?.count === 1 ? '' : 's'}`}
+                secondary={formatCurrencyMM(prior?.dollars ?? 0)}
+              />
+            </div>
+
+            {/* Chart */}
+            <div className="h-56 rounded-lg border border-border/40 bg-card/40 p-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartData} margin={{ top: 12, right: 12, bottom: 4, left: 0 }}>
+                  <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.3} vertical={false} />
+                  <XAxis dataKey="week" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <YAxis yAxisId="left" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} allowDecimals={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: 8,
+                      fontSize: 12,
+                    }}
+                    formatter={(value: any, name: string) =>
+                      name === 'dollarsMM' ? [`$${value}MM`, 'Dollars'] : [value, 'Deals']
+                    }
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar yAxisId="left" dataKey="deals" fill="hsl(var(--primary))" opacity={0.7} name="Deals" radius={[4, 4, 0, 0]} />
+                  <Line yAxisId="right" dataKey="dollarsMM" stroke="hsl(var(--success))" strokeWidth={2} dot={{ r: 3 }} name="Dollars ($MM)" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Deal list — last week */}
+            <div className="flex flex-col gap-2 overflow-hidden">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Deals — last week
+                </p>
+                <span className="text-[10px] font-mono text-muted-foreground/70">
+                  {latest?.label} → {latest?.weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+              <div className="overflow-y-auto max-h-56 rounded-md border border-border/40">
+                {latest && latest.deals.length > 0 ? (
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-card/95 backdrop-blur">
+                      <tr className="text-left text-muted-foreground border-b border-border/40">
+                        <th className="px-3 py-2 font-medium">Deal</th>
+                        <th className="px-3 py-2 font-medium text-right">Value</th>
+                        <th className="px-3 py-2 font-medium text-right">Entered</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {latest.deals.map((d) => (
+                        <tr key={d.deal_id} className="border-b border-border/20 last:border-b-0">
+                          <td className="px-3 py-2 truncate max-w-[280px]">{d.company}</td>
+                          <td className="px-3 py-2 text-right font-mono tabular-nums">
+                            {formatCurrencyMM(d.value)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {new Date(d.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No deals entered this stage last week.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function HeadlineTile({
+  label,
+  primary,
+  secondary,
+  countPct,
+  dollarsPct,
+}: {
+  label: string;
+  primary: string;
+  secondary: string;
+  countPct?: number | null;
+  dollarsPct?: number | null;
+}) {
+  return (
+    <div className="rounded-lg border border-border/40 bg-card/40 p-3 flex flex-col gap-1">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{label}</p>
+      <div className="flex items-baseline gap-2">
+        <span className="text-xl font-bold font-mono tabular-nums text-foreground">{primary}</span>
+        {countPct !== undefined && <DeltaBadge pct={countPct ?? null} />}
+      </div>
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm font-semibold font-mono tabular-nums text-muted-foreground">{secondary}</span>
+        {dollarsPct !== undefined && <DeltaBadge pct={dollarsPct ?? null} />}
+      </div>
+    </div>
+  );
+}
