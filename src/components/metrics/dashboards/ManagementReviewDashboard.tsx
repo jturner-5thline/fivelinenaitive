@@ -663,63 +663,34 @@ function makeBarValueDeltaLabel(
     if (w < 22) return null;
     const d = chartData[index];
     if (!d) return null;
-    const negative = Number(d.value) < 0;
     const cx = Number(x) + w / 2;
-    const h = Math.abs(Number(height) || 0);
     const barTop = Number(y);
-    const barBottom = barTop + h;
     const pct = d.deltaPct;
     const abs = d.deltaAbs;
     const pctSign = pct == null || pct === 0 ? '' : pct > 0 ? '+' : '−';
     const absSign = abs == null || abs === 0 ? '' : abs > 0 ? '+' : '−';
     const pctText = pct == null ? '' : `${pctSign}${Math.abs(pct).toFixed(1)}%`;
     const absText = abs == null ? '' : `${absSign}${formatValue(Math.abs(abs))}`;
-    // Δ labels prefer sitting INSIDE the bar when it's tall enough; otherwise
-    // they render OUTSIDE the bar next to the value label (above positive
-    // bars, below negative bars) so short bars still show the change.
-    const fitInside = h >= 28 && !!(pctText || absText);
-    // Value label anchors just above the bar top for both positive and
-    // negative bars (for negatives the "top" is the zero baseline, so labels
-    // read cleanly above the bar rather than crowded far below).
+    // Always render OUTSIDE the plot area, stacked above the bar top:
+    // Δ$ (top) → Δ% → value (closest to bar). No dark outline so labels
+    // read as supporting metadata rather than embedded chart text.
     const valueY = barTop - 6;
-    let absY: number;
-    let pctY: number;
-    if (fitInside) {
-      const midY = barTop + h / 2;
-      absY = midY - 2;   // Δ$ on top
-      pctY = midY + 11;  // Δ% below Δ$
-    } else {
-      // Stack above the value label: Δ$ on top, Δ% just below Δ$, value
-      // closest to the bar. Works for both positive and negative bars.
-      pctY = valueY - 12;
-      absY = valueY - 23;
-    }
+    const pctY = valueY - 11;
+    const absY = valueY - 22;
     return (
       <g>
         <text x={cx} y={valueY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize={10} fontWeight={600}>
           {formatValue(d.value)}
         </text>
-        {(pctText || absText) && (
-          <>
-            {absText && (
-              <text
-                x={cx} y={absY} textAnchor="middle"
-                fill={colorFor(abs)} fontSize={10} fontWeight={700}
-                stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
-              >
-                {absText}
-              </text>
-            )}
-            {pctText && (
-              <text
-                x={cx} y={pctY} textAnchor="middle"
-                fill={colorFor(pct)} fontSize={9} fontWeight={700}
-                stroke="rgba(0,0,0,0.85)" strokeWidth={2.5} paintOrder="stroke" strokeLinejoin="round"
-              >
-                {pctText}
-              </text>
-            )}
-          </>
+        {absText && (
+          <text x={cx} y={absY} textAnchor="middle" fill={colorFor(abs)} fontSize={10} fontWeight={600}>
+            {absText}
+          </text>
+        )}
+        {pctText && (
+          <text x={cx} y={pctY} textAnchor="middle" fill={colorFor(pct)} fontSize={9} fontWeight={600}>
+            {pctText}
+          </text>
         )}
       </g>
     );
