@@ -1217,8 +1217,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     }
 
     const sortedIncluded = included.sort((a: any, b: any) => {
-      const ad = a.projected_close_date ? new Date(a.projected_close_date).getTime() : Infinity;
-      const bd = b.projected_close_date ? new Date(b.projected_close_date).getTime() : Infinity;
+      const aRaw = a.projected_close_date ?? a.dashboard_closing_date ?? a.closing_date ?? null;
+      const bRaw = b.projected_close_date ?? b.dashboard_closing_date ?? b.closing_date ?? null;
+      const ad = aRaw ? new Date(aRaw).getTime() : Infinity;
+      const bd = bRaw ? new Date(bRaw).getTime() : Infinity;
       if (ad !== bd) return ad - bd;
       return String(a.company || '').localeCompare(String(b.company || ''));
     });
@@ -1345,6 +1347,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     const d = parseValueDate(dateStr);
     return d ? format(d, 'MMM yyyy') : '—';
   };
+  // Deal close date can live in one of three fields depending on how it was
+  // entered (Insights dashboard vs. deal detail vs. legacy FinServ flow).
+  // Fall back in priority order so a user-entered date always surfaces.
+  const resolveDealCloseDate = (d: any): string | null =>
+    d?.projected_close_date ?? d?.dashboard_closing_date ?? d?.closing_date ?? null;
   const activeDealCount = activeDeals.length;
   const activePipelineValue = activeDeals.reduce((sum, deal) => sum + Number(deal.value || 0), 0);
   const avgDealSize = activeDealCount > 0 ? activePipelineValue / activeDealCount : 0;
@@ -2393,7 +2400,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                             })()}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.retainer_fee == null || Number(d.retainer_fee) === 0 ? '—' : fmtUSD(Number(d.retainer_fee))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{d.milestone_fee == null || Number(d.milestone_fee) === 0 ? '—' : fmtUSD(Number(d.milestone_fee))}</td>
-                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(resolveDealCloseDate(d))}</td>
                             <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>
                               <Tooltip>
                                 <TooltipTrigger asChild>

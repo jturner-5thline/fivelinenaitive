@@ -72,6 +72,8 @@ interface DbDeal {
   updated_at: string;
   pipeline_id: string | null;
   projected_close_date: string | null;
+  closing_date: string | null;
+  dashboard_closing_date: string | null;
 }
 
 export function useMetricsData() {
@@ -80,7 +82,7 @@ export function useMetricsData() {
     queryFn: async () => {
       const startedAt = Date.now();
       const pageSize = 1000;
-      const dealSelect = 'id, company, value, total_fee, retainer_fee, milestone_fee, success_fee_percent, on_hold, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date';
+      const dealSelect = 'id, company, value, total_fee, retainer_fee, milestone_fee, success_fee_percent, on_hold, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date, closing_date, dashboard_closing_date';
 
       const queryPromise = (async () => {
         const rows: DbDeal[] = [];
