@@ -1065,7 +1065,7 @@ function ConsolidatedCashflowWidget() {
                   const negative = Number(value) < 0;
                   const color = negative ? 'hsl(0, 75%, 62%)' : 'hsl(160, 70%, 55%)';
                   const h = Math.abs(height);
-                  const yy = negative ? y : y;
+                  const yy = negative ? y + height : y;
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
               />
