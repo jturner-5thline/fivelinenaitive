@@ -225,7 +225,7 @@ export function LastWeekSummaryWidget() {
         className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
         style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), transparent)' }}
       />
-      <CardContent className="p-4 flex flex-col gap-3 h-full">
+      <CardContent className="p-3 flex flex-col gap-1.5 h-full overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-primary" />
@@ -296,11 +296,11 @@ export function LastWeekSummaryWidget() {
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-[10px] uppercase tracking-[0.15em] font-semibold text-primary/80">
+    <div className="flex flex-col gap-0.5">
+      <p className="text-[9px] uppercase tracking-[0.15em] font-semibold text-primary/80 leading-tight">
         {title}
       </p>
-      <div className="flex flex-col gap-2 pl-2 border-l border-primary/20">
+      <div className="flex flex-col gap-0 pl-1.5 border-l border-primary/20">
         {children}
       </div>
     </div>
