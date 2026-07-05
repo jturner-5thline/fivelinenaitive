@@ -431,17 +431,57 @@ function ByServiceToggleButton({
   );
 }
 
+function MetricToggle({
+  value,
+  onChange,
+}: {
+  value: PnlMetric;
+  onChange: (v: PnlMetric) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-md border border-border/60 overflow-hidden">
+      {PNL_METRIC_OPTIONS.map((opt) => (
+        <button
+          key={opt.key}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange(opt.key);
+          }}
+          className={
+            'text-[11px] px-2 py-0.5 transition-colors border-r last:border-r-0 border-border/60 ' +
+            (value === opt.key
+              ? 'bg-primary/20 text-foreground'
+              : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+          }
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function StackedDebtRevenueChart({
   data,
   isLoading,
   total,
+  realmId,
+  quarter,
   onBarClick,
 }: {
   data: StackedDebtMonth[];
   isLoading: boolean;
   total: number;
+  realmId: string;
+  quarter: QuarterOption;
   onBarClick: (monthKey: string, category?: string) => void;
 }) {
+  const [showTrend, setShowTrend] = useState(false);
+  const [byService, setByService] = useState(false);
+  const [metric, setMetric] = useState<PnlMetric>('revenue');
+  const pnl = useQBMonthlyPnl(realmId, quarter);
+
   if (isLoading) {
     return (
       <Card className="glass-module h-full flex flex-col">
@@ -456,8 +496,6 @@ export function StackedDebtRevenueChart({
     );
   }
 
-  const [showTrend, setShowTrend] = useState(false);
-  const [byService, setByService] = useState(false);
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       STACKED_CATEGORIES.reduce(
@@ -465,27 +503,50 @@ export function StackedDebtRevenueChart({
         0,
       ),
     );
-    const trend = computeLinearTrend(totals);
-    return data.map((d, i) => ({ ...d, __total: totals[i], trend: trend[i] }));
-  }, [data]);
+    const pnlByMonth = new Map(pnl.months.map((p) => [p.monthKey, p]));
+    // Metric-aware values per row.
+    const metricVals = data.map((d, i) => {
+      if (metric === 'revenue') return totals[i];
+      const p = pnlByMonth.get(d.monthKey);
+      return metric === 'grossProfit'
+        ? (p?.grossProfit ?? 0)
+        : (p?.operatingProfit ?? 0);
+    });
+    const trend = computeLinearTrend(metricVals);
+    return data.map((d, i) => ({
+      ...d,
+      __total: totals[i],
+      __metricValue: metricVals[i],
+      trend: trend[i],
+    }));
+  }, [data, pnl.months, metric]);
+
+  const isRevenue = metric === 'revenue';
+  const metricLabel = PNL_METRIC_OPTIONS.find((o) => o.key === metric)!.label;
+  const displayedTotal = isRevenue
+    ? total
+    : chartData.reduce((s, d) => s + (Number(d.__metricValue) || 0), 0);
 
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
         <div>
-          <CardTitle className="text-sm font-medium text-foreground">Debt Revenue</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">Debt {metricLabel}</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">5th Line Capital Advisors, LLC</p>
         </div>
-        <div className="flex items-start gap-2">
-          <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
+        <div className="flex items-start gap-2 flex-wrap justify-end">
+          <MetricToggle value={metric} onChange={setMetric} />
+          {isRevenue && (
+            <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
+          )}
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <div className="text-right">
-            <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+            <p className="text-lg font-bold text-foreground">{formatCurrency(displayedTotal)}</p>
             <p className="text-[10px] text-muted-foreground">Period Total</p>
             {showTrend && (
               <TrendDeltaText
                 className="block mt-1"
-                values={chartData.map((d) => d.__total)}
+                values={chartData.map((d) => d.__metricValue)}
                 format={formatCurrencyFull}
               />
             )}
@@ -560,7 +621,7 @@ export function StackedDebtRevenueChart({
                 wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                 formatter={(value) => STACKED_CATEGORIES.find(c => c.key === value)?.label ?? value}
               />
-              {byService ? STACKED_CATEGORIES.map((cat, catIdx) => (
+              {isRevenue && byService ? STACKED_CATEGORIES.map((cat, catIdx) => (
                 <Bar
                   key={cat.key}
                   dataKey={cat.key}
@@ -577,14 +638,14 @@ export function StackedDebtRevenueChart({
                 />
               )) : (
                 <Bar
-                  key="__total"
-                  dataKey="__total"
-                  name="Total"
+                  key={metric}
+                  dataKey="__metricValue"
+                  name={metricLabel}
                   fill="hsl(200, 80%, 55%)"
                   fillOpacity={0.85}
                   cursor="pointer"
                   onClick={(d: StackedDebtMonth) => onBarClick(d.monthKey)}
-                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__total', dataKey: '__total' })}
+                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__metricValue', dataKey: '__metricValue' })}
                 />
               )}
               {showTrend && (
