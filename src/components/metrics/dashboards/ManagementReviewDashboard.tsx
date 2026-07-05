@@ -17,7 +17,7 @@ import WhatWorkingSections from './WhatWorkingSections';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useMetricsData } from '@/hooks/useMetricsData';
-import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
@@ -80,56 +80,105 @@ function formatLiabCurrency(val: number | null | undefined): string {
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+/**
+ * Walk a QBO balance sheet report tree and return the numeric value found
+ * for the first row matching `predicate`. Returns null if not found.
+ *
+ * QBO report_data shape:
+ *   { Rows: { Row: [ { type: "Data", ColData: [{id,value:name},{value:"123.45"}] }
+ *                  | { type: "Section", group, Header, Summary, Rows: {...} } ] } }
+ */
+function walkBalanceSheetRows(
+  node: any,
+  predicate: (row: any) => number | null,
+): number | null {
+  if (!node || typeof node !== 'object') return null;
+  const direct = predicate(node);
+  if (direct !== null) return direct;
+  const rows = node?.Rows?.Row;
+  if (Array.isArray(rows)) {
+    for (const child of rows) {
+      const val = walkBalanceSheetRows(child, predicate);
+      if (val !== null) return val;
+    }
+  }
+  return null;
+}
+
+function extractDataRowValue(report: any, accountName: string): number | null {
+  return walkBalanceSheetRows(report, (row) => {
+    if (row?.type !== 'Data') return null;
+    const cols = row?.ColData;
+    if (!Array.isArray(cols) || cols.length < 2) return null;
+    if (cols[0]?.value !== accountName) return null;
+    const raw = cols[1]?.value;
+    if (raw === undefined || raw === null || raw === '') return null;
+    const num = Number(raw);
+    return isNaN(num) ? null : num;
+  });
+}
+
+function extractSectionTotal(report: any, group: string): number | null {
+  return walkBalanceSheetRows(report, (row) => {
+    if (row?.type !== 'Section' || row?.group !== group) return null;
+    const raw = row?.Summary?.ColData?.[1]?.value;
+    if (raw === undefined || raw === null || raw === '') return null;
+    const num = Number(raw);
+    return isNaN(num) ? null : num;
+  });
+}
+
+function extractRowValue(report: any, row: LiabRow): number | null {
+  if (row.qbo) return extractDataRowValue(report, row.qbo.accountName);
+  if (row.qboAggregate) return extractSectionTotal(report, 'CreditCards');
+  return null;
+}
+
+function priorEndFromTimeframeStart(startISO: string): string {
+  const d = new Date(startISO + 'T00:00:00');
+  d.setDate(d.getDate() - 1);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function LiabilitiesDebtServiceTable() {
-  const { data: balancesByRow = {} } = useQuery({
-    queryKey: ['liabilities-account-balances', LIAB_ROWS.map(r => r.name)],
+  const tf = useInsightsTimeframeOptional()?.timeframe;
+  const currentAsOf = tf?.end ?? new Date().toISOString().slice(0, 10);
+  const priorAsOf = tf?.start ? priorEndFromTimeframeStart(tf.start) : null;
+
+  const realmIds = Array.from(new Set(
+    LIAB_ROWS.map(r => r.qbo?.realmId ?? r.qboAggregate?.realmId).filter((r): r is string => !!r),
+  ));
+
+  const { data: snapshots = {} } = useQuery({
+    queryKey: ['liabilities-bs-snapshots', currentAsOf, priorAsOf, realmIds],
     queryFn: async () => {
-      const out: Record<string, number> = {};
-
-      // Direct account lookups, grouped by realm to minimize round trips.
-      const directByRealm = new Map<string, { rowName: string; accountName: string }[]>();
-      for (const r of LIAB_ROWS) {
-        if (!r.qbo) continue;
-        const arr = directByRealm.get(r.qbo.realmId) ?? [];
-        arr.push({ rowName: r.name, accountName: r.qbo.accountName });
-        directByRealm.set(r.qbo.realmId, arr);
-      }
-      for (const [realmId, entries] of directByRealm) {
-        const { data, error } = await supabase
-          .from('quickbooks_accounts')
-          .select('name, current_balance')
-          .eq('realm_id', realmId)
-          .in('name', entries.map(e => e.accountName));
-        if (error) throw error;
-        for (const e of entries) {
-          const match = (data ?? []).find(d => d.name === e.accountName);
-          if (match && match.current_balance !== null && match.current_balance !== undefined) {
-            out[e.rowName] = Number(match.current_balance);
-          }
+      // Fetch the latest balance sheet snapshot at-or-before each anchor date,
+      // per realm. Returns a nested map: { [realmId]: { current, prior } }.
+      const result: Record<string, { current: any; prior: any }> = {};
+      for (const realmId of realmIds) {
+        const anchors: { key: 'current' | 'prior'; date: string | null }[] = [
+          { key: 'current', date: currentAsOf },
+          { key: 'prior', date: priorAsOf },
+        ];
+        result[realmId] = { current: null, prior: null };
+        for (const a of anchors) {
+          if (!a.date) continue;
+          const { data, error } = await supabase
+            .from('quickbooks_reports')
+            .select('report_data, period_end')
+            .eq('report_type', 'balance_sheet')
+            .eq('realm_id', realmId)
+            .lte('period_end', a.date)
+            .order('period_end', { ascending: false })
+            .limit(1);
+          if (error) throw error;
+          if (data && data.length > 0) result[realmId][a.key] = data[0].report_data;
         }
       }
-
-      // Aggregate lookups (e.g. sum all Credit Card accounts for the
-      // "Total for Credit Cards" balance-sheet subtotal).
-      for (const r of LIAB_ROWS) {
-        if (!r.qboAggregate) continue;
-        const { data, error } = await supabase
-          .from('quickbooks_accounts')
-          .select('current_balance')
-          .eq('realm_id', r.qboAggregate.realmId)
-          .eq('account_type', r.qboAggregate.accountType);
-        if (error) throw error;
-        const rows = data ?? [];
-        if (rows.length > 0) {
-          out[r.name] = rows.reduce(
-            (sum, row) => sum + (row.current_balance !== null && row.current_balance !== undefined ? Number(row.current_balance) : 0),
-            0,
-          );
-        }
-      }
-
-      return out;
+      return result;
     },
+    enabled: realmIds.length > 0,
     staleTime: 60_000,
   });
 
@@ -142,7 +191,21 @@ function LiabilitiesDebtServiceTable() {
         <div className="text-right">% Change</div>
       </div>
       {LIAB_ROWS.map((row) => {
-        const bal = balancesByRow[row.name];
+        const realmId = row.qbo?.realmId ?? row.qboAggregate?.realmId;
+        const snap = realmId ? snapshots[realmId] : undefined;
+        const current = snap?.current ? extractRowValue(snap.current, row) : null;
+        const prior = snap?.prior ? extractRowValue(snap.prior, row) : null;
+        const delta = current !== null && prior !== null ? current - prior : null;
+        const pct = delta !== null && prior !== null && prior !== 0
+          ? (delta / Math.abs(prior)) * 100
+          : null;
+        // For liabilities, an INCREASE (positive delta) is unfavorable → red.
+        const deltaColor = delta === null || delta === 0
+          ? 'text-muted-foreground'
+          : delta > 0
+            ? 'text-[#ff6b7a]'
+            : 'text-[#3de89a]';
+        const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
         return (
           <div
             key={row.name}
@@ -150,10 +213,18 @@ function LiabilitiesDebtServiceTable() {
           >
             <div className="text-foreground/90 truncate">{row.name}</div>
             <div className="text-right text-foreground/90">
-              {bal !== undefined ? formatLiabCurrency(bal) : '—'}
+              {current !== null ? formatLiabCurrency(current) : '—'}
             </div>
-            <div className="text-right text-muted-foreground">—</div>
-            <div className="text-right text-muted-foreground">—</div>
+            <div className={`text-right ${deltaColor}`}>
+              {delta !== null
+                ? `${signPrefix(delta)}${formatLiabCurrency(delta)}`
+                : '—'}
+            </div>
+            <div className={`text-right ${deltaColor}`}>
+              {pct !== null
+                ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
+                : '—'}
+            </div>
           </div>
         );
       })}
