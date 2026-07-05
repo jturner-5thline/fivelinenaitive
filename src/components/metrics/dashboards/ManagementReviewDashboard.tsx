@@ -2058,7 +2058,25 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <NaPlaceholder height={140} label="Data unavailable — no live debt schedule source" />
+            <div className="text-xs">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 pb-2 border-b border-white/10 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <div>Account</div>
+                <div className="text-right">Current Balance</div>
+                <div className="text-right">$ Change</div>
+                <div className="text-right">% Change</div>
+              </div>
+              {['SBA Loan', 'Headway LOC', 'AMEX LOC', 'M&T LOC', 'Other Loans', "CC's (Est.)"].map((name) => (
+                <div
+                  key={name}
+                  className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0"
+                >
+                  <div className="text-foreground/90 truncate">{name}</div>
+                  <div className="text-right text-muted-foreground">—</div>
+                  <div className="text-right text-muted-foreground">—</div>
+                  <div className="text-right text-muted-foreground">—</div>
+                </div>
+              ))}
+            </div>
           </GridShell>
         </div>
         <div key="dscr" className="h-full">
