@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
-import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetricCardId, PIPELINE_METRIC_LABELS } from './PipelineMetricsSection';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
 import {
   ExecDealsByStatusWidget,
