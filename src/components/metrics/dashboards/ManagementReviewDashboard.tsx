@@ -741,8 +741,8 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'active-deals-list', x: 0, y: 9, w: 6, h: 10, minW: 4, minH: 8 },
   { i: 'liabilities', x: 6, y: 8, w: 6, h: 4, minW: 4, minH: 2 },
   { i: 'dscr', x: 6, y: 12, w: 6, h: 4, minW: 4, minH: 2 },
-  { i: 'debt-rating', x: 6, y: 12, w: 6, h: 4, minW: 4, minH: 3 },
-  { i: 'asana-goals', x: 0, y: 19, w: 12, h: 6, minW: 6, minH: 4 },
+  { i: 'debt-rating', x: 6, y: 16, w: 6, h: 4, minW: 4, minH: 3 },
+  { i: 'asana-goals', x: 0, y: 20, w: 12, h: 6, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
