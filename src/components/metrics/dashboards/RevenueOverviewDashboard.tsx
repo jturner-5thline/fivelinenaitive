@@ -16,6 +16,7 @@ import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar'
 import { computeLinearTrend, TrendToggleButton, TrendDeltaText } from '@/components/metrics/charts/trendLine';
 import { useQBStackedDebtRevenue, STACKED_CATEGORIES, type StackedDebtMonth } from '@/hooks/useQBStackedDebtRevenue';
 import { useQBStackedFinServRevenue, FINSERV_STACKED_CATEGORIES, type StackedFinServMonth } from '@/hooks/useQBStackedFinServRevenue';
+import { useQBMonthlyPnl, PNL_METRIC_OPTIONS, type PnlMetric } from '@/hooks/useQBMonthlyPnl';
 import { RevenueHistoricalTrend } from './HistoricalTrendChart';
 import {
   useQBQuarterlyRevenue,
