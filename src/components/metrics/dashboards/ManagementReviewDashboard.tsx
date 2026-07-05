@@ -2628,6 +2628,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
           </GridShell>
         </div>
+        <div key="opex" className="h-full">
+          <GridShell isEditMode={isEditMode} title="OPEX">
+            <ConsolidatedOpexWidget />
+          </GridShell>
+        </div>
       </DraggableGridLayout>
 
       <InsightsDrilldownDrawer
