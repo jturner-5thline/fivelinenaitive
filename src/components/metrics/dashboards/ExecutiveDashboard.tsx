@@ -134,15 +134,21 @@ function useDealsByStatusFee(_window?: { start: Date; end: Date }) {
         'on-track' | 'at-risk' | 'off-track',
         number
       >;
+      const counts = { 'on-track': 0, 'at-risk': 0, 'off-track': 0 } as Record<
+        'on-track' | 'at-risk' | 'off-track',
+        number
+      >;
       for (const r of rows) {
         const s = r.status as keyof typeof totals;
         if (s in totals) {
+          counts[s] += 1;
           const fee = Number(r.total_fee);
           if (Number.isFinite(fee) && fee > 0) totals[s] += fee;
         }
       }
       const total = totals['on-track'] + totals['at-risk'] + totals['off-track'];
-      return { totals, total };
+      const totalCount = counts['on-track'] + counts['at-risk'] + counts['off-track'];
+      return { totals, counts, total, totalCount };
     },
     staleTime: 60_000,
   });
@@ -166,13 +172,15 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
 
   const total = data?.total ?? 0;
   const totals = data?.totals ?? { 'on-track': 0, 'at-risk': 0, 'off-track': 0 };
+  const counts = data?.counts ?? { 'on-track': 0, 'at-risk': 0, 'off-track': 0 };
+  const totalCount = data?.totalCount ?? 0;
 
-  const pieData = STATUS_BUCKETS.map(b => ({ name: b.label, value: totals[b.key] }));
-  const legendItems = STATUS_BUCKETS.map(b => ({
-    label: b.label,
-    value: formatCurrency(totals[b.key]),
-    color: b.color,
-  }));
+  const segments = STATUS_BUCKETS.map(b => {
+    const fee = totals[b.key];
+    const count = counts[b.key];
+    const pct = total > 0 ? (fee / total) * 100 : 0;
+    return { key: b.key, label: b.label, color: b.color, fee, count, pct };
+  });
 
   return (
     <>
@@ -205,96 +213,94 @@ function DealsByStatusPieChart({ window }: { window?: { start: Date; end: Date }
               className="text-[10px] mt-1.5 uppercase tracking-wider"
               style={{ color: GLASS_TOKENS.metaColor }}
             >
-              Total Fee
+              {totalCount} deals · Total Fee
             </p>
           </div>
         }
       />
       <GlassCardBody className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-[140px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <PieGlassDefs colors={STATUS_COLORS} />
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={65}
-                innerRadius={30}
-                paddingAngle={3}
-                activeShape={GlassActiveShape}
-                label={({ cx, cy, midAngle, outerRadius, value, percent }: any) => {
-                  if (!value || value <= 0) return null;
-                  const RADIAN = Math.PI / 180;
-                  const r = outerRadius + 14;
-                  const x = cx + r * Math.cos(-midAngle * RADIAN);
-                  const y = cy + r * Math.sin(-midAngle * RADIAN);
-                  const anchor = x > cx ? 'start' : 'end';
-                  return (
-                    <text
-                      x={x}
-                      y={y}
-                      textAnchor={anchor}
-                      dominantBaseline="central"
-                      fontSize={11}
-                      fill="rgba(210, 225, 250, 0.92)"
-                      className="tabular-nums"
-                    >
-                      {`${formatCurrency(value)} · ${(percent * 100).toFixed(0)}%`}
-                    </text>
-                  );
-                }}
-                labelLine={{ stroke: 'rgba(160, 200, 255, 0.35)', strokeWidth: 1 }}
-              >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={STATUS_COLORS[i]} fillOpacity={0.92} stroke={STATUS_COLORS[i]} strokeWidth={0.75} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                  return [`${formatCurrencyFull(value)} (${pct}%)`, name];
-                }}
-                contentStyle={TOOLTIP_STYLE}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+        {/* Single horizontal stacked bar — each segment sized by share of
+            total fee (revenue / closing fees). */}
+        <div className="mt-2">
+          <div
+            className="flex w-full h-9 rounded-md overflow-hidden"
+            style={{
+              border: '1px solid rgba(160, 200, 255, 0.18)',
+              background: 'rgba(20, 30, 50, 0.35)',
+            }}
+            role="img"
+            aria-label="Deals by status stacked bar"
+          >
+            {total > 0 ? (
+              segments.map((s) => {
+                if (s.pct <= 0) return null;
+                const showInline = s.pct >= 12;
+                return (
+                  <div
+                    key={s.key}
+                    title={`${s.label} · ${s.count} deals · ${formatCurrencyFull(s.fee)} (${s.pct.toFixed(1)}%)`}
+                    className="flex items-center justify-center px-2 text-[11px] font-semibold tabular-nums"
+                    style={{
+                      width: `${s.pct}%`,
+                      background: s.color,
+                      color: 'rgba(15, 20, 30, 0.92)',
+                      opacity: 0.95,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {showInline ? `${s.pct.toFixed(0)}%` : ''}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-[11px]"
+                style={{ color: 'rgba(200, 220, 250, 0.6)' }}>
+                No fee-weighted deals in current pipeline
+              </div>
+            )}
+          </div>
         </div>
-        {/* Below-chart legend — matches Outstanding A/R formatting */}
+
+        {/* Legend rows — count · $ volume · % of revenue per status */}
         <ul className="mt-3 space-y-1.5" aria-label="Deals by status legend">
-          {legendItems.map((item, i) => {
-            const pct = total > 0 ? ((totals[STATUS_BUCKETS[i].key] / total) * 100).toFixed(1) : '0.0';
-            return (
-              <li key={i} className="flex items-center gap-2 text-xs">
-                <span
-                  className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: item.color, opacity: 0.95 }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="truncate flex-1"
-                  style={{ color: 'rgba(210, 225, 250, 0.88)' }}
-                  title={item.label}
-                >
-                  {item.label}
-                </span>
-                <span
-                  className="tabular-nums flex-shrink-0 text-[10px]"
-                  style={{ color: 'rgba(200, 220, 250, 0.65)' }}
-                >
-                  {pct}%
-                </span>
-                <span
-                  className="font-medium tabular-nums flex-shrink-0 min-w-[56px] text-right"
-                  style={{ color: GLASS_TOKENS.valueColor }}
-                >
-                  {item.value}
-                </span>
-              </li>
-            );
-          })}
+          {segments.map((s) => (
+            <li key={s.key} className="flex items-center gap-2 text-xs">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                style={{ backgroundColor: s.color, opacity: 0.95 }}
+                aria-hidden="true"
+              />
+              <span
+                className="truncate flex-1"
+                style={{ color: 'rgba(210, 225, 250, 0.88)' }}
+                title={s.label}
+              >
+                {s.label}
+              </span>
+              <span
+                className="tabular-nums flex-shrink-0 text-[10px]"
+                style={{ color: 'rgba(200, 220, 250, 0.72)' }}
+                title="Deal count"
+              >
+                {s.count} {s.count === 1 ? 'deal' : 'deals'}
+              </span>
+              <span
+                className="tabular-nums flex-shrink-0 text-[10px]"
+                style={{ color: 'rgba(200, 220, 250, 0.65)' }}
+                title="Share of closing fees"
+              >
+                {s.pct.toFixed(1)}%
+              </span>
+              <span
+                className="font-medium tabular-nums flex-shrink-0 min-w-[56px] text-right"
+                style={{ color: GLASS_TOKENS.valueColor }}
+                title="Total fee"
+              >
+                {formatCurrency(s.fee)}
+              </span>
+            </li>
+          ))}
         </ul>
       </GlassCardBody>
     </GlassCard>
