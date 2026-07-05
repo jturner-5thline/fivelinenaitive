@@ -34,6 +34,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
@@ -214,7 +215,45 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
       {isLoading ? (
         <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, padding: '12px 4px' }}>Loading history…</div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <>
+          <div style={{ height: 200, marginBottom: 16 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={history.map(h => ({ label: h.label, value: h.value !== null ? Math.abs(h.value) : null }))}
+                margin={{ top: 8, right: 12, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis
+                  tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) => {
+                    const abs = Math.abs(v);
+                    if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1)}M`;
+                    if (abs >= 1_000) return `$${(abs / 1_000).toFixed(0)}K`;
+                    return `$${abs}`;
+                  }}
+                  width={55}
+                />
+                <RTooltip
+                  contentStyle={{ background: 'rgba(20,22,32,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, fontSize: 12 }}
+                  labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                  formatter={(v: number) => [formatLiabCurrency(v), 'Balance']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="hsl(213,90%,70%)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: 'hsl(213,90%,70%)' }}
+                  activeDot={{ r: 5 }}
+                  connectNulls
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.5px' }}>
               <th style={{ padding: '6px 8px', textAlign: 'left' }}>Period</th>
@@ -224,8 +263,10 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
             </tr>
           </thead>
           <tbody>
-            {history.map((h, i) => {
-              const prev = i > 0 ? history[i - 1].value : null;
+            {history.slice().reverse().map((h, i, arr) => {
+              // arr is reversed (newest first); prior period is the NEXT
+              // item in this reversed list.
+              const prev = i < arr.length - 1 ? arr[i + 1].value : null;
               const delta = h.value !== null && prev !== null ? h.value - prev : null;
               const pct = delta !== null && prev !== null && prev !== 0
                 ? (delta / Math.abs(prev)) * 100
@@ -247,7 +288,8 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
               );
             })}
           </tbody>
-        </table>
+          </table>
+        </>
       )}
     </div>
   );
