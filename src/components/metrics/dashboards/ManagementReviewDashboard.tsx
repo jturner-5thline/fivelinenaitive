@@ -2496,6 +2496,24 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <CashflowForecastWidget />
           </GridShell>
         </div>
+        <div key="finserv-next3" className="h-full">
+          <GridShell isEditMode={isEditMode} title="FinServ: Next 3 Months">
+            <div className="flex flex-col divide-y divide-border">
+              {[
+                "Next 3 Months' Revenue",
+                "Next 3 Months' Profit",
+                'Operating Cashflow',
+                'Client Signings',
+                'Current Run Rate',
+              ].map((label) => (
+                <div key={label} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-foreground">—</span>
+                </div>
+              ))}
+            </div>
+          </GridShell>
+        </div>
         <div key="debt-rating" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
             <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
