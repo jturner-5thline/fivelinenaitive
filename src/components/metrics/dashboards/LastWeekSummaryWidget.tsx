@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -417,7 +417,7 @@ function DrilldownDialog({
 
   // Reset selection to the most-recent (last) week whenever the dialog opens
   // for a different metric.
-  useMemo(() => {
+  useEffect(() => {
     setSelectedIdx(buckets.length - 1);
   }, [stageKey, buckets.length]);
 
