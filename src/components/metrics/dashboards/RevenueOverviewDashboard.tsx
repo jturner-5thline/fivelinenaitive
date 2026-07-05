@@ -675,6 +675,10 @@ export function StackedGenericRevenueChart({
   isLoading,
   total,
   categories,
+  realmId,
+  quarter,
+  metricLabelPrefix,
+  totalColor,
   onBarClick,
 }: {
   title: string;
@@ -683,8 +687,18 @@ export function StackedGenericRevenueChart({
   isLoading: boolean;
   total: number;
   categories: readonly { key: string; label: string; color: string }[];
+  realmId: string;
+  quarter: QuarterOption;
+  /** e.g. "FinServ" — combined with the toggle label ("Gross Profit"). */
+  metricLabelPrefix?: string;
+  totalColor?: string;
   onBarClick: (monthKey: string, category?: string) => void;
 }) {
+  const [showTrend, setShowTrend] = useState(false);
+  const [byService, setByService] = useState(false);
+  const [metric, setMetric] = useState<PnlMetric>('revenue');
+  const pnl = useQBMonthlyPnl(realmId, quarter);
+
   if (isLoading) {
     return (
       <Card className="glass-module h-full flex flex-col">
@@ -699,33 +713,57 @@ export function StackedGenericRevenueChart({
     );
   }
 
-  const [showTrend, setShowTrend] = useState(false);
-  const [byService, setByService] = useState(false);
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       categories.reduce((s, c) => s + (Number(d[c.key]) || 0), 0),
     );
-    const trend = computeLinearTrend(totals);
-    return data.map((d, i) => ({ ...d, __total: totals[i], trend: trend[i] }));
-  }, [data, categories]);
+    const pnlByMonth = new Map(pnl.months.map((p) => [p.monthKey, p]));
+    const metricVals = data.map((d, i) => {
+      if (metric === 'revenue') return totals[i];
+      const p = pnlByMonth.get(d.monthKey);
+      return metric === 'grossProfit'
+        ? (p?.grossProfit ?? 0)
+        : (p?.operatingProfit ?? 0);
+    });
+    const trend = computeLinearTrend(metricVals);
+    return data.map((d, i) => ({
+      ...d,
+      __total: totals[i],
+      __metricValue: metricVals[i],
+      trend: trend[i],
+    }));
+  }, [data, categories, pnl.months, metric]);
+
+  const isRevenue = metric === 'revenue';
+  const metricLabel = PNL_METRIC_OPTIONS.find((o) => o.key === metric)!.label;
+  const displayedTitle =
+    isRevenue || !metricLabelPrefix
+      ? (isRevenue ? title : `${metricLabelPrefix ?? ''} ${metricLabel}`.trim())
+      : `${metricLabelPrefix} ${metricLabel}`;
+  const displayedTotal = isRevenue
+    ? total
+    : chartData.reduce((s, d) => s + (Number(d.__metricValue) || 0), 0);
 
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
         <div>
-          <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
+          <CardTitle className="text-sm font-medium text-foreground">{displayedTitle}</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        <div className="flex items-start gap-2">
-          <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
+        <div className="flex items-start gap-2 flex-wrap justify-end">
+          <MetricToggle value={metric} onChange={setMetric} />
+          {isRevenue && (
+            <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
+          )}
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <div className="text-right">
-            <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+            <p className="text-lg font-bold text-foreground">{formatCurrency(displayedTotal)}</p>
             <p className="text-[10px] text-muted-foreground">Period Total</p>
             {showTrend && (
               <TrendDeltaText
                 className="block mt-1"
-                values={chartData.map((d) => d.__total)}
+                values={chartData.map((d) => d.__metricValue)}
                 format={formatCurrencyFull}
               />
             )}
@@ -763,7 +801,7 @@ export function StackedGenericRevenueChart({
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(value) => categories.find(c => c.key === value)?.label ?? value} />
-              {byService ? categories.map(cat => (
+              {isRevenue && byService ? categories.map(cat => (
                 <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)}
                   shape={createGlassBarShape({
                     radius: 3,
@@ -773,14 +811,14 @@ export function StackedGenericRevenueChart({
                 />
               )) : (
                 <Bar
-                  key="__total"
-                  dataKey="__total"
-                  name="Total"
-                  fill="hsl(160, 65%, 50%)"
+                  key={metric}
+                  dataKey="__metricValue"
+                  name={metricLabel}
+                  fill={totalColor ?? 'hsl(160, 65%, 50%)'}
                   fillOpacity={0.85}
                   cursor="pointer"
                   onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string)}
-                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__total', dataKey: '__total' })}
+                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__metricValue', dataKey: '__metricValue' })}
                 />
               )}
               {showTrend && (
