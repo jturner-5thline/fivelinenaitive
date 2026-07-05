@@ -33,7 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, LabelList } from 'recharts';
 import { BarChart, Bar, ReferenceLine, ComposedChart } from 'recharts';
 import { useCompany } from '@/hooks/useCompany';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
@@ -634,6 +634,45 @@ function CashflowForecastWidget() {
 // all 4 QBO entities for each bucket in the selected timeframe. Buckets are
 // monthly or quarterly based on the Reporting Period toggle.
 // ============================================================================
+// Shared bar-value label with period-over-period Δ ($ + %) rendered above
+// (positive values) or below (negative values) each bar. Renders nothing
+// when the bar is too narrow to fit legibly.
+function makeBarValueDeltaLabel(
+  chartData: Array<{ value: number; deltaAbs: number | null; deltaPct: number | null }>,
+  formatValue: (v: number) => string,
+) {
+  return function BarValueDeltaLabel(props: any) {
+    const { x, y, width, height, index } = props;
+    const w = Number(width) || 0;
+    if (w < 22) return null;
+    const d = chartData[index];
+    if (!d) return null;
+    const negative = Number(d.value) < 0;
+    const cx = Number(x) + w / 2;
+    // Positive bar: label sits above bar top (y). Negative: below bar bottom (y + |h|).
+    const h = Math.abs(Number(height) || 0);
+    const baseY = negative ? Number(y) + h + 12 : Number(y) - 6;
+    const pct = d.deltaPct;
+    const abs = d.deltaAbs;
+    const pctColor = pct == null ? 'rgba(255,255,255,0.55)' : pct >= 0 ? 'hsl(150, 70%, 62%)' : 'hsl(0, 75%, 68%)';
+    const sign = pct == null || pct === 0 ? '' : pct > 0 ? '+' : '−';
+    const pctText = pct == null ? '' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+    const absText = abs == null || abs === 0 ? '' : ` (${abs > 0 ? '+' : '−'}${formatValue(Math.abs(abs))})`;
+    return (
+      <g>
+        <text x={cx} y={baseY} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize={10} fontWeight={600}>
+          {formatValue(d.value)}
+        </text>
+        {pctText && (
+          <text x={cx} y={baseY + 11} textAnchor="middle" fill={pctColor} fontSize={9} fontWeight={600}>
+            {pctText}{absText}
+          </text>
+        )}
+      </g>
+    );
+  };
+}
+
 function ConsolidatedOpexWidget() {
   const { company } = useCompany();
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
@@ -764,7 +803,7 @@ function ConsolidatedOpexWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No OPEX data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -796,7 +835,9 @@ function ConsolidatedOpexWidget() {
                   return [formatUSD((v as number) / 1000), 'OPEX'];
                 }}
               />
-              <Bar yAxisId="left" dataKey="value" name="OPEX" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="left" dataKey="value" name="OPEX" fill="hsl(38, 92%, 62%)" radius={[4, 4, 0, 0]}>
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000))} />
+              </Bar>
               {showDelta && (
                 <>
                   <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
@@ -1025,7 +1066,7 @@ function ConsolidatedCashflowWidget() {
           <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No cash flow data for the selected period.'} />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 8, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
+            <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 18 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -1068,7 +1109,9 @@ function ConsolidatedCashflowWidget() {
                   const yy = negative ? y + height : y;
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
-              />
+              >
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v))} />
+              </Bar>
               {showDelta && (
                 <>
                   <Line yAxisId="right" type="monotone" dataKey="deltaAbs" name="Δ $" stroke="hsl(38, 92%, 62%)" strokeWidth={2} dot={{ r: 3, fill: 'hsl(38, 92%, 62%)' }} connectNulls />
@@ -1990,6 +2033,36 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
       ? {
           type: 'bar',
+          plugins: [{
+            id: 'revenueBarValueDeltaLabels',
+            afterDatasetsDraw(chart: any) {
+              const { ctx, chartArea } = chart;
+              const barDs = chart.getDatasetMeta(0);
+              if (!barDs || !barDs.data) return;
+              ctx.save();
+              ctx.textAlign = 'center';
+              barDs.data.forEach((bar: any, i: number) => {
+                const v = Number(chart.data.datasets[0].data[i] ?? 0);
+                if (!isFinite(v) || v === 0) return;
+                const w = bar.width ?? 0;
+                if (w < 26) return;
+                const pct = trendDeltasPct[i];
+                const abs = trendDeltasAbs[i];
+                const topY = Math.max(bar.y - 6, chartArea.top + 12);
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.font = '600 10px system-ui, -apple-system, sans-serif';
+                ctx.fillText(fmtUSD(v), bar.x, topY);
+                if (pct != null && isFinite(pct)) {
+                  const sign = pct >= 0 ? '+' : '−';
+                  const absTxt = abs != null && abs !== 0 ? ` (${abs > 0 ? '+' : '−'}${fmtUSD(Math.abs(abs))})` : '';
+                  ctx.fillStyle = pct >= 0 ? 'hsl(150, 70%, 62%)' : 'hsl(0, 75%, 68%)';
+                  ctx.font = '600 9px system-ui, -apple-system, sans-serif';
+                  ctx.fillText(`${sign}${Math.abs(pct).toFixed(1)}%${absTxt}`, bar.x, topY + 11);
+                }
+              });
+              ctx.restore();
+            },
+          }],
           data: trendMode === 'ttm'
             ? {
                 labels: ttmLabels,
