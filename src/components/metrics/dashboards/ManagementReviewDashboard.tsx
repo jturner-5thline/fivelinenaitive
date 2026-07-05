@@ -141,7 +141,119 @@ function priorEndFromTimeframeStart(startISO: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function LiabilitiesDebtServiceTable() {
+/**
+ * Historical balance table for a single liability account. Shown inside the
+ * drilldown drawer when the user clicks a row in the Liabilities widget.
+ * Renders trailing 12 month-end balances (from stored QBO balance-sheet
+ * snapshots) plus period-over-period $ and % change.
+ */
+function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
+  const realmId = row.qbo?.realmId ?? row.qboAggregate?.realmId ?? null;
+
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ['liability-history', row.name, realmId],
+    queryFn: async () => {
+      if (!realmId) return [] as { label: string; asOf: string; value: number | null }[];
+      // Build 12 trailing month-end anchors, ending with today's month.
+      const now = new Date();
+      const anchors: { label: string; date: Date }[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i + 1, 0); // last day of that month
+        anchors.push({
+          label: d.toLocaleString('en-US', { month: 'short', year: 'numeric' }),
+          date: d,
+        });
+      }
+      const earliest = anchors[0].date;
+      earliest.setDate(1);
+      earliest.setMonth(earliest.getMonth() - 1); // buffer one prior month
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      const { data, error } = await supabase
+        .from('quickbooks_reports')
+        .select('report_data, period_end')
+        .eq('report_type', 'balance_sheet')
+        .eq('realm_id', realmId)
+        .gte('period_end', iso(earliest))
+        .order('period_end', { ascending: true });
+      if (error) throw error;
+      const snaps = (data ?? []).map(r => ({
+        periodEnd: r.period_end as string,
+        report: r.report_data,
+      }));
+
+      return anchors.map((a) => {
+        const anchorISO = iso(a.date);
+        // latest snapshot at-or-before this month-end
+        let match: any = null;
+        for (const s of snaps) {
+          if (s.periodEnd <= anchorISO) match = s;
+          else break;
+        }
+        const value = match ? extractRowValue(match.report, row) : null;
+        return { label: a.label, asOf: anchorISO, value };
+      });
+    },
+    enabled: !!realmId,
+    staleTime: 60_000,
+  });
+
+  const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
+  const deltaColor = (delta: number | null) => {
+    if (delta === null || delta === 0) return 'rgba(255,255,255,0.55)';
+    return delta > 0 ? '#ff6b7a' : '#3de89a';
+  };
+
+  return (
+    <div style={{ padding: '4px 4px 12px' }}>
+      <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, marginBottom: 8 }}>
+        Trailing 12 month-end balances sourced from QuickBooks balance-sheet snapshots.
+        Each period's $ and % change is computed vs the immediately prior month-end.
+      </div>
+      {isLoading ? (
+        <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, padding: '12px 4px' }}>Loading history…</div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <thead>
+            <tr style={{ color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.5px' }}>
+              <th style={{ padding: '6px 8px', textAlign: 'left' }}>Period</th>
+              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Balance</th>
+              <th style={{ padding: '6px 8px', textAlign: 'right' }}>$ Change</th>
+              <th style={{ padding: '6px 8px', textAlign: 'right' }}>% Change</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((h, i) => {
+              const prev = i > 0 ? history[i - 1].value : null;
+              const delta = h.value !== null && prev !== null ? h.value - prev : null;
+              const pct = delta !== null && prev !== null && prev !== 0
+                ? (delta / Math.abs(prev)) * 100
+                : null;
+              const dc = deltaColor(delta);
+              return (
+                <tr key={h.label} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <td style={{ padding: '6px 8px', color: 'hsl(0,0%,100%)' }}>{h.label}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>
+                    {h.value !== null ? formatLiabCurrency(h.value) : '—'}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
+                    {delta !== null ? `${signPrefix(delta)}${formatLiabCurrency(delta)}` : '—'}
+                  </td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
+                    {pct !== null ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%` : '—'}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (row: LiabRow) => void }) {
   const tf = useInsightsTimeframeOptional()?.timeframe;
   const currentAsOf = tf?.end ?? new Date().toISOString().slice(0, 10);
   const priorAsOf = tf?.start ? priorEndFromTimeframeStart(tf.start) : null;
@@ -206,10 +318,14 @@ function LiabilitiesDebtServiceTable() {
             ? 'text-[#ff6b7a]'
             : 'text-[#3de89a]';
         const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
+        const clickable = !!onOpenDrilldown && !!realmId;
         return (
-          <div
+          <button
+            type="button"
             key={row.name}
-            className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0"
+            onClick={clickable ? () => onOpenDrilldown!(row) : undefined}
+            disabled={!clickable}
+            className={`w-full text-left grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0 ${clickable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'} transition-colors`}
           >
             <div className="text-foreground/90 truncate">{row.name}</div>
             <div className="text-right text-foreground/90">
@@ -225,7 +341,7 @@ function LiabilitiesDebtServiceTable() {
                 ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
                 : '—'}
             </div>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -2243,7 +2359,27 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <LiabilitiesDebtServiceTable />
+            <LiabilitiesDebtServiceTable
+              onOpenDrilldown={(row) => {
+                setDrilldown({
+                  context: {
+                    sourceId: `liabilities:${row.name}`,
+                    sourceLabel: `${row.name} · Liabilities & Debt Service`,
+                    selection: row.name,
+                    periodLabel,
+                    filters: [
+                      { label: 'Source', value: row.qbo
+                          ? `QuickBooks · ${row.qbo.accountName}`
+                          : `QuickBooks · Credit Cards (aggregate)` },
+                      { label: 'Reporting period', value: periodLabel },
+                    ],
+                  },
+                  columns: [],
+                  rows: [],
+                  body: <LiabilityHistoryDrilldownBody row={row} />,
+                });
+              }}
+            />
           </GridShell>
         </div>
         <div key="dscr" className="h-full">
