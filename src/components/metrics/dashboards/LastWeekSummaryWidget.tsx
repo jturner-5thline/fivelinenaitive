@@ -430,11 +430,11 @@ function DeltaBadge({ pct }: { pct: number | null }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold min-w-[3rem] justify-end',
+        'inline-flex items-center gap-0.5 text-[9px] font-mono font-semibold min-w-[2.25rem] justify-end',
         positive ? 'text-success' : 'text-destructive',
       )}
     >
-      <Icon className="h-2.5 w-2.5" />
+      <Icon className="h-2 w-2" />
       {Math.abs(pct).toFixed(0)}%
     </span>
   );
