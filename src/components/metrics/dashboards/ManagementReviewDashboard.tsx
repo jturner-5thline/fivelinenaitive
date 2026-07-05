@@ -895,7 +895,7 @@ function ConsolidatedOpexWidget() {
                 fill="hsl(35, 85%, 55%)"
                 radius={[4, 4, 0, 0]}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { invertDeltaColors: true })} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { polarity: 'lower-is-better' })} />
               </Bar>
               {showDelta && (
                 <>
@@ -1169,7 +1169,7 @@ function ConsolidatedCashflowWidget() {
                   return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
                 }}
               >
-                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v))} />
+                <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => fmt(v), { polarity: 'higher-is-better' })} />
               </Bar>
               {showDelta && (
                 <>
