@@ -403,6 +403,33 @@ export function RevenueDrilldownModal({
   );
 }
 
+function ByServiceToggleButton({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      title="Toggle breakdown by service"
+      className={
+        'text-[11px] px-2 py-0.5 rounded-md border border-border/60 transition-colors ' +
+        (active
+          ? 'bg-primary/20 text-foreground'
+          : 'bg-white/[0.04] text-muted-foreground hover:text-foreground')
+      }
+    >
+      By Service
+    </button>
+  );
+}
+
 export function StackedDebtRevenueChart({
   data,
   isLoading,
@@ -429,6 +456,7 @@ export function StackedDebtRevenueChart({
   }
 
   const [showTrend, setShowTrend] = useState(false);
+  const [byService, setByService] = useState(false);
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       STACKED_CATEGORIES.reduce(
@@ -448,6 +476,7 @@ export function StackedDebtRevenueChart({
           <p className="text-xs text-muted-foreground mt-0.5">5th Line Capital Advisors, LLC</p>
         </div>
         <div className="flex items-start gap-2">
+          <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <div className="text-right">
             <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
@@ -530,7 +559,7 @@ export function StackedDebtRevenueChart({
                 wrapperStyle={{ fontSize: 10, paddingTop: 4 }}
                 formatter={(value) => STACKED_CATEGORIES.find(c => c.key === value)?.label ?? value}
               />
-              {STACKED_CATEGORIES.map((cat, catIdx) => (
+              {byService ? STACKED_CATEGORIES.map((cat, catIdx) => (
                 <Bar
                   key={cat.key}
                   dataKey={cat.key}
@@ -545,7 +574,18 @@ export function StackedDebtRevenueChart({
                     dataKey: cat.key,
                   })}
                 />
-              ))}
+              )) : (
+                <Bar
+                  key="__total"
+                  dataKey="__total"
+                  name="Total"
+                  fill="hsl(200, 80%, 55%)"
+                  fillOpacity={0.85}
+                  cursor="pointer"
+                  onClick={(d: StackedDebtMonth) => onBarClick(d.monthKey)}
+                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__total', dataKey: '__total' })}
+                />
+              )}
               {showTrend && (
                 <Line
                   type="monotone"
@@ -598,6 +638,7 @@ export function StackedGenericRevenueChart({
   }
 
   const [showTrend, setShowTrend] = useState(false);
+  const [byService, setByService] = useState(false);
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       categories.reduce((s, c) => s + (Number(d[c.key]) || 0), 0),
@@ -614,6 +655,7 @@ export function StackedGenericRevenueChart({
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
         <div className="flex items-start gap-2">
+          <ByServiceToggleButton active={byService} onToggle={() => setByService((v) => !v)} />
           <TrendToggleButton active={showTrend} onToggle={() => setShowTrend((v) => !v)} />
           <div className="text-right">
             <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
@@ -659,7 +701,7 @@ export function StackedGenericRevenueChart({
                 cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
               />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 10, paddingTop: 4 }} formatter={(value) => categories.find(c => c.key === value)?.label ?? value} />
-              {categories.map(cat => (
+              {byService ? categories.map(cat => (
                 <Bar key={cat.key} dataKey={cat.key} stackId="stack" fill={cat.color} fillOpacity={0.85} cursor="pointer" onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string, cat.key)}
                   shape={createGlassBarShape({
                     radius: 3,
@@ -667,7 +709,18 @@ export function StackedGenericRevenueChart({
                     dataKey: cat.key,
                   })}
                 />
-              ))}
+              )) : (
+                <Bar
+                  key="__total"
+                  dataKey="__total"
+                  name="Total"
+                  fill="hsl(160, 65%, 50%)"
+                  fillOpacity={0.85}
+                  cursor="pointer"
+                  onClick={(d: Record<string, unknown>) => onBarClick(d.monthKey as string)}
+                  shape={createGlassBarShape({ radius: 3, topSegmentKey: '__total', dataKey: '__total' })}
+                />
+              )}
               {showTrend && (
                 <Line
                   type="monotone"
