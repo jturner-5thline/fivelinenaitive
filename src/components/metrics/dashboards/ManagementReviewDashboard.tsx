@@ -52,20 +52,26 @@ const NA_COLOR = 'rgba(255,255,255,0.35)';
 // (5th Line Capital Advisors LLC realm) for the accounts we can wire today.
 // Rows without a mapped QBO account render em-dashes until sourced.
 // ============================================================================
-const LIAB_REALM_ID = '193514877331929'; // 5th Line Capital Advisors LLC
+const LIAB_REALM_ADVISORS = '193514877331929'; // 5th Line Capital Advisors LLC
+const LIAB_REALM_CAPITAL = '123146077561874'; // 5th Line Capital, LLC
 
 interface LiabRow {
   name: string;
-  qboAccountName?: string; // exact QBO account "name" to match on
+  // Direct QBO account lookup: match by exact `name` in the given realm.
+  qbo?: { realmId: string; accountName: string };
+  // Aggregate lookup: sum current_balance across all accounts in a realm
+  // whose account_type matches (used for the "Total for Credit Cards"
+  // balance sheet subtotal, which QBO derives from all Credit Card accounts).
+  qboAggregate?: { realmId: string; accountType: string };
 }
 
 const LIAB_ROWS: LiabRow[] = [
   { name: 'SBA Loan' },
-  { name: 'Headway LOC', qboAccountName: 'Headway Capital Loan' },
+  { name: 'Headway LOC', qbo: { realmId: LIAB_REALM_ADVISORS, accountName: 'Headway Capital Loan' } },
   { name: 'AMEX LOC' },
   { name: 'M&T LOC' },
   { name: 'Other Loans' },
-  { name: "CC's (Est.)" },
+  { name: "CC's (Est.)", qboAggregate: { realmId: LIAB_REALM_CAPITAL, accountType: 'Credit Card' } },
 ];
 
 function formatLiabCurrency(val: number | null | undefined): string {
@@ -75,24 +81,54 @@ function formatLiabCurrency(val: number | null | undefined): string {
 }
 
 function LiabilitiesDebtServiceTable() {
-  const mappedNames = LIAB_ROWS.map(r => r.qboAccountName).filter((n): n is string => !!n);
-  const { data: balances = {} } = useQuery({
-    queryKey: ['liabilities-account-balances', LIAB_REALM_ID, mappedNames],
+  const { data: balancesByRow = {} } = useQuery({
+    queryKey: ['liabilities-account-balances', LIAB_ROWS.map(r => r.name)],
     queryFn: async () => {
-      if (mappedNames.length === 0) return {} as Record<string, number>;
-      const { data, error } = await supabase
-        .from('quickbooks_accounts')
-        .select('name, current_balance, account_type')
-        .eq('realm_id', LIAB_REALM_ID)
-        .in('name', mappedNames);
-      if (error) throw error;
-      const map: Record<string, number> = {};
-      for (const row of data ?? []) {
-        if (row.name && row.current_balance !== null && row.current_balance !== undefined) {
-          map[row.name] = Number(row.current_balance);
+      const out: Record<string, number> = {};
+
+      // Direct account lookups, grouped by realm to minimize round trips.
+      const directByRealm = new Map<string, { rowName: string; accountName: string }[]>();
+      for (const r of LIAB_ROWS) {
+        if (!r.qbo) continue;
+        const arr = directByRealm.get(r.qbo.realmId) ?? [];
+        arr.push({ rowName: r.name, accountName: r.qbo.accountName });
+        directByRealm.set(r.qbo.realmId, arr);
+      }
+      for (const [realmId, entries] of directByRealm) {
+        const { data, error } = await supabase
+          .from('quickbooks_accounts')
+          .select('name, current_balance')
+          .eq('realm_id', realmId)
+          .in('name', entries.map(e => e.accountName));
+        if (error) throw error;
+        for (const e of entries) {
+          const match = (data ?? []).find(d => d.name === e.accountName);
+          if (match && match.current_balance !== null && match.current_balance !== undefined) {
+            out[e.rowName] = Number(match.current_balance);
+          }
         }
       }
-      return map;
+
+      // Aggregate lookups (e.g. sum all Credit Card accounts for the
+      // "Total for Credit Cards" balance-sheet subtotal).
+      for (const r of LIAB_ROWS) {
+        if (!r.qboAggregate) continue;
+        const { data, error } = await supabase
+          .from('quickbooks_accounts')
+          .select('current_balance')
+          .eq('realm_id', r.qboAggregate.realmId)
+          .eq('account_type', r.qboAggregate.accountType);
+        if (error) throw error;
+        const rows = data ?? [];
+        if (rows.length > 0) {
+          out[r.name] = rows.reduce(
+            (sum, row) => sum + (row.current_balance !== null && row.current_balance !== undefined ? Number(row.current_balance) : 0),
+            0,
+          );
+        }
+      }
+
+      return out;
     },
     staleTime: 60_000,
   });
@@ -106,7 +142,7 @@ function LiabilitiesDebtServiceTable() {
         <div className="text-right">% Change</div>
       </div>
       {LIAB_ROWS.map((row) => {
-        const bal = row.qboAccountName ? balances[row.qboAccountName] : undefined;
+        const bal = balancesByRow[row.name];
         return (
           <div
             key={row.name}
