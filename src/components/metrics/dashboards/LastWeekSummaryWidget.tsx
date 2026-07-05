@@ -5,6 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { CalendarClock, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowUp } from 'lucide-react';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 
 // "NDA/Needs List Sent" stage id in the default (Active) pipeline.
@@ -33,36 +34,61 @@ function lastMonSunRange(now = new Date()): { start: Date; end: Date } {
   return { start: lastMon, end: lastSun };
 }
 
+/** Returns the [start, end] of the week before last (Mon–Sun) in local tz. */
+function priorWeekRange(now = new Date()): { start: Date; end: Date } {
+  const last = lastMonSunRange(now);
+  const start = new Date(last.start);
+  start.setDate(start.getDate() - 7);
+  const end = new Date(last.end);
+  end.setDate(end.getDate() - 7);
+  return { start, end };
+}
+
+function pctChange(curr: number, prev: number): number | null {
+  if (!prev) return curr > 0 ? Infinity : null;
+  return ((curr - prev) / prev) * 100;
+}
+
 export function LastWeekSummaryWidget() {
   const { company } = useCompany();
   const companyId = company?.id;
   const range = useMemo(() => lastMonSunRange(), []);
+  const priorRange = useMemo(() => priorWeekRange(), []);
+
+  const fetchWindow = async (start: Date, end: Date) => {
+    const { data: rows, error } = await supabase
+      .from('deal_stage_history')
+      .select('deal_id, changed_at, to_stage_id, deals!inner(company, value)')
+      .eq('company_id', companyId!)
+      .eq('event_type', 'stage_enter')
+      .in('to_stage_id', NDA_NEEDS_LIST_STAGE_IDS)
+      .gte('changed_at', start.toISOString())
+      .lte('changed_at', end.toISOString())
+      .order('changed_at', { ascending: true });
+    if (error) throw error;
+    const seen = new Map<string, number>();
+    for (const row of (rows ?? []) as any[]) {
+      if (seen.has(row.deal_id)) continue;
+      const deal = row.deals;
+      if (!deal) continue;
+      if (isExcludedDealName(deal.company)) continue;
+      seen.set(row.deal_id, Number(deal.value) || 0);
+    }
+    return {
+      count: seen.size,
+      dollars: Array.from(seen.values()).reduce((s, v) => s + v, 0),
+    };
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['last-week-nda-needs-list', companyId, range.start.toISOString(), range.end.toISOString()],
     enabled: !!companyId,
     queryFn: async () => {
-      const { data: rows, error } = await supabase
-        .from('deal_stage_history')
-        .select('deal_id, changed_at, to_stage_id, deals!inner(company, value)')
-        .eq('company_id', companyId!)
-        .eq('event_type', 'stage_enter')
-        .in('to_stage_id', NDA_NEEDS_LIST_STAGE_IDS)
-        .gte('changed_at', range.start.toISOString())
-        .lte('changed_at', range.end.toISOString())
-        .order('changed_at', { ascending: true });
-      if (error) throw error;
-      const seen = new Map<string, number>();
-      for (const row of (rows ?? []) as any[]) {
-        if (seen.has(row.deal_id)) continue;
-        const deal = row.deals;
-        if (!deal) continue;
-        if (isExcludedDealName(deal.company)) continue;
-        seen.set(row.deal_id, Number(deal.value) || 0);
-      }
-      const count = seen.size;
-      const dollars = Array.from(seen.values()).reduce((s, v) => s + v, 0);
-      return { count, dollars };
+      const [curr, prev] = await Promise.all([
+        fetchWindow(range.start, range.end),
+        fetchWindow(priorRange.start, priorRange.end),
+      ]);
+      return { ...curr, prevCount: prev.count, prevDollars: prev.dollars };
     },
   });
 
@@ -95,6 +121,8 @@ export function LastWeekSummaryWidget() {
             label="Deals | Dollars on the Board"
             count={data?.count ?? 0}
             dollars={data?.dollars ?? 0}
+            prevCount={data?.prevCount ?? 0}
+            prevDollars={data?.prevDollars ?? 0}
             isLoading={isLoading}
           />
           <Row label="Deals Signed | Dollars Signed" placeholder />
@@ -134,15 +162,21 @@ function Row({
   label,
   count,
   dollars,
+  prevCount,
+  prevDollars,
   isLoading,
   placeholder,
 }: {
   label: string;
   count?: number;
   dollars?: number;
+  prevCount?: number;
+  prevDollars?: number;
   isLoading?: boolean;
   placeholder?: boolean;
 }) {
+  const countChange = !placeholder ? pctChange(count ?? 0, prevCount ?? 0) : null;
+  const dollarsChange = !placeholder ? pctChange(dollars ?? 0, prevDollars ?? 0) : null;
   return (
     <div className="flex items-center justify-between gap-3 border-t border-border/30 pt-3 first:border-t-0 first:pt-0">
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate flex-1 min-w-0">
@@ -150,7 +184,10 @@ function Row({
       </p>
       <div className="flex items-baseline gap-2 shrink-0">
         {placeholder ? (
-          <span className="text-lg font-bold font-mono tabular-nums text-muted-foreground/60">—</span>
+          <>
+            <span className="text-lg font-bold font-mono tabular-nums text-muted-foreground/60">—</span>
+            <DeltaBadge pct={null} />
+          </>
         ) : isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
@@ -158,13 +195,45 @@ function Row({
             <span className="text-lg font-bold font-mono tabular-nums text-foreground">
               {count} <span className="text-xs font-medium text-muted-foreground">Deal{count === 1 ? '' : 's'}</span>
             </span>
+            <DeltaBadge pct={countChange} />
             <span className="text-muted-foreground/60 font-light">|</span>
             <span className="text-lg font-bold font-mono tabular-nums text-foreground">
               {formatCurrencyMM(dollars ?? 0)}
             </span>
+            <DeltaBadge pct={dollarsChange} />
           </>
         )}
       </div>
     </div>
+  );
+}
+
+function DeltaBadge({ pct }: { pct: number | null }) {
+  if (pct === null) {
+    return (
+      <span className="text-[10px] font-mono text-muted-foreground/40 min-w-[3rem] text-right">
+        —
+      </span>
+    );
+  }
+  if (!isFinite(pct)) {
+    return (
+      <span className="text-[10px] font-mono font-semibold text-success min-w-[3rem] text-right">
+        new
+      </span>
+    );
+  }
+  const positive = pct >= 0;
+  const Icon = positive ? ArrowUp : ArrowDown;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold min-w-[3rem] justify-end',
+        positive ? 'text-success' : 'text-destructive',
+      )}
+    >
+      <Icon className="h-2.5 w-2.5" />
+      {Math.abs(pct).toFixed(0)}%
+    </span>
   );
 }
