@@ -3,7 +3,6 @@ import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerCli
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
 import { PipelineMetricWidget, CombinedPipelineMetricWidget, type PipelineMetricCardId, PIPELINE_METRIC_LABELS } from './PipelineMetricsSection';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
-import { DebtProfitWidget, FinServProfitWidget } from './ProfitByEntitySection';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
@@ -493,7 +492,6 @@ export type ManagementSnapshotSectionId =
   | 'revenue-overview'
   | 'pipeline-metrics'
   | 'signed-deals-ar'
-  | 'profit-by-entity'
   | 'executive-dashboard';
 
 /** New per-widget IDs for sub-section charts/KPIs. Each one is an
@@ -508,8 +506,6 @@ export type WeeklyRundownSubWidgetId =
   | 'pm-finserv-deals-on-board' | 'pm-finserv-clients-signed' | 'pm-finserv-active-clients'
   // Signed Deals & AR
   | 'sd-deals-signed' | 'sd-finserv-clients-signed' | 'sd-outstanding-ar'
-  // Profit by Entity
-  | 'pe-debt-profit' | 'pe-finserv-profit'
   // Executive Dashboard tiles
   | 'exec-week-selector' | 'exec-deals-by-status';
 
@@ -526,8 +522,6 @@ export const SUB_WIDGET_LABELS: Record<WeeklyRundownSubWidgetId, string> = {
   'sd-deals-signed': 'Deals Signed',
   'sd-finserv-clients-signed': 'FinServ Clients Signed',
   'sd-outstanding-ar': 'Outstanding A/R',
-  'pe-debt-profit': 'Debt Profit',
-  'pe-finserv-profit': 'FinServ Profit',
   'exec-week-selector': 'Executive Week Selector',
   'exec-deals-by-status': 'Deals By Status',
 };
@@ -753,8 +747,6 @@ export function ManagementSnapshotDashboard({
     'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
     'sd-finserv-clients-signed': <FinServClientsSignedWidget selectedQuarter={selectedQuarter} />,
     'sd-outstanding-ar': <OutstandingARWidget />,
-    'pe-debt-profit': <DebtProfitWidget selectedQuarter={selectedQuarter} />,
-    'pe-finserv-profit': <FinServProfitWidget selectedQuarter={selectedQuarter} />,
     // The dedicated Mon→Sun week selector tile has been retired in favour of
     // the unified header timeframe picker. The id remains for backwards
     // compatibility with persisted layouts but renders nothing.
