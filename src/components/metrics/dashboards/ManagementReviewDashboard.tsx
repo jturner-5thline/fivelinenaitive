@@ -169,18 +169,17 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
       }
       const pad = (n: number) => String(n).padStart(2, '0');
       const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-      // Fetch snapshots going back a further ~3 months before the earliest
-      // anchor so we can still resolve a "latest snapshot at-or-before" match
-      // for the oldest month even when snapshots are sparse historically.
-      const earliestAnchor = anchors[0].date;
-      const fetchFrom = new Date(earliestAnchor.getFullYear(), earliestAnchor.getMonth() - 3, 1);
+      // Fetch all snapshots up to the latest anchor so each trailing month can
+      // resolve the latest snapshot at-or-before that month-end, even when the
+      // historical snapshots are sparse or fall before the 12-month window.
+      const latestAnchor = anchors[anchors.length - 1].date;
 
       const { data, error } = await supabase
         .from('quickbooks_reports')
         .select('report_data, period_end')
         .eq('report_type', 'balance_sheet')
         .eq('realm_id', realmId)
-        .gte('period_end', iso(fetchFrom))
+        .lte('period_end', iso(latestAnchor))
         .order('period_end', { ascending: true });
       if (error) throw error;
       const snaps = (data ?? []).map(r => ({
