@@ -66,15 +66,7 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
     if (open) setMountKey((k) => k + 1);
   }, [open]);
 
-  // Close on Escape.
-  React.useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onOpenChange(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange]);
+  // Escape is handled by Radix Dialog via onOpenChange — no custom listener needed.
 
   // Mirror the Daily Rundown / Deal pop-up shell exactly: same
   // `popup-shell-surface` token, same sizing/border treatment, same
