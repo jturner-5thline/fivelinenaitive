@@ -1636,7 +1636,6 @@ function MetricsInner() {
     'revenue-overview': 'Revenue Overview',
     'pipeline-metrics': 'Pipeline Metrics',
     'signed-deals-ar': 'Signed Deals & AR',
-    'profit-by-entity': 'Profit by Entity',
     'executive-dashboard': 'Executive Dashboard',
   };
   const handleDeleteSnapshotSection = (sectionId: import('@/components/metrics/dashboards/ManagementSnapshotDashboard').ManagementSnapshotSectionId) => {
@@ -1736,7 +1735,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v13', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v14', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });
@@ -1960,16 +1959,6 @@ function MetricsInner() {
       type: 'kpi',
       values: [{ fieldId: 'f-amount', label: 'Outstanding A/R', agg: 'sum', format: 'currency' }],
       xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
-    },
-    'debt-profit': {
-      type: 'bar',
-      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
-      values: [{ fieldId: 'f-net-income', label: 'Debt Profit', agg: 'sum', format: 'currency' }],
-    },
-    'finserv-profit': {
-      type: 'bar',
-      xAxis: { fieldId: 'd-report', grain: 'month', window: 'ytd', label: 'Reporting Month' },
-      values: [{ fieldId: 'f-net-income', label: 'FinServ Profit', agg: 'sum', format: 'currency' }],
     },
   };
 
