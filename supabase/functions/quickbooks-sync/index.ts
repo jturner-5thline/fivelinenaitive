@@ -592,6 +592,20 @@ serve(async (req) => {
                     })
                     ?? allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities");
 
+                  // Operating Activities section total ("Net cash provided by
+                  // operating activities"). This is the Summary row of the
+                  // top-level "OperatingActivities" section, or a row/group
+                  // explicitly named "NetCashProvidedByOperatingActivities".
+                  const opsRow =
+                    allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "operatingactivities")
+                    ?? allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities")
+                    ?? allRows.find((row: any) => {
+                      const label = String(
+                        row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "",
+                      ).toLowerCase();
+                      return label.includes("net cash provided by operating") || label.includes("operating activities");
+                    });
+
                   const seen = new Set<string>();
                   // Identify intercompany rows ("Due to/from 5th Line Capital LLC")
                   // so we can net their cash-flow impact out downstream.
@@ -625,6 +639,9 @@ serve(async (req) => {
                             ?? row?.Summary?.ColData?.[index]?.value,
                         );
                       }, 0);
+                      const operatingActivities = parseAmount(
+                        opsRow?.Summary?.ColData?.[index]?.value ?? opsRow?.ColData?.[index]?.value,
+                      );
                       return {
                         company_id: fallbackCompanyId,
                         user_id: user.id,
@@ -637,6 +654,7 @@ serve(async (req) => {
                         bucket_label: title,
                         net_cash_flow: value,
                         intercompany_adjustment: intercompanyAdjustment,
+                        operating_activities: operatingActivities,
                         raw_response: report,
                         fetched_at: new Date().toISOString(),
                       };

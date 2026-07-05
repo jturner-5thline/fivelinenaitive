@@ -740,6 +740,175 @@ function ConsolidatedOpexWidget() {
   );
 }
 
+// ============================================================================
+// Consolidated CashFlow — Operating Activities line from the QBO Statement of
+// Cash Flows summed across all 4 QBO entities, bucketed monthly or quarterly
+// based on the Reporting Period toggle. Anchored at the selected period end,
+// showing the selected + 3 prior quarters (quarter view) or selected + 11
+// prior months (month view).
+// ============================================================================
+function ConsolidatedCashflowWidget() {
+  const { company } = useCompany();
+  const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const view: 'month' | 'quarter' = reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
+  const anchorEnd = reportingPeriod?.end ?? timeframe.end;
+  const granularity: Granularity = view === 'quarter' ? 'quarterly' : 'monthly';
+
+  const buckets = useMemo(() => {
+    if (!anchorEnd) return [];
+    const end = new Date(anchorEnd + 'T00:00:00');
+    if (view === 'quarter') {
+      const qEndAnchor = endOfQuarter(end);
+      const start = startOfQuarter(subQuarters(qEndAnchor, 3));
+      return buildBuckets(format(start, 'yyyy-MM-dd'), format(qEndAnchor, 'yyyy-MM-dd'), 'quarterly');
+    }
+    const mEndAnchor = endOfMonth(end);
+    const start = startOfMonth(subMonths(mEndAnchor, 11));
+    return buildBuckets(format(start, 'yyyy-MM-dd'), format(mEndAnchor, 'yyyy-MM-dd'), 'monthly');
+  }, [anchorEnd, view]);
+
+  // Underlying QBO cash flow snapshots are stored at monthly bucket
+  // granularity per (realm, period_start, period_end). We request the full
+  // span in one call per realm; the sync populates monthly rows within that
+  // range which we then aggregate into the widget's buckets.
+  const spanStart = buckets[0]?.start_date ?? '';
+  const spanEnd = buckets[buckets.length - 1]?.end_date ?? '';
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['consolidated-cashflow-ops', company?.id, spanStart, spanEnd, granularity],
+    enabled: !!company?.id && !!spanStart && !!spanEnd,
+    staleTime: 60_000,
+    queryFn: async () => {
+      type CfRow = { realm_id: string; bucket_start: string; bucket_end: string; operating_activities: number | null };
+      const readRows = async (): Promise<CfRow[]> => {
+        const { data: rows, error } = await supabase
+          .from('qbo_cashflow_snapshots')
+          .select('realm_id, bucket_start, bucket_end, operating_activities')
+          .eq('company_id', company!.id)
+          .eq('accounting_method', 'Accrual')
+          .eq('period_start', spanStart)
+          .eq('period_end', spanEnd)
+          .in('realm_id', QBO_ENTITIES.map(e => e.realmId));
+        if (error) throw error;
+        return (rows ?? []) as CfRow[];
+      };
+
+      // For each realm: ensure snapshots exist AND operating_activities is
+      // populated (older cached rows may pre-date the new column).
+      let rows = await readRows();
+      const byRealm = new Map<string, CfRow[]>();
+      for (const r of rows) {
+        const arr = byRealm.get(r.realm_id) ?? [];
+        arr.push(r);
+        byRealm.set(r.realm_id, arr);
+      }
+      const realmsToSync = QBO_ENTITIES.filter(e => {
+        const rs = byRealm.get(e.realmId) ?? [];
+        if (rs.length === 0) return true;
+        // If any bucket in the span has a null operating_activities → resync
+        return rs.some(r => r.operating_activities == null);
+      });
+      if (realmsToSync.length > 0) {
+        await Promise.all(realmsToSync.map(async (e) => {
+          try {
+            await supabase.functions.invoke('quickbooks-sync', {
+              body: {
+                syncType: 'cash_flow',
+                realmId: e.realmId,
+                company_id: company!.id,
+                accounting_method: 'Accrual',
+                start_date: spanStart,
+                end_date: spanEnd,
+              },
+            });
+          } catch (err) {
+            console.warn('[cashflow] sync failed', e.label, err);
+          }
+        }));
+        rows = await readRows();
+      }
+
+      const series = buckets.map(b => {
+        const bStart = new Date(b.start_date + 'T00:00:00').getTime();
+        const bEnd = new Date(b.end_date + 'T00:00:00').getTime();
+        const value = rows.reduce((sum, r) => {
+          const rs = new Date(r.bucket_start + 'T00:00:00').getTime();
+          if (rs < bStart || rs > bEnd) return sum;
+          return sum + Number(r.operating_activities ?? 0);
+        }, 0);
+        return { label: b.label, key: b.key, value };
+      });
+      const total = series.reduce((s, p) => s + p.value, 0);
+      return { series, total };
+    },
+  });
+
+  const series = data?.series ?? [];
+  const total = data?.total ?? 0;
+  const loading = isLoading || isFetching;
+  const granularityLabel = view === 'quarter' ? 'Quarterly' : 'Monthly';
+
+  const fmt = (v: number) => {
+    const abs = Math.abs(v);
+    const s = formatUSD(abs / 1000);
+    return v < 0 ? `(${s})` : s;
+  };
+
+  return (
+    <div className="h-full w-full flex flex-col gap-2">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <SectionLabel>
+          {granularityLabel} Operating Cash Flow (Consolidated View, all QBO entities)
+        </SectionLabel>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>
+          Total: <span style={{ color: 'hsl(0,0%,100%)', fontWeight: 600 }}>
+            {loading && !data ? '…' : fmt(total)}
+          </span>
+        </div>
+      </div>
+      <div style={{ flex: 1, minHeight: 140 }}>
+        {series.length === 0 || (loading && !data) ? (
+          <NaPlaceholder height={160} label={loading ? 'Loading…' : 'No cash flow data for the selected period.'} />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                width={64}
+                tickFormatter={(v: number) => fmt(v as number)}
+              />
+              <RTooltip
+                cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                contentStyle={{ background: 'rgba(20,22,30,0.95)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, fontSize: 11 }}
+                labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                formatter={(v: number) => [fmt(v as number), 'Operating CF']}
+              />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}
+                fill="hsl(160, 70%, 55%)"
+                shape={(props: any) => {
+                  const { x, y, width, height, value } = props;
+                  const negative = Number(value) < 0;
+                  const color = negative ? 'hsl(0, 75%, 62%)' : 'hsl(160, 70%, 55%)';
+                  const h = Math.abs(height);
+                  const yy = negative ? y : y;
+                  return <rect x={x} y={yy} width={width} height={h} fill={color} rx={4} ry={4} />;
+                }}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
+        Source: QuickBooks Statement of Cash Flows (accrual) — "Net cash provided by operating activities" summed across Debt, FinServ, Tech, and Capital entities
+      </div>
+    </div>
+  );
+}
+
 function GridShell({
   isEditMode,
   title,
@@ -855,6 +1024,7 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'dscr', x: 6, y: 15, w: 6, h: 4, minW: 4, minH: 2 },
   { i: 'debt-rating', x: 6, y: 19, w: 6, h: 4, minW: 4, minH: 3 },
   { i: 'opex', x: 0, y: 23, w: 12, h: 5, minW: 6, minH: 4 },
+  { i: 'cashflow-ops', x: 0, y: 28, w: 12, h: 5, minW: 6, minH: 4 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -2640,6 +2810,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         <div key="opex" className="h-full">
           <GridShell isEditMode={isEditMode} title="OPEX">
             <ConsolidatedOpexWidget />
+          </GridShell>
+        </div>
+        <div key="cashflow-ops" className="h-full">
+          <GridShell isEditMode={isEditMode} title="CashFlow">
+            <ConsolidatedCashflowWidget />
           </GridShell>
         </div>
       </DraggableGridLayout>
