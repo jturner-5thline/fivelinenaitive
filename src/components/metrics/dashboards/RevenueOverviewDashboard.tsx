@@ -482,20 +482,6 @@ export function StackedDebtRevenueChart({
   const [metric, setMetric] = useState<PnlMetric>('revenue');
   const pnl = useQBMonthlyPnl(realmId, quarter);
 
-  if (isLoading) {
-    return (
-      <Card className="glass-module h-full flex flex-col">
-        <CardHeader className="pb-2">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3 w-48 mt-1" />
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0">
-          <Skeleton className="h-full min-h-[220px] w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       STACKED_CATEGORIES.reduce(
@@ -526,6 +512,20 @@ export function StackedDebtRevenueChart({
   const displayedTotal = isRevenue
     ? total
     : chartData.reduce((s, d) => s + (Number(d.__metricValue) || 0), 0);
+
+  if (isLoading) {
+    return (
+      <Card className="glass-module h-full flex flex-col">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-48 mt-1" />
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          <Skeleton className="h-full min-h-[220px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
@@ -699,20 +699,6 @@ export function StackedGenericRevenueChart({
   const [metric, setMetric] = useState<PnlMetric>('revenue');
   const pnl = useQBMonthlyPnl(realmId, quarter);
 
-  if (isLoading) {
-    return (
-      <Card className="glass-module h-full flex flex-col">
-        <CardHeader className="pb-2">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3 w-48 mt-1" />
-        </CardHeader>
-        <CardContent className="flex-1 min-h-0">
-          <Skeleton className="h-full min-h-[220px] w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   const chartData = useMemo(() => {
     const totals = data.map((d) =>
       categories.reduce((s, c) => s + (Number(d[c.key]) || 0), 0),
@@ -743,6 +729,20 @@ export function StackedGenericRevenueChart({
   const displayedTotal = isRevenue
     ? total
     : chartData.reduce((s, d) => s + (Number(d.__metricValue) || 0), 0);
+
+  if (isLoading) {
+    return (
+      <Card className="glass-module h-full flex flex-col">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-48 mt-1" />
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0">
+          <Skeleton className="h-full min-h-[220px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
