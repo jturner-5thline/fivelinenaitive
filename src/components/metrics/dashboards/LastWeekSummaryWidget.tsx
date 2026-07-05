@@ -368,14 +368,14 @@ function Row({
           : undefined
       }
       className={cn(
-        'grid items-center gap-2 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
-        'grid-cols-[minmax(0,1fr)_4.5rem_0.5rem_5rem_3rem_0.5rem_3rem]',
+        'flex flex-col gap-1 border-t border-border/30 pt-3 first:border-t-0 first:pt-0 -mx-1 px-1 rounded',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate min-w-0">
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium leading-tight break-words">
         {label}
       </p>
+      <div className="grid items-center gap-2 grid-cols-[4.5rem_0.5rem_5rem_3rem_0.5rem_3rem] justify-end ml-auto">
       {placeholder ? (
         <>
           <span className="text-base font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
@@ -406,6 +406,7 @@ function Row({
           <DeltaBadge pct={dollarsChange} />
         </>
       )}
+      </div>
     </div>
   );
 }
