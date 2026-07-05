@@ -638,14 +638,23 @@ function ConsolidatedOpexWidget() {
   const { company } = useCompany();
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const view: 'month' | 'quarter' = reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
-  const rangeStart = reportingPeriod?.start ?? timeframe.start;
-  const rangeEnd = reportingPeriod?.end ?? timeframe.end;
+  const anchorEnd = reportingPeriod?.end ?? timeframe.end;
   const granularity: Granularity = view === 'quarter' ? 'quarterly' : 'monthly';
 
-  const buckets = useMemo(
-    () => (rangeStart && rangeEnd ? buildBuckets(rangeStart, rangeEnd, granularity) : []),
-    [rangeStart, rangeEnd, granularity],
-  );
+  const buckets = useMemo(() => {
+    if (!anchorEnd) return [];
+    const end = new Date(anchorEnd + 'T00:00:00');
+    if (view === 'quarter') {
+      const qEndAnchor = endOfQuarter(end);
+      const start = startOfQuarter(subQuarters(qEndAnchor, 3));
+      return buildBuckets(format(start, 'yyyy-MM-dd'), format(qEndAnchor, 'yyyy-MM-dd'), 'quarterly');
+    }
+    const mEndAnchor = endOfMonth(end);
+    const start = startOfMonth(subMonths(mEndAnchor, 11));
+    return buildBuckets(format(start, 'yyyy-MM-dd'), format(mEndAnchor, 'yyyy-MM-dd'), 'monthly');
+  }, [anchorEnd, view]);
+  const rangeStart = buckets[0]?.start_date ?? '';
+  const rangeEnd = buckets[buckets.length - 1]?.end_date ?? '';
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['consolidated-opex', company?.id, rangeStart, rangeEnd, granularity],
