@@ -206,7 +206,22 @@ export function InsightsDrilldownDrawer<T = any>({
 
   return createPortal(
     <div
-      onClick={onClose}
+      onMouseDown={(e) => {
+        // Track whether the press started on the backdrop itself so a
+        // click that began inside the panel (e.g. a text-selection drag
+        // that ended on the backdrop) does not accidentally close the
+        // drilldown.
+        (e.currentTarget as any).__backdropPressed = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (
+          e.target === e.currentTarget &&
+          (e.currentTarget as any).__backdropPressed
+        ) {
+          onClose();
+        }
+        (e.currentTarget as any).__backdropPressed = false;
+      }}
       role="dialog"
       aria-modal="true"
       aria-label={`${context.sourceLabel} drilldown`}
