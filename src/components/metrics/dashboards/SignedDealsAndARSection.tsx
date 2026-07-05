@@ -162,87 +162,158 @@ export function SignedBarChart({
   );
 }
 
-// ── Outstanding AR pie chart ──
-export function OutstandingARPieChart() {
-  const { slices, total, isLoading } = useOutstandingARByEntity();
+// ── Outstanding A/R by customer (side-by-side Debt / FinServ tables) ──
+interface OpenInvoiceRow {
+  realm_id: string;
+  customer_name: string | null;
+  balance: number | string | null;
+  txn_date: string | null;
+}
+interface CustomerARRow {
+  customer: string;
+  balance: number;
+  avgDays: number;
+}
 
-  if (isLoading) {
-    return (
-      <Card className="glass-module">
-        <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-3 w-48 mt-1" /></CardHeader>
-        <CardContent><Skeleton className="h-[220px] w-full" /></CardContent>
-      </Card>
-    );
+function aggregateByCustomer(rows: OpenInvoiceRow[], realmId: string): { rows: CustomerARRow[]; total: number } {
+  const now = Date.now();
+  const byCustomer = new Map<string, { balance: number; weightedDays: number }>();
+  for (const r of rows) {
+    if (r.realm_id !== realmId) continue;
+    const bal = Number(r.balance) || 0;
+    if (bal <= 0) continue;
+    const name = (r.customer_name ?? 'Unknown').trim() || 'Unknown';
+    const days = r.txn_date
+      ? Math.max(0, Math.floor((now - new Date(r.txn_date).getTime()) / 86_400_000))
+      : 0;
+    const existing = byCustomer.get(name) ?? { balance: 0, weightedDays: 0 };
+    existing.balance += bal;
+    existing.weightedDays += days * bal;
+    byCustomer.set(name, existing);
   }
+  const out: CustomerARRow[] = Array.from(byCustomer.entries())
+    .map(([customer, v]) => ({
+      customer,
+      balance: v.balance,
+      avgDays: v.balance > 0 ? Math.round(v.weightedDays / v.balance) : 0,
+    }))
+    .sort((a, b) => b.balance - a.balance);
+  const total = out.reduce((s, r) => s + r.balance, 0);
+  return { rows: out, total };
+}
 
-  const pieData = slices.map(s => ({ name: s.entity, value: s.balance }));
+function ARCustomerTable({
+  title,
+  subtitle,
+  rows,
+  total,
+}: {
+  title: string;
+  subtitle: string;
+  rows: CustomerARRow[];
+  total: number;
+}) {
+  return (
+    <div className="flex flex-col min-w-0">
+      <div className="flex items-baseline justify-between px-1 pb-1.5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-foreground truncate">{title}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{subtitle}</p>
+        </div>
+        <p className="text-sm font-bold font-mono text-foreground flex-shrink-0 ml-2">
+          {formatCurrency(total)}
+        </p>
+      </div>
+      <div className="border border-border/60 rounded-md overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-muted/30 border-b border-border/60">
+              <th className="text-left px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground">Customer</th>
+              <th className="text-right px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground">Balance</th>
+              <th className="text-right px-2 py-1.5 font-medium text-[10px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">Avg Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-2 py-3 text-center text-[11px] text-muted-foreground">
+                  No outstanding A/R
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => (
+                <tr key={r.customer} className="border-b border-border/30 last:border-0 hover:bg-muted/20">
+                  <td className="px-2 py-1.5 truncate max-w-0" title={r.customer}>{r.customer}</td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums">{formatCurrency(r.balance)}</td>
+                  <td className={
+                    'px-2 py-1.5 text-right font-mono tabular-nums ' +
+                    (r.avgDays >= 60 ? 'text-red-500' : r.avgDays >= 30 ? 'text-amber-500' : 'text-muted-foreground')
+                  }>
+                    {r.avgDays}d
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-  const legendItems = pieData.map((d, i) => ({
-    label: d.name,
-    value: formatCurrency(d.value),
-    color: PIE_COLORS[i],
-  }));
+export function OutstandingARPieChart() {
+  const { user } = useAuth();
+  const { data, isLoading } = useQuery({
+    queryKey: ['outstanding-ar-by-customer'],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('realm_id, customer_name, balance, txn_date')
+        .in('realm_id', [AR_DEBT_REALM_ID, AR_FINSERV_REALM_ID])
+        .gt('balance', 0);
+      if (error) throw error;
+      return (rows ?? []) as OpenInvoiceRow[];
+    },
+  });
+
+  const debt = aggregateByCustomer(data ?? [], AR_DEBT_REALM_ID);
+  const finserv = aggregateByCustomer(data ?? [], AR_FINSERV_REALM_ID);
+  const grandTotal = debt.total + finserv.total;
 
   return (
     <Card className="glass-module glass-module-interactive h-full flex flex-col">
       <CardHeader className="pb-2 flex flex-row items-start justify-between flex-shrink-0">
         <div>
           <CardTitle className="text-sm font-medium text-foreground">Outstanding A/R</CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">By entity · QuickBooks balance</p>
+          <p className="text-xs text-muted-foreground mt-0.5">By customer · QuickBooks balance</p>
         </div>
         <div className="text-right">
-          <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
+          <p className="text-lg font-bold text-foreground">{formatCurrency(grandTotal)}</p>
           <p className="text-[10px] text-muted-foreground">Total Outstanding</p>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 flex flex-col">
-        <div className="flex-1 min-h-[170px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <PieGlassDefs colors={PIE_COLORS} />
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={65}
-                innerRadius={30}
-                paddingAngle={3}
-                activeShape={GlassActiveShape}
-              >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={PIE_COLORS[i]} fillOpacity={0.75} stroke={PIE_COLORS[i]} strokeWidth={0.5} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                  return [`${formatCurrencyFull(value)} (${pct}%)`, name];
-                }}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--popover) / 0.96)',
-                  border: '1px solid hsl(0 0% 100% / 0.14)',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  color: 'hsl(0 0% 100%)',
-                  boxShadow: 'var(--shadow-xl)',
-                  backdropFilter: 'blur(16px)',
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        {/* Below-chart legend */}
-        <div className="mt-2 space-y-1.5">
-          {legendItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2 text-xs">
-              <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color, opacity: 0.75 }} />
-              <span className="text-muted-foreground truncate flex-1" title={item.label}>{item.label}</span>
-              <span className="font-medium text-foreground flex-shrink-0">{item.value}</span>
-            </div>
-          ))}
-        </div>
+      <CardContent className="flex-1 min-h-0 overflow-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <ARCustomerTable
+              title="Debt"
+              subtitle="5th Line Capital Advisors, LLC"
+              rows={debt.rows}
+              total={debt.total}
+            />
+            <ARCustomerTable
+              title="FinServ"
+              subtitle="5th Line Financial Services, LLC"
+              rows={finserv.rows}
+              total={finserv.total}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
