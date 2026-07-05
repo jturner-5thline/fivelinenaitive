@@ -25,6 +25,13 @@ const FINSERV_STAGES = {
   activeClient:  { ids: ['fs-closed-won'],    labels: ['Active Client', 'fs-closed-won'] },
 } as const;
 
+// naitive Pipeline stage identifiers.
+const NAITIVE_STAGES = {
+  demoAccess:  { ids: ['demo-access'],  labels: ['Demo Access', 'demo-access'] },
+  pilotAgreed: { ids: ['pilot-agreed'], labels: ['Pilot Agreed', 'pilot-agreed'] },
+  active:      { ids: ['active'],       labels: ['Active', 'active'] },
+} as const;
+
 type StageConfig = { ids: readonly string[]; labels: readonly string[] };
 
 function formatCurrencyMM(value: number) {
@@ -121,6 +128,10 @@ export function LastWeekSummaryWidget() {
   const fsProposal      = useStageWindow('fs-proposal-sent', FINSERV_STAGES.proposalSent);
   const fsActive        = useStageWindow('fs-active-client', FINSERV_STAGES.activeClient);
 
+  const naDemos     = useStageWindow('naitive-demo-access',  NAITIVE_STAGES.demoAccess);
+  const naProposals = useStageWindow('naitive-pilot-agreed', NAITIVE_STAGES.pilotAgreed);
+  const naClients   = useStageWindow('naitive-active',       NAITIVE_STAGES.active);
+
   const rangeLabel = `${range.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${range.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
   return (
@@ -158,9 +169,9 @@ export function LastWeekSummaryWidget() {
           <StageRow label="Clients Signed | Revenue Signed"   q={fsActive} />
         </Group>
         <Group title="Naitive">
-          <Row label="Demos Created" placeholder />
-          <Row label="Proposals Issued" placeholder />
-          <Row label="Clients Signed" placeholder />
+          <StageRow label="Demos Created"    q={naDemos} />
+          <StageRow label="Proposals Issued" q={naProposals} />
+          <StageRow label="Clients Signed"   q={naClients} />
         </Group>
       </CardContent>
     </Card>
