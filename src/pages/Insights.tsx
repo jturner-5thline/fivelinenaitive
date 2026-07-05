@@ -1729,8 +1729,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v17', unifiedLayoutIds, {
-    allowAllMembers: true,
+  } = useUserGridLayout('management-snapshot-unified-v17', unifiedLayoutIds, {
     layoutDefaults: unifiedLayoutDefaults,
   });
 
