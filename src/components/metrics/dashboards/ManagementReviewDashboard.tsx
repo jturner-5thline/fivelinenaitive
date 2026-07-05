@@ -33,7 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, LabelList } from 'recharts';
 import { BarChart, Bar, ReferenceLine, ComposedChart } from 'recharts';
 import { useCompany } from '@/hooks/useCompany';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
