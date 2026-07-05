@@ -1698,7 +1698,7 @@ function MetricsInner() {
     const defaults: import('@/hooks/useGridLayout').GridLayoutItem[] = [
       // === PRIMARY REFERENCE BAND ===
       // Top-left: Total Revenue summary block (shrunk to make room for A/R alongside)
-      { i: 'total-revenue-detail', x: 0, y: 0, w: 4, h: 6, minW: 4, minH: 4 },
+      { i: 'total-revenue-detail', x: 0, y: 0, w: 4, h: 3, minW: 4, minH: 2 },
 
       // Next to Total Revenue: Outstanding A/R table
       { i: 'sd-outstanding-ar', x: 4, y: 0, w: 2, h: 6, minW: 2, minH: 3 },
@@ -1728,7 +1728,7 @@ function MetricsInner() {
     layout: snapshotGridLayout,
     saveLayout: saveSnapshotGridLayout,
     resetLayout: resetSnapshotGridLayout,
-  } = useGridLayout('management-snapshot-unified-v16', unifiedLayoutIds, {
+  } = useGridLayout('management-snapshot-unified-v17', unifiedLayoutIds, {
     allowAllMembers: true,
     layoutDefaults: unifiedLayoutDefaults,
   });

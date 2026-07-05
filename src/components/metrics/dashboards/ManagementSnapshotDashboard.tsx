@@ -706,7 +706,7 @@ export function ManagementSnapshotDashboard({
     comparisonMode: 'vs Previous Period',
     comparisonSourceField: null,
     breakdownColumns: 2,
-    layoutVariant: 'full',
+    layoutVariant: 'compact',
     left: { label: 'Debt Revenue', valueField: 'f-revenue', varianceField: null, entityId: '193514877331929' },
     right: { label: 'FinServ Revenue', valueField: 'f-revenue', varianceField: null, entityId: '9341451968897660' },
   };
