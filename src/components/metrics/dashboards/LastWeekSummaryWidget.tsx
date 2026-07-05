@@ -745,3 +745,28 @@ function HeadlineTile({
     </div>
   );
 }
+
+function ChartModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md border transition-colors',
+        active
+          ? 'bg-primary/15 border-primary/40 text-primary'
+          : 'bg-transparent border-border/40 text-muted-foreground hover:bg-primary/5 hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
