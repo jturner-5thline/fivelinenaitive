@@ -851,17 +851,6 @@ function ConsolidatedOpexWidget() {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 28, right: showDelta ? 48 : 8, left: 0, bottom: 4 }}>
-              <defs>
-                <linearGradient id="opexBarGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(22, 88%, 52%)" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="hsl(18, 85%, 34%)" stopOpacity={0.4} />
-                </linearGradient>
-                <linearGradient id="opexBarSheen" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.22)" />
-                  <stop offset="60%" stopColor="rgba(255,255,255,0.04)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-                </linearGradient>
-              </defs>
               <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
               <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis
@@ -897,22 +886,8 @@ function ConsolidatedOpexWidget() {
                 yAxisId="left"
                 dataKey="value"
                 name="OPEX"
-                fill="url(#opexBarGradient)"
-                stroke="hsla(22, 88%, 60%, 0.35)"
-                strokeWidth={0.75}
+                fill="hsl(35, 85%, 55%)"
                 radius={[4, 4, 0, 0]}
-                shape={(props: any) => {
-                  const { x, y, width, height } = props;
-                  const w = Number(width) || 0;
-                  const h = Number(height) || 0;
-                  const r = 4;
-                  return (
-                    <g>
-                      <rect x={x} y={y} width={w} height={h} rx={r} ry={r} fill="url(#opexBarGradient)" stroke="hsla(22, 88%, 60%, 0.35)" strokeWidth={0.75} />
-                      <rect x={x} y={y} width={w} height={Math.min(h * 0.5, 18)} rx={r} ry={r} fill="url(#opexBarSheen)" pointerEvents="none" />
-                    </g>
-                  );
-                }}
               >
                 <LabelList dataKey="value" content={makeBarValueDeltaLabel(chartData, (v) => formatUSD(v / 1000), { invertDeltaColors: true })} />
               </Bar>
