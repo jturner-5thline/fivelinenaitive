@@ -487,6 +487,9 @@ const DEBT_RATING_COLORS: Record<DebtRating, string> = {
 };
 
 function DebtByRatingWidget() {
+  return _DebtByRatingWidgetImpl();
+}
+function _DebtByRatingWidgetImpl() {
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const view: 'month' | 'quarter' =
     reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
