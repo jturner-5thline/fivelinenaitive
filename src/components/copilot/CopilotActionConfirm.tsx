@@ -976,11 +976,15 @@ function FieldDiffTable({
   statuses,
   showOldValues,
   tone,
+  edits,
+  onEdit,
 }: {
   diffs: FieldDiff[];
   statuses: Record<string, FieldStatus>;
   showOldValues: boolean;
   tone: 'pending' | 'done' | 'failed';
+  edits?: Record<string, string>;
+  onEdit?: (field: string, value: string) => void;
 }) {
   if (!diffs.length) return null;
 
