@@ -102,12 +102,12 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       )}
       style={{
         background:
-          'linear-gradient(135deg, rgb(12, 52, 68) 0%, rgb(10, 40, 56) 50%, rgb(14, 58, 76) 100%)',
-        backdropFilter: 'blur(8px) saturate(1.2)',
-        WebkitBackdropFilter: 'blur(8px) saturate(1.2)',
-        border: '1px solid rgba(120, 200, 220, 0.55)',
+          'linear-gradient(135deg, rgb(38, 118, 140) 0%, rgb(30, 100, 124) 50%, rgb(42, 128, 152) 100%)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        border: '1px solid rgba(170, 225, 240, 0.55)',
         boxShadow:
-          '0 12px 30px rgba(2, 10, 20, 0.6), 0 4px 12px rgba(20, 90, 120, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(140, 210, 230, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.3)',
+          '0 12px 30px rgba(2, 10, 20, 0.55), 0 4px 12px rgba(30, 110, 140, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.25)',
         transition: 'box-shadow 180ms ease-out, border-color 180ms ease-out',
         ...style,
       }}
