@@ -3426,6 +3426,18 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         safeDue = args.due_date.slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDue)) safeDue = null;
       }
+      // Hard guard: NEVER let a task draft render without a due date. The
+      // system prompt tells the model to ask a chip-based clarifying
+      // question first; this guard catches any regression where the model
+      // called create_task with due_date missing/invalid anyway, and
+      // forces the same clarifying question with the same chips.
+      if (!safeDue) {
+        return {
+          error: "MISSING_DUE_DATE: The user did not provide a due date. DO NOT retry create_task yet. Reply with EXACTLY one short question and the chip line, verbatim, nothing else:\n\nWhen is this due?\n[[CHIPS:[\"Today\",\"Tomorrow\",\"This Friday\",\"Pick a date\"]]]\n\nOn the user's next turn, map their reply to a YYYY-MM-DD date (Today = the date in CURRENT CONTEXT, Tomorrow = +1 day, This Friday = the upcoming Friday — today if today is Friday, otherwise the next Friday; Pick a date = wait for the user to type an explicit date) and THEN call create_task again with all previous fields plus the resolved due_date.",
+          missing: "due_date",
+          chips: ["Today", "Tomorrow", "This Friday", "Pick a date"],
+        };
+      }
       return {
         action: "confirm",
         action_type: "create_task",
