@@ -1763,24 +1763,39 @@ function inferFundingSourceId(c: CandidateItem, bundle: DealSignalBundle): strin
 }
 
 function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSignalBundle): CandidateItem[] {
+  const validFundingIds = new Set<string>(
+    (bundle.funding_sources ?? [])
+      .map((f: any) => (f?.id ? String(f.id) : ""))
+      .filter((v: string) => v.length > 0),
+  );
+  const dealIdStr = bundle.deal_id ? String(bundle.deal_id) : "";
+  const resolveFundingTargetId = (c: CandidateItem): string | null => {
+    const raw = c.target_object_id ? String(c.target_object_id) : "";
+    // Reject the deal id being (mis)used as a deal_lender target.
+    const candidate = raw && raw !== dealIdStr && validFundingIds.has(raw) ? raw : null;
+    if (candidate) return candidate;
+    const inferred = inferFundingSourceId(c, bundle);
+    if (inferred && validFundingIds.has(inferred)) return inferred;
+    return null;
+  };
   return candidates.map((c) => {
     const normalizedType = normalizeQueueTargetType(c.action_type, c.target_object_type);
     if (c.action_type === "update_funding_source") {
       return {
         ...c,
         target_object_type: "deal_lender",
-        target_object_id: c.target_object_id ?? inferFundingSourceId(c, bundle),
+        target_object_id: resolveFundingTargetId(c),
       };
     }
 
     if (c.action_type === "draft_email") {
       const explicitFundingTarget = normalizedType === "deal_lender";
-      const inferredLenderId = c.target_object_id ?? inferFundingSourceId(c, bundle);
-      if (explicitFundingTarget || inferredLenderId) {
+      const resolvedLenderId = resolveFundingTargetId(c);
+      if (explicitFundingTarget || resolvedLenderId) {
         return {
           ...c,
           target_object_type: "deal_lender",
-          target_object_id: inferredLenderId,
+          target_object_id: resolvedLenderId,
         };
       }
     }
