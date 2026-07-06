@@ -787,6 +787,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         statuses={fieldStatuses}
         showOldValues={isUpdateLikeAction}
         tone="pending"
+        edits={edits}
+        onEdit={(field, value) => setEdits((prev) => ({ ...prev, [field]: value }))}
       />
       {!isPreparingAction && isLenderAddAction(preparedAction.action_type) && (() => {
         const entities = normalizeLenderEntities(preparedAction.params || {});
