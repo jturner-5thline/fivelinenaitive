@@ -3478,6 +3478,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     });
                   }}
                 />
+                <TtmDscrChart />
               </div>
               <div className="min-w-0 min-h-[240px]">
                 <DebtByRatingWidget />
