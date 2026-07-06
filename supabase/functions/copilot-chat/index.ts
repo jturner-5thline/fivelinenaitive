@@ -6797,6 +6797,45 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         params: { deal_id: dealId, new_pipeline_id: newPipelineId, new_stage: resolvedStage },
       };
     }
+    case "delete_task": {
+      // Confirmed task deletion. The tool handler (see executeTool
+      // case "delete_task") already produced a confirm card populated
+      // from the LIVE tasks row — never from conversation memory.
+      // Here we do the actual DB write only after the user has
+      // approved the card.
+      const taskId = typeof params?.task_id === "string" ? params.task_id.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(taskId)) {
+        return { success: false, error: "delete_task requires a valid task UUID." };
+      }
+      const { data: existing, error: fetchErr } = await supabase
+        .from("tasks")
+        .select("id, title, created_by, assigned_by")
+        .eq("id", taskId)
+        .maybeSingle();
+      if (fetchErr) return { success: false, error: fetchErr.message };
+      if (!existing) {
+        return { success: false, error: "Task not found — it may already be deleted.", actionType: "delete_task" };
+      }
+      // Permission: only the creator or the delegator can delete via the
+      // Copilot. Everything else is an RLS-permission surface — refuse
+      // rather than silently swallowing the write.
+      const canDelete = existing.created_by === userId || existing.assigned_by === userId;
+      if (!canDelete) {
+        return {
+          success: false,
+          error: `You don't have permission to delete "${existing.title}" — only the person who created or delegated it can remove it via the Copilot.`,
+          actionType: "delete_task",
+        };
+      }
+      const { error: delErr } = await supabase.from("tasks").delete().eq("id", taskId);
+      if (delErr) return { success: false, error: delErr.message, actionType: "delete_task" };
+      return {
+        success: true,
+        message: `Deleted task "${existing.title}"`,
+        actionType: "delete_task",
+        params: { task_id: taskId },
+      };
+    }
     case "create_task": {
       // ── Server-side guardrail: validate against real tasks schema ──
       // The tasks table has NO priority column writable from the AI (CHECK
