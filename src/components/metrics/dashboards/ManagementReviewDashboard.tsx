@@ -3228,7 +3228,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         compactType={null}
         preventCollision
       >
-        <div key="kpi-summary" className="h-full">
+        <div key="kpi-summary" data-grid-item-id="kpi-summary" className="h-full">
           <GridShell isEditMode={isEditMode} title="Key Stats">
             {(() => {
               const priorByReg: Record<string, number | null> = {
@@ -3548,7 +3548,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="monthly-revenue" className="h-full">
+        <div key="monthly-revenue" data-grid-item-id="monthly-revenue" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title={
@@ -3648,7 +3648,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
 
-        <div key="active-deals-list" className="h-full">
+        <div key="active-deals-list" data-grid-item-id="active-deals-list" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt Pipeline">
             <TooltipProvider>
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3760,7 +3760,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="liabilities" className="h-full">
+        <div key="liabilities" data-grid-item-id="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
             <div className="grid h-full grid-cols-1 gap-x-4 gap-y-4 lg:grid-cols-2">
               <div className="min-w-0">
@@ -3798,12 +3798,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             </div>
           </GridShell>
         </div>
-        <div key="cashflow-12w" className="h-full">
+        <div key="cashflow-12w" data-grid-item-id="cashflow-12w" className="h-full">
           <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
             <CashflowForecastWidget />
           </GridShell>
         </div>
-        <div key="finserv-next3" className="h-full">
+        <div key="finserv-next3" data-grid-item-id="finserv-next3" className="h-full">
           <GridShell isEditMode={isEditMode} title="FinServ: Next 3 Months">
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
@@ -3863,7 +3863,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             </div>
           </GridShell>
         </div>
-        <div key="opex" className="h-full">
+        <div key="opex" data-grid-item-id="opex" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title="OPEX"
@@ -3872,7 +3872,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <ConsolidatedOpexWidget />
           </GridShell>
         </div>
-        <div key="cashflow-ops" className="h-full">
+        <div key="cashflow-ops" data-grid-item-id="cashflow-ops" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title="CashFlow"
