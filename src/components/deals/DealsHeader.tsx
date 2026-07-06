@@ -217,6 +217,34 @@ export function DealsHeader() {
     };
   }, [canSeeBriefingHeaderItems]);
 
+  // Copilot daily-agenda intent ("what do I have going on today", "what
+  // do I need to do today", …) opens the same Tasks overlay the header
+  // icon opens, pre-filtered to today, and asks the Tasks page to apply
+  // the filter live in case it was already mounted from a previous open.
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.set('due', 'today');
+        params.set('status', 'incomplete');
+        const next = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+        window.history.replaceState({}, '', next);
+      } catch { /* ignore */ }
+      setIsTasksListOpen(true);
+      // Fire on the next tick so the overlay/TasksPage mount runs first;
+      // TasksPage listens for this event and updates its live filter state.
+      window.setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent('naitive:apply-tasks-filter', {
+            detail: { due: 'today', status: 'incomplete' },
+          }),
+        );
+      }, 0);
+    };
+    window.addEventListener('open-my-tasks-today', handler);
+    return () => window.removeEventListener('open-my-tasks-today', handler);
+  }, []);
+
   // Initial tab to deep-link the briefing modal into (e.g., "end_of_day"
   // from the End of Day email button or chat notification).
   const [briefingInitialTab, setBriefingInitialTab] = useState<string | undefined>(undefined);

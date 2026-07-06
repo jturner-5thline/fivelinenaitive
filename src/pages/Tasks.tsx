@@ -512,6 +512,24 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     setFilterRecurring('all');
   }, []);
 
+  // Live filter apply from the Copilot ("what do I have going on today"
+  // dispatches naitive:apply-tasks-filter after opening the overlay).
+  // Handles the case where TasksPage is already mounted from a previous
+  // open and would otherwise skip URL-based hydration.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ due?: FilterDueDate; status?: FilterStatus }>).detail || {};
+      if (detail.due && ['all','overdue','today','this_week','no_date'].includes(detail.due)) {
+        setFilterDueDate(detail.due);
+      }
+      if (detail.status && ['all','incomplete','complete','not_started','in_progress','blocked'].includes(detail.status)) {
+        setFilterStatus(detail.status);
+      }
+    };
+    window.addEventListener('naitive:apply-tasks-filter', handler as EventListener);
+    return () => window.removeEventListener('naitive:apply-tasks-filter', handler as EventListener);
+  }, []);
+
   const hasActiveFilters = filterStatus !== 'incomplete'
     || filterDueDate !== 'all'
     || urgentOnly
