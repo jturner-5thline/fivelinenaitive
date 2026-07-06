@@ -1261,6 +1261,23 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "check_outstanding_items_status",
+      description:
+        "Cross-reference open outstanding items against the user's connected email inbox to flag which items have likely already been provided by the deal's client contacts. Use for questions like 'what am I waiting for', 'what is outstanding', 'what are we still missing', 'anything I forgot to mark received'. Scope to one deal via deal_id (preferred) or deal_query, otherwise runs across all of the user's active deals.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID (preferred when known)." },
+          deal_query: { type: "string", description: "Optional deal name to resolve when deal_id is unknown." },
+          since_days: { type: "number", description: "Cap on how far back to scan the inbox per item. Default 60." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal_milestones",
       description: "Get detailed milestone status for a deal.",
       parameters: {
