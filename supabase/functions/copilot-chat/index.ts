@@ -4605,6 +4605,94 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (resolvedPreHours !== undefined) changes.push(`Pre-Signing hours: ${Number(deal.pre_signing_hours || 0)} → ${resolvedPreHours}`);
       if (resolvedPostHours !== undefined) changes.push(`Post-Signing hours: ${Number(deal.post_signing_hours || 0)} → ${resolvedPostHours}`);
 
+      // ── Enum validation for schema-constrained fields ─────────────
+      // The AI may propose free text for deal_type / engagement_type /
+      // stage. Resolve each to a canonical enum value (or reject) and
+      // pass the full option list to the client so the confirm card
+      // renders a dropdown, not a free-text label.
+      const { data: dealPipelineRow } = await supabase
+        .from("deals")
+        .select("pipeline_id, company_id")
+        .eq("id", args.deal_id)
+        .maybeSingle();
+      const dealPipelineId = (dealPipelineRow as any)?.pipeline_id || null;
+      const dealCompanyId = (dealPipelineRow as any)?.company_id || null;
+      let dealStageOptions: EnumOption[] = [];
+      if (dealPipelineId) {
+        const { data: pipe } = await supabase
+          .from("deal_pipelines")
+          .select("stages")
+          .eq("id", dealPipelineId)
+          .maybeSingle();
+        dealStageOptions = pipelineStagesToOptions((pipe as any)?.stages);
+      }
+      const dealTypeOptions = await loadDealTypeOptions(supabase, dealCompanyId);
+
+      let resolvedStage: string | undefined = undefined;
+      if (args.stage !== undefined && args.stage !== null && args.stage !== "") {
+        if (dealStageOptions.length > 0) {
+          const c = matchEnumOption(args.stage, dealStageOptions);
+          if (!c) {
+            return {
+              error:
+                `"${args.stage}" is not a valid stage for this pipeline. ` +
+                `Valid stages: ${dealStageOptions.map((s) => `"${s.label}"`).join(", ")}. ` +
+                `Re-emit update_deal_fields with stage set to one of these exact values.`,
+              error_code: "INVALID_ENUM",
+            };
+          }
+          resolvedStage = c;
+        } else {
+          resolvedStage = String(args.stage);
+        }
+      }
+
+      let resolvedDealType: string | undefined = undefined;
+      if (args.deal_type !== undefined && args.deal_type !== null && args.deal_type !== "") {
+        const c = matchEnumOption(args.deal_type, dealTypeOptions);
+        if (!c) {
+          return {
+            error:
+              `"${args.deal_type}" is not a valid deal type. ` +
+              `Valid deal types: ${dealTypeOptions.map((o) => `"${o.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_fields with deal_type set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedDealType = c;
+      }
+
+      let resolvedEngagement: string | undefined = undefined;
+      if (args.engagement_type !== undefined && args.engagement_type !== null && args.engagement_type !== "") {
+        const c = matchEnumOption(args.engagement_type, ENGAGEMENT_TYPE_OPTIONS);
+        if (!c) {
+          return {
+            error:
+              `"${args.engagement_type}" is not a valid engagement type. ` +
+              `Valid engagement types: ${ENGAGEMENT_TYPE_OPTIONS.map((o) => `"${o.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_fields with engagement_type set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedEngagement = c;
+      }
+
+      if (resolvedStage !== undefined) {
+        const label = dealStageOptions.find((s) => s.value === resolvedStage)?.label || resolvedStage;
+        changes.push(`Stage → ${label}`);
+      }
+      if (resolvedDealType !== undefined) {
+        const label = dealTypeOptions.find((o) => o.value === resolvedDealType)?.label || resolvedDealType;
+        changes.push(`Deal type → ${label}`);
+      }
+      if (resolvedEngagement !== undefined) {
+        const label = ENGAGEMENT_TYPE_OPTIONS.find((o) => o.value === resolvedEngagement)?.label || resolvedEngagement;
+        changes.push(`Engagement → ${label}`);
+      }
+      if (typeof args.manager === "string" && args.manager) changes.push(`Manager → ${args.manager}`);
+      if (typeof args.deal_owner === "string" && args.deal_owner) changes.push(`Owner → ${args.deal_owner}`);
+      if (typeof args.narrative === "string" && args.narrative) changes.push(`Narrative updated`);
+
       return {
         action: "confirm",
         action_type: "update_deal_fields",
@@ -4618,6 +4706,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           current_pre_signing_hours: resolvedPreHours !== undefined ? Number(deal.pre_signing_hours || 0) : undefined,
           current_post_signing_hours: resolvedPostHours !== undefined ? Number(deal.post_signing_hours || 0) : undefined,
           current_value: deal.value, current_closing_date: deal.closing_date,
+          // Enum-constrained fields (validated above) + option lists so
+          // the confirm card can render dropdowns instead of free text.
+          stage: resolvedStage,
+          deal_type: resolvedDealType,
+          engagement_type: resolvedEngagement,
+          manager: typeof args.manager === "string" ? args.manager : undefined,
+          deal_owner: typeof args.deal_owner === "string" ? args.deal_owner : undefined,
+          narrative: typeof args.narrative === "string" ? args.narrative : undefined,
+          stage_options: dealStageOptions,
+          deal_type_options: dealTypeOptions,
+          engagement_type_options: ENGAGEMENT_TYPE_OPTIONS,
         },
       };
     }
