@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 import { buildDemoCalendarEvents, DEMO_PRIMARY_CALENDAR } from '@/lib/demoSeed';
 
 const isDemoUserEmail = (email?: string | null) =>
@@ -90,10 +91,14 @@ function writeCache(uid: string, patch: Partial<CalendarCacheEntry>) {
 export function useGoogleCalendar() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  // Any member of the demo tenant (company that owns demo@5thline.co)
+  // gets the same seeded calendar experience — not just the two hard-coded
+  // demo email logins.
+  const isDemoTenant = useIsDemoAccount();
   const isDemoProfile = Boolean(
     (profile as { is_demo_user?: boolean } | null)?.is_demo_user,
   );
-  const isDemo = isDemoUserEmail(user?.email) || isDemoProfile;
+  const isDemo = isDemoUserEmail(user?.email) || isDemoProfile || isDemoTenant;
   const selfEmail = user?.email ?? 'demo@5thline.co';
   const selfName =
     (profile as { display_name?: string | null } | null)?.display_name ||
