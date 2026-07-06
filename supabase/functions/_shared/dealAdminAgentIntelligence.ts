@@ -1735,14 +1735,60 @@ function semanticActionGroup(actionType: string, normalizedTargetType: string, t
   return actionType;
 }
 
+function evidenceArray(row: { evidence?: unknown }): any[] {
+  return Array.isArray(row.evidence) ? row.evidence : [];
+}
+
+function extractLenderEvidenceId(row: { evidence?: unknown }): string | null {
+  for (const ev of evidenceArray(row)) {
+    const kind = String(ev?.kind ?? "").trim().toLowerCase();
+    if (!["funding_source", "deal_lender", "lender"].includes(kind)) continue;
+    const id = ev?.ref_id ?? ev?.id ?? null;
+    if (typeof id === "string" && id.trim().length > 0) return id.trim();
+  }
+  return null;
+}
+
+function extractPayloadLenderTargetId(row: { payload?: unknown }): string | null {
+  const payload = asObject(row.payload);
+  const execPayload = asObject(payload.on_approve_execution_payload);
+  const execType = normalizeQueueTargetType("draft_email", execPayload.target_object_type as string | null);
+  const execId = execPayload.target_object_id;
+  if (execType === "deal_lender" && typeof execId === "string" && execId.trim()) return execId.trim();
+  const directId = payload.deal_lender_id ?? payload.admin_agent_lender_id ?? null;
+  if (typeof directId === "string" && directId.trim()) return directId.trim();
+  return null;
+}
+
+function resolveLenderAttentionTarget(row: {
+  action_type?: string | null;
+  target_object_type?: string | null;
+  target_object_id?: string | null;
+  payload?: unknown;
+  evidence?: unknown;
+}): string | null {
+  const actionType = row.action_type ?? "";
+  const targetType = normalizeQueueTargetType(actionType, row.target_object_type);
+  const targetId = row.target_object_id ?? null;
+  if (targetId && targetType === "deal_lender") return targetId;
+  if (actionType !== "draft_email" && actionType !== "update_funding_source") return null;
+  return extractPayloadLenderTargetId(row) ?? extractLenderEvidenceId(row);
+}
+
 function queueSemanticKey(row: {
   action_type?: string | null;
   target_object_type?: string | null;
   target_object_id?: string | null;
   deal_id?: string | null;
+  payload?: unknown;
+  evidence?: unknown;
 }): string {
   const actionType = row.action_type ?? "";
   const targetType = normalizeQueueTargetType(actionType, row.target_object_type);
+  const lenderTargetId = resolveLenderAttentionTarget(row);
+  if (lenderTargetId) {
+    return `${row.deal_id ?? ""}::funding_source_attention::deal_lender::${lenderTargetId}`;
+  }
   const group = semanticActionGroup(actionType, targetType, row.target_object_id ?? null);
   return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
 }
@@ -2893,7 +2939,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source")
+      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved"]);
     for (const e of existing ?? []) {
