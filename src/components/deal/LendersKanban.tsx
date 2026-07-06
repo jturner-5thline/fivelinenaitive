@@ -394,25 +394,43 @@ function DroppableColumn({
               </p>
             </div>
           )}
-          {lenders.map((lender) => (
-            <DraggableLenderTile
-              key={lender.id}
-              lender={lender}
-              dealId={dealId}
-              dealName={dealName}
-              dealCompany={dealCompany}
-              configuredStages={configuredStages}
-              isSaving={isSaving?.(`lender-stage-${lender.id}`)}
-              hasFailed={failedSaves?.has(lender.id)}
-              onRetry={onRetry ? () => onRetry(lender.id) : undefined}
-              onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
-              metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
-              onClick={onCardClick ? () => onCardClick(lender) : undefined}
-              showScore={showScore}
-              scoreConfig={scoreConfig}
-              onFollowUpSent={onFollowUpSent}
-            />
-          ))}
+          {lenders.map((lender, idx) => {
+            // Defensive: a malformed record (null lender, missing name, missing id)
+            // must not crash the section. Log and render an inline fallback.
+            if (!lender || typeof lender !== 'object') {
+              // eslint-disable-next-line no-console
+              console.warn('[FundingSources] skipping non-object deal_lender at index', idx, lender);
+              return (
+                <div key={`malformed-${idx}`} className="bg-destructive/5 border border-destructive/40 rounded-xl p-3 text-xs text-destructive">
+                  Malformed funding source record at position {idx + 1}.
+                </div>
+              );
+            }
+            const safeKey = lender.id || `lender-idx-${idx}`;
+            const metricsKey = typeof lender.name === 'string'
+              ? lender.name.toLowerCase().trim()
+              : '';
+            return (
+              <LenderTileBoundary key={safeKey} lenderId={lender.id} lenderName={lender.name}>
+                <DraggableLenderTile
+                  lender={lender}
+                  dealId={dealId}
+                  dealName={dealName}
+                  dealCompany={dealCompany}
+                  configuredStages={configuredStages}
+                  isSaving={lender.id ? isSaving?.(`lender-stage-${lender.id}`) : false}
+                  hasFailed={lender.id ? failedSaves?.has(lender.id) : false}
+                  onRetry={onRetry && lender.id ? () => onRetry(lender.id) : undefined}
+                  onEditPassReasons={onEditPassReasons && lender.id ? () => onEditPassReasons(lender.id) : undefined}
+                  metrics={metricsKey ? lenderMetrics?.[metricsKey] : undefined}
+                  onClick={onCardClick ? () => onCardClick(lender) : undefined}
+                  showScore={showScore}
+                  scoreConfig={scoreConfig}
+                  onFollowUpSent={onFollowUpSent}
+                />
+              </LenderTileBoundary>
+            );
+          })}
         </div>
       </div>
     </div>
