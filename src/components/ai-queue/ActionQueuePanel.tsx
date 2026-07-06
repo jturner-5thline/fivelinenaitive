@@ -1363,7 +1363,7 @@ function DetailPane({
   // Claap items keep their dedicated card for now.
   if (item.action_type === 'claap_recording_review' || item.action_type === 'claap_action_items') {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto p-5">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3">
         <ClaapApprovalCard item={item} />
       </div>
     );
@@ -1392,7 +1392,7 @@ function DetailPane({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {typeof total === 'number' && total > 0 && (
-        <div className="flex items-center justify-between gap-2 px-6 pt-1.5 pb-1.5 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-1.5 pb-1.5 border-b border-white/[0.06] shrink-0">
           <p
             className="text-[11px] uppercase tracking-[0.10em] text-[#ecedf4]/55 truncate"
             style={FONT_MONO}
@@ -1421,7 +1421,7 @@ function DetailPane({
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-1.5 pb-3">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
           className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 space-y-3"
