@@ -456,6 +456,12 @@ function CopilotAssistantContent({
     }).replace(/\n{3,}/g, '\n\n').trim();
   }
 
+  // De-duplicate chips that target the same entity + action type. E.g.
+  //   "Add Frank as a contact" and "Add Frank as CFO contact"
+  // collapse to the single most specific label ("Add Frank as CFO contact").
+  // Cap the final list at 4 chips (input order = relevance order from the LLM).
+  chips = dedupeSuggestionChips(chips).slice(0, 4);
+
   // Fix 1: Detect and format raw JSON responses
   const formattedJson = formatAIResponse(strippedContent);
   const processedContent = formattedJson || strippedContent;
