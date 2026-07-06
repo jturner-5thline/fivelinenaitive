@@ -410,7 +410,17 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
             disabled={!clickable}
             className={`w-full text-left grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 py-1.5 border-b border-white/5 last:border-0 ${clickable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'} transition-colors`}
           >
-            <div className="text-foreground/90 truncate">{row.name}</div>
+            <div className="text-foreground/90 truncate flex items-center gap-1.5">
+              {DEBT_RATING_BY_ACCOUNT[row.name] && (
+                <span
+                  className="text-[11px] font-bold"
+                  style={{ color: DEBT_RATING_COLORS[DEBT_RATING_BY_ACCOUNT[row.name]] }}
+                >
+                  {DEBT_RATING_BY_ACCOUNT[row.name]}
+                </span>
+              )}
+              <span className="truncate">{row.name}</span>
+            </div>
             <div className="text-right text-foreground/90">
               {current !== null ? formatLiabCurrency(current) : '—'}
             </div>
