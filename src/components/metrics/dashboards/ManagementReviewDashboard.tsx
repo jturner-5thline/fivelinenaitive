@@ -22,7 +22,7 @@ import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/I
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
-import type { GridLayoutItem } from '@/hooks/useGridLayout';
+import { useGridLayout, type GridLayoutItem } from '@/hooks/useGridLayout';
 import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -1886,131 +1886,33 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
-  // Layout hydration:
-  // - The shared org-wide layout is stored in dashboard_grid_layouts, keyed by
-  //   (company_id, dashboard_id). Everyone in the company sees the same layout.
-  // - Only jturner@5thline.co can persist changes; edits from anyone else are
-  //   ignored and never written to the DB.
-  const [layout, setLayout] = useState<GridLayoutItem[]>(cloneInsightsDefaultLayout);
-  const [layoutHydrated, setLayoutHydrated] = useState(false);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
+  // Shared org-wide layout. The backend row is keyed by company + dashboard,
+  // so once jturner saves it, everyone in the workspace hydrates the same grid.
+  // The hook is intentionally allowed to call the shared save RPC for company
+  // members; the RPC itself is the server-side gate that only permits
+  // jturner@5thline.co to write this dashboard id.
+  const {
+    layout,
+    saveLayout: saveSharedGridLayout,
+    resetLayout,
+    isLoaded: layoutHydrated,
+  } = useGridLayout(INSIGHTS_LAYOUT_DASHBOARD_ID, INSIGHTS_LAYOUT_IDS, {
+    allowAllMembers: true,
+    layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
+  });
   const latestLayoutRef = useRef<GridLayoutItem[]>(cloneInsightsDefaultLayout());
   const gridLatestLayoutGetterRef = useRef<(() => GridLayoutItem[]) | null>(null);
-  const lastPersistedLayoutSignatureRef = useRef<string>('');
 
   useEffect(() => {
     latestLayoutRef.current = layout;
   }, [layout]);
 
-  // Load persisted layout once we know the company.
-  useEffect(() => {
-    let cancelled = false;
-    if (!company?.id) return;
-    setLayoutHydrated(false);
-    (async () => {
-      const { data, error } = await supabase
-        .from('dashboard_grid_layouts')
-        .select('layout')
-        .eq('company_id', company.id)
-        .eq('dashboard_id', INSIGHTS_LAYOUT_DASHBOARD_ID)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error) {
-        console.error('[Insights layout] load failed', error);
-      }
-      if (!error && data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
-        const persisted = data.layout as unknown as GridLayoutItem[];
-        lastPersistedLayoutSignatureRef.current = getInsightsLayoutSignature(persisted);
-        // Merge: use persisted positions but ensure every known widget id exists
-        // (falls back to default for any newly-added widget).
-        const byId = new Map<string, GridLayoutItem>(
-          persisted.map(i => [i.i, i]),
-        );
-        const merged = cloneInsightsDefaultLayout().map(def => byId.get(def.i) ?? def);
-        // Never let late hydration overwrite an edit the authorized user already
-        // made in this mount; that pending edit is the freshest source of truth.
-        if (!pendingLayoutRef.current) {
-          setLayout(merged);
-        }
-      }
-      setLayoutHydrated(true);
-    })();
-    return () => { cancelled = true; };
-  }, [company?.id]);
-
-  const persistLayout = React.useCallback(async (next: GridLayoutItem[]) => {
-    if (!isLayoutEditor || !company?.id) return false;
-    const normalized = normalizeInsightsLayoutForSave(next);
-    const signature = getInsightsLayoutSignature(normalized);
-    if (signature === lastPersistedLayoutSignatureRef.current) {
-      if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
-        pendingLayoutRef.current = null;
-      }
-      return true;
-    }
-    const { error } = await (supabase as any).rpc('save_dashboard_grid_layout', {
-      _company_id: company.id,
-      _dashboard_id: INSIGHTS_LAYOUT_DASHBOARD_ID,
-      _layout: normalized,
-    });
-    if (error) {
-      console.error('[Insights layout] save failed', error);
-      toast.error('Layout save failed. Your changes may not persist.');
-      return false;
-    }
-    console.info('[Insights layout] saved', { companyId: company.id, dashboardId: INSIGHTS_LAYOUT_DASHBOARD_ID, items: normalized.length });
-    lastPersistedLayoutSignatureRef.current = signature;
-    if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
-      pendingLayoutRef.current = null;
-    }
-    return true;
-  }, [isLayoutEditor, company?.id]);
-
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
-    const cloned = nextLayout.map(item => ({ ...item }));
-    console.info('[Insights layout] layout changed', { immediate: !!immediate, items: cloned.length });
-    setLayout(cloned);
     if (!isLayoutEditor) return;
-    pendingLayoutRef.current = cloned;
-    if (!layoutHydrated) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    if (immediate) {
-      void persistLayout(cloned);
-    } else {
-      saveTimerRef.current = setTimeout(() => { void persistLayout(cloned); }, 600);
-    }
-  }, [isLayoutEditor, layoutHydrated, persistLayout]);
-
-  useEffect(() => {
-    if (!layoutHydrated || !isLayoutEditor || !pendingLayoutRef.current) return;
-    void persistLayout(pendingLayoutRef.current);
-  }, [isLayoutEditor, layoutHydrated, persistLayout]);
-
-  const resetLayout = React.useCallback(async () => {
-    const def = cloneInsightsDefaultLayout();
-    setLayout(def);
-    pendingLayoutRef.current = def;
-    if (isLayoutEditor) await persistLayout(def);
-  }, [isLayoutEditor, persistLayout]);
-
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
-      }
-      if (isLayoutEditor && layoutHydrated) {
-        const latestGridLayout = gridLatestLayoutGetterRef.current?.();
-        if (latestGridLayout?.length) {
-          pendingLayoutRef.current = latestGridLayout;
-        }
-        if (pendingLayoutRef.current) {
-          void persistLayout(pendingLayoutRef.current);
-        }
-      }
-    };
-  }, [isLayoutEditor, layoutHydrated, persistLayout]);
+    const normalized = normalizeInsightsLayoutForSave(nextLayout);
+    latestLayoutRef.current = normalized;
+    saveSharedGridLayout(normalized, immediate);
+  }, [isLayoutEditor, saveSharedGridLayout]);
 
   const editSnapshotRef = useRef<GridLayoutItem[] | null>(null);
   const wasEditingRef = useRef(false);
@@ -2022,10 +1924,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [isEditMode, layout]);
 
   const handleSaveLayout = async () => {
-    const current = gridLatestLayoutGetterRef.current?.() ?? latestLayoutRef.current;
-    saveLayout(current, true);
-    const saved = await persistLayout(current);
-    if (!saved) return;
+    if (!isLayoutEditor) return;
+    const current = normalizeInsightsLayoutForSave(gridLatestLayoutGetterRef.current?.() ?? latestLayoutRef.current);
+    saveSharedGridLayout(current, true);
     editSnapshotRef.current = null;
     toast.success('Layout saved');
     onExitEditMode?.();
@@ -2033,7 +1934,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const handleCancelLayout = () => {
     if (editSnapshotRef.current) {
-      saveLayout(editSnapshotRef.current, true);
+      saveSharedGridLayout(editSnapshotRef.current, true);
     }
     editSnapshotRef.current = null;
     onExitEditMode?.();
