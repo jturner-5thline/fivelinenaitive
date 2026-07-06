@@ -1516,20 +1516,20 @@ function DetailPane({
             {toSingleSentence(item.rationale || buildRationaleFallback(item))}
           </p>
 
-          {/* Proposed changes — full-width, flat, balanced columns */}
+          {/* Proposed changes — stacked review cards, one per field */}
           {fieldKeys.length > 0 && (
             <div>
-              <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-baseline gap-2">
                   <p
-                    className="text-[11px] font-semibold uppercase tracking-[0.10em] text-[#ecedf4]/90"
+                    className="text-[16px] font-semibold tracking-tight text-[#f7f8fc]"
                     style={FONT_BODY}
                   >
                     Proposed changes
                   </p>
                   {editMode && editedCount > 0 && (
                     <span
-                      className="text-[10px] uppercase tracking-[0.10em] text-[#f3c969]"
+                      className="text-[12px] text-[#f3c969]"
                       style={FONT_BODY}
                     >
                       {editedCount} edited
@@ -1539,142 +1539,200 @@ function DetailPane({
                 <button
                   type="button"
                   onClick={() => setEditMode((v) => !v)}
-                  className="inline-flex items-center gap-1 h-6 px-1.5 rounded text-[11px] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.05] transition-colors"
+                  className="inline-flex items-center gap-1 h-7 px-2 rounded text-[12px] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.05] transition-colors"
                   style={FONT_BODY}
                 >
                   <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
                 </button>
               </div>
 
-              <div className="border-t border-b border-white/[0.10]">
-                <div className="grid grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-5 px-0 py-2 border-b border-white/[0.08]">
-                  {['Field', 'Current', 'Proposed'].map((h) => (
-                    <p
-                      key={h}
-                      className="text-[10.5px] font-semibold uppercase tracking-[0.10em] text-[#ecedf4]/90"
+              <div className="space-y-2.5">
+                {fieldKeys.map((k) => {
+                  const oldV = oldValues[k];
+                  const effectiveOldV =
+                    k === 'last_contact_at' && !oldV && resolvedLastContactAt
+                      ? resolvedLastContactAt
+                      : oldV;
+                  const proposedRaw = edits[k] ?? newValues[k];
+                  const isEditableDateField = isDateFieldName(k) || isIsoDateLike(proposedRaw) || isIsoDateLike(effectiveOldV);
+                  const proposedEditValue = isEditableDateField
+                    ? formatEditableDate(proposedRaw)
+                    : proposedRaw == null
+                      ? ''
+                      : String(proposedRaw);
+                  const oldDisplay = formatFieldValue(k, effectiveOldV, lookups);
+                  const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
+                  const isOldEmpty = oldDisplay === '';
+                  const fieldOptions = isEditableDateField ? null : getFieldOptions(k, item, lookups);
+
+                  // Long-form fields render full width, one block above the other.
+                  const LONG_TEXT_KEYS = new Set([
+                    'body', 'html_body', 'plain_body', 'notes', 'narrative',
+                    'description', 'message', 'content', 'summary', 'status_notes',
+                    'flag_notes', 'subject',
+                  ]);
+                  const combinedLen = (oldDisplay?.length || 0) + (proposedDisplay?.length || 0);
+                  const hasNewline = /\n/.test(oldDisplay || '') || /\n/.test(proposedDisplay || '');
+                  const isLongText =
+                    LONG_TEXT_KEYS.has(k) || hasNewline || combinedLen > 120;
+                  const stacked = isLongText;
+
+                  const currentBlock = TAG_STYLE_FIELD_KEYS.has(k) && !isOldEmpty ? (
+                    <span
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-medium border border-white/[0.12] bg-white/[0.04] text-[#ecedf4]/90"
                       style={FONT_BODY}
                     >
-                      {h}
+                      {prettifyTagLabel(oldDisplay)}
+                    </span>
+                  ) : isOldEmpty ? (
+                    <span
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] text-[#ecedf4]/60 border border-white/[0.10] bg-white/[0.03]"
+                      style={FONT_BODY}
+                    >
+                      No current value
+                    </span>
+                  ) : (
+                    <p
+                      className="text-[14px] leading-[1.55] text-[#ecedf4]/90 whitespace-pre-wrap break-words"
+                      style={FONT_BODY}
+                    >
+                      {oldDisplay}
                     </p>
-                  ))}
-                </div>
-                <div className="divide-y divide-white/[0.06]">
-                  {fieldKeys.map((k) => {
-                    const oldV = oldValues[k];
-                    const effectiveOldV =
-                      k === 'last_contact_at' && !oldV && resolvedLastContactAt
-                        ? resolvedLastContactAt
-                        : oldV;
-                    const proposedRaw = edits[k] ?? newValues[k];
-                    const isEditableDateField = isDateFieldName(k) || isIsoDateLike(proposedRaw) || isIsoDateLike(effectiveOldV);
-                    const proposedEditValue = isEditableDateField
-                      ? formatEditableDate(proposedRaw)
-                      : proposedRaw == null
-                        ? ''
-                        : String(proposedRaw);
-                    const oldDisplay = formatFieldValue(k, effectiveOldV, lookups);
-                    const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
-                    const isOldEmpty = oldDisplay === '';
-                    const fieldOptions = isEditableDateField ? null : getFieldOptions(k, item, lookups);
-                    return (
-                      <div
-                        key={k}
-                        className="grid grid-cols-[minmax(7rem,0.65fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-5 px-0 py-2.5 items-baseline"
+                  );
+
+                  const proposedBlock = editMode && fieldOptions && fieldOptions.length > 0 ? (
+                    <Select
+                      value={
+                        typeof proposedRaw === 'string' && proposedRaw
+                          ? proposedRaw
+                          : undefined
+                      }
+                      onValueChange={(value) => {
+                        setEdits((p) => ({ ...p, [k]: value }));
+                      }}
+                    >
+                      <SelectTrigger
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60"
+                        style={FONT_BODY}
                       >
-                        <p
-                          className="text-[12px] text-[#ecedf4]/90"
-                          style={FONT_BODY}
-                        >
-                          {humanizeFieldKey(k)}
-                        </p>
-                        {TAG_STYLE_FIELD_KEYS.has(k) && !isOldEmpty ? (
-                          <span className="min-w-0">
-                            <span
-                              className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-medium border border-white/[0.12] bg-white/[0.05] text-[#ecedf4]/90"
+                        <SelectValue placeholder="Select…" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#0f1420] border-white/[0.12] text-[#f7f8fc]">
+                        {fieldOptions.map((opt) => (
+                          <SelectItem
+                            key={opt.value}
+                            value={opt.value}
+                            className="text-[13px] focus:bg-white/[0.08] focus:text-[#f7f8fc]"
+                          >
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : editMode ? (
+                    isLongText ? (
+                      <Textarea
+                        rows={Math.min(14, Math.max(4, (proposedEditValue.match(/\n/g)?.length ?? 0) + 3))}
+                        placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
+                        value={proposedEditValue}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setEdits((p) => ({ ...p, [k]: value }));
+                        }}
+                        className="text-[14px] leading-[1.55] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        style={FONT_BODY}
+                      />
+                    ) : (
+                      <Input
+                        type="text"
+                        placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
+                        value={proposedEditValue}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const nextValue = isEditableDateField
+                            ? parseEditableDateToIso(value, newValues[k] ?? effectiveOldV)
+                            : value;
+                          setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
+                        }}
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        style={FONT_BODY}
+                      />
+                    )
+                  ) : TAG_STYLE_FIELD_KEYS.has(k) && proposedDisplay ? (
+                    <span
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-semibold border border-[#5ecdf5]/40 bg-[#5ecdf5]/[0.12] text-[#f7f8fc]"
+                      style={FONT_BODY}
+                    >
+                      {prettifyTagLabel(proposedDisplay)}
+                    </span>
+                  ) : proposedDisplay ? (
+                    <p
+                      className="text-[14px] leading-[1.55] font-medium text-[#f7f8fc] whitespace-pre-wrap break-words"
+                      style={FONT_BODY}
+                    >
+                      {proposedDisplay}
+                    </p>
+                  ) : (
+                    <span className="text-[13px] text-[#ecedf4]/60" style={FONT_BODY}>—</span>
+                  );
+
+                  return (
+                    <div
+                      key={k}
+                      className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-3"
+                    >
+                      <p
+                        className="text-[13px] font-medium text-[#ecedf4]/70 mb-2.5"
+                        style={FONT_BODY}
+                      >
+                        {humanizeFieldKey(k)}
+                      </p>
+                      {stacked ? (
+                        <div className="space-y-2">
+                          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                            <p
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              {prettifyTagLabel(oldDisplay)}
-                            </span>
-                          </span>
-                        ) : (
-                          <span
-                            className={`min-w-0 text-[12.5px] break-words ${
-                              isOldEmpty
-                                ? 'text-[#ecedf4]/65 italic'
-                                : 'text-[#ecedf4]/90'
-                            }`}
-                            style={FONT_BODY}
-                          >
-                            {isOldEmpty ? 'No current value' : oldDisplay}
-                          </span>
-                        )}
-                        {editMode && fieldOptions && fieldOptions.length > 0 ? (
-                          <Select
-                            value={
-                              typeof proposedRaw === 'string' && proposedRaw
-                                ? proposedRaw
-                                : undefined
-                            }
-                            onValueChange={(value) => {
-                              setEdits((p) => ({ ...p, [k]: value }));
-                            }}
-                          >
-                            <SelectTrigger
-                              className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60 min-w-0"
+                              Current value
+                            </p>
+                            {currentBlock}
+                          </div>
+                          <div className="rounded-md border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.06] px-3 py-2">
+                            <p
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#5ecdf5]/80 mb-1"
                               style={FONT_BODY}
                             >
-                              <SelectValue placeholder="Select…" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-[#0f1420] border-white/[0.12] text-[#f7f8fc]">
-                              {fieldOptions.map((opt) => (
-                                <SelectItem
-                                  key={opt.value}
-                                  value={opt.value}
-                                  className="text-[12.5px] focus:bg-white/[0.08] focus:text-[#f7f8fc]"
-                                >
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : editMode ? (
-                          <Input
-                            type="text"
-                            placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
-                            value={proposedEditValue}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              const nextValue = isEditableDateField
-                                ? parseEditableDateToIso(value, newValues[k] ?? effectiveOldV)
-                                : value;
-                              setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
-                            }}
-                            className="h-7 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60 min-w-0"
-                            style={FONT_BODY}
-                          />
-                        ) : TAG_STYLE_FIELD_KEYS.has(k) && proposedDisplay ? (
-                          <span className="min-w-0">
-                            <span
-                              className="inline-flex items-center h-5 px-2 rounded-full text-[11px] font-semibold border border-[#5ecdf5]/40 bg-[#5ecdf5]/[0.10] text-[#f7f8fc]"
+                              Proposed value
+                            </p>
+                            {proposedBlock}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2 min-w-0">
+                            <p
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              {prettifyTagLabel(proposedDisplay)}
-                            </span>
-                          </span>
-                        ) : (
-                          <span
-                            className="min-w-0 text-[12.5px] font-medium text-[#f7f8fc] break-words"
-                            style={FONT_BODY}
-                          >
-                            {proposedDisplay || (
-                              <span className="text-[#ecedf4]/65 font-normal">—</span>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                              Current value
+                            </p>
+                            {currentBlock}
+                          </div>
+                          <div className="rounded-md border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.06] px-3 py-2 min-w-0">
+                            <p
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#5ecdf5]/80 mb-1"
+                              style={FONT_BODY}
+                            >
+                              Proposed value
+                            </p>
+                            {proposedBlock}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
