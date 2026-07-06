@@ -378,9 +378,9 @@ function Row({
       </p>
       {placeholder ? (
         <div className="grid grid-cols-[3.25rem_0.5rem_3.75rem] gap-x-1 gap-y-0 items-center">
-          <span className="text-[13px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-[15px] font-extrabold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-[13px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
+          <span className="text-[15px] font-extrabold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <DeltaBadge pct={null} />
           <span className="text-muted-foreground/40 font-light text-center">|</span>
           <DeltaBadge pct={null} />
@@ -391,11 +391,11 @@ function Row({
         </div>
       ) : (
         <div className="grid grid-cols-[3.25rem_0.5rem_3.75rem] gap-x-1 gap-y-0 items-center">
-          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
+          <span className="text-[15px] font-extrabold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
             {count}
           </span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
+          <span className="text-[15px] font-extrabold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
             {formatCurrencyMM(dollars ?? 0)}
           </span>
           <DeltaBadge pct={countChange} />
