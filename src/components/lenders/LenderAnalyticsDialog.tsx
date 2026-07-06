@@ -958,7 +958,7 @@ export function LenderAnalyticsDialog({
                     </div>
                   </IntelPanel>
 
-                  <IntelPanel title="Pass Reasons">
+                  <IntelPanel title="Top 5 Pass Reasons">
                     <div className="px-4 py-3">
                       {passReasonsRanked.length === 0 ? (
                         <div className="py-4 text-center text-[12px] text-slate-500">
