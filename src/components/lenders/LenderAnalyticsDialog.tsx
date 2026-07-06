@@ -966,7 +966,7 @@ export function LenderAnalyticsDialog({
                         </div>
                       ) : (
                         <>
-                          <ul className="space-y-2">
+                          <ul className="space-y-2 list-disc pl-5 marker:text-[#4dd9ac]">
                             {passReasonsRanked.slice(0, 5).map((p) => (
                               <li
                                 key={p.key}
