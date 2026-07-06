@@ -58,6 +58,8 @@ function mapLayout(currentLayout: any[]): GridLayoutItem[] {
     h: l.h,
     minW: l.minW,
     minH: l.minH,
+    maxW: l.maxW,
+    maxH: l.maxH,
   }));
 }
 
@@ -254,6 +256,8 @@ export function DraggableGridLayout({
     // widths/heights scale with the container; positions never reflow.
     return {
       lg: constrained,
+      md: constrained.map(item => ({ ...item })),
+      sm: constrained.map(item => ({ ...item })),
     };
   }, [layout, applyConstraints]);
 
@@ -330,8 +334,8 @@ export function DraggableGridLayout({
       <Responsive
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 0 }}
-        cols={{ lg: 12 }}
+        breakpoints={{ lg: 1200, md: 768, sm: 0 }}
+        cols={{ lg: 12, md: 12, sm: 12 }}
         rowHeight={rowHeight}
         width={containerWidth}
         isDraggable={isEditMode && (isDraggableEnabled ?? true)}
