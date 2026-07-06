@@ -84,6 +84,10 @@ export function DraggableGridLayout({
   const suppressClickUntilRef = useRef<number>(0);
 
   useEffect(() => {
+    latestLayoutRef.current = layout;
+  }, [layout]);
+
+  useEffect(() => {
     if (!containerRef.current) return;
     setContainerWidth(containerRef.current.offsetWidth);
     const ro = new ResizeObserver((entries) => {

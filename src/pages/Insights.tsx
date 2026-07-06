@@ -1421,6 +1421,7 @@ function MetricsInner() {
     const list = email ? RESTRICTED_DASHBOARDS[email] : undefined;
     return list ? new Set(list) : null;
   }, [authUser?.email]);
+  const isInsightsLayoutEditor = authUser?.email?.toLowerCase() === 'jturner@5thline.co';
   const visibleDashboardOptions = useMemo(
     () => allowedDashboardIds
       ? DASHBOARD_OPTIONS.filter(d => allowedDashboardIds.has(d.id))
@@ -2524,7 +2525,7 @@ function MetricsInner() {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {canEditMetrics && (
+              {canEditMetrics && (selectedDashboard !== 'management-review' || isInsightsLayoutEditor) && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button

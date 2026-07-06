@@ -1880,6 +1880,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [layout, setLayout] = useState<GridLayoutItem[]>(cloneInsightsDefaultLayout);
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
 
   // Load persisted layout once we know the company.
   useEffect(() => {
@@ -1907,28 +1908,29 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     return () => { cancelled = true; };
   }, [company?.id]);
 
-  const persistLayout = React.useCallback((next: GridLayoutItem[]) => {
+  const persistLayout = React.useCallback(async (next: GridLayoutItem[]) => {
     if (!isLayoutEditor || !company?.id || !user?.id) return;
-    supabase
-      .from('dashboard_grid_layouts')
-      .upsert(
-        {
-          company_id: company.id,
-          dashboard_id: INSIGHTS_LAYOUT_DASHBOARD_ID,
-          user_id: user.id,
-          layout: next as any,
-        },
-        { onConflict: 'company_id,dashboard_id' },
-      )
-      .then(({ error }) => {
-        if (error) console.error('[Insights layout] save failed', error);
-      });
+    const { error } = await (supabase as any).rpc('save_dashboard_grid_layout', {
+      _company_id: company.id,
+      _dashboard_id: INSIGHTS_LAYOUT_DASHBOARD_ID,
+      _layout: next,
+    });
+    if (error) {
+      console.error('[Insights layout] save failed', error);
+      toast.error('Layout save failed. Your changes may not persist.');
+      return;
+    }
+    if (pendingLayoutRef.current === next) {
+      pendingLayoutRef.current = null;
+    }
   }, [isLayoutEditor, company?.id, user?.id]);
 
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
     const cloned = nextLayout.map(item => ({ ...item }));
     setLayout(cloned);
-    if (!isLayoutEditor || !layoutHydrated) return;
+    if (!isLayoutEditor) return;
+    pendingLayoutRef.current = cloned;
+    if (!layoutHydrated) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (immediate) {
       persistLayout(cloned);
@@ -1940,8 +1942,21 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const resetLayout = React.useCallback(async () => {
     const def = cloneInsightsDefaultLayout();
     setLayout(def);
-    if (isLayoutEditor) persistLayout(def);
+    pendingLayoutRef.current = def;
+    if (isLayoutEditor) await persistLayout(def);
   }, [isLayoutEditor, persistLayout]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (pendingLayoutRef.current && isLayoutEditor && layoutHydrated) {
+        persistLayout(pendingLayoutRef.current);
+      }
+    };
+  }, [isLayoutEditor, layoutHydrated, persistLayout]);
 
   const editSnapshotRef = useRef<GridLayoutItem[] | null>(null);
   const wasEditingRef = useRef(false);
