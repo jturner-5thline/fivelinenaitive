@@ -78,15 +78,18 @@ export function parseCopilotDisambiguationMessage(
     const resolved = parseEntityReference(href) || resolveCandidateLink(label, candidates);
     if (!resolved || seenIds.has(`${resolved.kind}:${resolved.id}`)) return;
 
-    const displayLabel = trimmed
-      .replace(/^(?:[-*+]\s+|\d+\.\s+)+/, '')
+    // Only use the markdown link's own label text. Do NOT fall back to the
+    // whole trimmed line: LLMs occasionally append trailing prose after the
+    // link, which would otherwise get concatenated into the chip label.
+    // Backend format is "[Company — Stage (Status)](entity://deal/<id>)", so
+    // `label` is already the exact chip text we want.
+    const cleanLabel = label
       .replace(/\*\*/g, '')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
       .replace(/\s+/g, ' ')
       .trim();
 
     seenIds.add(`${resolved.kind}:${resolved.id}`);
-    options.push({ ...resolved, label: displayLabel || label, lineIndex });
+    options.push({ ...resolved, label: cleanLabel || label, lineIndex });
   });
 
   if (options.length < 2) return null;
