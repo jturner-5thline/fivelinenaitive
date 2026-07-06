@@ -19,6 +19,8 @@
  * value.
  */
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   endOfMonth,
   endOfQuarter,
@@ -32,6 +34,7 @@ import {
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
+import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE } from '@/hooks/useFinServFinancialMetrics';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { ReportState } from '../QuarterlyInsightsReport';
 
@@ -121,6 +124,90 @@ export function useInsightsLiveMetricValue(
   const qb = useQuickBooksMetrics(undefined, period ? { start: period.start, end: period.end } : undefined);
   const hs = useHubSpotMetrics();
 
+  // FinServ pipeline snapshot — mirrors the FinServ Financial Metrics
+  // dashboard's Total MRR / Total Clients query, made period-aware via
+  // deal_stage_history so the report period selector actually moves the
+  // returned scalar. Shared by both `finserv-total-mrr` and
+  // `finserv-active-client-count` (same query, different reducer).
+  const finservEnabled =
+    metricSourceId === 'finserv-total-mrr' ||
+    metricSourceId === 'finserv-active-client-count';
+  const finserv = useQuery({
+    enabled: finservEnabled,
+    queryKey: [
+      'insights-live-finserv-snapshot',
+      FINSERV_PIPELINE_ID,
+      period?.end ?? null,
+    ],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: deals, error: dealsErr } = await supabase
+        .from('deals')
+        .select('id, stage, mrr, created_at')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID);
+      if (dealsErr) throw dealsErr;
+      const dealList = (deals ?? []) as Array<{
+        id: string;
+        stage: string | null;
+        mrr: number | string | null;
+        created_at: string;
+      }>;
+      const TERMINAL = new Set(['fs-churned', 'fs-closed-lost', 'fs-in-development']);
+
+      // No period → current snapshot (matches source dashboard exactly).
+      if (!period?.end) {
+        let totalClients = 0;
+        let totalMrr = 0;
+        for (const d of dealList) {
+          const stage = d.stage ?? '';
+          if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+          if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
+        }
+        return { totalClients, totalMrr };
+      }
+
+      // Period-aware: reconstruct stage at period end via deal_stage_history.
+      const { data: history, error: histErr } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id, to_stage, changed_at')
+        .eq('pipeline_id', FINSERV_PIPELINE_ID)
+        .order('changed_at', { ascending: true });
+      if (histErr) throw histErr;
+      const historyByDeal = new Map<string, Array<{ to_stage: string | null; changed_at: string }>>();
+      for (const h of history ?? []) {
+        const arr = historyByDeal.get(h.deal_id) ?? [];
+        arr.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+        historyByDeal.set(h.deal_id, arr);
+      }
+      const endBound = parseISO(`${period.end}T23:59:59`);
+      const today = new Date();
+      const effective = endBound > today ? today : endBound;
+      const stageAt = (d: { id: string; stage: string | null; created_at: string }) => {
+        const created = new Date(d.created_at);
+        if (created > effective) return null;
+        const hist = historyByDeal.get(d.id);
+        if (hist && hist.length > 0) {
+          let last: string | null = null;
+          for (const h of hist) {
+            if (new Date(h.changed_at) <= effective) last = h.to_stage;
+            else break;
+          }
+          if (last !== null) return last;
+        }
+        return d.stage ?? null;
+      };
+      let totalClients = 0;
+      let totalMrr = 0;
+      for (const d of dealList) {
+        const stage = stageAt(d);
+        if (!stage) continue;
+        if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
+        if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
+      }
+      return { totalClients, totalMrr };
+    },
+  });
+
   return useMemo<LiveMetricResolution>(() => {
     if (!metricSourceId) return { supported: false, status: 'unmapped' };
 
@@ -207,6 +294,17 @@ export function useInsightsLiveMetricValue(
       return { supported: false, status: 'unmapped', sourceSurface: 'HubSpot Dashboard' };
     }
 
+    // ---- FinServ Financial Metrics (pipeline snapshot tiles) ----
+    if (metricSourceId === 'finserv-total-mrr' || metricSourceId === 'finserv-active-client-count') {
+      if (finserv.isLoading || !finserv.data) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      const v = metricSourceId === 'finserv-total-mrr'
+        ? finserv.data.totalMrr
+        : finserv.data.totalClients;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
     // ---- Cross-source metrics (combine deal + QB) ----
     if (metricSourceId === 'xs-revenue-per-deal') {
       if (qb.isLoading || hs.isLoading || !qb.data || !hs.data) {
@@ -243,5 +341,7 @@ export function useInsightsLiveMetricValue(
     qb.data,
     hs.isLoading,
     hs.data,
+    finserv.isLoading,
+    finserv.data,
   ]);
 }

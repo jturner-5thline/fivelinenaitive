@@ -39,6 +39,8 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'hs-win-rate', 'hs-avg-deal-size', 'hs-total-contacts', 'hs-total-companies',
   // Cross-source
   'xs-revenue-per-deal', 'xs-ar-per-active-deal', 'xs-collection-rate-by-entity',
+  // FinServ Financial Metrics (pipeline snapshot tiles)
+  'finserv-total-mrr', 'finserv-active-client-count',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
