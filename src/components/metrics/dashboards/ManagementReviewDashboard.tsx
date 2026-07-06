@@ -804,6 +804,15 @@ function ConsolidatedOpexWidget() {
           loading={loading && !data}
         />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {showDelta && series.length >= 2 && (
+            <RangeTrendDelta
+              fromLabel={series[0]?.label}
+              toLabel={series[series.length - 1]?.label}
+              fromValue={series[0]?.value}
+              toValue={series[series.length - 1]?.value}
+              polarity="lower-is-better"
+            />
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowDelta(v => !v); }}
@@ -1078,6 +1087,16 @@ function ConsolidatedCashflowWidget() {
           format={(v) => fmt(v)}
         />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {showDelta && series.length >= 2 && (
+            <RangeTrendDelta
+              fromLabel={series[0]?.label}
+              toLabel={series[series.length - 1]?.label}
+              fromValue={series[0]?.value}
+              toValue={series[series.length - 1]?.value}
+              polarity="higher-is-better"
+              format={(v) => fmt(v)}
+            />
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowDelta(v => !v); }}
@@ -1282,6 +1301,54 @@ function PeriodReadout({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * Shown when the Δ Trend toggle is on: the net change from the first
+ * visible period to the current (last) period in the chart. Polarity-aware.
+ */
+function RangeTrendDelta({
+  fromLabel,
+  toLabel,
+  fromValue,
+  toValue,
+  polarity,
+  format,
+}: {
+  fromLabel?: string | null;
+  toLabel?: string | null;
+  fromValue: number | null | undefined;
+  toValue: number | null | undefined;
+  polarity: 'higher-is-better' | 'lower-is-better';
+  format?: (v: number) => string;
+}) {
+  const fmt = format ?? ((v: number) => formatUSD(v / 1000));
+  if (fromValue == null || toValue == null || !isFinite(fromValue) || !isFinite(toValue)) return null;
+  const dAbs = toValue - fromValue;
+  const dPct = fromValue !== 0 ? (dAbs / Math.abs(fromValue)) * 100 : null;
+  const neutral = 'hsl(220,10%,62%)';
+  const good = 'hsl(152,55%,60%)';
+  const bad = 'hsl(0,65%,65%)';
+  const color = dAbs === 0
+    ? neutral
+    : polarity === 'higher-is-better'
+      ? (dAbs > 0 ? good : bad)
+      : (dAbs > 0 ? bad : good);
+  const sign = dAbs > 0 ? '+' : dAbs < 0 ? '−' : '';
+  return (
+    <span
+      title={`Net change from ${fromLabel ?? 'first period'} to ${toLabel ?? 'current period'}`}
+      style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap' }}
+    >
+      {fromLabel && toLabel ? `${fromLabel} → ${toLabel}: ` : 'Δ: '}
+      <span style={{ color, fontWeight: 700 }}>
+        {sign}{fmt(Math.abs(dAbs))}
+        {dPct != null && (
+          <span style={{ marginLeft: 4, opacity: 0.9 }}>({sign}{Math.abs(dPct).toFixed(1)}%)</span>
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -2968,6 +3035,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             }
             headerExtra={
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {showTrendDelta && trendMode !== 'quarterly-yoy' && (() => {
+                  const vals = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+                  const labels = trendMode === 'ttm' ? ttmLabels : monthlyTrendLabels;
+                  if (!vals || vals.length < 2) return null;
+                  return (
+                    <RangeTrendDelta
+                      fromLabel={labels[0]}
+                      toLabel={labels[labels.length - 1]}
+                      fromValue={vals[0]}
+                      toValue={vals[vals.length - 1]}
+                      polarity="higher-is-better"
+                    />
+                  );
+                })()}
                 {trendMode !== 'quarterly-yoy' && (
                   <button
                     type="button"
