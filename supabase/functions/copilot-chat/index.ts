@@ -14,6 +14,7 @@ import {
   formatDealBlock as admFormatDealBlock,
   formatPortfolioBlocks as admFormatPortfolioBlocks,
 } from "../_shared/adminAgentFormat.ts";
+import { buildUserDealCountBlock } from "./userDealCountBlock.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
