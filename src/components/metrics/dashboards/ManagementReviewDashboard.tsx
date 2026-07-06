@@ -804,6 +804,15 @@ function ConsolidatedOpexWidget() {
           loading={loading && !data}
         />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {showDelta && series.length >= 2 && (
+            <RangeTrendDelta
+              fromLabel={series[0]?.label}
+              toLabel={series[series.length - 1]?.label}
+              fromValue={series[0]?.value}
+              toValue={series[series.length - 1]?.value}
+              polarity="lower-is-better"
+            />
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowDelta(v => !v); }}
