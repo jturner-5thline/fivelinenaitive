@@ -4652,11 +4652,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
     case "update_deal_status": {
-      const ALLOWED_STATUSES_CONFIRM = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
-      const incomingConfirm = String(args.new_status ?? "").toLowerCase().trim();
-      if (!ALLOWED_STATUSES_CONFIRM.includes(incomingConfirm)) {
+      const canonicalStatus = matchEnumOption(args.new_status, DEAL_STATUS_OPTIONS);
+      if (!canonicalStatus) {
         return {
-          error: `Invalid status "${args.new_status}". Status must be one of: ${ALLOWED_STATUSES_CONFIRM.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+          error:
+            `Invalid status "${args.new_status}". Status must be one of: ` +
+            `${DEAL_STATUS_OPTIONS.map((o) => o.value).join(", ")}. ` +
+            `If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", ` +
+            `call update_deal_stage instead — those are STAGES, not statuses.`,
+          error_code: "INVALID_ENUM",
         };
       }
       const { data: deal } = await supabase
@@ -4669,13 +4673,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "update_deal_status",
-        description: `Update ${dealName} status to "${incomingConfirm}"`,
+        description: `Update ${dealName} status to "${canonicalStatus}"`,
         params: {
           deal_id: args.deal_id,
           deal_name: dealName,
-          new_status: incomingConfirm,
+          new_status: canonicalStatus,
           current_status: deal.status,
           status_note: args.status_note || null,
+          status_options: DEAL_STATUS_OPTIONS,
         },
       };
     }
