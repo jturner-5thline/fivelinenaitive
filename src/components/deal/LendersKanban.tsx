@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, Component, type ErrorInfo, type ReactNode } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Clock, MessageSquare, Search, RefreshCw, Settings2, ListChecks, CheckSquare, Briefcase, User, AlertTriangle } from 'lucide-react';
 import { LenderFlagIndicator } from '@/components/lenders/LenderNotesPopover';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDraggable, useDroppable, PointerSensor, TouchSensor, useSensor, useSensors, pointerWithin } from '@dnd-kit/core';
@@ -23,6 +23,7 @@ import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
+import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
 
 
 interface LenderMetrics {
@@ -72,45 +73,6 @@ const getRelativeTime = (updatedAt?: string) => {
   if (days < 7) return `${days}d ago`;
   return `${weeks}w ago`;
 };
-
-// Per-tile error boundary. A single malformed funding-source record (missing
-// name, unexpected shape, etc.) MUST NOT be allowed to crash the entire
-// Funding Sources section. This boundary isolates each tile, logs the
-// offending record id, and renders a compact fallback in its place.
-class LenderTileBoundary extends Component<
-  { lenderId?: string; lenderName?: string; children: ReactNode },
-  { hasError: boolean; message: string | null }
-> {
-  state = { hasError: false, message: null as string | null };
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, message: error?.message ?? 'Unknown render error' };
-  }
-  componentDidCatch(error: Error, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
-    console.error('[FundingSources] failed to render lender tile', {
-      lenderId: this.props.lenderId ?? '(missing id)',
-      lenderName: this.props.lenderName ?? '(missing name)',
-      message: error?.message,
-      componentStack: info?.componentStack,
-    });
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="bg-destructive/5 border border-destructive/40 rounded-xl p-3 text-xs text-destructive">
-          <p className="font-semibold">
-            {this.props.lenderName || 'Unknown funding source'}
-          </p>
-          <p className="mt-1 opacity-80">
-            This card couldn’t be shown{this.props.lenderId ? ` (id: ${this.props.lenderId})` : ''}.
-            The rest of the section still loaded.
-          </p>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 // Enriched Draggable Lender Tile
 function DraggableLenderTile({
@@ -412,7 +374,7 @@ function DroppableColumn({
               ? lender.name.toLowerCase().trim()
               : '';
             return (
-              <LenderTileBoundary key={safeKey} lenderId={lender.id} lenderName={lender.name}>
+              <LenderRowBoundary key={safeKey} lenderId={lender.id} lenderName={lender.name}>
                 <DraggableLenderTile
                   lender={lender}
                   dealId={dealId}
@@ -429,7 +391,7 @@ function DroppableColumn({
                   scoreConfig={scoreConfig}
                   onFollowUpSent={onFollowUpSent}
                 />
-              </LenderTileBoundary>
+              </LenderRowBoundary>
             );
           })}
         </div>
