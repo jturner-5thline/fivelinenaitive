@@ -5190,12 +5190,20 @@ export default function DealDetail() {
                                     </span>
                                   </div>
                                   {groupLenders.map((lender, index) => {
+                                    if (!lender || typeof lender !== 'object') {
+                                      // eslint-disable-next-line no-console
+                                      console.warn('[FundingSources] skipping non-object deal_lender in group', group?.id, 'at index', index, lender);
+                                      return null;
+                                    }
+                                    const safeName = typeof lender.name === 'string' ? lender.name : '';
                                     const lenderOutstandingItems = outstandingItems.filter(
-                                      item => Array.isArray(item.requestedBy) 
-                                        ? item.requestedBy.includes(lender.name)
-                                        : item.requestedBy === lender.name
+                                      item => Array.isArray(item.requestedBy)
+                                        ? item.requestedBy.includes(safeName)
+                                        : item.requestedBy === safeName
                                     );
+                                    const rowKey = lender.id || `${group?.id ?? 'grp'}-idx-${index}`;
                                     return (
+                                       <LenderRowBoundary key={rowKey} lenderId={lender.id} lenderName={lender.name}>
                                        <div key={lender.id} className="relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
                                          <div className="absolute right-3 top-3 flex items-center gap-1 z-10">
                                            <LenderFollowUpPopover
@@ -5490,7 +5498,8 @@ export default function DealDetail() {
                                             </div>
                                           )}
                                         </div>
-                                      </div>
+                                       </div>
+                                       </LenderRowBoundary>
                                     );
                                   })}
                                 </div>
