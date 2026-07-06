@@ -318,9 +318,13 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
   // Hard rule: NEVER create approval cards whose underlying action is
   // "create a task" (action_type create_task / create_followup_task, or
   // target_object_type === 'task'). Those become noise; concrete next
-  // steps belong on stage / status / funding-source / note actions.
+  // steps belong on stage / status / note actions.
+  // Also: never surface generic "update funding sources on <Deal>" cards.
+  // They're too vague to action from the queue — funding-source movements
+  // should be captured directly on the deal / lender record instead.
   const queueRows = queueRowsAll.filter((r: any) => {
     if (r.action_type === "create_task" || r.action_type === "create_followup_task") return false;
+    if (r.action_type === "update_funding_source") return false;
     if (typeof r.target_object_type === "string" && r.target_object_type.toLowerCase() === "task") return false;
     return true;
   });
