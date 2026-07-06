@@ -1885,6 +1885,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const {
     layout,
     saveLayout: saveSharedGridLayout,
+    isLoaded: isSharedGridLayoutLoaded,
   } = useGridLayout(INSIGHTS_LAYOUT_DASHBOARD_ID, INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
@@ -3102,6 +3103,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
       )}
 
+      {isSharedGridLayoutLoaded ? (
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
@@ -3771,6 +3773,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
       </DraggableGridLayout>
+      ) : (
+        <div className="flex min-h-[480px] items-center justify-center text-sm text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading shared layout…
+        </div>
+      )}
 
       <InsightsDrilldownDrawer
         open={!!drilldown}
