@@ -10,7 +10,7 @@ const corsHeaders = {
 
 const INTERNAL_DOMAIN = "@5thline.co";
 const ASANA_PROJECT_GID = "1130343959659969";
-const ASANA_SECTION_GID = "1204993066670286";
+const ASANA_SECTION_GID = "1200505058741223";
 const ASANA_API = "https://app.asana.com/api/1.0";
 
 // Simple in-memory cache for the warm instance
