@@ -973,7 +973,12 @@ export function LenderAnalyticsDialog({
                                 className="text-[12.5px] text-slate-100 cursor-pointer hover:text-white"
                                 onClick={() => setOpenPassReason(p.key)}
                               >
-                                {p.reason}
+                                <div className="flex items-baseline justify-between gap-3">
+                                  <span className="flex-1 min-w-0">{p.reason}</span>
+                                  <span className="text-[11px] tabular-nums text-slate-400 shrink-0">
+                                    {p.count} <span className="text-slate-500">({p.pct.toFixed(0)}%)</span>
+                                  </span>
+                                </div>
                               </li>
                             ))}
                           </ul>
