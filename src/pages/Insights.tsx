@@ -1445,15 +1445,22 @@ function MetricsInner() {
   const [searchParams] = useSearchParams();
   useEffect(() => {
     const view = searchParams.get('view');
+    const tab = searchParams.get('tab');
     if (view === 'weekly-rundown') {
       setSelectedDashboard('management-snapshot');
+      return;
     }
     // Deep-link from Submit-for-review email: ?tab=jt|jm|sw (or agenda/
     // dashboard/forecasts/key-metrics) opens the Management Review carousel
     // and the carousel itself reads the same param to pick the inner tab.
-    if (searchParams.get('tab')) {
+    if (tab) {
       setSelectedDashboard('management-review');
+      return;
     }
+    // Plain navigation to /insights (e.g. clicking the sidebar item) should
+    // always land on the Insights Dashboard rather than whatever dashboard
+    // was last selected in this session.
+    setSelectedDashboard('management-review');
   }, [searchParams]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
