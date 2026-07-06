@@ -663,6 +663,21 @@ export function LenderAnalyticsDialog({
     }));
   }, [passReasonsAgg]);
 
+  // Data for the vertical Lender Conversion Rate bar chart. Top 6 lenders by
+  // submitted volume, coloured by tier (T1/T2 teal, T3+other blue).
+  const conversionChartData = useMemo(() => {
+    return lenderStats
+      .filter((s) => s.submitted > 0)
+      .slice(0, 6)
+      .map((s) => ({
+        key: s.key,
+        name: s.name,
+        short: s.name.length > 10 ? s.name.slice(0, 10) + '…' : s.name,
+        pct: +(s.conv * 100).toFixed(1),
+        color: s.tier === 'T1' || s.tier === 'T2' ? '#4dd9ac' : '#60a5fa',
+      }));
+  }, [lenderStats]);
+
   const subtitleParts = [
     DATE_LABEL[dateRange],
     lenderScopeActive ? `${lenders.length} of ${totalLenderCount} lenders` : `${lenders.length} lenders`,
@@ -728,8 +743,8 @@ export function LenderAnalyticsDialog({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
-          {/* KPI Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* KPI Row — big teal numbers */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <IntelKpi label="Active Lenders" value={activeLenderCount} hint="across all deals" loading={loading} />
             <IntelKpi
               label="Deals Sent"
@@ -753,7 +768,7 @@ export function LenderAnalyticsDialog({
               value={flexActiveLenderCount}
               hint={
                 activeLenderCount > 0
-                  ? `${Math.round((flexActiveLenderCount / activeLenderCount) * 100)}% of total — active in Flex`
+                  ? `${Math.round((flexActiveLenderCount / activeLenderCount) * 100)}% of total · active in Flex`
                   : 'active in Flex'
               }
               loading={loading}
@@ -784,197 +799,237 @@ export function LenderAnalyticsDialog({
 
           {!isEmpty && (
             <>
-              {/* Charts Section — Volume by Lender + Pass Reasons */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <IntelPanel title="Deal Volume by Lender">
-                  <div className="px-3 pb-3 pt-1 space-y-1.5">
-                    {lenderStats.slice(0, 10).map((s) => {
-                      const max = lenderStats[0]?.count || 1;
-                      const barW = Math.max(3, (s.count / max) * 100);
-                      const tierColor = s.tier === 'T1' ? '#4dd9ac' : s.tier === 'T2' ? '#f5a623' : '#6b7280';
-                      const highlighted = hoverLender === s.key;
-                      return (
-                        <button
-                          key={s.key}
-                          type="button"
-                          onMouseEnter={() => setHoverLender(s.key)}
-                          onMouseLeave={() => setHoverLender(null)}
-                          onClick={() => setOpenLenderDeals(s.name)}
-                          className={cn(
-                            'w-full text-left rounded-md px-2 py-1.5 transition-colors',
-                            highlighted ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]',
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2 text-[12px]">
-                            <span className="text-slate-100 truncate">{s.name}</span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {s.tier && (
+              {/* Row 2 — narrow left volume list + right stacked (conversion chart + pass reasons) */}
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3">
+                <IntelPanel title="Deal Volume by Lender" badge="live">
+                  <div className="p-2">
+                    {lenderStats.length === 0 ? (
+                      <div className="py-6 text-center text-[12px] text-slate-500">No lender activity</div>
+                    ) : (
+                      <ul className="divide-y" style={{ borderColor: '#2a2f3d' }}>
+                        {lenderStats.slice(0, 12).map((s) => {
+                          const tierLabel = s.tier === 'T1' ? 'High' : s.tier === 'T2' ? 'Mid' : s.tier === 'T3' ? 'Low' : null;
+                          const tierColor = s.tier === 'T1' ? '#4dd9ac' : s.tier === 'T2' ? '#60a5fa' : '#6b7280';
+                          const highlighted = hoverLender === s.key;
+                          return (
+                            <li
+                              key={s.key}
+                              onMouseEnter={() => setHoverLender(s.key)}
+                              onMouseLeave={() => setHoverLender(null)}
+                              className={cn(
+                                'flex items-center gap-2 px-2 py-2 rounded transition-colors cursor-pointer',
+                                highlighted ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]',
+                              )}
+                              onClick={() => setOpenLenderDeals(s.name)}
+                            >
+                              <span className="flex-1 truncate text-[12.5px] text-slate-100">{s.name}</span>
+                              <span className="tabular-nums text-[12.5px] text-slate-300 w-6 text-right">{s.count}</span>
+                              {tierLabel && (
                                 <span
-                                  className="text-[10px] font-semibold rounded px-1.5 py-0.5"
+                                  className="text-[10px] font-medium rounded px-1.5 py-0.5 w-11 text-center"
                                   style={{
-                                    background: `${tierColor}22`,
+                                    background: `${tierColor}1f`,
                                     color: tierColor,
-                                    border: `1px solid ${tierColor}55`,
+                                    border: `1px solid ${tierColor}40`,
                                   }}
                                 >
-                                  {s.tier}
+                                  {tierLabel}
                                 </span>
                               )}
-                              <span className="tabular-nums text-slate-300 w-6 text-right">{s.count}</span>
-                            </div>
-                          </div>
-                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
-                            <div
-                              className="h-full rounded"
-                              style={{ width: `${barW}%`, background: tierColor }}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </IntelPanel>
+
+                <div className="flex flex-col gap-3 min-w-0">
+                  <IntelPanel
+                    title="Lender Conversion Rate"
+                    subtitle="deal sent → terms issued"
+                    subtitleTone="accent"
+                  >
+                    <div className="px-3 pb-3 pt-2 h-[240px]">
+                      {conversionChartData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-[12px] text-slate-500">
+                          No conversion data
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={conversionChartData} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+                            <CartesianGrid stroke="#2a2f3d" strokeDasharray="0" vertical={false} />
+                            <XAxis
+                              dataKey="short"
+                              tick={{ fontSize: 11, fill: '#94a3b8' }}
+                              stroke="#2a2f3d"
+                              tickLine={false}
+                              interval={0}
                             />
-                          </div>
-                        </button>
-                      );
-                    })}
-                    {lenderStats.length === 0 && (
-                      <div className="py-6 text-center text-[12px] text-slate-500">No lender activity</div>
-                    )}
-                  </div>
-                </IntelPanel>
-
-                <IntelPanel title="Pass Reasons" subtitle="% of total passes">
-                  <div className="px-3 pb-3 pt-1 space-y-2">
-                    {passReasonsRanked.length === 0 ? (
-                      <div className="py-6 text-center text-[12px] text-slate-500">No passed deals with reasons captured</div>
-                    ) : passReasonsRanked.map((p) => (
-                      <button
-                        key={p.key}
-                        type="button"
-                        onClick={() => setOpenPassReason(p.key)}
-                        className="w-full text-left rounded-md px-2 py-1.5 hover:bg-white/[0.03]"
-                      >
-                        <div className="flex items-center justify-between gap-2 text-[12px]">
-                          <span className="text-slate-100 truncate">{p.reason}</span>
-                          <span className="tabular-nums text-slate-300 shrink-0">{p.pct.toFixed(0)}%</span>
-                        </div>
-                        <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
-                          <div className="h-full rounded" style={{ width: `${Math.max(3, p.pct)}%`, background: '#f87171' }} />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </IntelPanel>
-              </div>
-
-              {/* Second Row — Flex Engagement + Lender Responsiveness */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <IntelPanel title="Flex Engagement" subtitle="active sessions past 30d">
-                  <div className="px-3 pb-3 pt-1 space-y-1.5">
-                    {lenderStats.filter((s) => s.isFlex).slice(0, 10).map((s) => {
-                      const filled = Math.max(0, Math.min(5, s.flexActive));
-                      const highlighted = hoverLender === s.key;
-                      return (
-                        <div
-                          key={s.key}
-                          onMouseEnter={() => setHoverLender(s.key)}
-                          onMouseLeave={() => setHoverLender(null)}
-                          className={cn(
-                            'flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors',
-                            highlighted ? 'bg-white/[0.05]' : '',
-                          )}
-                        >
-                          <span className="text-[12px] text-slate-100 truncate">{s.name}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <div className="flex items-center gap-1">
-                              {[0, 1, 2, 3, 4].map((i) => (
-                                <span
-                                  key={i}
-                                  className="h-2 w-2 rounded-full"
-                                  style={{
-                                    background: i < filled ? '#4dd9ac' : '#2a2f3d',
-                                    border: i < filled ? 'none' : '1px solid #2a2f3d',
-                                  }}
-                                />
+                            <YAxis
+                              tick={{ fontSize: 10, fill: '#94a3b8' }}
+                              stroke="#2a2f3d"
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(v) => `${v}%`}
+                              domain={[0, 70]}
+                              ticks={[0, 10, 20, 30, 40, 50, 60, 70]}
+                            />
+                            <ReTooltip
+                              cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                              contentStyle={{
+                                background: '#1a1d27',
+                                border: '1px solid #2a2f3d',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                color: '#e2e8f0',
+                              }}
+                              formatter={(v: number, _n, p: any) => [`${v}%`, p.payload.name]}
+                              labelFormatter={() => ''}
+                            />
+                            <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                              {conversionChartData.map((d) => (
+                                <Cell key={d.key} fill={d.color} />
                               ))}
-                            </div>
-                            <span className="text-[11px] tabular-nums text-slate-400 w-8 text-right">{filled}/5</span>
-                          </div>
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </IntelPanel>
+
+                  <IntelPanel title="Pass Reasons">
+                    <div className="px-4 py-3">
+                      {passReasonsRanked.length === 0 ? (
+                        <div className="py-4 text-center text-[12px] text-slate-500">
+                          No passed deals with reasons captured
                         </div>
-                      );
-                    })}
-                    {lenderStats.filter((s) => s.isFlex).length === 0 && (
-                      <div className="py-6 text-center text-[12px] text-slate-500">No Flex-connected lenders</div>
+                      ) : (
+                        <>
+                          <ul className="space-y-2">
+                            {passReasonsRanked.slice(0, 5).map((p) => (
+                              <li
+                                key={p.key}
+                                className="text-[12.5px] text-slate-100 cursor-pointer hover:text-white"
+                                onClick={() => setOpenPassReason(p.key)}
+                              >
+                                {p.reason}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="mt-3 text-[11px] italic text-slate-500">
+                            Based on {passReasonsAgg.totalPassed} lender pass{passReasonsAgg.totalPassed === 1 ? '' : 'es'} {dateRange === 'ytd' ? 'YTD' : 'trailing 12M'}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </IntelPanel>
+                </div>
+              </div>
+
+              {/* Row 3 — Flex Engagement + Responsiveness Ratio */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <IntelPanel
+                  title="Flex Engagement by Lender"
+                  subtitle="active sessions (screen refreshes while logged in)"
+                  subtitleTone="accent"
+                  badge="live"
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    <div className="text-[11px] text-slate-500 mb-3">
+                      Avoids inflating counts for users who never log out
+                    </div>
+                    {lenderStats.filter((s) => s.isFlex).length === 0 ? (
+                      <div className="py-4 text-center text-[12px] text-slate-500">No Flex-connected lenders</div>
+                    ) : (
+                      <ul className="space-y-1.5 max-h-[220px] overflow-auto pr-1">
+                        {lenderStats.filter((s) => s.isFlex).slice(0, 8).map((s) => {
+                          const filled = Math.max(0, Math.min(5, s.flexActive));
+                          const highlighted = hoverLender === s.key;
+                          return (
+                            <li
+                              key={s.key}
+                              onMouseEnter={() => setHoverLender(s.key)}
+                              onMouseLeave={() => setHoverLender(null)}
+                              className={cn(
+                                'flex items-center gap-2 rounded px-2 py-1.5 transition-colors',
+                                highlighted ? 'bg-white/[0.04]' : '',
+                              )}
+                            >
+                              <span className="flex-1 truncate text-[12.5px] text-slate-100">{s.name}</span>
+                              <div className="flex items-center gap-1">
+                                {[0, 1, 2, 3, 4].map((i) => (
+                                  <span
+                                    key={i}
+                                    className="h-2 w-2 rounded-full"
+                                    style={{
+                                      background: i < filled ? '#4dd9ac' : 'transparent',
+                                      border: i < filled ? 'none' : '1px solid #3a4152',
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-[11px] tabular-nums text-slate-500 w-8 text-right">{filled}/5</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     )}
                   </div>
                 </IntelPanel>
 
-                <IntelPanel title="Lender Responsiveness" subtitle="avg days to respond">
-                  <div className="px-3 pb-3 pt-1 space-y-2">
-                    {lenderStats.filter((s) => s.avgRespDays != null).slice(0, 10).map((s) => {
-                      const d = s.avgRespDays as number;
-                      const color = d <= 3 ? '#4dd9ac' : d <= 6 ? '#f5a623' : '#f87171';
-                      const barW = Math.max(4, Math.min(100, (d / 14) * 100));
-                      const highlighted = hoverLender === s.key;
-                      return (
-                        <div
-                          key={s.key}
-                          onMouseEnter={() => setHoverLender(s.key)}
-                          onMouseLeave={() => setHoverLender(null)}
-                          className={cn(
-                            'rounded-md px-2 py-1.5 transition-colors',
-                            highlighted ? 'bg-white/[0.05]' : '',
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2 text-[12px]">
-                            <span className="text-slate-100 truncate">{s.name}</span>
-                            <span className="tabular-nums text-slate-300 shrink-0">{d.toFixed(1)}d</span>
-                          </div>
-                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
-                            <div className="h-full rounded" style={{ width: `${barW}%`, background: color }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {lenderStats.filter((s) => s.avgRespDays != null).length === 0 && (
+                <IntelPanel
+                  title="Responsiveness Ratio"
+                  subtitle="emails received + emails sent · per lender"
+                  badge="auto-filled"
+                >
+                  <div className="px-4 pb-3 pt-1">
+                    {lenderStats.filter((s) => s.avgRespDays != null).length === 0 ? (
                       <div className="py-6 text-center text-[12px] text-slate-500">No response data</div>
+                    ) : (
+                      <ul className="space-y-2 max-h-[220px] overflow-auto pr-1">
+                        {lenderStats.filter((s) => s.avgRespDays != null).slice(0, 8).map((s) => {
+                          const d = s.avgRespDays as number;
+                          const color = d <= 3 ? '#4dd9ac' : d <= 6 ? '#f5a623' : '#f87171';
+                          const barW = Math.max(4, Math.min(100, (d / 14) * 100));
+                          const highlighted = hoverLender === s.key;
+                          return (
+                            <li
+                              key={s.key}
+                              onMouseEnter={() => setHoverLender(s.key)}
+                              onMouseLeave={() => setHoverLender(null)}
+                              className={cn(
+                                'rounded px-2 py-1 transition-colors',
+                                highlighted ? 'bg-white/[0.04]' : '',
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2 text-[12.5px]">
+                                <span className="text-slate-100 truncate">{s.name}</span>
+                                <span className="tabular-nums text-slate-300 shrink-0">{d.toFixed(1)}d</span>
+                              </div>
+                              <div className="mt-1 h-1.5 rounded" style={{ background: '#2a2f3d' }}>
+                                <div className="h-full rounded" style={{ width: `${barW}%`, background: color }} />
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     )}
                   </div>
                 </IntelPanel>
               </div>
 
-              {/* Full-width bottom — Lender Conversion Rate */}
-              <IntelPanel title="Lender Conversion Rate" subtitle="deals sent → terms issued">
-                <div className="px-3 pb-3 pt-1 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                  {lenderStats
-                    .filter((s) => s.submitted > 0)
-                    .slice(0, 20)
-                    .map((s) => {
-                      const pct = s.conv * 100;
-                      const color = pct >= 35 ? '#4dd9ac' : pct >= 20 ? '#f5a623' : '#f87171';
-                      const highlighted = hoverLender === s.key;
-                      return (
-                        <button
-                          key={s.key}
-                          type="button"
-                          onMouseEnter={() => setHoverLender(s.key)}
-                          onMouseLeave={() => setHoverLender(null)}
-                          onClick={() => setOpenLenderDeals(s.name)}
-                          className={cn(
-                            'text-left rounded-md px-2 py-1.5 transition-colors',
-                            highlighted ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]',
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2 text-[12px]">
-                            <span className="text-slate-100 truncate">{s.name}</span>
-                            <span className="tabular-nums text-slate-300 shrink-0">{pct.toFixed(0)}%</span>
-                          </div>
-                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
-                            <div className="h-full rounded" style={{ width: `${Math.max(3, pct)}%`, background: color }} />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  {lenderStats.filter((s) => s.submitted > 0).length === 0 && (
-                    <div className="py-6 text-center text-[12px] text-slate-500 md:col-span-2">No conversion data</div>
-                  )}
+              {/* Coming Soon — Next phases */}
+              <div className="pt-2">
+                <div className="text-[10px] uppercase tracking-[0.15em] text-slate-500 mb-2 px-1">
+                  Coming soon — next phases
                 </div>
-              </IntelPanel>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <PhaseCard title="Response Times by Lender" description="avg business days to reply · pulled from email data" phase={2} />
+                  <PhaseCard title="Terms Quality Score" description="scored from post-deal survey · feeds tiering formula" phase={2} />
+                  <PhaseCard title="Lender Activity Heat Map" description="weekly activity grid · darker = more active" phase={3} />
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -1324,12 +1379,12 @@ function IntelKpi({
 }) {
   const hintColor = hintTone === 'good' ? '#4dd9ac' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
   return (
-    <div className="rounded-lg border p-3" style={INTEL_CARD_STYLE}>
-      <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
-      <div className="text-[24px] font-semibold tabular-nums text-slate-100 mt-0.5">
-        {loading ? <span className="inline-block h-6 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
+    <div className="rounded-lg border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500 font-medium">{label}</div>
+      <div className="text-[38px] leading-none font-semibold tabular-nums" style={{ color: '#4dd9ac' }}>
+        {loading ? <span className="inline-block h-9 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
       </div>
-      {hint && <div className="text-[11px] mt-0.5" style={{ color: hintColor }}>{hint}</div>}
+      {hint && <div className="text-[11px] leading-snug mt-0.5" style={{ color: hintColor }}>{hint}</div>}
     </div>
   );
 }
@@ -1337,28 +1392,75 @@ function IntelKpi({
 function IntelPanel({
   title,
   subtitle,
+  subtitleTone = 'muted',
+  badge,
   children,
 }: {
   title: string;
   subtitle?: string;
+  subtitleTone?: 'muted' | 'accent';
+  badge?: 'live' | 'auto-filled';
   children: React.ReactNode;
 }) {
+  const badgeStyle =
+    badge === 'auto-filled'
+      ? { background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.4)' }
+      : { background: 'rgba(77, 217, 172, 0.15)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.4)' };
+  const badgeLabel = badge === 'auto-filled' ? 'AUTO-FILLED' : 'LIVE';
+  const subtitleColor = subtitleTone === 'accent' ? '#4dd9ac' : '#64748b';
   return (
     <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
-      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b" style={{ borderColor: '#2a2f3d' }}>
+      <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0">
-          <div className="text-[12px] font-medium text-slate-100 truncate">{title}</div>
-          {subtitle && <div className="text-[11px] text-slate-500 truncate">{subtitle}</div>}
+          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400 truncate">
+            {title}
+          </div>
+          {subtitle && (
+            <div className="text-[11.5px] mt-1 truncate" style={{ color: subtitleColor }}>
+              {subtitle}
+            </div>
+          )}
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase shrink-0"
-          style={{ background: 'rgba(77, 217, 172, 0.12)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.35)' }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#4dd9ac' }} />
-          Live
-        </span>
+        {badge && (
+          <span
+            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold tracking-wider shrink-0"
+            style={badgeStyle}
+          >
+            {badgeLabel}
+          </span>
+        )}
       </div>
       {children}
+    </div>
+  );
+}
+
+function PhaseCard({
+  title,
+  description,
+  phase,
+}: {
+  title: string;
+  description: string;
+  phase: number;
+}) {
+  return (
+    <div
+      className="rounded-lg border p-4 flex flex-col gap-2 opacity-70"
+      style={{ background: '#151822', borderColor: '#242835' }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400">
+          {title}
+        </div>
+        <span
+          className="text-[10px] font-medium rounded px-1.5 py-0.5 shrink-0"
+          style={{ background: '#242835', color: '#94a3b8', border: '1px solid #2a2f3d' }}
+        >
+          Phase {phase}
+        </span>
+      </div>
+      <div className="text-[11.5px] text-slate-500 leading-snug">{description}</div>
     </div>
   );
 }
