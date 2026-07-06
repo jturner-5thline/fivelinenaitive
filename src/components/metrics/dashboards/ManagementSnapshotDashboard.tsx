@@ -770,7 +770,6 @@ export function ManagementSnapshotDashboard({
           >
             {visibleCards.map(({ cardId, props }) => (
               <div key={cardId} className="relative group h-full overflow-hidden">
-                {cardId === 'total-revenue-detail' && <CurrentQuarterBadge />}
                 {isEditMode && (
                   <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
                     <GripVertical className="h-3 w-3 text-muted-foreground" />
@@ -811,13 +810,11 @@ export function ManagementSnapshotDashboard({
                 )}
                 <div className={cn('h-full', isEditMode && 'pointer-events-none')}>
                   {cardId === 'total-revenue-detail' ? (
-                    <KPIDetailCard
+                    <LocalQuarterTotalRevenue
                       kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
                       datarailsConfig={props.datarailsConfig}
-                      timeWindow={props.timeWindow}
                       entityFilter={props.entityFilter}
                       isEditMode={isEditMode}
-                      selectedPeriod={selectedQuarter}
                       onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue', kind: 'total-revenue' })}
                     />
                   ) : cardId === 'avg-rev-per-client' ? (
@@ -832,9 +829,6 @@ export function ManagementSnapshotDashboard({
             ))}
             {visibleSubWidgets.map((id) => (
               <div key={id} className="relative group h-full overflow-hidden">
-                {(id === 'rev-debt' || id === 'rev-finserv' || id === 'sd-deals-signed' || id === 'sd-finserv-clients-signed') && (
-                  <CurrentQuarterBadge />
-                )}
             {isEditMode && (
               <>
                 <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
