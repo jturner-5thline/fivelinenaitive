@@ -795,10 +795,7 @@ function ConsolidatedOpexWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <SectionLabel>
-          {granularityLabel} OPEX — Total for Expenses (Consolidated View, all QBO entities)
-        </SectionLabel>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
