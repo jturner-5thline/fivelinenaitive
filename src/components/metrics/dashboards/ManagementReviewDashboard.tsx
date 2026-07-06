@@ -1920,7 +1920,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       toast.error('Layout save failed. Your changes may not persist.');
       return;
     }
-    pendingLayoutRef.current = null;
+    if (pendingLayoutRef.current === next) {
+      pendingLayoutRef.current = null;
+    }
   }, [isLayoutEditor, company?.id, user?.id]);
 
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
