@@ -518,7 +518,7 @@ function TtmDscrChart() {
   }, [anchorEnd, view]);
 
   return (
-    <div className="mt-4 border-t border-white/10 pt-3">
+    <div className="pt-1">
       <div className="mb-2 flex items-center justify-between">
         <span
           className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-help"
