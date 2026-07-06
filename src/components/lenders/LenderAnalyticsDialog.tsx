@@ -1193,7 +1193,9 @@ export function LenderAnalyticsDialog({
                   <thead className="text-left text-slate-400">
                     <tr>
                       <th className="py-1.5">Deal</th><th>Stage</th>
-                      <th className="text-right">Amount</th><th>Owner</th><th className="text-right">Last Activity</th>
+                      <th className="text-right pr-4 whitespace-nowrap">Amount</th>
+                      <th className="pl-4 whitespace-nowrap">Owner</th>
+                      <th className="text-right pl-4 whitespace-nowrap">Last Activity</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1207,9 +1209,9 @@ export function LenderAnalyticsDialog({
                         <tr key={r.id} className="border-t border-slate-700/40">
                           <td className="py-1.5 text-slate-100 truncate max-w-[180px]">{r.deal.company || '—'}</td>
                           <td className="max-w-[160px]"><StageTag label={r.label} /></td>
-                          <td className="text-right text-slate-200 tabular-nums">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
-                          <td className="text-slate-300 truncate max-w-[100px]">{r.deal.manager || '—'}</td>
-                          <td className="text-right text-slate-400 tabular-nums">{new Date(r.updated_at).toLocaleDateString()}</td>
+                          <td className="text-right pr-4 text-slate-200 tabular-nums whitespace-nowrap">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
+                          <td className="pl-4 text-slate-300 truncate max-w-[120px]">{r.deal.manager || '—'}</td>
+                          <td className="text-right pl-4 text-slate-400 tabular-nums whitespace-nowrap">{new Date(r.updated_at).toLocaleDateString()}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -1295,7 +1297,9 @@ export function LenderAnalyticsDialog({
                         <thead className="text-left text-slate-500">
                           <tr>
                             <th className="py-1 px-1">Deal</th><th className="px-1">Lender</th>
-                            <th className="text-right px-1">Amount</th><th className="px-1">Owner</th><th className="text-right px-1">Date</th>
+                            <th className="text-right px-1 pr-4 whitespace-nowrap">Amount</th>
+                            <th className="px-1 pl-3 whitespace-nowrap">Owner</th>
+                            <th className="text-right px-1 pl-3 whitespace-nowrap">Date</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1303,9 +1307,9 @@ export function LenderAnalyticsDialog({
                             <tr key={r.id} className="border-t border-slate-700/40">
                               <td className="py-1 px-1 text-slate-100 truncate max-w-[160px]">{r.deal.company || '—'}</td>
                               <td className="py-1 px-1 text-slate-300 truncate max-w-[120px]">{r.name || '—'}</td>
-                              <td className="py-1 px-1 text-right text-slate-200 tabular-nums">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
-                              <td className="py-1 px-1 text-slate-300 truncate max-w-[90px]">{r.deal.manager || '—'}</td>
-                              <td className="py-1 px-1 text-right text-slate-400 tabular-nums">{new Date(r.updated_at).toLocaleDateString()}</td>
+                              <td className="py-1 px-1 pr-4 text-right text-slate-200 tabular-nums whitespace-nowrap">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
+                              <td className="py-1 px-1 pl-3 text-slate-300 truncate max-w-[110px]">{r.deal.manager || '—'}</td>
+                              <td className="py-1 px-1 pl-3 text-right text-slate-400 tabular-nums whitespace-nowrap">{new Date(r.updated_at).toLocaleDateString()}</td>
                             </tr>
                           ))}
                         </tbody>
