@@ -9908,7 +9908,7 @@ WAITING-ON / OUTSTANDING-ITEMS QUERIES (STRICT):
       : "";
 
     const apiMessages: any[] = [
-      { role: "system", content: systemPrompt + createIntentSystemBlock },
+      { role: "system", content: systemPrompt + outstandingRoutingBlock + createIntentSystemBlock },
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message },
     ];
