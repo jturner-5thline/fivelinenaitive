@@ -453,6 +453,174 @@ const renderDelta = (current: number | null, prior: number | null, label: string
 
 type DateRange = { start: Date; end: Date };
 type MonthBucket = { key: string; label: string; start: Date; end: Date };
+
+// ============================================================================
+// Debt by Rating (A/B/C) — stacked bar chart of debt account balances at
+// each period end, aggregated by the internal credit rating we assign per
+// account. Ratings are sourced from the Liabilities & Debt Service widget
+// account list above. Fetches historical balances via the
+// `quickbooks-balance-history` edge function, one call per realm.
+// ============================================================================
+type DebtRating = 'A' | 'B' | 'C';
+const DEBT_RATING_BY_ACCOUNT: Record<string, DebtRating> = {
+  'SBA Loan': 'A',
+  'M&T LOC': 'A',
+  'AMEX LOC': 'B',
+  'Other Loans': 'B',
+  'Headway LOC': 'C',
+};
+const DEBT_RATING_COLORS: Record<DebtRating, string> = {
+  A: '#3de89a', // green
+  B: '#f5c542', // yellow
+  C: '#ff6b7a', // red
+};
+
+function DebtByRatingWidget() {
+  const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const view: 'month' | 'quarter' =
+    reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
+  const anchorEnd = reportingPeriod?.end ?? timeframe.end;
+
+  const anchors = useMemo(() => {
+    if (!anchorEnd) return [] as { label: string; asOf: string }[];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const end = new Date(anchorEnd + 'T00:00:00');
+    const out: { label: string; asOf: string }[] = [];
+    if (view === 'quarter') {
+      const qEnd = endOfQuarter(end);
+      for (let i = 5; i >= 0; i--) {
+        const d = endOfQuarter(subQuarters(qEnd, i));
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        out.push({ label: `Q${q} ${String(d.getFullYear()).slice(2)}`, asOf: iso(d) });
+      }
+    } else {
+      const mEnd = endOfMonth(end);
+      for (let i = 11; i >= 0; i--) {
+        const d = endOfMonth(subMonths(mEnd, i));
+        out.push({
+          label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+          asOf: iso(d),
+        });
+      }
+    }
+    return out;
+  }, [anchorEnd, view]);
+
+  // Ratings apply to a stable subset of LIAB_ROWS (excludes CC's aggregate).
+  const ratedRows = useMemo(
+    () => LIAB_ROWS.filter((r) => DEBT_RATING_BY_ACCOUNT[r.name]),
+    [],
+  );
+  const realmIds = useMemo(
+    () => Array.from(new Set(ratedRows.map((r) => r.qbo!.realmId))),
+    [ratedRows],
+  );
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['debt-by-rating', view, anchors.map((a) => a.asOf).join(','), realmIds.join(',')],
+    enabled: anchors.length > 0 && realmIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const asOfDates = anchors.map((a) => a.asOf);
+      // Fetch balance-sheet reports per realm for every anchor date.
+      const byRealm = new Map<string, Map<string, any>>();
+      await Promise.all(
+        realmIds.map(async (realmId) => {
+          const { data: fnData, error } = await supabase.functions.invoke(
+            'quickbooks-balance-history',
+            { body: { realmId, asOfDates, accounting_method: 'Accrual' } },
+          );
+          if (error) throw error;
+          const results: Array<{ asOf: string; report: any | null }> = fnData?.results ?? [];
+          byRealm.set(realmId, new Map(results.map((r) => [r.asOf, r.report])));
+        }),
+      );
+
+      return anchors.map((a) => {
+        const totals: Record<DebtRating, number> = { A: 0, B: 0, C: 0 };
+        for (const row of ratedRows) {
+          const report = byRealm.get(row.qbo!.realmId)?.get(a.asOf) ?? null;
+          const val = report ? extractRowValue(report, row) : null;
+          if (val !== null && !isNaN(val)) {
+            totals[DEBT_RATING_BY_ACCOUNT[row.name]] += Math.abs(val);
+          }
+        }
+        return { label: a.label, ...totals };
+      });
+    },
+  });
+
+  const chartData = data ?? [];
+  const loading = isLoading || isFetching;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-3">
+          {(['A', 'B', 'C'] as DebtRating[]).map((r) => (
+            <div key={r} className="flex items-center gap-1.5 text-muted-foreground">
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-sm"
+                style={{ background: DEBT_RATING_COLORS[r] }}
+              />
+              <span>Rating {r}</span>
+            </div>
+          ))}
+        </div>
+        <span className="text-muted-foreground">
+          {view === 'quarter' ? 'Quarterly' : 'Monthly'}
+        </span>
+      </div>
+      <div className="min-h-0 flex-1">
+        {loading && chartData.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            Loading debt history…
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => {
+                  const abs = Math.abs(v);
+                  if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1)}M`;
+                  if (abs >= 1_000) return `$${(abs / 1_000).toFixed(0)}K`;
+                  return `$${abs}`;
+                }}
+                width={55}
+              />
+              <RTooltip
+                contentStyle={{
+                  background: 'rgba(20,22,32,0.95)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
+                formatter={(v: number, name: string) => [formatLiabCurrency(v), `Rating ${name}`]}
+              />
+              {/* Stack order: A (bottom, green) → B (yellow) → C (top, red). */}
+              <Bar dataKey="A" stackId="debt" fill={DEBT_RATING_COLORS.A} />
+              <Bar dataKey="B" stackId="debt" fill={DEBT_RATING_COLORS.B} />
+              <Bar dataKey="C" stackId="debt" fill={DEBT_RATING_COLORS.C} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
 type RevenueSeriesPoint = {
   key: string;
   month: string;
@@ -3363,7 +3531,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
         <div key="debt-rating" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
-            <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
+            <DebtByRatingWidget />
           </GridShell>
         </div>
         <div key="opex" className="h-full">
