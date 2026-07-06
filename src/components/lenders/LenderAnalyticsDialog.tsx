@@ -868,8 +868,6 @@ export function LenderAnalyticsDialog({
                     ) : (
                       <ul className="divide-y" style={{ borderColor: '#2a2f3d' }}>
                         {lenderStats.slice(0, 12).map((s) => {
-                          const tierLabel = s.tier === 'T1' ? 'High' : s.tier === 'T2' ? 'Mid' : s.tier === 'T3' ? 'Low' : null;
-                          const tierColor = s.tier === 'T1' ? '#4dd9ac' : s.tier === 'T2' ? '#60a5fa' : '#6b7280';
                           const highlighted = hoverLender === s.key;
                           return (
                             <li
@@ -884,18 +882,6 @@ export function LenderAnalyticsDialog({
                             >
                               <span className="flex-1 truncate text-[12.5px] text-slate-100">{s.name}</span>
                               <span className="tabular-nums text-[12.5px] text-slate-300 w-6 text-right">{s.count}</span>
-                              {tierLabel && (
-                                <span
-                                  className="text-[10px] font-medium rounded px-1.5 py-0.5 w-11 text-center"
-                                  style={{
-                                    background: `${tierColor}1f`,
-                                    color: tierColor,
-                                    border: `1px solid ${tierColor}40`,
-                                  }}
-                                >
-                                  {tierLabel}
-                                </span>
-                              )}
                             </li>
                           );
                         })}
