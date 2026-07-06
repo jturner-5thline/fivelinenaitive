@@ -1302,3 +1302,63 @@ function SegRow({ row, bold }: { row: { name: string; submitted: number; terms: 
     </tr>
   );
 }
+
+// ─── Lender Intelligence Dashboard primitives ─────────────────────────────
+const INTEL_CARD_STYLE: CSSProperties = {
+  background: '#1a1d27',
+  borderColor: '#2a2f3d',
+};
+
+function IntelKpi({
+  label,
+  value,
+  hint,
+  hintTone = 'muted',
+  loading,
+}: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  hintTone?: 'muted' | 'good' | 'bad';
+  loading?: boolean;
+}) {
+  const hintColor = hintTone === 'good' ? '#4dd9ac' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
+  return (
+    <div className="rounded-lg border p-3" style={INTEL_CARD_STYLE}>
+      <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="text-[24px] font-semibold tabular-nums text-slate-100 mt-0.5">
+        {loading ? <span className="inline-block h-6 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
+      </div>
+      {hint && <div className="text-[11px] mt-0.5" style={{ color: hintColor }}>{hint}</div>}
+    </div>
+  );
+}
+
+function IntelPanel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
+      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b" style={{ borderColor: '#2a2f3d' }}>
+        <div className="min-w-0">
+          <div className="text-[12px] font-medium text-slate-100 truncate">{title}</div>
+          {subtitle && <div className="text-[11px] text-slate-500 truncate">{subtitle}</div>}
+        </div>
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase shrink-0"
+          style={{ background: 'rgba(77, 217, 172, 0.12)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.35)' }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#4dd9ac' }} />
+          Live
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
