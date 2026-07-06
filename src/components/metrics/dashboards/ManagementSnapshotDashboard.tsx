@@ -483,6 +483,83 @@ function GenericDashboardCard({
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Local-quarter wrappers — Weekly Rundown sub-widgets own their own quarter
+// state, defaulting to the current calendar quarter, and expose a small
+// arrow-nav badge in the top-right corner to step back through prior quarters.
+// They deliberately ignore the global header timeframe selector.
+// ---------------------------------------------------------------------------
+function LocalQuarterDebtRevenue() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <DebtRevenueWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterFinServRevenue() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <FinServRevenueWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterDealsSigned() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <DealsSignedWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterFinServClientsSigned() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <FinServClientsSignedWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterTotalRevenue({
+  kpiConfig,
+  datarailsConfig,
+  entityFilter,
+  isEditMode,
+  onClick,
+}: {
+  kpiConfig: KPIDetailCardConfig;
+  datarailsConfig?: Partial<WidgetConfig>;
+  entityFilter?: string;
+  isEditMode?: boolean;
+  onClick?: () => void;
+}) {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <KPIDetailCard
+        kpiConfig={kpiConfig}
+        datarailsConfig={datarailsConfig}
+        timeWindow="quarter"
+        entityFilter={entityFilter}
+        isEditMode={isEditMode}
+        selectedPeriod={q}
+        onClick={onClick}
+      />
+    </>
+  );
+}
+
 export interface CardSizeOverride {
   w: number;
   h: number;
