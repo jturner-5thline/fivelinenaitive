@@ -136,7 +136,7 @@ function chartResolutionFor(id: string): string {
 /** Strip leading prefixes like "QB: " / "HS: " / "Cross: " from a label
  *  since the group header already conveys the source. */
 function cleanLabel(label: string): string {
-  return label.replace(/^(QB|HS|Cross):\s*/i, '');
+  return label.replace(/^(QB|HS|Cross|FinServ):\s*/i, '');
 }
 
 /**
