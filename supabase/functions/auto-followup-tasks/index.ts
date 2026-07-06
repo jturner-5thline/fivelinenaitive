@@ -87,8 +87,8 @@ Deno.serve(async (req) => {
       // ── 2. Owner must be an internal (@5thline.co) user. ──
       const { data: authUser } = await admin.auth.admin.getUserById(ev.user_id);
       const ownerEmail = (authUser?.user?.email || "").toLowerCase();
-      if (!ownerEmail.endsWith(INTERNAL_DOMAIN)) {
-        results.push({ event_id: ev.id, skipped: "owner_not_internal" });
+      if (!ALLOWED_OWNER_EMAILS.has(ownerEmail)) {
+        results.push({ event_id: ev.id, skipped: "owner_not_allowlisted" });
         await markProcessed(admin, ev.id);
         continue;
       }
@@ -252,7 +252,7 @@ async function scanNylasForInternalUsers(
 
   for (const tok of tokens || []) {
     const ownerEmail = (tok.email_address || "").toLowerCase();
-    if (!ownerEmail.endsWith(INTERNAL_DOMAIN)) continue;
+    if (!ALLOWED_OWNER_EMAILS.has(ownerEmail)) continue;
 
     try {
       const url = new URL(`${NYLAS_API_URI}/v3/grants/${tok.grant_id}/events`);
