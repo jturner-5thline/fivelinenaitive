@@ -682,6 +682,11 @@ FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - NEVER emit a create_followup_task whose title/description is a generic "update stage" reminder (e.g. "Update Stage for {Deal}"). Stage moves belong on update_deal_stage with a concrete proposed stage and evidence.
 - NEVER emit a create_followup_task whose title/description is a generic "follow up" / "follow-up" reminder (e.g. "Follow up on {Deal}", "Follow-up task", "Create follow-up task"). Tasks must describe the concrete action — who does what by when. Vague "follow up" cards are noise.
 
+DEAL STATUS UPDATE GATE — apply strictly
+- Deal STATUS is a HEALTH badge with a strict enum: "on-track", "at-risk", "off-track" (or cleared / no status). It is NEVER a lifecycle word like "Active", "Live", "In Progress", "Pending", "Working", "Open", "Closed", "Won", "Lost", "Funded", "Kickoff". Those are stages or narrative — not statuses.
+- ONLY propose update_deal_status when the evidence clearly maps to one of {on-track, at-risk, off-track}. If the evidence does not clearly warrant one of those three values, emit NOTHING for status (do not propose "Active" or any other value).
+- If you want to record narrative about how the deal is going, use add_status_note instead.
+
 MILESTONE UPDATE GATE — apply strictly
 - Do NOT propose update_milestone (or create_milestone) for a "Kick-Off" / "Kickoff" / "Kick Off" milestone based on emails, claap recordings, intro/discovery/scoping calls, or any meeting that is merely scheduled. An intro call is NEVER a kick-off.
 - ONLY propose update_milestone for a Kick-Off milestone when ALL of these are true:
@@ -995,6 +1000,14 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
       break;
     case "update_deal_status":
       if (!nonEmpty(pv.status)) return false;
+      {
+        // Deal STATUS is a strict enum: on-track | at-risk | off-track (or
+        // cleared). Anything else (e.g. "Active", "Live", "Pending") is not
+        // a real status value and must be dropped rather than surfaced.
+        const raw = String(pv.status ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+        const ALLOWED_STATUSES = new Set(["on-track", "at-risk", "off-track"]);
+        if (!ALLOWED_STATUSES.has(raw)) return false;
+      }
       break;
     case "update_funding_source":
       // Rule: update_funding_source MUST carry a concrete stage/substage/status
