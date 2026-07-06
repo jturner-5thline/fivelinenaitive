@@ -1639,9 +1639,8 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'finserv-next3',     x: 6, y: 14, w: 6, h: 4,  minW: 4, minH: 3 },
   // Auxiliary widgets kept in place at the bottom (not removed —
   // may render empty when their data source is unavailable).
-  { i: 'liabilities', x: 0, y: 23, w: 6,  h: 3, minW: 4, minH: 2 },
-  { i: 'dscr',        x: 6, y: 23, w: 6,  h: 4, minW: 4, minH: 2 },
-  { i: 'debt-rating', x: 0, y: 27, w: 12, h: 4, minW: 6, minH: 3 },
+  { i: 'liabilities', x: 0, y: 23, w: 12, h: 5, minW: 6, minH: 3 },
+  { i: 'dscr',        x: 6, y: 28, w: 6,  h: 4, minW: 4, minH: 2 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
