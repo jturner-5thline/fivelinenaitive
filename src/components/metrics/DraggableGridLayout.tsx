@@ -37,6 +37,8 @@ interface DraggableGridLayoutProps {
   onInteractionStart?: () => void;
   /** Called when a drag or resize interaction ends or is cancelled. */
   onInteractionEnd?: () => void;
+  /** Exposes the last layout known by react-grid-layout to the parent. */
+  onLatestLayoutRef?: (getLayout: () => GridLayoutItem[]) => void;
   /**
    * Controls react-grid-layout's auto-compaction.
    * Default 'vertical' preserves legacy behavior; pass `null` to keep widgets
@@ -59,6 +61,24 @@ function mapLayout(currentLayout: any[]): GridLayoutItem[] {
   }));
 }
 
+function layoutSignature(items: GridLayoutItem[]): string {
+  return JSON.stringify(items.map(item => ({ i: item.i, x: item.x, y: item.y, w: item.w, h: item.h })));
+}
+
+function readTranslate(style: CSSStyleDeclaration): { left: number; top: number } {
+  const transform = style.transform;
+  if (transform && transform !== 'none') {
+    const matrix = transform.match(/^matrix\(([^)]+)\)$/);
+    if (matrix) {
+      const parts = matrix[1].split(',').map(v => Number(v.trim()));
+      if (parts.length >= 6) return { left: parts[4] || 0, top: parts[5] || 0 };
+    }
+    const translate = transform.match(/translate(?:3d)?\(([-\d.]+)px,\s*([-\d.]+)px/);
+    if (translate) return { left: Number(translate[1]) || 0, top: Number(translate[2]) || 0 };
+  }
+  return { left: parseFloat(style.left || '0') || 0, top: parseFloat(style.top || '0') || 0 };
+}
+
 export function DraggableGridLayout({
   layout,
   onLayoutChange,
@@ -73,6 +93,7 @@ export function DraggableGridLayout({
   isResizableEnabled,
   onInteractionStart,
   onInteractionEnd,
+  onLatestLayoutRef,
   compactType = 'vertical',
   preventCollision = false,
 }: DraggableGridLayoutProps) {
@@ -82,10 +103,16 @@ export function DraggableGridLayout({
   // Suppresses click events fired immediately after a drag or resize,
   // so dragging/resizing a widget never triggers a drilldown or widget editor.
   const suppressClickUntilRef = useRef<number>(0);
+  const isPointerInteractingRef = useRef(false);
 
   useEffect(() => {
     latestLayoutRef.current = layout;
   }, [layout]);
+
+  useEffect(() => {
+    onLatestLayoutRef?.(() => latestLayoutRef.current.map(item => ({ ...item })));
+    return () => onLatestLayoutRef?.(() => latestLayoutRef.current.map(item => ({ ...item })));
+  }, [onLatestLayoutRef]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -132,6 +159,93 @@ export function DraggableGridLayout({
       return next;
     });
   }, [constraints]);
+
+  const readRenderedLayout = useCallback((): GridLayoutItem[] | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const nodes = Array.from(container.querySelectorAll<HTMLElement>('.react-grid-item:not(.react-grid-placeholder)'));
+    if (!nodes.length) return null;
+    const base = latestLayoutRef.current;
+    const marginX = 16;
+    const marginY = 16;
+    const cols = 12;
+    const colWidth = (containerWidth - marginX * (cols - 1)) / cols;
+    if (!Number.isFinite(colWidth) || colWidth <= 0) return null;
+
+    return base.map((item, index) => {
+      const node = nodes.find(el => el.dataset.gridItemId === item.i) ?? nodes[index];
+      if (!node) return { ...item };
+      const style = window.getComputedStyle(node);
+      const { left, top } = readTranslate(style);
+      const width = parseFloat(style.width || '0') || node.offsetWidth;
+      const height = parseFloat(style.height || '0') || node.offsetHeight;
+      const x = Math.max(0, Math.min(cols - 1, Math.round(left / (colWidth + marginX))));
+      const y = Math.max(0, Math.round(top / (rowHeight + marginY)));
+      const w = Math.max(item.minW ?? 1, Math.min(cols - x, Math.round((width + marginX) / (colWidth + marginX))));
+      const h = Math.max(item.minH ?? 1, Math.round((height + marginY) / (rowHeight + marginY)));
+      return { ...item, x, y, w, h };
+    });
+  }, [containerWidth, rowHeight]);
+
+  const flushRenderedLayout = useCallback((immediate = true) => {
+    if (!isEditMode) return;
+    const rendered = readRenderedLayout();
+    if (!rendered) return;
+    const mapped = mapLayout(rendered);
+    if (layoutSignature(mapped) === layoutSignature(latestLayoutRef.current)) return;
+    latestLayoutRef.current = mapped;
+    onLayoutChange(mapped, immediate);
+  }, [isEditMode, onLayoutChange, readRenderedLayout]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !isEditMode) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleFlush = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => flushRenderedLayout(false), 120);
+    };
+
+    const mutationObserver = new MutationObserver(scheduleFlush);
+    mutationObserver.observe(container, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+
+    const resizeObserver = new ResizeObserver(scheduleFlush);
+    container.querySelectorAll<HTMLElement>('.react-grid-item').forEach(node => resizeObserver.observe(node));
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      flushRenderedLayout(true);
+    };
+  }, [flushRenderedLayout, isEditMode]);
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    const finish = () => {
+      if (!isPointerInteractingRef.current) return;
+      isPointerInteractingRef.current = false;
+      flushRenderedLayout(true);
+      onInteractionEnd?.();
+    };
+    window.addEventListener('mouseup', finish, true);
+    window.addEventListener('touchend', finish, true);
+    window.addEventListener('touchcancel', finish, true);
+    return () => {
+      finish();
+      window.removeEventListener('mouseup', finish, true);
+      window.removeEventListener('touchend', finish, true);
+      window.removeEventListener('touchcancel', finish, true);
+    };
+  }, [flushRenderedLayout, isEditMode, onInteractionEnd]);
+
+  useEffect(() => {
+    return () => flushRenderedLayout(true);
+  }, [flushRenderedLayout]);
 
   const layouts = useMemo(() => {
     const constrained = applyConstraints(layout);
@@ -189,14 +303,29 @@ export function DraggableGridLayout({
       className={cn('draggable-grid-wrapper', className)}
       onClickCapture={handleClickCapture}
       onMouseDownCapture={(e) => {
-        if (matchesInteractionSelector(e.target)) onInteractionStart?.();
+        if (matchesInteractionSelector(e.target)) {
+          isPointerInteractingRef.current = true;
+          onInteractionStart?.();
+        }
       }}
       onTouchStartCapture={(e) => {
-        if (matchesInteractionSelector(e.target)) onInteractionStart?.();
+        if (matchesInteractionSelector(e.target)) {
+          isPointerInteractingRef.current = true;
+          onInteractionStart?.();
+        }
       }}
-      onMouseUpCapture={() => onInteractionEnd?.()}
-      onTouchEndCapture={() => onInteractionEnd?.()}
-      onTouchCancelCapture={() => onInteractionEnd?.()}
+      onMouseUpCapture={() => {
+        flushRenderedLayout(true);
+        onInteractionEnd?.();
+      }}
+      onTouchEndCapture={() => {
+        flushRenderedLayout(true);
+        onInteractionEnd?.();
+      }}
+      onTouchCancelCapture={() => {
+        flushRenderedLayout(true);
+        onInteractionEnd?.();
+      }}
     >
       <Responsive
         className="layout"

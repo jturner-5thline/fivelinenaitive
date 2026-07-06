@@ -1896,6 +1896,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
   const latestLayoutRef = useRef<GridLayoutItem[]>(cloneInsightsDefaultLayout());
+  const gridLatestLayoutGetterRef = useRef<(() => GridLayoutItem[]) | null>(null);
   const lastPersistedLayoutSignatureRef = useRef<string>('');
 
   useEffect(() => {
@@ -1915,6 +1916,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         .eq('dashboard_id', INSIGHTS_LAYOUT_DASHBOARD_ID)
         .maybeSingle();
       if (cancelled) return;
+      if (error) {
+        console.error('[Insights layout] load failed', error);
+      }
       if (!error && data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
         const persisted = data.layout as unknown as GridLayoutItem[];
         lastPersistedLayoutSignatureRef.current = getInsightsLayoutSignature(persisted);
@@ -1955,6 +1959,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       toast.error('Layout save failed. Your changes may not persist.');
       return false;
     }
+    console.info('[Insights layout] saved', { companyId: company.id, dashboardId: INSIGHTS_LAYOUT_DASHBOARD_ID, items: normalized.length });
     lastPersistedLayoutSignatureRef.current = signature;
     if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
       pendingLayoutRef.current = null;
@@ -1964,6 +1969,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
     const cloned = nextLayout.map(item => ({ ...item }));
+    console.info('[Insights layout] layout changed', { immediate: !!immediate, items: cloned.length });
     setLayout(cloned);
     if (!isLayoutEditor) return;
     pendingLayoutRef.current = cloned;
@@ -1994,8 +2000,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      if (pendingLayoutRef.current && isLayoutEditor && layoutHydrated) {
-        void persistLayout(pendingLayoutRef.current);
+      if (isLayoutEditor && layoutHydrated) {
+        const latestGridLayout = gridLatestLayoutGetterRef.current?.();
+        if (latestGridLayout?.length) {
+          pendingLayoutRef.current = latestGridLayout;
+        }
+        if (pendingLayoutRef.current) {
+          void persistLayout(pendingLayoutRef.current);
+        }
       }
     };
   }, [isLayoutEditor, layoutHydrated, persistLayout]);
@@ -2010,7 +2022,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [isEditMode, layout]);
 
   const handleSaveLayout = async () => {
-    const current = latestLayoutRef.current;
+    const current = gridLatestLayoutGetterRef.current?.() ?? latestLayoutRef.current;
     saveLayout(current, true);
     const saved = await persistLayout(current);
     if (!saved) return;
@@ -2026,6 +2038,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     editSnapshotRef.current = null;
     onExitEditMode?.();
   };
+
+  const handleGridLatestLayoutRef = React.useCallback((getLayout: () => GridLayoutItem[]) => {
+    gridLatestLayoutGetterRef.current = getLayout;
+  }, []);
 
   const handleResetLayout = async () => {
     await resetLayout();
@@ -3204,6 +3220,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
+        onLatestLayoutRef={handleGridLatestLayoutRef}
         isEditMode={isEditMode && isLayoutEditor}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
@@ -3211,7 +3228,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         compactType={null}
         preventCollision
       >
-        <div key="kpi-summary" className="h-full">
+        <div key="kpi-summary" data-grid-item-id="kpi-summary" className="h-full">
           <GridShell isEditMode={isEditMode} title="Key Stats">
             {(() => {
               const priorByReg: Record<string, number | null> = {
@@ -3531,7 +3548,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="monthly-revenue" className="h-full">
+        <div key="monthly-revenue" data-grid-item-id="monthly-revenue" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title={
@@ -3631,7 +3648,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
 
 
-        <div key="active-deals-list" className="h-full">
+        <div key="active-deals-list" data-grid-item-id="active-deals-list" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt Pipeline">
             <TooltipProvider>
               <div style={{ height: '100%', overflow: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3743,7 +3760,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
 
-        <div key="liabilities" className="h-full">
+        <div key="liabilities" data-grid-item-id="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
             <div className="grid h-full grid-cols-1 gap-x-4 gap-y-4 lg:grid-cols-2">
               <div className="min-w-0">
@@ -3781,12 +3798,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             </div>
           </GridShell>
         </div>
-        <div key="cashflow-12w" className="h-full">
+        <div key="cashflow-12w" data-grid-item-id="cashflow-12w" className="h-full">
           <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
             <CashflowForecastWidget />
           </GridShell>
         </div>
-        <div key="finserv-next3" className="h-full">
+        <div key="finserv-next3" data-grid-item-id="finserv-next3" className="h-full">
           <GridShell isEditMode={isEditMode} title="FinServ: Next 3 Months">
             <div className="flex h-full flex-col">
               <div className="flex flex-col divide-y divide-border">
@@ -3846,7 +3863,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             </div>
           </GridShell>
         </div>
-        <div key="opex" className="h-full">
+        <div key="opex" data-grid-item-id="opex" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title="OPEX"
@@ -3855,7 +3872,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <ConsolidatedOpexWidget />
           </GridShell>
         </div>
-        <div key="cashflow-ops" className="h-full">
+        <div key="cashflow-ops" data-grid-item-id="cashflow-ops" className="h-full">
           <GridShell
             isEditMode={isEditMode}
             title="CashFlow"
