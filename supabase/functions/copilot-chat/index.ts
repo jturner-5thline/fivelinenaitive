@@ -2408,6 +2408,8 @@ function selectToolsWithScopes(
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Always-available: waiting-on / outstanding-items inbox cross-reference.
+    "check_outstanding_items_status",
     // Phase 2: preview-only drafts and summaries.
     "draft_status_report", "follow_up_summary",
     // Phase 3: external integration stubs (preview-only — no external writes).
