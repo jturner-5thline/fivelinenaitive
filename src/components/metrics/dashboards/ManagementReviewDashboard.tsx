@@ -1772,7 +1772,24 @@ function useChart(
         }
       : config;
     const chart = new ChartJS(ref.current, finalConfig);
-    return () => chart.destroy();
+    // Chart.js occasionally initializes with 0x0 dimensions when the parent
+    // grid cell hasn't been measured yet (e.g. first paint of a react-grid-
+    // layout item, or a carousel slide entering view). In that case the
+    // canvas draws nothing until the user pokes the toggle, which triggers a
+    // recreate. Observe the container so we force a resize as soon as it
+    // actually gets a non-zero size.
+    const parent = ref.current.parentElement;
+    let ro: ResizeObserver | null = null;
+    if (parent && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        try { chart.resize(); } catch { /* chart already destroyed */ }
+      });
+      ro.observe(parent);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      chart.destroy();
+    };
   }, deps);
 }
 
