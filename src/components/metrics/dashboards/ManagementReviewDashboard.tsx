@@ -3531,7 +3531,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
         <div key="debt-rating" className="h-full">
           <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
-            <NaPlaceholder height={170} label="Data unavailable — requires lender rating history" />
+            <DebtByRatingWidget />
           </GridShell>
         </div>
         <div key="opex" className="h-full">
