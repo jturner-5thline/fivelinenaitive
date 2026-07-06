@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { syncTaskAfterCreate, retryAsanaSyncForTask } from '@/lib/asana/syncTaskAfterCreate';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Module-level flag: run the orphan-copilot-task backfill once per browser
 // session, the first time a CopilotTaskConfirm card is mounted.
@@ -109,6 +110,7 @@ const secondaryActionStyle: React.CSSProperties = {
 export function CopilotTaskConfirm({ action }: Props) {
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
+  const { user: currentUser } = useAuth();
   const initial = action.params || {};
   const auditId: string | null = (initial as any).audit_id || null;
 
@@ -121,7 +123,19 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [dueDate, setDueDate] = useState<string>(initial.due_date || '');
   const [taskType, setTaskType] = useState<string>(initial.task_type || 'task');
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
-  const [assigneeMe, setAssigneeMe] = useState<boolean>(!initial.assignee_user_id);
+  // "assigneeMe" means the task is assigned to the requesting user. It's
+  // ONLY true when either (a) no assignee was resolved (first-person
+  // reminder — executor defaults to caller) or (b) the resolved
+  // assignee_user_id equals the current user. Never fall back to "me" just
+  // because the server didn't attach a display name.
+  const isSelf = !!initial.assignee_user_id
+    && !!currentUser?.id
+    && String(initial.assignee_user_id) === String(currentUser.id);
+  const [assigneeMe, setAssigneeMe] = useState<boolean>(!initial.assignee_user_id || isSelf);
+  // Displayable assignee name — always prefer the resolved name, then any
+  // free-text name the LLM captured, then a neutral fallback so we never
+  // silently render "You" for a delegated task.
+  const assigneeDisplayName = (initial.assignee_name || '').trim() || 'assigned teammate';
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
@@ -581,7 +595,7 @@ export function CopilotTaskConfirm({ action }: Props) {
                 {dueDate ? `Due ${dueDate}` : 'No due date'}
               </div>
               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
-                {initial.deal_name ? `Deal: ${initial.deal_name}` : 'No deal'} · {assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name}
+                {initial.deal_name ? `Deal: ${initial.deal_name}` : 'No deal'} · {assigneeMe ? 'You' : assigneeDisplayName}
               </div>
             </div>
             <div style={{ padding: 8, borderRadius: 6, background: 'var(--glass-surface)', border: '1px solid var(--glass-border)' }}>
@@ -658,16 +672,16 @@ export function CopilotTaskConfirm({ action }: Props) {
               </button>
             </div>
           )}
-          {initial.assignee_user_id && initial.assignee_name && (
+          {initial.assignee_user_id && !isSelf && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
               <UserIcon size={12} style={{ color: 'hsl(var(--muted-foreground))' }} />
-              <span style={{ color: 'var(--foreground)' }}>{assigneeMe ? 'You' : initial.assignee_name}</span>
+              <span style={{ color: 'var(--foreground)' }}>{assigneeMe ? 'You' : assigneeDisplayName}</span>
               {isInferred('assignee_user_id') && !assigneeMe && <InferredTag />}
               <button
                 onClick={() => setAssigneeMe(m => !m)}
                 style={{ marginLeft: 'auto', fontSize: 11, color: 'hsl(var(--primary))', background: 'transparent', border: 'none', cursor: 'pointer' }}
               >
-                {assigneeMe ? `Assign to ${initial.assignee_name}` : 'Assign to me'}
+                {assigneeMe ? `Assign to ${assigneeDisplayName}` : 'Assign to me'}
               </button>
             </div>
           )}
@@ -675,7 +689,7 @@ export function CopilotTaskConfirm({ action }: Props) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <Row icon={Plus} label="Title" value={title} inferred={isInferred('title')} />
-          <Row icon={UserIcon} label="Owner" value={assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name} inferred={isInferred('assignee_user_id') && !assigneeMe} />
+          <Row icon={UserIcon} label="Owner" value={assigneeMe ? 'You' : assigneeDisplayName} inferred={isInferred('assignee_user_id') && !assigneeMe} />
           <Row icon={CalendarIcon} label="Due" value={formatDueLabel()} inferred={isInferred('due_date')} />
           {resolvedDealId && dealLinked && (
             <Row icon={Building2} label="Deal" value={resolvedDealName || initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, ChevronRight, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
@@ -350,7 +350,78 @@ function DealSuggestionChips({
 }
 
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
-function CopilotAssistantContent({ content }: { content: string }) {
+/**
+ * Build a stable key for a create_task confirm payload. Keying on
+ * normalized title + linked deal_id lets us detect when the LLM re-emits
+ * the same draft with corrected fields (assignee, due date, etc.) after
+ * the user asks for an edit.
+ */
+function supersededTaskDraftKey(parsed: any): string | null {
+  if (!parsed || parsed.action !== 'confirm' || parsed.action_type !== 'create_task') return null;
+  const title = String(parsed.params?.title || '').trim().toLowerCase();
+  if (!title) return null;
+  const dealId = String(parsed.params?.deal_id || '').trim().toLowerCase();
+  return `${title}|${dealId}`;
+}
+
+/**
+ * Scan every assistant message once and return the set of create_task
+ * draft keys whose LATEST occurrence lives in some message. The renderer
+ * then hides any occurrence that isn't in that latest message, so a
+ * follow-up like "change the assignee to James Turner" leaves only the
+ * updated card visible.
+ */
+function computeSupersededTaskDraftKeys(
+  messages: Array<{ id: string; role: string; content?: string }>,
+): Map<string, Set<string>> {
+  // msgId → set of superseded keys within that message
+  const byMsg = new Map<string, Set<string>>();
+  // key → latest msgId in which it appears
+  const latestByKey = new Map<string, string>();
+  const perMsgKeys = new Map<string, Set<string>>();
+  const re = /```json\s*(\{[\s\S]*?\})\s*```|(\{(?:[^{}]|\{[^{}]*\})*"action"\s*:\s*"[^"]+"(?:[^{}]|\{[^{}]*\})*\})/g;
+  for (const m of messages) {
+    if (m.role !== 'assistant' || !m.content) continue;
+    const keys = new Set<string>();
+    re.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = re.exec(m.content)) !== null) {
+      const jsonText = match[1] ?? match[2];
+      try {
+        const parsed = JSON.parse(jsonText);
+        const key = supersededTaskDraftKey(parsed);
+        if (key) keys.add(key);
+      } catch { /* ignore */ }
+    }
+    if (keys.size > 0) {
+      perMsgKeys.set(m.id, keys);
+      for (const k of keys) latestByKey.set(k, m.id);
+    }
+  }
+  for (const [msgId, keys] of perMsgKeys) {
+    const superseded = new Set<string>();
+    for (const k of keys) {
+      if (latestByKey.get(k) !== msgId) superseded.add(k);
+    }
+    if (superseded.size > 0) byMsg.set(msgId, superseded);
+  }
+  return byMsg;
+}
+
+function CopilotAssistantContent({
+  content,
+  supersededTaskDraftKeys,
+}: {
+  content: string;
+  /**
+   * Set of `create_task` draft keys (title|deal_id) that have been
+   * SUPERSEDED by a newer draft in a later assistant message. When the
+   * user edits a pending draft via chat ("change the assignee to James
+   * Turner"), the LLM re-emits create_task with the corrected params.
+   * We suppress the older card so only the freshest one is shown.
+   */
+  supersededTaskDraftKeys?: Set<string>;
+}) {
   const navigate = useNavigate();
   const disambiguationCandidates = useCopilotStore((s) => s.disambiguationCandidates);
 
@@ -499,6 +570,17 @@ function CopilotAssistantContent({ content }: { content: string }) {
         const key = `confirm:${parsed.action_type}:${discriminator}`;
         if (!seenActions.has(key)) {
           seenActions.add(key);
+          // Suppress `create_task` drafts that a later assistant message
+          // has already superseded (user edited the pending draft via
+          // chat — e.g. "change the assignee to James Turner"). The newer
+          // card in the newer message is the source of truth.
+          if (parsed.action_type === 'create_task') {
+            const taskKey = supersededTaskDraftKey(parsed);
+            if (taskKey && supersededTaskDraftKeys?.has(taskKey)) {
+              lastIndex = matchStart + match[0].length;
+              continue;
+            }
+          }
           segments.push({ type: 'confirm', value: parsed });
         }
       }
@@ -1135,6 +1217,13 @@ export function AICopilotPanel() {
       liveRegionRef.current.textContent = 'Copilot responded: ' + last.content.slice(0, 120);
     }
   }, [messages, isProcessing]);
+
+  // Cross-message pass to detect create_task drafts that have been
+  // superseded by a later message (user asked to edit a pending draft).
+  const supersededTaskDraftKeysByMsg = useMemo(
+    () => computeSupersededTaskDraftKeys(messages as any),
+    [messages],
+  );
 
   const handleNewConversation = useCallback(() => {
     setConversationId(null);
@@ -2191,7 +2280,12 @@ export function AICopilotPanel() {
                     }}
                     className="copilot-message-content"
                   >
-                    {msg.role === 'user' ? msg.content : <CopilotAssistantContent content={msg.content} />}
+                    {msg.role === 'user' ? msg.content : (
+                      <CopilotAssistantContent
+                        content={msg.content}
+                        supersededTaskDraftKeys={supersededTaskDraftKeysByMsg.get(msg.id)}
+                      />
+                    )}
                     {msg.role === 'assistant' && !isProcessing && (() => {
                       const c = (msg.content || '').trim();
                       // Strip CHIPS tokens and fenced JSON action blocks the
