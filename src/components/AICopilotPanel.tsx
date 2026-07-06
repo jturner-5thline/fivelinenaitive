@@ -349,6 +349,80 @@ function DealSuggestionChips({
   );
 }
 
+/**
+ * Collapse suggested-action chips that target the same entity + action type.
+ *
+ * Heuristic:
+ *   - Extract a leading action verb (add/create/schedule/log/update/draft/send/…)
+ *   - Extract the salient entity token (proper-noun sequence right after the verb)
+ *   - Extract the object-type keyword (contact, task, deal, meeting, note, email…)
+ * Chips sharing the same (verb, entity, object-type) fingerprint collapse to
+ * the single most specific label (the longest one — more qualifiers = more specific).
+ * Order is preserved by first-occurrence so LLM-authored relevance wins.
+ */
+function dedupeSuggestionChips(chips: string[]): string[] {
+  if (chips.length <= 1) return chips;
+
+  const ACTION_RE =
+    /^(add|create|new|schedule|book|log|record|update|edit|change|set|draft|write|compose|send|reply|assign|invite|link|attach|remove|delete|mark|complete|close|open|move|convert)\b/i;
+  const OBJECT_KEYWORDS = [
+    'contact', 'task', 'todo', 'deal', 'meeting', 'call', 'note',
+    'email', 'reply', 'message', 'reminder', 'event', 'lender',
+    'funding source', 'company', 'document', 'file', 'stage', 'status',
+  ];
+  const STOPWORDS = new Set([
+    'a', 'an', 'the', 'as', 'for', 'to', 'of', 'with', 'and', 'or',
+    'new', 'this', 'that',
+  ]);
+
+  const fingerprint = (raw: string): string => {
+    const s = raw.trim().toLowerCase();
+    const verbMatch = s.match(ACTION_RE);
+    const verb = verbMatch ? verbMatch[1].toLowerCase() : '';
+
+    // Object-type keyword anywhere in the chip.
+    let object = '';
+    for (const kw of OBJECT_KEYWORDS) {
+      if (s.includes(kw)) { object = kw; break; }
+    }
+
+    // Salient entity = tokens after the verb minus stopwords and the object kw.
+    const afterVerb = verb ? s.slice(verbMatch![0].length) : s;
+    const entityTokens = afterVerb
+      .replace(/[.,!?;:()"']/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((t) => !STOPWORDS.has(t))
+      .filter((t) => !OBJECT_KEYWORDS.includes(t))
+      // Titles/roles that qualify the entity but shouldn't split it.
+      .filter((t) => !/^(ceo|cfo|coo|cto|vp|founder|owner|manager|director|head|lead)$/i.test(t));
+    const entity = entityTokens.slice(0, 3).sort().join(' ');
+
+    return `${verb}|${object}|${entity}`;
+  };
+
+  // Group by fingerprint, keeping first-seen order.
+  const groups = new Map<string, { firstIdx: number; labels: string[] }>();
+  chips.forEach((label, idx) => {
+    const fp = fingerprint(label);
+    // Chips with no verb AND no object fall into unique buckets (don't over-merge).
+    const key = fp === '||' ? `__unique_${idx}__` : fp;
+    const bucket = groups.get(key);
+    if (bucket) {
+      bucket.labels.push(label);
+    } else {
+      groups.set(key, { firstIdx: idx, labels: [label] });
+    }
+  });
+
+  return Array.from(groups.values())
+    .sort((a, b) => a.firstIdx - b.firstIdx)
+    .map(({ labels }) =>
+      // Most specific = longest label; ties break to first-seen (stable sort).
+      labels.slice().sort((a, b) => b.length - a.length)[0]
+    );
+}
+
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
 /**
  * Build a stable key for a create_task confirm payload. Keying on
