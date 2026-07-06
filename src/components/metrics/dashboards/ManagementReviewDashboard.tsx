@@ -337,8 +337,49 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
     staleTime: 60_000,
   });
 
+  // Roll-up totals for the header ("Total" pill in the top-left).
+  // Liabilities polarity: an INCREASE in total is unfavorable (red).
+  const rowValues = LIAB_ROWS.map((row) => {
+    const realmId = row.qbo?.realmId ?? row.qboAggregate?.realmId;
+    const snap = realmId ? snapshots[realmId] : undefined;
+    const current = snap?.current ? extractRowValue(snap.current, row) : null;
+    const prior = snap?.prior ? extractRowValue(snap.prior, row) : null;
+    return { current, prior };
+  });
+  const totalCurrent = rowValues.reduce<number | null>(
+    (acc, r) => (r.current === null ? acc : (acc ?? 0) + r.current),
+    null,
+  );
+  const totalDelta = rowValues.reduce<number | null>(
+    (acc, r) => (r.current === null || r.prior === null ? acc : (acc ?? 0) + (r.current - r.prior)),
+    null,
+  );
+  const totalPct = totalDelta !== null && totalCurrent !== null && totalCurrent - totalDelta !== 0
+    ? (totalDelta / Math.abs(totalCurrent - totalDelta)) * 100
+    : null;
+  const totalDeltaColor = totalDelta === null || totalDelta === 0
+    ? 'rgba(255,255,255,0.55)'
+    : totalDelta > 0
+      ? '#ff6b7a'
+      : '#3de89a';
+  const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
+
   return (
     <div className="text-xs">
+      <div className="flex items-baseline gap-2 px-2 pb-2">
+        <span className="text-[9px] font-bold uppercase tracking-[1px] text-white/55">Total</span>
+        <span className="text-[15px] font-bold text-white leading-none">
+          {totalCurrent !== null ? formatLiabCurrency(totalCurrent) : '—'}
+        </span>
+        {totalDelta !== null && (
+          <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: totalDeltaColor }}>
+            {signPrefix(totalDelta)}{formatLiabCurrency(Math.abs(totalDelta))}
+            {totalPct !== null && (
+              <span className="ml-1 opacity-85">({signPrefix(totalPct)}{Math.abs(totalPct).toFixed(1)}%)</span>
+            )}
+          </span>
+        )}
+      </div>
       <div className="grid grid-cols-[1.4fr_1fr_1fr_1fr] gap-2 px-2 pb-2 border-b border-white/10 text-[10px] uppercase tracking-wide text-muted-foreground">
         <div>Account</div>
         <div className="text-right">Current Balance</div>
@@ -360,7 +401,6 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
           : delta > 0
             ? 'text-[#ff6b7a]'
             : 'text-[#3de89a]';
-        const signPrefix = (n: number) => (n > 0 ? '+' : n < 0 ? '−' : '');
         const clickable = !!onOpenDrilldown && !!realmId;
         return (
           <button
