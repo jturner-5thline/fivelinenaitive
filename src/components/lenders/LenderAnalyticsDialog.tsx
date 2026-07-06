@@ -1379,12 +1379,12 @@ function IntelKpi({
 }) {
   const hintColor = hintTone === 'good' ? '#4dd9ac' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
   return (
-    <div className="rounded-lg border p-3" style={INTEL_CARD_STYLE}>
-      <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
-      <div className="text-[24px] font-semibold tabular-nums text-slate-100 mt-0.5">
-        {loading ? <span className="inline-block h-6 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
+    <div className="rounded-lg border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500 font-medium">{label}</div>
+      <div className="text-[38px] leading-none font-semibold tabular-nums" style={{ color: '#4dd9ac' }}>
+        {loading ? <span className="inline-block h-9 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
       </div>
-      {hint && <div className="text-[11px] mt-0.5" style={{ color: hintColor }}>{hint}</div>}
+      {hint && <div className="text-[11px] leading-snug mt-0.5" style={{ color: hintColor }}>{hint}</div>}
     </div>
   );
 }
@@ -1392,28 +1392,75 @@ function IntelKpi({
 function IntelPanel({
   title,
   subtitle,
+  subtitleTone = 'muted',
+  badge,
   children,
 }: {
   title: string;
   subtitle?: string;
+  subtitleTone?: 'muted' | 'accent';
+  badge?: 'live' | 'auto-filled';
   children: React.ReactNode;
 }) {
+  const badgeStyle =
+    badge === 'auto-filled'
+      ? { background: 'rgba(96, 165, 250, 0.15)', color: '#60a5fa', border: '1px solid rgba(96, 165, 250, 0.4)' }
+      : { background: 'rgba(77, 217, 172, 0.15)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.4)' };
+  const badgeLabel = badge === 'auto-filled' ? 'AUTO-FILLED' : 'LIVE';
+  const subtitleColor = subtitleTone === 'accent' ? '#4dd9ac' : '#64748b';
   return (
     <div className="rounded-lg border overflow-hidden" style={INTEL_CARD_STYLE}>
-      <div className="flex items-center justify-between gap-2 px-3 pt-2.5 pb-2 border-b" style={{ borderColor: '#2a2f3d' }}>
+      <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2">
         <div className="min-w-0">
-          <div className="text-[12px] font-medium text-slate-100 truncate">{title}</div>
-          {subtitle && <div className="text-[11px] text-slate-500 truncate">{subtitle}</div>}
+          <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400 truncate">
+            {title}
+          </div>
+          {subtitle && (
+            <div className="text-[11.5px] mt-1 truncate" style={{ color: subtitleColor }}>
+              {subtitle}
+            </div>
+          )}
         </div>
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase shrink-0"
-          style={{ background: 'rgba(77, 217, 172, 0.12)', color: '#4dd9ac', border: '1px solid rgba(77, 217, 172, 0.35)' }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#4dd9ac' }} />
-          Live
-        </span>
+        {badge && (
+          <span
+            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-semibold tracking-wider shrink-0"
+            style={badgeStyle}
+          >
+            {badgeLabel}
+          </span>
+        )}
       </div>
       {children}
+    </div>
+  );
+}
+
+function PhaseCard({
+  title,
+  description,
+  phase,
+}: {
+  title: string;
+  description: string;
+  phase: number;
+}) {
+  return (
+    <div
+      className="rounded-lg border p-4 flex flex-col gap-2 opacity-70"
+      style={{ background: '#151822', borderColor: '#242835' }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-[0.14em] font-medium text-slate-400">
+          {title}
+        </div>
+        <span
+          className="text-[10px] font-medium rounded px-1.5 py-0.5 shrink-0"
+          style={{ background: '#242835', color: '#94a3b8', border: '1px solid #2a2f3d' }}
+        >
+          Phase {phase}
+        </span>
+      </div>
+      <div className="text-[11.5px] text-slate-500 leading-snug">{description}</div>
     </div>
   );
 }
