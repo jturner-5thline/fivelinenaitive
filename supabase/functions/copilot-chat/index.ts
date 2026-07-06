@@ -4858,8 +4858,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           .from("deals")
           .select("id")
           .is("merged_into", null)
-          .in("status", ["active", "pending", "in_progress"])
-          .or(`user_id.eq.${userId},manager_id.eq.${userId}`)
+          .not("status", "in", "(archived,on-hold,closed-won,closed-lost)")
           .limit(15);
         try { q = applyDealScope(q, scope, { allowOutOfScope: true }); } catch { /* ignore */ }
         const { data: userDeals } = await q;
