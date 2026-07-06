@@ -6611,14 +6611,22 @@ export default function DealDetail() {
               lenderMetrics={(() => {
                 const metrics: Record<string, { activeDealCount: number; outstandingItemsCount: number; openTasksCount: number; contactName?: string; notesOutSince?: string }> = {};
                 deal.lenders?.forEach(l => {
+                  // Defensive: skip records missing a usable name — building
+                  // metrics for a null/undefined name previously threw and
+                  // crashed the entire Funding Sources section.
+                  if (!l || typeof l.name !== 'string' || !l.name.trim()) {
+                    // eslint-disable-next-line no-console
+                    console.warn('[FundingSources] skipping deal_lender with missing name for metrics', l?.id);
+                    return;
+                  }
                   const key = l.name.toLowerCase().trim();
-                  const masterLender = masterLenders.find(ml => ml.name.toLowerCase().trim() === key);
-                  const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => r.toLowerCase().trim() === key));
+                  const masterLender = masterLenders.find(ml => typeof ml?.name === 'string' && ml.name.toLowerCase().trim() === key);
+                  const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => typeof r === 'string' && r.toLowerCase().trim() === key));
                   // Count active deals for this funding source across all deals
                   let activeDealCount = 0;
                   deals.forEach(d => {
                     d.lenders?.forEach(dl => {
-                      if (dl.name.toLowerCase().trim() === key && dl.trackingStatus !== 'passed' && dl.trackingStatus !== 'on-deck') {
+                      if (dl && typeof dl.name === 'string' && dl.name.toLowerCase().trim() === key && dl.trackingStatus !== 'passed' && dl.trackingStatus !== 'on-deck') {
                         activeDealCount++;
                       }
                     });
