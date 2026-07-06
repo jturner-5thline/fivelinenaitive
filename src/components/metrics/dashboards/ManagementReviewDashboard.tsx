@@ -1868,7 +1868,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout,
     resetLayout,
-  } = useGridLayout('insights-management-review-v18', INSIGHTS_LAYOUT_IDS, {
+  } = useGridLayout('insights-management-review-v19', INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
   });
