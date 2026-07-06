@@ -9882,6 +9882,16 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
 - If the focused deal is set, at least one chip should reference it by name.
 - DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
+    // Routing hint for waiting-on / outstanding-items queries.
+    const outstandingRoutingBlock = `
+
+WAITING-ON / OUTSTANDING-ITEMS QUERIES (STRICT):
+- Whenever the user asks any variation of "what am I waiting for", "what am I waiting on", "what's outstanding", "what are we still missing", "anything outstanding on <deal>", "what haven't I received yet", or "did anyone send me <X>", your FIRST tool call MUST be check_outstanding_items_status.
+  - If the user names a deal, pass deal_id (preferred) or deal_query.
+  - If no deal is named and there is no focused deal, omit both — the tool will fan out across the user's active deals.
+- Do NOT fall back to get_outstanding_items for these questions — that tool does not cross-reference the inbox and will not surface "recently received" items.
+- Render the result exactly as instructed in the tool's rendering_guidance field.`;
+
     // ── CREATE-intent preflight (system-level) ──
     // When the user's message begins with create/add/new/etc + "deal", force
     // the model's FIRST tool call to be create_deal so the same-name collision
