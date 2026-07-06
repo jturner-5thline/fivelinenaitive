@@ -1405,7 +1405,7 @@ function MetricsInner() {
     canEditMetrics,
   } = useMetricsWidgets();
 
-  const [selectedDashboard, setSelectedDashboard] = useState('management-review');
+  const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Per-user Insights dashboard restrictions. Users listed here only see the
@@ -1458,9 +1458,8 @@ function MetricsInner() {
       return;
     }
     // Plain navigation to /insights (e.g. clicking the sidebar item) should
-    // always land on the Insights Dashboard rather than whatever dashboard
-    // was last selected in this session.
-    setSelectedDashboard('management-review');
+    // always land on the Weekly Rundown dashboard.
+    setSelectedDashboard('management-snapshot');
   }, [searchParams]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
