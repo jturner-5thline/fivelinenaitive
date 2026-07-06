@@ -8277,7 +8277,13 @@ CURRENT CONTEXT:
 - Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
-${prefetched.block}${dealResolverBlock}
+${prefetched.block}${dealResolverBlock}${userDealCountBlock}
+
+USER DEAL COUNT AUTHORITY RULE (STRICT — overrides every other source):
+- If a "USER DEAL COUNT AUTHORITY" block is present above, that count is the ONLY correct answer to any "how many deals does <name> manage/own/handle" question in this turn.
+- State the number exactly once, using the value from the block. NEVER emit a second sentence with a different count. NEVER hedge with "or X" / "actually X" / "previously X".
+- Do NOT re-derive the count via search_deals, get_pipeline_snapshot, or any other tool. Do NOT reason your way to a different number.
+- If you catch yourself about to state a different number, stop, delete that draft, and use the authoritative count.
 
 DEAL CONTEXT RULES (STRICT — apply to every deal-related question):
 1. Default deal: if the user is on a deal page (entityType=deal above) OR a deal was @mentioned, that is THE focused deal. Phrases like "this deal", "this company", "here", "what's going on with this", "summarize this", "open tasks here", "next steps here", "who owns this" ALWAYS refer to that focused deal — never another.
