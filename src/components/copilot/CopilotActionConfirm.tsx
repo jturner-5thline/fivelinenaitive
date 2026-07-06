@@ -351,6 +351,15 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
 
+      case 'delete_task':
+        queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        if (dealId) {
+          queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+        }
+        window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
+        break;
+
       case 'update_milestone':
         if (dealId) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
