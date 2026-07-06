@@ -94,21 +94,22 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         'min-h-11 rounded-[22px]',
         'flex items-center gap-3 pl-1.5 pr-4 py-1',
         'text-left flex-none shrink-0',
-        'opacity-100',
-        'transition-[box-shadow,border-color] duration-200 ease-out',
-        'hover:shadow-[0_20px_48px_rgba(2,10,20,0.72),0_8px_20px_rgba(20,110,140,0.35),inset_0_1px_0_rgba(255,255,255,0.12),0_0_0_1px_rgba(94,190,210,0.5)]',
+        'opacity-70 hover:opacity-100 focus-within:opacity-100',
+        'transition-[opacity,box-shadow] duration-200 ease-out',
+        'hover:shadow-[0_16px_40px_rgba(8,18,42,0.6),0_4px_12px_rgba(37,99,235,0.18),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(59,130,246,0.32)]',
         'animate-in fade-in duration-150',
         className,
       )}
       style={{
         background:
-          'linear-gradient(135deg, rgb(38, 118, 140) 0%, rgb(30, 100, 124) 50%, rgb(42, 128, 152) 100%)',
-        backdropFilter: 'none',
-        WebkitBackdropFilter: 'none',
-        border: '1px solid rgba(170, 225, 240, 0.55)',
+          'linear-gradient(135deg, rgba(12, 22, 48, 0.78) 0%, rgba(14, 18, 32, 0.62) 45%, rgba(18, 36, 72, 0.72) 100%)',
+        backdropFilter: 'blur(18px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+        border: '1px solid rgba(120, 165, 245, 0.28)',
         boxShadow:
-          '0 12px 30px rgba(2, 10, 20, 0.55), 0 4px 12px rgba(30, 110, 140, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.25)',
-        transition: 'box-shadow 180ms ease-out, border-color 180ms ease-out',
+          '0 10px 32px rgba(8, 18, 42, 0.5), 0 2px 8px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(96, 145, 230, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.25)',
+        transition: 'opacity 180ms ease-out',
+        opacity: forceFocused ? 1 : undefined,
         ...style,
       }}
       onClick={() => inputRef?.current?.focus()}
@@ -165,7 +166,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       </Tooltip>
 
       {/* Search affordance */}
-      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-teal-200/70 group-hover:text-teal-100/90 transition-colors" />
+      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-sky-300/55 group-hover:text-sky-200/80 transition-colors" />
 
       {/* Inline composer — multi-line textarea so Shift+Enter inserts a
           newline, pasted bullet lists keep their breaks, and long prompts
@@ -188,7 +189,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       />
 
       {showShortcutHint && (
-        <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-teal-300/25 bg-teal-300/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-teal-100/80 group-hover:text-teal-50/95 transition-colors shrink-0">
+        <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-sky-400/20 bg-sky-400/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-sky-200/60 group-hover:text-sky-100/85 transition-colors shrink-0">
           ⌘J
         </kbd>
       )}
@@ -280,7 +281,7 @@ function AskNaitiveBarTextarea({
       aria-autocomplete={ariaControls ? 'list' : undefined}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
-        className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none resize-none text-[13px] leading-6 font-normal text-white/95 placeholder:text-white/60 py-1"
+      className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none resize-none text-[13px] leading-6 font-normal text-white/85 placeholder:text-white/45 py-1"
       style={{ maxHeight: 168 }}
     />
   );
