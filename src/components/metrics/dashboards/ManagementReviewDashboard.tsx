@@ -3536,7 +3536,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid h-full grid-cols-1 gap-x-4 gap-y-4 lg:grid-cols-2">
               <div className="min-w-0">
                 <LiabilitiesDebtServiceTable
                   onOpenDrilldown={(row) => {
@@ -3559,10 +3559,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     });
                   }}
                 />
-                <TtmDscrChart />
               </div>
               <div className="min-w-0 min-h-[240px]">
                 <DebtByRatingWidget />
+              </div>
+              <div className="min-w-0">
+                <TtmDscrChart />
+              </div>
+              <div className="min-w-0">
+                <MonthlyDebtPaymentsChart />
               </div>
             </div>
           </GridShell>
