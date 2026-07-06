@@ -7218,6 +7218,25 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         }
         return { success: false, error: (e as Error).message };
       }
+      // Persist the user's stated reason as a first-class status note on
+      // the deal (deal_status_notes), not just as activity-log text.
+      const statusNote = typeof params.status_note === "string" ? params.status_note.trim() : "";
+      if (statusNote) {
+        const { error: noteErr } = await supabase.from("deal_status_notes").insert({
+          deal_id: params.deal_id,
+          user_id: userId,
+          note: statusNote,
+        });
+        if (noteErr) {
+          console.error("[update_deal_status] status-note insert failed", noteErr);
+          return {
+            success: false,
+            error: `Status was updated but the note failed to save: ${noteErr.message}`,
+            error_code: "STATUS_NOTE_NOT_PERSISTED",
+            mismatches: [{ field: "status_note", expected: statusNote, actual: null }],
+          };
+        }
+      }
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
         activity_type: "status_change",
