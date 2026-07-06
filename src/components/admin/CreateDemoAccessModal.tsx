@@ -117,6 +117,8 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const provisioned = results.filter((r) => r.provisioned ?? r.ok).length;
       const userFailures = results.filter((r) => !(r.provisioned ?? r.ok));
       const sent = results.filter((r) => r.email_sent ?? r.invited).length;
+      const seedError = data?.seedError as string | null | undefined;
+      const seeded = data?.seeded as { canOpenWorkspace?: boolean; missing?: Record<string, number> } | null | undefined;
       const emailFailures = sendWelcomeEmail
         ? results.filter(
             (r) => (r.provisioned ?? r.ok) && !(r.email_sent ?? r.invited) && !r.email_skipped,
@@ -142,6 +144,14 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
           { duration: 10000 },
         );
         return; // keep modal open so admin can fix and retry
+      }
+
+      if (seedError || seeded?.canOpenWorkspace === false) {
+        toast.error(`Demo workspace created, but seeding failed for ${companyName}.`, {
+          description: seedError || `Missing: ${Object.keys(seeded?.missing ?? {}).join(', ') || 'seed data'}`,
+          duration: 10000,
+        });
+        return; // keep modal open so admin can repair instead of assuming the tenant is ready
       }
 
       if (sendWelcomeEmail && sent > 0) {
