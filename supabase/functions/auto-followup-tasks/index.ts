@@ -16,6 +16,17 @@ const corsHeaders = {
 };
 
 const INTERNAL_DOMAIN = "@5thline.co";
+// Strict allowlist — auto follow-up tasks are ONLY created for these six
+// 5th Line users. No other user (internal domain or otherwise) will ever
+// have a follow-up task auto-created by this function.
+const ALLOWED_OWNER_EMAILS = new Set<string>([
+  "jturner@5thline.co",
+  "nheikali@5thline.co",
+  "jmoffitt@5thline.co",
+  "swilliams@5thline.co",
+  "ppina@5thline.co",
+  "ffustinoni@5thline.co",
+]);
 const ASANA_PROJECT_GID = "1130343959659969";
 const ASANA_SECTION_GID = "1200505058741223";
 const ASANA_API = "https://app.asana.com/api/1.0";
@@ -76,8 +87,8 @@ Deno.serve(async (req) => {
       // ── 2. Owner must be an internal (@5thline.co) user. ──
       const { data: authUser } = await admin.auth.admin.getUserById(ev.user_id);
       const ownerEmail = (authUser?.user?.email || "").toLowerCase();
-      if (!ownerEmail.endsWith(INTERNAL_DOMAIN)) {
-        results.push({ event_id: ev.id, skipped: "owner_not_internal" });
+      if (!ALLOWED_OWNER_EMAILS.has(ownerEmail)) {
+        results.push({ event_id: ev.id, skipped: "owner_not_allowlisted" });
         await markProcessed(admin, ev.id);
         continue;
       }
@@ -241,7 +252,7 @@ async function scanNylasForInternalUsers(
 
   for (const tok of tokens || []) {
     const ownerEmail = (tok.email_address || "").toLowerCase();
-    if (!ownerEmail.endsWith(INTERNAL_DOMAIN)) continue;
+    if (!ALLOWED_OWNER_EMAILS.has(ownerEmail)) continue;
 
     try {
       const url = new URL(`${NYLAS_API_URI}/v3/grants/${tok.grant_id}/events`);
