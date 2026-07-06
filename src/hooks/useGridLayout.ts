@@ -190,7 +190,7 @@ export function useGridLayout(
       }
       setIsLoaded(true);
     })();
-  }, [company?.id, dashboardId, debugLabel, defaultWidgetIds, buildDefaults]);
+  }, [company?.id, dashboardId, debugLabel, widgetIdsKey, buildDefaults]);
 
   // Reconcile a saved layout against the current widget ID set and apply it.
   const applyReconciled = useCallback((saved: GridLayoutItem[] | null) => {
