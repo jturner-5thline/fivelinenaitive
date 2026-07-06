@@ -2939,7 +2939,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   if (dealIdsArr.length > 0) {
     const { data: existing } = await supabase
       .from("ai_action_queue")
-      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source")
+      .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
       .in("deal_id", dealIdsArr)
       .in("status", ["pending", "approved"]);
     for (const e of existing ?? []) {
