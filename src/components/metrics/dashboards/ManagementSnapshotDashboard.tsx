@@ -550,7 +550,7 @@ function LocalQuarterTotalRevenue({
       <KPIDetailCard
         kpiConfig={kpiConfig}
         datarailsConfig={datarailsConfig}
-        timeWindow="quarter"
+        timeWindow="qtd"
         entityFilter={entityFilter}
         isEditMode={isEditMode}
         selectedPeriod={q}
