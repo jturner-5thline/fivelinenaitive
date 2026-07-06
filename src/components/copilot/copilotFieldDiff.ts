@@ -34,6 +34,14 @@ export interface FieldDiff {
   oldValue?: unknown;
   /** New value the AI is about to write. */
   newValue: unknown;
+  /**
+   * When present, this field is enum-constrained and MUST be rendered
+   * as a <select> dropdown in the confirm card (pre-selected to
+   * newValue). The backend attaches the option list on the confirm
+   * envelope so the client renders the same values the server will
+   * accept — free text is rejected before the card ever renders.
+   */
+  options?: Array<{ value: string; label: string }>;
 }
 
 // Action types whose handler funnels through verifiedDealUpdate in
