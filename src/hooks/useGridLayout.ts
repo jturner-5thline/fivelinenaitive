@@ -170,11 +170,15 @@ export function useGridLayout(
 
       const loadedLayout = extractLayoutFromPayload(data?.layout);
       if (loadedLayout && loadedLayout.length > 0) {
-        savedLayoutRef.current = loadedLayout;
+        const validIds = new Set(defaultWidgetIds);
+        const filtered = loadedLayout.filter(l => validIds.has(l.i));
+        savedLayoutRef.current = filtered;
         hasSavedRowRef.current = true;
+        setLayout(filtered);
       } else {
         savedLayoutRef.current = null;
         hasSavedRowRef.current = false;
+        setLayout(buildDefaults(defaultWidgetIds));
       }
       if (debugLabel) {
         const source = loadedLayout && loadedLayout.length > 0 ? 'SHARED BACKEND' : 'CODED DEFAULT';
@@ -186,7 +190,7 @@ export function useGridLayout(
       }
       setIsLoaded(true);
     })();
-  }, [company?.id, dashboardId, debugLabel]);
+  }, [company?.id, dashboardId, debugLabel, defaultWidgetIds, buildDefaults]);
 
   // Reconcile a saved layout against the current widget ID set and apply it.
   const applyReconciled = useCallback((saved: GridLayoutItem[] | null) => {
