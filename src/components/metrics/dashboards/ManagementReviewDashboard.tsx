@@ -3122,7 +3122,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {isEditMode && (
+      {isEditMode && isLayoutEditor && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
             Layout edit mode — drag titles to move, drag corners to resize
@@ -3144,7 +3144,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
-        isEditMode={isEditMode}
+        isEditMode={isEditMode && isLayoutEditor}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
         draggableCancel=".react-resizable-handle"
