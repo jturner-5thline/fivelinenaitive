@@ -3426,6 +3426,18 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         safeDue = args.due_date.slice(0, 10);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDue)) safeDue = null;
       }
+      // Hard guard: NEVER let a task draft render without a due date. The
+      // system prompt tells the model to ask a chip-based clarifying
+      // question first; this guard catches any regression where the model
+      // called create_task with due_date missing/invalid anyway, and
+      // forces the same clarifying question with the same chips.
+      if (!safeDue) {
+        return {
+          error: "MISSING_DUE_DATE: The user did not provide a due date. DO NOT retry create_task yet. Reply with EXACTLY one short question and the chip line, verbatim, nothing else:\n\nWhen is this due?\n[[CHIPS:[\"Today\",\"Tomorrow\",\"This Friday\",\"Pick a date\"]]]\n\nOn the user's next turn, map their reply to a YYYY-MM-DD date (Today = the date in CURRENT CONTEXT, Tomorrow = +1 day, This Friday = the upcoming Friday — today if today is Friday, otherwise the next Friday; Pick a date = wait for the user to type an explicit date) and THEN call create_task again with all previous fields plus the resolved due_date.",
+          missing: "due_date",
+          chips: ["Today", "Tomorrow", "This Friday", "Pick a date"],
+        };
+      }
       return {
         action: "confirm",
         action_type: "create_task",
@@ -8842,7 +8854,7 @@ PERSONAL TASK & REMINDER CREATION (apply when the user says "remind me to …", 
 - Owner default: leave BOTH assignee_id AND assignee_name UNSET only for FIRST-PERSON reminders ("remind me to …", "create a task for me to …"). The executor will default the owner to the current user. The MOMENT the user names ANY teammate ("for James Turner", "have Scott do this", "Niki should …"), you MUST pass that exact verbatim name string as \`assignee_name\` on the create_task call — the handler will fuzzy-resolve it server-side. Calling search_team_members beforehand is OPTIONAL; if you do, also pass \`assignee_id\`. NEVER silently default to the caller when the user named someone — bug #1215344941044854.
 - Deal link: if the focused deal is set (entityType=deal above OR a RESOLVED DEAL FROM PROMPT block is present) AND the reminder text plausibly relates to that deal (mentions the company, the lender on it, "this deal", "this company", "here", "the write-up", "the memo", a milestone, etc.), set deal_id to that focused deal's UUID — task_type stays the default "task" and the tool will treat it as a deal-linked task. If the user is NOT on a deal page and does not name a deal, omit deal_id — it becomes a personal task for the current user.
 - Title: extract a concise, action-oriented title from the reminder. Strip the "remind me to" / "create a task to" prefix. Keep the verb. Example: "Remind me to call Dan tomorrow" → title "Call Dan". "Create a task for me to review the write-up on Friday" → title "Review the write-up".
-- Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string (date only, no time) and pass as due_date. If the user gave NO date at all, DEFAULT due_date to TODAY in the user's local timezone. If genuinely AMBIGUOUS, ask ONE short clarifying question first.
+- Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string (date only, no time) and pass as due_date. If the user gave NO date at all, DO NOT default to today and DO NOT call create_task yet — ask ONE short clarifying question ("When is this due?") and emit these quick-reply chips verbatim on their own line: [[CHIPS:["Today","Tomorrow","This Friday","Pick a date"]]]. On the user's next turn, map their reply to a YYYY-MM-DD date and THEN call create_task. If the date phrase is genuinely AMBIGUOUS, ask ONE short clarifying question first (also with the chip line where useful).
 - Priority / calendar: NEVER set or mention priority, urgency level, or calendar-add — those fields do not exist on the task and the schema will reject them.
 - Description: optional. Only set if the user explicitly added context beyond the title (e.g. "remind me to call Dan tomorrow about the term sheet" → description can include "about the term sheet").
 - After calling create_task, do NOT add a follow-up confirmation message in plain text — the UI already shows the approval card. Just emit the tool call.
@@ -8858,7 +8870,7 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
   5. If the user clearly intends a personal (non-deal) task even from a deal page (e.g. "remind me to pick up groceries", "personal task: book flight"), omit deal_id — fall back to the PERSONAL TASK rules above.
 - Owner: default to the current user ONLY when no person is named (omit BOTH assignee_id and assignee_name). When the user names a teammate ("assign to <Person>", "task for <Person>"), pass that exact verbatim name as \`assignee_name\` on the create_task call — the handler fuzzy-resolves server-side. Optionally also call search_team_members first and pass the UUID as \`assignee_id\`. NEVER silently reassign to the caller — bug #1215344941044854.
 - Title: concise and action-oriented. Strip "create a task to" / "remind me to" / "add a task on <Deal> to" prefixes and any deal-name preamble. Example: "Create a task to follow up with management on Xnergy" → title "Follow up with management". "Add a task on Worthy to check in with Dan in 5 days" → "Check in with Dan".
-- Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — no time-of-day) and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DEFAULT due_date to TODAY in the user's local timezone.
+- Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — no time-of-day) and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DO NOT default to today and DO NOT call create_task yet — ask ONE short clarifying question ("When is this due?") and emit these quick-reply chips verbatim on their own line: [[CHIPS:["Today","Tomorrow","This Friday","Pick a date"]]]. Wait for the user's next turn, map their reply to a YYYY-MM-DD date, THEN call create_task.
 - Description: optional. Only include if the user added context beyond the title (e.g. "…about the CIM revisions" → description carries that detail). Do not invent context.
 - Priority / calendar: NEVER pass priority or any calendar field. The schema only accepts title, description, assignee_id, due_date, deal_id, type, collaborator_ids.
 - Confirmation UX: do NOT add a plain-text "I've created the task" message after calling create_task — the approval card is the confirmation surface. If the user later says "yes" / "save it" without clicking the card, point them to the Save button on the card; never bypass it with another write tool.
