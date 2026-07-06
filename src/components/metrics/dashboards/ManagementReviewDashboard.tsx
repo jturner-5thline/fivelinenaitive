@@ -558,15 +558,20 @@ function DebtByRatingWidget() {
     <div className="flex h-full flex-col">
       <div className="mb-2 flex items-center justify-between text-xs">
         <div className="flex items-center gap-3">
-          {(['A', 'B', 'C'] as DebtRating[]).map((r) => (
-            <div key={r} className="flex items-center gap-1.5 text-muted-foreground">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-sm"
-                style={{ background: DEBT_RATING_COLORS[r] }}
-              />
-              <span>Rating {r}</span>
-            </div>
-          ))}
+          {(['A', 'B', 'C'] as DebtRating[]).map((r) => {
+            const latest = chartData[chartData.length - 1];
+            const bal = latest ? (latest as any)[r] as number : 0;
+            return (
+              <div key={r} className="flex items-center gap-1.5 text-muted-foreground">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-sm"
+                  style={{ background: DEBT_RATING_COLORS[r] }}
+                />
+                <span className="font-medium text-foreground">{r}</span>
+                <span>{formatLiabCurrency(bal)}</span>
+              </div>
+            );
+          })}
         </div>
         <span className="text-muted-foreground">
           {view === 'quarter' ? 'Quarterly' : 'Monthly'}
