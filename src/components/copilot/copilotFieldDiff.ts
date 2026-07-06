@@ -43,6 +43,7 @@ const VERIFIED_THROUGH_HELPER = new Set<string>([
   "update_deal_stage",
   "update_deal_status",
   "update_deal_fields",
+  "create_deal",
 ]);
 
 // Action types we still consider valid writes but whose response does
