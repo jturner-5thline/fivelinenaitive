@@ -721,6 +721,14 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
+const LENDER_TARGET_ID_RULES = `
+
+FUNDING SOURCE TARGET ID — HARD RULES (apply to every deal, no exceptions)
+- For ANY draft_email or update_funding_source proposal scoped to a lender / funding source: target_object_type MUST be "deal_lender" AND target_object_id MUST be the exact funding_sources[].id from the bundle for that specific lender.
+- NEVER put the deal id, a company id, a contact id, a lender name, an email address, or any made-up value in target_object_id. If you cannot cite a real funding_sources[].id for the specific lender, DO NOT emit the proposal at all.
+- One proposal per (deal, funding_source.id) per scan. Never emit two draft_email or update_funding_source items for the same funding_sources[].id — pick the strongest signal and emit one.
+- If two proposals would target the same lender on the same deal (e.g. one nudge + one status update), collapse them into a single strongest proposal. The Approval Queue must never show mirrored/duplicated cards for the same lender on the same deal.`;
+
 const REFERRAL_RULES = `
 
 REFERRAL SOURCE UPDATE RULES (use referral_sources[])
@@ -736,7 +744,7 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 - Pick at most ONE rule per referral source per scan — emit one draft email per (deal, referral_source). If multiple rules fire, pick the most recent meaningful event and reference all triggers in rationale_summary.
 - Silence rule: if no rule fires for any referral source, emit nothing for referral sources. Do NOT propose generic "say hi" emails.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + REFERRAL_RULES;
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + REFERRAL_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
