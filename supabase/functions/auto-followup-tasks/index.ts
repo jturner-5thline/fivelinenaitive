@@ -16,6 +16,17 @@ const corsHeaders = {
 };
 
 const INTERNAL_DOMAIN = "@5thline.co";
+// Strict allowlist — auto follow-up tasks are ONLY created for these six
+// 5th Line users. No other user (internal domain or otherwise) will ever
+// have a follow-up task auto-created by this function.
+const ALLOWED_OWNER_EMAILS = new Set<string>([
+  "jturner@5thline.co",
+  "nheikali@5thline.co",
+  "jmoffitt@5thline.co",
+  "swilliams@5thline.co",
+  "ppina@5thline.co",
+  "ffustinoni@5thline.co",
+]);
 const ASANA_PROJECT_GID = "1130343959659969";
 const ASANA_SECTION_GID = "1200505058741223";
 const ASANA_API = "https://app.asana.com/api/1.0";
