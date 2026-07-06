@@ -478,6 +478,7 @@ const DEBT_RATING_BY_ACCOUNT: Record<string, DebtRating> = {
   'AMEX LOC': 'B',
   'Other Loans': 'B',
   'Headway LOC': 'C',
+  "CC's (Est.)": 'C',
 };
 const DEBT_RATING_COLORS: Record<DebtRating, string> = {
   A: '#3de89a', // green
