@@ -84,6 +84,7 @@ import {
 import { useMetricsData } from "@/hooks/useMetricsData";
 import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize, MetricChartType } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
+import { FinServPerHourStat } from "@/components/insights/FinServPerHourStat";
 import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
