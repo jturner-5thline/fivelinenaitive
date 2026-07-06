@@ -795,7 +795,14 @@ function ConsolidatedOpexWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <PeriodReadout
+          label={series[series.length - 1]?.label}
+          value={series[series.length - 1]?.value ?? null}
+          previous={series.length >= 2 ? series[series.length - 2].value : priorValue}
+          polarity="lower-is-better"
+          loading={loading && !data}
+        />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
@@ -1061,7 +1068,15 @@ function ConsolidatedCashflowWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <PeriodReadout
+          label={series[series.length - 1]?.label}
+          value={series[series.length - 1]?.value ?? null}
+          previous={series.length >= 2 ? series[series.length - 2].value : priorValue}
+          polarity="higher-is-better"
+          loading={loading && !data}
+          format={(v) => fmt(v)}
+        />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
@@ -1197,6 +1212,75 @@ function GridShell({
         </div>
       </div>
       <div className="flex-1 min-h-0 p-3 overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Compact period-metric readout shown at the top of trend widgets.
+ * Displays: "{period label} {value}  {±delta$} ({±delta%})" — coloring the
+ * delta by metric polarity (green = favorable, red = unfavorable, gray = flat/na).
+ */
+function PeriodReadout({
+  label,
+  value,
+  previous,
+  polarity,
+  loading,
+  format,
+}: {
+  label?: string | null;
+  value: number | null;
+  previous: number | null | undefined;
+  polarity: 'higher-is-better' | 'lower-is-better';
+  loading?: boolean;
+  /** Formats a plain dollar amount into the widget's preferred display (e.g. "$185K"). */
+  format?: (v: number) => string;
+}) {
+  const fmt = format ?? ((v: number) => formatUSD(v / 1000));
+  const hasValue = value != null && isFinite(value);
+  const dAbs = hasValue && previous != null && isFinite(previous) ? (value as number) - previous : null;
+  const dPct = dAbs != null && previous != null && previous !== 0 ? (dAbs / Math.abs(previous)) * 100 : null;
+
+  const neutral = 'hsl(220,10%,62%)';
+  const good = 'hsl(152,55%,60%)';
+  const bad = 'hsl(0,65%,65%)';
+  const deltaColor = (() => {
+    if (dAbs == null || !isFinite(dAbs) || dAbs === 0) return neutral;
+    if (polarity === 'higher-is-better') return dAbs > 0 ? good : bad;
+    return dAbs > 0 ? bad : good;
+  })();
+
+  const sign = dAbs != null && dAbs > 0 ? '+' : dAbs != null && dAbs < 0 ? '−' : '';
+  const dAbsStr = dAbs != null ? `${sign}${fmt(Math.abs(dAbs))}` : null;
+  const dPctStr = dPct != null ? `${sign}${Math.abs(dPct).toFixed(1)}%` : null;
+
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+      {label && (
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.55)',
+          }}
+        >
+          {label}
+        </span>
+      )}
+      <span style={{ fontSize: 15, fontWeight: 700, color: 'hsl(0,0%,100%)', lineHeight: 1 }}>
+        {loading ? '…' : hasValue ? fmt(value as number) : '—'}
+      </span>
+      {dAbsStr && (
+        <span style={{ fontSize: 11, fontWeight: 600, color: deltaColor, whiteSpace: 'nowrap' }}>
+          {dAbsStr}
+          {dPctStr && (
+            <span style={{ color: deltaColor, opacity: 0.85, marginLeft: 4 }}>({dPctStr})</span>
+          )}
+        </span>
+      )}
     </div>
   );
 }
@@ -2923,6 +3007,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+              {trendMode !== 'quarterly-yoy' && (() => {
+                const vals = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+                const labels = trendMode === 'ttm' ? ttmLabels : monthlyTrendLabels;
+                if (!vals || vals.length === 0) return null;
+                const last = vals[vals.length - 1] ?? null;
+                const prev = vals.length >= 2 ? vals[vals.length - 2] : null;
+                return (
+                  <PeriodReadout
+                    label={labels[labels.length - 1]}
+                    value={last}
+                    previous={prev}
+                    polarity="higher-is-better"
+                    loading={isLoading}
+                  />
+                );
+              })()}
               {trendMode === 'quarterly-yoy' ? (
                 <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
