@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
+import { CurrentQuarterBadge } from '../CurrentQuarterBadge';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
