@@ -1896,6 +1896,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
   const latestLayoutRef = useRef<GridLayoutItem[]>(cloneInsightsDefaultLayout());
+  const gridLatestLayoutGetterRef = useRef<(() => GridLayoutItem[]) | null>(null);
   const lastPersistedLayoutSignatureRef = useRef<string>('');
 
   useEffect(() => {
@@ -1915,6 +1916,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         .eq('dashboard_id', INSIGHTS_LAYOUT_DASHBOARD_ID)
         .maybeSingle();
       if (cancelled) return;
+      if (error) {
+        console.error('[Insights layout] load failed', error);
+      }
       if (!error && data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
         const persisted = data.layout as unknown as GridLayoutItem[];
         lastPersistedLayoutSignatureRef.current = getInsightsLayoutSignature(persisted);
@@ -1955,6 +1959,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       toast.error('Layout save failed. Your changes may not persist.');
       return false;
     }
+    console.info('[Insights layout] saved', { companyId: company.id, dashboardId: INSIGHTS_LAYOUT_DASHBOARD_ID, items: normalized.length });
     lastPersistedLayoutSignatureRef.current = signature;
     if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
       pendingLayoutRef.current = null;
@@ -1964,6 +1969,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
     const cloned = nextLayout.map(item => ({ ...item }));
+    console.info('[Insights layout] layout changed', { immediate: !!immediate, items: cloned.length });
     setLayout(cloned);
     if (!isLayoutEditor) return;
     pendingLayoutRef.current = cloned;
@@ -1994,8 +2000,14 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      if (pendingLayoutRef.current && isLayoutEditor && layoutHydrated) {
-        void persistLayout(pendingLayoutRef.current);
+      if (isLayoutEditor && layoutHydrated) {
+        const latestGridLayout = gridLatestLayoutGetterRef.current?.();
+        if (latestGridLayout?.length) {
+          pendingLayoutRef.current = latestGridLayout;
+        }
+        if (pendingLayoutRef.current) {
+          void persistLayout(pendingLayoutRef.current);
+        }
       }
     };
   }, [isLayoutEditor, layoutHydrated, persistLayout]);
@@ -2010,7 +2022,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [isEditMode, layout]);
 
   const handleSaveLayout = async () => {
-    const current = latestLayoutRef.current;
+    const current = gridLatestLayoutGetterRef.current?.() ?? latestLayoutRef.current;
     saveLayout(current, true);
     const saved = await persistLayout(current);
     if (!saved) return;
@@ -2026,6 +2038,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     editSnapshotRef.current = null;
     onExitEditMode?.();
   };
+
+  const handleGridLatestLayoutRef = React.useCallback((getLayout: () => GridLayoutItem[]) => {
+    gridLatestLayoutGetterRef.current = getLayout;
+  }, []);
 
   const handleResetLayout = async () => {
     await resetLayout();
@@ -3204,6 +3220,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
+        onLatestLayoutRef={handleGridLatestLayoutRef}
         isEditMode={isEditMode && isLayoutEditor}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
