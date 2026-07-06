@@ -613,10 +613,12 @@ export function FinServClientsSignedWidget({ selectedQuarter }: { selectedQuarte
 export function OutstandingARWidget() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="h-full min-h-0 cursor-pointer" onClick={() => setOpen(true)}>
-      <OutstandingARPieChart />
+    <>
+      <div className="h-full min-h-0 cursor-pointer" onClick={() => setOpen(true)}>
+        <OutstandingARPieChart />
+      </div>
       <OutstandingARDrilldownModal open={open} onClose={() => setOpen(false)} />
-    </div>
+    </>
   );
 }
 
