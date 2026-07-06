@@ -258,7 +258,10 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // Field-by-field diff is rebuilt from the action's params and never
   // collapses into a one-line summary — that's the whole point of
   // this card.
-  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(preparedAction.action_type, preparedAction.params || {});
+  // Merge in the user's dropdown edits so the field-diff table shows
+  // the value that will actually be sent, both pre- and post-confirm.
+  const paramsWithEdits = { ...(preparedAction.params || {}), ...edits };
+  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(preparedAction.action_type, paramsWithEdits);
   const fieldStatuses = computeFieldStatuses(
     preparedAction.action_type,
     fieldDiffs,
