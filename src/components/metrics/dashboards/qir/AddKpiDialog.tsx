@@ -41,6 +41,8 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'xs-revenue-per-deal', 'xs-ar-per-active-deal', 'xs-collection-rate-by-entity',
   // FinServ Financial Metrics (pipeline snapshot tiles)
   'finserv-total-mrr', 'finserv-active-client-count',
+  // FinServ Financial Metrics (per-hour tiles)
+  'finserv-revenue-per-hour', 'finserv-profit-per-hour',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
