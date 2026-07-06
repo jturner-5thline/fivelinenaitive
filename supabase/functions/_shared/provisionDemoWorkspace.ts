@@ -846,8 +846,6 @@ export async function provisionDemoWorkspace(
       if (error) {
         console.warn(`[provisionDemoWorkspace] deal_lenders top-up warning: ${error.message}`);
         warnings.push(`deal_lenders:${error.message}`);
-      } else {
-        insertedThisRun.dealLenders = (insertedThisRun.dealLenders ?? 0) + rows.length;
       }
     }
   }
