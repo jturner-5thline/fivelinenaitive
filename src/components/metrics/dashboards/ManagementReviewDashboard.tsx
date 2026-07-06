@@ -37,6 +37,7 @@ import type { Deal } from '@/types/deal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, LabelList } from 'recharts';
 import { BarChart, Bar, ReferenceLine, ComposedChart } from 'recharts';
 import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/contexts/AuthContext';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
