@@ -3514,6 +3514,10 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           source: args.source || null,
           deal_value: typeof args.deal_value === "number" ? args.deal_value : null,
           notes: args.notes || null,
+          narrative: args.narrative || null,
+          deal_type: args.deal_type || null,
+          engagement_type: args.engagement_type || null,
+          referral_source: args.referral_source || null,
         },
       };
     }
