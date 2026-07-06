@@ -232,6 +232,10 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // the whole card.
   const [verifiedResult, setVerifiedResult] = useState<VerifiedResult | null>(null);
   const [relativeTick, setRelativeTick] = useState(0);
+  // Per-field user overrides on enum dropdowns. Confirm merges these
+  // into preparedAction.params before firing the executor so the value
+  // the user sees selected is exactly the value that gets written.
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
 
