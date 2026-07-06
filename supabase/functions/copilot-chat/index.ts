@@ -8116,6 +8116,74 @@ serve(async (req) => {
       console.warn("[copilot-chat] deal name resolver failed", e);
     }
 
+    // ── Deterministic user deal-count block ──
+    // Prevents contradictory answers to "how many deals does <X> manage/own"
+    // by running ONE authoritative query against the deals table for the
+    // named user and injecting the exact count. The model is instructed
+    // (see USER DEAL COUNT AUTHORITY rule below) to use this number
+    // verbatim and never emit a different figure in the same reply.
+    let userDealCountBlock = "";
+    try {
+      const userText: string = (typeof message === "string" ? message : "") || "";
+      // Match "how many (active) deals does <name> (manage|own|manages|owns|handle)"
+      // and "<name>'s (active) deals" style phrasings.
+      const m1 = userText.match(/how\s+many(?:\s+active)?\s+deals?\s+(?:does|do)\s+([A-Z][A-Za-z .'\-]{1,60}?)\s+(?:manage|manages|own|owns|handle|handles|run|runs)\b/i);
+      const m2 = userText.match(/\b([A-Z][A-Za-z .'\-]{1,60}?)['’]s\s+(?:active\s+)?deal(?:\s+count|s\s+count)?\b/);
+      const rawName = (m1?.[1] || m2?.[1] || "").trim();
+      if (rawName) {
+        const needle = rawName.toLowerCase();
+        // Resolve profile UUID for owner-id match, best-effort.
+        let profileUserId: string | null = null;
+        try {
+          const { data: profs } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, display_name, first_name, last_name, email")
+            .limit(500);
+          const match = (profs || []).find((p: any) => {
+            const full = [p.first_name, p.last_name].filter(Boolean).join(" ").toLowerCase();
+            const disp = String(p.display_name || "").toLowerCase();
+            const email = String(p.email || "").toLowerCase();
+            return full === needle || disp === needle || email.startsWith(needle.replace(/\s+/g, "."))
+              || full.includes(needle) || disp.includes(needle);
+          });
+          profileUserId = match?.user_id || null;
+        } catch { /* non-fatal */ }
+
+        // Pull deals matching manager string OR deal_owner string OR
+        // deal_owner_user_id, then apply the same active-deal filter used
+        // elsewhere (excludes closed-won / closed-lost / on-hold and the
+        // globally excluded test deals).
+        const orFilter = [
+          `manager.ilike.%${rawName.replace(/[%,()]/g, "")}%`,
+          `deal_owner.ilike.%${rawName.replace(/[%,()]/g, "")}%`,
+          profileUserId ? `deal_owner_user_id.eq.${profileUserId}` : null,
+        ].filter(Boolean).join(",");
+        const { data: rows } = await supabaseUser
+          .from("deals")
+          .select("id, company, stage, status, manager, deal_owner, deal_owner_user_id, pipeline_id")
+          .is("merged_into", null)
+          .or(orFilter)
+          .limit(2000);
+        const INACTIVE_STATUSES = new Set(["closed", "on-hold", "archived", "closed-won", "closed-lost"]);
+        const INACTIVE_STAGES = new Set(["closed-won", "closed-lost", "on-hold"]);
+        const active = (rows || []).filter((d: any) => {
+          if (isGloballyExcludedDealName(d.company)) return false;
+          if (INACTIVE_STATUSES.has(String(d.status || "").toLowerCase())) return false;
+          if (INACTIVE_STAGES.has(String(d.stage || "").toLowerCase())) return false;
+          const mgr = String(d.manager || "").toLowerCase();
+          const own = String(d.deal_owner || "").toLowerCase();
+          const ownIdMatch = !!profileUserId && d.deal_owner_user_id === profileUserId;
+          return mgr.includes(needle) || own.includes(needle) || ownIdMatch;
+        });
+        const count = active.length;
+        const sample = active.slice(0, 25).map((d: any) => `[${d.company}](entity://deal/${d.id})`).join(", ");
+        userDealCountBlock = `\n\nUSER DEAL COUNT AUTHORITY — deterministic query result for "${rawName}":\n- Active deals where ${rawName} is manager OR owner (excluding closed-won, closed-lost, on-hold, and globally excluded test deals): ${count}\n- This is the ONLY correct number for this question. You MUST state exactly ${count}. Do NOT emit any other count in the same reply. Do NOT call search_deals, get_pipeline_snapshot, or any counting tool to re-derive this figure.\n- Deals in the count${count > 25 ? " (first 25 shown)" : ""}: ${sample || "(none)"}`;
+        console.log("[copilot-chat] user_deal_count_authority", JSON.stringify({ name: rawName, count, profile_user_id: profileUserId }));
+      }
+    } catch (e) {
+      console.warn("[copilot-chat] user deal count block failed", e);
+    }
+
     // Audit: log which deal context objects we actually used for this turn so
     // responses can be reviewed later. Best-effort; never blocks the request.
     try {
