@@ -14,6 +14,7 @@ export const DEMO_TARGETS = {
   crmCompanies: 50,
   tasks: 20,
   fundingSources: 50,
+  dealLenders: 72,   // 6 per demo deal across varied lender stages/statuses
   calendarEvents: 80, // per member user — spans roughly -30 .. +60 days
   inboxEmails: 15,    // per member user
   dealActivities: 24, // total across demo deals
@@ -412,7 +413,7 @@ export async function provisionDemoWorkspace(
   const pipelineId = pipeline.id as string;
 
   const insertedThisRun: DemoCounts = {
-    deals: 0, contacts: 0, crmCompanies: 0, tasks: 0, fundingSources: 0,
+    deals: 0, contacts: 0, crmCompanies: 0, tasks: 0, fundingSources: 0, dealLenders: 0,
     calendarEvents: 0, inboxEmails: 0, dealActivities: 0,
   };
   const warnings: string[] = [];
@@ -864,6 +865,8 @@ export async function provisionDemoWorkspace(
       if (error) {
         console.warn(`[provisionDemoWorkspace] deal_lenders top-up warning: ${error.message}`);
         warnings.push(`deal_lenders:${error.message}`);
+      } else {
+        insertedThisRun.dealLenders = rows.length;
       }
     }
   }
@@ -1175,6 +1178,15 @@ export async function validateDemoSeed(
   const { data: dealsForActivity } = await admin
     .from("deals").select("id").eq("company_id", companyId).contains("tags", ["demo"]);
   const demoDealIds = ((dealsForActivity ?? []) as Array<{ id: string }>).map((d) => d.id);
+  let dealLenders = 0;
+  if (demoDealIds.length > 0) {
+    const { count } = await admin
+      .from("deal_lenders")
+      .select("id", { count: "exact", head: true })
+      .in("deal_id", demoDealIds)
+      .contains("tags", ["demo"]);
+    dealLenders = count ?? 0;
+  }
 
   // Comms counts are aggregated across all member users; treat as ok when
   // every member meets the per-user target (or if there are no members yet).
@@ -1195,6 +1207,7 @@ export async function validateDemoSeed(
 
   const counts: DemoCounts = {
     deals, contacts, crmCompanies, tasks, fundingSources,
+    dealLenders,
     calendarEvents, inboxEmails, dealActivities,
   };
   const missing: Partial<DemoCounts> = {};
