@@ -15,6 +15,60 @@ export interface GridLayoutItem {
   maxH?: number;
 }
 
+type GridBreakpoint = 'lg' | 'md' | 'sm';
+
+const SHARED_GRID_BREAKPOINTS: Record<GridBreakpoint, number> = { lg: 1200, md: 768, sm: 0 };
+const SHARED_GRID_COLUMNS: Record<GridBreakpoint, number> = { lg: 12, md: 12, sm: 12 };
+
+type PersistedGridPayload = {
+  version: 1;
+  dashboardId: string;
+  breakpoints: Record<GridBreakpoint, number>;
+  columns: Record<GridBreakpoint, number>;
+  layouts: Record<GridBreakpoint, GridLayoutItem[]>;
+};
+
+function normalizeLayoutItems(items: GridLayoutItem[]): GridLayoutItem[] {
+  return items.map(item => {
+    const next: GridLayoutItem = {
+      i: item.i,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
+    };
+    if (item.minW !== undefined) next.minW = item.minW;
+    if (item.minH !== undefined) next.minH = item.minH;
+    if (item.maxW !== undefined) next.maxW = item.maxW;
+    if (item.maxH !== undefined) next.maxH = item.maxH;
+    return next;
+  });
+}
+
+function makeBreakpointPayload(dashboardId: string, layout: GridLayoutItem[]): PersistedGridPayload {
+  const normalized = normalizeLayoutItems(layout);
+  return {
+    version: 1,
+    dashboardId,
+    breakpoints: SHARED_GRID_BREAKPOINTS,
+    columns: SHARED_GRID_COLUMNS,
+    layouts: {
+      lg: normalized,
+      md: normalized.map(item => ({ ...item })),
+      sm: normalized.map(item => ({ ...item })),
+    },
+  };
+}
+
+function extractLayoutFromPayload(payload: unknown): GridLayoutItem[] | null {
+  if (Array.isArray(payload)) return normalizeLayoutItems(payload as GridLayoutItem[]);
+  if (!payload || typeof payload !== 'object') return null;
+  const obj = payload as any;
+  const candidates = [obj.layouts?.lg, obj.breakpoints?.lg, obj.lg, obj.layout];
+  const layout = candidates.find(Array.isArray) as GridLayoutItem[] | undefined;
+  return layout && layout.length > 0 ? normalizeLayoutItems(layout) : null;
+}
+
 /**
  * Generate default grid layout from a list of widget IDs.
  * 3-column arrangement: w=4, h=2, 12-col grid.
@@ -38,11 +92,20 @@ export function generateDefaultLayout(widgetIds: string[], cols = 3, w = 4, h = 
 export function useGridLayout(
   dashboardId: string,
   defaultWidgetIds: string[],
-  options?: { allowAllMembers?: boolean; layoutDefaults?: GridLayoutItem[] },
+  options?: {
+    allowAllMembers?: boolean;
+    layoutDefaults?: GridLayoutItem[];
+    persistBreakpoints?: boolean;
+    strictPersistedLayout?: boolean;
+    debugLabel?: string;
+  },
 ) {
   const { company, isAdmin, isOwner } = useCompany();
   const canEdit = options?.allowAllMembers ? !!company?.id : (isAdmin || isOwner);
   const layoutDefaults = options?.layoutDefaults;
+  const persistBreakpoints = options?.persistBreakpoints ?? false;
+  const strictPersistedLayout = options?.strictPersistedLayout ?? false;
+  const debugLabel = options?.debugLabel;
   const defaultsMap = useMemo(() => {
     return (layoutDefaults ?? []).reduce<Record<string, GridLayoutItem>>((acc, item) => {
       acc[item.i] = item;
@@ -99,22 +162,62 @@ export function useGridLayout(
     (async () => {
       const { data } = await (supabase
         .from('dashboard_grid_layouts') as any)
-        .select('layout')
+        .select('company_id,dashboard_id,layout,updated_at')
         .eq('company_id', company.id)
         .eq('dashboard_id', dashboardId)
         .maybeSingle();
       if (token !== fetchTokenRef.current) return; // stale
 
-      if (data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
-        savedLayoutRef.current = data.layout as GridLayoutItem[];
+      const loadedLayout = extractLayoutFromPayload(data?.layout);
+      if (loadedLayout && loadedLayout.length > 0) {
+        savedLayoutRef.current = loadedLayout;
         hasSavedRowRef.current = true;
       } else {
         savedLayoutRef.current = null;
         hasSavedRowRef.current = false;
       }
+      if (debugLabel) {
+        const source = loadedLayout && loadedLayout.length > 0 ? 'SHARED BACKEND' : 'CODED DEFAULT';
+        console.info(`${debugLabel} layout source: ${source}`, {
+          company_id: company.id,
+          dashboard_id: dashboardId,
+          loadedPayload: data?.layout ?? null,
+        });
+      }
       setIsLoaded(true);
     })();
-  }, [company?.id, dashboardId]);
+  }, [company?.id, dashboardId, debugLabel]);
+
+  // Reconcile a saved layout against the current widget ID set and apply it.
+  const applyReconciled = useCallback((saved: GridLayoutItem[] | null) => {
+    if (!saved || saved.length === 0) {
+      setLayout(buildDefaults(defaultWidgetIds));
+      return;
+    }
+    const validIds = new Set(defaultWidgetIds);
+    const filtered = saved.filter(l => validIds.has(l.i));
+    if (strictPersistedLayout) {
+      setLayout(filtered);
+      return;
+    }
+    const savedIds = new Set(filtered.map(l => l.i));
+    const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
+    const maxY = filtered.reduce((max, l) => Math.max(max, l.y + l.h), 0);
+    const appended: GridLayoutItem[] = newWidgets.map((id, idx) => {
+      const d = defaultsMap[id];
+      if (d) return { ...d, y: maxY + d.y };
+      return {
+        i: id,
+        x: (idx % 3) * 4,
+        y: maxY + Math.floor(idx / 3) * 2,
+        w: 4,
+        h: 2,
+        minW: 3,
+        minH: 2,
+      };
+    });
+    setLayout([...filtered, ...appended]);
+  }, [defaultWidgetIds, defaultsMap, buildDefaults, strictPersistedLayout]);
 
   // Realtime subscription — reflect layout changes from other users in the
   // same workspace immediately, without requiring a refresh.
@@ -139,12 +242,12 @@ export function useGridLayout(
             setLayout(buildDefaults(defaultWidgetIds));
             return;
           }
-          const next = (payload.new as any)?.layout;
-          if (Array.isArray(next) && next.length > 0) {
-            savedLayoutRef.current = next as GridLayoutItem[];
+          const next = extractLayoutFromPayload((payload.new as any)?.layout);
+          if (next && next.length > 0) {
+            savedLayoutRef.current = next;
             hasSavedRowRef.current = true;
             // Reconcile with current widget IDs before applying
-            applyReconciled(next as GridLayoutItem[]);
+            applyReconciled(next);
           }
         },
       )
@@ -155,33 +258,6 @@ export function useGridLayout(
     // changes because reconciliation happens inside the callback.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [company?.id, dashboardId]);
-
-  // Reconcile a saved layout against the current widget ID set and apply it.
-  const applyReconciled = useCallback((saved: GridLayoutItem[] | null) => {
-    if (!saved || saved.length === 0) {
-      setLayout(buildDefaults(defaultWidgetIds));
-      return;
-    }
-    const validIds = new Set(defaultWidgetIds);
-    const filtered = saved.filter(l => validIds.has(l.i));
-    const savedIds = new Set(filtered.map(l => l.i));
-    const newWidgets = defaultWidgetIds.filter(id => !savedIds.has(id));
-    const maxY = filtered.reduce((max, l) => Math.max(max, l.y + l.h), 0);
-    const appended: GridLayoutItem[] = newWidgets.map((id, idx) => {
-      const d = defaultsMap[id];
-      if (d) return { ...d, y: maxY + d.y };
-      return {
-        i: id,
-        x: (idx % 3) * 4,
-        y: maxY + Math.floor(idx / 3) * 2,
-        w: 4,
-        h: 2,
-        minW: 3,
-        minH: 2,
-      };
-    });
-    setLayout([...filtered, ...appended]);
-  }, [defaultWidgetIds, defaultsMap, buildDefaults]);
 
   // After the saved layout has loaded — and whenever the widget-id set
   // changes — reconcile and apply. This is the ONLY code path that
@@ -199,10 +275,21 @@ export function useGridLayout(
   // Persist layout to DB
   const persistLayout = useCallback(async (newLayout: GridLayoutItem[]) => {
     if (!canEdit || !company?.id) return;
+    const normalized = normalizeLayoutItems(newLayout);
+    const savedPayload = persistBreakpoints
+      ? makeBreakpointPayload(dashboardId, normalized)
+      : normalized;
+    if (debugLabel) {
+      console.info(`${debugLabel} layout saved payload`, {
+        company_id: company.id,
+        dashboard_id: dashboardId,
+        savedPayload,
+      });
+    }
     const { error } = await (supabase as any).rpc('save_dashboard_grid_layout', {
       _company_id: company.id,
       _dashboard_id: dashboardId,
-      _layout: newLayout,
+      _layout: savedPayload,
     });
     if (error) {
       console.error('[useGridLayout] save failed', error);
@@ -210,10 +297,10 @@ export function useGridLayout(
     } else {
       // Keep the in-memory canonical mirror in sync so realtime echo /
       // widget-id reconciliation doesn't revert the user's edit.
-      savedLayoutRef.current = newLayout;
+      savedLayoutRef.current = normalized;
       hasSavedRowRef.current = true;
     }
-  }, [company?.id, dashboardId, canEdit]);
+  }, [company?.id, dashboardId, canEdit, persistBreakpoints, debugLabel]);
 
   // Save layout — supports immediate mode (skip debounce) for drag/resize stop
   const saveLayout = useCallback((newLayout: GridLayoutItem[], immediate?: boolean) => {
