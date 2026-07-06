@@ -492,7 +492,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ confirmAction: preparedAction }),
+        body: JSON.stringify({
+          confirmAction: {
+            ...preparedAction,
+            params: { ...(preparedAction.params || {}), ...edits },
+          },
+        }),
       });
 
       // Only flip to "done" once the backend acknowledges a 2xx response
