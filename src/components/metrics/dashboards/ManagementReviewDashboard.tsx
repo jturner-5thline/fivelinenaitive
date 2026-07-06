@@ -3440,27 +3440,34 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <LiabilitiesDebtServiceTable
-              onOpenDrilldown={(row) => {
-                setDrilldown({
-                  context: {
-                    sourceId: `liabilities:${row.name}`,
-                    sourceLabel: `${row.name} · Liabilities & Debt Service`,
-                    selection: row.name,
-                    periodLabel,
-                    filters: [
-                      { label: 'Source', value: row.qbo
-                          ? `QuickBooks · ${row.qbo.accountName}`
-                          : `QuickBooks · Credit Cards (aggregate)` },
-                      { label: 'Reporting period', value: periodLabel },
-                    ],
-                  },
-                  columns: [],
-                  rows: [],
-                  body: <LiabilityHistoryDrilldownBody row={row} />,
-                });
-              }}
-            />
+            <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="min-w-0">
+                <LiabilitiesDebtServiceTable
+                  onOpenDrilldown={(row) => {
+                    setDrilldown({
+                      context: {
+                        sourceId: `liabilities:${row.name}`,
+                        sourceLabel: `${row.name} · Liabilities & Debt Service`,
+                        selection: row.name,
+                        periodLabel,
+                        filters: [
+                          { label: 'Source', value: row.qbo
+                              ? `QuickBooks · ${row.qbo.accountName}`
+                              : `QuickBooks · Credit Cards (aggregate)` },
+                          { label: 'Reporting period', value: periodLabel },
+                        ],
+                      },
+                      columns: [],
+                      rows: [],
+                      body: <LiabilityHistoryDrilldownBody row={row} />,
+                    });
+                  }}
+                />
+              </div>
+              <div className="min-w-0 min-h-[240px]">
+                <DebtByRatingWidget />
+              </div>
+            </div>
           </GridShell>
         </div>
         <div key="dscr" className="h-full">
@@ -3531,11 +3538,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 </ResponsiveContainer>
               </div>
             </div>
-          </GridShell>
-        </div>
-        <div key="debt-rating" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Debt by Rating (A/B/C)">
-            <DebtByRatingWidget />
           </GridShell>
         </div>
         <div key="opex" className="h-full">
