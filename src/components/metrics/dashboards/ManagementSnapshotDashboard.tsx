@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
-import { QuarterNavBadge, useLocalQuarter } from '../CurrentQuarterBadge';
+import { QuarterNavBadge, useLocalQuarter, Rolling3MonthNavBadge, useRolling3Months } from '../CurrentQuarterBadge';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
@@ -491,41 +491,41 @@ function GenericDashboardCard({
 // They deliberately ignore the global header timeframe selector.
 // ---------------------------------------------------------------------------
 function LocalQuarterDebtRevenue() {
-  const [q, setQ] = useLocalQuarter();
+  const { period, monthsBack, setMonthsBack } = useRolling3Months();
   return (
     <>
-      <QuarterNavBadge value={q} onChange={setQ} />
-      <DebtRevenueWidget selectedQuarter={q} />
+      <Rolling3MonthNavBadge period={period} monthsBack={monthsBack} onChange={(n) => setMonthsBack(n)} />
+      <DebtRevenueWidget selectedQuarter={period} />
     </>
   );
 }
 
 function LocalQuarterFinServRevenue() {
-  const [q, setQ] = useLocalQuarter();
+  const { period, monthsBack, setMonthsBack } = useRolling3Months();
   return (
     <>
-      <QuarterNavBadge value={q} onChange={setQ} />
-      <FinServRevenueWidget selectedQuarter={q} />
+      <Rolling3MonthNavBadge period={period} monthsBack={monthsBack} onChange={(n) => setMonthsBack(n)} />
+      <FinServRevenueWidget selectedQuarter={period} />
     </>
   );
 }
 
 function LocalQuarterDealsSigned() {
-  const [q, setQ] = useLocalQuarter();
+  const { period, monthsBack, setMonthsBack } = useRolling3Months();
   return (
     <>
-      <QuarterNavBadge value={q} onChange={setQ} />
-      <DealsSignedWidget selectedQuarter={q} />
+      <Rolling3MonthNavBadge period={period} monthsBack={monthsBack} onChange={(n) => setMonthsBack(n)} />
+      <DealsSignedWidget selectedQuarter={period} />
     </>
   );
 }
 
 function LocalQuarterFinServClientsSigned() {
-  const [q, setQ] = useLocalQuarter();
+  const { period, monthsBack, setMonthsBack } = useRolling3Months();
   return (
     <>
-      <QuarterNavBadge value={q} onChange={setQ} />
-      <FinServClientsSignedWidget selectedQuarter={q} />
+      <Rolling3MonthNavBadge period={period} monthsBack={monthsBack} onChange={(n) => setMonthsBack(n)} />
+      <FinServClientsSignedWidget selectedQuarter={period} />
     </>
   );
 }
