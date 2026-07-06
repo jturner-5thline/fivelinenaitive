@@ -1285,6 +1285,54 @@ function PeriodReadout({
   );
 }
 
+/**
+ * Shown when the Δ Trend toggle is on: the net change from the first
+ * visible period to the current (last) period in the chart. Polarity-aware.
+ */
+function RangeTrendDelta({
+  fromLabel,
+  toLabel,
+  fromValue,
+  toValue,
+  polarity,
+  format,
+}: {
+  fromLabel?: string | null;
+  toLabel?: string | null;
+  fromValue: number | null | undefined;
+  toValue: number | null | undefined;
+  polarity: 'higher-is-better' | 'lower-is-better';
+  format?: (v: number) => string;
+}) {
+  const fmt = format ?? ((v: number) => formatUSD(v / 1000));
+  if (fromValue == null || toValue == null || !isFinite(fromValue) || !isFinite(toValue)) return null;
+  const dAbs = toValue - fromValue;
+  const dPct = fromValue !== 0 ? (dAbs / Math.abs(fromValue)) * 100 : null;
+  const neutral = 'hsl(220,10%,62%)';
+  const good = 'hsl(152,55%,60%)';
+  const bad = 'hsl(0,65%,65%)';
+  const color = dAbs === 0
+    ? neutral
+    : polarity === 'higher-is-better'
+      ? (dAbs > 0 ? good : bad)
+      : (dAbs > 0 ? bad : good);
+  const sign = dAbs > 0 ? '+' : dAbs < 0 ? '−' : '';
+  return (
+    <span
+      title={`Net change from ${fromLabel ?? 'first period'} to ${toLabel ?? 'current period'}`}
+      style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap' }}
+    >
+      {fromLabel && toLabel ? `${fromLabel} → ${toLabel}: ` : 'Δ: '}
+      <span style={{ color, fontWeight: 700 }}>
+        {sign}{fmt(Math.abs(dAbs))}
+        {dPct != null && (
+          <span style={{ marginLeft: 4, opacity: 0.9 }}>({sign}{Math.abs(dPct).toFixed(1)}%)</span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 function useChart(
   ref: React.RefObject<HTMLCanvasElement | null>,
   config: any,
