@@ -37,7 +37,7 @@ export interface SeedDemoInboxResult {
 }
 
 const DEMO_GRANT = "demo-seed";
-const SEED_VERSION = "v1";
+const SEED_VERSION = "1.2.0";
 
 function minutesAgo(min: number): string {
   return new Date(Date.now() - min * 60_000).toISOString();
