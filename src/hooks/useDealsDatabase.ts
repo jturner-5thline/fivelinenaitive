@@ -9,6 +9,7 @@ import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage
 import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
 import { isFlexHiddenStage, prettyStageLabel } from '@/lib/flexVisibility';
 import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
+import { seedDemoDealFundingSources } from '@/utils/seedDemoDealFundingSources';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -699,7 +700,12 @@ export function useDealsDatabase() {
           console.error('[CreateDeal] Error auto-populating outstanding items:', err);
         }
       }
-      
+
+      // Demo Access tenant only: seed a realistic funding-source roster
+      // (varied stages / statuses / tasks) drawn from the demo directory.
+      seedDemoDealFundingSources(newDeal.id, userId, memberData?.company_id ?? null)
+        .catch((e) => console.error('[CreateDeal] demo lender seed failed', e));
+
       return newDeal;
     } catch (err) {
       console.error('Error creating deal:', err);
