@@ -6,7 +6,8 @@ import { useCompany } from "@/hooks/useCompany";
 import { supabase } from "@/integrations/supabase/client";
 import { useFinServTotalRevenue } from "@/hooks/useFinServFinancialMetrics";
 import { buildBuckets } from "@/lib/insightsTimeRange";
-import { getTimePeriodRange, getTimePeriodLabel, type TimePeriod } from "@/lib/timePeriodUtils";
+import { getTimePeriodRange, getTimePeriodLabel } from "@/lib/timePeriodUtils";
+import type { TimePeriod } from "@/contexts/MetricsWidgetsContext";
 
 function formatCurrency(value: number): string {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
