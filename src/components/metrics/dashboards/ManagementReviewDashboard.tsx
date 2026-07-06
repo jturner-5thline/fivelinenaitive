@@ -37,6 +37,7 @@ import type { Deal } from '@/types/deal';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip as RTooltip, CartesianGrid, LabelList } from 'recharts';
 import { BarChart, Bar, ReferenceLine, ComposedChart } from 'recharts';
 import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/contexts/AuthContext';
 import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
@@ -1855,6 +1856,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const metrics = useMetricsData();
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const { activePipelineId } = usePipelineContext();
+  const { user } = useAuth();
+  const { company } = useCompany();
+  const isLayoutEditor = (user?.email ?? '').toLowerCase() === 'jturner@5thline.co';
+  const INSIGHTS_LAYOUT_DASHBOARD_ID = 'insights-management-review-v20';
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [drilldown, setDrilldown] = useState<{
@@ -1867,16 +1872,76 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
-  // The Insights dashboard layout is intentionally source-controlled here.
-  // Do not hydrate this grid from dashboard_grid_layouts/localStorage or any
-  // prior saved user layout; refresh must always start from this exact map.
+  // Layout hydration:
+  // - The shared org-wide layout is stored in dashboard_grid_layouts, keyed by
+  //   (company_id, dashboard_id). Everyone in the company sees the same layout.
+  // - Only jturner@5thline.co can persist changes; edits from anyone else are
+  //   ignored and never written to the DB.
   const [layout, setLayout] = useState<GridLayoutItem[]>(cloneInsightsDefaultLayout);
-  const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], _immediate?: boolean) => {
-    setLayout(nextLayout.map(item => ({ ...item })));
-  }, []);
+  const [layoutHydrated, setLayoutHydrated] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Load persisted layout once we know the company.
+  useEffect(() => {
+    let cancelled = false;
+    if (!company?.id) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('dashboard_grid_layouts')
+        .select('layout')
+        .eq('company_id', company.id)
+        .eq('dashboard_id', INSIGHTS_LAYOUT_DASHBOARD_ID)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
+        // Merge: use persisted positions but ensure every known widget id exists
+        // (falls back to default for any newly-added widget).
+        const byId = new Map<string, GridLayoutItem>(
+          (data.layout as unknown as GridLayoutItem[]).map(i => [i.i, i]),
+        );
+        const merged = cloneInsightsDefaultLayout().map(def => byId.get(def.i) ?? def);
+        setLayout(merged);
+      }
+      setLayoutHydrated(true);
+    })();
+    return () => { cancelled = true; };
+  }, [company?.id]);
+
+  const persistLayout = React.useCallback((next: GridLayoutItem[]) => {
+    if (!isLayoutEditor || !company?.id || !user?.id) return;
+    supabase
+      .from('dashboard_grid_layouts')
+      .upsert(
+        {
+          company_id: company.id,
+          dashboard_id: INSIGHTS_LAYOUT_DASHBOARD_ID,
+          user_id: user.id,
+          layout: next as any,
+        },
+        { onConflict: 'company_id,dashboard_id' },
+      )
+      .then(({ error }) => {
+        if (error) console.error('[Insights layout] save failed', error);
+      });
+  }, [isLayoutEditor, company?.id, user?.id]);
+
+  const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
+    const cloned = nextLayout.map(item => ({ ...item }));
+    setLayout(cloned);
+    if (!isLayoutEditor || !layoutHydrated) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (immediate) {
+      persistLayout(cloned);
+    } else {
+      saveTimerRef.current = setTimeout(() => persistLayout(cloned), 600);
+    }
+  }, [isLayoutEditor, layoutHydrated, persistLayout]);
+
   const resetLayout = React.useCallback(async () => {
-    setLayout(cloneInsightsDefaultLayout());
-  }, []);
+    const def = cloneInsightsDefaultLayout();
+    setLayout(def);
+    if (isLayoutEditor) persistLayout(def);
+  }, [isLayoutEditor, persistLayout]);
 
   const editSnapshotRef = useRef<GridLayoutItem[] | null>(null);
   const wasEditingRef = useRef(false);
@@ -3057,7 +3122,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {isEditMode && (
+      {isEditMode && isLayoutEditor && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
             Layout edit mode — drag titles to move, drag corners to resize
@@ -3079,7 +3144,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       <DraggableGridLayout
         layout={layout}
         onLayoutChange={saveLayout}
-        isEditMode={isEditMode}
+        isEditMode={isEditMode && isLayoutEditor}
         rowHeight={70}
         draggableHandle=".widget-drag-handle"
         draggableCancel=".react-resizable-handle"
