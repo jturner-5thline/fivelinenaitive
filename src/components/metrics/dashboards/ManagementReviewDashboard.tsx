@@ -1871,7 +1871,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   // Do not hydrate this grid from dashboard_grid_layouts/localStorage or any
   // prior saved user layout; refresh must always start from this exact map.
   const [layout, setLayout] = useState<GridLayoutItem[]>(cloneInsightsDefaultLayout);
-  const saveLayout = React.useCallback((nextLayout: GridLayoutItem[]) => {
+  const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], _immediate?: boolean) => {
     setLayout(nextLayout.map(item => ({ ...item })));
   }, []);
   const resetLayout = React.useCallback(async () => {
