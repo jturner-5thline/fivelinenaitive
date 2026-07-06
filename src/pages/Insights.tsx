@@ -1299,6 +1299,10 @@ function renderStatContent(
       return (fq || qbMetrics) ? (
         <StatWidgetContent title={widget.title} value={formatCurrency(fq ? fq.netIncome : qbMetrics!.netIncome)} subtitle={`Revenue minus expenses${periodSuffix}`} icon="dollar" color={widget.color} />
       ) : (<CardContent className="pt-6"><p className="text-xs text-muted-foreground">Connect QuickBooks</p></CardContent>);
+    case 'finserv-revenue-per-hour':
+      return <FinServPerHourStat title={widget.title} color={widget.color} mode="revenue" timePeriod={widget.timePeriod} />;
+    case 'finserv-profit-per-hour':
+      return <FinServPerHourStat title={widget.title} color={widget.color} mode="profit" timePeriod={widget.timePeriod} />;
     case 'qb-active-vendors':
       return qbMetrics ? (
         <StatWidgetContent title={widget.title} value={`${qbMetrics.activeVendors}`} subtitle={`of ${qbMetrics.totalVendors} total`} icon="pipeline" color={widget.color} />
