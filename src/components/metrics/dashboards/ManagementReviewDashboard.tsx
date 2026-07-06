@@ -1805,7 +1805,7 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   { i: 'opex',                  x: 6, y: 4,  w: 6,  h: 5,  minW: 4, minH: 4 },
   { i: 'cashflow-12w',          x: 0, y: 9,  w: 6,  h: 4,  minW: 4, minH: 3 },
   { i: 'cashflow-ops',          x: 6, y: 9,  w: 6,  h: 4,  minW: 4, minH: 3 },
-  { i: 'active-deals-list',     x: 0, y: 13, w: 6,  h: 10, minW: 4, minH: 8 },
+  { i: 'active-deals-list',     x: 0, y: 13, w: 6,  h: 8,  minW: 4, minH: 6 },
   { i: 'finserv-next3',         x: 6, y: 14, w: 6,  h: 9,  minW: 4, minH: 4 },
   { i: 'liabilities',           x: 0, y: 23, w: 12, h: 5,  minW: 6, minH: 3 },
   { i: 'ttm-dscr',              x: 0, y: 28, w: 6,  h: 4,  minW: 4, minH: 3 },
