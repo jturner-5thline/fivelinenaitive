@@ -1373,7 +1373,9 @@ function DetailPane({
   const expires = expiryDaysLabel(item);
   const oldValues = (item.old_values || {}) as Record<string, any>;
   const newValues = (item.new_values || {}) as Record<string, any>;
+  const isEmailDraft = item.action_type === 'draft_email';
   const fieldKeys = (() => {
+    if (isEmailDraft) return [] as string[];
     const norm = (v: any) =>
       v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = Array.from(
@@ -1517,7 +1519,17 @@ function DetailPane({
           </p>
 
           {/* Proposed changes — stacked review cards, one per field */}
-          {fieldKeys.length > 0 && (
+          {isEmailDraft && (
+            <EmailDraftPreview
+              item={item}
+              newValues={newValues}
+              editMode={editMode}
+              onToggleEditMode={() => setEditMode((v) => !v)}
+              edits={edits}
+              setEdits={setEdits}
+            />
+          )}
+          {!isEmailDraft && fieldKeys.length > 0 && (
             <div>
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-baseline gap-2">
@@ -1783,6 +1795,146 @@ function MetaCell({ label, value }: { label: string; value: string }) {
       <p className="mt-1 text-[12.5px] text-[#ecedf4]" style={FONT_BODY}>
         {value}
       </p>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Email draft preview — used for action_type='draft_email' (nudges).
+   Renders a cohesive "Suggested email" card instead of a diff-style
+   Current vs Proposed comparison. Nudges are outbound email proposals,
+   not deal-record field updates.
+   ──────────────────────────────────────────────────────────────────────── */
+function EmailDraftPreview({
+  item,
+  newValues,
+  editMode,
+  onToggleEditMode,
+  edits,
+  setEdits,
+}: {
+  item: QueuedAiAction;
+  newValues: Record<string, any>;
+  editMode: boolean;
+  onToggleEditMode: () => void;
+  edits: Record<string, any>;
+  setEdits: (updater: (prev: Record<string, any>) => Record<string, any>) => void;
+}) {
+  const rawTo = edits.to ?? newValues.to ?? '';
+  const toDisplay = Array.isArray(rawTo)
+    ? rawTo.filter(Boolean).join(', ')
+    : typeof rawTo === 'string'
+      ? rawTo
+      : String(rawTo || '');
+  const subject = String(edits.subject ?? newValues.subject ?? '');
+  const body = String(edits.body ?? newValues.body ?? '');
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p
+          className="text-[16px] font-semibold tracking-tight text-[#f7f8fc]"
+          style={FONT_BODY}
+        >
+          Suggested email
+        </p>
+        <button
+          type="button"
+          onClick={onToggleEditMode}
+          className="inline-flex items-center gap-1 h-7 px-2 rounded text-[12px] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.05] transition-colors"
+          style={FONT_BODY}
+        >
+          <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-white/[0.10] bg-white/[0.03] overflow-hidden">
+        {/* To */}
+        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.06]">
+          <span
+            className="text-[12px] font-medium text-[#ecedf4]/55 shrink-0 w-16"
+            style={FONT_BODY}
+          >
+            To
+          </span>
+          {editMode ? (
+            <Input
+              type="text"
+              value={toDisplay}
+              onChange={(e) =>
+                setEdits((p) => ({
+                  ...p,
+                  to: e.target.value
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                }))
+              }
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              style={FONT_BODY}
+            />
+          ) : (
+            <span
+              className="text-[14px] text-[#f7f8fc] break-all"
+              style={FONT_BODY}
+            >
+              {toDisplay || <span className="text-[#ecedf4]/60">—</span>}
+            </span>
+          )}
+        </div>
+
+        {/* Subject */}
+        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.06]">
+          <span
+            className="text-[12px] font-medium text-[#ecedf4]/55 shrink-0 w-16"
+            style={FONT_BODY}
+          >
+            Subject
+          </span>
+          {editMode ? (
+            <Input
+              type="text"
+              value={subject}
+              onChange={(e) => setEdits((p) => ({ ...p, subject: e.target.value }))}
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              style={FONT_BODY}
+            />
+          ) : (
+            <span
+              className="text-[14px] font-medium text-[#f7f8fc] break-words"
+              style={FONT_BODY}
+            >
+              {subject || <span className="text-[#ecedf4]/60">—</span>}
+            </span>
+          )}
+        </div>
+
+        {/* Message body */}
+        <div className="px-4 py-3">
+          <p
+            className="text-[12px] font-medium text-[#ecedf4]/55 mb-2"
+            style={FONT_BODY}
+          >
+            Message
+          </p>
+          {editMode ? (
+            <Textarea
+              rows={Math.min(20, Math.max(8, (body.match(/\n/g)?.length ?? 0) + 4))}
+              value={body}
+              onChange={(e) => setEdits((p) => ({ ...p, body: e.target.value }))}
+              className="text-[14px] leading-[1.6] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              style={FONT_BODY}
+            />
+          ) : (
+            <p
+              className="text-[14px] leading-[1.65] text-[#f0f1f6] whitespace-pre-wrap break-words"
+              style={FONT_BODY}
+            >
+              {body || <span className="text-[#ecedf4]/60">—</span>}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
