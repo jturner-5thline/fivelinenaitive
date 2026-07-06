@@ -1308,9 +1308,9 @@ function renderStatContent(
     case 'finserv-profit-per-hour':
       return <FinServPerHourStat title={widget.title} color={widget.color} mode="profit" timePeriod={widget.timePeriod} />;
     case 'finserv-active-client-count':
-      return <FinServActiveClientCountStat title={widget.title} color={widget.color} />;
+      return <FinServActiveClientCountStat title={widget.title} color={widget.color} timePeriod={widget.timePeriod} />;
     case 'finserv-total-mrr':
-      return <FinServTotalMrrStat title={widget.title} color={widget.color} />;
+      return <FinServTotalMrrStat title={widget.title} color={widget.color} timePeriod={widget.timePeriod} />;
     case 'qb-active-vendors':
       return qbMetrics ? (
         <StatWidgetContent title={widget.title} value={`${qbMetrics.activeVendors}`} subtitle={`of ${qbMetrics.totalVendors} total`} icon="pipeline" color={widget.color} />

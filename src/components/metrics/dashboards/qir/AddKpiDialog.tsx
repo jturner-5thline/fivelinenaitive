@@ -311,6 +311,13 @@ function WidgetTile({
   } else if (isCustom) {
     valueDisplay = <span className="text-[11px] text-muted-foreground">Custom formula</span>;
     captionDisplay = 'Evaluated on add';
+  } else if (!live.supported && ALWAYS_KEPT_METRIC_IDS.has(option.metricSourceId ?? '')) {
+    // Explicitly-kept FinServ tiles don't have a canonical live resolver in
+    // `useInsightsLiveMetricValue` — they hydrate against their own hook when
+    // added to the report. Surface a friendly "live on add" caption instead
+    // of the generic "Unmapped source" so it doesn't look broken.
+    valueDisplay = <span className="text-[11px] text-muted-foreground">Live on add</span>;
+    captionDisplay = 'Live · FinServ Financial Metrics';
   } else if (!live.supported) {
     valueDisplay = <span className="text-[11px] text-muted-foreground">No live data available</span>;
     captionDisplay = 'Unmapped source';
