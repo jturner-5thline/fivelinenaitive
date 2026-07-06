@@ -794,6 +794,39 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "find_recent_copilot_tasks",
+      description: "REQUIRED FIRST CALL whenever the user asks to delete, cancel, remove, undo, or 'never mind' a task the Copilot created earlier (e.g. 'delete that task', 'cancel the last task', 'remove the task I just made for James', 'undo that reminder'). Queries the LIVE tasks table for rows created by the current user via the Copilot (sync_source='copilot'), optionally filtered by title fragment, assignee, or deal, and ordered by most recent first. Use this INSTEAD of relying on conversation memory — a task the model 'remembers' proposing may already be persisted in the DB. Never claim a task does not exist without calling this first.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          title_contains: { type: "string", description: "Optional case-insensitive substring of the task title to filter by (e.g. 'daily briefing')." },
+          assignee_user_id: { type: "string", description: "Optional UUID of the assignee to narrow the match." },
+          deal_id: { type: "string", description: "Optional deal UUID to narrow the match." },
+          within_minutes: { type: "number", description: "Session window in minutes — only tasks created within the last N minutes are returned. Default 180 (3 hours)." },
+          limit: { type: "number", description: "Max rows. Default 10, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_task",
+      description: "Delete a task by ID. Returns a confirmation card the user must approve before the task is deleted — never deletes silently. ALWAYS resolve `task_id` from find_recent_copilot_tasks or get_tasks in the SAME turn; never guess a UUID and never assume a task exists based on conversation memory. Server enforces that only the task's creator or delegator can delete it.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          task_id: { type: "string", description: "UUID of the task to delete. Must come from a tool result (find_recent_copilot_tasks / get_tasks / get_task_details) in this turn." },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_deal",
       description: "Create a new deal in a pipeline. Returns a confirmation card the user must approve before the deal is written. Always pass either pipeline_id (UUID) or pipeline_name (e.g. 'naitive') so the handler can resolve it. Stage can be supplied as stage_id (UUID) or stage_name (label like 'Qualification Call Scheduled'); if omitted, the pipeline's first stage is used. Assignee (deal_owner) may be a user UUID (preferred — resolve via search_team_members first) or a display name like 'Paz'.",
       parameters: {
@@ -3500,7 +3533,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       // Status
       if (!args.include_completed && args.filter !== "completed_recently") {
-        q = q.in("status", ["todo", "in_progress"]);
+        // NOTE: The `tasks` table uses several open-status labels across
+        // integrations — "todo", "in_progress", "not_started" (what
+        // create_task writes), and "pending" (legacy). Include all four so
+        // tasks the Copilot just persisted actually appear in this list.
+        // Bug: previously "not_started" was excluded, so the model
+        // couldn't find its own freshly-created tasks and would tell the
+        // user they didn't exist (state desync with the DB).
+        q = q.in("status", ["todo", "in_progress", "not_started", "pending"]);
       }
 
       // Entity filters
@@ -3535,6 +3575,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       tasks = tasks.map((t: any) => ({ ...t, deal_company: t.deal_id ? dealMap[t.deal_id] : null }));
 
       return { count: tasks.length, scope, filter: args.filter || "open", tasks };
+    }
+    case "find_recent_copilot_tasks": {
+      // Live-DB lookup for the delete/cancel-a-recent-copilot-task flow.
+      // ONLY returns rows the current user created via the Copilot, within
+      // a bounded time window. Never trust conversation memory here — the
+      // whole point is to reconcile the model's belief with what's really
+      // in the tasks table.
+      const withinMinutes = Math.min(Math.max(Number(args.within_minutes ?? 180), 5), 24 * 60);
+      const limit = Math.min(Math.max(Number(args.limit ?? 10), 1), 50);
+      const sinceIso = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString();
+      let q = supabase
+        .from("tasks")
+        .select("id, title, status, due_date, deal_id, assigned_to, assigned_by, created_by, created_at, sync_source")
+        .eq("created_by", userId)
+        .eq("sync_source", "copilot")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.assignee_user_id) q = q.eq("assigned_to", args.assignee_user_id);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (typeof args.title_contains === "string" && args.title_contains.trim()) {
+        const needle = String(args.title_contains).trim().replace(/[%,()]/g, "");
+        q = q.ilike("title", `%${needle}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      // Hydrate deal names and assignee names for a scannable candidate list.
+      const dealIds = [...new Set(rows.map((r: any) => r.deal_id).filter(Boolean))];
+      const userIds = [...new Set(rows.flatMap((r: any) => [r.assigned_to].filter(Boolean)))];
+      const [dealsRes, profilesRes] = await Promise.all([
+        dealIds.length ? supabase.from("deals").select("id, company").in("id", dealIds) : Promise.resolve({ data: [] }),
+        userIds.length ? supabase.from("profiles").select("user_id, display_name, first_name, last_name, email").in("user_id", userIds) : Promise.resolve({ data: [] }),
+      ]);
+      const dealMap = new Map<string, string>();
+      for (const d of (dealsRes.data || []) as any[]) dealMap.set(d.id, d.company);
+      const profMap = new Map<string, string>();
+      for (const p of (profilesRes.data || []) as any[]) {
+        const composed = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+        profMap.set(p.user_id, p.display_name || composed || p.email || "");
+      }
+      const hydrated = rows.map((r: any) => ({
+        task_id: r.id,
+        title: r.title,
+        status: r.status,
+        due_date: r.due_date,
+        deal_id: r.deal_id,
+        deal_name: r.deal_id ? (dealMap.get(r.deal_id) || null) : null,
+        assignee_user_id: r.assigned_to,
+        assignee_name: r.assigned_to ? (profMap.get(r.assigned_to) || null) : null,
+        created_at: r.created_at,
+      }));
+      return {
+        count: hydrated.length,
+        within_minutes: withinMinutes,
+        tasks: hydrated,
+      };
+    }
+    case "delete_task": {
+      const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(taskId)) {
+        return { error: "delete_task requires a real task UUID from find_recent_copilot_tasks or get_tasks." };
+      }
+      // Hydrate the task so the confirm card can show what will be deleted.
+      const { data: t, error } = await supabase
+        .from("tasks")
+        .select("id, title, status, due_date, deal_id, assigned_to, assigned_by, created_by")
+        .eq("id", taskId)
+        .maybeSingle();
+      if (error) return { error: error.message };
+      if (!t) return { error: "Task not found in the database. It may already be deleted." };
+      // Deal/assignee display names for the card.
+      let dealName: string | null = null;
+      if (t.deal_id) {
+        const { data: d } = await supabase.from("deals").select("company").eq("id", t.deal_id).maybeSingle();
+        dealName = d?.company || null;
+      }
+      let assigneeName: string | null = null;
+      if (t.assigned_to) {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("display_name, first_name, last_name, email")
+          .eq("user_id", t.assigned_to)
+          .maybeSingle();
+        const composed = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+        assigneeName = p?.display_name || composed || p?.email || null;
+      }
+      return {
+        action: "confirm",
+        action_type: "delete_task",
+        description: `Delete task: "${t.title}"${dealName ? ` (${dealName})` : ""}`,
+        params: {
+          task_id: t.id,
+          title: t.title,
+          status: t.status,
+          due_date: t.due_date,
+          deal_id: t.deal_id,
+          deal_name: dealName,
+          assignee_user_id: t.assigned_to,
+          assignee_name: assigneeName,
+        },
+      };
     }
     case "get_task_details": {
       if (!args.task_id) return { error: "task_id is required" };
@@ -6655,6 +6797,45 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         params: { deal_id: dealId, new_pipeline_id: newPipelineId, new_stage: resolvedStage },
       };
     }
+    case "delete_task": {
+      // Confirmed task deletion. The tool handler (see executeTool
+      // case "delete_task") already produced a confirm card populated
+      // from the LIVE tasks row — never from conversation memory.
+      // Here we do the actual DB write only after the user has
+      // approved the card.
+      const taskId = typeof params?.task_id === "string" ? params.task_id.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(taskId)) {
+        return { success: false, error: "delete_task requires a valid task UUID." };
+      }
+      const { data: existing, error: fetchErr } = await supabase
+        .from("tasks")
+        .select("id, title, created_by, assigned_by")
+        .eq("id", taskId)
+        .maybeSingle();
+      if (fetchErr) return { success: false, error: fetchErr.message };
+      if (!existing) {
+        return { success: false, error: "Task not found — it may already be deleted.", actionType: "delete_task" };
+      }
+      // Permission: only the creator or the delegator can delete via the
+      // Copilot. Everything else is an RLS-permission surface — refuse
+      // rather than silently swallowing the write.
+      const canDelete = existing.created_by === userId || existing.assigned_by === userId;
+      if (!canDelete) {
+        return {
+          success: false,
+          error: `You don't have permission to delete "${existing.title}" — only the person who created or delegated it can remove it via the Copilot.`,
+          actionType: "delete_task",
+        };
+      }
+      const { error: delErr } = await supabase.from("tasks").delete().eq("id", taskId);
+      if (delErr) return { success: false, error: delErr.message, actionType: "delete_task" };
+      return {
+        success: true,
+        message: `Deleted task "${existing.title}"`,
+        actionType: "delete_task",
+        params: { task_id: taskId },
+      };
+    }
     case "create_task": {
       // ── Server-side guardrail: validate against real tasks schema ──
       // The tasks table has NO priority column writable from the AI (CHECK
@@ -8383,6 +8564,23 @@ EDITING A PENDING TASK DRAFT (apply when the LAST assistant turn already emitted
 - Only skip the re-emit if the user's message doesn't actually change any field (e.g. "looks good"); in that case, point them to the Save button on the existing card and stop.
 - SKIP DUPLICATE DETECTION ENTIRELY for this re-emit. Do NOT call get_tasks. Do NOT populate duplicate_status or duplicate_match. Set duplicate_status="none" on the re-emit and omit duplicate_match. Rationale: the user is CORRECTING the draft they just saw — flagging it as a duplicate of itself (or of any other unsaved draft in this thread) is the exact bug this rule prevents.
 - Signals that the user is correcting a pending draft (treat ANY of these as correction intent when the previous assistant turn contained a create_task card that hasn't been confirmed): "change the assignee to <name>", "assign it/that/them to <name> instead", "reassign to <name>", "make it due <date>", "change the due date to <date>", "move it to <date>", "call it '<new title>'" / "title it '<new title>'" / "rename it to '<new title>'", "link it to <deal>", "add a note that <…>", "not <old value>, <new value>", "actually, <field> should be <value>", and similar short mutations of a specific field. When in doubt between "correction of pending draft" and "brand new task with a similar name", prefer correction — the client replace-in-place is safe because it keys on (title, deal_id).
+
+DELETING / CANCELLING A COPILOT-CREATED TASK (apply when the user asks to delete, cancel, remove, undo, retract, or "never mind" a task — e.g. "delete that task", "cancel the last task", "remove the task I just made for James", "undo the reminder about the daily briefing", "actually kill that task", "nevermind, don't do that one"):
+- STATE OF THE WORLD: The `tasks` DB table is the ONLY source of truth. Do NOT rely on conversation memory to decide whether a task exists. A task the model "remembers" proposing may already be PERSISTED — create_task writes to the DB the moment the user clicks Confirm & create on the approval card, even if the model never sees an explicit "I approved it" turn.
+- REQUIRED FLOW:
+  1. Call find_recent_copilot_tasks FIRST — filter by the user's clues (title fragment, assignee, deal). Default window is the last 3 hours; widen with within_minutes only if the user says "the one from yesterday" etc.
+  2. If ONE match → call delete_task with that task_id in the same turn. The tool returns a confirm card the user must approve; the task is only deleted after the click.
+  3. If MULTIPLE matches → present them as a short markdown picker ("Which task should I delete?" followed by one bullet per candidate with title, due date, assignee, and deal). Wait for the user to pick, THEN call delete_task once with the chosen task_id.
+  4. If ZERO matches AND the user is clearly referring to a task they just approved → widen the search: try get_tasks with include_completed=true and any deal_id / assignee they mentioned, then repeat. Do NOT stop at "I don't see a matching task" until BOTH queries return nothing.
+- HARD RULES:
+  - NEVER say "that task doesn't exist" / "no task was created" / "it was only a draft" without having called find_recent_copilot_tasks (and, if empty, get_tasks with include_completed=true) in the SAME turn. The observed bug is the model claiming a task doesn't exist while the row is sitting in the DB.
+  - NEVER guess or invent a task_id. Only pass task_ids returned by a tool in this turn.
+  - NEVER call delete_task without also having found the task via a query in the same turn.
+  - The delete_task tool returns { action: "confirm", action_type: "delete_task" }. Do NOT also emit a plain-text "deleted" line — the card owns the confirmation surface.
+
+TASK LIFECYCLE INVARIANT (state of the world, apply to EVERY create_task turn):
+- create_task returns a proposal card. NO row is written to the tasks table until the user clicks Confirm & create on that card. The moment they click, the DB row exists and every subsequent turn — including this one — must treat it as real, persisted state.
+- When the user asks "did that task get created?" / "is it saved?" / "where is the task I made?" — DO NOT answer from memory. Call find_recent_copilot_tasks (created_by=current user, sync_source='copilot') and report what the DB actually shows.
 
 CREATE_TASK SCHEMA (HARD CONTRACT — the function call WILL fail with additionalProperties if violated):
 Allowed keys, and ONLY these: title, description, assignee_id, due_date, deal_id, type, collaborator_ids.
