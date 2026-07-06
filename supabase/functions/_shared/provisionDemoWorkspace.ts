@@ -292,6 +292,24 @@ export async function provisionDemoWorkspace(
     .update({ is_demo: true })
     .eq("id", companyId);
 
+  // Demo Access workspaces must get the same email AI Assist surface as the
+  // canonical demo tenant. New demo companies do not always have a
+  // company_features row because the historical auto-create trigger has been
+  // removed, so create/repair it here on the canonical provisioning path.
+  try {
+    const { error: featureErr } = await admin
+      .from("company_features")
+      .upsert(
+        { company_id: companyId, assist_enabled: true },
+        { onConflict: "company_id" },
+      );
+    if (featureErr) {
+      console.warn(`[provisionDemoWorkspace] company_features assist repair failed: ${featureErr.message}`);
+    }
+  } catch (e) {
+    console.warn(`[provisionDemoWorkspace] company_features assist repair errored: ${(e as Error).message}`);
+  }
+
   // 2) Force canonical profile flags for every member of this workspace.
   await admin
     .from("profiles")
@@ -853,11 +871,25 @@ export async function provisionDemoWorkspace(
   // 10) Seed calendar events + inbox emails per member user.
   const now = Date.now();
   for (const uid of memberUserIds) {
-    // calendar — upsert the stable demo keys so repair can fill holes without duplicates.
+    // calendar — insert only missing stable demo keys, in small chunks. A single
+    // 80-row upsert can time out because calendar_events has contact-bump
+    // triggers; chunked inserts make create + repair reliable.
     const haveCal = await countCalendarSeed(admin, uid);
     if (haveCal < DEMO_TARGETS.calendarEvents) {
+      const { data: existingCalRows } = await admin
+        .from("calendar_events")
+        .select("event_id")
+        .eq("user_id", uid)
+        .like("event_id", `${DEMO_CAL_PREFIX}%`);
+      const existingEventIds = new Set(
+        ((existingCalRows ?? []) as Array<{ event_id: string | null }>)
+          .map((r) => r.event_id)
+          .filter((id): id is string => typeof id === "string"),
+      );
       const rows = [];
       for (let i = 0; i < DEMO_TARGETS.calendarEvents; i++) {
+        const eventId = `${DEMO_CAL_PREFIX}${uid}-${i}`;
+        if (existingEventIds.has(eventId)) continue;
         const tpl = MEETING_TEMPLATES[i % MEETING_TEMPLATES.length];
         const deal = demoDeals[i % Math.max(demoDeals.length, 1)];
         const companyName = deal?.company ?? "Demo Co";
@@ -883,7 +915,7 @@ export async function provisionDemoWorkspace(
         rows.push({
           user_id: uid,
           provider: "demo",
-          event_id: `${DEMO_CAL_PREFIX}${uid}-${i}`,
+          event_id: eventId,
           title,
           start_time: start.toISOString(),
           end_time: end.toISOString(),
@@ -896,16 +928,20 @@ export async function provisionDemoWorkspace(
         });
       }
       if (rows.length) {
-        const { error } = await admin
-          .from("calendar_events")
-          .upsert(rows, { onConflict: "user_id,provider,event_id" });
-        if (error) {
-          console.warn(`[provisionDemoWorkspace] calendar_events insert warning for user ${uid}: ${error.message}`);
-          warnings.push(`calendar_events:${uid}:${error.message}`);
-        } else {
-          const afterCal = await countCalendarSeed(admin, uid);
-          insertedThisRun.calendarEvents += Math.max(0, afterCal - haveCal);
+        const chunkSize = 10;
+        for (let startIdx = 0; startIdx < rows.length; startIdx += chunkSize) {
+          const chunk = rows.slice(startIdx, startIdx + chunkSize);
+          const { error } = await admin
+            .from("calendar_events")
+            .insert(chunk);
+          if (error) {
+            console.warn(`[provisionDemoWorkspace] calendar_events insert warning for user ${uid}: ${error.message}`);
+            warnings.push(`calendar_events:${uid}:${error.message}`);
+            break;
+          }
         }
+        const afterCal = await countCalendarSeed(admin, uid);
+        insertedThisRun.calendarEvents += Math.max(0, afterCal - haveCal);
       }
     }
 
