@@ -16,6 +16,95 @@ import {
 } from "../_shared/adminAgentFormat.ts";
 import { buildUserDealCountBlock } from "./userDealCountBlock.ts";
 
+// ── Enum catalogs for schema-valid field edits ────────────────────
+// Any Copilot action proposing a change to one of these fields MUST
+// pick a value from these catalogs. The propose-time handlers below
+// validate the AI's input against these lists and reject/re-map free
+// text; the confirm card renders them as pre-populated <select>s.
+export type EnumOption = { value: string; label: string };
+
+export const DEAL_STATUS_OPTIONS: EnumOption[] = [
+  { value: "on-track", label: "On Track" },
+  { value: "at-risk", label: "At Risk" },
+  { value: "off-track", label: "Off Track" },
+  { value: "on-hold", label: "On Hold" },
+  { value: "archived", label: "Archived" },
+];
+
+export const ENGAGEMENT_TYPE_OPTIONS: EnumOption[] = [
+  { value: "advisory", label: "Advisory" },
+  { value: "managed-process", label: "Managed Process" },
+];
+
+// Fallback / seed list for company_settings.deal_types. Mirrors the
+// defaultDealTypes in src/contexts/DealTypesContext.tsx so a workspace
+// that has never customized deal types still gets a valid enum.
+export const DEFAULT_DEAL_TYPE_OPTIONS: EnumOption[] = [
+  { value: "growth-capital", label: "Growth Capital" },
+  { value: "capex-financing", label: "CapEx Financing" },
+  { value: "abl", label: "ABL" },
+  { value: "acquisition-financing", label: "Acquisition Financing" },
+  { value: "refinancing", label: "Refinancing" },
+  { value: "micro-debt", label: "Micro Debt" },
+];
+
+/**
+ * Resolve free text (from the LLM) to a canonical enum value. Accepts
+ * an exact value match, an exact label match, or a slugified label
+ * match, all case-insensitive. Returns null when nothing matches so
+ * the caller can reject with a helpful error listing valid options.
+ */
+export function matchEnumOption(
+  input: unknown,
+  options: EnumOption[],
+): string | null {
+  if (typeof input !== "string") return null;
+  const norm = input.trim().toLowerCase();
+  if (!norm) return null;
+  const byValue = options.find((o) => o.value.toLowerCase() === norm);
+  if (byValue) return byValue.value;
+  const byLabel = options.find((o) => o.label.toLowerCase() === norm);
+  if (byLabel) return byLabel.value;
+  const slug = norm.replace(/\s+/g, "-");
+  const bySlug = options.find((o) => o.value === slug);
+  return bySlug?.value ?? null;
+}
+
+async function loadDealTypeOptions(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string | null | undefined,
+): Promise<EnumOption[]> {
+  if (!companyId) return DEFAULT_DEAL_TYPE_OPTIONS;
+  try {
+    const { data } = await supabase
+      .from("company_settings")
+      .select("deal_types")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    const raw = (data as any)?.deal_types;
+    if (Array.isArray(raw)) {
+      const parsed = raw
+        .filter((r: any) => r && typeof r.id === "string" && typeof r.label === "string")
+        .map((r: any) => ({ value: String(r.id), label: String(r.label) }));
+      if (parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("[copilot-chat] loadDealTypeOptions failed", e);
+  }
+  return DEFAULT_DEAL_TYPE_OPTIONS;
+}
+
+function pipelineStagesToOptions(stages: unknown): EnumOption[] {
+  if (!Array.isArray(stages)) return [];
+  return stages
+    .map((s: any) => {
+      const value = String(s?.id ?? "").trim();
+      const label = String(s?.label ?? s?.name ?? value).trim();
+      return value ? { value, label: label || value } : null;
+    })
+    .filter((s): s is EnumOption => s !== null);
+}
+
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
