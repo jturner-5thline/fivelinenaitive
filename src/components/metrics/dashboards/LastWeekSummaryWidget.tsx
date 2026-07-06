@@ -369,7 +369,7 @@ function Row({
       }
       className={cn(
         'grid items-center gap-x-1 gap-y-0 border-t border-border/30 pt-1.5 first:border-t-0 first:pt-0 rounded',
-        'grid-cols-[minmax(0,1fr)_2rem_0.5rem_3.75rem_2.5rem_0.5rem_2.5rem]',
+        'grid-cols-[minmax(0,1fr)_auto]',
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
@@ -377,31 +377,31 @@ function Row({
         {label}
       </p>
       {placeholder ? (
-        <>
+        <div className="grid grid-cols-[3.25rem_0.5rem_3.75rem] gap-x-1 gap-y-0 items-center">
           <span className="text-[13px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
           <span className="text-[13px] font-bold font-mono tabular-nums text-muted-foreground/60 text-right">—</span>
           <DeltaBadge pct={null} />
           <span className="text-muted-foreground/40 font-light text-center">|</span>
           <DeltaBadge pct={null} />
-        </>
+        </div>
       ) : isLoading ? (
-        <div className="col-span-6 flex justify-end">
+        <div className="flex justify-end">
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <>
-          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
+        <div className="grid grid-cols-[3.25rem_0.5rem_3.75rem] gap-x-1 gap-y-0 items-center">
+          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
             {count}
           </span>
           <span className="text-muted-foreground/50 font-light text-center">|</span>
-          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap">
+          <span className="text-[13px] font-bold font-mono tabular-nums text-foreground text-right whitespace-nowrap leading-tight">
             {formatCurrencyMM(dollars ?? 0)}
           </span>
           <DeltaBadge pct={countChange} />
-          <span className="text-muted-foreground/40 font-light text-center">|</span>
+          <span className="text-muted-foreground/40 font-light text-center leading-tight">|</span>
           <DeltaBadge pct={dollarsChange} />
-        </>
+        </div>
       )}
     </div>
   );
