@@ -733,7 +733,28 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       if (asanaTaskGid && syncSource !== 'asana') {
         (async () => {
           try {
-            const ctx = await getAsanaSyncContext(rowCompanyId);
+            // Fallback: some legacy task rows have a null company_id (e.g. tasks
+            // created via calendar follow-ups). Resolve the current user's
+            // company so outbound Asana sync still fires instead of silently
+            // no-oping.
+            let effectiveCompanyId = rowCompanyId;
+            if (!effectiveCompanyId) {
+              const { data: { user: au } } = await supabase.auth.getUser();
+              if (au) {
+                const { data: member } = await supabase
+                  .from('company_members')
+                  .select('company_id')
+                  .eq('user_id', au.id)
+                  .limit(1)
+                  .maybeSingle();
+                effectiveCompanyId = (member as any)?.company_id ?? null;
+                if (effectiveCompanyId) {
+                  // Backfill so future updates/syncs don't need this lookup.
+                  await supabase.from('tasks').update({ company_id: effectiveCompanyId } as any).eq('id', id);
+                }
+              }
+            }
+            const ctx = await getAsanaSyncContext(effectiveCompanyId);
             if (!ctx) return;
 
             const asanaUpdates: { title?: string; due_date?: string | null; assignee_email?: string | null; completed?: boolean } = {};
