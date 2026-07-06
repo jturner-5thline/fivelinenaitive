@@ -3303,19 +3303,61 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         </div>
         <div key="finserv-next3" className="h-full">
           <GridShell isEditMode={isEditMode} title="FinServ: Next 3 Months">
-            <div className="flex flex-col divide-y divide-border">
-              {[
-                "Next 3 Months' Revenue",
-                "Next 3 Months' Profit",
-                'Operating Cashflow',
-                'Client Signings',
-                'Current Run Rate',
-              ].map((label) => (
-                <div key={label} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-foreground">—</span>
+            <div className="flex h-full flex-col">
+              <div className="flex flex-col divide-y divide-border">
+                {[
+                  "Next 3 Months' Revenue",
+                  "Next 3 Months' Profit",
+                  'Operating Cashflow',
+                  'Client Signings',
+                  'Current Run Rate',
+                ].map((label) => (
+                  <div key={label} className="flex items-center justify-between py-2 text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-medium text-foreground">—</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex-1 min-h-[160px]">
+                <div className="mb-1 text-xs font-medium text-muted-foreground">
+                  Next 3 Months' Revenue & Profit
                 </div>
-              ))}
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={(() => {
+                      const now = new Date();
+                      return Array.from({ length: 3 }, (_, i) => {
+                        const d = new Date(now.getFullYear(), now.getMonth() + 1 + i, 1);
+                        return {
+                          month: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+                          revenue: 0,
+                          profit: 0,
+                        };
+                      });
+                    })()}
+                    margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v: number) =>
+                        v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`
+                      }
+                    />
+                    <RTooltip
+                      formatter={(v: number, n: string) => [`$${Number(v).toLocaleString()}`, n]}
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="profit" name="Profit" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </GridShell>
         </div>
