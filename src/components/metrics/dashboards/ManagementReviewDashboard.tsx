@@ -3007,6 +3007,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
+              {trendMode !== 'quarterly-yoy' && (() => {
+                const vals = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+                const labels = trendMode === 'ttm' ? ttmLabels : monthlyTrendLabels;
+                if (!vals || vals.length === 0) return null;
+                const last = vals[vals.length - 1] ?? null;
+                const prev = vals.length >= 2 ? vals[vals.length - 2] : null;
+                return (
+                  <PeriodReadout
+                    label={labels[labels.length - 1]}
+                    value={last}
+                    previous={prev}
+                    polarity="higher-is-better"
+                    loading={isLoading}
+                  />
+                );
+              })()}
               {trendMode === 'quarterly-yoy' ? (
                 <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
