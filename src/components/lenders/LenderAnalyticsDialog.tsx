@@ -148,6 +148,66 @@ function normalizeLabel(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+/**
+ * Render a lender/funding-source stage as a coloured tag.
+ *  - Red   : "Not a Fit", "Passed", "Declined", "Lost"
+ *  - Blue  : "On Deck", "On Hold"
+ *  - Green : everything else with content (Submitted, In Review, Terms, etc.)
+ * Also converts kebab/snake slugs like "not-a-fit" into "Not a Fit" title case.
+ */
+function prettifyStageLabel(raw: string | null | undefined): string {
+  const s = (raw || '').trim();
+  if (!s) return '';
+  // Preserve labels that already look human-formatted (contain a space and
+  // at least one uppercase letter).
+  if (/\s/.test(s) && /[A-Z]/.test(s)) return s;
+  return s
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map((w) => {
+      const lc = w.toLowerCase();
+      // Preserve short connecting words in the middle of a phrase.
+      if (['a', 'of', 'the', 'and', 'to'].includes(lc)) return lc;
+      return lc.charAt(0).toUpperCase() + lc.slice(1);
+    })
+    .join(' ')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+type StageTagTone = 'red' | 'blue' | 'green' | 'neutral';
+
+function stageTagTone(label: string): StageTagTone {
+  const n = normalizeLabel(label);
+  if (!n) return 'neutral';
+  if (n.includes('not a fit') || n === 'passed' || n.includes('declin') || n === 'lost' || n.includes('no go')) {
+    return 'red';
+  }
+  if (n.includes('on deck') || n.includes('on hold')) return 'blue';
+  return 'green';
+}
+
+function StageTag({ label }: { label: string | null | undefined }) {
+  const pretty = prettifyStageLabel(label);
+  if (!pretty) return <span className="text-slate-500">—</span>;
+  const tone = stageTagTone(pretty);
+  const styles: Record<StageTagTone, CSSProperties> = {
+    red: { background: 'rgba(248, 113, 113, 0.14)', color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.35)' },
+    blue: { background: 'rgba(96, 165, 250, 0.14)', color: '#60a5fa', borderColor: 'rgba(96, 165, 250, 0.35)' },
+    green: { background: 'rgba(77, 217, 172, 0.14)', color: '#4dd9ac', borderColor: 'rgba(77, 217, 172, 0.35)' },
+    neutral: { background: 'rgba(148, 163, 184, 0.12)', color: '#cbd5e1', borderColor: 'rgba(148, 163, 184, 0.3)' },
+  };
+  return (
+    <span
+      className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10.5px] font-medium leading-none whitespace-nowrap"
+      style={styles[tone]}
+    >
+      {pretty}
+    </span>
+  );
+}
+
 /** Returns ordinal milestone reached (1..7) for a normalized label, or 0 if not on the linear path. */
 function stageOrdinal(label: string): number {
   const n = normalizeLabel(label);
@@ -1146,7 +1206,7 @@ export function LenderAnalyticsDialog({
                       .map(r => (
                         <tr key={r.id} className="border-t border-slate-700/40">
                           <td className="py-1.5 text-slate-100 truncate max-w-[180px]">{r.deal.company || '—'}</td>
-                          <td className="text-slate-300 truncate max-w-[140px]">{r.label || '—'}</td>
+                          <td className="max-w-[160px]"><StageTag label={r.label} /></td>
                           <td className="text-right text-slate-200 tabular-nums">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
                           <td className="text-slate-300 truncate max-w-[100px]">{r.deal.manager || '—'}</td>
                           <td className="text-right text-slate-400 tabular-nums">{new Date(r.updated_at).toLocaleDateString()}</td>
