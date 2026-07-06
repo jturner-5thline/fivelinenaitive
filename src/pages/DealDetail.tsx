@@ -231,6 +231,7 @@ import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportT
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
+import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
 import { DraftAndSendDialog, type DraftAndSendInitial } from '@/components/deal/DraftAndSendDialog';
 import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/components/deal/StatusEmailFlowPicker';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
@@ -4766,14 +4767,34 @@ export default function DealDetail() {
                               strategy={verticalListSortingStrategy}
                             >
                               {filteredSortedLenders.map((lender, index) => {
+                                // Defensive: a single malformed deal_lender record (e.g. missing
+                                // name / id after a partial write) must not crash the entire
+                                // Funding Sources section. Skip non-objects outright, and wrap
+                                // the row render in an error boundary so downstream field
+                                // access can throw without blanking the list.
+                                if (!lender || typeof lender !== 'object') {
+                                  // eslint-disable-next-line no-console
+                                  console.warn('[FundingSources] skipping non-object deal_lender at index', index, lender);
+                                  return null;
+                                }
+                                const safeName = typeof lender.name === 'string' ? lender.name : '';
                                 const lenderOutstandingItems = outstandingItems.filter(
-                                  item => Array.isArray(item.requestedBy) 
-                                    ? item.requestedBy.includes(lender.name)
-                                    : item.requestedBy === lender.name
+                                  item => Array.isArray(item.requestedBy)
+                                    ? item.requestedBy.includes(safeName)
+                                    : item.requestedBy === safeName
                                 );
-                                const staleStatus = isLenderStale(lender);
+                                const staleStatus = (() => {
+                                  try { return isLenderStale(lender); }
+                                  catch (e) {
+                                    // eslint-disable-next-line no-console
+                                    console.error('[FundingSources] isLenderStale threw for', lender?.id, e);
+                                    return { isStale: false, isUrgent: false } as ReturnType<typeof isLenderStale>;
+                                  }
+                                })();
                                 const shouldAnimate = highlightStale && staleStatus.isStale;
+                                const rowKey = lender.id || `lender-idx-${index}`;
                                 return (
+                                  <LenderRowBoundary key={rowKey} lenderId={lender.id} lenderName={lender.name}>
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div
                                       data-lender-id={lender.id}
@@ -5143,6 +5164,7 @@ export default function DealDetail() {
                                       </div>
                                     </div>
                                   </SortableLenderItem>
+                                  </LenderRowBoundary>
                                 );
                               })}
                             </SortableContext>
@@ -5168,12 +5190,20 @@ export default function DealDetail() {
                                     </span>
                                   </div>
                                   {groupLenders.map((lender, index) => {
+                                    if (!lender || typeof lender !== 'object') {
+                                      // eslint-disable-next-line no-console
+                                      console.warn('[FundingSources] skipping non-object deal_lender in group', group?.id, 'at index', index, lender);
+                                      return null;
+                                    }
+                                    const safeName = typeof lender.name === 'string' ? lender.name : '';
                                     const lenderOutstandingItems = outstandingItems.filter(
-                                      item => Array.isArray(item.requestedBy) 
-                                        ? item.requestedBy.includes(lender.name)
-                                        : item.requestedBy === lender.name
+                                      item => Array.isArray(item.requestedBy)
+                                        ? item.requestedBy.includes(safeName)
+                                        : item.requestedBy === safeName
                                     );
+                                    const rowKey = lender.id || `${group?.id ?? 'grp'}-idx-${index}`;
                                     return (
+                                       <LenderRowBoundary key={rowKey} lenderId={lender.id} lenderName={lender.name}>
                                        <div key={lender.id} className="relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
                                          <div className="absolute right-3 top-3 flex items-center gap-1 z-10">
                                            <LenderFollowUpPopover
@@ -5468,7 +5498,8 @@ export default function DealDetail() {
                                             </div>
                                           )}
                                         </div>
-                                      </div>
+                                       </div>
+                                       </LenderRowBoundary>
                                     );
                                   })}
                                 </div>
@@ -6580,14 +6611,22 @@ export default function DealDetail() {
               lenderMetrics={(() => {
                 const metrics: Record<string, { activeDealCount: number; outstandingItemsCount: number; openTasksCount: number; contactName?: string; notesOutSince?: string }> = {};
                 deal.lenders?.forEach(l => {
+                  // Defensive: skip records missing a usable name — building
+                  // metrics for a null/undefined name previously threw and
+                  // crashed the entire Funding Sources section.
+                  if (!l || typeof l.name !== 'string' || !l.name.trim()) {
+                    // eslint-disable-next-line no-console
+                    console.warn('[FundingSources] skipping deal_lender with missing name for metrics', l?.id);
+                    return;
+                  }
                   const key = l.name.toLowerCase().trim();
-                  const masterLender = masterLenders.find(ml => ml.name.toLowerCase().trim() === key);
-                  const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => r.toLowerCase().trim() === key));
+                  const masterLender = masterLenders.find(ml => typeof ml?.name === 'string' && ml.name.toLowerCase().trim() === key);
+                  const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => typeof r === 'string' && r.toLowerCase().trim() === key));
                   // Count active deals for this funding source across all deals
                   let activeDealCount = 0;
                   deals.forEach(d => {
                     d.lenders?.forEach(dl => {
-                      if (dl.name.toLowerCase().trim() === key && dl.trackingStatus !== 'passed' && dl.trackingStatus !== 'on-deck') {
+                      if (dl && typeof dl.name === 'string' && dl.name.toLowerCase().trim() === key && dl.trackingStatus !== 'passed' && dl.trackingStatus !== 'on-deck') {
                         activeDealCount++;
                       }
                     });

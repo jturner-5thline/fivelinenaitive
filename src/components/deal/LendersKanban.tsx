@@ -23,6 +23,7 @@ import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
+import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
 
 
 interface LenderMetrics {
@@ -116,10 +117,11 @@ function DraggableLenderTile({
     pointerEvents: 'none',
   } : undefined;
 
-  const stageConfig = configuredStages.find(s => s.id === lender.stage);
-  const stageLabel = stageConfig?.label || lender.stage;
-  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed' || lender.trackingStatus === 'on-deck';
-  const timeAgo = hideTime ? '' : getRelativeTime(lender.updatedAt);
+  const displayName = (typeof lender?.name === 'string' && lender.name.trim()) || 'Unknown funding source';
+  const stageConfig = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
+  const stageLabel = stageConfig?.label || lender?.stage || 'Unassigned';
+  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender?.trackingStatus === 'passed' || lender?.trackingStatus === 'on-deck';
+  const timeAgo = hideTime ? '' : getRelativeTime(lender?.updatedAt);
 
   const handleClick = (e: React.MouseEvent) => {
     // Only trigger click if not dragging
@@ -193,8 +195,8 @@ function DraggableLenderTile({
               </span>
             );
           })()}
-          {lender.name}
-          <LenderFlagIndicator lenderName={lender.name} />
+          {displayName}
+          <LenderFlagIndicator lenderName={displayName} />
         </p>
         {metrics?.contactName && (
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
@@ -264,7 +266,7 @@ function DraggableLenderTile({
       )}
 
       {/* Pass reasons */}
-      {lender.passReason && (
+      {typeof lender?.passReason === 'string' && lender.passReason && (
         <div className="mt-2 flex flex-wrap gap-1 items-center overflow-hidden">
           {lender.passReason.split(', ').map((reason, idx) => (
             <span key={idx} className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded truncate max-w-full">
@@ -355,25 +357,43 @@ function DroppableColumn({
               </p>
             </div>
           )}
-          {lenders.map((lender) => (
-            <DraggableLenderTile
-              key={lender.id}
-              lender={lender}
-              dealId={dealId}
-              dealName={dealName}
-              dealCompany={dealCompany}
-              configuredStages={configuredStages}
-              isSaving={isSaving?.(`lender-stage-${lender.id}`)}
-              hasFailed={failedSaves?.has(lender.id)}
-              onRetry={onRetry ? () => onRetry(lender.id) : undefined}
-              onEditPassReasons={onEditPassReasons ? () => onEditPassReasons(lender.id) : undefined}
-              metrics={lenderMetrics?.[lender.name.toLowerCase().trim()]}
-              onClick={onCardClick ? () => onCardClick(lender) : undefined}
-              showScore={showScore}
-              scoreConfig={scoreConfig}
-              onFollowUpSent={onFollowUpSent}
-            />
-          ))}
+          {lenders.map((lender, idx) => {
+            // Defensive: a malformed record (null lender, missing name, missing id)
+            // must not crash the section. Log and render an inline fallback.
+            if (!lender || typeof lender !== 'object') {
+              // eslint-disable-next-line no-console
+              console.warn('[FundingSources] skipping non-object deal_lender at index', idx, lender);
+              return (
+                <div key={`malformed-${idx}`} className="bg-destructive/5 border border-destructive/40 rounded-xl p-3 text-xs text-destructive">
+                  Malformed funding source record at position {idx + 1}.
+                </div>
+              );
+            }
+            const safeKey = lender.id || `lender-idx-${idx}`;
+            const metricsKey = typeof lender.name === 'string'
+              ? lender.name.toLowerCase().trim()
+              : '';
+            return (
+              <LenderRowBoundary key={safeKey} lenderId={lender.id} lenderName={lender.name}>
+                <DraggableLenderTile
+                  lender={lender}
+                  dealId={dealId}
+                  dealName={dealName}
+                  dealCompany={dealCompany}
+                  configuredStages={configuredStages}
+                  isSaving={lender.id ? isSaving?.(`lender-stage-${lender.id}`) : false}
+                  hasFailed={lender.id ? failedSaves?.has(lender.id) : false}
+                  onRetry={onRetry && lender.id ? () => onRetry(lender.id) : undefined}
+                  onEditPassReasons={onEditPassReasons && lender.id ? () => onEditPassReasons(lender.id) : undefined}
+                  metrics={metricsKey ? lenderMetrics?.[metricsKey] : undefined}
+                  onClick={onCardClick ? () => onCardClick(lender) : undefined}
+                  showScore={showScore}
+                  scoreConfig={scoreConfig}
+                  onFollowUpSent={onFollowUpSent}
+                />
+              </LenderRowBoundary>
+            );
+          })}
         </div>
       </div>
     </div>
