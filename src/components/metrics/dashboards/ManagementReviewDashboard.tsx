@@ -1068,7 +1068,15 @@ function ConsolidatedCashflowWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+        <PeriodReadout
+          label={series[series.length - 1]?.label}
+          value={series[series.length - 1]?.value ?? null}
+          previous={series.length >= 2 ? series[series.length - 2].value : priorValue}
+          polarity="higher-is-better"
+          loading={loading && !data}
+          format={(v) => fmt(v)}
+        />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
