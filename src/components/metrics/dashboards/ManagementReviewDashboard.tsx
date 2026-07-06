@@ -1216,6 +1216,75 @@ function GridShell({
   );
 }
 
+/**
+ * Compact period-metric readout shown at the top of trend widgets.
+ * Displays: "{period label} {value}  {±delta$} ({±delta%})" — coloring the
+ * delta by metric polarity (green = favorable, red = unfavorable, gray = flat/na).
+ */
+function PeriodReadout({
+  label,
+  value,
+  previous,
+  polarity,
+  loading,
+  format,
+}: {
+  label?: string | null;
+  value: number | null;
+  previous: number | null | undefined;
+  polarity: 'higher-is-better' | 'lower-is-better';
+  loading?: boolean;
+  /** Formats a plain dollar amount into the widget's preferred display (e.g. "$185K"). */
+  format?: (v: number) => string;
+}) {
+  const fmt = format ?? ((v: number) => formatUSD(v / 1000));
+  const hasValue = value != null && isFinite(value);
+  const dAbs = hasValue && previous != null && isFinite(previous) ? (value as number) - previous : null;
+  const dPct = dAbs != null && previous != null && previous !== 0 ? (dAbs / Math.abs(previous)) * 100 : null;
+
+  const neutral = 'hsl(220,10%,62%)';
+  const good = 'hsl(152,55%,60%)';
+  const bad = 'hsl(0,65%,65%)';
+  const deltaColor = (() => {
+    if (dAbs == null || !isFinite(dAbs) || dAbs === 0) return neutral;
+    if (polarity === 'higher-is-better') return dAbs > 0 ? good : bad;
+    return dAbs > 0 ? bad : good;
+  })();
+
+  const sign = dAbs != null && dAbs > 0 ? '+' : dAbs != null && dAbs < 0 ? '−' : '';
+  const dAbsStr = dAbs != null ? `${sign}${fmt(Math.abs(dAbs))}` : null;
+  const dPctStr = dPct != null ? `${sign}${Math.abs(dPct).toFixed(1)}%` : null;
+
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+      {label && (
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.55)',
+          }}
+        >
+          {label}
+        </span>
+      )}
+      <span style={{ fontSize: 15, fontWeight: 700, color: 'hsl(0,0%,100%)', lineHeight: 1 }}>
+        {loading ? '…' : hasValue ? fmt(value as number) : '—'}
+      </span>
+      {dAbsStr && (
+        <span style={{ fontSize: 11, fontWeight: 600, color: deltaColor, whiteSpace: 'nowrap' }}>
+          {dAbsStr}
+          {dPctStr && (
+            <span style={{ color: deltaColor, opacity: 0.85, marginLeft: 4 }}>({dPctStr})</span>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function useChart(
   ref: React.RefObject<HTMLCanvasElement | null>,
   config: any,
