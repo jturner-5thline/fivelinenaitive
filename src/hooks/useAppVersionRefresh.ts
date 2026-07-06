@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+
+const DEMO_EMAILS = new Set(['demo@example.com', 'demo@5thline.co']);
 
 /**
  * Detects when a new build has been published and prompts the user to
@@ -92,9 +95,14 @@ function hardReload() {
 export function useAppVersionRefresh() {
   const baselineRef = useRef<string | null>(null);
   const notifiedRef = useRef(false);
+  const { user } = useAuth();
+  const isDemoUser = !!user?.email && DEMO_EMAILS.has(user.email.toLowerCase());
 
   useEffect(() => {
     if (import.meta.env.DEV) return;
+    // Never nag demo accounts about new versions — they're for exploration
+    // and interrupting them with a reload prompt breaks the demo flow.
+    if (isDemoUser) return;
 
     let cancelled = false;
     let timer: number | undefined;
@@ -141,7 +149,7 @@ export function useAppVersionRefresh() {
       if (timer) window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [isDemoUser]);
 }
 
 export function AppVersionRefreshMount() {
