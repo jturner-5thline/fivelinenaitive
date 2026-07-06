@@ -238,6 +238,40 @@ export function deriveFieldDiffs(
           newValue: get("new_stage"),
         },
       ];
+    case "create_deal": {
+      // Rows shown on the create-deal confirm/done card. Field keys MUST
+      // match the mismatch.field values returned by the executor so the
+      // WRITE_NOT_PERSISTED branch can badge individual rows ❌.
+      const rows: FieldDiff[] = [];
+      if (get("company_name") !== undefined) {
+        rows.push({ field: "company_name", label: "Deal name", newValue: get("company_name") });
+      }
+      if (get("deal_type") !== undefined && get("deal_type") !== null) {
+        rows.push({ field: "deal_type", label: "Deal type", newValue: get("deal_type") });
+      }
+      if (get("engagement_type") !== undefined && get("engagement_type") !== null) {
+        rows.push({ field: "engagement_type", label: "Engagement", newValue: get("engagement_type") });
+      }
+      if (get("deal_value") !== undefined && get("deal_value") !== null) {
+        rows.push({ field: "deal_value", label: "Deal value", newValue: get("deal_value") });
+      }
+      if (get("pipeline_name") !== undefined || get("pipeline_id") !== undefined) {
+        rows.push({ field: "pipeline_id", label: "Pipeline", newValue: get("pipeline_name") ?? get("pipeline_id") });
+      }
+      if (get("stage_label") !== undefined || get("stage_id") !== undefined) {
+        rows.push({ field: "stage_id", label: "Stage", newValue: get("stage_label") ?? get("stage_id") });
+      }
+      if (get("deal_owner_name") !== undefined && get("deal_owner_name") !== null) {
+        rows.push({ field: "deal_owner_name", label: "Owner", newValue: get("deal_owner_name") });
+      }
+      if (get("referral_source") !== undefined && get("referral_source") !== null) {
+        rows.push({ field: "referral_source", label: "Referral source", newValue: get("referral_source") });
+      }
+      if (get("narrative") !== undefined && get("narrative") !== null) {
+        rows.push({ field: "narrative", label: "Narrative", newValue: get("narrative") });
+      }
+      return rows;
+    }
     case "add_deal_note":
     case "log_note":
       return [
