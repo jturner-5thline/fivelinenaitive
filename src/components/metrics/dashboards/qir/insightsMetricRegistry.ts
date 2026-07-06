@@ -110,6 +110,8 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'qb-collection-rate': 'FinServ Financial Metrics',
   'finserv-revenue-per-hour': 'FinServ Financial Metrics',
   'finserv-profit-per-hour': 'FinServ Financial Metrics',
+  'finserv-active-client-count': 'FinServ Financial Metrics',
+  'finserv-total-mrr': 'FinServ Financial Metrics',
 };
 
 function sourceForDataSourceId(id: string): string {

@@ -85,6 +85,10 @@ import { useMetricsData } from "@/hooks/useMetricsData";
 import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize, MetricChartType } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
 import { FinServPerHourStat } from "@/components/insights/FinServPerHourStat";
+import {
+  FinServActiveClientCountStat,
+  FinServTotalMrrStat,
+} from "@/components/insights/FinServPipelineSnapshotStat";
 import { DatarailsWidgetEditor } from "@/components/widget-editor/DatarailsWidgetEditor";
 import { DEFAULT_WIDGET_CONFIG, WidgetConfig as DatarailsWidgetConfig } from "@/components/widget-editor/widgetTypes";
 import { toast } from "@/hooks/use-toast";
@@ -1303,6 +1307,10 @@ function renderStatContent(
       return <FinServPerHourStat title={widget.title} color={widget.color} mode="revenue" timePeriod={widget.timePeriod} />;
     case 'finserv-profit-per-hour':
       return <FinServPerHourStat title={widget.title} color={widget.color} mode="profit" timePeriod={widget.timePeriod} />;
+    case 'finserv-active-client-count':
+      return <FinServActiveClientCountStat title={widget.title} color={widget.color} />;
+    case 'finserv-total-mrr':
+      return <FinServTotalMrrStat title={widget.title} color={widget.color} />;
     case 'qb-active-vendors':
       return qbMetrics ? (
         <StatWidgetContent title={widget.title} value={`${qbMetrics.activeVendors}`} subtitle={`of ${qbMetrics.totalVendors} total`} icon="pipeline" color={widget.color} />

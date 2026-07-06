@@ -44,6 +44,8 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
   'finserv-revenue-per-hour',
   'finserv-profit-per-hour',
+  'finserv-active-client-count',
+  'finserv-total-mrr',
 ]);
 
 function isOptionKept(opt: InsightsMetricOption): boolean {
