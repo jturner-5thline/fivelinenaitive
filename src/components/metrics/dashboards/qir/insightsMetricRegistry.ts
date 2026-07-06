@@ -108,6 +108,8 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'qb-net-income': 'FinServ Financial Metrics',
   'qb-total-expenses': 'FinServ Financial Metrics',
   'qb-collection-rate': 'FinServ Financial Metrics',
+  'finserv-revenue-per-hour': 'FinServ Financial Metrics',
+  'finserv-profit-per-hour': 'FinServ Financial Metrics',
 };
 
 function sourceForDataSourceId(id: string): string {
@@ -134,7 +136,7 @@ function chartResolutionFor(id: string): string {
 /** Strip leading prefixes like "QB: " / "HS: " / "Cross: " from a label
  *  since the group header already conveys the source. */
 function cleanLabel(label: string): string {
-  return label.replace(/^(QB|HS|Cross):\s*/i, '');
+  return label.replace(/^(QB|HS|Cross|FinServ):\s*/i, '');
 }
 
 /**
