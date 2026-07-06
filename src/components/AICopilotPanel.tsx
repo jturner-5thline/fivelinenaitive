@@ -79,6 +79,27 @@ function isDealsNeedAttentionPrompt(raw: string): boolean {
     || /\bdeals?\s+need\s+attention\b/.test(t);
 }
 
+/**
+ * Daily agenda intent — "what do I have going on today", "what do I need
+ * to do today", "what's on my plate today", "what's on today", etc.
+ * When matched, the Copilot skips the LLM round-trip and opens the
+ * existing My Tasks overlay filtered to today.
+ */
+function isDailyAgendaPrompt(raw: string): boolean {
+  const t = raw.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return false;
+  // Must reference today (today / this morning / this afternoon).
+  if (!/\b(today|this (morning|afternoon))\b/.test(t)) return false;
+  // Common daily-agenda phrasings.
+  return (
+    /\bwhat( do|'?s| is)?\s+(i|we)\s+(have|got|need to do|gotta do|working on)\b/.test(t) ||
+    /\bwhat( is|'?s)\s+(on\s+)?(my|our)\s+(plate|agenda|schedule|calendar|day|list|to\s*do)\b/.test(t) ||
+    /\bwhat( is|'?s)?\s+(going on|happening|up|on)\b/.test(t) ||
+    /\bshow\s+me\s+(my\s+)?(day|agenda|schedule|today'?s?\s+tasks?)\b/.test(t) ||
+    /\b(my\s+)?(agenda|schedule|to\s*do( list)?)\b/.test(t)
+  );
+}
+
 const DEMO_DEALS_NEED_ATTENTION_MARKDOWN = [
   '- BluePeak Logistics',
   '  - Term sheet expected early next week and the capital partner has not confirmed timing yet.',
