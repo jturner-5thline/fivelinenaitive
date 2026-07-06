@@ -795,10 +795,7 @@ function ConsolidatedOpexWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <SectionLabel>
-          {granularityLabel} OPEX — Total for Expenses (Consolidated View, all QBO entities)
-        </SectionLabel>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
@@ -1064,10 +1061,7 @@ function ConsolidatedCashflowWidget() {
 
   return (
     <div className="h-full w-full flex flex-col gap-2">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <SectionLabel>
-          {granularityLabel} Operating Cash Flow (Consolidated View, all QBO entities)
-        </SectionLabel>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
@@ -1166,6 +1160,7 @@ function GridShell({
   headerExtra,
   dragHandleMode = 'header',
   titleAlign = 'left',
+  titleTooltip,
 }: {
   isEditMode: boolean;
   title: string;
@@ -1173,6 +1168,7 @@ function GridShell({
   headerExtra?: React.ReactNode;
   dragHandleMode?: 'header' | 'manual';
   titleAlign?: 'left' | 'center';
+  titleTooltip?: string;
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
@@ -1187,7 +1183,10 @@ function GridShell({
           textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
           flex: titleAlign === 'center' ? 1 : undefined,
           textAlign: titleAlign === 'center' ? 'center' : 'left',
-        }}>
+          cursor: titleTooltip ? 'help' : undefined,
+        }}
+        title={titleTooltip}
+        >
           {title}
         </div>
         <div className="flex items-center gap-2">
@@ -3105,12 +3104,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
         <div key="opex" className="h-full">
-          <GridShell isEditMode={isEditMode} title="OPEX">
+          <GridShell
+            isEditMode={isEditMode}
+            title="OPEX"
+            titleTooltip="Total for Expenses — Consolidated View, all QBO entities"
+          >
             <ConsolidatedOpexWidget />
           </GridShell>
         </div>
         <div key="cashflow-ops" className="h-full">
-          <GridShell isEditMode={isEditMode} title="CashFlow">
+          <GridShell
+            isEditMode={isEditMode}
+            title="CashFlow"
+            titleTooltip="Operating Cash Flow — Consolidated View, all QBO entities"
+          >
             <ConsolidatedCashflowWidget />
           </GridShell>
         </div>
