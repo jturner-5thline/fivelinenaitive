@@ -94,20 +94,20 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         'min-h-11 rounded-[22px]',
         'flex items-center gap-3 pl-1.5 pr-4 py-1',
         'text-left flex-none shrink-0',
-        'opacity-70 hover:opacity-100 focus-within:opacity-100',
+        'opacity-95 hover:opacity-100 focus-within:opacity-100',
         'transition-[opacity,box-shadow] duration-200 ease-out',
-        'hover:shadow-[0_16px_40px_rgba(8,18,42,0.6),0_4px_12px_rgba(37,99,235,0.18),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(59,130,246,0.32)]',
+        'hover:shadow-[0_18px_44px_rgba(4,14,28,0.65),0_6px_16px_rgba(20,90,120,0.28),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(84,180,200,0.35)]',
         'animate-in fade-in duration-150',
         className,
       )}
       style={{
         background:
-          'linear-gradient(135deg, rgba(12, 22, 48, 0.78) 0%, rgba(14, 18, 32, 0.62) 45%, rgba(18, 36, 72, 0.72) 100%)',
+          'linear-gradient(135deg, rgba(10, 44, 58, 0.92) 0%, rgba(12, 34, 50, 0.88) 45%, rgba(14, 52, 68, 0.92) 100%)',
         backdropFilter: 'blur(18px) saturate(1.4)',
         WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-        border: '1px solid rgba(120, 165, 245, 0.28)',
+        border: '1px solid rgba(94, 178, 198, 0.38)',
         boxShadow:
-          '0 10px 32px rgba(8, 18, 42, 0.5), 0 2px 8px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08), inset 0 0 0 1px rgba(96, 145, 230, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.25)',
+          '0 14px 36px rgba(4, 14, 28, 0.55), 0 4px 12px rgba(20, 90, 120, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 0 0 1px rgba(120, 200, 220, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.28)',
         transition: 'opacity 180ms ease-out',
         opacity: forceFocused ? 1 : undefined,
         ...style,
