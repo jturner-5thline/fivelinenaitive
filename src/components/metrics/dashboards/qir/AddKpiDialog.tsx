@@ -14,6 +14,45 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { type LiveMetricPeriod, useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
 
+/**
+ * Canonical set of metric source ids that have a live resolver wired up
+ * in `useInsightsLiveMetricValue`. Keep in sync with that hook — any id
+ * NOT in this set renders as "Unmapped source" and is now filtered out
+ * of the Add Widgets picker.
+ *
+ * Exceptions preserved by explicit id below (see `isOptionKept`):
+ *  - Templates and custom-metric options (always kept — they compute on add)
+ *  - `finserv-revenue-per-hour` / `finserv-profit-per-hour` (user request —
+ *    sourced from the FinServ Financial Metrics dashboard even though
+ *    they are not in the canonical live resolver)
+ */
+const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
+  // Weekly Rundown
+  'active-pipeline', 'closed-won', 'total-fees', 'avg-deal-size',
+  // Controller Dashboard (qb-* scalar tiles)
+  'qb-total-revenue', 'qb-accounts-receivable', 'qb-total-payments',
+  'qb-active-customers', 'qb-collection-rate', 'qb-overdue-amount',
+  'qb-total-expenses', 'qb-total-ap', 'qb-net-income',
+  'qb-active-vendors', 'qb-total-estimates', 'qb-total-credit-memos',
+  // HubSpot
+  'hs-total-deals', 'hs-total-deal-value', 'hs-deals-won', 'hs-deals-lost',
+  'hs-win-rate', 'hs-avg-deal-size', 'hs-total-contacts', 'hs-total-companies',
+  // Cross-source
+  'xs-revenue-per-deal', 'xs-ar-per-active-deal', 'xs-collection-rate-by-entity',
+]);
+
+const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
+  'finserv-revenue-per-hour',
+  'finserv-profit-per-hour',
+]);
+
+function isOptionKept(opt: InsightsMetricOption): boolean {
+  if (opt.kind === 'template' || opt.kind === 'custom-metric') return true;
+  const id = opt.metricSourceId ?? '';
+  if (ALWAYS_KEPT_METRIC_IDS.has(id)) return true;
+  return SUPPORTED_LIVE_METRIC_IDS.has(id);
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -47,6 +86,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
       .map(g => ({
         source: g.source,
         options: g.options.filter(o => {
+          if (!isOptionKept(o)) return false;
           if (activeSource && g.source !== activeSource) return false;
           if (!q) return true;
           return o.label.toLowerCase().includes(q)
