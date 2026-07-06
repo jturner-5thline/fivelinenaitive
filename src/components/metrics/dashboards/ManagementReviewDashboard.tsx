@@ -2873,6 +2873,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 ? (isQuarterView ? 'Quarterly Revenue Trend' : 'Monthly Revenue Trend')
                 : 'Quarterly Revenue Growth (YoY)'
             }
+            titleTooltip={
+              trendMode === 'ttm'
+                ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
+                : trendMode === 'monthly'
+                ? (isQuarterView
+                    ? 'Quarterly Revenue — each bar shows total revenue for that calendar quarter across all QuickBooks entities'
+                    : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities')
+                : undefined
+            }
             headerExtra={
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {trendMode !== 'quarterly-yoy' && (
@@ -2914,15 +2923,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-              {trendMode !== 'quarterly-yoy' && (
-                <SectionLabel>
-                  {trendMode === 'ttm'
-                    ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
-                    : (isQuarterView
-                        ? 'Quarterly Revenue — each bar shows total revenue for that calendar quarter across all QuickBooks entities'
-                        : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities')}
-                </SectionLabel>
-              )}
               {trendMode === 'quarterly-yoy' ? (
                 <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
