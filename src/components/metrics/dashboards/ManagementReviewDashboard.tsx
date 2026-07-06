@@ -1166,6 +1166,7 @@ function GridShell({
   headerExtra,
   dragHandleMode = 'header',
   titleAlign = 'left',
+  titleTooltip,
 }: {
   isEditMode: boolean;
   title: string;
@@ -1173,6 +1174,7 @@ function GridShell({
   headerExtra?: React.ReactNode;
   dragHandleMode?: 'header' | 'manual';
   titleAlign?: 'left' | 'center';
+  titleTooltip?: string;
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
@@ -1187,7 +1189,10 @@ function GridShell({
           textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
           flex: titleAlign === 'center' ? 1 : undefined,
           textAlign: titleAlign === 'center' ? 'center' : 'left',
-        }}>
+          cursor: titleTooltip ? 'help' : undefined,
+        }}
+        title={titleTooltip}
+        >
           {title}
         </div>
         <div className="flex items-center gap-2">
