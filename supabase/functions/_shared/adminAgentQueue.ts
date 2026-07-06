@@ -344,6 +344,17 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
       const hasConcrete = nv && typeof nv === "object" && Object.keys(nv).length > 0;
       if (!hasConcrete) return false;
     }
+    // Deal STATUS enum guardrail. Status is a health badge with a strict
+    // enum: on-track | at-risk | off-track (or cleared). Anything else
+    // (e.g. "Active", "Live", "Pending", "Kickoff") is not a real status
+    // value and must never surface in the queue.
+    if (r.action_type === "update_deal_status") {
+      const nv = (r.new_values ?? {}) as Record<string, unknown>;
+      const candidate = (nv.status ?? nv.new_status ?? "") as unknown;
+      const norm = String(candidate ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+      const ALLOWED = new Set(["on-track", "at-risk", "off-track"]);
+      if (!norm || !ALLOWED.has(norm)) return false;
+    }
     return true;
   });
   if (queueRows.length === 0) return result;
