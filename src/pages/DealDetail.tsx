@@ -4766,14 +4766,34 @@ export default function DealDetail() {
                               strategy={verticalListSortingStrategy}
                             >
                               {filteredSortedLenders.map((lender, index) => {
+                                // Defensive: a single malformed deal_lender record (e.g. missing
+                                // name / id after a partial write) must not crash the entire
+                                // Funding Sources section. Skip non-objects outright, and wrap
+                                // the row render in an error boundary so downstream field
+                                // access can throw without blanking the list.
+                                if (!lender || typeof lender !== 'object') {
+                                  // eslint-disable-next-line no-console
+                                  console.warn('[FundingSources] skipping non-object deal_lender at index', index, lender);
+                                  return null;
+                                }
+                                const safeName = typeof lender.name === 'string' ? lender.name : '';
                                 const lenderOutstandingItems = outstandingItems.filter(
-                                  item => Array.isArray(item.requestedBy) 
-                                    ? item.requestedBy.includes(lender.name)
-                                    : item.requestedBy === lender.name
+                                  item => Array.isArray(item.requestedBy)
+                                    ? item.requestedBy.includes(safeName)
+                                    : item.requestedBy === safeName
                                 );
-                                const staleStatus = isLenderStale(lender);
+                                const staleStatus = (() => {
+                                  try { return isLenderStale(lender); }
+                                  catch (e) {
+                                    // eslint-disable-next-line no-console
+                                    console.error('[FundingSources] isLenderStale threw for', lender?.id, e);
+                                    return { isStale: false, isUrgent: false } as ReturnType<typeof isLenderStale>;
+                                  }
+                                })();
                                 const shouldAnimate = highlightStale && staleStatus.isStale;
+                                const rowKey = lender.id || `lender-idx-${index}`;
                                 return (
+                                  <LenderRowBoundary key={rowKey} lenderId={lender.id} lenderName={lender.name}>
                                   <SortableLenderItem key={lender.id} lender={lender}>
                                     <div
                                       data-lender-id={lender.id}
@@ -5143,6 +5163,7 @@ export default function DealDetail() {
                                       </div>
                                     </div>
                                   </SortableLenderItem>
+                                  </LenderRowBoundary>
                                 );
                               })}
                             </SortableContext>
