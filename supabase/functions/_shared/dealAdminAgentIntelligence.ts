@@ -1763,24 +1763,39 @@ function inferFundingSourceId(c: CandidateItem, bundle: DealSignalBundle): strin
 }
 
 function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSignalBundle): CandidateItem[] {
+  const validFundingIds = new Set<string>(
+    (bundle.funding_sources ?? [])
+      .map((f: any) => (f?.id ? String(f.id) : ""))
+      .filter((v: string) => v.length > 0),
+  );
+  const dealIdStr = bundle.deal_id ? String(bundle.deal_id) : "";
+  const resolveFundingTargetId = (c: CandidateItem): string | null => {
+    const raw = c.target_object_id ? String(c.target_object_id) : "";
+    // Reject the deal id being (mis)used as a deal_lender target.
+    const candidate = raw && raw !== dealIdStr && validFundingIds.has(raw) ? raw : null;
+    if (candidate) return candidate;
+    const inferred = inferFundingSourceId(c, bundle);
+    if (inferred && validFundingIds.has(inferred)) return inferred;
+    return null;
+  };
   return candidates.map((c) => {
     const normalizedType = normalizeQueueTargetType(c.action_type, c.target_object_type);
     if (c.action_type === "update_funding_source") {
       return {
         ...c,
         target_object_type: "deal_lender",
-        target_object_id: c.target_object_id ?? inferFundingSourceId(c, bundle),
+        target_object_id: resolveFundingTargetId(c),
       };
     }
 
     if (c.action_type === "draft_email") {
       const explicitFundingTarget = normalizedType === "deal_lender";
-      const inferredLenderId = c.target_object_id ?? inferFundingSourceId(c, bundle);
-      if (explicitFundingTarget || inferredLenderId) {
+      const resolvedLenderId = resolveFundingTargetId(c);
+      if (explicitFundingTarget || resolvedLenderId) {
         return {
           ...c,
           target_object_type: "deal_lender",
-          target_object_id: inferredLenderId,
+          target_object_id: resolvedLenderId,
         };
       }
     }
@@ -2909,7 +2924,26 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
-      const raw = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, companyRulesBlock), bundle);
+      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, companyRulesBlock), bundle);
+      // Drop lender-scoped proposals (draft_email / update_funding_source)
+      // whose target_object_id couldn't be resolved to a real deal_lender on
+      // this deal. The LLM occasionally emits the deal id or a hallucinated
+      // uuid there; without a valid funding-source target we can't dedupe
+      // against existing pending items, so the same lender ends up in the
+      // queue twice. If we don't know exactly which lender the item is for,
+      // the Deal Admin Agent should not create it.
+      const raw = rawAll.filter((c) => {
+        if (c.action_type !== "draft_email" && c.action_type !== "update_funding_source") return true;
+        const tType = String(c.target_object_type ?? "").toLowerCase();
+        if (tType !== "deal_lender") return c.action_type !== "update_funding_source";
+        const hasTarget = typeof c.target_object_id === "string" && c.target_object_id.length > 0;
+        if (!hasTarget) {
+          console.log(`[deal-admin-agent] DROPPED ${c.action_type} for deal=${d.id} — unresolved deal_lender target`);
+          return false;
+        }
+        return true;
+      });
+      result.candidates_filtered += rawAll.length - raw.length;
       result.candidates_proposed += raw.length;
       console.log(`[deal-admin-agent] deal=${d.id} raw_candidates=${raw.length} sample=${JSON.stringify(raw.slice(0,1)).slice(0,400)}`);
 
