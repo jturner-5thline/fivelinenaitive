@@ -14,6 +14,45 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { type LiveMetricPeriod, useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
 
+/**
+ * Canonical set of metric source ids that have a live resolver wired up
+ * in `useInsightsLiveMetricValue`. Keep in sync with that hook — any id
+ * NOT in this set renders as "Unmapped source" and is now filtered out
+ * of the Add Widgets picker.
+ *
+ * Exceptions preserved by explicit id below (see `isOptionKept`):
+ *  - Templates and custom-metric options (always kept — they compute on add)
+ *  - `finserv-revenue-per-hour` / `finserv-profit-per-hour` (user request —
+ *    sourced from the FinServ Financial Metrics dashboard even though
+ *    they are not in the canonical live resolver)
+ */
+const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
+  // Weekly Rundown
+  'active-pipeline', 'closed-won', 'total-fees', 'avg-deal-size',
+  // Controller Dashboard (qb-* scalar tiles)
+  'qb-total-revenue', 'qb-accounts-receivable', 'qb-total-payments',
+  'qb-active-customers', 'qb-collection-rate', 'qb-overdue-amount',
+  'qb-total-expenses', 'qb-total-ap', 'qb-net-income',
+  'qb-active-vendors', 'qb-total-estimates', 'qb-total-credit-memos',
+  // HubSpot
+  'hs-total-deals', 'hs-total-deal-value', 'hs-deals-won', 'hs-deals-lost',
+  'hs-win-rate', 'hs-avg-deal-size', 'hs-total-contacts', 'hs-total-companies',
+  // Cross-source
+  'xs-revenue-per-deal', 'xs-ar-per-active-deal', 'xs-collection-rate-by-entity',
+]);
+
+const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
+  'finserv-revenue-per-hour',
+  'finserv-profit-per-hour',
+]);
+
+function isOptionKept(opt: InsightsMetricOption): boolean {
+  if (opt.kind === 'template' || opt.kind === 'custom-metric') return true;
+  const id = opt.metricSourceId ?? '';
+  if (ALWAYS_KEPT_METRIC_IDS.has(id)) return true;
+  return SUPPORTED_LIVE_METRIC_IDS.has(id);
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -47,6 +86,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
       .map(g => ({
         source: g.source,
         options: g.options.filter(o => {
+          if (!isOptionKept(o)) return false;
           if (activeSource && g.source !== activeSource) return false;
           if (!q) return true;
           return o.label.toLowerCase().includes(q)
@@ -56,6 +96,15 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
       }))
       .filter(g => g.options.length > 0);
   }, [groups, query, activeSource]);
+  // Source chips should reflect only kept (mapped) options so counts match
+  // the gallery. Search query is intentionally ignored here so the chip
+  // list is stable while the user types.
+  const chipGroups = useMemo(
+    () => groups
+      .map(g => ({ source: g.source, count: g.options.filter(isOptionKept).length }))
+      .filter(g => g.count > 0),
+    [groups],
+  );
   const flatOptions = useMemo(() => flattenInsightsMetricOptions(filtered), [filtered]);
   const totalCount = flatOptions.length;
 
@@ -124,13 +173,13 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <SourceChip active={activeSource === null} onClick={() => setActiveSource(null)}>All sources</SourceChip>
-              {groups.map(g => (
+              {chipGroups.map(g => (
                 <SourceChip
                   key={g.source}
                   active={activeSource === g.source}
                   onClick={() => setActiveSource(activeSource === g.source ? null : g.source)}
                 >
-                  {g.source} <span className="opacity-60">·{g.options.length}</span>
+                  {g.source} <span className="opacity-60">·{g.count}</span>
                 </SourceChip>
               ))}
               <div className="ml-auto text-[11px] uppercase tracking-wide text-muted-foreground/70">
