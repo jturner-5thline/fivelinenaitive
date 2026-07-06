@@ -12,7 +12,7 @@ import {
   subMonths,
   subQuarters,
 } from 'date-fns';
-import { RefreshCw, Loader2, Save, RotateCcw, X } from 'lucide-react';
+import { RefreshCw, Loader2, Save, X } from 'lucide-react';
 import WhatWorkingSections from './WhatWorkingSections';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
@@ -1798,25 +1798,18 @@ const KEY_STATS_DEBT_REALM_ID = '193514877331929';
 const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
-  // FROZEN canonical layout — locked at the user's explicit request.
-  // Do NOT modify these coordinates without an explicit instruction to
-  // reorder/resize widgets. compactType is disabled at the grid level
-  // so these coordinates are authoritative and widgets will not reflow
-  // on refresh. Bump the dashboardId version below when the canonical
-  // layout intentionally changes so saved user rows are re-hydrated.
-  //
-  // LEFT column (x=0, w=6)
-  { i: 'kpi-summary',       x: 0, y: 0,  w: 6, h: 9,  minW: 4, minH: 8 },
-  { i: 'cashflow-12w',      x: 0, y: 9,  w: 6, h: 4,  minW: 4, minH: 3 },
-  { i: 'active-deals-list', x: 0, y: 13, w: 6, h: 10, minW: 4, minH: 8 },
-  // RIGHT column (x=6, w=6)
-  { i: 'monthly-revenue',   x: 6, y: 0,  w: 6, h: 4,  minW: 4, minH: 3 },
-  { i: 'opex',              x: 6, y: 4,  w: 6, h: 5,  minW: 4, minH: 4 },
-  { i: 'cashflow-ops',      x: 6, y: 9,  w: 6, h: 5,  minW: 4, minH: 4 },
-  { i: 'finserv-next3',     x: 6, y: 14, w: 6, h: 4,  minW: 4, minH: 3 },
-  // Auxiliary widgets kept in place at the bottom (not removed —
-  // may render empty when their data source is unavailable).
-  { i: 'liabilities', x: 0, y: 23, w: 12, h: 5, minW: 6, minH: 3 },
+  // One-time fallback only. If a shared backend row exists, useGridLayout
+  // never re-applies these values after hydration.
+  { i: 'kpi-summary',           x: 0, y: 0,  w: 6,  h: 9,  minW: 4, minH: 8 },
+  { i: 'monthly-revenue',       x: 6, y: 0,  w: 6,  h: 4,  minW: 4, minH: 3 },
+  { i: 'opex',                  x: 6, y: 4,  w: 6,  h: 5,  minW: 4, minH: 4 },
+  { i: 'cashflow-12w',          x: 0, y: 9,  w: 6,  h: 4,  minW: 4, minH: 3 },
+  { i: 'cashflow-ops',          x: 6, y: 9,  w: 6,  h: 5,  minW: 4, minH: 4 },
+  { i: 'active-deals-list',     x: 0, y: 13, w: 6,  h: 10, minW: 4, minH: 8 },
+  { i: 'finserv-next3',         x: 6, y: 14, w: 6,  h: 9,  minW: 4, minH: 4 },
+  { i: 'liabilities',           x: 0, y: 23, w: 12, h: 5,  minW: 6, minH: 3 },
+  { i: 'ttm-dscr',              x: 0, y: 28, w: 6,  h: 4,  minW: 4, minH: 3 },
+  { i: 'monthly-debt-payments', x: 6, y: 28, w: 6,  h: 4,  minW: 4, minH: 3 },
 ];
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
@@ -1833,6 +1826,8 @@ const normalizeInsightsLayoutForSave = (items: GridLayoutItem[]): GridLayoutItem
     h: item.h,
     minW: item.minW,
     minH: item.minH,
+    maxW: item.maxW,
+    maxH: item.maxH,
   }));
 
 // Plain-language descriptions for hover tooltips on Key Stats labels.
@@ -1890,10 +1885,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const {
     layout,
     saveLayout: saveSharedGridLayout,
-    resetLayout,
   } = useGridLayout(INSIGHTS_LAYOUT_DASHBOARD_ID, INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
+    persistBreakpoints: true,
+    strictPersistedLayout: true,
+    debugLabel: 'Insights',
   });
   const latestLayoutRef = useRef<GridLayoutItem[]>(cloneInsightsDefaultLayout());
   const gridLatestLayoutGetterRef = useRef<(() => GridLayoutItem[]) | null>(null);
@@ -1938,11 +1935,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const handleGridLatestLayoutRef = React.useCallback((getLayout: () => GridLayoutItem[]) => {
     gridLatestLayoutGetterRef.current = getLayout;
   }, []);
-
-  const handleResetLayout = async () => {
-    await resetLayout();
-    toast.success('Layout reset to default');
-  };
 
   const periodRange = useMemo(
     () => toDateRange(reportingPeriod?.start ?? timeframe.start, reportingPeriod?.end ?? timeframe.end),
@@ -3100,9 +3092,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             Layout edit mode — drag titles to move, drag corners to resize
           </span>
           <div className="ml-auto flex gap-2">
-            <Button size="sm" variant="outline" onClick={handleResetLayout}>
-              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset to Default
-            </Button>
             <Button size="sm" variant="ghost" onClick={handleCancelLayout}>
               <X className="h-3.5 w-3.5 mr-1" /> Cancel
             </Button>
@@ -3685,13 +3674,17 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               <div className="min-w-0 min-h-[240px]">
                 <DebtByRatingWidget />
               </div>
-              <div className="min-w-0">
-                <TtmDscrChart />
-              </div>
-              <div className="min-w-0">
-                <MonthlyDebtPaymentsChart />
-              </div>
             </div>
+          </GridShell>
+        </div>
+        <div key="ttm-dscr" data-grid-item-id="ttm-dscr" className="h-full">
+          <GridShell isEditMode={isEditMode} title="TTM DSCR">
+            <TtmDscrChart />
+          </GridShell>
+        </div>
+        <div key="monthly-debt-payments" data-grid-item-id="monthly-debt-payments" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Monthly Debt Payments">
+            <MonthlyDebtPaymentsChart />
           </GridShell>
         </div>
         <div key="cashflow-12w" data-grid-item-id="cashflow-12w" className="h-full">
