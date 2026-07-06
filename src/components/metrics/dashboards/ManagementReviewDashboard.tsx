@@ -3104,12 +3104,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
           </GridShell>
         </div>
         <div key="opex" className="h-full">
-          <GridShell isEditMode={isEditMode} title="OPEX">
+          <GridShell
+            isEditMode={isEditMode}
+            title="OPEX"
+            titleTooltip="Total for Expenses — Consolidated View, all QBO entities"
+          >
             <ConsolidatedOpexWidget />
           </GridShell>
         </div>
         <div key="cashflow-ops" className="h-full">
-          <GridShell isEditMode={isEditMode} title="CashFlow">
+          <GridShell
+            isEditMode={isEditMode}
+            title="CashFlow"
+            titleTooltip="Operating Cash Flow — Consolidated View, all QBO entities"
+          >
             <ConsolidatedCashflowWidget />
           </GridShell>
         </div>
