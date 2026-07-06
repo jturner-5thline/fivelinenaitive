@@ -3500,7 +3500,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       // Status
       if (!args.include_completed && args.filter !== "completed_recently") {
-        q = q.in("status", ["todo", "in_progress"]);
+        // NOTE: The `tasks` table uses several open-status labels across
+        // integrations — "todo", "in_progress", "not_started" (what
+        // create_task writes), and "pending" (legacy). Include all four so
+        // tasks the Copilot just persisted actually appear in this list.
+        // Bug: previously "not_started" was excluded, so the model
+        // couldn't find its own freshly-created tasks and would tell the
+        // user they didn't exist (state desync with the DB).
+        q = q.in("status", ["todo", "in_progress", "not_started", "pending"]);
       }
 
       // Entity filters
