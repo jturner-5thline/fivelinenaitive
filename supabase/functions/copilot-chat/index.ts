@@ -794,6 +794,39 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "find_recent_copilot_tasks",
+      description: "REQUIRED FIRST CALL whenever the user asks to delete, cancel, remove, undo, or 'never mind' a task the Copilot created earlier (e.g. 'delete that task', 'cancel the last task', 'remove the task I just made for James', 'undo that reminder'). Queries the LIVE tasks table for rows created by the current user via the Copilot (sync_source='copilot'), optionally filtered by title fragment, assignee, or deal, and ordered by most recent first. Use this INSTEAD of relying on conversation memory — a task the model 'remembers' proposing may already be persisted in the DB. Never claim a task does not exist without calling this first.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          title_contains: { type: "string", description: "Optional case-insensitive substring of the task title to filter by (e.g. 'daily briefing')." },
+          assignee_user_id: { type: "string", description: "Optional UUID of the assignee to narrow the match." },
+          deal_id: { type: "string", description: "Optional deal UUID to narrow the match." },
+          within_minutes: { type: "number", description: "Session window in minutes — only tasks created within the last N minutes are returned. Default 180 (3 hours)." },
+          limit: { type: "number", description: "Max rows. Default 10, max 50." },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_task",
+      description: "Delete a task by ID. Returns a confirmation card the user must approve before the task is deleted — never deletes silently. ALWAYS resolve `task_id` from find_recent_copilot_tasks or get_tasks in the SAME turn; never guess a UUID and never assume a task exists based on conversation memory. Server enforces that only the task's creator or delegator can delete it.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          task_id: { type: "string", description: "UUID of the task to delete. Must come from a tool result (find_recent_copilot_tasks / get_tasks / get_task_details) in this turn." },
+        },
+        required: ["task_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "create_deal",
       description: "Create a new deal in a pipeline. Returns a confirmation card the user must approve before the deal is written. Always pass either pipeline_id (UUID) or pipeline_name (e.g. 'naitive') so the handler can resolve it. Stage can be supplied as stage_id (UUID) or stage_name (label like 'Qualification Call Scheduled'); if omitted, the pipeline's first stage is used. Assignee (deal_owner) may be a user UUID (preferred — resolve via search_team_members first) or a display name like 'Paz'.",
       parameters: {
