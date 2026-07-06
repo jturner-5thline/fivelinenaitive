@@ -34,7 +34,13 @@ import {
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
 import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
-import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE } from '@/hooks/useFinServFinancialMetrics';
+import {
+  FINSERV_PIPELINE_ID,
+  ACTIVE_CLIENT_STAGE,
+  useFinServTotalRevenue,
+} from '@/hooks/useFinServFinancialMetrics';
+import { useCompany } from '@/hooks/useCompany';
+import { buildBuckets } from '@/lib/insightsTimeRange';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { ReportState } from '../QuarterlyInsightsReport';
 
@@ -123,6 +129,43 @@ export function useInsightsLiveMetricValue(
   const dealMetrics = useMetricsData();
   const qb = useQuickBooksMetrics(undefined, period ? { start: period.start, end: period.end } : undefined);
   const hs = useHubSpotMetrics();
+  const { company } = useCompany();
+
+  // FinServ per-hour tiles share the same numerator source (FinServ P&L
+  // snapshot) as the FinServ Financial Metrics dashboard, and the same
+  // denominator (manual `revenue_per_hour_hours` inputs).
+  const perHourEnabled =
+    metricSourceId === 'finserv-revenue-per-hour' ||
+    metricSourceId === 'finserv-profit-per-hour';
+  const perHourPeriod = useMemo(
+    () => perHourEnabled && period
+      ? { start_date: period.start, end_date: period.end, label: period.label }
+      : null,
+    [perHourEnabled, period?.start, period?.end, period?.label],
+  );
+  const finservRev = useFinServTotalRevenue(perHourPeriod, 'monthly');
+  const perHourMonthKeys = useMemo(
+    () => perHourEnabled && period
+      ? buildBuckets(period.start, period.end, 'monthly').map(b => b.key)
+      : [],
+    [perHourEnabled, period?.start, period?.end],
+  );
+  const perHourHours = useQuery({
+    enabled: perHourEnabled && perHourMonthKeys.length > 0,
+    queryKey: ['insights-live-finserv-per-hour-hours', company?.id ?? null, perHourMonthKeys.join('|')],
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from('metric_manual_inputs')
+        .select('value')
+        .eq('metric_key', 'revenue_per_hour_hours')
+        .in('month_key', perHourMonthKeys);
+      q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).reduce((s: number, r: any) => s + Number(r.value ?? 0), 0);
+    },
+  });
 
   // FinServ pipeline snapshot — mirrors the FinServ Financial Metrics
   // dashboard's Total MRR / Total Clients query, made period-aware via
@@ -305,6 +348,22 @@ export function useInsightsLiveMetricValue(
       return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
     }
 
+    // ---- FinServ Financial Metrics (per-hour tiles) ----
+    if (metricSourceId === 'finserv-revenue-per-hour' || metricSourceId === 'finserv-profit-per-hour') {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      if (finservRev.isLoading || perHourHours.isLoading) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      const hours = perHourHours.data ?? 0;
+      const numerator = metricSourceId === 'finserv-revenue-per-hour'
+        ? finservRev.total
+        : finservRev.operatingProfit;
+      const v = hours > 0 ? numerator / hours : 0;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
     // ---- Cross-source metrics (combine deal + QB) ----
     if (metricSourceId === 'xs-revenue-per-deal') {
       if (qb.isLoading || hs.isLoading || !qb.data || !hs.data) {
@@ -343,5 +402,10 @@ export function useInsightsLiveMetricValue(
     hs.data,
     finserv.isLoading,
     finserv.data,
+    finservRev.isLoading,
+    finservRev.total,
+    finservRev.operatingProfit,
+    perHourHours.isLoading,
+    perHourHours.data,
   ]);
 }
