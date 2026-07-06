@@ -96,6 +96,15 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
       }))
       .filter(g => g.options.length > 0);
   }, [groups, query, activeSource]);
+  // Source chips should reflect only kept (mapped) options so counts match
+  // the gallery. Search query is intentionally ignored here so the chip
+  // list is stable while the user types.
+  const chipGroups = useMemo(
+    () => groups
+      .map(g => ({ source: g.source, count: g.options.filter(isOptionKept).length }))
+      .filter(g => g.count > 0),
+    [groups],
+  );
   const flatOptions = useMemo(() => flattenInsightsMetricOptions(filtered), [filtered]);
   const totalCount = flatOptions.length;
 
@@ -164,13 +173,13 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <SourceChip active={activeSource === null} onClick={() => setActiveSource(null)}>All sources</SourceChip>
-              {groups.map(g => (
+              {chipGroups.map(g => (
                 <SourceChip
                   key={g.source}
                   active={activeSource === g.source}
                   onClick={() => setActiveSource(activeSource === g.source ? null : g.source)}
                 >
-                  {g.source} <span className="opacity-60">·{g.options.length}</span>
+                  {g.source} <span className="opacity-60">·{g.count}</span>
                 </SourceChip>
               ))}
               <div className="ml-auto text-[11px] uppercase tracking-wide text-muted-foreground/70">
