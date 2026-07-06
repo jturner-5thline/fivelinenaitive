@@ -1748,6 +1748,22 @@ function useChart(
   deps: any[],
   onPointClick?: (index: number, label: string, value: number) => void,
 ) {
+  // Force the chart-creation effect to re-run whenever the underlying <canvas>
+  // element is (re)mounted. Some widgets (e.g. TTM Revenue) conditionally
+  // swap between a NaPlaceholder and the canvas while data loads. When the
+  // canvas mounts on a later render, `ref.current` is set but the deps array
+  // captured earlier may already match its own previous snapshot after the
+  // stringified data values stabilise, so the effect silently skips
+  // creation. Bumping this counter every time the canvas node changes makes
+  // creation deterministic.
+  const [canvasMountTick, setCanvasMountTick] = React.useState(0);
+  const prevNodeRef = React.useRef<HTMLCanvasElement | null>(null);
+  React.useEffect(() => {
+    if (ref.current !== prevNodeRef.current) {
+      prevNodeRef.current = ref.current;
+      if (ref.current) setCanvasMountTick(t => t + 1);
+    }
+  });
   useEffect(() => {
     if (!ref.current || !config) return;
     setChartDefaults();
@@ -1772,6 +1788,13 @@ function useChart(
         }
       : config;
     const chart = new ChartJS(ref.current, finalConfig);
+    // Ensure the chart picks up its actual container dimensions on the frame
+    // after creation. Chart.js reads size synchronously during construction,
+    // so a parent that just transitioned from placeholder to canvas may
+    // still report 0×0 at that instant.
+    requestAnimationFrame(() => {
+      try { chart.resize(); } catch { /* destroyed */ }
+    });
     // Chart.js occasionally initializes with 0x0 dimensions when the parent
     // grid cell hasn't been measured yet (e.g. first paint of a react-grid-
     // layout item, or a carousel slide entering view). In that case the
@@ -1790,7 +1813,8 @@ function useChart(
       if (ro) ro.disconnect();
       chart.destroy();
     };
-  }, deps);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, canvasMountTick]);
 }
 
 const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
