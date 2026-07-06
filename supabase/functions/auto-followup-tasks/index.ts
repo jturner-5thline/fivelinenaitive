@@ -126,12 +126,47 @@ Deno.serve(async (req) => {
 
       // ── 6. Mark event processed so the next tick skips it. ──
       const marked = await markProcessed(admin, ev.id);
+
+      // ── 7. Send email notification to the task owner (best-effort). ──
+      let emailResult: { sent?: boolean; error?: string } = {};
+      try {
+        const { data: prof } = await admin
+          .from("profiles")
+          .select("full_name, first_name")
+          .eq("id", ev.user_id)
+          .maybeSingle();
+        const assigneeName =
+          (prof as any)?.first_name ||
+          ((prof as any)?.full_name ? String((prof as any).full_name).split(" ")[0] : undefined);
+        const dueLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
+          month: "long", day: "numeric", year: "numeric",
+        });
+        const { error: emailErr } = await admin.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "task-assigned",
+            recipientEmail: ownerEmail,
+            idempotencyKey: `auto-followup-task-${inserted.id}`,
+            templateData: {
+              assigneeName,
+              taskTitle,
+              dueDate: dueLabel,
+              taskUrl: `https://fivelinenaitive.lovable.app/tasks?task=${inserted.id}`,
+            },
+          },
+        });
+        emailResult = emailErr ? { sent: false, error: emailErr.message } : { sent: true };
+      } catch (err) {
+        emailResult = { sent: false, error: (err as Error).message };
+      }
+
       results.push({
         event_id: ev.id,
         task_id: inserted.id,
         marked_ok: marked,
         asana_gid: asanaResult.gid ?? null,
         asana_error: asanaResult.error ?? null,
+        email_sent: emailResult.sent ?? false,
+        email_error: emailResult.error ?? null,
       });
     } catch (err) {
       results.push({ event_id: ev.id, error: (err as Error).message });
