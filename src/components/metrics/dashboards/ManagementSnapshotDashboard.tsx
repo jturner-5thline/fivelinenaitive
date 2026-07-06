@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
-import { CurrentQuarterBadge } from '../CurrentQuarterBadge';
+import { QuarterNavBadge, useLocalQuarter } from '../CurrentQuarterBadge';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
@@ -483,6 +483,83 @@ function GenericDashboardCard({
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Local-quarter wrappers — Weekly Rundown sub-widgets own their own quarter
+// state, defaulting to the current calendar quarter, and expose a small
+// arrow-nav badge in the top-right corner to step back through prior quarters.
+// They deliberately ignore the global header timeframe selector.
+// ---------------------------------------------------------------------------
+function LocalQuarterDebtRevenue() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <DebtRevenueWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterFinServRevenue() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <FinServRevenueWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterDealsSigned() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <DealsSignedWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterFinServClientsSigned() {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <FinServClientsSignedWidget selectedQuarter={q} />
+    </>
+  );
+}
+
+function LocalQuarterTotalRevenue({
+  kpiConfig,
+  datarailsConfig,
+  entityFilter,
+  isEditMode,
+  onClick,
+}: {
+  kpiConfig: KPIDetailCardConfig;
+  datarailsConfig?: Partial<WidgetConfig>;
+  entityFilter?: string;
+  isEditMode?: boolean;
+  onClick?: () => void;
+}) {
+  const [q, setQ] = useLocalQuarter();
+  return (
+    <>
+      <QuarterNavBadge value={q} onChange={setQ} />
+      <KPIDetailCard
+        kpiConfig={kpiConfig}
+        datarailsConfig={datarailsConfig}
+        timeWindow="qtd"
+        entityFilter={entityFilter}
+        isEditMode={isEditMode}
+        selectedPeriod={q}
+        onClick={onClick}
+      />
+    </>
+  );
+}
+
 export interface CardSizeOverride {
   w: number;
   h: number;
@@ -726,11 +803,11 @@ export function ManagementSnapshotDashboard({
   // Per-sub-widget renderers — each becomes an independently
   // draggable/resizable tile in the unified Weekly Rundown grid.
   const subWidgetRenderers: Record<WeeklyRundownSubWidgetId, React.ReactNode> = {
-    'rev-debt': <DebtRevenueWidget selectedQuarter={selectedQuarter} />,
-    'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
+    'rev-debt': <LocalQuarterDebtRevenue />,
+    'rev-finserv': <LocalQuarterFinServRevenue />,
     'last-week-summary': <LastWeekSummaryWidget />,
-    'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
-    'sd-finserv-clients-signed': <FinServClientsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-deals-signed': <LocalQuarterDealsSigned />,
+    'sd-finserv-clients-signed': <LocalQuarterFinServClientsSigned />,
     'sd-outstanding-ar': <OutstandingARWidget />,
     // The dedicated Mon→Sun week selector tile has been retired in favour of
     // the unified header timeframe picker. The id remains for backwards
@@ -770,7 +847,6 @@ export function ManagementSnapshotDashboard({
           >
             {visibleCards.map(({ cardId, props }) => (
               <div key={cardId} className="relative group h-full overflow-hidden">
-                {cardId === 'total-revenue-detail' && <CurrentQuarterBadge />}
                 {isEditMode && (
                   <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
                     <GripVertical className="h-3 w-3 text-muted-foreground" />
@@ -811,13 +887,11 @@ export function ManagementSnapshotDashboard({
                 )}
                 <div className={cn('h-full', isEditMode && 'pointer-events-none')}>
                   {cardId === 'total-revenue-detail' ? (
-                    <KPIDetailCard
+                    <LocalQuarterTotalRevenue
                       kpiConfig={cardConfigs[cardId]?.kpiDetailConfig ?? TOTAL_REVENUE_DETAIL_KPI}
                       datarailsConfig={props.datarailsConfig}
-                      timeWindow={props.timeWindow}
                       entityFilter={props.entityFilter}
                       isEditMode={isEditMode}
-                      selectedPeriod={selectedQuarter}
                       onClick={isEditMode ? undefined : () => setKpiDrill({ label: 'Total Revenue', kind: 'total-revenue' })}
                     />
                   ) : cardId === 'avg-rev-per-client' ? (
@@ -832,9 +906,6 @@ export function ManagementSnapshotDashboard({
             ))}
             {visibleSubWidgets.map((id) => (
               <div key={id} className="relative group h-full overflow-hidden">
-                {(id === 'rev-debt' || id === 'rev-finserv' || id === 'sd-deals-signed' || id === 'sd-finserv-clients-signed') && (
-                  <CurrentQuarterBadge />
-                )}
             {isEditMode && (
               <>
                 <div className="widget-drag-handle absolute top-1 left-1/2 -translate-x-1/2 z-20 cursor-grab active:cursor-grabbing flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/70 backdrop-blur border border-border/50 opacity-70 hover:opacity-100 transition-opacity">
