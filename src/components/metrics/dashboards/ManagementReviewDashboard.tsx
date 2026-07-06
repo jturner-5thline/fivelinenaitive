@@ -1824,6 +1824,20 @@ const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
 const cloneInsightsDefaultLayout = (): GridLayoutItem[] =>
   INSIGHTS_DEFAULT_LAYOUT.map(item => ({ ...item }));
 
+const normalizeInsightsLayoutForSave = (items: GridLayoutItem[]): GridLayoutItem[] =>
+  items.map(item => ({
+    i: item.i,
+    x: item.x,
+    y: item.y,
+    w: item.w,
+    h: item.h,
+    minW: item.minW,
+    minH: item.minH,
+  }));
+
+const getInsightsLayoutSignature = (items: GridLayoutItem[]) =>
+  JSON.stringify(normalizeInsightsLayoutForSave(items));
+
 // Plain-language descriptions for hover tooltips on Key Stats labels.
 const KPI_DESCRIPTIONS: Record<string, string> = {
   'total-revenue-curr': 'Total revenue booked for the current reporting period across all QuickBooks entities.',
@@ -1881,11 +1895,18 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const [layoutHydrated, setLayoutHydrated] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLayoutRef = useRef<GridLayoutItem[] | null>(null);
+  const latestLayoutRef = useRef<GridLayoutItem[]>(cloneInsightsDefaultLayout());
+  const lastPersistedLayoutSignatureRef = useRef<string>('');
+
+  useEffect(() => {
+    latestLayoutRef.current = layout;
+  }, [layout]);
 
   // Load persisted layout once we know the company.
   useEffect(() => {
     let cancelled = false;
     if (!company?.id) return;
+    setLayoutHydrated(false);
     (async () => {
       const { data, error } = await supabase
         .from('dashboard_grid_layouts')
@@ -1895,13 +1916,19 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         .maybeSingle();
       if (cancelled) return;
       if (!error && data?.layout && Array.isArray(data.layout) && data.layout.length > 0) {
+        const persisted = data.layout as unknown as GridLayoutItem[];
+        lastPersistedLayoutSignatureRef.current = getInsightsLayoutSignature(persisted);
         // Merge: use persisted positions but ensure every known widget id exists
         // (falls back to default for any newly-added widget).
         const byId = new Map<string, GridLayoutItem>(
-          (data.layout as unknown as GridLayoutItem[]).map(i => [i.i, i]),
+          persisted.map(i => [i.i, i]),
         );
         const merged = cloneInsightsDefaultLayout().map(def => byId.get(def.i) ?? def);
-        setLayout(merged);
+        // Never let late hydration overwrite an edit the authorized user already
+        // made in this mount; that pending edit is the freshest source of truth.
+        if (!pendingLayoutRef.current) {
+          setLayout(merged);
+        }
       }
       setLayoutHydrated(true);
     })();
@@ -1909,21 +1936,31 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   }, [company?.id]);
 
   const persistLayout = React.useCallback(async (next: GridLayoutItem[]) => {
-    if (!isLayoutEditor || !company?.id || !user?.id) return;
+    if (!isLayoutEditor || !company?.id) return false;
+    const normalized = normalizeInsightsLayoutForSave(next);
+    const signature = getInsightsLayoutSignature(normalized);
+    if (signature === lastPersistedLayoutSignatureRef.current) {
+      if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
+        pendingLayoutRef.current = null;
+      }
+      return true;
+    }
     const { error } = await (supabase as any).rpc('save_dashboard_grid_layout', {
       _company_id: company.id,
       _dashboard_id: INSIGHTS_LAYOUT_DASHBOARD_ID,
-      _layout: next,
+      _layout: normalized,
     });
     if (error) {
       console.error('[Insights layout] save failed', error);
       toast.error('Layout save failed. Your changes may not persist.');
-      return;
+      return false;
     }
-    if (pendingLayoutRef.current === next) {
+    lastPersistedLayoutSignatureRef.current = signature;
+    if (pendingLayoutRef.current && getInsightsLayoutSignature(pendingLayoutRef.current) === signature) {
       pendingLayoutRef.current = null;
     }
-  }, [isLayoutEditor, company?.id, user?.id]);
+    return true;
+  }, [isLayoutEditor, company?.id]);
 
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
     const cloned = nextLayout.map(item => ({ ...item }));
@@ -1933,10 +1970,15 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     if (!layoutHydrated) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (immediate) {
-      persistLayout(cloned);
+      void persistLayout(cloned);
     } else {
-      saveTimerRef.current = setTimeout(() => persistLayout(cloned), 600);
+      saveTimerRef.current = setTimeout(() => { void persistLayout(cloned); }, 600);
     }
+  }, [isLayoutEditor, layoutHydrated, persistLayout]);
+
+  useEffect(() => {
+    if (!layoutHydrated || !isLayoutEditor || !pendingLayoutRef.current) return;
+    void persistLayout(pendingLayoutRef.current);
   }, [isLayoutEditor, layoutHydrated, persistLayout]);
 
   const resetLayout = React.useCallback(async () => {
@@ -1953,7 +1995,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         saveTimerRef.current = null;
       }
       if (pendingLayoutRef.current && isLayoutEditor && layoutHydrated) {
-        persistLayout(pendingLayoutRef.current);
+        void persistLayout(pendingLayoutRef.current);
       }
     };
   }, [isLayoutEditor, layoutHydrated, persistLayout]);
@@ -1967,8 +2009,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     wasEditingRef.current = isEditMode;
   }, [isEditMode, layout]);
 
-  const handleSaveLayout = () => {
-    saveLayout(layout, true);
+  const handleSaveLayout = async () => {
+    const current = latestLayoutRef.current;
+    saveLayout(current, true);
+    const saved = await persistLayout(current);
+    if (!saved) return;
     editSnapshotRef.current = null;
     toast.success('Layout saved');
     onExitEditMode?.();
