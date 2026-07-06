@@ -94,22 +94,21 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         'min-h-11 rounded-[22px]',
         'flex items-center gap-3 pl-1.5 pr-4 py-1',
         'text-left flex-none shrink-0',
-        'opacity-95 hover:opacity-100 focus-within:opacity-100',
-        'transition-[opacity,box-shadow] duration-200 ease-out',
-        'hover:shadow-[0_18px_44px_rgba(4,14,28,0.65),0_6px_16px_rgba(20,90,120,0.28),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(84,180,200,0.35)]',
+        'opacity-100',
+        'transition-[box-shadow,border-color] duration-200 ease-out',
+        'hover:shadow-[0_20px_48px_rgba(2,10,20,0.72),0_8px_20px_rgba(20,110,140,0.35),inset_0_1px_0_rgba(255,255,255,0.12),0_0_0_1px_rgba(94,190,210,0.5)]',
         'animate-in fade-in duration-150',
         className,
       )}
       style={{
         background:
-          'linear-gradient(135deg, rgba(10, 44, 58, 0.92) 0%, rgba(12, 34, 50, 0.88) 45%, rgba(14, 52, 68, 0.92) 100%)',
-        backdropFilter: 'blur(18px) saturate(1.4)',
-        WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-        border: '1px solid rgba(94, 178, 198, 0.38)',
+          'linear-gradient(135deg, rgb(12, 52, 68) 0%, rgb(10, 40, 56) 50%, rgb(14, 58, 76) 100%)',
+        backdropFilter: 'blur(8px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(8px) saturate(1.2)',
+        border: '1px solid rgba(120, 200, 220, 0.55)',
         boxShadow:
-          '0 14px 36px rgba(4, 14, 28, 0.55), 0 4px 12px rgba(20, 90, 120, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.10), inset 0 0 0 1px rgba(120, 200, 220, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.28)',
-        transition: 'opacity 180ms ease-out',
-        opacity: forceFocused ? 1 : undefined,
+          '0 12px 30px rgba(2, 10, 20, 0.6), 0 4px 12px rgba(20, 90, 120, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 0 0 1px rgba(140, 210, 230, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.3)',
+        transition: 'box-shadow 180ms ease-out, border-color 180ms ease-out',
         ...style,
       }}
       onClick={() => inputRef?.current?.focus()}
