@@ -681,26 +681,34 @@ export function LenderAnalyticsDialog({
         <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-2" style={HEADER_STYLE}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <DialogTitle className="text-[15px] font-semibold tracking-tight text-slate-100 flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-sky-400" />
-                Funding Source Analytics
+              <DialogTitle className="text-[16px] font-semibold tracking-tight text-slate-100 flex items-baseline gap-2">
+                <span>naitive</span>
+                <span className="text-[13px] font-medium" style={{ color: '#4dd9ac' }}>Lender Intelligence Dashboard</span>
               </DialogTitle>
               <DialogDescription className="text-[12px] text-slate-400 mt-1">
                 {subtitleParts.join(' · ')}
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-                <SelectTrigger className="h-8 w-[160px] text-[12px] bg-slate-900/60 border-slate-700/60 text-slate-100">
-                  <CalendarRange className="h-3.5 w-3.5 mr-1.5" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[1400]">
-                  {(Object.keys(DATE_LABEL) as DateRange[]).map(k => (
-                    <SelectItem key={k} value={k}>{DATE_LABEL[k]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="inline-flex rounded-md border border-slate-700/60 bg-slate-900/60 p-0.5 text-[12px]">
+                {(['ytd', '12m'] as const).map((k) => {
+                  const active = dateRange === k;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setDateRange(k)}
+                      className={cn(
+                        'px-3 h-7 rounded-sm transition-colors',
+                        active ? 'text-slate-950' : 'text-slate-300 hover:text-slate-100',
+                      )}
+                      style={active ? { background: '#4dd9ac' } : undefined}
+                    >
+                      {k === 'ytd' ? 'YTD' : 'Trailing 12M'}
+                    </button>
+                  );
+                })}
+              </div>
               {isFifthLine && (
                 <Button
                   variant="outline"
@@ -719,31 +727,36 @@ export function LenderAnalyticsDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-5">
-          {/* KPI cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            <KpiCard label="Total Submitted" value={kpis.submitted} hint="Lender-deals that ever reached Sent DRL" loading={loading} />
-            <KpiCard label="Total Terms Issued" value={kpis.terms} hint="Lender-deals that ever reached Terms Issued" loading={loading} />
-            <KpiCard
-              label="Sent DRL → Terms Conversion"
-              value={fmtPct(kpis.conv)}
-              hint={`${kpis.terms} of ${kpis.submitted} submitted`}
+        <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
+          {/* KPI Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <IntelKpi label="Active Lenders" value={activeLenderCount} hint="across all deals" loading={loading} />
+            <IntelKpi
+              label="Deals Sent"
+              value={kpis.submitted}
+              hint={
+                submittedDelta == null
+                  ? undefined
+                  : `${submittedDelta >= 0 ? '↑' : '↓'} ${Math.abs(submittedDelta)} vs prior period`
+              }
+              hintTone={submittedDelta == null ? 'muted' : submittedDelta >= 0 ? 'good' : 'bad'}
               loading={loading}
             />
-            <KpiCard label="Active Funding Sources in Pipeline" value={kpis.active} hint="Currently in active stages" loading={loading} />
-            <KpiCard
-              label="New Funding Sources"
-              value={newLenders.current.length}
-              hint={
-                isFifthLine && planTarget != null && planTarget > 0
-                  ? `Plan: ${planTarget} / Actual: ${newLenders.current.length}`
-                  : newLenders.delta == null
-                  ? 'All time'
-                  : `${newLenders.delta >= 0 ? '↑' : '↓'} ${Math.abs(newLenders.delta)} vs prior ${DATE_LABEL[dateRange].toLowerCase()}`
-              }
-              deltaDir={newLenders.delta == null ? 'flat' : newLenders.delta > 0 ? 'up' : newLenders.delta < 0 ? 'down' : 'flat'}
+            <IntelKpi
+              label="Conversion Rate"
+              value={fmtPct(kpis.conv)}
+              hint="deals sent → terms issued"
               loading={loading}
-              onClick={() => setShowNewLenders(true)}
+            />
+            <IntelKpi
+              label="Flex Active Lenders"
+              value={flexActiveLenderCount}
+              hint={
+                activeLenderCount > 0
+                  ? `${Math.round((flexActiveLenderCount / activeLenderCount) * 100)}% of total — active in Flex`
+                  : 'active in Flex'
+              }
+              loading={loading}
             />
           </div>
 
@@ -762,214 +775,207 @@ export function LenderAnalyticsDialog({
           )}
 
           {isEmpty && (
-            <div className="rounded-lg border p-10 text-center text-[13px] text-slate-400" style={PANEL_STYLE}>
-              No lender analytics available for current filters
-            </div>
+            <IntelPanel title="No data">
+              <div className="p-8 text-center text-[13px] text-slate-400">
+                No lender analytics available for current filters
+              </div>
+            </IntelPanel>
           )}
 
-          {/* Donut + segmented bars */}
           {!isEmpty && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className="lg:col-span-1 rounded-lg border p-3" style={PANEL_STYLE}>
-                <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">Current stage distribution</div>
-                <div className="h-[240px] relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={bucketData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={58}
-                        outerRadius={86}
-                        stroke="hsl(220 45% 9%)"
-                        strokeWidth={2}
-                      >
-                        {bucketData.map((d) => (
-                          <Cell key={d.name} fill={BUCKET_COLOR[d.name as Bucket]} />
-                        ))}
-                      </Pie>
-                      <ReTooltip
-                        contentStyle={{ background: 'hsl(220 45% 10%)', border: '1px solid hsl(220 45% 35% / 0.4)', borderRadius: 8, fontSize: 12, color: 'hsl(220 30% 92%)' }}
-                        formatter={(v: number, n: string, p: any) => [`${v} (${p.payload.pct.toFixed(1)}%)`, n]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                    <div className="text-[10px] uppercase tracking-wider text-slate-400">Records</div>
-                    <div className="text-[22px] font-semibold tabular-nums text-slate-100">{rows.length}</div>
+            <>
+              {/* Charts Section — Volume by Lender + Pass Reasons */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <IntelPanel title="Deal Volume by Lender">
+                  <div className="px-3 pb-3 pt-1 space-y-1.5">
+                    {lenderStats.slice(0, 10).map((s) => {
+                      const max = lenderStats[0]?.count || 1;
+                      const barW = Math.max(3, (s.count / max) * 100);
+                      const tierColor = s.tier === 'T1' ? '#4dd9ac' : s.tier === 'T2' ? '#f5a623' : '#6b7280';
+                      const highlighted = hoverLender === s.key;
+                      return (
+                        <button
+                          key={s.key}
+                          type="button"
+                          onMouseEnter={() => setHoverLender(s.key)}
+                          onMouseLeave={() => setHoverLender(null)}
+                          onClick={() => setOpenLenderDeals(s.name)}
+                          className={cn(
+                            'w-full text-left rounded-md px-2 py-1.5 transition-colors',
+                            highlighted ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[12px]">
+                            <span className="text-slate-100 truncate">{s.name}</span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {s.tier && (
+                                <span
+                                  className="text-[10px] font-semibold rounded px-1.5 py-0.5"
+                                  style={{
+                                    background: `${tierColor}22`,
+                                    color: tierColor,
+                                    border: `1px solid ${tierColor}55`,
+                                  }}
+                                >
+                                  {s.tier}
+                                </span>
+                              )}
+                              <span className="tabular-nums text-slate-300 w-6 text-right">{s.count}</span>
+                            </div>
+                          </div>
+                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
+                            <div
+                              className="h-full rounded"
+                              style={{ width: `${barW}%`, background: tierColor }}
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
+                    {lenderStats.length === 0 && (
+                      <div className="py-6 text-center text-[12px] text-slate-500">No lender activity</div>
+                    )}
                   </div>
-                </div>
-                <div className="mt-2 grid grid-cols-2 gap-1.5">
-                  {bucketData.map(d => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <span className="h-2 w-2 rounded-sm" style={{ background: BUCKET_COLOR[d.name as Bucket] }} />
-                      <span className="truncate">{d.name}</span>
-                      <span className="ml-auto tabular-nums text-slate-100">{d.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                </IntelPanel>
 
-              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <SegmentChart title="Conversion by Relationship Owner" data={byManager.slice(0, 8)} />
-                <SegmentChart title="Conversion by Deal Type" data={byDealType.slice(0, 8)} />
-              </div>
-            </div>
-          )}
-
-          {/* Detail table */}
-          {!isEmpty && (
-            <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
-              <div className="px-3 py-2 border-b border-slate-700/40 text-[11px] uppercase tracking-wider text-slate-400">
-                Detail breakdown
-              </div>
-              <div className="overflow-auto max-h-[360px]">
-                <table className="w-full text-[12px]">
-                  <thead className="sticky top-0 z-10 backdrop-blur" style={{ background: 'hsl(220 45% 12% / 0.92)' }}>
-                    <tr className="text-left text-slate-400">
-                      <th className="px-3 py-2 font-medium">Segment</th>
-                      <th className="px-3 py-2 font-medium text-right">Submitted</th>
-                      <th className="px-3 py-2 font-medium text-right">Terms Issued</th>
-                      <th className="px-3 py-2 font-medium text-right">Conversion %</th>
-                      <th className="px-3 py-2 font-medium text-right">Mgmt Calls</th>
-                      <th className="px-3 py-2 font-medium text-right">Unresponsive</th>
-                      <th className="px-3 py-2 font-medium text-right">Passed/Declined</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <SegRow row={overallSeg} bold />
-                    {byManager.length > 0 && (
-                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-slate-500">By relationship owner / manager</td></tr>
-                    )}
-                    {byManager.map(s => <SegRow key={`m-${s.name}`} row={s} />)}
-                    {byDealType.length > 0 && (
-                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-slate-500">By deal type</td></tr>
-                    )}
-                    {byDealType.map(s => <SegRow key={`t-${s.name}`} row={s} />)}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Widget 2 — Deal Volume & Deal Count by Funding Source */}
-          {!isEmpty && (
-            <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/40">
-                <div className="text-[11px] uppercase tracking-wider text-slate-400">
-                  Deal Volume &amp; Deal Count by Funding Source
-                </div>
-                <div className="flex items-center gap-2">
-                  <Select value={volumeSort} onValueChange={(v) => setVolumeSort(v as 'volume' | 'count')}>
-                    <SelectTrigger className="h-7 w-[150px] text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-100">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="z-[1400]">
-                      <SelectItem value="volume">Sort: Volume desc</SelectItem>
-                      <SelectItem value="count">Sort: Deal count desc</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {sortedFundingSources.length > 15 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70"
-                      onClick={() => setShowAllVolume(s => !s)}
-                    >
-                      {showAllVolume ? 'Show top 15' : `Show all (${sortedFundingSources.length})`}
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {visibleFundingSources.length === 0 ? (
-                <div className="p-10 text-center text-[13px] text-slate-400">No funding source activity in this window</div>
-              ) : (
-                <div className="overflow-auto max-h-[420px]">
-                  <table className="w-full text-[12px]">
-                    <thead className="sticky top-0 z-10 backdrop-blur" style={{ background: 'hsl(220 45% 12% / 0.92)' }}>
-                      <tr className="text-left text-slate-400">
-                        <th className="px-3 py-2 font-medium">Funding Source</th>
-                        <th className="px-3 py-2 font-medium">Volume</th>
-                        <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Volume ($)</th>
-                        <th className="px-3 py-2 font-medium text-right whitespace-nowrap">Deals</th>
-                        <th className="px-3 py-2 font-medium text-right whitespace-nowrap">% of pipeline</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visibleFundingSources.map((f) => {
-                        const pct = totalFundingVolume > 0 ? (f.volume / totalFundingVolume) * 100 : 0;
-                        const barW = sortedFundingSources[0]?.volume
-                          ? Math.max(2, (f.volume / sortedFundingSources[0].volume) * 100)
-                          : 0;
-                        return (
-                          <tr
-                            key={f.name}
-                            tabIndex={0}
-                            role="button"
-                            onClick={() => setOpenLenderDeals(f.name)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenLenderDeals(f.name); }
-                            }}
-                            className="border-t border-slate-700/40 hover:bg-slate-100/[0.03] cursor-pointer focus:outline-none focus-visible:bg-slate-100/[0.05]"
-                            title={`${f.name} · ${formatUSD(f.volume)} · ${f.count} deal${f.count === 1 ? '' : 's'} · ${pct.toFixed(1)}% of pipeline`}
-                          >
-                            <td className="px-3 py-2 text-slate-100 truncate max-w-[260px]">{f.name}</td>
-                            <td className="px-3 py-2 w-[40%] min-w-[160px]">
-                              <div className="h-2 rounded bg-slate-700/30 overflow-hidden">
-                                <div className="h-full rounded" style={{ width: `${barW}%`, background: 'linear-gradient(90deg, hsl(210 90% 60%), hsl(190 80% 55%))' }} />
-                              </div>
-                              <div className="mt-0.5 text-[10px] text-slate-500 tabular-nums">{f.count} deal{f.count === 1 ? '' : 's'}</div>
-                            </td>
-                            <td className="px-3 py-2 text-right tabular-nums text-slate-200">{formatUSD(f.volume)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-slate-200">{f.count}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-slate-400">{pct.toFixed(1)}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Widget 3 — Most Common Pass Reasons */}
-          {!isEmpty && (
-            <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/40">
-                <div className="text-[11px] uppercase tracking-wider text-slate-400">Most Common &lsquo;Pass&rsquo; Reasons</div>
-                <div className="text-[11px] text-slate-500">
-                  Reasons coverage: {passReasonsAgg.withReason} of {passReasonsAgg.totalPassed} passed lender-deals
-                  {' '}({(passReasonsAgg.coverage * 100).toFixed(0)}%)
-                </div>
-              </div>
-              {passReasonsAgg.list.length === 0 ? (
-                <div className="p-10 text-center text-[13px] text-slate-400">No passed deals with reasons captured in this window</div>
-              ) : (
-                <div className="p-3 space-y-1.5 max-h-[360px] overflow-auto">
-                  {passReasonsAgg.list.slice(0, 20).map((p) => {
-                    const max = passReasonsAgg.list[0]?.count || 1;
-                    const barW = Math.max(4, (p.count / max) * 100);
-                    return (
+                <IntelPanel title="Pass Reasons" subtitle="% of total passes">
+                  <div className="px-3 pb-3 pt-1 space-y-2">
+                    {passReasonsRanked.length === 0 ? (
+                      <div className="py-6 text-center text-[12px] text-slate-500">No passed deals with reasons captured</div>
+                    ) : passReasonsRanked.map((p) => (
                       <button
                         key={p.key}
                         type="button"
                         onClick={() => setOpenPassReason(p.key)}
-                        className="w-full text-left rounded px-2 py-1.5 hover:bg-slate-100/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+                        className="w-full text-left rounded-md px-2 py-1.5 hover:bg-white/[0.03]"
                       >
-                        <div className="flex items-center justify-between gap-3 text-[12px] text-slate-200">
-                          <span className="truncate">{p.reason}</span>
-                          <span className="tabular-nums text-slate-400 shrink-0">{p.count}</span>
+                        <div className="flex items-center justify-between gap-2 text-[12px]">
+                          <span className="text-slate-100 truncate">{p.reason}</span>
+                          <span className="tabular-nums text-slate-300 shrink-0">{p.pct.toFixed(0)}%</span>
                         </div>
-                        <div className="mt-1 h-1.5 rounded bg-slate-700/30 overflow-hidden">
-                          <div className="h-full rounded" style={{ width: `${barW}%`, background: 'linear-gradient(90deg, hsl(0 72% 55%), hsl(20 80% 55%))' }} />
+                        <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
+                          <div className="h-full rounded" style={{ width: `${Math.max(3, p.pct)}%`, background: '#f87171' }} />
                         </div>
                       </button>
-                    );
-                  })}
+                    ))}
+                  </div>
+                </IntelPanel>
+              </div>
+
+              {/* Second Row — Flex Engagement + Lender Responsiveness */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <IntelPanel title="Flex Engagement" subtitle="active sessions past 30d">
+                  <div className="px-3 pb-3 pt-1 space-y-1.5">
+                    {lenderStats.filter((s) => s.isFlex).slice(0, 10).map((s) => {
+                      const filled = Math.max(0, Math.min(5, s.flexActive));
+                      const highlighted = hoverLender === s.key;
+                      return (
+                        <div
+                          key={s.key}
+                          onMouseEnter={() => setHoverLender(s.key)}
+                          onMouseLeave={() => setHoverLender(null)}
+                          className={cn(
+                            'flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors',
+                            highlighted ? 'bg-white/[0.05]' : '',
+                          )}
+                        >
+                          <span className="text-[12px] text-slate-100 truncate">{s.name}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1">
+                              {[0, 1, 2, 3, 4].map((i) => (
+                                <span
+                                  key={i}
+                                  className="h-2 w-2 rounded-full"
+                                  style={{
+                                    background: i < filled ? '#4dd9ac' : '#2a2f3d',
+                                    border: i < filled ? 'none' : '1px solid #2a2f3d',
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-[11px] tabular-nums text-slate-400 w-8 text-right">{filled}/5</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {lenderStats.filter((s) => s.isFlex).length === 0 && (
+                      <div className="py-6 text-center text-[12px] text-slate-500">No Flex-connected lenders</div>
+                    )}
+                  </div>
+                </IntelPanel>
+
+                <IntelPanel title="Lender Responsiveness" subtitle="avg days to respond">
+                  <div className="px-3 pb-3 pt-1 space-y-2">
+                    {lenderStats.filter((s) => s.avgRespDays != null).slice(0, 10).map((s) => {
+                      const d = s.avgRespDays as number;
+                      const color = d <= 3 ? '#4dd9ac' : d <= 6 ? '#f5a623' : '#f87171';
+                      const barW = Math.max(4, Math.min(100, (d / 14) * 100));
+                      const highlighted = hoverLender === s.key;
+                      return (
+                        <div
+                          key={s.key}
+                          onMouseEnter={() => setHoverLender(s.key)}
+                          onMouseLeave={() => setHoverLender(null)}
+                          className={cn(
+                            'rounded-md px-2 py-1.5 transition-colors',
+                            highlighted ? 'bg-white/[0.05]' : '',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[12px]">
+                            <span className="text-slate-100 truncate">{s.name}</span>
+                            <span className="tabular-nums text-slate-300 shrink-0">{d.toFixed(1)}d</span>
+                          </div>
+                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
+                            <div className="h-full rounded" style={{ width: `${barW}%`, background: color }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {lenderStats.filter((s) => s.avgRespDays != null).length === 0 && (
+                      <div className="py-6 text-center text-[12px] text-slate-500">No response data</div>
+                    )}
+                  </div>
+                </IntelPanel>
+              </div>
+
+              {/* Full-width bottom — Lender Conversion Rate */}
+              <IntelPanel title="Lender Conversion Rate" subtitle="deals sent → terms issued">
+                <div className="px-3 pb-3 pt-1 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                  {lenderStats
+                    .filter((s) => s.submitted > 0)
+                    .slice(0, 20)
+                    .map((s) => {
+                      const pct = s.conv * 100;
+                      const color = pct >= 35 ? '#4dd9ac' : pct >= 20 ? '#f5a623' : '#f87171';
+                      const highlighted = hoverLender === s.key;
+                      return (
+                        <button
+                          key={s.key}
+                          type="button"
+                          onMouseEnter={() => setHoverLender(s.key)}
+                          onMouseLeave={() => setHoverLender(null)}
+                          onClick={() => setOpenLenderDeals(s.name)}
+                          className={cn(
+                            'text-left rounded-md px-2 py-1.5 transition-colors',
+                            highlighted ? 'bg-white/[0.05]' : 'hover:bg-white/[0.03]',
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 text-[12px]">
+                            <span className="text-slate-100 truncate">{s.name}</span>
+                            <span className="tabular-nums text-slate-300 shrink-0">{pct.toFixed(0)}%</span>
+                          </div>
+                          <div className="mt-1 h-2 rounded" style={{ background: '#2a2f3d' }}>
+                            <div className="h-full rounded" style={{ width: `${Math.max(3, pct)}%`, background: color }} />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  {lenderStats.filter((s) => s.submitted > 0).length === 0 && (
+                    <div className="py-6 text-center text-[12px] text-slate-500 md:col-span-2">No conversion data</div>
+                  )}
                 </div>
-              )}
-            </div>
+              </IntelPanel>
+            </>
           )}
         </div>
 
