@@ -1719,6 +1719,21 @@ export function AICopilotPanel() {
     addMessage(userMsg);
     setInput('');
 
+    // Daily-agenda intent — instead of generating a text summary of
+    // tasks, open the existing My Tasks overlay filtered to today
+    // (tasks due today + today's calendar items) and post a one-line
+    // Copilot reply. Detected client-side; no backend round-trip.
+    if (isDailyAgendaPrompt(text)) {
+      window.dispatchEvent(new CustomEvent('open-my-tasks-today'));
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: "Here's your day — opening My Tasks filtered to today.",
+        timestamp: new Date(),
+      });
+      return;
+    }
+
     // Demo-only deterministic intercept: when demo@5thline.co asks
     // "What deals need attention?" return exactly 3 deals as markdown
     // bullets with one-sentence reasons. No AI call, no drift.
