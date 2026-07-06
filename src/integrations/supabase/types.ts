@@ -20571,6 +20571,7 @@ export type Database = {
           approval_requested_at: string | null
           approved_at: string | null
           approved_by: string | null
+          asana_user_gid: string | null
           avatar_url: string | null
           backup_email: string | null
           company_name: string | null
@@ -20629,6 +20630,7 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          asana_user_gid?: string | null
           avatar_url?: string | null
           backup_email?: string | null
           company_name?: string | null
@@ -20687,6 +20689,7 @@ export type Database = {
           approval_requested_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          asana_user_gid?: string | null
           avatar_url?: string | null
           backup_email?: string | null
           company_name?: string | null
@@ -24614,6 +24617,8 @@ export type Database = {
           recurrence_rule: string | null
           recurrence_source_id: string | null
           section_id: string | null
+          source_calendar_event_id: string | null
+          source_calendar_event_title: string | null
           source_email_from: string | null
           source_email_message_id: string | null
           source_email_received_at: string | null
@@ -24662,6 +24667,8 @@ export type Database = {
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
           section_id?: string | null
+          source_calendar_event_id?: string | null
+          source_calendar_event_title?: string | null
           source_email_from?: string | null
           source_email_message_id?: string | null
           source_email_received_at?: string | null
@@ -24710,6 +24717,8 @@ export type Database = {
           recurrence_rule?: string | null
           recurrence_source_id?: string | null
           section_id?: string | null
+          source_calendar_event_id?: string | null
+          source_calendar_event_title?: string | null
           source_email_from?: string | null
           source_email_message_id?: string | null
           source_email_received_at?: string | null
