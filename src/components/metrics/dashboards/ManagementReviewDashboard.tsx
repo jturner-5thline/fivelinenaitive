@@ -3469,11 +3469,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             </div>
           </GridShell>
         </div>
-        <div key="dscr" className="h-full">
-          <GridShell isEditMode={isEditMode} title="DSCR / Debt Coverage">
-            <NaPlaceholder height={140} label="Data unavailable — requires a live debt coverage model" />
-          </GridShell>
-        </div>
         <div key="cashflow-12w" className="h-full">
           <GridShell isEditMode={isEditMode} title="12-Week Cashflow Forecast">
             <CashflowForecastWidget />
