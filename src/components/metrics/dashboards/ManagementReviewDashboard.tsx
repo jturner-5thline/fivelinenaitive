@@ -1087,6 +1087,16 @@ function ConsolidatedCashflowWidget() {
           format={(v) => fmt(v)}
         />
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {showDelta && series.length >= 2 && (
+            <RangeTrendDelta
+              fromLabel={series[0]?.label}
+              toLabel={series[series.length - 1]?.label}
+              fromValue={series[0]?.value}
+              toValue={series[series.length - 1]?.value}
+              polarity="higher-is-better"
+              format={(v) => fmt(v)}
+            />
+          )}
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setShowDelta(v => !v); }}
