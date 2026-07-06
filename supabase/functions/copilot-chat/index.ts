@@ -1261,6 +1261,23 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "check_outstanding_items_status",
+      description:
+        "Cross-reference open outstanding items against the user's connected email inbox to flag which items have likely already been provided by the deal's client contacts. Use for questions like 'what am I waiting for', 'what is outstanding', 'what are we still missing', 'anything I forgot to mark received'. Scope to one deal via deal_id (preferred) or deal_query, otherwise runs across all of the user's active deals.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID (preferred when known)." },
+          deal_query: { type: "string", description: "Optional deal name to resolve when deal_id is unknown." },
+          since_days: { type: "number", description: "Cap on how far back to scan the inbox per item. Default 60." },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal_milestones",
       description: "Get detailed milestone status for a deal.",
       parameters: {
@@ -2391,6 +2408,8 @@ function selectToolsWithScopes(
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Always-available: waiting-on / outstanding-items inbox cross-reference.
+    "check_outstanding_items_status",
     // Phase 2: preview-only drafts and summaries.
     "draft_status_report", "follow_up_summary",
     // Phase 3: external integration stubs (preview-only — no external writes).
@@ -4812,6 +4831,203 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         }
       }
       return { count: items.length, outstanding_items: items };
+    }
+    case "check_outstanding_items_status": {
+      // Waiting-on cross-reference: for each open outstanding item on the
+      // resolved deal(s), check whether any client contact has emailed the
+      // user since the item was requested and, if so, flag it as
+      // "recently received — mark as received?" with a one-tap chip.
+      const sinceDays = Math.min(Math.max(Number(args.since_days) || 60, 7), 365);
+
+      // ── 1. Resolve which deals to inspect. ──
+      let dealIds: string[] = [];
+      if (typeof args.deal_id === "string" && args.deal_id.trim()) {
+        dealIds = [args.deal_id.trim()];
+      } else if (entityType === "deal" && entityId) {
+        dealIds = [entityId];
+      } else if (typeof args.deal_query === "string" && args.deal_query.trim()) {
+        const q = args.deal_query.trim();
+        const { data: matches } = await supabase
+          .from("deals").select("id, company")
+          .is("merged_into", null)
+          .ilike("company", `%${q}%`).limit(5);
+        dealIds = (matches || []).map((d: any) => d.id);
+      } else {
+        // Default: all of the user's active deals (owner or manager).
+        let q = supabase
+          .from("deals")
+          .select("id")
+          .is("merged_into", null)
+          .not("status", "in", "(archived,on-hold,closed-won,closed-lost)")
+          .limit(15);
+        try { q = applyDealScope(q, scope, { allowOutOfScope: true }); } catch { /* ignore */ }
+        const { data: userDeals } = await q;
+        dealIds = (userDeals || []).map((d: any) => d.id);
+      }
+
+      if (dealIds.length === 0) {
+        return { deals: [], message: "No matching deals found for the current user." };
+      }
+
+      // ── 2. Pull deal headers + open outstanding items in one shot. ──
+      const [dealsRes, itemsRes, contactLinksRes] = await Promise.all([
+        supabase.from("deals").select("id, company").in("id", dealIds),
+        supabase
+          .from("outstanding_items")
+          .select("id, deal_id, description, status, created_at, priority, assigned_to, due_date, eta")
+          .in("deal_id", dealIds)
+          .in("status", ["open", "pending", "in_progress"])
+          .eq("is_archived", false)
+          .order("created_at", { ascending: true }),
+        supabase.from("contact_deals").select("deal_id, contact_id").in("deal_id", dealIds),
+      ]);
+
+      const dealById = new Map((dealsRes.data || []).map((d: any) => [d.id, d]));
+      const items = itemsRes.data || [];
+      const links = contactLinksRes.data || [];
+
+      // ── 3. Resolve contact emails per deal. ──
+      const allContactIds = [...new Set(links.map((l: any) => l.contact_id).filter(Boolean))];
+      let contactsById = new Map<string, any>();
+      if (allContactIds.length > 0) {
+        const { data: contacts } = await supabase
+          .from("contacts")
+          .select("id, first_name, last_name, email")
+          .in("id", allContactIds);
+        contactsById = new Map((contacts || []).map((c: any) => [c.id, c]));
+      }
+      const emailsByDeal = new Map<string, string[]>();
+      const nameByEmail = new Map<string, string>();
+      for (const link of links) {
+        const c = contactsById.get(link.contact_id);
+        const email = (c?.email || "").toLowerCase().trim();
+        if (!email) continue;
+        const arr = emailsByDeal.get(link.deal_id) || [];
+        if (!arr.includes(email)) arr.push(email);
+        emailsByDeal.set(link.deal_id, arr);
+        nameByEmail.set(
+          email,
+          [c?.first_name, c?.last_name].filter(Boolean).join(" ").trim() || email,
+        );
+      }
+
+      // ── 4. For each deal, pull inbound emails from those contacts within
+      //    the scan window and match to items by created_at + keywords. ──
+      const scanSinceIso = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000).toISOString();
+      const stopwords = new Set([
+        "the", "and", "for", "with", "from", "please", "send", "provide", "share",
+        "need", "needed", "latest", "updated", "update", "your", "our", "this", "that",
+        "a", "an", "of", "to", "on", "in", "is", "by", "as", "at", "or", "be", "we",
+      ]);
+      const keywordsOf = (desc: string) =>
+        (desc || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .split(/\s+/)
+          .filter((w) => w.length >= 4 && !stopwords.has(w))
+          .slice(0, 6);
+
+      const perDeal: any[] = [];
+      for (const dealId of dealIds) {
+        const dealItems = items.filter((i: any) => i.deal_id === dealId);
+        if (dealItems.length === 0) continue;
+        const deal = dealById.get(dealId);
+        const contactEmails = emailsByDeal.get(dealId) || [];
+
+        // Pull up to 200 recent inbound messages from any deal contact.
+        let recent: any[] = [];
+        if (contactEmails.length > 0) {
+          const { data: msgs } = await supabase
+            .from("gmail_messages")
+            .select("gmail_message_id, thread_id, subject, from_email, snippet, body_text, received_at")
+            .eq("user_id", userId)
+            .in("from_email", contactEmails)
+            .gte("received_at", scanSinceIso)
+            .order("received_at", { ascending: false })
+            .limit(200);
+          recent = msgs || [];
+        }
+
+        const still_missing: any[] = [];
+        const recently_received: any[] = [];
+
+        for (const item of dealItems) {
+          const requestedAt = new Date(item.created_at).getTime();
+          const daysAgo = Math.max(0, Math.round((Date.now() - requestedAt) / 86_400_000));
+          const kws = keywordsOf(item.description || "");
+
+          // Consider messages that arrived AFTER the item was requested.
+          const eligible = recent.filter(
+            (m: any) => new Date(m.received_at).getTime() >= requestedAt,
+          );
+
+          // Score: +2 keyword hit in subject, +1 in body/snippet.
+          let best: any = null;
+          let bestScore = 0;
+          for (const m of eligible) {
+            const subject = (m.subject || "").toLowerCase();
+            const body = ((m.body_text || "") + " " + (m.snippet || "")).toLowerCase();
+            let score = 0;
+            for (const kw of kws) {
+              if (subject.includes(kw)) score += 2;
+              else if (body.includes(kw)) score += 1;
+            }
+            if (score > bestScore) { bestScore = score; best = m; }
+          }
+
+          if (best && bestScore >= 2) {
+            recently_received.push({
+              item_id: item.id,
+              deal_id: dealId,
+              description: item.description,
+              requested_days_ago: daysAgo,
+              match_confidence: bestScore >= 4 ? "high" : "medium",
+              evidence: {
+                gmail_message_id: best.gmail_message_id,
+                thread_id: best.thread_id,
+                subject: best.subject,
+                from_email: best.from_email,
+                from_name: nameByEmail.get((best.from_email || "").toLowerCase()) || best.from_email,
+                received_at: best.received_at,
+                snippet: (best.snippet || best.body_text || "").slice(0, 240),
+              },
+              mark_received_action: {
+                tool: "complete_outstanding_item",
+                params: { deal_id: dealId, item_id: item.id, item_description: item.description },
+                chip_prompt: `Mark outstanding item "${item.description}" as received on ${deal?.company || "this deal"}`,
+              },
+            });
+          } else {
+            still_missing.push({
+              item_id: item.id,
+              deal_id: dealId,
+              description: item.description,
+              requested_days_ago: daysAgo,
+              priority: item.priority,
+              assigned_to: item.assigned_to,
+              due_date: item.due_date,
+              eta: item.eta,
+            });
+          }
+        }
+
+        perDeal.push({
+          deal_id: dealId,
+          company: deal?.company || "Unknown deal",
+          contact_emails_scanned: contactEmails.length,
+          inbox_scan_since: scanSinceIso,
+          still_missing,
+          recently_received,
+        });
+      }
+
+      return {
+        scope: dealIds.length === 1 ? "single_deal" : "portfolio",
+        deal_count: perDeal.length,
+        deals: perDeal,
+        rendering_guidance:
+          "Group by deal (use entity://deal/<id> link on each company name). Under each deal render two sub-lists: '**Still missing**' (bullet each item with days-since-requested) and '**Recently received — mark as received?**' (each bullet includes the sender name, email subject and received_at date). For every recently_received item, ALSO emit a suggested-follow-up CHIP whose text equals the item's mark_received_action.chip_prompt so the user can one-tap complete it. If a deal has no recently_received items, omit that sub-list. If a deal has neither, say 'nothing outstanding on <deal>'.",
+      };
     }
     case "get_deal_milestones": {
       const { data } = await supabase.from("deal_milestones").select("id, title, completed, completed_at, due_date, position, status, created_at, updated_at").eq("deal_id", args.deal_id).order("position", { ascending: true });
@@ -9665,6 +9881,16 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
 - If the focused deal is set, at least one chip should reference it by name.
 - DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
+    // Routing hint for waiting-on / outstanding-items queries.
+    const outstandingRoutingBlock = `
+
+WAITING-ON / OUTSTANDING-ITEMS QUERIES (STRICT):
+- Whenever the user asks any variation of "what am I waiting for", "what am I waiting on", "what's outstanding", "what are we still missing", "anything outstanding on <deal>", "what haven't I received yet", or "did anyone send me <X>", your FIRST tool call MUST be check_outstanding_items_status.
+  - If the user names a deal, pass deal_id (preferred) or deal_query.
+  - If no deal is named and there is no focused deal, omit both — the tool will fan out across the user's active deals.
+- Do NOT fall back to get_outstanding_items for these questions — that tool does not cross-reference the inbox and will not surface "recently received" items.
+- Render the result exactly as instructed in the tool's rendering_guidance field.`;
+
     // ── CREATE-intent preflight (system-level) ──
     // When the user's message begins with create/add/new/etc + "deal", force
     // the model's FIRST tool call to be create_deal so the same-name collision
@@ -9681,7 +9907,7 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
       : "";
 
     const apiMessages: any[] = [
-      { role: "system", content: systemPrompt + createIntentSystemBlock },
+      { role: "system", content: systemPrompt + outstandingRoutingBlock + createIntentSystemBlock },
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message },
     ];
