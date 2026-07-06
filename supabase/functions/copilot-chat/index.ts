@@ -3576,6 +3576,108 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       return { count: tasks.length, scope, filter: args.filter || "open", tasks };
     }
+    case "find_recent_copilot_tasks": {
+      // Live-DB lookup for the delete/cancel-a-recent-copilot-task flow.
+      // ONLY returns rows the current user created via the Copilot, within
+      // a bounded time window. Never trust conversation memory here — the
+      // whole point is to reconcile the model's belief with what's really
+      // in the tasks table.
+      const withinMinutes = Math.min(Math.max(Number(args.within_minutes ?? 180), 5), 24 * 60);
+      const limit = Math.min(Math.max(Number(args.limit ?? 10), 1), 50);
+      const sinceIso = new Date(Date.now() - withinMinutes * 60 * 1000).toISOString();
+      let q = supabase
+        .from("tasks")
+        .select("id, title, status, due_date, deal_id, assigned_to, assigned_by, created_by, created_at, sync_source")
+        .eq("created_by", userId)
+        .eq("sync_source", "copilot")
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (args.assignee_user_id) q = q.eq("assigned_to", args.assignee_user_id);
+      if (args.deal_id) q = q.eq("deal_id", args.deal_id);
+      if (typeof args.title_contains === "string" && args.title_contains.trim()) {
+        const needle = String(args.title_contains).trim().replace(/[%,()]/g, "");
+        q = q.ilike("title", `%${needle}%`);
+      }
+      const { data, error } = await q;
+      if (error) return { error: error.message };
+      const rows = data || [];
+      // Hydrate deal names and assignee names for a scannable candidate list.
+      const dealIds = [...new Set(rows.map((r: any) => r.deal_id).filter(Boolean))];
+      const userIds = [...new Set(rows.flatMap((r: any) => [r.assigned_to].filter(Boolean)))];
+      const [dealsRes, profilesRes] = await Promise.all([
+        dealIds.length ? supabase.from("deals").select("id, company").in("id", dealIds) : Promise.resolve({ data: [] }),
+        userIds.length ? supabase.from("profiles").select("user_id, display_name, first_name, last_name, email").in("user_id", userIds) : Promise.resolve({ data: [] }),
+      ]);
+      const dealMap = new Map<string, string>();
+      for (const d of (dealsRes.data || []) as any[]) dealMap.set(d.id, d.company);
+      const profMap = new Map<string, string>();
+      for (const p of (profilesRes.data || []) as any[]) {
+        const composed = [p.first_name, p.last_name].filter(Boolean).join(" ").trim();
+        profMap.set(p.user_id, p.display_name || composed || p.email || "");
+      }
+      const hydrated = rows.map((r: any) => ({
+        task_id: r.id,
+        title: r.title,
+        status: r.status,
+        due_date: r.due_date,
+        deal_id: r.deal_id,
+        deal_name: r.deal_id ? (dealMap.get(r.deal_id) || null) : null,
+        assignee_user_id: r.assigned_to,
+        assignee_name: r.assigned_to ? (profMap.get(r.assigned_to) || null) : null,
+        created_at: r.created_at,
+      }));
+      return {
+        count: hydrated.length,
+        within_minutes: withinMinutes,
+        tasks: hydrated,
+      };
+    }
+    case "delete_task": {
+      const taskId = typeof args.task_id === "string" ? args.task_id.trim() : "";
+      if (!/^[0-9a-f-]{36}$/i.test(taskId)) {
+        return { error: "delete_task requires a real task UUID from find_recent_copilot_tasks or get_tasks." };
+      }
+      // Hydrate the task so the confirm card can show what will be deleted.
+      const { data: t, error } = await supabase
+        .from("tasks")
+        .select("id, title, status, due_date, deal_id, assigned_to, assigned_by, created_by")
+        .eq("id", taskId)
+        .maybeSingle();
+      if (error) return { error: error.message };
+      if (!t) return { error: "Task not found in the database. It may already be deleted." };
+      // Deal/assignee display names for the card.
+      let dealName: string | null = null;
+      if (t.deal_id) {
+        const { data: d } = await supabase.from("deals").select("company").eq("id", t.deal_id).maybeSingle();
+        dealName = d?.company || null;
+      }
+      let assigneeName: string | null = null;
+      if (t.assigned_to) {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("display_name, first_name, last_name, email")
+          .eq("user_id", t.assigned_to)
+          .maybeSingle();
+        const composed = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+        assigneeName = p?.display_name || composed || p?.email || null;
+      }
+      return {
+        action: "confirm",
+        action_type: "delete_task",
+        description: `Delete task: "${t.title}"${dealName ? ` (${dealName})` : ""}`,
+        params: {
+          task_id: t.id,
+          title: t.title,
+          status: t.status,
+          due_date: t.due_date,
+          deal_id: t.deal_id,
+          deal_name: dealName,
+          assignee_user_id: t.assigned_to,
+          assignee_name: assigneeName,
+        },
+      };
+    }
     case "get_task_details": {
       if (!args.task_id) return { error: "task_id is required" };
       const { data: task, error } = await supabase.from("tasks")
