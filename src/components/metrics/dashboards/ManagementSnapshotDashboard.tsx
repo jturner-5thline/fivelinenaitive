@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { AvgRevenuePerClientWidget } from '@/components/metrics/AvgRevenuePerClientWidget';
 import { DebtRevenueWidget, FinServRevenueWidget } from './RevenueOverviewDashboard';
 import { DealsSignedWidget, FinServClientsSignedWidget, OutstandingARWidget } from './SignedDealsAndARSection';
-import { CurrentQuarterBadge } from '../CurrentQuarterBadge';
+import { QuarterNavBadge, useLocalQuarter } from '../CurrentQuarterBadge';
 import {
   ExecDealsByStatusWidget,
 } from './ExecutiveDashboard';
@@ -726,11 +726,11 @@ export function ManagementSnapshotDashboard({
   // Per-sub-widget renderers — each becomes an independently
   // draggable/resizable tile in the unified Weekly Rundown grid.
   const subWidgetRenderers: Record<WeeklyRundownSubWidgetId, React.ReactNode> = {
-    'rev-debt': <DebtRevenueWidget selectedQuarter={selectedQuarter} />,
-    'rev-finserv': <FinServRevenueWidget selectedQuarter={selectedQuarter} />,
+    'rev-debt': <LocalQuarterDebtRevenue />,
+    'rev-finserv': <LocalQuarterFinServRevenue />,
     'last-week-summary': <LastWeekSummaryWidget />,
-    'sd-deals-signed': <DealsSignedWidget selectedQuarter={selectedQuarter} />,
-    'sd-finserv-clients-signed': <FinServClientsSignedWidget selectedQuarter={selectedQuarter} />,
+    'sd-deals-signed': <LocalQuarterDealsSigned />,
+    'sd-finserv-clients-signed': <LocalQuarterFinServClientsSigned />,
     'sd-outstanding-ar': <OutstandingARWidget />,
     // The dedicated Mon→Sun week selector tile has been retired in favour of
     // the unified header timeframe picker. The id remains for backwards
