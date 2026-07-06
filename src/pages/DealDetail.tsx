@@ -231,6 +231,7 @@ import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportT
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
+import { LenderRowBoundary } from '@/components/deal/LenderRowBoundary';
 import { DraftAndSendDialog, type DraftAndSendInitial } from '@/components/deal/DraftAndSendDialog';
 import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/components/deal/StatusEmailFlowPicker';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
