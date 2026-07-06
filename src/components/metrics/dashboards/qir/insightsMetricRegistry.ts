@@ -59,7 +59,7 @@ export interface InsightsMetricGroup {
 function inferFormat(id: string, label: string): MetricFormatHint {
   const s = `${id} ${label}`.toLowerCase();
   if (/(rate|%|percent|ratio)/.test(s)) return 'percentage';
-  if (/(revenue|value|fees|payments|amount|expenses|income|ar\b|ap\b|receivable|payable|estimate|credit memo|memos|size|per deal|spend|waterfall|forecast|aging|treemap|cumulative|qtd|ytd)/.test(s)) return 'currency';
+  if (/(revenue|value|fees|payments|amount|expenses|income|ar\b|ap\b|receivable|payable|estimate|credit memo|memos|size|per deal|spend|waterfall|forecast|aging|treemap|cumulative|qtd|ytd|mrr|arr)/.test(s)) return 'currency';
   return 'number';
 }
 
