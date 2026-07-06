@@ -1206,7 +1206,7 @@ export function LenderAnalyticsDialog({
                       .map(r => (
                         <tr key={r.id} className="border-t border-slate-700/40">
                           <td className="py-1.5 text-slate-100 truncate max-w-[180px]">{r.deal.company || '—'}</td>
-                          <td className="text-slate-300 truncate max-w-[140px]">{r.label || '—'}</td>
+                          <td className="max-w-[160px]"><StageTag label={r.label} /></td>
                           <td className="text-right text-slate-200 tabular-nums">{r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}</td>
                           <td className="text-slate-300 truncate max-w-[100px]">{r.deal.manager || '—'}</td>
                           <td className="text-right text-slate-400 tabular-nums">{new Date(r.updated_at).toLocaleDateString()}</td>
