@@ -120,6 +120,8 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'xs-revenue-per-deal', label: 'Cross: Revenue per Deal Signed', type: 'stat' },
   { id: 'xs-ar-per-active-deal', label: 'Cross: AR per Active Deal', type: 'stat' },
   { id: 'xs-collection-rate-by-entity', label: 'Cross: Collection Rate', type: 'stat' },
+  { id: 'finserv-revenue-per-hour', label: 'FinServ: Revenue per Hour', type: 'stat' },
+  { id: 'finserv-profit-per-hour', label: 'FinServ: Profit per Hour', type: 'stat' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];
