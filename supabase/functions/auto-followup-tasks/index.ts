@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       //    "My Tasks" = tasks assigned to the user with no project/section.
       const eventTitle = (ev.title || "Untitled event").trim();
       const dueDate = (ev.start_time || ev.end_time || new Date().toISOString()).slice(0, 10);
-      const taskTitle = `Followed up on ${eventTitle}`;
+      const taskTitle = `Follow up on ${eventTitle}`;
 
       const { data: inserted, error: insErr } = await admin
         .from("tasks")
