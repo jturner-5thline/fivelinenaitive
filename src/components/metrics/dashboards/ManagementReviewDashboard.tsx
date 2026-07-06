@@ -491,6 +491,85 @@ function DebtByRatingWidget() {
 }
 
 function TtmDscrChart() {
+  return <TtmDscrChartInner />;
+}
+
+function MonthlyDebtPaymentsChart() {
+  const { reportingPeriod, timeframe } = useInsightsTimeframe();
+  const view: 'month' | 'quarter' =
+    reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
+  const anchorEnd = reportingPeriod?.end ?? timeframe.end;
+
+  const data = useMemo(() => {
+    if (!anchorEnd) return [] as { label: string; value: number }[];
+    const end = new Date(anchorEnd + 'T00:00:00');
+    if (view === 'quarter') {
+      const qEnd = endOfQuarter(end);
+      return Array.from({ length: 6 }, (_, i) => {
+        const d = endOfQuarter(subQuarters(qEnd, 5 - i));
+        const q = Math.floor(d.getMonth() / 3) + 1;
+        return { label: `Q${q} ${String(d.getFullYear()).slice(2)}`, value: 0 };
+      });
+    }
+    const mEnd = endOfMonth(end);
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = endOfMonth(subMonths(mEnd, 11 - i));
+      return {
+        label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        value: 0,
+      };
+    });
+  }, [anchorEnd, view]);
+
+  return (
+    <div className="pt-1">
+      <div className="mb-2 flex items-center justify-between">
+        <span
+          className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-help"
+          title="Total monthly debt service payments (principal + interest)"
+        >
+          Monthly Debt Payments
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          {view === 'quarter' ? 'Quarterly' : 'Monthly'}
+        </span>
+      </div>
+      <div className="relative h-[160px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              width={45}
+              tickFormatter={(v: number) => {
+                const abs = Math.abs(v);
+                if (abs >= 1_000_000) return `$${(abs / 1_000_000).toFixed(1)}M`;
+                if (abs >= 1_000) return `$${(abs / 1_000).toFixed(0)}K`;
+                return `$${abs}`;
+              }}
+            />
+            <Bar dataKey="value" fill="hsl(213,90%,70%)" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="rounded-md bg-black/40 px-2 py-1 text-[11px] font-medium text-muted-foreground">
+            Coming soon
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TtmDscrChartInner() {
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const view: 'month' | 'quarter' =
     reportingPeriod?.view === 'quarter' ? 'quarter' : 'month';
