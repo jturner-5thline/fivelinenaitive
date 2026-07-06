@@ -8166,19 +8166,27 @@ serve(async (req) => {
           .limit(2000);
         const INACTIVE_STATUSES = new Set(["closed", "on-hold", "archived", "closed-won", "closed-lost"]);
         const INACTIVE_STAGES = new Set(["closed-won", "closed-lost", "on-hold"]);
-        const active = (rows || []).filter((d: any) => {
+        const scoped = (rows || []).filter((d: any) => {
           if (isGloballyExcludedDealName(d.company)) return false;
-          if (INACTIVE_STATUSES.has(String(d.status || "").toLowerCase())) return false;
-          if (INACTIVE_STAGES.has(String(d.stage || "").toLowerCase())) return false;
           const mgr = String(d.manager || "").toLowerCase();
           const own = String(d.deal_owner || "").toLowerCase();
           const ownIdMatch = !!profileUserId && d.deal_owner_user_id === profileUserId;
           return mgr.includes(needle) || own.includes(needle) || ownIdMatch;
         });
-        const count = active.length;
-        const sample = active.slice(0, 25).map((d: any) => `[${d.company}](entity://deal/${d.id})`).join(", ");
-        userDealCountBlock = `\n\nUSER DEAL COUNT AUTHORITY — deterministic query result for "${rawName}":\n- Active deals where ${rawName} is manager OR owner (excluding closed-won, closed-lost, on-hold, and globally excluded test deals): ${count}\n- This is the ONLY correct number for this question. You MUST state exactly ${count}. Do NOT emit any other count in the same reply. Do NOT call search_deals, get_pipeline_snapshot, or any counting tool to re-derive this figure.\n- Deals in the count${count > 25 ? " (first 25 shown)" : ""}: ${sample || "(none)"}`;
-        console.log("[copilot-chat] user_deal_count_authority", JSON.stringify({ name: rawName, count, profile_user_id: profileUserId }));
+        const isClosed = (d: any) =>
+          INACTIVE_STATUSES.has(String(d.status || "").toLowerCase())
+          || INACTIVE_STAGES.has(String(d.stage || "").toLowerCase());
+        const active = scoped.filter((d: any) => !isClosed(d));
+        const closed = scoped.filter((d: any) => isClosed(d));
+        const activeCount = active.length;
+        const closedCount = closed.length;
+        const totalCount = activeCount + closedCount;
+        const fmtList = (arr: any[]) =>
+          arr.length === 0
+            ? "(none)"
+            : arr.map((d: any) => `[${d.company}](entity://deal/${d.id})${d.stage ? ` — ${d.stage}` : ""}`).join(", ");
+        userDealCountBlock = `\n\nUSER DEAL COUNT AUTHORITY — deterministic query result for "${rawName}" (managed = manager OR owner, matched on manager, deal_owner, and deal_owner_user_id; globally excluded test deals removed):\n- Active-pipeline stages: ${activeCount}\n- Closed stages (closed-won, closed-lost, on-hold, archived): ${closedCount}\n- Total managed: ${totalCount}\n- Active deal names: ${fmtList(active)}\n- Closed deal names: ${fmtList(closed)}\n- These are the ONLY correct figures for this question. You MUST state Active=${activeCount} and Closed=${closedCount} exactly, disclose the filter ("counting only active-pipeline stages") when quoting the active count, and ALWAYS include the closed-stage breakdown with deal names — even when the active count is 0. Do NOT call search_deals, get_pipeline_snapshot, or any counting tool to re-derive these figures. Do NOT emit any other count in the same reply.`;
+        console.log("[copilot-chat] user_deal_count_authority", JSON.stringify({ name: rawName, activeCount, closedCount, totalCount, profile_user_id: profileUserId }));
       }
     } catch (e) {
       console.warn("[copilot-chat] user deal count block failed", e);
@@ -8280,10 +8288,12 @@ ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: stri
 ${prefetched.block}${dealResolverBlock}${userDealCountBlock}
 
 USER DEAL COUNT AUTHORITY RULE (STRICT — overrides every other source):
-- If a "USER DEAL COUNT AUTHORITY" block is present above, that count is the ONLY correct answer to any "how many deals does <name> manage/own/handle" question in this turn.
-- State the number exactly once, using the value from the block. NEVER emit a second sentence with a different count. NEVER hedge with "or X" / "actually X" / "previously X".
-- Do NOT re-derive the count via search_deals, get_pipeline_snapshot, or any other tool. Do NOT reason your way to a different number.
-- If you catch yourself about to state a different number, stop, delete that draft, and use the authoritative count.
+- Definition: "managed by <name>" = deals where <name> is the manager OR the owner. This is the ONLY valid definition; do not narrow or broaden it.
+- If a "USER DEAL COUNT AUTHORITY" block is present above, its Active and Closed numbers are the ONLY correct figures for any "how many deals does <name> manage/own/handle" question in this turn.
+- ALWAYS return the breakdown in a single reply: "X in active-pipeline stages + Y in closed stages (closed-won, closed-lost, on-hold, archived)", followed by the deal names for each bucket as entity:// links, grouped under "Active:" and "Closed:" sub-lists. Include the closed bucket even when Y=0, and NEVER return "0" for the active bucket without also listing the closed-stage breakdown with names.
+- Whenever you return a count, DISCLOSE THE FILTER you applied — e.g. "counting only active-pipeline stages (excluding closed-won, closed-lost, on-hold, archived)". Do not omit this disclosure.
+- Do NOT re-derive the count via search_deals, get_pipeline_snapshot, or any other tool. Do NOT reason your way to a different number. NEVER emit a second sentence with a conflicting count or hedge with "or X" / "actually X" / "previously X".
+- If you catch yourself about to state a different number, stop, delete that draft, and use the authoritative counts and names from the block above.
 
 DEAL CONTEXT RULES (STRICT — apply to every deal-related question):
 1. Default deal: if the user is on a deal page (entityType=deal above) OR a deal was @mentioned, that is THE focused deal. Phrases like "this deal", "this company", "here", "what's going on with this", "summarize this", "open tasks here", "next steps here", "who owns this" ALWAYS refer to that focused deal — never another.
