@@ -1,5 +1,5 @@
 import { useState, forwardRef, useImperativeHandle, useEffect } from 'react';
-import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTriangle, FileText, ExternalLink, X, AlertCircle } from 'lucide-react';
+import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTriangle, FileText, ExternalLink, X, AlertCircle, Trash2 } from 'lucide-react';
 import { useVisibilityAwareInterval } from '@/hooks/useVisibilityAwareInterval';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -42,6 +42,7 @@ const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_status: AlertTriangle,
   move_deal_pipeline: ArrowRight,
   create_task: Plus,
+  delete_task: Trash2,
   update_milestone: CheckCircle,
   update_lender_status: RefreshCw,
   delete_outstanding_item: Edit,
