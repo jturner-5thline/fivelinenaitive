@@ -3019,7 +3019,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             isEditMode={isEditMode}
             title={
               trendMode === 'ttm'
-                ? `TTM Revenue Trend (${chartWindowLabel})`
+                ? 'TTM Revenue'
                 : trendMode === 'monthly'
                 ? (isQuarterView ? 'Quarterly Revenue Trend' : 'Monthly Revenue Trend')
                 : 'Quarterly Revenue Growth (YoY)'
