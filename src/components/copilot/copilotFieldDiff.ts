@@ -117,14 +117,25 @@ export function deriveFieldDiffs(
         },
       ];
     case "update_deal_status":
-      return [
-        {
-          field: "status",
-          label: "Status",
-          oldValue: get("current_status"),
-          newValue: get("new_status"),
-        },
-      ];
+      {
+        const rows: FieldDiff[] = [
+          {
+            field: "status",
+            label: "Status",
+            oldValue: get("current_status"),
+            newValue: get("new_status"),
+          },
+        ];
+        const note = get("status_note");
+        if (typeof note === "string" && note.trim() !== "") {
+          rows.push({
+            field: "status_note",
+            label: "Status note",
+            newValue: note,
+          });
+        }
+        return rows;
+      }
     case "update_deal_fields": {
       const rows: FieldDiff[] = [];
       if (get("value") !== undefined) {
