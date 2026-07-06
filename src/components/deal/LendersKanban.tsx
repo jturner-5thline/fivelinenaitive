@@ -155,10 +155,11 @@ function DraggableLenderTile({
     pointerEvents: 'none',
   } : undefined;
 
-  const stageConfig = configuredStages.find(s => s.id === lender.stage);
-  const stageLabel = stageConfig?.label || lender.stage;
-  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender.trackingStatus === 'passed' || lender.trackingStatus === 'on-deck';
-  const timeAgo = hideTime ? '' : getRelativeTime(lender.updatedAt);
+  const displayName = (typeof lender?.name === 'string' && lender.name.trim()) || 'Unknown funding source';
+  const stageConfig = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
+  const stageLabel = stageConfig?.label || lender?.stage || 'Unassigned';
+  const hideTime = stageConfig?.group === 'on-deck' || stageConfig?.group === 'passed' || lender?.trackingStatus === 'passed' || lender?.trackingStatus === 'on-deck';
+  const timeAgo = hideTime ? '' : getRelativeTime(lender?.updatedAt);
 
   const handleClick = (e: React.MouseEvent) => {
     // Only trigger click if not dragging
@@ -232,8 +233,8 @@ function DraggableLenderTile({
               </span>
             );
           })()}
-          {lender.name}
-          <LenderFlagIndicator lenderName={lender.name} />
+          {displayName}
+          <LenderFlagIndicator lenderName={displayName} />
         </p>
         {metrics?.contactName && (
           <p className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">
@@ -303,7 +304,7 @@ function DraggableLenderTile({
       )}
 
       {/* Pass reasons */}
-      {lender.passReason && (
+      {typeof lender?.passReason === 'string' && lender.passReason && (
         <div className="mt-2 flex flex-wrap gap-1 items-center overflow-hidden">
           {lender.passReason.split(', ').map((reason, idx) => (
             <span key={idx} className="text-[10px] text-destructive bg-destructive/10 px-1.5 py-0.5 rounded truncate max-w-full">
