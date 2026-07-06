@@ -3648,44 +3648,50 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
         <div key="liabilities" data-grid-item-id="liabilities" className="h-full">
           <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <div className="grid h-full grid-cols-1 gap-x-4 gap-y-4 lg:grid-cols-2">
-              <div className="min-w-0">
-                <LiabilitiesDebtServiceTable
-                  onOpenDrilldown={(row) => {
-                    setDrilldown({
-                      context: {
-                        sourceId: `liabilities:${row.name}`,
-                        sourceLabel: `${row.name} · Liabilities & Debt Service`,
-                        selection: row.name,
-                        periodLabel,
-                        filters: [
-                          { label: 'Source', value: row.qbo
-                              ? `QuickBooks · ${row.qbo.accountName}`
-                              : `QuickBooks · Credit Cards (aggregate)` },
-                          { label: 'Reporting period', value: periodLabel },
-                        ],
-                      },
-                      columns: [],
-                      rows: [],
-                      body: <LiabilityHistoryDrilldownBody row={row} />,
-                    });
-                  }}
-                />
+            <div className="flex h-full flex-col gap-4">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-4 lg:grid-cols-2">
+                <div className="min-w-0">
+                  <LiabilitiesDebtServiceTable
+                    onOpenDrilldown={(row) => {
+                      setDrilldown({
+                        context: {
+                          sourceId: `liabilities:${row.name}`,
+                          sourceLabel: `${row.name} · Liabilities & Debt Service`,
+                          selection: row.name,
+                          periodLabel,
+                          filters: [
+                            { label: 'Source', value: row.qbo
+                                ? `QuickBooks · ${row.qbo.accountName}`
+                                : `QuickBooks · Credit Cards (aggregate)` },
+                            { label: 'Reporting period', value: periodLabel },
+                          ],
+                        },
+                        columns: [],
+                        rows: [],
+                        body: <LiabilityHistoryDrilldownBody row={row} />,
+                      });
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 min-h-[240px]">
+                  <DebtByRatingWidget />
+                </div>
               </div>
-              <div className="min-w-0 min-h-[240px]">
-                <DebtByRatingWidget />
+              <div className="grid grid-cols-1 gap-x-4 gap-y-4 border-t border-border pt-4 lg:grid-cols-2 flex-1 min-h-0">
+                <div className="min-w-0 flex flex-col min-h-[220px]">
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">TTM DSCR</div>
+                  <div className="flex-1 min-h-0">
+                    <TtmDscrChart />
+                  </div>
+                </div>
+                <div className="min-w-0 flex flex-col min-h-[220px]">
+                  <div className="mb-2 text-xs font-medium text-muted-foreground">Monthly Debt Payments</div>
+                  <div className="flex-1 min-h-0">
+                    <MonthlyDebtPaymentsChart />
+                  </div>
+                </div>
               </div>
             </div>
-          </GridShell>
-        </div>
-        <div key="ttm-dscr" data-grid-item-id="ttm-dscr" className="h-full">
-          <GridShell isEditMode={isEditMode} title="TTM DSCR">
-            <TtmDscrChart />
-          </GridShell>
-        </div>
-        <div key="monthly-debt-payments" data-grid-item-id="monthly-debt-payments" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Monthly Debt Payments">
-            <MonthlyDebtPaymentsChart />
           </GridShell>
         </div>
         <div key="cashflow-12w" data-grid-item-id="cashflow-12w" className="h-full">
