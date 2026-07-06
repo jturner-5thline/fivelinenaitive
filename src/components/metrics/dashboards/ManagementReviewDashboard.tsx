@@ -478,6 +478,7 @@ const DEBT_RATING_BY_ACCOUNT: Record<string, DebtRating> = {
   'AMEX LOC': 'B',
   'Other Loans': 'B',
   'Headway LOC': 'C',
+  "CC's (Est.)": 'C',
 };
 const DEBT_RATING_COLORS: Record<DebtRating, string> = {
   A: '#3de89a', // green
@@ -523,7 +524,11 @@ function DebtByRatingWidget() {
     [],
   );
   const realmIds = useMemo(
-    () => Array.from(new Set(ratedRows.map((r) => r.qbo!.realmId))),
+    () => Array.from(new Set(
+      ratedRows
+        .map((r) => r.qbo?.realmId ?? r.qboAggregate?.realmId)
+        .filter((id): id is string => !!id),
+    )),
     [ratedRows],
   );
 
@@ -550,7 +555,8 @@ function DebtByRatingWidget() {
       return anchors.map((a) => {
         const totals: Record<DebtRating, number> = { A: 0, B: 0, C: 0 };
         for (const row of ratedRows) {
-          const report = byRealm.get(row.qbo!.realmId)?.get(a.asOf) ?? null;
+          const realmId = row.qbo?.realmId ?? row.qboAggregate?.realmId;
+          const report = realmId ? byRealm.get(realmId)?.get(a.asOf) ?? null : null;
           const val = report ? extractRowValue(report, row) : null;
           if (val !== null && !isNaN(val)) {
             totals[DEBT_RATING_BY_ACCOUNT[row.name]] += Math.abs(val);
