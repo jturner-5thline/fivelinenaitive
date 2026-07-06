@@ -1373,7 +1373,9 @@ function DetailPane({
   const expires = expiryDaysLabel(item);
   const oldValues = (item.old_values || {}) as Record<string, any>;
   const newValues = (item.new_values || {}) as Record<string, any>;
+  const isEmailDraft = item.action_type === 'draft_email';
   const fieldKeys = (() => {
+    if (isEmailDraft) return [] as string[];
     const norm = (v: any) =>
       v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = Array.from(
@@ -1517,7 +1519,17 @@ function DetailPane({
           </p>
 
           {/* Proposed changes — stacked review cards, one per field */}
-          {fieldKeys.length > 0 && (
+          {isEmailDraft && (
+            <EmailDraftPreview
+              item={item}
+              newValues={newValues}
+              editMode={editMode}
+              onToggleEditMode={() => setEditMode((v) => !v)}
+              edits={edits}
+              setEdits={setEdits}
+            />
+          )}
+          {!isEmailDraft && fieldKeys.length > 0 && (
             <div>
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div className="flex items-baseline gap-2">
