@@ -166,7 +166,7 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       </Tooltip>
 
       {/* Search affordance */}
-      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-sky-300/55 group-hover:text-sky-200/80 transition-colors" />
+      <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-teal-200/70 group-hover:text-teal-100/90 transition-colors" />
 
       {/* Inline composer — multi-line textarea so Shift+Enter inserts a
           newline, pasted bullet lists keep their breaks, and long prompts
@@ -281,7 +281,7 @@ function AskNaitiveBarTextarea({
       aria-autocomplete={ariaControls ? 'list' : undefined}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
-      className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none resize-none text-[13px] leading-6 font-normal text-white/85 placeholder:text-white/45 py-1"
+        className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none resize-none text-[13px] leading-6 font-normal text-white/95 placeholder:text-white/60 py-1"
       style={{ maxHeight: 168 }}
     />
   );
