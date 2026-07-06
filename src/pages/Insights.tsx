@@ -1405,7 +1405,7 @@ function MetricsInner() {
     canEditMetrics,
   } = useMetricsWidgets();
 
-  const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
+  const [selectedDashboard, setSelectedDashboard] = useState('management-review');
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Per-user Insights dashboard restrictions. Users listed here only see the
@@ -1521,7 +1521,7 @@ function MetricsInner() {
 
   const handleDeleteCustomDashboard = (dashId: string) => {
     saveCustomDashboards({ dashboards: customDashboards.filter(d => d.id !== dashId) });
-    if (selectedDashboard === dashId) setSelectedDashboard('management-snapshot');
+    if (selectedDashboard === dashId) setSelectedDashboard('management-review');
     toast({ title: 'Dashboard deleted' });
   };
 
