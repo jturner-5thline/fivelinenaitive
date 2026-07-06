@@ -16,6 +16,95 @@ import {
 } from "../_shared/adminAgentFormat.ts";
 import { buildUserDealCountBlock } from "./userDealCountBlock.ts";
 
+// ── Enum catalogs for schema-valid field edits ────────────────────
+// Any Copilot action proposing a change to one of these fields MUST
+// pick a value from these catalogs. The propose-time handlers below
+// validate the AI's input against these lists and reject/re-map free
+// text; the confirm card renders them as pre-populated <select>s.
+export type EnumOption = { value: string; label: string };
+
+export const DEAL_STATUS_OPTIONS: EnumOption[] = [
+  { value: "on-track", label: "On Track" },
+  { value: "at-risk", label: "At Risk" },
+  { value: "off-track", label: "Off Track" },
+  { value: "on-hold", label: "On Hold" },
+  { value: "archived", label: "Archived" },
+];
+
+export const ENGAGEMENT_TYPE_OPTIONS: EnumOption[] = [
+  { value: "advisory", label: "Advisory" },
+  { value: "managed-process", label: "Managed Process" },
+];
+
+// Fallback / seed list for company_settings.deal_types. Mirrors the
+// defaultDealTypes in src/contexts/DealTypesContext.tsx so a workspace
+// that has never customized deal types still gets a valid enum.
+export const DEFAULT_DEAL_TYPE_OPTIONS: EnumOption[] = [
+  { value: "growth-capital", label: "Growth Capital" },
+  { value: "capex-financing", label: "CapEx Financing" },
+  { value: "abl", label: "ABL" },
+  { value: "acquisition-financing", label: "Acquisition Financing" },
+  { value: "refinancing", label: "Refinancing" },
+  { value: "micro-debt", label: "Micro Debt" },
+];
+
+/**
+ * Resolve free text (from the LLM) to a canonical enum value. Accepts
+ * an exact value match, an exact label match, or a slugified label
+ * match, all case-insensitive. Returns null when nothing matches so
+ * the caller can reject with a helpful error listing valid options.
+ */
+export function matchEnumOption(
+  input: unknown,
+  options: EnumOption[],
+): string | null {
+  if (typeof input !== "string") return null;
+  const norm = input.trim().toLowerCase();
+  if (!norm) return null;
+  const byValue = options.find((o) => o.value.toLowerCase() === norm);
+  if (byValue) return byValue.value;
+  const byLabel = options.find((o) => o.label.toLowerCase() === norm);
+  if (byLabel) return byLabel.value;
+  const slug = norm.replace(/\s+/g, "-");
+  const bySlug = options.find((o) => o.value === slug);
+  return bySlug?.value ?? null;
+}
+
+async function loadDealTypeOptions(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string | null | undefined,
+): Promise<EnumOption[]> {
+  if (!companyId) return DEFAULT_DEAL_TYPE_OPTIONS;
+  try {
+    const { data } = await supabase
+      .from("company_settings")
+      .select("deal_types")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    const raw = (data as any)?.deal_types;
+    if (Array.isArray(raw)) {
+      const parsed = raw
+        .filter((r: any) => r && typeof r.id === "string" && typeof r.label === "string")
+        .map((r: any) => ({ value: String(r.id), label: String(r.label) }));
+      if (parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn("[copilot-chat] loadDealTypeOptions failed", e);
+  }
+  return DEFAULT_DEAL_TYPE_OPTIONS;
+}
+
+function pipelineStagesToOptions(stages: unknown): EnumOption[] {
+  if (!Array.isArray(stages)) return [];
+  return stages
+    .map((s: any) => {
+      const value = String(s?.id ?? "").trim();
+      const label = String(s?.label ?? s?.name ?? value).trim();
+      return value ? { value, label: label || value } : null;
+    })
+    .filter((s): s is EnumOption => s !== null);
+}
+
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
   return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -3071,11 +3160,50 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "update_deal_stage": {
       const { data: deal } = await supabase.from("deals").select("id, company, stage").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
+      // Resolve the deal's pipeline so we can (a) validate new_stage
+      // against the pipeline's real stages, rejecting anything else,
+      // and (b) surface the option list on the confirm card as a
+      // dropdown pre-selected to the AI proposal.
+      const { data: dealRow } = await supabase
+        .from("deals")
+        .select("pipeline_id")
+        .eq("id", args.deal_id)
+        .maybeSingle();
+      const pipelineId = (dealRow as any)?.pipeline_id || null;
+      let stageOptions: EnumOption[] = [];
+      if (pipelineId) {
+        const { data: pipe } = await supabase
+          .from("deal_pipelines")
+          .select("stages")
+          .eq("id", pipelineId)
+          .maybeSingle();
+        stageOptions = pipelineStagesToOptions((pipe as any)?.stages);
+      }
+      let resolvedStage = args.new_stage;
+      if (stageOptions.length > 0) {
+        const canonical = matchEnumOption(args.new_stage, stageOptions);
+        if (!canonical) {
+          return {
+            error:
+              `"${args.new_stage}" is not a valid stage for this deal's pipeline. ` +
+              `Valid stages: ${stageOptions.map((s) => `"${s.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_stage with new_stage set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedStage = canonical;
+      }
       return {
         action: "confirm",
         action_type: "update_deal_stage",
-        description: `Move "${deal.company}" from "${deal.stage}" to "${args.new_stage}"`,
-        params: { deal_id: args.deal_id, new_stage: args.new_stage, current_stage: deal.stage, deal_name: deal.company },
+        description: `Move "${deal.company}" from "${deal.stage}" to "${resolvedStage}"`,
+        params: {
+          deal_id: args.deal_id,
+          new_stage: resolvedStage,
+          current_stage: deal.stage,
+          deal_name: deal.company,
+          stage_options: stageOptions,
+        },
       };
     }
     case "get_pipelines": {
@@ -4477,6 +4605,94 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (resolvedPreHours !== undefined) changes.push(`Pre-Signing hours: ${Number(deal.pre_signing_hours || 0)} → ${resolvedPreHours}`);
       if (resolvedPostHours !== undefined) changes.push(`Post-Signing hours: ${Number(deal.post_signing_hours || 0)} → ${resolvedPostHours}`);
 
+      // ── Enum validation for schema-constrained fields ─────────────
+      // The AI may propose free text for deal_type / engagement_type /
+      // stage. Resolve each to a canonical enum value (or reject) and
+      // pass the full option list to the client so the confirm card
+      // renders a dropdown, not a free-text label.
+      const { data: dealPipelineRow } = await supabase
+        .from("deals")
+        .select("pipeline_id, company_id")
+        .eq("id", args.deal_id)
+        .maybeSingle();
+      const dealPipelineId = (dealPipelineRow as any)?.pipeline_id || null;
+      const dealCompanyId = (dealPipelineRow as any)?.company_id || null;
+      let dealStageOptions: EnumOption[] = [];
+      if (dealPipelineId) {
+        const { data: pipe } = await supabase
+          .from("deal_pipelines")
+          .select("stages")
+          .eq("id", dealPipelineId)
+          .maybeSingle();
+        dealStageOptions = pipelineStagesToOptions((pipe as any)?.stages);
+      }
+      const dealTypeOptions = await loadDealTypeOptions(supabase, dealCompanyId);
+
+      let resolvedStage: string | undefined = undefined;
+      if (args.stage !== undefined && args.stage !== null && args.stage !== "") {
+        if (dealStageOptions.length > 0) {
+          const c = matchEnumOption(args.stage, dealStageOptions);
+          if (!c) {
+            return {
+              error:
+                `"${args.stage}" is not a valid stage for this pipeline. ` +
+                `Valid stages: ${dealStageOptions.map((s) => `"${s.label}"`).join(", ")}. ` +
+                `Re-emit update_deal_fields with stage set to one of these exact values.`,
+              error_code: "INVALID_ENUM",
+            };
+          }
+          resolvedStage = c;
+        } else {
+          resolvedStage = String(args.stage);
+        }
+      }
+
+      let resolvedDealType: string | undefined = undefined;
+      if (args.deal_type !== undefined && args.deal_type !== null && args.deal_type !== "") {
+        const c = matchEnumOption(args.deal_type, dealTypeOptions);
+        if (!c) {
+          return {
+            error:
+              `"${args.deal_type}" is not a valid deal type. ` +
+              `Valid deal types: ${dealTypeOptions.map((o) => `"${o.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_fields with deal_type set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedDealType = c;
+      }
+
+      let resolvedEngagement: string | undefined = undefined;
+      if (args.engagement_type !== undefined && args.engagement_type !== null && args.engagement_type !== "") {
+        const c = matchEnumOption(args.engagement_type, ENGAGEMENT_TYPE_OPTIONS);
+        if (!c) {
+          return {
+            error:
+              `"${args.engagement_type}" is not a valid engagement type. ` +
+              `Valid engagement types: ${ENGAGEMENT_TYPE_OPTIONS.map((o) => `"${o.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_fields with engagement_type set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedEngagement = c;
+      }
+
+      if (resolvedStage !== undefined) {
+        const label = dealStageOptions.find((s) => s.value === resolvedStage)?.label || resolvedStage;
+        changes.push(`Stage → ${label}`);
+      }
+      if (resolvedDealType !== undefined) {
+        const label = dealTypeOptions.find((o) => o.value === resolvedDealType)?.label || resolvedDealType;
+        changes.push(`Deal type → ${label}`);
+      }
+      if (resolvedEngagement !== undefined) {
+        const label = ENGAGEMENT_TYPE_OPTIONS.find((o) => o.value === resolvedEngagement)?.label || resolvedEngagement;
+        changes.push(`Engagement → ${label}`);
+      }
+      if (typeof args.manager === "string" && args.manager) changes.push(`Manager → ${args.manager}`);
+      if (typeof args.deal_owner === "string" && args.deal_owner) changes.push(`Owner → ${args.deal_owner}`);
+      if (typeof args.narrative === "string" && args.narrative) changes.push(`Narrative updated`);
+
       return {
         action: "confirm",
         action_type: "update_deal_fields",
@@ -4490,6 +4706,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           current_pre_signing_hours: resolvedPreHours !== undefined ? Number(deal.pre_signing_hours || 0) : undefined,
           current_post_signing_hours: resolvedPostHours !== undefined ? Number(deal.post_signing_hours || 0) : undefined,
           current_value: deal.value, current_closing_date: deal.closing_date,
+          // Enum-constrained fields (validated above) + option lists so
+          // the confirm card can render dropdowns instead of free text.
+          stage: resolvedStage,
+          deal_type: resolvedDealType,
+          engagement_type: resolvedEngagement,
+          manager: typeof args.manager === "string" ? args.manager : undefined,
+          deal_owner: typeof args.deal_owner === "string" ? args.deal_owner : undefined,
+          narrative: typeof args.narrative === "string" ? args.narrative : undefined,
+          stage_options: dealStageOptions,
+          deal_type_options: dealTypeOptions,
+          engagement_type_options: ENGAGEMENT_TYPE_OPTIONS,
         },
       };
     }
@@ -4524,11 +4751,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
     case "update_deal_status": {
-      const ALLOWED_STATUSES_CONFIRM = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
-      const incomingConfirm = String(args.new_status ?? "").toLowerCase().trim();
-      if (!ALLOWED_STATUSES_CONFIRM.includes(incomingConfirm)) {
+      const canonicalStatus = matchEnumOption(args.new_status, DEAL_STATUS_OPTIONS);
+      if (!canonicalStatus) {
         return {
-          error: `Invalid status "${args.new_status}". Status must be one of: ${ALLOWED_STATUSES_CONFIRM.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+          error:
+            `Invalid status "${args.new_status}". Status must be one of: ` +
+            `${DEAL_STATUS_OPTIONS.map((o) => o.value).join(", ")}. ` +
+            `If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", ` +
+            `call update_deal_stage instead — those are STAGES, not statuses.`,
+          error_code: "INVALID_ENUM",
         };
       }
       const { data: deal } = await supabase
@@ -4541,13 +4772,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "update_deal_status",
-        description: `Update ${dealName} status to "${incomingConfirm}"`,
+        description: `Update ${dealName} status to "${canonicalStatus}"`,
         params: {
           deal_id: args.deal_id,
           deal_name: dealName,
-          new_status: incomingConfirm,
+          new_status: canonicalStatus,
           current_status: deal.status,
           status_note: args.status_note || null,
+          status_options: DEAL_STATUS_OPTIONS,
         },
       };
     }

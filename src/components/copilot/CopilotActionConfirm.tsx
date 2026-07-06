@@ -232,6 +232,10 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // the whole card.
   const [verifiedResult, setVerifiedResult] = useState<VerifiedResult | null>(null);
   const [relativeTick, setRelativeTick] = useState(0);
+  // Per-field user overrides on enum dropdowns. Confirm merges these
+  // into preparedAction.params before firing the executor so the value
+  // the user sees selected is exactly the value that gets written.
+  const [edits, setEdits] = useState<Record<string, string>>({});
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
 
@@ -254,7 +258,10 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // Field-by-field diff is rebuilt from the action's params and never
   // collapses into a one-line summary — that's the whole point of
   // this card.
-  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(preparedAction.action_type, preparedAction.params || {});
+  // Merge in the user's dropdown edits so the field-diff table shows
+  // the value that will actually be sent, both pre- and post-confirm.
+  const paramsWithEdits = { ...(preparedAction.params || {}), ...edits };
+  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(preparedAction.action_type, paramsWithEdits);
   const fieldStatuses = computeFieldStatuses(
     preparedAction.action_type,
     fieldDiffs,
@@ -485,7 +492,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ confirmAction: preparedAction }),
+        body: JSON.stringify({
+          confirmAction: {
+            ...preparedAction,
+            params: { ...(preparedAction.params || {}), ...edits },
+          },
+        }),
       });
 
       // Only flip to "done" once the backend acknowledges a 2xx response
@@ -775,6 +787,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         statuses={fieldStatuses}
         showOldValues={isUpdateLikeAction}
         tone="pending"
+        edits={edits}
+        onEdit={(field, value) => setEdits((prev) => ({ ...prev, [field]: value }))}
       />
       {!isPreparingAction && isLenderAddAction(preparedAction.action_type) && (() => {
         const entities = normalizeLenderEntities(preparedAction.params || {});
@@ -962,11 +976,15 @@ function FieldDiffTable({
   statuses,
   showOldValues,
   tone,
+  edits,
+  onEdit,
 }: {
   diffs: FieldDiff[];
   statuses: Record<string, FieldStatus>;
   showOldValues: boolean;
   tone: 'pending' | 'done' | 'failed';
+  edits?: Record<string, string>;
+  onEdit?: (field: string, value: string) => void;
 }) {
   if (!diffs.length) return null;
 
@@ -1059,7 +1077,37 @@ function FieldDiffTable({
               }}
               title={formatFieldValue(d.newValue)}
             >
-              {formatFieldValue(d.newValue)}
+              {tone === 'pending' && d.options && d.options.length > 0 && onEdit ? (
+                <select
+                  aria-label={`Choose ${d.label}`}
+                  value={
+                    (edits && d.field in edits
+                      ? edits[d.field]
+                      : typeof d.newValue === 'string'
+                        ? d.newValue
+                        : String(d.newValue ?? '')) as string
+                  }
+                  onChange={(e) => onEdit(d.field, e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 26,
+                    padding: '2px 6px',
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'hsl(var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: 12,
+                  }}
+                >
+                  {d.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                formatFieldValue(d.newValue)
+              )}
             </div>
             <div role="cell" style={{ textAlign: 'right' }}>
               <span

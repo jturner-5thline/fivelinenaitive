@@ -34,6 +34,14 @@ export interface FieldDiff {
   oldValue?: unknown;
   /** New value the AI is about to write. */
   newValue: unknown;
+  /**
+   * When present, this field is enum-constrained and MUST be rendered
+   * as a <select> dropdown in the confirm card (pre-selected to
+   * newValue). The backend attaches the option list on the confirm
+   * envelope so the client renders the same values the server will
+   * accept — free text is rejected before the card ever renders.
+   */
+  options?: Array<{ value: string; label: string }>;
 }
 
 // Action types whose handler funnels through verifiedDealUpdate in
@@ -97,6 +105,22 @@ function formatLenderEntityValue(entity: { display_name: string; master_lender_i
   return entity.display_name;
 }
 
+function optionsFrom(
+  params: Record<string, unknown>,
+  key: string,
+): Array<{ value: string; label: string }> | undefined {
+  const raw = (params as any)[key];
+  if (!Array.isArray(raw)) return undefined;
+  const parsed = raw
+    .map((r: any) =>
+      r && typeof r === "object" && typeof r.value === "string"
+        ? { value: r.value, label: String(r.label ?? r.value) }
+        : null,
+    )
+    .filter((o): o is { value: string; label: string } => o !== null);
+  return parsed.length > 0 ? parsed : undefined;
+}
+
 /**
  * Derive the list of fields the card will display, from the action
  * type and the params payload the edge function attached.
@@ -114,6 +138,7 @@ export function deriveFieldDiffs(
           label: "Stage",
           oldValue: get("current_stage"),
           newValue: get("new_stage"),
+          options: optionsFrom(params, "stage_options"),
         },
       ];
     case "update_deal_status":
@@ -124,6 +149,7 @@ export function deriveFieldDiffs(
             label: "Status",
             oldValue: get("current_status"),
             newValue: get("new_status"),
+            options: optionsFrom(params, "status_options"),
           },
         ];
         const note = get("status_note");
@@ -176,6 +202,7 @@ export function deriveFieldDiffs(
           label: "Stage",
           oldValue: get("current_stage"),
           newValue: get("stage"),
+          options: optionsFrom(params, "stage_options"),
         });
       }
       if (get("manager") !== undefined) {
@@ -208,6 +235,7 @@ export function deriveFieldDiffs(
           label: "Deal type",
           oldValue: get("current_deal_type"),
           newValue: get("deal_type"),
+          options: optionsFrom(params, "deal_type_options"),
         });
       }
       if (get("engagement_type") !== undefined) {
@@ -216,6 +244,7 @@ export function deriveFieldDiffs(
           label: "Engagement",
           oldValue: get("current_engagement_type"),
           newValue: get("engagement_type"),
+          options: optionsFrom(params, "engagement_type_options"),
         });
       }
       if (get("pre_signing_hours") !== undefined) {
