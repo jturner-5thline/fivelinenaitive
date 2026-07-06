@@ -326,6 +326,24 @@ export async function enqueueAdminAgentSelections(opts: EnqueueOpts): Promise<En
     if (r.action_type === "create_task" || r.action_type === "create_followup_task") return false;
     if (r.action_type === "update_funding_source") return false;
     if (typeof r.target_object_type === "string" && r.target_object_type.toLowerCase() === "task") return false;
+    // Never surface vague "update X on <Deal>" cards. If the enqueue payload
+    // carries no concrete target values (e.g. a specific new stage / status
+    // / milestone / field value), the item is unactionable noise. The Deal
+    // Admin Agent proper always attaches new_values when it knows exactly
+    // what should change; anything without them is a proactive-sweep
+    // placeholder and should be dropped.
+    const VAGUE_WHEN_EMPTY = new Set([
+      "update_deal_stage",
+      "update_deal_status",
+      "update_milestone",
+      "update_contact",
+      "update_company",
+    ]);
+    if (VAGUE_WHEN_EMPTY.has(r.action_type)) {
+      const nv = r.new_values;
+      const hasConcrete = nv && typeof nv === "object" && Object.keys(nv).length > 0;
+      if (!hasConcrete) return false;
+    }
     return true;
   });
   if (queueRows.length === 0) return result;
