@@ -7500,6 +7500,22 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params?.icp_category) insertPayload.icp_category = params.icp_category;
       if (params?.source) insertPayload.sourced_via = params.source;
       if (params?.notes) insertPayload.next_step = params.notes;
+      // Full-fidelity narrative / classification fields. These MUST be
+      // written on create — the previous handler only logged them to the
+      // activity feed, which left the deal record with empty narrative,
+      // no deal_type, no engagement_type, no referral_source.
+      if (typeof params?.narrative === "string" && params.narrative.trim() !== "") {
+        insertPayload.narrative = params.narrative;
+      }
+      if (typeof params?.deal_type === "string" && params.deal_type.trim() !== "") {
+        insertPayload.deal_type = params.deal_type;
+      }
+      if (typeof params?.engagement_type === "string" && params.engagement_type.trim() !== "") {
+        insertPayload.engagement_type = params.engagement_type;
+      }
+      if (typeof params?.referral_source === "string" && params.referral_source.trim() !== "") {
+        insertPayload.referral_source = params.referral_source;
+      }
 
       const { data: inserted, error: insErr } = await supabase
         .from("deals")
@@ -7523,11 +7539,63 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         user_id: userId,
       });
 
+      // ── Verification read-back ────────────────────────────────────
+      // Re-read the persisted row and compare every field we tried to
+      // write. Any divergence surfaces as a per-field mismatch so the
+      // UI can badge that row ❌ and expose a Retry button — instead of
+      // the old behavior which returned success and rendered every
+      // field as "activity-logged only".
+      const { data: readBack, error: readErr } = await supabase
+        .from("deals")
+        .select("id, company, pipeline_id, stage, value, narrative, deal_type, engagement_type, referral_source, manager, owned_by")
+        .eq("id", inserted!.id)
+        .maybeSingle();
+
+      const mismatches: Array<{ field: string; expected?: unknown; actual?: unknown }> = [];
+      if (readErr || !readBack) {
+        mismatches.push({ field: "__row__", expected: inserted!.id, actual: null });
+      } else {
+        const expect = (field: string, expected: unknown, actual: unknown) => {
+          const norm = (v: unknown) => (v === undefined || v === null || v === "" ? null : v);
+          if (norm(expected) === null) return; // we didn't set it
+          if (norm(expected) !== norm(actual)) {
+            mismatches.push({ field, expected, actual });
+          }
+        };
+        expect("company_name", companyName, (readBack as any).company);
+        expect("pipeline_id", pipelineId, (readBack as any).pipeline_id);
+        expect("stage_id", safeStageId, (readBack as any).stage);
+        if (typeof params?.deal_value === "number") {
+          const actualNum = Number((readBack as any).value);
+          if (actualNum !== params.deal_value) {
+            mismatches.push({ field: "deal_value", expected: params.deal_value, actual: (readBack as any).value });
+          }
+        }
+        expect("narrative", (insertPayload as any).narrative, (readBack as any).narrative);
+        expect("deal_type", (insertPayload as any).deal_type, (readBack as any).deal_type);
+        expect("engagement_type", (insertPayload as any).engagement_type, (readBack as any).engagement_type);
+        expect("referral_source", (insertPayload as any).referral_source, (readBack as any).referral_source);
+        expect("deal_owner_name", (insertPayload as any).owned_by, (readBack as any).owned_by);
+      }
+
+      if (mismatches.length > 0) {
+        console.error("[create_deal] verification mismatches", mismatches);
+        return {
+          success: false,
+          error: `Deal row ${inserted!.id} did not persist ${mismatches.length} field(s)`,
+          error_code: "WRITE_NOT_PERSISTED",
+          actionType: "create_deal",
+          mismatches,
+          params: { deal_id: inserted!.id, pipeline_id: pipelineId, stage_id: safeStageId },
+        };
+      }
+
       return {
         success: true,
         message: `Created deal "${inserted!.company}"${safeStageLabel ? ` at ${safeStageLabel}` : ""}`,
         actionType: "create_deal",
         params: { deal_id: inserted!.id, pipeline_id: pipelineId, stage_id: safeStageId },
+        audit: { after: readBack as Record<string, unknown> },
       };
     }
     default:
