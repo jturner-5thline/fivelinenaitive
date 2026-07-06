@@ -1,6 +1,13 @@
 // Auto-create "Follow up on <event>" tasks for calendar events that just
 // ended and had at least one external attendee. Scheduled every 5 minutes
 // via pg_cron. Skips cancelled events and events already processed.
+//
+// Two sources are scanned each tick:
+//   1. `calendar_events` rows (demo tenants / seeded data)
+//   2. Nylas primary calendar for every internal (@5thline.co) user with
+//      a real `gmail_tokens.grant_id` — this is where real Google Calendar
+//      meetings live for the production tenant. Idempotency comes from
+//      `tasks.nylas_event_id` (never insert twice for the same event id).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -12,6 +19,12 @@ const INTERNAL_DOMAIN = "@5thline.co";
 const ASANA_PROJECT_GID = "1130343959659969";
 const ASANA_SECTION_GID = "1200505058741223";
 const ASANA_API = "https://app.asana.com/api/1.0";
+const NYLAS_API_URI = "https://api.us.nylas.com";
+const NYLAS_API_KEY = Deno.env.get("NYLAS_API_KEY");
+// Look back this many minutes for recently-ended events. The cron runs
+// every 5 min so 30 min gives a comfortable margin for retries / late
+// invocations without spamming duplicate tasks (dedup by nylas_event_id).
+const LOOKBACK_MINUTES = 30;
 
 // Simple in-memory cache for the warm instance
 const asanaUserGidCache = new Map<string, string | null>(); // email -> gid
@@ -30,11 +43,24 @@ Deno.serve(async (req) => {
   // Load Asana token once per invocation.
   const asanaToken = await loadAsanaToken(admin);
 
-  // ── 1. Find events whose end_time landed inside the 5-minute grace window. ──
-  const nowMs = Date.now();
-  const windowEnd = new Date(nowMs - 5 * 60_000).toISOString();
-  const windowStart = new Date(nowMs - 10 * 60_000).toISOString();
+  // Optional overrides for on-demand backfill / testing.
+  let overrideLookbackMin = LOOKBACK_MINUTES;
+  try {
+    if (req.method === "POST") {
+      const body = await req.clone().json().catch(() => null);
+      if (body && Number.isFinite(body.lookback_minutes)) {
+        overrideLookbackMin = Math.max(5, Math.min(24 * 60, Number(body.lookback_minutes)));
+      }
+    }
+  } catch (_) { /* ignore */ }
 
+  const nowMs = Date.now();
+  const windowStart = new Date(nowMs - overrideLookbackMin * 60_000).toISOString();
+  const windowEnd = new Date(nowMs).toISOString();
+
+  const results: any[] = [];
+
+  // ── 1a. Legacy path: seeded `calendar_events` rows (demo tenants). ──
   const { data: events, error: evErr } = await admin
     .from("calendar_events")
     .select("id, user_id, title, start_time, end_time, organizer_email, attendees, is_cancelled, follow_up_task_created")
@@ -43,10 +69,7 @@ Deno.serve(async (req) => {
     .eq("is_cancelled", false)
     .eq("follow_up_task_created", false)
     .limit(200);
-
   if (evErr) return json({ error: evErr.message }, 500);
-
-  const results: any[] = [];
 
   for (const ev of events || []) {
     try {
@@ -173,8 +196,234 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, scanned: (events || []).length, results });
+  // ── 1b. Real Google Calendar via Nylas for internal users. ──
+  const nylasResults = await scanNylasForInternalUsers(admin, {
+    windowStartMs: nowMs - overrideLookbackMin * 60_000,
+    windowEndMs: nowMs,
+    asanaToken,
+  });
+  results.push(...nylasResults);
+
+  return json({
+    ok: true,
+    scanned_calendar_events: (events || []).length,
+    scanned_nylas: nylasResults.length,
+    results,
+  });
 });
+
+// ─────────────────────────────────────────────────────────────────────────
+// Nylas scan
+// ─────────────────────────────────────────────────────────────────────────
+async function scanNylasForInternalUsers(
+  admin: any,
+  args: { windowStartMs: number; windowEndMs: number; asanaToken: string | null },
+): Promise<any[]> {
+  const out: any[] = [];
+  if (!NYLAS_API_KEY) {
+    out.push({ nylas: "skipped", reason: "NYLAS_API_KEY missing" });
+    return out;
+  }
+
+  // 1. All internal profiles with a real (non-demo) Nylas grant.
+  const { data: tokens, error: tokErr } = await admin
+    .from("gmail_tokens")
+    .select("user_id, grant_id, email_address")
+    .not("grant_id", "is", null)
+    .neq("grant_id", "demo-seed");
+  if (tokErr) {
+    out.push({ nylas: "error", reason: tokErr.message });
+    return out;
+  }
+
+  const startUnix = Math.floor(args.windowStartMs / 1000);
+  const endUnix = Math.floor(args.windowEndMs / 1000);
+
+  for (const tok of tokens || []) {
+    const ownerEmail = (tok.email_address || "").toLowerCase();
+    if (!ownerEmail.endsWith(INTERNAL_DOMAIN)) continue;
+
+    try {
+      const url = new URL(`${NYLAS_API_URI}/v3/grants/${tok.grant_id}/events`);
+      url.searchParams.set("calendar_id", "primary");
+      url.searchParams.set("start", String(startUnix));
+      url.searchParams.set("end", String(endUnix));
+      url.searchParams.set("limit", "50");
+      const res = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${NYLAS_API_KEY}`,
+          Accept: "application/json",
+        },
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        out.push({ nylas_user: ownerEmail, error: `Nylas ${res.status}: ${body.slice(0, 200)}` });
+        continue;
+      }
+      const body = await res.json();
+      const nylasEvents: any[] = body?.data || [];
+
+      for (const ev of nylasEvents) {
+        try {
+          if (ev.status === "cancelled") continue;
+
+          // Nylas `when` can be timespan (unix), date, or datespan.
+          const endMs = extractEndMs(ev.when);
+          if (endMs == null) continue;
+          // Only events whose end already passed (meeting actually wrapped).
+          if (endMs > args.windowEndMs) continue;
+          if (endMs < args.windowStartMs) continue;
+
+          // Need ≥1 external participant.
+          const participants: any[] = Array.isArray(ev.participants) ? ev.participants : [];
+          const hasExternal = participants.some((p) => {
+            const e = (p?.email || "").toLowerCase().trim();
+            if (!e || !e.includes("@")) return false;
+            if (e === ownerEmail) return false;
+            return !e.endsWith(INTERNAL_DOMAIN);
+          });
+          if (!hasExternal) {
+            out.push({ nylas_event_id: ev.id, skipped: "no_external_attendees" });
+            continue;
+          }
+
+          // Idempotency: skip if a task for this nylas event already exists.
+          const { data: existing } = await admin
+            .from("tasks")
+            .select("id")
+            .eq("nylas_event_id", ev.id)
+            .eq("sync_source", "calendar_followup")
+            .limit(1)
+            .maybeSingle();
+          if (existing?.id) {
+            out.push({ nylas_event_id: ev.id, skipped: "already_created", task_id: existing.id });
+            continue;
+          }
+
+          const eventTitle = (ev.title || "Untitled event").trim();
+          const taskTitle = `Follow up on ${eventTitle}`;
+          const startMs = extractStartMs(ev.when) ?? endMs;
+          const dueDate = new Date(startMs).toISOString().slice(0, 10);
+
+          const { data: inserted, error: insErr } = await admin
+            .from("tasks")
+            .insert({
+              title: taskTitle,
+              assigned_to: tok.user_id,
+              assigned_by: tok.user_id,
+              created_by: tok.user_id,
+              due_date: dueDate,
+              status: "not_started",
+              task_type: "task",
+              sync_source: "calendar_followup",
+              nylas_event_id: ev.id,
+              source_calendar_event_id: ev.id,
+              source_calendar_event_title: eventTitle,
+              asana_sync_status: args.asanaToken ? "pending" : "failed",
+              asana_sync_error: args.asanaToken ? null : "Asana integration not configured",
+            })
+            .select("id")
+            .single();
+          if (insErr) {
+            out.push({ nylas_event_id: ev.id, error: insErr.message });
+            continue;
+          }
+
+          let asanaResult: { gid?: string; error?: string } = {};
+          if (args.asanaToken) {
+            asanaResult = await createAsanaTask(admin, {
+              token: args.asanaToken,
+              ownerEmail,
+              userId: tok.user_id,
+              title: taskTitle,
+              dueDate,
+            });
+            await admin.from("tasks").update({
+              asana_task_gid: asanaResult.gid ?? null,
+              asana_sync_status: asanaResult.gid ? "synced" : "failed",
+              asana_sync_error: asanaResult.error ?? null,
+              asana_synced_at: asanaResult.gid ? new Date().toISOString() : null,
+            }).eq("id", inserted.id);
+          }
+
+          let emailResult: { sent?: boolean; error?: string } = {};
+          try {
+            const { data: prof } = await admin
+              .from("profiles")
+              .select("full_name, first_name")
+              .eq("id", tok.user_id)
+              .maybeSingle();
+            const assigneeName =
+              (prof as any)?.first_name ||
+              ((prof as any)?.full_name ? String((prof as any).full_name).split(" ")[0] : undefined);
+            const dueLabel = new Date(dueDate + "T00:00:00").toLocaleDateString("en-US", {
+              month: "long", day: "numeric", year: "numeric",
+            });
+            const { error: emailErr } = await admin.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "task-assigned",
+                recipientEmail: ownerEmail,
+                idempotencyKey: `auto-followup-task-${inserted.id}`,
+                templateData: {
+                  assigneeName,
+                  taskTitle,
+                  dueDate: dueLabel,
+                  taskUrl: `https://fivelinenaitive.lovable.app/tasks?task=${inserted.id}`,
+                },
+              },
+            });
+            emailResult = emailErr ? { sent: false, error: emailErr.message } : { sent: true };
+          } catch (err) {
+            emailResult = { sent: false, error: (err as Error).message };
+          }
+
+          out.push({
+            nylas_event_id: ev.id,
+            task_id: inserted.id,
+            title: taskTitle,
+            asana_gid: asanaResult.gid ?? null,
+            asana_error: asanaResult.error ?? null,
+            email_sent: emailResult.sent ?? false,
+            email_error: emailResult.error ?? null,
+          });
+        } catch (err) {
+          out.push({ nylas_event_id: ev?.id, error: (err as Error).message });
+        }
+      }
+    } catch (err) {
+      out.push({ nylas_user: ownerEmail, error: (err as Error).message });
+    }
+  }
+
+  return out;
+}
+
+function extractEndMs(when: any): number | null {
+  if (!when) return null;
+  if (typeof when.end_time === "number") return when.end_time * 1000;
+  if (typeof when.end_date === "string") {
+    const d = new Date(when.end_date + "T23:59:59Z");
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+  if (typeof when.date === "string") {
+    const d = new Date(when.date + "T23:59:59Z");
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+  return null;
+}
+function extractStartMs(when: any): number | null {
+  if (!when) return null;
+  if (typeof when.start_time === "number") return when.start_time * 1000;
+  if (typeof when.start_date === "string") {
+    const d = new Date(when.start_date + "T00:00:00Z");
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+  if (typeof when.date === "string") {
+    const d = new Date(when.date + "T00:00:00Z");
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+  return null;
+}
 
 async function loadAsanaToken(admin: any): Promise<string | null> {
   if (asanaTokenCache) return asanaTokenCache;
