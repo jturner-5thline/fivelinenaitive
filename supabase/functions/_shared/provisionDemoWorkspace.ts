@@ -835,11 +835,14 @@ export async function provisionDemoWorkspace(
     });
 
     if (rows.length > 0) {
-      // Use upsert on the new (deal_id, master_lender_id) unique index so
-      // re-running provisioning is always idempotent for demo funding sources.
-      const { error } = await admin
-        .from("deal_lenders")
-        .upsert(rows, { onConflict: "deal_id,master_lender_id", ignoreDuplicates: true });
+      // Plain insert — we already deduped against existing (deal_id,
+      // master_lender_id) pairs above via `existingPairs`. We can't use
+      // .upsert() with onConflict here because the unique index is a
+      // PARTIAL index (`WHERE master_lender_id IS NOT NULL`), which
+      // PostgREST's on-conflict inference does not match, so the upsert
+      // was failing silently and no funding sources were ever attached
+      // to new demo-access deals.
+      const { error } = await admin.from("deal_lenders").insert(rows);
       if (error) {
         console.warn(`[provisionDemoWorkspace] deal_lenders top-up warning: ${error.message}`);
         warnings.push(`deal_lenders:${error.message}`);
