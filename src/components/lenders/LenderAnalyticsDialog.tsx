@@ -663,6 +663,21 @@ export function LenderAnalyticsDialog({
     }));
   }, [passReasonsAgg]);
 
+  // Data for the vertical Lender Conversion Rate bar chart. Top 6 lenders by
+  // submitted volume, coloured by tier (T1/T2 teal, T3+other blue).
+  const conversionChartData = useMemo(() => {
+    return lenderStats
+      .filter((s) => s.submitted > 0)
+      .slice(0, 6)
+      .map((s) => ({
+        key: s.key,
+        name: s.name,
+        short: s.name.length > 10 ? s.name.slice(0, 10) + '…' : s.name,
+        pct: +(s.conv * 100).toFixed(1),
+        color: s.tier === 'T1' || s.tier === 'T2' ? '#4dd9ac' : '#60a5fa',
+      }));
+  }, [lenderStats]);
+
   const subtitleParts = [
     DATE_LABEL[dateRange],
     lenderScopeActive ? `${lenders.length} of ${totalLenderCount} lenders` : `${lenders.length} lenders`,
