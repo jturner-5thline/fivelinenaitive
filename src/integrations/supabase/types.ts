@@ -2823,6 +2823,7 @@ export type Database = {
           created_at: string
           end_time: string | null
           event_id: string
+          follow_up_task_created: boolean
           id: string
           is_all_day: boolean
           is_cancelled: boolean
@@ -2841,6 +2842,7 @@ export type Database = {
           created_at?: string
           end_time?: string | null
           event_id: string
+          follow_up_task_created?: boolean
           id?: string
           is_all_day?: boolean
           is_cancelled?: boolean
@@ -2859,6 +2861,7 @@ export type Database = {
           created_at?: string
           end_time?: string | null
           event_id?: string
+          follow_up_task_created?: boolean
           id?: string
           is_all_day?: boolean
           is_cancelled?: boolean
