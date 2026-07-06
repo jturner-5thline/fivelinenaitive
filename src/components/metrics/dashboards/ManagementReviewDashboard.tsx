@@ -1926,8 +1926,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const saveLayout = React.useCallback((nextLayout: GridLayoutItem[], immediate?: boolean) => {
     const cloned = nextLayout.map(item => ({ ...item }));
     setLayout(cloned);
-    if (!isLayoutEditor || !layoutHydrated) return;
+    if (!isLayoutEditor) return;
     pendingLayoutRef.current = cloned;
+    if (!layoutHydrated) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (immediate) {
       persistLayout(cloned);
