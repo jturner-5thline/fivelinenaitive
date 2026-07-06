@@ -1897,7 +1897,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         // Merge: use persisted positions but ensure every known widget id exists
         // (falls back to default for any newly-added widget).
         const byId = new Map<string, GridLayoutItem>(
-          (data.layout as GridLayoutItem[]).map(i => [i.i, i]),
+          (data.layout as unknown as GridLayoutItem[]).map(i => [i.i, i]),
         );
         const merged = cloneInsightsDefaultLayout().map(def => byId.get(def.i) ?? def);
         setLayout(merged);
