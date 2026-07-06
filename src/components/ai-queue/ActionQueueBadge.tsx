@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useAllFlexInfoNotifications } from '@/hooks/useAllFlexInfoNotifications';
@@ -38,33 +39,33 @@ export function ActionQueueBadge() {
   if (!queueEnabled) return null;
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative h-8 gap-1.5"
-          aria-label={label}
-        >
-          <Inbox className="h-4 w-4" />
-          <span className="text-xs hidden sm:inline">Queue</span>
-          {count > 0 && (
-            <Badge
-              variant="destructive"
-              className="h-4 min-w-4 px-1 text-[10px] absolute -top-1 -right-1"
-            >
-              {count}
-            </Badge>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="popup-shell-surface dark p-0 gap-0 max-w-[95vw] w-[min(95vw,1600px)] h-[min(92dvh,1000px)] max-h-[92dvh] overflow-hidden flex flex-col rounded-2xl"
-        align="end"
-        sideOffset={8}
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="relative h-8 gap-1.5"
+        aria-label={label}
+        onClick={() => handleOpenChange(true)}
       >
+        <Inbox className="h-4 w-4" />
+        <span className="text-xs hidden sm:inline">Queue</span>
+        {count > 0 && (
+          <Badge
+            variant="destructive"
+            className="h-4 min-w-4 px-1 text-[10px] absolute -top-1 -right-1"
+          >
+            {count}
+          </Badge>
+        )}
+      </Button>
+      <DialogContent
+        className="popup-shell-surface dark p-0 gap-0 max-w-[95vw] w-[min(95vw,1600px)] h-[min(92dvh,1000px)] max-h-[92dvh] rounded-2xl overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 flex flex-col"
+      >
+        <VisuallyHidden>
+          <DialogTitle>Approval Queue</DialogTitle>
+        </VisuallyHidden>
         <ActionQueuePanel items={data} onClose={() => setOpen(false)} />
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
