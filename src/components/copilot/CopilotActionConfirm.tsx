@@ -1077,7 +1077,37 @@ function FieldDiffTable({
               }}
               title={formatFieldValue(d.newValue)}
             >
-              {formatFieldValue(d.newValue)}
+              {tone === 'pending' && d.options && d.options.length > 0 && onEdit ? (
+                <select
+                  aria-label={`Choose ${d.label}`}
+                  value={
+                    (edits && d.field in edits
+                      ? edits[d.field]
+                      : typeof d.newValue === 'string'
+                        ? d.newValue
+                        : String(d.newValue ?? '')) as string
+                  }
+                  onChange={(e) => onEdit(d.field, e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 26,
+                    padding: '2px 6px',
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'hsl(var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: 12,
+                  }}
+                >
+                  {d.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                formatFieldValue(d.newValue)
+              )}
             </div>
             <div role="cell" style={{ textAlign: 'right' }}>
               <span
