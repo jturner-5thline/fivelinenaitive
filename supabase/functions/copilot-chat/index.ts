@@ -3163,8 +3163,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       let assigneeCandidates: any[] = [];
       if (resolvedAssigneeId) {
         try {
-          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", resolvedAssigneeId).maybeSingle();
-          assigneeName = p?.display_name || p?.email || null;
+          // Broaden the profile lookup so the card always renders a real
+          // name — never null — for a delegated task. Falling through to
+          // null causes the client card to display "You", which is bug
+          // #1215344941044854.
+          const { data: p } = await supabase
+            .from("profiles")
+            .select("display_name, first_name, last_name, email")
+            .eq("user_id", resolvedAssigneeId)
+            .maybeSingle();
+          const composed = [p?.first_name, p?.last_name].filter(Boolean).join(" ").trim();
+          assigneeName = p?.display_name || composed || p?.email || (typeof args.assignee_name === "string" ? args.assignee_name.trim() : null) || null;
           assigneeStrategy = "uuid";
         } catch { /* non-fatal */ }
       } else if (typeof args.assignee_name === "string" && args.assignee_name.trim()) {
@@ -8366,6 +8375,12 @@ DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER
 - Approval-card UX: do NOT write a plain-text "I've assigned this to <Person>" message after the tool call — the card itself is the proposed-assignment surface and labels who it will go to. If the user later says "yes" / "confirm" / "assign it" without clicking the card, point them to the Save button on the card; never bypass it with another write tool.
 - Permissions: the create_task executor enforces who-can-assign-to-whom server-side. If it returns a permission error, surface that to the user verbatim — do NOT retry by reassigning to the current user.
 - Safety summary: (a) never assign without the user clicking Save on the card, (b) never guess between multiple name matches — always ask, (c) never silently fall back to assigning yourself, (d) never link to a deal you're not confident about.
+
+EDITING A PENDING TASK DRAFT (apply when the LAST assistant turn already emitted a create_task confirmation card and the user replies with a modification instead of clicking Save — e.g. "change the assignee to James Turner", "make it due Friday", "assign that to Niki instead", "add a note about the term sheet", "call it 'Review CIM' not 'Review deck'"):
+- Re-emit create_task ONCE with the SAME title as the pending draft and the SAME deal_id (unless the user is explicitly changing them). Merge the corrected field(s) from the user's message on top of the prior draft's params. The client uses (title, deal_id) as the draft key to REPLACE the previous card in place; a fresh title or deal_id would produce a second, duplicate card.
+- Resolve any new assignee_name through the same DELEGATED TASK ASSIGNMENT rules. Never re-emit the draft with the OLD assignee just to "acknowledge" the request — the whole point of the re-emit is to reflect the change.
+- Do NOT write a plain-text confirmation like "Updated the draft to assign to James." after the tool call — the replaced card is the confirmation surface.
+- Only skip the re-emit if the user's message doesn't actually change any field (e.g. "looks good"); in that case, point them to the Save button on the existing card and stop.
 
 CREATE_TASK SCHEMA (HARD CONTRACT — the function call WILL fail with additionalProperties if violated):
 Allowed keys, and ONLY these: title, description, assignee_id, due_date, deal_id, type, collaborator_ids.
