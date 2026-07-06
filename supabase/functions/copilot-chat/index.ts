@@ -14,6 +14,7 @@ import {
   formatDealBlock as admFormatDealBlock,
   formatPortfolioBlocks as admFormatPortfolioBlocks,
 } from "../_shared/adminAgentFormat.ts";
+import { buildUserDealCountBlock } from "./userDealCountBlock.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
@@ -8187,15 +8188,14 @@ serve(async (req) => {
           || INACTIVE_STAGES.has(String(d.stage || "").toLowerCase());
         const active = scoped.filter((d: any) => !isClosed(d));
         const closed = scoped.filter((d: any) => isClosed(d));
-        const activeCount = active.length;
-        const closedCount = closed.length;
-        const totalCount = activeCount + closedCount;
-        const fmtList = (arr: any[]) =>
-          arr.length === 0
-            ? "(none)"
-            : arr.map((d: any) => `[${d.company}](entity://deal/${d.id})${d.stage ? ` — ${d.stage}` : ""}`).join(", ");
-        userDealCountBlock = `\n\nUSER DEAL COUNT AUTHORITY — deterministic query result for "${rawName}" (managed = manager OR owner, matched on manager, deal_owner, and deal_owner_user_id; globally excluded test deals removed):\n- Active-pipeline stages: ${activeCount}\n- Closed stages (closed-won, closed-lost, on-hold, archived): ${closedCount}\n- Total managed: ${totalCount}\n- Active deal names: ${fmtList(active)}\n- Closed deal names: ${fmtList(closed)}\n- These are the ONLY correct figures for this question. You MUST state Active=${activeCount} and Closed=${closedCount} exactly, disclose the filter ("counting only active-pipeline stages") when quoting the active count, and ALWAYS include the closed-stage breakdown with deal names — even when the active count is 0. Do NOT call search_deals, get_pipeline_snapshot, or any counting tool to re-derive these figures. Do NOT emit any other count in the same reply.`;
-        console.log("[copilot-chat] user_deal_count_authority", JSON.stringify({ name: rawName, activeCount, closedCount, totalCount, profile_user_id: profileUserId }));
+        userDealCountBlock = buildUserDealCountBlock(rawName, active as any, closed as any);
+        console.log("[copilot-chat] user_deal_count_authority", JSON.stringify({
+          name: rawName,
+          activeCount: active.length,
+          closedCount: closed.length,
+          totalCount: active.length + closed.length,
+          profile_user_id: profileUserId,
+        }));
       }
     } catch (e) {
       console.warn("[copilot-chat] user deal count block failed", e);
