@@ -3160,11 +3160,50 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     case "update_deal_stage": {
       const { data: deal } = await supabase.from("deals").select("id, company, stage").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
+      // Resolve the deal's pipeline so we can (a) validate new_stage
+      // against the pipeline's real stages, rejecting anything else,
+      // and (b) surface the option list on the confirm card as a
+      // dropdown pre-selected to the AI proposal.
+      const { data: dealRow } = await supabase
+        .from("deals")
+        .select("pipeline_id")
+        .eq("id", args.deal_id)
+        .maybeSingle();
+      const pipelineId = (dealRow as any)?.pipeline_id || null;
+      let stageOptions: EnumOption[] = [];
+      if (pipelineId) {
+        const { data: pipe } = await supabase
+          .from("deal_pipelines")
+          .select("stages")
+          .eq("id", pipelineId)
+          .maybeSingle();
+        stageOptions = pipelineStagesToOptions((pipe as any)?.stages);
+      }
+      let resolvedStage = args.new_stage;
+      if (stageOptions.length > 0) {
+        const canonical = matchEnumOption(args.new_stage, stageOptions);
+        if (!canonical) {
+          return {
+            error:
+              `"${args.new_stage}" is not a valid stage for this deal's pipeline. ` +
+              `Valid stages: ${stageOptions.map((s) => `"${s.label}"`).join(", ")}. ` +
+              `Re-emit update_deal_stage with new_stage set to one of these exact values.`,
+            error_code: "INVALID_ENUM",
+          };
+        }
+        resolvedStage = canonical;
+      }
       return {
         action: "confirm",
         action_type: "update_deal_stage",
-        description: `Move "${deal.company}" from "${deal.stage}" to "${args.new_stage}"`,
-        params: { deal_id: args.deal_id, new_stage: args.new_stage, current_stage: deal.stage, deal_name: deal.company },
+        description: `Move "${deal.company}" from "${deal.stage}" to "${resolvedStage}"`,
+        params: {
+          deal_id: args.deal_id,
+          new_stage: resolvedStage,
+          current_stage: deal.stage,
+          deal_name: deal.company,
+          stage_options: stageOptions,
+        },
       };
     }
     case "get_pipelines": {
