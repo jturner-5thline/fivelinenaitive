@@ -22,7 +22,7 @@ import { useInsightsTimeframe, useInsightsTimeframeOptional } from '@/contexts/I
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
-import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
+import type { GridLayoutItem } from '@/hooks/useGridLayout';
 import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -1820,6 +1820,9 @@ const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
 
 const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
 
+const cloneInsightsDefaultLayout = (): GridLayoutItem[] =>
+  INSIGHTS_DEFAULT_LAYOUT.map(item => ({ ...item }));
+
 // Plain-language descriptions for hover tooltips on Key Stats labels.
 const KPI_DESCRIPTIONS: Record<string, string> = {
   'total-revenue-curr': 'Total revenue booked for the current reporting period across all QuickBooks entities.',
@@ -1864,14 +1867,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   } | null>(null);
   const closeDrilldown = () => setDrilldown(null);
 
-  const {
-    layout,
-    saveLayout,
-    resetLayout,
-  } = useGridLayout('insights-management-review-v19', INSIGHTS_LAYOUT_IDS, {
-    allowAllMembers: true,
-    layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
-  });
+  // The Insights dashboard layout is intentionally source-controlled here.
+  // Do not hydrate this grid from dashboard_grid_layouts/localStorage or any
+  // prior saved user layout; refresh must always start from this exact map.
+  const [layout, setLayout] = useState<GridLayoutItem[]>(cloneInsightsDefaultLayout);
+  const saveLayout = React.useCallback((nextLayout: GridLayoutItem[]) => {
+    setLayout(nextLayout.map(item => ({ ...item })));
+  }, []);
+  const resetLayout = React.useCallback(async () => {
+    setLayout(cloneInsightsDefaultLayout());
+  }, []);
 
   const editSnapshotRef = useRef<GridLayoutItem[] | null>(null);
   const wasEditingRef = useRef(false);
