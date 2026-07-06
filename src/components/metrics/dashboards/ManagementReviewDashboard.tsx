@@ -3035,6 +3035,20 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             }
             headerExtra={
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {showTrendDelta && trendMode !== 'quarterly-yoy' && (() => {
+                  const vals = trendMode === 'ttm' ? ttmTrendValues : monthlyTrendValues;
+                  const labels = trendMode === 'ttm' ? ttmLabels : monthlyTrendLabels;
+                  if (!vals || vals.length < 2) return null;
+                  return (
+                    <RangeTrendDelta
+                      fromLabel={labels[0]}
+                      toLabel={labels[labels.length - 1]}
+                      fromValue={vals[0]}
+                      toValue={vals[vals.length - 1]}
+                      polarity="higher-is-better"
+                    />
+                  );
+                })()}
                 {trendMode !== 'quarterly-yoy' && (
                   <button
                     type="button"
