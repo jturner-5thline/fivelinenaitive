@@ -205,7 +205,7 @@ export function LenderAnalyticsDialog({
   originStyle,
   originClassName,
 }: Props) {
-  const [dateRange, setDateRange] = useState<DateRange>('90d');
+  const [dateRange, setDateRange] = useState<DateRange>('ytd');
   const [dealLenders, setDealLenders] = useState<DealLenderRow[]>([]);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
@@ -538,6 +538,130 @@ export function LenderAnalyticsDialog({
     : null;
 
   const isEmpty = !loading && !error && rows.length === 0;
+
+  // ─── Redesigned Lender Intelligence Dashboard derived data ────────────
+  const [hoverLender, setHoverLender] = useState<string | null>(null);
+
+  const lenderMeta = useMemo(() => {
+    const tier = new Map<string, 'T1' | 'T2' | 'T3'>();
+    const flex = new Set<string>();
+    for (const l of lenders) {
+      const key = (l.name || '').trim().toLowerCase();
+      if (!key) continue;
+      const rawTier = String((l as any).tier || '').trim().toUpperCase();
+      if (rawTier === 'T1' || rawTier === 'TIER 1' || rawTier === '1') tier.set(key, 'T1');
+      else if (rawTier === 'T2' || rawTier === 'TIER 2' || rawTier === '2') tier.set(key, 'T2');
+      else if (rawTier === 'T3' || rawTier === 'TIER 3' || rawTier === '3') tier.set(key, 'T3');
+      if ((l as any).flex_lender_id) flex.add(key);
+    }
+    return { tier, flex };
+  }, [lenders]);
+
+  type LenderStat = {
+    name: string;
+    key: string;
+    tier: 'T1' | 'T2' | 'T3' | null;
+    count: number;
+    submitted: number;
+    terms: number;
+    conv: number;
+    avgRespDays: number | null;
+    flexActive: number; // rows updated in past 30d
+    isFlex: boolean;
+  };
+
+  const lenderStats: LenderStat[] = useMemo(() => {
+    const m = new Map<string, LenderStat & { _respSum: number; _respN: number; _dealIds: Set<string> }>();
+    const now = Date.now();
+    const THIRTY_D = 30 * 86400000;
+    for (const r of rows) {
+      const name = (r.name || '').trim() || 'Unknown';
+      const key = name.toLowerCase();
+      let s = m.get(key);
+      if (!s) {
+        s = {
+          name,
+          key,
+          tier: lenderMeta.tier.get(key) ?? null,
+          count: 0,
+          submitted: 0,
+          terms: 0,
+          conv: 0,
+          avgRespDays: null,
+          flexActive: 0,
+          isFlex: lenderMeta.flex.has(key),
+          _respSum: 0,
+          _respN: 0,
+          _dealIds: new Set(),
+        };
+        m.set(key, s);
+      }
+      if (!s._dealIds.has(r.deal_id)) {
+        s._dealIds.add(r.deal_id);
+        s.count += 1;
+      }
+      if (r.everSubmitted) s.submitted += 1;
+      if (r.everTerms) s.terms += 1;
+      const c = new Date(r.created_at).getTime();
+      const u = new Date(r.updated_at).getTime();
+      if (!isNaN(c) && !isNaN(u) && u >= c) {
+        s._respSum += (u - c) / 86400000;
+        s._respN += 1;
+      }
+      if (!isNaN(u) && now - u <= THIRTY_D) s.flexActive += 1;
+    }
+    const out: LenderStat[] = [];
+    for (const s of m.values()) {
+      s.conv = s.submitted > 0 ? s.terms / s.submitted : 0;
+      s.avgRespDays = s._respN > 0 ? s._respSum / s._respN : null;
+      out.push(s);
+    }
+    return out.sort((a, b) => b.count - a.count);
+  }, [rows, lenderMeta]);
+
+  const activeLenderCount = lenderStats.length;
+  const flexActiveLenderCount = useMemo(
+    () => lenderStats.filter((l) => l.isFlex).length,
+    [lenderStats],
+  );
+
+  // Deals sent delta vs prior period
+  const priorSubmittedCount = useMemo(() => {
+    const start = rangeStart(dateRange);
+    if (!start) return null;
+    const startMs = start.getTime();
+    const windowMs = Date.now() - startMs;
+    const prevStart = startMs - windowMs;
+    const prevEnd = startMs;
+    let n = 0;
+    for (const dl of dealLenders) {
+      const t = new Date(dl.created_at).getTime();
+      if (isNaN(t)) continue;
+      if (t < prevStart || t >= prevEnd) continue;
+      const deal = dealMap.get(dl.deal_id);
+      if (!deal) continue;
+      const label = resolveLabel(dl.stage, deal.company_id);
+      const ord = stageOrdinal(label);
+      const term = isTerminal(label, dl.pass_reason);
+      const ever = ord >= 3 || (term.passed && (label || '').toLowerCase().includes('drl'));
+      if (ever) n += 1;
+    }
+    return n;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealLenders, dealMap, dateRange, stageLabelByCompany]);
+
+  const submittedDelta =
+    priorSubmittedCount == null ? null : kpis.submitted - priorSubmittedCount;
+
+  const passReasonsRanked = useMemo(() => {
+    const total = passReasonsAgg.totalPassed || 1;
+    return passReasonsAgg.list.slice(0, 8).map((p) => ({
+      reason: p.reason,
+      key: p.key,
+      count: p.count,
+      pct: (p.count / total) * 100,
+    }));
+  }, [passReasonsAgg]);
 
   const subtitleParts = [
     DATE_LABEL[dateRange],
