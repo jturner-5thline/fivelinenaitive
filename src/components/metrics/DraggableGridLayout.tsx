@@ -47,6 +47,8 @@ interface DraggableGridLayoutProps {
   compactType?: 'vertical' | 'horizontal' | null;
   /** When true, prevents items from swapping/displacing each other. */
   preventCollision?: boolean;
+  /** When false, drag/resize completion queues the save instead of immediate save. */
+  saveImmediatelyOnInteractionEnd?: boolean;
 }
 
 function mapLayout(currentLayout: any[]): GridLayoutItem[] {
@@ -58,6 +60,8 @@ function mapLayout(currentLayout: any[]): GridLayoutItem[] {
     h: l.h,
     minW: l.minW,
     minH: l.minH,
+    maxW: l.maxW,
+    maxH: l.maxH,
   }));
 }
 
@@ -96,6 +100,7 @@ export function DraggableGridLayout({
   onLatestLayoutRef,
   compactType = 'vertical',
   preventCollision = false,
+  saveImmediatelyOnInteractionEnd = true,
 }: DraggableGridLayoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1200);
@@ -229,7 +234,7 @@ export function DraggableGridLayout({
     const finish = () => {
       if (!isPointerInteractingRef.current) return;
       isPointerInteractingRef.current = false;
-      flushRenderedLayout(true);
+      flushRenderedLayout(saveImmediatelyOnInteractionEnd);
       onInteractionEnd?.();
     };
     window.addEventListener('mouseup', finish, true);
@@ -241,7 +246,7 @@ export function DraggableGridLayout({
       window.removeEventListener('touchend', finish, true);
       window.removeEventListener('touchcancel', finish, true);
     };
-  }, [flushRenderedLayout, isEditMode, onInteractionEnd]);
+  }, [flushRenderedLayout, isEditMode, onInteractionEnd, saveImmediatelyOnInteractionEnd]);
 
   useEffect(() => {
     return () => flushRenderedLayout(true);
@@ -254,6 +259,8 @@ export function DraggableGridLayout({
     // widths/heights scale with the container; positions never reflow.
     return {
       lg: constrained,
+      md: constrained.map(item => ({ ...item })),
+      sm: constrained.map(item => ({ ...item })),
     };
   }, [layout, applyConstraints]);
 
@@ -273,16 +280,16 @@ export function DraggableGridLayout({
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
     suppressClickUntilRef.current = Date.now() + 400;
-    onLayoutChange(mapped, true); // immediate save
-  }, [onLayoutChange, isEditMode]);
+    onLayoutChange(mapped, saveImmediatelyOnInteractionEnd);
+  }, [onLayoutChange, isEditMode, saveImmediatelyOnInteractionEnd]);
 
   const handleResizeStop = useCallback((_layout: any[], _oldItem: any, _newItem: any, _placeholder: any, _e: any, _element: any) => {
     if (!isEditMode) return;
     const mapped = mapLayout(_layout);
     latestLayoutRef.current = mapped;
     suppressClickUntilRef.current = Date.now() + 400;
-    onLayoutChange(mapped, true); // immediate save
-  }, [onLayoutChange, isEditMode]);
+    onLayoutChange(mapped, saveImmediatelyOnInteractionEnd);
+  }, [onLayoutChange, isEditMode, saveImmediatelyOnInteractionEnd]);
 
   const handleClickCapture = useCallback((e: React.MouseEvent) => {
     if (Date.now() < suppressClickUntilRef.current) {
@@ -315,23 +322,23 @@ export function DraggableGridLayout({
         }
       }}
       onMouseUpCapture={() => {
-        flushRenderedLayout(true);
+        flushRenderedLayout(saveImmediatelyOnInteractionEnd);
         onInteractionEnd?.();
       }}
       onTouchEndCapture={() => {
-        flushRenderedLayout(true);
+        flushRenderedLayout(saveImmediatelyOnInteractionEnd);
         onInteractionEnd?.();
       }}
       onTouchCancelCapture={() => {
-        flushRenderedLayout(true);
+        flushRenderedLayout(saveImmediatelyOnInteractionEnd);
         onInteractionEnd?.();
       }}
     >
       <Responsive
         className="layout"
         layouts={layouts}
-        breakpoints={{ lg: 0 }}
-        cols={{ lg: 12 }}
+        breakpoints={{ lg: 1200, md: 768, sm: 0 }}
+        cols={{ lg: 12, md: 12, sm: 12 }}
         rowHeight={rowHeight}
         width={containerWidth}
         isDraggable={isEditMode && (isDraggableEnabled ?? true)}
