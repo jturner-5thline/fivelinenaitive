@@ -995,6 +995,14 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
       break;
     case "update_deal_status":
       if (!nonEmpty(pv.status)) return false;
+      {
+        // Deal STATUS is a strict enum: on-track | at-risk | off-track (or
+        // cleared). Anything else (e.g. "Active", "Live", "Pending") is not
+        // a real status value and must be dropped rather than surfaced.
+        const raw = String(pv.status ?? "").trim().toLowerCase().replace(/[\s_]+/g, "-");
+        const ALLOWED_STATUSES = new Set(["on-track", "at-risk", "off-track"]);
+        if (!ALLOWED_STATUSES.has(raw)) return false;
+      }
       break;
     case "update_funding_source":
       // Rule: update_funding_source MUST carry a concrete stage/substage/status
