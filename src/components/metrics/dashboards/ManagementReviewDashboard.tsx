@@ -1835,9 +1835,6 @@ const normalizeInsightsLayoutForSave = (items: GridLayoutItem[]): GridLayoutItem
     minH: item.minH,
   }));
 
-const getInsightsLayoutSignature = (items: GridLayoutItem[]) =>
-  JSON.stringify(normalizeInsightsLayoutForSave(items));
-
 // Plain-language descriptions for hover tooltips on Key Stats labels.
 const KPI_DESCRIPTIONS: Record<string, string> = {
   'total-revenue-curr': 'Total revenue booked for the current reporting period across all QuickBooks entities.',
@@ -1871,7 +1868,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const { activePipelineId } = usePipelineContext();
   const { user } = useAuth();
-  const { company } = useCompany();
   const isLayoutEditor = (user?.email ?? '').toLowerCase() === 'jturner@5thline.co';
   const INSIGHTS_LAYOUT_DASHBOARD_ID = 'insights-management-review-v20';
   const [refreshing, setRefreshing] = useState(false);
@@ -1895,7 +1891,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     layout,
     saveLayout: saveSharedGridLayout,
     resetLayout,
-    isLoaded: layoutHydrated,
   } = useGridLayout(INSIGHTS_LAYOUT_DASHBOARD_ID, INSIGHTS_LAYOUT_IDS, {
     allowAllMembers: true,
     layoutDefaults: INSIGHTS_DEFAULT_LAYOUT,
