@@ -3114,6 +3114,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         draggableCancel=".react-resizable-handle"
         compactType={null}
         preventCollision
+        saveImmediatelyOnInteractionEnd={false}
       >
         <div key="kpi-summary" data-grid-item-id="kpi-summary" className="h-full">
           <GridShell isEditMode={isEditMode} title="Key Stats">
