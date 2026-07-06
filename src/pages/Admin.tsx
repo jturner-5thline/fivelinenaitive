@@ -94,6 +94,7 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { StandardDemoPanel } from "@/components/admin/StandardDemoPanel";
+import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
 import { PerfDiagnosticsPanel } from "@/components/admin/PerfDiagnosticsPanel";
 import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
 import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
@@ -438,7 +439,10 @@ const Admin = () => {
         return <UserActivityPanel />;
       case "demo-metrics":
         return (
-          <StandardDemoPanel />
+          <div className="space-y-4">
+            <StandardDemoPanel />
+            <DemoMetricsPanel />
+          </div>
         );
       case "feedback":
         return (
