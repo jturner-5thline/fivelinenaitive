@@ -425,7 +425,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_knowledge_docs')
-        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at')
+        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at, tags')
         .eq('company_id', companyId)
         .eq('agent_key', 'admin_agent')
         .order('created_at', { ascending: false });
