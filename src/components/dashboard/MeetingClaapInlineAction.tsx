@@ -471,6 +471,20 @@ export function MeetingClaapInlineAction(props: Props) {
         {url && <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />}
       </a>
       {pill}
+      {source && (band === 'auto' || band === 'review') && (
+        <Badge
+          variant="outline"
+          className={cn(
+            'h-5 px-1.5 text-[10px]',
+            source === 'stored'
+              ? 'border-slate-500/40 text-slate-300 bg-slate-500/10'
+              : 'border-blue-500/40 text-blue-300 bg-blue-500/10',
+          )}
+          title={source === 'stored' ? 'Loaded from saved suggestion' : 'Freshly generated'}
+        >
+          {source === 'stored' ? 'Stored match' : 'Fresh suggestion'}
+        </Badge>
+      )}
       <div className="flex items-center gap-0.5 shrink-0">
         {band === 'auto' && (
           <Button
@@ -500,12 +514,22 @@ export function MeetingClaapInlineAction(props: Props) {
               size="sm"
               variant="ghost"
               className="h-6 px-2 text-[10px] gap-1 text-rose-300 hover:text-rose-200 hover:bg-rose-500/10"
-              onClick={() => setUserRejected(true)}
+              onClick={handleReject}
             >
               <X className="h-3 w-3" /> Reject
             </Button>
           </>
         )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-2 text-[10px] gap-1 text-white/80 hover:text-white hover:bg-white/[0.08]"
+          disabled={ranking}
+          onClick={handleRefresh}
+          title="Re-run Claap match"
+        >
+          <RefreshCw className={cn('h-3 w-3', ranking && 'animate-spin')} /> Find again
+        </Button>
         <Button
           size="sm"
           variant="ghost"
