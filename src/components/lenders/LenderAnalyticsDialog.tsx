@@ -315,12 +315,15 @@ export function LenderAnalyticsDialog({
       setLoading(true);
       setError(null);
       const start = rangeStart(dateRange);
+      const end = rangeEnd(dateRange);
       const startIso = start?.toISOString();
+      const endIso = end?.toISOString();
       try {
         const [dlRes, dRes, scRes] = await Promise.all([
           (() => {
             let q = supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000);
             if (startIso) q = q.gte('created_at', startIso);
+            if (endIso) q = q.lt('created_at', endIso);
             return q;
           })(),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
@@ -511,11 +514,12 @@ export function LenderAnalyticsDialog({
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
+    const end = rangeEnd(dateRange);
     if (!start) {
       return { current: lenders.slice(), previous: [] as MasterLender[], delta: null as number | null };
     }
     const startMs = start.getTime();
-    const now = Date.now();
+    const now = end ? end.getTime() : Date.now();
     const windowMs = now - startMs;
     const prevStart = startMs - windowMs;
     const current: MasterLender[] = [];
@@ -707,9 +711,10 @@ export function LenderAnalyticsDialog({
   // Deals sent delta vs prior period
   const priorSubmittedCount = useMemo(() => {
     const start = rangeStart(dateRange);
+    const end = rangeEnd(dateRange);
     if (!start) return null;
     const startMs = start.getTime();
-    const windowMs = Date.now() - startMs;
+    const windowMs = (end ? end.getTime() : Date.now()) - startMs;
     const prevStart = startMs - windowMs;
     const prevEnd = startMs;
     let n = 0;
@@ -758,7 +763,7 @@ export function LenderAnalyticsDialog({
   }, [lenderStats]);
 
   const subtitleParts = [
-    DATE_LABEL[dateRange],
+    dateRangeLabel(dateRange),
     lenderScopeActive ? `${lenders.length} of ${totalLenderCount} lenders` : `${lenders.length} lenders`,
     filtersSummary,
   ].filter(Boolean) as string[];
@@ -784,25 +789,18 @@ export function LenderAnalyticsDialog({
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
-              <div className="inline-flex rounded-md border border-slate-700/60 bg-slate-900/60 p-0.5 text-[12px]">
-                {(['ytd', '12m'] as const).map((k) => {
-                  const active = dateRange === k;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => setDateRange(k)}
-                      className={cn(
-                        'px-3 h-7 rounded-sm transition-colors',
-                        active ? 'text-slate-950' : 'text-slate-300 hover:text-slate-100',
-                      )}
-                      style={active ? { background: '#4dd9ac' } : undefined}
-                    >
-                      {k === 'ytd' ? 'YTD' : 'Trailing 12M'}
-                    </button>
-                  );
-                })}
-              </div>
+              <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
+                <SelectTrigger className="h-8 w-[168px] text-[12px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-950 border-slate-700/60 text-slate-100">
+                  <SelectItem value="ytd">YTD</SelectItem>
+                  <SelectItem value="12m">TTM (Trailing 12 Months)</SelectItem>
+                  {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 - i).map((yr) => (
+                    <SelectItem key={yr} value={`y${yr}`}>{yr}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {isFifthLine && (
                 <Button
                   variant="outline"
