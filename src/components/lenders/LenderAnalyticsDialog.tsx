@@ -839,7 +839,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Conversion Rate"
               value={fmtPct(kpis.conv)}
-              hint="deals sent → terms issued"
+              hint="added to deal → terms issued"
               loading={loading}
             />
             <IntelKpi
@@ -912,7 +912,7 @@ export function LenderAnalyticsDialog({
                 <div className="flex flex-col gap-3 min-w-0">
                   <IntelPanel
                     title="Lender Conversion Rate"
-                    subtitle="deal sent → terms issued"
+                    subtitle="added to deal → terms issued"
                     subtitleTone="accent"
                   >
                     <div className="px-3 pb-3 pt-2 h-[240px]">
