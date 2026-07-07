@@ -964,6 +964,130 @@ export function AdminAgentDuty1Config() {
         </TabsContent>
 
         {/* ── Calendar (holidays) ─────────────────────────────── */}
+        <TabsContent value="knowledge" className="mt-3 space-y-3">
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+              <h5 className="text-xs font-semibold">Knowledge base</h5>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {(knowledgeQ.data ?? []).length} document{(knowledgeQ.data ?? []).length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Reference documents the agent reads on every run — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted and injected into the agent's context.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <label className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] cursor-pointer hover:bg-card ${readOnly || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                <span>Upload files</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  disabled={readOnly || isUploading}
+                  onChange={(e) => { uploadKnowledgeFiles(e.target.files); e.currentTarget.value = ''; }}
+                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv"
+                />
+              </label>
+              <span className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
+            </div>
+
+            {knowledgeQ.isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (knowledgeQ.data ?? []).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">No documents yet.</p>
+            ) : (
+              <ScrollArea className="max-h-56 rounded border border-border/40 bg-background/30">
+                <ul className="divide-y divide-border/40">
+                  {(knowledgeQ.data ?? []).map((d) => (
+                    <li key={d.id} className="group flex items-start gap-2 px-2 py-1.5">
+                      {d.source_type === 'file' ? (
+                        <Paperclip className="h-3 w-3 mt-1 text-muted-foreground shrink-0" />
+                      ) : (
+                        <FileText className="h-3 w-3 mt-1 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium truncate">{d.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {d.source_type === 'file'
+                            ? `${d.mime_type || 'file'}${d.size_bytes ? ` · ${Math.max(1, Math.round(d.size_bytes / 1024))} KB` : ''}`
+                            : 'Pasted text'}
+                          {' · '}
+                          {d.status === 'ready' ? (
+                            <span className="text-emerald-400">Ready</span>
+                          ) : d.status === 'pending' ? (
+                            <span className="text-amber-400">Extracting…</span>
+                          ) : (
+                            <span className="text-red-400" title={d.error_message || ''}>Error</span>
+                          )}
+                        </p>
+                      </div>
+                      {!readOnly && (
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {d.source_type === 'file' && d.status !== 'pending' && (
+                            <button
+                              type="button"
+                              onClick={() => reingestDoc(d)}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                              aria-label="Re-extract text"
+                              title="Re-extract text"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeKnowledgeDoc(d)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            aria-label="Remove document"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            )}
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-card/40 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <h5 className="text-xs font-semibold">Or paste text directly</h5>
+            </div>
+            <Input
+              value={pasteTitle}
+              onChange={(e) => setPasteTitle(e.target.value)}
+              placeholder="Title (e.g. Deal terminology glossary)"
+              disabled={readOnly || isSavingPaste}
+              className="h-7 text-xs"
+            />
+            <Textarea
+              value={pasteBody}
+              onChange={(e) => setPasteBody(e.target.value)}
+              placeholder="Paste rules, definitions, or workflow steps…"
+              disabled={readOnly || isSavingPaste}
+              rows={4}
+              className="text-xs"
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={savePastedKnowledge}
+                disabled={readOnly || isSavingPaste || !pasteTitle.trim() || !pasteBody.trim()}
+                className="h-7 text-[11px]"
+              >
+                {isSavingPaste ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                Add
+              </Button>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ── Calendar (holidays) ─────────────────────────────── */}
         <TabsContent value="calendar" className="mt-3 space-y-2.5">
           <div className="flex items-start gap-2">
             <CalendarDays className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
