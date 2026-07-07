@@ -1181,6 +1181,28 @@ export function AdminAgentDuty1Config() {
                             <span className="text-red-400" title={d.error_message || ''}>Error</span>
                           )}
                         </p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {KB_TAG_OPTIONS.map((t) => {
+                            const on = (d.tags || []).includes(t.value);
+                            const inFilter = tagFilter.length === 0 || tagFilter.includes(t.value);
+                            return (
+                              <button
+                                key={t.value}
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => toggleDocTag(d, t.value)}
+                                title={on ? `Remove ${t.label} tag` : `Tag as ${t.label}`}
+                                className={`px-1.5 h-4 rounded-sm border text-[9px] leading-none transition-colors ${
+                                  on
+                                    ? `bg-primary/20 border-primary/50 text-primary ${!inFilter ? 'opacity-40' : ''}`
+                                    : 'bg-transparent border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+                                } ${readOnly ? 'cursor-not-allowed' : ''}`}
+                              >
+                                {t.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       {!readOnly && (
                         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
