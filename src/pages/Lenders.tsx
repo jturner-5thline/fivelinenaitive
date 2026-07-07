@@ -149,11 +149,12 @@ interface LenderFormContact {
   title: string;
   email: string;
   phone: string;
+  geography: string;
   isPrimary: boolean;
 }
 
 const emptyContact = (isPrimary = false): LenderFormContact => ({
-  contact_id: null, name: '', title: '', email: '', phone: '', isPrimary,
+  contact_id: null, name: '', title: '', email: '', phone: '', geography: '', isPrimary,
 });
 
 interface LenderForm {
