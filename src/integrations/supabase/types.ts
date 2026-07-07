@@ -16393,6 +16393,7 @@ export type Database = {
         Row: {
           audit: Json
           company_id: string
+          content_snapshot: Json | null
           created_at: string
           id: string
           period_key: string
@@ -16410,6 +16411,7 @@ export type Database = {
         Insert: {
           audit?: Json
           company_id: string
+          content_snapshot?: Json | null
           created_at?: string
           id?: string
           period_key: string
@@ -16427,6 +16429,7 @@ export type Database = {
         Update: {
           audit?: Json
           company_id?: string
+          content_snapshot?: Json | null
           created_at?: string
           id?: string
           period_key?: string
