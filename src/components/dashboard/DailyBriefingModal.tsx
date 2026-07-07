@@ -2377,6 +2377,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     key={activeTab}
                     className={cn(
                       'min-w-0 max-w-full',
+                      activeTab === 'end_of_day' && 'h-full min-h-0',
                       slideDirection === 'left' && 'animate-slide-in-from-right',
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
