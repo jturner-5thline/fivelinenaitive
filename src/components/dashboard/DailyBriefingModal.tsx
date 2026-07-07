@@ -2484,15 +2484,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                       </Suspense>
                     )
                   )}
-                  {contentReady && activeTab === 'end_of_day' && (
-                    <EndOfDayTab
-                      enabled={open}
-                      onNavigate={handleNavigate}
-                      targetAssigneeName={targetAssigneeName}
-                      targetUserId={targetUserId}
-                      briefingType={briefingType}
-                    />
-                  )}
                   </div>
                 </AddToDealCalendarProvider>
               </ScrollArea>
