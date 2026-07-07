@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Sparkles, Plus, Search, Gauge, BarChart3, Check } from 'lucide-react';
+import { Sparkles, Plus, Search, Gauge, BarChart3, Check, Settings } from 'lucide-react';
 import { type KpiTemplateId } from './kpiTemplates';
+import { BrandAwarenessDataEditor } from './BrandAwarenessDataEditor';
 import {
   buildInsightsMetricOptions,
   flattenInsightsMetricOptions,
@@ -89,6 +90,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
   const [query, setQuery] = useState('');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [baEditorOpen, setBaEditorOpen] = useState(false);
   const { metrics: customMetrics } = useCustomMetrics();
   const groups = useMemo(
     () => buildInsightsMetricOptions(customMetrics ?? []),
@@ -211,6 +213,21 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
             </div>
           ) : (
             <div className="space-y-7">
+              {activeSource === 'Brand Awareness' && (
+                <div className="flex items-center justify-end -mt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => setBaEditorOpen(true)}
+                    aria-label="Edit Brand Awareness data"
+                    title="Edit Brand Awareness data"
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                    Edit data
+                  </Button>
+                </div>
+              )}
               {filtered.map(group => (
                 <div key={group.source}>
                   <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
@@ -259,6 +276,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
           </div>
         </div>
       </DialogContent>
+      <BrandAwarenessDataEditor open={baEditorOpen} onClose={() => setBaEditorOpen(false)} />
     </Dialog>
   );
 }
