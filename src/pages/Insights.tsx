@@ -1439,12 +1439,13 @@ function MetricsInner() {
   const location = useLocation();
   const initialDashboardRef = useRef<string | null>(null);
   if (initialDashboardRef.current === null) {
-    const initialParams = new URLSearchParams(location.search);
-    initialDashboardRef.current = initialParams.get('tab')
-      ? 'management-review'
-      : 'management-snapshot';
+    initialDashboardRef.current = getInitialInsightsDashboard(location.search);
   }
   const [selectedDashboard, setSelectedDashboard] = useState(initialDashboardRef.current);
+  const selectDashboard = useCallback((id: string) => {
+    persistInsightsDashboard(id);
+    setSelectedDashboard(id);
+  }, []);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Per-user Insights dashboard restrictions. Users listed here only see the
@@ -1470,9 +1471,9 @@ function MetricsInner() {
   useEffect(() => {
     if (allowedDashboardIds && !allowedDashboardIds.has(selectedDashboard)) {
       const first = visibleDashboardOptions[0]?.id;
-      if (first) setSelectedDashboard(first);
+      if (first) selectDashboard(first);
     }
-  }, [allowedDashboardIds, selectedDashboard, visibleDashboardOptions]);
+  }, [allowedDashboardIds, selectedDashboard, selectDashboard, visibleDashboardOptions]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
@@ -1500,31 +1501,31 @@ function MetricsInner() {
     // (e.g. the ReportingPeriodPicker's `month` / `quarter`) must be
     // ignored so switching the timeframe doesn't reset the dashboard.
     if (view === 'weekly-rundown' && (isFirstRun || viewChanged)) {
-      setSelectedDashboard('management-snapshot');
+      selectDashboard('management-snapshot');
       return;
     }
     // Deep-link from Submit-for-review email: ?tab=jt|jm|sw opens the
     // Management Review carousel; the carousel picks the inner tab.
     if (tab && (isFirstRun || tabChanged)) {
-      setSelectedDashboard('management-review');
+      selectDashboard('management-review');
       return;
     }
     // Plain navigation to /insights (no deep-link params) lands on the
     // Weekly Rundown — but only on the initial mount, never as a reaction
     // to unrelated searchParam updates.
     if (isFirstRun && !view && !tab) {
-      setSelectedDashboard('management-snapshot');
+      selectDashboard('management-snapshot');
     }
-  }, [searchParams]);
+  }, [searchParams, selectDashboard]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
   // Controller Dashboard. Any deep links or persisted selections pointing
   // at the old id are transparently routed to its replacement.
   useEffect(() => {
     if (selectedDashboard === 'quickbooks-financial') {
-      setSelectedDashboard('controller-dashboard');
+      selectDashboard('controller-dashboard');
     }
-  }, [selectedDashboard]);
+  }, [selectedDashboard, selectDashboard]);
 
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
   useEffect(() => {
