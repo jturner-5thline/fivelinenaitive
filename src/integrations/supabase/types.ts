@@ -445,6 +445,7 @@ export type Database = {
           source_type: string
           status: string
           storage_path: string | null
+          tags: string[]
           title: string
           updated_at: string
           uploaded_by: string | null
@@ -461,6 +462,7 @@ export type Database = {
           source_type: string
           status?: string
           storage_path?: string | null
+          tags?: string[]
           title: string
           updated_at?: string
           uploaded_by?: string | null
@@ -477,6 +479,7 @@ export type Database = {
           source_type?: string
           status?: string
           storage_path?: string | null
+          tags?: string[]
           title?: string
           updated_at?: string
           uploaded_by?: string | null
@@ -621,6 +624,7 @@ export type Database = {
           enabled: boolean
           friday_sweep_enabled: boolean
           id: string
+          knowledge_tag_filter: string[]
           stale_threshold_business_days: number
           updated_at: string
         }
@@ -636,6 +640,7 @@ export type Database = {
           enabled?: boolean
           friday_sweep_enabled?: boolean
           id?: string
+          knowledge_tag_filter?: string[]
           stale_threshold_business_days?: number
           updated_at?: string
         }
@@ -651,6 +656,7 @@ export type Database = {
           enabled?: boolean
           friday_sweep_enabled?: boolean
           id?: string
+          knowledge_tag_filter?: string[]
           stale_threshold_business_days?: number
           updated_at?: string
         }
