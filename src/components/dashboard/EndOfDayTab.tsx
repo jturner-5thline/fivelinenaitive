@@ -1776,7 +1776,7 @@ function EventDetailPane({
               const rowKey = `${event.id}::${key || i}`;
               const isComposing = composerForOne === rowKey;
               return (
-                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-2 py-1.5">
+                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -1868,7 +1868,7 @@ function EventDetailPane({
                     dealId: linkedDealId ?? null,
                     label: eventTitle,
                   }}
-                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
+                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
                 >
                   {n.text}
                 </HighlightCalendarMenu>
