@@ -30,6 +30,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   core: 'Core',
   intelligence: 'Intelligence',
   activity: 'Activity',
+  'brand-awareness': 'Brand Awareness',
   custom: 'Custom',
 };
 
