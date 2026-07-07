@@ -45,7 +45,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 
-type DateRange = '30d' | '90d' | 'ytd' | '12m' | 'all';
+type DateRange = '30d' | '90d' | 'ytd' | '12m' | 'all' | `y${number}`;
 
 interface Props {
   open: boolean;
@@ -86,7 +86,7 @@ interface StageConfigRow {
   stages: unknown;
 }
 
-const DATE_LABEL: Record<DateRange, string> = {
+const STATIC_DATE_LABEL: Record<Exclude<DateRange, `y${number}`>, string> = {
   '30d': 'Last 30 days',
   '90d': 'Last 90 days',
   ytd: 'Year to date',
@@ -94,8 +94,18 @@ const DATE_LABEL: Record<DateRange, string> = {
   all: 'All time',
 };
 
+function dateRangeLabel(range: DateRange): string {
+  if (typeof range === 'string' && range.startsWith('y')) return range.slice(1);
+  return STATIC_DATE_LABEL[range as Exclude<DateRange, `y${number}`>];
+}
+
 function rangeStart(range: DateRange): Date | null {
   const now = new Date();
+  if (typeof range === 'string' && range.startsWith('y')) {
+    const yr = Number(range.slice(1));
+    if (Number.isFinite(yr)) return new Date(yr, 0, 1);
+    return null;
+  }
   switch (range) {
     case '30d': return new Date(now.getTime() - 30 * 86400000);
     case '90d': return new Date(now.getTime() - 90 * 86400000);
@@ -103,6 +113,15 @@ function rangeStart(range: DateRange): Date | null {
     case 'ytd': return new Date(now.getFullYear(), 0, 1);
     case 'all': return null;
   }
+  return null;
+}
+
+function rangeEnd(range: DateRange): Date | null {
+  if (typeof range === 'string' && range.startsWith('y')) {
+    const yr = Number(range.slice(1));
+    if (Number.isFinite(yr)) return new Date(yr + 1, 0, 1);
+  }
+  return null;
 }
 
 type Bucket = 'Submitted' | 'Management Call' | 'Terms' | 'Unresponsive' | 'Declined / Passed' | 'Other';
