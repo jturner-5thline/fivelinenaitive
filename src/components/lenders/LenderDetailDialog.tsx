@@ -48,7 +48,7 @@ import { GEO_OPTIONS } from '@/constants/geoOptions';
 import { useLenderAuditLog } from '@/hooks/useLenderAuditLog';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { format } from 'date-fns';
-import { formatLenderCurrency } from '@/utils/formatLenderCurrency';
+import { formatLenderCurrency, formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { toast } from 'sonner';
 
 const LENDER_TYPE_OPTIONS = [
@@ -1082,9 +1082,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.minDeal ? formatLenderCurrency(Number(editForm.minDeal)) : ''}
+                          value={formatCurrencyInput(editForm.minDeal)}
                           onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $0.50MM"
+                          placeholder="e.g., $500,000"
                           className="text-sm"
                         />
                       </div>
@@ -1093,9 +1093,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.maxDeal ? formatLenderCurrency(Number(editForm.maxDeal)) : ''}
+                          value={formatCurrencyInput(editForm.maxDeal)}
                           onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $25.00MM"
+                          placeholder="e.g., $25,000,000"
                           className="text-sm"
                         />
                       </div>
