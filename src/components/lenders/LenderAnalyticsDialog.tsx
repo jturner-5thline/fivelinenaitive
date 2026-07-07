@@ -792,10 +792,22 @@ export function LenderAnalyticsDialog({
             </div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-                <SelectTrigger className="h-8 w-[168px] text-[12px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70">
+                <SelectTrigger
+                  className="h-8 w-[168px] text-[12px] text-slate-200 hover:brightness-110"
+                  style={{
+                    background: 'hsl(220 45% 12%)',
+                    borderColor: 'hsl(220 45% 40% / 0.28)',
+                  }}
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-950 border-slate-700/60 text-slate-100">
+                <SelectContent
+                  className="text-slate-100"
+                  style={{
+                    background: 'hsl(220 45% 12%)',
+                    borderColor: 'hsl(220 45% 40% / 0.28)',
+                  }}
+                >
                   <SelectItem value="ytd">YTD</SelectItem>
                   <SelectItem value="12m">TTM (Trailing 12 Months)</SelectItem>
                   {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 - i).map((yr) => (
