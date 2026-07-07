@@ -37,7 +37,7 @@ interface DealStagesContextType {
   getStageConfig: () => Record<string, { label: string; color: string }>;
 }
 
-const DealStagesContext = createContext<DealStagesContextType | undefined>(undefined);
+export const DealStagesContext = createContext<DealStagesContextType | undefined>(undefined);
 
 // Convert STAGE_CONFIG to array format for default stages
 const defaultStages: DealStageOption[] = Object.entries(STAGE_CONFIG).map(([id, config]) => ({

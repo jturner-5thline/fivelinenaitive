@@ -38,8 +38,8 @@ import { Loader2 } from 'lucide-react';
 import { STATUS_CONFIG, type DealStatus, type DealStage } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useInvalidateDealFreshness } from '@/hooks/useDealFreshness';
-import { usePipelineContext } from '@/contexts/PipelineContext';
-import { useDealStages } from '@/contexts/DealStagesContext';
+import { PipelineContext } from '@/contexts/PipelineContext';
+import { DealStagesContext } from '@/contexts/DealStagesContext';
 
 export interface StatusChangeRequest {
   dealId: string;
@@ -80,8 +80,10 @@ export function StatusChangeGateProvider({ children }: { children: ReactNode }) 
   const { updateDeal, getDealById } = useDealsContext();
   const invalidateFreshness = useInvalidateDealFreshness();
   const queryClient = useQueryClient();
-  const { pipelines } = usePipelineContext();
-  const { stages: globalStages } = useDealStages();
+  const pipelineCtx = useContext(PipelineContext);
+  const stagesCtx = useContext(DealStagesContext);
+  const pipelines = pipelineCtx?.pipelines ?? [];
+  const globalStages = stagesCtx?.stages ?? [];
   const [pending, setPending] = useState<PendingState | null>(null);
   const [note, setNote] = useState('');
   const [stage, setStage] = useState<DealStage | ''>('');

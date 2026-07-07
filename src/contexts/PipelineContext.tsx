@@ -15,7 +15,7 @@ interface PipelineContextType {
   refetch: () => Promise<void>;
 }
 
-const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
+export const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
 
 export function PipelineProvider({ children }: { children: ReactNode }) {
   const { pipelines, isLoading, companyId, createPipeline, updatePipeline, deletePipeline, refetch } = usePipelines();
