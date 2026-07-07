@@ -10,3 +10,14 @@ export function formatLenderCurrency(value: number | null | undefined, fallback 
   if (abs >= 1_000_000_000) return `${sign}$${(abs / 1_000_000_000).toFixed(2)}B`;
   return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
 }
+
+/**
+ * Format a raw digit string (or number) as "$1,234,567" for currency inputs.
+ * Empty / non-numeric input returns ''.
+ */
+export function formatCurrencyInput(value: string | number | null | undefined): string {
+  if (value == null || value === '') return '';
+  const digits = String(value).replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  return `$${Number(digits).toLocaleString('en-US')}`;
+}
