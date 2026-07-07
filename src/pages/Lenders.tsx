@@ -62,6 +62,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
 import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
