@@ -1575,7 +1575,7 @@ function MetricsInner() {
       createdAt: new Date().toISOString(),
     };
     saveCustomDashboards({ dashboards: [...customDashboards, newDashboard] });
-    setSelectedDashboard(newDashboard.id);
+    selectDashboard(newDashboard.id);
     setCreateDashboardOpen(false);
     setNewDashboardName('');
     setIsEditMode(true);
@@ -1584,7 +1584,7 @@ function MetricsInner() {
 
   const handleDeleteCustomDashboard = (dashId: string) => {
     saveCustomDashboards({ dashboards: customDashboards.filter(d => d.id !== dashId) });
-    if (selectedDashboard === dashId) setSelectedDashboard('management-review');
+    if (selectedDashboard === dashId) selectDashboard('management-review');
     toast({ title: 'Dashboard deleted' });
   };
 
@@ -2238,7 +2238,7 @@ function MetricsInner() {
                                 "group/item flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                 selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
-                              onClick={() => setSelectedDashboard(dashboard.id)}
+                              onClick={() => selectDashboard(dashboard.id)}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={cn(
@@ -2314,7 +2314,7 @@ function MetricsInner() {
                                     "flex-1 flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                     selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                                   )}
-                                  onClick={() => setSelectedDashboard(dashboard.id)}
+                                  onClick={() => selectDashboard(dashboard.id)}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span className={cn(
@@ -2361,7 +2361,7 @@ function MetricsInner() {
                                 "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                 selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
-                              onClick={() => setSelectedDashboard(dashboard.id)}
+                              onClick={() => selectDashboard(dashboard.id)}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={cn(
@@ -2411,7 +2411,7 @@ function MetricsInner() {
                               "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                               selectedDashboard === dash.id && "bg-primary/10 text-foreground"
                             )}
-                            onClick={() => setSelectedDashboard(dash.id)}
+                            onClick={() => selectDashboard(dash.id)}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <LayoutDashboard className="h-3.5 w-3.5 text-chart-4 shrink-0" />
