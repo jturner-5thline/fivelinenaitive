@@ -85,6 +85,16 @@ const LIAB_ROWS: LiabRow[] = [
 function formatLiabCurrency(val: number | null | undefined): string {
   if (val === null || val === undefined || isNaN(Number(val))) return '—';
   const num = Math.abs(Number(val));
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}MM`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
+  return `$${num.toFixed(0)}`;
+}
+
+// Full-precision variant used only for hover tooltips, so operators can
+// verify the exact underlying dollar amount without cluttering the table.
+function formatLiabCurrencyFull(val: number | null | undefined): string {
+  if (val === null || val === undefined || isNaN(Number(val))) return '—';
+  const num = Math.abs(Number(val));
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
@@ -270,21 +280,40 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
               // item in this reversed list.
               const prev = i < arr.length - 1 ? arr[i + 1].value : null;
               const delta = h.value !== null && prev !== null ? h.value - prev : null;
-              const pct = delta !== null && prev !== null && prev !== 0
-                ? (delta / Math.abs(prev)) * 100
+              // % change is only meaningful when the prior base is a
+              // positive number. If the prior period was zero or negative
+              // (credit balance / net-owed), a raw % is misleading (a
+              // -294% figure came from dividing by a small negative base),
+              // so we surface "n/m" and show the absolute $ change only.
+              const pct = delta !== null && prev !== null && prev > 0
+                ? (delta / prev) * 100
                 : null;
+              const pctUnavailable = delta !== null && (prev === null || prev <= 0);
               const dc = deltaColor(delta);
               return (
                 <tr key={h.label} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <td style={{ padding: '6px 8px', color: 'hsl(0,0%,100%)' }}>{h.label}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}
+                    title={h.value !== null ? formatLiabCurrencyFull(h.value) : undefined}
+                  >
                     {h.value !== null ? formatLiabCurrency(h.value) : '—'}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}
+                    title={delta !== null ? `${signPrefix(delta)}${formatLiabCurrencyFull(delta)}` : undefined}
+                  >
                     {delta !== null ? `${signPrefix(delta)}${formatLiabCurrency(delta)}` : '—'}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
-                    {pct !== null ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%` : '—'}
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}
+                    title={pctUnavailable ? 'Prior period base was zero or negative, so % change is not meaningful.' : undefined}
+                  >
+                    {pct !== null
+                      ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
+                      : pctUnavailable
+                        ? 'n/m'
+                        : '—'}
                   </td>
                 </tr>
               );
@@ -355,9 +384,11 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
     (acc, r) => (r.current === null || r.prior === null ? acc : (acc ?? 0) + (r.current - r.prior)),
     null,
   );
-  const totalPct = totalDelta !== null && totalCurrent !== null && totalCurrent - totalDelta !== 0
-    ? (totalDelta / Math.abs(totalCurrent - totalDelta)) * 100
+  const totalPriorBase = totalDelta !== null && totalCurrent !== null ? totalCurrent - totalDelta : null;
+  const totalPct = totalDelta !== null && totalPriorBase !== null && totalPriorBase > 0
+    ? (totalDelta / totalPriorBase) * 100
     : null;
+  const totalPctUnavailable = totalDelta !== null && (totalPriorBase === null || totalPriorBase <= 0);
   const totalDeltaColor = totalDelta === null || totalDelta === 0
     ? 'rgba(255,255,255,0.55)'
     : totalDelta > 0
@@ -369,15 +400,28 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
     <div className="text-xs">
       <div className="flex items-baseline gap-2 px-2 pb-2">
         <span className="text-[9px] font-bold uppercase tracking-[1px] text-white/55">Total</span>
-        <span className="text-[15px] font-bold text-white leading-none">
+        <span
+          className="text-[15px] font-bold text-white leading-none"
+          title={totalCurrent !== null ? formatLiabCurrencyFull(totalCurrent) : undefined}
+        >
           {totalCurrent !== null ? formatLiabCurrency(totalCurrent) : '—'}
         </span>
         {totalDelta !== null && (
-          <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: totalDeltaColor }}>
+          <span
+            className="text-[11px] font-semibold whitespace-nowrap"
+            style={{ color: totalDeltaColor }}
+            title={
+              totalPctUnavailable
+                ? `${signPrefix(totalDelta)}${formatLiabCurrencyFull(Math.abs(totalDelta))} · Prior period base was zero or negative, so % change is not meaningful.`
+                : `${signPrefix(totalDelta)}${formatLiabCurrencyFull(Math.abs(totalDelta))}`
+            }
+          >
             {signPrefix(totalDelta)}{formatLiabCurrency(Math.abs(totalDelta))}
-            {totalPct !== null && (
+            {totalPct !== null ? (
               <span className="ml-1 opacity-85">({signPrefix(totalPct)}{Math.abs(totalPct).toFixed(1)}%)</span>
-            )}
+            ) : totalPctUnavailable ? (
+              <span className="ml-1 opacity-85">(n/m)</span>
+            ) : null}
           </span>
         )}
       </div>
@@ -393,9 +437,10 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
         const current = snap?.current ? extractRowValue(snap.current, row) : null;
         const prior = snap?.prior ? extractRowValue(snap.prior, row) : null;
         const delta = current !== null && prior !== null ? current - prior : null;
-        const pct = delta !== null && prior !== null && prior !== 0
-          ? (delta / Math.abs(prior)) * 100
+        const pct = delta !== null && prior !== null && prior > 0
+          ? (delta / prior) * 100
           : null;
+        const pctUnavailable = delta !== null && (prior === null || prior <= 0);
         // For liabilities, an INCREASE (positive delta) is unfavorable → red.
         const deltaColor = delta === null || delta === 0
           ? 'text-muted-foreground'
@@ -422,18 +467,29 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
               )}
               <span className="truncate">{row.name}</span>
             </div>
-            <div className="text-right text-foreground/90">
+            <div
+              className="text-right text-foreground/90"
+              title={current !== null ? formatLiabCurrencyFull(current) : undefined}
+            >
               {current !== null ? formatLiabCurrency(current) : '—'}
             </div>
-            <div className={`text-right ${deltaColor}`}>
+            <div
+              className={`text-right ${deltaColor}`}
+              title={delta !== null ? `${signPrefix(delta)}${formatLiabCurrencyFull(delta)}` : undefined}
+            >
               {delta !== null
                 ? `${signPrefix(delta)}${formatLiabCurrency(delta)}`
                 : '—'}
             </div>
-            <div className={`text-right ${deltaColor}`}>
+            <div
+              className={`text-right ${deltaColor}`}
+              title={pctUnavailable ? 'Prior period base was zero or negative, so % change is not meaningful.' : undefined}
+            >
               {pct !== null
                 ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
-                : '—'}
+                : pctUnavailable
+                  ? 'n/m'
+                  : '—'}
             </div>
           </button>
         );
@@ -442,21 +498,34 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
   );
 }
 
-const renderDelta = (current: number | null, prior: number | null, label: string) => {
+const renderDelta = (
+  current: number | null,
+  prior: number | null,
+  label: string,
+  opts: { polarity?: 'higher-is-better' | 'lower-is-better' } = {},
+) => {
   if (current === null || prior === null) {
     return <span style={{ color: 'rgba(255,255,255,0.45)' }}>No prior {label} comparison</span>;
   }
   const delta = current - prior;
-  const pct = prior === 0 ? null : (delta / Math.abs(prior)) * 100;
-  const positive = delta >= 0;
-  const color = positive ? '#3de89a' : '#ff6b7a';
-  const arrow = positive ? '▲' : '▼';
-  const sign = positive ? '+' : '−';
+  // Only compute % when the prior base is strictly positive. A zero or
+  // negative base produces misleading percentages (e.g. -294% on a small
+  // negative prior), so we flag those as "n/m" with a tooltip.
+  const pct = prior > 0 ? (delta / prior) * 100 : null;
+  const pctUnavailable = prior <= 0;
+  const polarity = opts.polarity ?? 'higher-is-better';
+  const favorable = polarity === 'higher-is-better' ? delta >= 0 : delta <= 0;
+  const color = delta === 0 ? 'rgba(255,255,255,0.55)' : favorable ? '#3de89a' : '#ff6b7a';
+  const arrow = delta >= 0 ? '▲' : '▼';
+  const sign = delta >= 0 ? '+' : '−';
   const absDelta = Math.abs(delta);
   const dollar = `${sign}${fmtUSD(absDelta)}`;
-  const pctStr = pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  const pctStr = pct === null ? (pctUnavailable ? 'n/m' : '—') : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  const tooltip = pctUnavailable
+    ? `Prior ${label} base was zero or negative, so % change is not meaningful.`
+    : undefined;
   return (
-    <span style={{ color, fontWeight: 600 }}>
+    <span style={{ color, fontWeight: 600 }} title={tooltip}>
       {arrow} {dollar} <span style={{ opacity: 0.85, fontWeight: 500 }}>({pctStr}) vs prior {label}</span>
     </span>
   );
