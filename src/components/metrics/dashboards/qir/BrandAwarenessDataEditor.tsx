@@ -208,13 +208,85 @@ export function BrandAwarenessDataEditor({ open, onClose }: Props) {
                       />
                     ))}
                   </tr>
+                  <ChangeRows metricId={m.id} periods={periods} valueMap={valueMap} />
                 </tbody>
               </table>
             </TabsContent>
           ))}
         </Tabs>
       </DialogContent>
+      {/* editor closed above via </Dialog> */}
     </Dialog>
+  );
+}
+
+function formatDelta(n: number): string {
+  const sign = n > 0 ? '+' : n < 0 ? '−' : '';
+  const abs = Math.abs(n);
+  const formatted = abs >= 1000
+    ? abs.toLocaleString('en-US', { maximumFractionDigits: 0 })
+    : abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  return `${sign}${formatted}`;
+}
+
+function formatPct(pct: number): string {
+  const sign = pct > 0 ? '+' : pct < 0 ? '−' : '';
+  return `${sign}${Math.abs(pct).toFixed(1)}%`;
+}
+
+function toneClass(n: number): string {
+  if (n > 0) return 'text-emerald-500';
+  if (n < 0) return 'text-rose-500';
+  return 'text-muted-foreground';
+}
+
+function ChangeRows({
+  metricId, periods, valueMap,
+}: {
+  metricId: string;
+  periods: { key: string; label: string }[];
+  valueMap: Map<string, number>;
+}) {
+  const values = periods.map(p => valueMap.get(`${metricId}::${p.key}`));
+  return (
+    <>
+      <tr className="border-t border-border/40">
+        <td className="pr-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground/70 sticky left-0 bg-background whitespace-nowrap">
+          Δ vs prev
+        </td>
+        {values.map((v, i) => {
+          const prev = i > 0 ? values[i - 1] : undefined;
+          const key = periods[i].key;
+          if (v === undefined || prev === undefined) {
+            return <td key={key} className="px-2 py-1 text-center text-xs text-muted-foreground/40">—</td>;
+          }
+          const delta = v - prev;
+          return (
+            <td key={key} className={cn('px-2 py-1 text-center text-xs tabular-nums', toneClass(delta))}>
+              {formatDelta(delta)}
+            </td>
+          );
+        })}
+      </tr>
+      <tr>
+        <td className="pr-3 py-1 text-[11px] uppercase tracking-wide text-muted-foreground/70 sticky left-0 bg-background whitespace-nowrap">
+          Δ %
+        </td>
+        {values.map((v, i) => {
+          const prev = i > 0 ? values[i - 1] : undefined;
+          const key = periods[i].key;
+          if (v === undefined || prev === undefined || prev === 0) {
+            return <td key={key} className="px-2 py-1 text-center text-xs text-muted-foreground/40">—</td>;
+          }
+          const pct = ((v - prev) / Math.abs(prev)) * 100;
+          return (
+            <td key={key} className={cn('px-2 py-1 text-center text-xs tabular-nums', toneClass(pct))}>
+              {formatPct(pct)}
+            </td>
+          );
+        })}
+      </tr>
+    </>
   );
 }
 
