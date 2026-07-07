@@ -713,10 +713,11 @@ export function AdminAgentDuty1Config() {
         </p>
       ) : (
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 h-8">
+        <TabsList className="grid w-full grid-cols-6 h-8">
           <TabsTrigger value="general" className="text-[11px]">General</TabsTrigger>
           <TabsTrigger value="scope" className="text-[11px]">Scope</TabsTrigger>
           <TabsTrigger value="rules" className="text-[11px]">Rules</TabsTrigger>
+          <TabsTrigger value="knowledge" className="text-[11px]">Knowledge</TabsTrigger>
           <TabsTrigger value="calendar" className="text-[11px]">Calendar</TabsTrigger>
           <TabsTrigger value="team" className="text-[11px]">Team</TabsTrigger>
         </TabsList>
