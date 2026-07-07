@@ -2324,19 +2324,18 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' ? (
-                // Pipeline tab manages its own master/detail scrolling
-                // (left deal list + right memo pane). Wrapping it in the
-                // outer ScrollArea collapses the inner scroll regions,
-                // so we render it directly inside a flex container that
-                // gives it a bounded height.
+              {activeTab === 'pipeline' || activeTab === 'end_of_day' ? (
+                // Pipeline and End of Day tabs manage their own master/detail
+                // scrolling (left list + right pane). Wrapping them in the
+                // outer ScrollArea collapses the inner scroll regions, so we
+                // render directly inside a bounded flex container.
                 <div
                   className="h-full w-full max-w-full flex flex-col min-h-0 min-w-0 overflow-hidden"
                   style={{
                     paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                     paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                    paddingBottom: 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                    paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.75rem, 1.2vw, 1.5rem)',
                   }}
                 >
                   <AddToDealCalendarProvider>
@@ -2348,11 +2347,20 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                         slideDirection === 'right' && 'animate-slide-in-from-left',
                       )}
                     >
-                      {contentReady && (
+                      {contentReady && activeTab === 'pipeline' && (
                         <PipelineTab
                           enabled={open}
                           onNavigate={handleNavigate}
                           targetDealOwnerName={targetAssigneeName}
+                          targetUserId={targetUserId}
+                          briefingType={briefingType}
+                        />
+                      )}
+                      {contentReady && activeTab === 'end_of_day' && (
+                        <EndOfDayTab
+                          enabled={open}
+                          onNavigate={handleNavigate}
+                          targetAssigneeName={targetAssigneeName}
                           targetUserId={targetUserId}
                           briefingType={briefingType}
                         />
