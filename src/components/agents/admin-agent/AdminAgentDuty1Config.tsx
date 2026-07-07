@@ -1079,6 +1079,58 @@ export function AdminAgentDuty1Config() {
               <span className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
             </div>
 
+            {/* Prompt inclusion filter */}
+            <div className="rounded border border-border/40 bg-background/40 p-2 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Include in agent prompt
+                </p>
+                <span className="text-[10px] text-muted-foreground">
+                  {tagFilter.length === 0
+                    ? 'All tagged & untagged documents'
+                    : `Only docs tagged: ${tagFilter.join(', ')}`}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {KB_TAG_OPTIONS.map((t) => {
+                  const on = tagFilter.includes(t.value);
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => toggleTagFilter(t.value)}
+                      className={`px-2 h-6 rounded-full border text-[10px] transition-colors ${
+                        on
+                          ? 'bg-primary/20 border-primary/50 text-primary'
+                          : 'bg-card/40 border-border/50 text-muted-foreground hover:bg-card'
+                      } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+                {tagFilter.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => {
+                      setTagFilter([]);
+                      if (companyId) {
+                        supabase
+                          .from('admin_agent_settings')
+                          .upsert({ company_id: companyId, knowledge_tag_filter: [] }, { onConflict: 'company_id' })
+                          .then(() => qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] }));
+                      }
+                    }}
+                    className="px-2 h-6 rounded-full text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
             {knowledgeQ.isLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : (knowledgeQ.data ?? []).length === 0 ? (
