@@ -1289,9 +1289,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.minRevenue ? formatLenderCurrency(Number(editForm.minRevenue)) : ''}
+                          value={formatCurrencyInput(editForm.minRevenue)}
                           onChange={(e) => setEditForm({ ...editForm, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $5.00MM"
+                          placeholder="e.g., $5,000,000"
                           className="text-sm"
                         />
                       </div>
@@ -1300,9 +1300,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.ebitdaMin ? formatLenderCurrency(Number(editForm.ebitdaMin)) : ''}
+                          value={formatCurrencyInput(editForm.ebitdaMin)}
                           onChange={(e) => setEditForm({ ...editForm, ebitdaMin: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $1.00MM"
+                          placeholder="e.g., $1,000,000"
                           className="text-sm"
                         />
                       </div>
