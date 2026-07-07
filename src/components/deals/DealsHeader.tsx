@@ -30,14 +30,11 @@ import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { lazyRetry } from '@/lib/lazyRetry';
-import { DashboardModal } from '@/components/dashboard/DashboardModal';
+import { DashboardModalLazyHost } from '@/components/dashboard/DashboardModalLazyHost';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
 // the real component's chunk + data hydrate in the background.
-// NOTE: DashboardModal is imported statically above — its lazy chunk was
-// intermittently failing to fetch in preview ("Failed to fetch dynamically
-// imported module") after the asset manifest went stale.
 const loadTasks = lazyRetry(() =>
   import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay })),
 );
@@ -614,16 +611,15 @@ export function DealsHeader() {
         </div>
       </div>
       {isFifthLine && isDashboardOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
-          <DashboardModal
-            open={isDashboardOpen}
-            onOpenChange={(o) => {
-              setIsDashboardOpen(o);
-              if (!o) setDashboardInitialTab('dashboard');
-            }}
-            initialTab={dashboardInitialTab}
-          />
-        </Suspense>
+        <DashboardModalLazyHost
+          open={isDashboardOpen}
+          onOpenChange={(o) => {
+            setIsDashboardOpen(o);
+            if (!o) setDashboardInitialTab('dashboard');
+          }}
+          initialTab={dashboardInitialTab}
+          fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}
+        />
       )}
       {/*
         Tasks overlays are kept mounted after first open (or after the

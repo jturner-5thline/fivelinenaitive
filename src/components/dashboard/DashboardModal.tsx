@@ -30,7 +30,7 @@ import {
 
 Chart.register(...registerables);
 
-interface DashboardModalProps {
+export interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
@@ -820,6 +820,8 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
     </Dialog>
   );
 }
+
+export default DashboardModal;
 
 const DASHBOARD_CSS = `
 /* Let the shared .popup-shell-surface background show through. */

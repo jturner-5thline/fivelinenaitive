@@ -40,12 +40,10 @@ import { useEndOfDayOutstandingCount } from '@/hooks/useEndOfDayOutstandingCount
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { AddToDealCalendarProvider } from '@/components/calendar/AddToDealCalendarProvider';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+import { DashboardModalLazyHost } from './DashboardModalLazyHost';
 
 // Lazy: the Dashboard tab embeds the full DashboardModal body. Only
 // loaded when the Dashboard tab is first activated.
-const DashboardModal = lazy(() =>
-  import('./DashboardModal').then((m) => ({ default: m.DashboardModal })),
-);
 const LazyTasksPage = lazy(() => import('@/pages/Tasks'));
 
 // Reused from the main Email widget pop-up so the AI Assist experience
@@ -2392,11 +2390,11 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   )}
                   {contentReady && activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
                   {contentReady && activeTab === 'dashboard' && (
-                    <Suspense fallback={<TabSkeleton />}>
+                    <>
                       <div className="h-[78vh] min-h-[500px] flex flex-col min-h-0 -mx-3 -my-2">
-                        <DashboardModal embedded open onOpenChange={() => {}} />
+                        <DashboardModalLazyHost embedded open onOpenChange={() => {}} fallback={<TabSkeleton />} />
                       </div>
-                    </Suspense>
+                    </>
                   )}
                   {contentReady && activeTab === 'daily_rundown' && (
                     <DailyRundownTab
