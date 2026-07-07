@@ -858,10 +858,14 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-56 p-2 z-[9999] bg-popover"
+                      className="w-56 p-2 z-[9999] text-slate-100"
                       align="start"
                       onOpenAutoFocus={(e) => e.preventDefault()}
                       onCloseAutoFocus={(e) => e.preventDefault()}
+                      style={{
+                        background: 'hsl(220 45% 12%)',
+                        borderColor: 'hsl(220 45% 40% / 0.28)',
+                      }}
                     >
                       <div
                         className="space-y-1 max-h-[300px] overflow-y-auto overscroll-contain pr-1"
