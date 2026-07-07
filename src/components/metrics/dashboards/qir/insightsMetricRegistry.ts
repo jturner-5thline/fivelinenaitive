@@ -112,6 +112,14 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'finserv-profit-per-hour': 'FinServ Financial Metrics',
   'finserv-active-client-count': 'FinServ Financial Metrics',
   'finserv-total-mrr': 'FinServ Financial Metrics',
+  // Brand Awareness — placeholder widgets (no live resolver yet)
+  'ba-website-users': 'Brand Awareness',
+  'ba-seo-clicks': 'Brand Awareness',
+  'ba-seo-impressions': 'Brand Awareness',
+  'ba-linkedin-impressions': 'Brand Awareness',
+  'ba-linkedin-interactions': 'Brand Awareness',
+  'ba-ai-search-readiness-score': 'Brand Awareness',
+  'ba-market-awareness-score': 'Brand Awareness',
 };
 
 function sourceForDataSourceId(id: string): string {
@@ -180,7 +188,29 @@ export function buildInsightsMetricOptions(
     };
   });
 
-  // 3. Workspace-defined custom metrics (always scalar).
+  // 3. Brand Awareness placeholder metrics — surfaced in the picker so the
+  //    category is discoverable. No live resolver wired yet; they render
+  //    "Live on add" in the tile preview via ALWAYS_KEPT_METRIC_IDS.
+  const brandAwareness: InsightsMetricOption[] = [
+    { id: 'ba-website-users', label: 'Website Users', description: 'Unique visitors to your site', format: 'number' as MetricFormatHint },
+    { id: 'ba-seo-clicks', label: 'SEO Clicks', description: 'Clicks from organic search', format: 'number' as MetricFormatHint },
+    { id: 'ba-seo-impressions', label: 'SEO Impressions', description: 'Times you appeared in search results', format: 'number' as MetricFormatHint },
+    { id: 'ba-linkedin-impressions', label: 'LinkedIn Impressions', description: 'Views of your LinkedIn content', format: 'number' as MetricFormatHint },
+    { id: 'ba-linkedin-interactions', label: 'LinkedIn Interactions', description: 'Reactions, comments, and shares', format: 'number' as MetricFormatHint },
+    { id: 'ba-ai-search-readiness-score', label: 'AI Search Readiness Score', description: 'Rankscale — visibility in AI search', format: 'number' as MetricFormatHint },
+    { id: 'ba-market-awareness-score', label: 'Market Awareness Score', description: 'Composite brand awareness signal', format: 'number' as MetricFormatHint },
+  ].map(m => ({
+    id: `metric:${m.id}`,
+    kind: 'metric' as const,
+    label: m.label,
+    description: m.description,
+    source: 'Brand Awareness',
+    format: m.format,
+    supportsDrilldown: false,
+    metricSourceId: m.id,
+  }));
+
+  // 4. Workspace-defined custom metrics (always scalar).
   const custom: InsightsMetricOption[] = customMetrics.map(cm => ({
     id: `custom:${cm.id}`,
     kind: 'custom-metric' as const,
@@ -211,9 +241,10 @@ export function buildInsightsMetricOptions(
     'Rep Scorecard',
     'HubSpot Dashboard',
     'Cross-source',
+    'Brand Awareness',
     'Custom Metrics',
   ];
-  const all = [...templates, ...metricSources, ...custom];
+  const all = [...templates, ...metricSources, ...brandAwareness, ...custom];
   const grouped = new Map<string, InsightsMetricOption[]>();
   for (const opt of all) {
     const arr = grouped.get(opt.source) ?? [];
