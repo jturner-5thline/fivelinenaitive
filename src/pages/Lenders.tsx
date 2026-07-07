@@ -2155,6 +2155,7 @@ export default function Lenders() {
                         title: contact.title,
                         email: contact.email,
                         phone: contact.phone,
+                        geography: contact.geography,
                       }}
                       onChange={(next) => setForm(prev => ({
                         ...prev,
@@ -2165,6 +2166,7 @@ export default function Lenders() {
                           title: next.title,
                           email: next.email,
                           phone: next.phone,
+                          geography: next.geography ?? '',
                         } : c),
                       }))}
                     />
