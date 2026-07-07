@@ -13589,6 +13589,72 @@ export type Database = {
         }
         Relationships: []
       }
+      event_claap_match_cache: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          event_id: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          locked: boolean
+          org_company_id: string
+          reasons: Json
+          recorded_at: string | null
+          recorder_email: string | null
+          recorder_name: string | null
+          recording_id: string | null
+          recording_title: string | null
+          recording_url: string | null
+          score: number | null
+          status: string
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          event_id: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          locked?: boolean
+          org_company_id: string
+          reasons?: Json
+          recorded_at?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id?: string | null
+          recording_title?: string | null
+          recording_url?: string | null
+          score?: number | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          event_id?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          locked?: boolean
+          org_company_id?: string
+          reasons?: Json
+          recorded_at?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id?: string | null
+          recording_title?: string | null
+          recording_url?: string | null
+          score?: number | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_claap_recordings: {
         Row: {
           company_ids: string[]
