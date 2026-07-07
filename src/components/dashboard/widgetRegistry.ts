@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, ListTodo, Bell, Calendar, CalendarDays, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone, Inbox } from 'lucide-react';
+import { Briefcase, ListTodo, Bell, Calendar, CalendarDays, Mail, Activity, Newspaper, BarChart3, Bot, Zap, MessageSquare, Clock, Phone, Inbox, Users, MousePointerClick, Eye, Linkedin, ThumbsUp, Radar } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { lazyRetry } from '@/lib/lazyRetry';
 
@@ -8,7 +8,7 @@ export interface WidgetDefinition {
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  category: 'core' | 'intelligence' | 'activity' | 'custom';
+  category: 'core' | 'intelligence' | 'activity' | 'brand-awareness' | 'custom';
   defaultSize: { w: number; h: number };
   minSize: { w: number; h: number };
   component: React.LazyExoticComponent<React.ComponentType<any>> | React.ComponentType<any>;
@@ -29,6 +29,15 @@ const WeeklyHoursWidget = React.lazy(lazyRetry(() => import('./WeeklyHoursWidget
 const SalesCallPrepWidget = React.lazy(lazyRetry(() => import('./SalesCallPrepWidget').then(m => ({ default: m.SalesCallPrepWidget }))));
 const ExpectedThisWeekWidget = React.lazy(lazyRetry(() => import('./ExpectedThisWeekWidget').then(m => ({ default: m.ExpectedThisWeekWidget }))));
 const RequestBatchingWidget = React.lazy(lazyRetry(() => import('./RequestBatchingWidget').then(m => ({ default: m.RequestBatchingWidget }))));
+
+// Brand Awareness placeholders (data source coming soon)
+const WebsiteUsersWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.WebsiteUsersWidget }))));
+const SeoClicksWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.SeoClicksWidget }))));
+const SeoImpressionsWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.SeoImpressionsWidget }))));
+const LinkedInImpressionsWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.LinkedInImpressionsWidget }))));
+const LinkedInInteractionsWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.LinkedInInteractionsWidget }))));
+const AiSearchReadinessScoreWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.AiSearchReadinessScoreWidget }))));
+const MarketAwarenessScoreWidget = React.lazy(lazyRetry(() => import('./BrandAwarenessWidgets').then(m => ({ default: m.MarketAwarenessScoreWidget }))));
 
 export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
   'my-deals': {
@@ -171,6 +180,76 @@ export const WIDGET_REGISTRY: Record<string, WidgetDefinition> = {
     minSize: { w: 3, h: 3 },
     component: RequestBatchingWidget,
   },
+  'website-users': {
+    type: 'website-users',
+    label: 'Website Users',
+    description: 'Unique visitors to your site',
+    icon: Users,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: WebsiteUsersWidget,
+  },
+  'seo-clicks': {
+    type: 'seo-clicks',
+    label: 'SEO Clicks',
+    description: 'Clicks from organic search results',
+    icon: MousePointerClick,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: SeoClicksWidget,
+  },
+  'seo-impressions': {
+    type: 'seo-impressions',
+    label: 'SEO Impressions',
+    description: 'Times you appeared in organic search',
+    icon: Eye,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: SeoImpressionsWidget,
+  },
+  'linkedin-impressions': {
+    type: 'linkedin-impressions',
+    label: 'LinkedIn Impressions',
+    description: 'Views of your LinkedIn content',
+    icon: Linkedin,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: LinkedInImpressionsWidget,
+  },
+  'linkedin-interactions': {
+    type: 'linkedin-interactions',
+    label: 'LinkedIn Interactions',
+    description: 'Reactions, comments, and shares on LinkedIn',
+    icon: ThumbsUp,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: LinkedInInteractionsWidget,
+  },
+  'ai-search-readiness-score': {
+    type: 'ai-search-readiness-score',
+    label: 'AI Search Readiness Score',
+    description: 'Rankscale — visibility across AI search engines',
+    icon: Sparkles,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: AiSearchReadinessScoreWidget,
+  },
+  'market-awareness-score': {
+    type: 'market-awareness-score',
+    label: 'Market Awareness Score',
+    description: 'Composite score across brand awareness signals',
+    icon: Radar,
+    category: 'brand-awareness',
+    defaultSize: { w: 3, h: 3 },
+    minSize: { w: 2, h: 2 },
+    component: MarketAwarenessScoreWidget,
+  },
 };
 
 export function getWidgetsByCategory() {
@@ -178,6 +257,7 @@ export function getWidgetsByCategory() {
     core: [],
     intelligence: [],
     activity: [],
+    'brand-awareness': [],
     custom: [],
   };
   Object.values(WIDGET_REGISTRY).forEach(w => {
