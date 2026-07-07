@@ -1599,6 +1599,55 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                             <div className="grid grid-cols-2 gap-6">
                               {/* Left column - Contact details */}
                               <div className="grid gap-3">
+                                {additionalContacts.length > 0 && lender.id && onSave && (
+                                  <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Primary Contact</Label>
+                                    <Select
+                                      value="__current"
+                                      onValueChange={async (val) => {
+                                        if (val === '__current' || !lender.id || !onSave) return;
+                                        const promoted = additionalContacts.find((c) => c.id === val);
+                                        if (!promoted) return;
+                                        const prev = {
+                                          name: lender.contact.name || '',
+                                          email: lender.contact.email || '',
+                                          phone: lender.contact.phone || '',
+                                        };
+                                        // Persist master lender primary swap
+                                        await onSave(lender.id, {
+                                          ...editForm,
+                                          contactName: promoted.name || '',
+                                          email: promoted.email || '',
+                                          contactPhone: promoted.phone || '',
+                                        } as LenderEditData);
+                                        await deleteAdditionalContact(promoted.id);
+                                        if (prev.name || prev.email || prev.phone) {
+                                          await addContact({
+                                            name: prev.name || 'Previous Primary',
+                                            email: prev.email || null,
+                                            phone: prev.phone || null,
+                                          });
+                                        }
+                                        await logChange('updated', 'Primary Contact', prev.name, promoted.name);
+                                        toast.success(`${promoted.name} is now the primary contact`);
+                                      }}
+                                    >
+                                      <SelectTrigger className="text-sm h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__current">
+                                          {lender.contact.name || 'Unnamed'}{lender.contact.email ? ` — ${lender.contact.email}` : ''}
+                                        </SelectItem>
+                                        {additionalContacts.map((c) => (
+                                          <SelectItem key={c.id} value={c.id}>
+                                            {c.name}{c.email ? ` — ${c.email}` : ''}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
                                 {lender.contact.name && (
                                   <div className="flex items-center gap-3">
                                     <User className="h-4 w-4 text-muted-foreground" />
