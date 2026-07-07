@@ -498,21 +498,34 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
   );
 }
 
-const renderDelta = (current: number | null, prior: number | null, label: string) => {
+const renderDelta = (
+  current: number | null,
+  prior: number | null,
+  label: string,
+  opts: { polarity?: 'higher-is-better' | 'lower-is-better' } = {},
+) => {
   if (current === null || prior === null) {
     return <span style={{ color: 'rgba(255,255,255,0.45)' }}>No prior {label} comparison</span>;
   }
   const delta = current - prior;
-  const pct = prior === 0 ? null : (delta / Math.abs(prior)) * 100;
-  const positive = delta >= 0;
-  const color = positive ? '#3de89a' : '#ff6b7a';
-  const arrow = positive ? '▲' : '▼';
-  const sign = positive ? '+' : '−';
+  // Only compute % when the prior base is strictly positive. A zero or
+  // negative base produces misleading percentages (e.g. -294% on a small
+  // negative prior), so we flag those as "n/m" with a tooltip.
+  const pct = prior > 0 ? (delta / prior) * 100 : null;
+  const pctUnavailable = prior <= 0;
+  const polarity = opts.polarity ?? 'higher-is-better';
+  const favorable = polarity === 'higher-is-better' ? delta >= 0 : delta <= 0;
+  const color = delta === 0 ? 'rgba(255,255,255,0.55)' : favorable ? '#3de89a' : '#ff6b7a';
+  const arrow = delta >= 0 ? '▲' : '▼';
+  const sign = delta >= 0 ? '+' : '−';
   const absDelta = Math.abs(delta);
   const dollar = `${sign}${fmtUSD(absDelta)}`;
-  const pctStr = pct === null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  const pctStr = pct === null ? (pctUnavailable ? 'n/m' : '—') : `${sign}${Math.abs(pct).toFixed(1)}%`;
+  const tooltip = pctUnavailable
+    ? `Prior ${label} base was zero or negative, so % change is not meaningful.`
+    : undefined;
   return (
-    <span style={{ color, fontWeight: 600 }}>
+    <span style={{ color, fontWeight: 600 }} title={tooltip}>
       {arrow} {dollar} <span style={{ opacity: 0.85, fontWeight: 500 }}>({pctStr}) vs prior {label}</span>
     </span>
   );
