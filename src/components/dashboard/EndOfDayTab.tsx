@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuLabel,
+  DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuCheckboxItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -1131,39 +1131,65 @@ export function EndOfDayTab({
           />
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
-            const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
-            const on = filterChips.has(chip);
-            return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
-                key={chip}
-                onClick={() => setFilterChips(prev => {
-                  const next = new Set(prev);
-                  if (next.has(chip)) next.delete(chip); else next.add(chip);
-                  return next;
-                })}
+                type="button"
                 className={cn(
-                  'h-6 px-2 rounded-full text-[10px] font-medium border transition-colors',
-                  on
+                  'h-6 px-2 rounded-full text-[10px] font-medium border transition-colors inline-flex items-center gap-1',
+                  filterChips.size > 0
                     ? 'bg-primary/15 border-primary/40 text-primary'
                     : 'bg-white/[0.03] border-white/10 text-white/70 hover:text-white',
                 )}
               >
-                {label}
+                Filters{filterChips.size > 0 ? ` (${filterChips.size})` : ''}
+                <ChevronDown className="h-3 w-3" />
               </button>
-            );
-          })}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-40">
+              <DropdownMenuLabel className="text-[10px]">Filter by</DropdownMenuLabel>
+              {(['internal', 'deals', 'dismissed'] as FilterChip[]).map(chip => {
+                const label = chip === 'internal' ? 'Internal' : chip === 'deals' ? 'Deals' : 'Dismissed';
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={chip}
+                    checked={filterChips.has(chip)}
+                    onSelect={(e) => e.preventDefault()}
+                    onCheckedChange={() => setFilterChips(prev => {
+                      const next = new Set(prev);
+                      if (next.has(chip)) next.delete(chip); else next.add(chip);
+                      return next;
+                    })}
+                    className="text-xs"
+                  >
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+              {filterChips.size > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-xs justify-center"
+                    onSelect={() => setFilterChips(new Set())}
+                  >
+                    Clear filters
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="ml-auto flex items-center gap-2">
             {recentDismissals.length > 0 && (
               <Popover>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="h-6 px-2 rounded-full text-[10px] font-medium border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors inline-flex items-center gap-1"
-                    title="Undo recent dismissals"
+                    aria-label={`Undo recent dismissals (${recentDismissals.length})`}
+                    className="h-6 w-6 rounded-full border border-white/10 bg-white/[0.03] text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors inline-flex items-center justify-center"
+                    title={`Undo recent dismissals (${recentDismissals.length})`}
                   >
                     <Undo2 className="h-3 w-3" />
-                    Undo ({recentDismissals.length})
                   </button>
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-72 p-0">
