@@ -400,15 +400,28 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
     <div className="text-xs">
       <div className="flex items-baseline gap-2 px-2 pb-2">
         <span className="text-[9px] font-bold uppercase tracking-[1px] text-white/55">Total</span>
-        <span className="text-[15px] font-bold text-white leading-none">
+        <span
+          className="text-[15px] font-bold text-white leading-none"
+          title={totalCurrent !== null ? formatLiabCurrencyFull(totalCurrent) : undefined}
+        >
           {totalCurrent !== null ? formatLiabCurrency(totalCurrent) : '—'}
         </span>
         {totalDelta !== null && (
-          <span className="text-[11px] font-semibold whitespace-nowrap" style={{ color: totalDeltaColor }}>
+          <span
+            className="text-[11px] font-semibold whitespace-nowrap"
+            style={{ color: totalDeltaColor }}
+            title={
+              totalPctUnavailable
+                ? `${signPrefix(totalDelta)}${formatLiabCurrencyFull(Math.abs(totalDelta))} · Prior period base was zero or negative, so % change is not meaningful.`
+                : `${signPrefix(totalDelta)}${formatLiabCurrencyFull(Math.abs(totalDelta))}`
+            }
+          >
             {signPrefix(totalDelta)}{formatLiabCurrency(Math.abs(totalDelta))}
-            {totalPct !== null && (
+            {totalPct !== null ? (
               <span className="ml-1 opacity-85">({signPrefix(totalPct)}{Math.abs(totalPct).toFixed(1)}%)</span>
-            )}
+            ) : totalPctUnavailable ? (
+              <span className="ml-1 opacity-85">(n/m)</span>
+            ) : null}
           </span>
         )}
       </div>
