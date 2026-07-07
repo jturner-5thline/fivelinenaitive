@@ -531,6 +531,41 @@ export function AdminAgentDuty1Config() {
     }
   }
 
+  // ── Rename knowledge doc ─────────────────────────────────────
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  function startRename(doc: KnowledgeDoc) {
+    setRenamingId(doc.id);
+    setRenameValue(doc.title);
+  }
+
+  async function commitRename(doc: KnowledgeDoc) {
+    const next = renameValue.trim();
+    setRenamingId(null);
+    if (!next || next === doc.title) return;
+    try {
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ title: next })
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      toast.success('Renamed.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not rename.');
+    }
+  }
+
+  function formatDocSize(n: number | null): string {
+    if (!n || n <= 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
   async function addHoliday() {
     if (!companyId || !newHolidayDate) return;
     const { error } = await supabase
@@ -1008,11 +1043,32 @@ export function AdminAgentDuty1Config() {
                         <FileText className="h-3 w-3 mt-1 text-muted-foreground shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-medium truncate">{d.title}</p>
+                        {renamingId === d.id ? (
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => commitRename(d)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); commitRename(d); }
+                              if (e.key === 'Escape') { e.preventDefault(); setRenamingId(null); }
+                            }}
+                            className="h-6 text-[11px] px-1.5"
+                          />
+                        ) : (
+                          <p
+                            className="text-[11px] font-medium truncate cursor-text"
+                            title="Double-click to rename"
+                            onDoubleClick={() => !readOnly && startRename(d)}
+                          >
+                            {d.title}
+                          </p>
+                        )}
                         <p className="text-[10px] text-muted-foreground truncate">
                           {d.source_type === 'file'
-                            ? `${d.mime_type || 'file'}${d.size_bytes ? ` · ${Math.max(1, Math.round(d.size_bytes / 1024))} KB` : ''}`
+                            ? `${(d.mime_type || 'file').split('/').pop()}${d.size_bytes ? ` · ${formatDocSize(d.size_bytes)}` : ''}`
                             : 'Pasted text'}
+                          {' · Uploaded '}{format(new Date(d.created_at), 'MMM d, yyyy')}
                           {' · '}
                           {d.status === 'ready' ? (
                             <span className="text-emerald-400">Ready</span>
@@ -1025,6 +1081,15 @@ export function AdminAgentDuty1Config() {
                       </div>
                       {!readOnly && (
                         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => startRename(d)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            aria-label="Rename document"
+                            title="Rename"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
                           {d.source_type === 'file' && d.status !== 'pending' && (
                             <button
                               type="button"
@@ -1039,8 +1104,9 @@ export function AdminAgentDuty1Config() {
                           <button
                             type="button"
                             onClick={() => removeKnowledgeDoc(d)}
-                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-destructive"
                             aria-label="Remove document"
+                            title="Delete"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
