@@ -85,6 +85,16 @@ const LIAB_ROWS: LiabRow[] = [
 function formatLiabCurrency(val: number | null | undefined): string {
   if (val === null || val === undefined || isNaN(Number(val))) return '—';
   const num = Math.abs(Number(val));
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}MM`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
+  return `$${num.toFixed(0)}`;
+}
+
+// Full-precision variant used only for hover tooltips, so operators can
+// verify the exact underlying dollar amount without cluttering the table.
+function formatLiabCurrencyFull(val: number | null | undefined): string {
+  if (val === null || val === undefined || isNaN(Number(val))) return '—';
+  const num = Math.abs(Number(val));
   return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
