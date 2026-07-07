@@ -580,6 +580,43 @@ export function AdminAgentDuty1Config() {
     return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
   }
 
+  // ── Tag knowledge doc ────────────────────────────────────────
+  async function toggleDocTag(doc: KnowledgeDoc, tag: string) {
+    const current = Array.isArray(doc.tags) ? doc.tags : [];
+    const next = current.includes(tag)
+      ? current.filter((t) => t !== tag)
+      : [...current, tag];
+    try {
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ tags: next })
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update tags.');
+    }
+  }
+
+  // ── Prompt-injection tag filter (persisted with saveSettings) ─
+  async function toggleTagFilter(tag: string) {
+    if (!companyId) return;
+    const next = tagFilter.includes(tag)
+      ? tagFilter.filter((t) => t !== tag)
+      : [...tagFilter, tag];
+    setTagFilter(next);
+    try {
+      const { error } = await supabase
+        .from('admin_agent_settings')
+        .upsert({ company_id: companyId, knowledge_tag_filter: next }, { onConflict: 'company_id' });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] });
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save filter.');
+    }
+  }
+
   async function addHoliday() {
     if (!companyId || !newHolidayDate) return;
     const { error } = await supabase
