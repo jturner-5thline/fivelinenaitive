@@ -1,17 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -535,18 +533,13 @@ export function AdminAgentDuty1Config() {
   }
   if (!companyEntitled) {
     return (
-      <section className="rounded-lg border border-border/60 bg-muted/20 p-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/40">
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          </div>
+      <section className="rounded-md border border-border/60 bg-muted/20 p-3">
+        <div className="flex items-start gap-2.5">
+          <ShieldCheck className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
           <div>
-            <h4 className="text-sm font-semibold leading-tight">
-              Admin Agent is not enabled for this company.
-            </h4>
+            <p className="text-sm font-medium leading-tight">Admin Agent is not enabled for this company.</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              A platform admin must turn it on in Admin → Access &amp; Permissions →
-              Agent Access before activation and configuration become available.
+              A platform admin must turn it on in Admin → Access &amp; Permissions → Agent Access.
             </p>
           </div>
         </div>
@@ -554,444 +547,416 @@ export function AdminAgentDuty1Config() {
     );
   }
 
+  const holidays = holidaysQ.data ?? [];
+
   return (
-    <div className="space-y-6">
-      {/* Per-user activation gate */}
-      <section className="rounded-lg border border-primary/40 bg-primary/5 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/40 bg-primary/10">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold leading-tight">
-                Activate Admin Agent for me
-              </h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                The Admin Agent is opt-in. While off, Ask nAItive AI's audit /
-                capture / queue / create-task actions refuse for you and the
-                proactive Friday sweep skips you entirely.
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={myActivation}
-            onCheckedChange={setMyActivation}
-            disabled={!currentUserId || isTogglingActivation}
-            aria-label="Activate Admin Agent for me"
+    <div className="space-y-3">
+      {/* Compact status bar: activation + capability toggle in one row */}
+      <div className="flex items-center gap-2 rounded-md border border-border/60 bg-card/40 px-3 py-2">
+        <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium leading-tight truncate">Activate Admin Agent for me</p>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {myActivation ? 'Active — audits and Friday sweep will run for you.' : 'Off — chat tools refuse and sweep skips you.'}
+          </p>
+        </div>
+        <Switch
+          checked={myActivation}
+          onCheckedChange={setMyActivation}
+          disabled={!currentUserId || isTogglingActivation}
+          aria-label="Activate Admin Agent for me"
+        />
+      </div>
+
+      {!myActivation ? (
+        <p className="text-[11px] text-muted-foreground px-1">
+          Turn on activation to configure scope, rules, calendar, and team overrides.
+        </p>
+      ) : (
+      <Tabs defaultValue="general" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 h-8">
+          <TabsTrigger value="general" className="text-[11px]">General</TabsTrigger>
+          <TabsTrigger value="scope" className="text-[11px]">Scope</TabsTrigger>
+          <TabsTrigger value="rules" className="text-[11px]">Rules</TabsTrigger>
+          <TabsTrigger value="calendar" className="text-[11px]">Calendar</TabsTrigger>
+          <TabsTrigger value="team" className="text-[11px]">Team</TabsTrigger>
+        </TabsList>
+
+        {/* ── General ─────────────────────────────────────────── */}
+        <TabsContent value="general" className="mt-3 space-y-2">
+          <ConfigRow
+            title="Verify Deal Information"
+            hint="Audit active deals for stale/missing critical updates."
+            control={
+              <Switch checked={enabled} onCheckedChange={setEnabled} disabled={readOnly} />
+            }
           />
-        </div>
-        {!myActivation && (
-          <p className="text-[11px] text-muted-foreground mt-3">
-            Status: <span className="font-medium text-foreground/80">Not activated for you.</span> The rest of the configuration is hidden until you turn this on.
-          </p>
-        )}
-      </section>
-
-      {!myActivation ? null : (
-      <>
-      {/* Capability toggle */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-border/60 bg-muted/40">
-              <ShieldCheck className="h-4 w-4 text-foreground/80" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold leading-tight">Verify Deal Information</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Audits active deals for stale or missing critical updates. Surfaces in Ask nAItive AI.
-              </p>
-            </div>
-          </div>
-          <Switch
-            checked={enabled}
-            onCheckedChange={setEnabled}
-            disabled={readOnly}
-            aria-label="Enable Verify Deal Information"
+          <ConfigRow
+            title="Friday sweep"
+            hint="Treat Fridays as a strict end-of-week pass."
+            control={
+              <Switch checked={fridaySweep} onCheckedChange={setFridaySweep} disabled={readOnly} />
+            }
           />
-        </div>
-      </section>
-
-      {/* Active pipelines + stages */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4 space-y-4">
-        <div>
-          <h4 className="text-sm font-semibold">Active scope</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Restrict audits to specific pipelines and stages. Leave empty to use the workspace's default pipeline and skip terminal stages.
-          </p>
-        </div>
-
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Pipelines</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(pipelinesQ.data ?? []).map((p) => {
-              const active = pipelineIds.includes(p.id);
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => !readOnly && togglePipeline(p.id)}
+          <ConfigRow
+            title="Stale threshold"
+            hint="Business days without an update before a deal is flagged."
+            control={
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  step={1}
+                  value={staleThreshold}
+                  onChange={(e) => setStaleThreshold(Number(e.target.value))}
                   disabled={readOnly}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-                    active
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-muted/30 border-border/60 text-foreground/80 hover:border-border'
-                  }`}
-                >
-                  {p.name}
-                  {p.is_default ? <span className="ml-1 text-[10px] opacity-70">(default)</span> : null}
-                </button>
-              );
-            })}
-            {(pipelinesQ.data ?? []).length === 0 && (
-              <span className="text-xs text-muted-foreground">No pipelines configured.</span>
-            )}
-          </div>
-        </div>
+                  className="h-7 w-16 text-xs text-right tabular-nums"
+                />
+                <span className="text-[11px] text-muted-foreground">BD</span>
+              </div>
+            }
+          />
+        </TabsContent>
 
-        <div>
-          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Stages</Label>
-          <p className="text-[11px] text-muted-foreground mt-0.5">
-            Optional. Leave empty to audit all non-terminal stages in scope.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {stagesForActivePipelines.map((s) => {
-              const active = stageIds.includes(s.id);
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => !readOnly && toggleStage(s.id)}
-                  disabled={readOnly}
-                  title={s.pipelineName}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-                    active
-                      ? 'bg-primary/10 border-primary/30 text-primary'
-                      : 'bg-muted/30 border-border/60 text-foreground/80 hover:border-border'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-            {stagesForActivePipelines.length === 0 && (
-              <span className="text-xs text-muted-foreground">Pick a pipeline to choose stages.</span>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Friday sweep */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4">
-        <div className="flex items-start justify-between gap-4">
+        {/* ── Scope ───────────────────────────────────────────── */}
+        <TabsContent value="scope" className="mt-3 space-y-3">
           <div>
-            <h5 className="text-sm font-medium leading-tight">Friday sweep</h5>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Treat Fridays as a strict end-of-week pass. The agent reminds you it's the weekly sweep.
-            </p>
-          </div>
-          <Switch
-            checked={fridaySweep}
-            onCheckedChange={setFridaySweep}
-            disabled={readOnly}
-            aria-label="Enable Friday sweep"
-          />
-        </div>
-      </section>
-      </>
-      )}
-
-      {/* Custom rules — natural-language teaching */}
-      {/* Always visible when the company is entitled, regardless of per-user activation. */}
-      <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
-            <Sparkles className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold leading-tight">Custom rules</h4>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Teach the Admin Agent how to operate inside this workspace in plain English. Rules below are injected into every Admin Agent run for {company?.name || 'this company'} and apply to every user. Use rules to set freshness thresholds and excluded dates too. Examples: "Flag deals as stale after 3 US business days without an update", "Treat Dec 24–Jan 2 as non-business days every year", "Skip the Friday sweep on company off-sites", "When proposing tasks, default the owner to the Deal Manager".
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Textarea
-            value={newRuleText}
-            onChange={(e) => setNewRuleText(e.target.value)}
-            placeholder="Write a rule in plain English. The agent will learn and apply it to all of its work in this workspace."
-            disabled={readOnly || isSavingRule}
-            rows={3}
-            className="text-sm"
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault();
-                if (!readOnly && newRuleText.trim()) addCustomRule();
-              }
-            }}
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-muted-foreground">
-              {customRules.length} active rule{customRules.length === 1 ? '' : 's'} · ⌘/Ctrl + Enter to add
-            </span>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={addCustomRule}
-              disabled={readOnly || isSavingRule || !newRuleText.trim()}
-              className="h-8 text-xs"
-            >
-              {isSavingRule ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-              ) : (
-                <Plus className="h-3.5 w-3.5 mr-1" />
+            <div className="flex items-baseline justify-between">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Pipelines</Label>
+              <span className="text-[10px] text-muted-foreground">Empty = default pipeline</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {(pipelinesQ.data ?? []).map((p) => {
+                const active = pipelineIds.includes(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => !readOnly && togglePipeline(p.id)}
+                    disabled={readOnly}
+                    className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
+                      active
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'bg-muted/30 border-border/60 text-foreground/80 hover:border-border'
+                    }`}
+                  >
+                    {p.name}
+                    {p.is_default ? <span className="ml-1 text-[9px] opacity-70">default</span> : null}
+                  </button>
+                );
+              })}
+              {(pipelinesQ.data ?? []).length === 0 && (
+                <span className="text-[11px] text-muted-foreground">No pipelines configured.</span>
               )}
-              Add rule
-            </Button>
+            </div>
           </div>
-        </div>
+          <div>
+            <div className="flex items-baseline justify-between">
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Stages</Label>
+              <span className="text-[10px] text-muted-foreground">Empty = all non-terminal</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {stagesForActivePipelines.map((s) => {
+                const active = stageIds.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => !readOnly && toggleStage(s.id)}
+                    disabled={readOnly}
+                    title={s.pipelineName}
+                    className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
+                      active
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'bg-muted/30 border-border/60 text-foreground/80 hover:border-border'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+              {stagesForActivePipelines.length === 0 && (
+                <span className="text-[11px] text-muted-foreground">Pick a pipeline first.</span>
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
-        {customRules.length > 0 && (
-          <ScrollArea className="h-72 rounded-md border border-border/40 bg-background/30">
-            <ol className="space-y-1.5 p-2">
-              {customRules.map((r, i) => (
-                <li
-                  key={r.id}
-                  className="group flex items-start gap-2 rounded-md border border-border/60 bg-card/40 p-2.5"
-                >
-                  <span className="mt-0.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded bg-primary/10 px-1.5 text-[10px] font-semibold text-primary tabular-nums">
-                    {i + 1}
-                  </span>
-                  {editingRuleId === r.id ? (
-                    <div className="flex-1 space-y-1.5">
-                      <Textarea
-                        value={editingRuleText}
-                        onChange={(e) => setEditingRuleText(e.target.value)}
-                        rows={3}
-                        className="text-xs"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                            e.preventDefault();
-                            saveEditRule(r.id);
-                          } else if (e.key === 'Escape') {
-                            setEditingRuleId(null);
-                          }
-                        }}
-                      />
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs"
-                          onClick={() => { setEditingRuleId(null); setEditingRuleText(''); }}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 text-xs"
-                          onClick={() => saveEditRule(r.id)}
-                          disabled={!editingRuleText.trim()}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Save
-                        </Button>
+        {/* ── Rules ───────────────────────────────────────────── */}
+        <TabsContent value="rules" className="mt-3 space-y-3">
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <h5 className="text-xs font-semibold">Custom rules</h5>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {customRules.length} active
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Plain-English rules injected into every run for {company?.name || 'this workspace'}.
+            </p>
+            <Textarea
+              value={newRuleText}
+              onChange={(e) => setNewRuleText(e.target.value)}
+              placeholder='e.g. "Flag deals stale after 3 business days without a status note."'
+              disabled={readOnly || isSavingRule}
+              rows={2}
+              className="text-xs"
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  if (!readOnly && newRuleText.trim()) addCustomRule();
+                }
+              }}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={addCustomRule}
+                disabled={readOnly || isSavingRule || !newRuleText.trim()}
+                className="h-7 text-[11px]"
+              >
+                {isSavingRule ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                Add
+              </Button>
+            </div>
+            {customRules.length > 0 && (
+              <ScrollArea className="h-40 rounded border border-border/40 bg-background/30">
+                <ol className="space-y-1 p-1.5">
+                  {customRules.map((r, i) => (
+                    <li
+                      key={r.id}
+                      className="group flex items-start gap-1.5 rounded border border-border/60 bg-card/40 p-1.5"
+                    >
+                      <span className="mt-0.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded bg-primary/10 px-1 text-[9px] font-semibold text-primary tabular-nums">
+                        {i + 1}
+                      </span>
+                      {editingRuleId === r.id ? (
+                        <div className="flex-1 space-y-1">
+                          <Textarea
+                            value={editingRuleText}
+                            onChange={(e) => setEditingRuleText(e.target.value)}
+                            rows={2}
+                            className="text-[11px]"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); saveEditRule(r.id); }
+                              else if (e.key === 'Escape') setEditingRuleId(null);
+                            }}
+                          />
+                          <div className="flex justify-end gap-1">
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => { setEditingRuleId(null); setEditingRuleText(''); }}>Cancel</Button>
+                            <Button size="sm" className="h-6 text-[10px]" onClick={() => saveEditRule(r.id)} disabled={!editingRuleText.trim()}>Save</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="flex-1 text-[11px] leading-snug text-foreground/90 whitespace-pre-wrap">{r.text}</p>
+                      )}
+                      {!readOnly && editingRuleId !== r.id && (
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button type="button" onClick={() => startEditRule(r)} className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted" aria-label="Edit rule"><Pencil className="h-3 w-3" /></button>
+                          <button type="button" onClick={() => removeCustomRule(r.id)} className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted" aria-label="Remove rule"><X className="h-3 w-3" /></button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </ScrollArea>
+            )}
+          </div>
+
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <Brain className="h-3.5 w-3.5 text-primary" />
+              <h5 className="text-xs font-semibold">Learned patterns</h5>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 text-[10px] ml-auto"
+                onClick={trainNow}
+                disabled={isTraining || readOnly}
+              >
+                {isTraining ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                Train now
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Rules the agent proposes from your approval-queue decisions. Runs weekly.
+            </p>
+            {learnedQ.isLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : (learnedQ.data ?? []).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">No learned patterns yet.</p>
+            ) : (
+              <ScrollArea className="h-40 rounded border border-border/40 bg-background/30">
+                <ol className="space-y-1 p-1.5">
+                  {(learnedQ.data ?? []).map((r) => (
+                    <li key={r.id} className="flex items-start gap-1.5 rounded border border-border/60 bg-card/40 p-1.5">
+                      <span className={`mt-0.5 inline-flex h-4 items-center justify-center rounded px-1 text-[9px] font-semibold uppercase tracking-wide ${
+                        r.status === 'active' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
+                      }`}>{r.status === 'active' ? 'Active' : 'Proposed'}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] leading-snug text-foreground/90 whitespace-pre-wrap">{r.rule_text}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {Math.round((Number(r.confidence) || 0) * 100)}% confidence
+                          {r.occurrences && r.occurrences > 1 ? ` · ${r.occurrences}×` : ''}
+                        </p>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="flex-1 text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.text}</p>
-                  )}
-                  {!readOnly && editingRuleId !== r.id && (
-                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => startEditRule(r)}
-                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
-                        aria-label="Edit rule"
-                        title="Edit rule"
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeCustomRule(r.id)}
-                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
-                        aria-label="Remove rule"
-                        title="Remove rule"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </ScrollArea>
-        )}
-      </section>
+                      {!readOnly && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {r.status === 'proposed' && (
+                            <Button size="sm" className="h-5 text-[10px] px-1.5" onClick={() => decideLearnedRule(r.id, 'active')}>
+                              <Check className="h-2.5 w-2.5" />
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-5 text-[10px] px-1.5 text-muted-foreground hover:text-foreground" onClick={() => decideLearnedRule(r.id, 'dismissed')}>
+                            <X className="h-2.5 w-2.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </ScrollArea>
+            )}
+          </div>
+        </TabsContent>
 
-      {/* Learned patterns — the agent self-improves from approval feedback */}
-      <section className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
-              <Brain className="h-4 w-4 text-primary" />
+        {/* ── Calendar (holidays) ─────────────────────────────── */}
+        <TabsContent value="calendar" className="mt-3 space-y-2.5">
+          <div className="flex items-start gap-2">
+            <CalendarDays className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Non-business days the agent excludes from stale-day counting and skips for sweeps.
+            </p>
+          </div>
+          <div className="flex items-end gap-1.5">
+            <div className="flex-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Date</Label>
+              <Input
+                type="date"
+                value={newHolidayDate}
+                onChange={(e) => setNewHolidayDate(e.target.value)}
+                disabled={readOnly}
+                className="h-7 text-xs mt-0.5"
+              />
             </div>
             <div className="flex-1">
-              <h4 className="text-sm font-semibold leading-tight">Learned patterns</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                The agent reviews recent approval-queue decisions — approvals, edits, and rejections — and proposes new operating rules it noticed you applying. Accepted rules apply to every future Admin Agent action alongside your custom rules. Runs automatically every week.
-              </p>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Label</Label>
+              <Input
+                value={newHolidayLabel}
+                onChange={(e) => setNewHolidayLabel(e.target.value)}
+                placeholder="Company holiday"
+                disabled={readOnly}
+                className="h-7 text-xs mt-0.5"
+              />
             </div>
+            <Button
+              size="sm"
+              className="h-7 text-[11px]"
+              onClick={addHoliday}
+              disabled={readOnly || !newHolidayDate}
+            >
+              <Plus className="h-3 w-3 mr-1" />Add
+            </Button>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-xs shrink-0"
-            onClick={trainNow}
-            disabled={isTraining || readOnly}
-          >
-            {isTraining ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1" />}
-            Train now
+          {holidaysQ.isLoading ? (
+            <Skeleton className="h-20 w-full" />
+          ) : holidays.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground italic px-0.5">No custom holidays configured.</p>
+          ) : (
+            <ScrollArea className="max-h-52 rounded border border-border/40 bg-background/30">
+              <ul className="divide-y divide-border/40">
+                {holidays.map((h) => (
+                  <li key={h.id} className="group flex items-center gap-2 px-2 py-1.5">
+                    <span className="text-[11px] font-medium tabular-nums w-24 shrink-0">
+                      {(() => { try { return format(new Date(h.holiday_date + 'T00:00:00'), 'MMM d, yyyy'); } catch { return h.holiday_date; } })()}
+                    </span>
+                    <span className="text-[11px] text-foreground/80 flex-1 truncate">{h.label || 'Company holiday'}</span>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => removeHoliday(h.id)}
+                        className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove holiday"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
+          )}
+        </TabsContent>
+
+        {/* ── Team (per-user overrides) ────────────────────────── */}
+        <TabsContent value="team" className="mt-3 space-y-2">
+          <p className="text-[11px] text-muted-foreground px-0.5">
+            Per-user overrides. Members use the workspace default unless changed.
+          </p>
+          <ScrollArea className="max-h-64 rounded border border-border/40 bg-background/30">
+            <div className="divide-y divide-border/40">
+              {(membersQ.data ?? []).map((m) => {
+                const o = overridesByUser.get(m.user_id);
+                const value: 'default' | 'enabled' | 'disabled' = !o ? 'default' : o.enabled ? 'enabled' : 'disabled';
+                const display = m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8);
+                return (
+                  <div key={m.user_id} className="flex items-center justify-between gap-2 px-2 py-1.5">
+                    <div className="min-w-0">
+                      <p className="text-xs truncate">{display}</p>
+                      {m.profiles?.email && m.profiles?.full_name && (
+                        <p className="text-[10px] text-muted-foreground truncate">{m.profiles.email}</p>
+                      )}
+                    </div>
+                    <Select value={value} onValueChange={(v) => setUserOverride(m.user_id, v as any)} disabled={readOnly}>
+                      <SelectTrigger className="h-6 w-32 text-[11px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">Workspace default</SelectItem>
+                        <SelectItem value="enabled">Always on</SelectItem>
+                        <SelectItem value="disabled">Off for user</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })}
+              {(membersQ.data ?? []).length === 0 && (
+                <p className="text-[11px] text-muted-foreground px-2 py-3">No workspace members found.</p>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+      )}
+
+      {/* Sticky save row */}
+      {myActivation && (
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
+          {readOnly && (
+            <p className="text-[10px] text-muted-foreground mr-auto">Read-only — admin role required.</p>
+          )}
+          <Button size="sm" onClick={saveSettings} disabled={readOnly || isSaving} className="h-7 text-[11px]">
+            {isSaving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+            Save settings
           </Button>
         </div>
-
-        {learnedQ.isLoading ? (
-          <Skeleton className="h-20 w-full" />
-        ) : (learnedQ.data ?? []).length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">
-            No learned patterns yet. As you approve, edit, and dismiss approval-queue items, the agent will surface rules here for your review.
-          </p>
-        ) : (
-          <ScrollArea className="h-72 rounded-md border border-border/40 bg-background/30">
-            <ol className="space-y-1.5 p-2">
-              {(learnedQ.data ?? []).map((r) => (
-                <li
-                  key={r.id}
-                  className="group flex items-start gap-2 rounded-md border border-border/60 bg-card/40 p-2.5"
-                >
-                  <span className={`mt-0.5 inline-flex h-5 items-center justify-center rounded px-1.5 text-[10px] font-semibold uppercase tracking-wide ${
-                    r.status === 'active'
-                      ? 'bg-emerald-500/15 text-emerald-300'
-                      : 'bg-amber-500/15 text-amber-300'
-                  }`}>
-                    {r.status === 'active' ? 'Active' : 'Proposed'}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs leading-relaxed text-foreground/90 whitespace-pre-wrap">{r.rule_text}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      confidence {Math.round((Number(r.confidence) || 0) * 100)}%
-                      {r.occurrences && r.occurrences > 1 ? ` · seen ${r.occurrences}×` : ''}
-                      {r.evidence?.summary ? ` · ${String(r.evidence.summary).slice(0, 140)}` : ''}
-                    </p>
-                  </div>
-                  {!readOnly && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {r.status === 'proposed' && (
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-6 text-[11px] px-2"
-                          onClick={() => decideLearnedRule(r.id, 'active')}
-                        >
-                          <Check className="h-3 w-3 mr-1" /> Accept
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 text-[11px] px-2 text-muted-foreground hover:text-foreground"
-                        onClick={() => decideLearnedRule(r.id, 'dismissed')}
-                      >
-                        <X className="h-3 w-3 mr-1" /> {r.status === 'active' ? 'Retire' : 'Dismiss'}
-                      </Button>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </ScrollArea>
-        )}
-      </section>
-
-      {!myActivation ? null : (
-      <>
-      {/* Per-user overrides */}
-      <section className="rounded-lg border border-border/60 bg-card/40 p-4 space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold">Per-user scope</h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Optional. By default every workspace member uses the workspace setting above.
-          </p>
-        </div>
-        <ScrollArea className="max-h-56">
-          <div className="space-y-1">
-            {(membersQ.data ?? []).map((m) => {
-              const o = overridesByUser.get(m.user_id);
-              const value: 'default' | 'enabled' | 'disabled' = !o
-                ? 'default'
-                : o.enabled ? 'enabled' : 'disabled';
-              const display = m.profiles?.full_name || m.profiles?.email || m.user_id.slice(0, 8);
-              return (
-                <div
-                  key={m.user_id}
-                  className="flex items-center justify-between gap-3 px-2 py-1.5 rounded hover:bg-muted/30"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm truncate">{display}</p>
-                    {m.profiles?.email && m.profiles?.full_name && (
-                      <p className="text-[11px] text-muted-foreground truncate">{m.profiles.email}</p>
-                    )}
-                  </div>
-                  <Select
-                    value={value}
-                    onValueChange={(v) => setUserOverride(m.user_id, v as any)}
-                    disabled={readOnly}
-                  >
-                    <SelectTrigger className="h-7 w-36 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">Workspace default</SelectItem>
-                      <SelectItem value="enabled">Always on</SelectItem>
-                      <SelectItem value="disabled">Off for this user</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              );
-            })}
-            {(membersQ.data ?? []).length === 0 && (
-              <p className="text-xs text-muted-foreground px-2 py-3">No workspace members found.</p>
-            )}
-          </div>
-        </ScrollArea>
-      </section>
-
-      <div className="flex items-center justify-end gap-2 pt-1">
-        {readOnly && (
-          <p className="text-[11px] text-muted-foreground mr-auto">Read-only — admin role required to change Admin Agent settings.</p>
-        )}
-        <Button size="sm" onClick={saveSettings} disabled={readOnly || isSaving}>
-          {isSaving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
-          Save settings
-        </Button>
-      </div>
-      </>
       )}
     </div>
   );
 }
 
-// Tiny helper kept for completeness if a future surface wants a row checkbox UI.
-export function _AdminAgentRowToggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+/** Compact settings row: label + hint on the left, control on the right. */
+function ConfigRow({ title, hint, control }: { title: string; hint: string; control: React.ReactNode }) {
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <Checkbox checked={checked} onCheckedChange={(v) => onChange(!!v)} />
-      <span>{label}</span>
-    </label>
+    <div className="flex items-center gap-3 rounded-md border border-border/60 bg-card/40 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium leading-tight">{title}</p>
+        <p className="text-[11px] text-muted-foreground leading-snug truncate">{hint}</p>
+      </div>
+      <div className="shrink-0">{control}</div>
+    </div>
   );
 }
