@@ -50,6 +50,14 @@ const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
   'finserv-profit-per-hour',
   'finserv-active-client-count',
   'finserv-total-mrr',
+  // Brand Awareness placeholder tiles — no live resolver yet.
+  'ba-website-users',
+  'ba-seo-clicks',
+  'ba-seo-impressions',
+  'ba-linkedin-impressions',
+  'ba-linkedin-interactions',
+  'ba-ai-search-readiness-score',
+  'ba-market-awareness-score',
 ]);
 
 function isOptionKept(opt: InsightsMetricOption): boolean {
