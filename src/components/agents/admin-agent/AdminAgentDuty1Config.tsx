@@ -51,6 +51,7 @@ type SettingsRow = {
   stale_threshold_business_days: number | null;
   friday_sweep_enabled: boolean | null;
   custom_rules: CustomRule[] | null;
+  knowledge_tag_filter: string[] | null;
 };
 
 type CustomRule = {
@@ -89,9 +90,19 @@ type KnowledgeDoc = {
   status: 'pending' | 'ready' | 'error';
   error_message: string | null;
   created_at: string;
+  tags: string[];
 };
 
 const STALE_THRESHOLD_DEFAULT = 3;
+
+export const KB_TAG_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'rules', label: 'Rules' },
+  { value: 'requirements', label: 'Requirements' },
+  { value: 'definitions', label: 'Definitions' },
+  { value: 'glossary', label: 'Glossary' },
+  { value: 'workflow', label: 'Workflow' },
+  { value: 'other', label: 'Other' },
+];
 
 export function AdminAgentDuty1Config() {
   const { company, isAdmin } = useCompany();
@@ -110,7 +121,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_settings')
-        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules')
+        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules, knowledge_tag_filter')
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
@@ -201,6 +212,7 @@ export function AdminAgentDuty1Config() {
   const [customRules, setCustomRules] = useState<CustomRule[]>([]);
   const [newRuleText, setNewRuleText] = useState('');
   const [isSavingRule, setIsSavingRule] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -217,6 +229,7 @@ export function AdminAgentDuty1Config() {
         : STALE_THRESHOLD_DEFAULT,
     );
     setCustomRules(Array.isArray(s?.custom_rules) ? (s!.custom_rules as CustomRule[]) : []);
+    setTagFilter(Array.isArray(s?.knowledge_tag_filter) ? (s!.knowledge_tag_filter as string[]) : []);
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -253,6 +266,7 @@ export function AdminAgentDuty1Config() {
         active_pipeline_ids: pipelineIds,
         active_stage_ids: stageIds,
         stale_threshold_business_days: Math.max(1, Math.min(30, Math.round(staleThreshold || STALE_THRESHOLD_DEFAULT))),
+        knowledge_tag_filter: tagFilter,
       };
       const { error } = await supabase
         .from('admin_agent_settings')
@@ -411,7 +425,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_knowledge_docs')
-        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at')
+        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at, tags')
         .eq('company_id', companyId)
         .eq('agent_key', 'admin_agent')
         .order('created_at', { ascending: false });
@@ -564,6 +578,43 @@ export function AdminAgentDuty1Config() {
     let v = n;
     while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
     return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
+  // ── Tag knowledge doc ────────────────────────────────────────
+  async function toggleDocTag(doc: KnowledgeDoc, tag: string) {
+    const current = Array.isArray(doc.tags) ? doc.tags : [];
+    const next = current.includes(tag)
+      ? current.filter((t) => t !== tag)
+      : [...current, tag];
+    try {
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ tags: next })
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not update tags.');
+    }
+  }
+
+  // ── Prompt-injection tag filter (persisted with saveSettings) ─
+  async function toggleTagFilter(tag: string) {
+    if (!companyId) return;
+    const next = tagFilter.includes(tag)
+      ? tagFilter.filter((t) => t !== tag)
+      : [...tagFilter, tag];
+    setTagFilter(next);
+    try {
+      const { error } = await supabase
+        .from('admin_agent_settings')
+        .upsert({ company_id: companyId, knowledge_tag_filter: next }, { onConflict: 'company_id' });
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] });
+      await qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save filter.');
+    }
   }
 
   async function addHoliday() {
@@ -1028,6 +1079,58 @@ export function AdminAgentDuty1Config() {
               <span className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
             </div>
 
+            {/* Prompt inclusion filter */}
+            <div className="rounded border border-border/40 bg-background/40 p-2 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Include in agent prompt
+                </p>
+                <span className="text-[10px] text-muted-foreground">
+                  {tagFilter.length === 0
+                    ? 'All tagged & untagged documents'
+                    : `Only docs tagged: ${tagFilter.join(', ')}`}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {KB_TAG_OPTIONS.map((t) => {
+                  const on = tagFilter.includes(t.value);
+                  return (
+                    <button
+                      key={t.value}
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => toggleTagFilter(t.value)}
+                      className={`px-2 h-6 rounded-full border text-[10px] transition-colors ${
+                        on
+                          ? 'bg-primary/20 border-primary/50 text-primary'
+                          : 'bg-card/40 border-border/50 text-muted-foreground hover:bg-card'
+                      } ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+                {tagFilter.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={readOnly}
+                    onClick={() => {
+                      setTagFilter([]);
+                      if (companyId) {
+                        supabase
+                          .from('admin_agent_settings')
+                          .upsert({ company_id: companyId, knowledge_tag_filter: [] }, { onConflict: 'company_id' })
+                          .then(() => qc.invalidateQueries({ queryKey: ['admin-agent-settings', companyId, 'full'] }));
+                      }
+                    }}
+                    className="px-2 h-6 rounded-full text-[10px] text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
             {knowledgeQ.isLoading ? (
               <Skeleton className="h-24 w-full" />
             ) : (knowledgeQ.data ?? []).length === 0 ? (
@@ -1078,6 +1181,28 @@ export function AdminAgentDuty1Config() {
                             <span className="text-red-400" title={d.error_message || ''}>Error</span>
                           )}
                         </p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {KB_TAG_OPTIONS.map((t) => {
+                            const on = (d.tags || []).includes(t.value);
+                            const inFilter = tagFilter.length === 0 || tagFilter.includes(t.value);
+                            return (
+                              <button
+                                key={t.value}
+                                type="button"
+                                disabled={readOnly}
+                                onClick={() => toggleDocTag(d, t.value)}
+                                title={on ? `Remove ${t.label} tag` : `Tag as ${t.label}`}
+                                className={`px-1.5 h-4 rounded-sm border text-[9px] leading-none transition-colors ${
+                                  on
+                                    ? `bg-primary/20 border-primary/50 text-primary ${!inFilter ? 'opacity-40' : ''}`
+                                    : 'bg-transparent border-border/40 text-muted-foreground hover:border-border hover:text-foreground'
+                                } ${readOnly ? 'cursor-not-allowed' : ''}`}
+                              >
+                                {t.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                       {!readOnly && (
                         <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
