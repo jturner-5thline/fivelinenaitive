@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
+import { Component, lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { DashboardModalProps } from './DashboardModal';
@@ -11,7 +11,7 @@ function createLazyDashboardModal() {
   return lazy(() => import('./DashboardModal'));
 }
 
-class DashboardChunkErrorBoundary extends React.Component<
+class DashboardChunkErrorBoundary extends Component<
   { children: ReactNode; onRetry: () => void },
   { error: Error | null }
 > {
