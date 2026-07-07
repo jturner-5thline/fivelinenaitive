@@ -1661,7 +1661,7 @@ function EventDetailPane({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="px-1.5 pt-1 pb-1 border-b border-white/[0.08]">
+      <div className="px-px pt-1 pb-1 border-b border-white/[0.08]">
         <div className="flex items-start gap-2">
           {onBack && (
             <Button size="icon" variant="ghost" className="h-6 w-7 shrink-0" onClick={onBack} aria-label="Back to list">
@@ -1718,7 +1718,7 @@ function EventDetailPane({
 
       {/* Two-column body: main content + right action rail */}
       <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-row">
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-0.5 py-0.5 space-y-0.5">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-px py-0.5 space-y-0.5">
         {/* Attendees */}
         <section>
           <div className="flex items-center justify-between gap-0.5 mb-0.5 flex-wrap">
@@ -1802,14 +1802,14 @@ function EventDetailPane({
               const rowKey = `${event.id}::${key || i}`;
               const isComposing = composerForOne === rowKey;
               return (
-                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-0.5 py-0.5">
+                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-px py-0.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-0.5 flex-wrap">
                         <span className="text-xs font-medium text-white truncate">{name}</span>
                         {m?.jobTitle && <span className="text-[10px] text-white/65 truncate">· {m.jobTitle}</span>}
                         {m?.companyName && (
-                          <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-white/15 bg-white/[0.04]">
+                          <Badge variant="outline" className="h-4 px-px text-[9px] border-white/15 bg-white/[0.04]">
                             {m.companyName}
                           </Badge>
                         )}
@@ -1894,7 +1894,7 @@ function EventDetailPane({
                     dealId: linkedDealId ?? null,
                     label: eventTitle,
                   }}
-                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-0.5 py-0.5 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
+                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-px py-0.5 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
                 >
                   {n.text}
                 </HighlightCalendarMenu>
@@ -1928,7 +1928,7 @@ function EventDetailPane({
             </div>
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-0.5 mb-0.5">
-                <span className="inline-flex items-center gap-0.5 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                <span className="inline-flex items-center gap-0.5 h-5 px-px rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                   <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — Claap
                 </span>
                 <button
@@ -1946,7 +1946,7 @@ function EventDetailPane({
               </div>
             )}
             {!claapTokenPresent && notePrefillSource !== 'claap' && (
-              <div className="mb-0.5 rounded border border-amber-500/40 bg-amber-500/10 px-0.5 py-0.5 text-[10px] text-amber-200 flex items-center justify-between gap-0.5">
+              <div className="mb-0.5 rounded border border-amber-500/40 bg-amber-500/10 px-px py-0.5 text-[10px] text-amber-200 flex items-center justify-between gap-0.5">
                 <span>Add <code className="font-mono">CLAAP_API_TOKEN</code> secret to fetch real Claap summaries.</span>
                 <a
                   href="https://docs.lovable.dev/integrations/supabase#secrets"
@@ -2093,7 +2093,7 @@ function EventDetailPane({
         </div>
 
         {/* Right action rail */}
-        <aside className="w-[180px] shrink-0 border-l border-white/[0.08] px-0.5 py-0.5 overflow-y-auto">
+        <aside className="w-[180px] shrink-0 border-l border-white/[0.08] px-px py-0.5 overflow-y-auto">
           <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-0.5">Action items</h3>
           <div className="flex flex-col gap-0.5 [&>*]:w-full [&>*]:min-w-0">
             <MeetingFollowupInlineAction
@@ -2147,7 +2147,7 @@ function EventDetailPane({
       </div>
 
       {/* Sticky footer */}
-      <div className="border-t border-white/[0.08] px-0.5 py-0.5 flex items-center gap-0.5">
+      <div className="border-t border-white/[0.08] px-px py-0.5 flex items-center gap-0.5">
         <Button size="sm" className="h-6 text-xs gap-0.5 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/40" onClick={onResolve}>
           <CheckCircle2 className="h-3.5 w-3.5" /> Mark resolved
         </Button>
