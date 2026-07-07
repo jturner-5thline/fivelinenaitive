@@ -2790,7 +2790,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     const [{ data: settings }, { data: learned }] = await Promise.all([
       supabase
         .from("admin_agent_settings")
-        .select("custom_rules")
+        .select("custom_rules, knowledge_tag_filter")
         .eq("company_id", companyId)
         .maybeSingle(),
       supabase
@@ -2815,18 +2815,27 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (learnedTexts.length > 0) {
       parts.push(`ADMIN AGENT LEARNED RULES (synthesized from operator feedback — apply with the same weight as custom rules):\n${learnedTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}`);
     }
+    const tagFilter: string[] = Array.isArray((settings as any)?.knowledge_tag_filter)
+      ? ((settings as any).knowledge_tag_filter as any[]).filter((t: any) => typeof t === "string" && t.length > 0)
+      : [];
     // Knowledge base — uploaded / pasted reference documents.
     try {
-      const { data: kb } = await supabase
+      let kbQuery = supabase
         .from("admin_agent_knowledge_docs")
-        .select("title, extracted_text")
+        .select("title, extracted_text, tags")
         .eq("company_id", companyId)
         .eq("agent_key", "admin_agent")
         .eq("status", "ready");
+      if (tagFilter.length > 0) {
+        // Only include docs that carry at least one selected tag.
+        kbQuery = kbQuery.overlaps("tags", tagFilter);
+      }
+      const { data: kb } = await kbQuery;
       const docs = (kb || [])
         .map((d: any) => ({
           title: String(d?.title || "Untitled").trim(),
           text: String(d?.extracted_text || "").trim(),
+          tags: Array.isArray(d?.tags) ? (d.tags as string[]) : [],
         }))
         .filter((d) => d.text.length > 0);
       if (docs.length > 0) {
@@ -2839,10 +2848,14 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
           const snippet = d.text.slice(0, PER_DOC_CAP);
           if (used + snippet.length > TOTAL_CAP) break;
           used += snippet.length;
-          blocks.push(`### ${d.title}\n${snippet}`);
+          const tagLine = d.tags.length > 0 ? ` [${d.tags.join(", ")}]` : "";
+          blocks.push(`### ${d.title}${tagLine}\n${snippet}`);
         }
         if (blocks.length > 0) {
-          parts.push(`ADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context):\n\n${blocks.join("\n\n---\n\n")}`);
+          const scopeNote = tagFilter.length > 0
+            ? ` — scoped to tags: ${tagFilter.join(", ")}`
+            : "";
+          parts.push(`ADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context${scopeNote}):\n\n${blocks.join("\n\n---\n\n")}`);
         }
       }
     } catch (e) {
