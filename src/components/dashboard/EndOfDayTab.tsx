@@ -1635,7 +1635,7 @@ function EventDetailPane({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="px-4 pt-3 pb-3 border-b border-white/[0.08]">
+      <div className="px-2.5 pt-2 pb-2 border-b border-white/[0.08]">
         <div className="flex items-start gap-2">
           {onBack && (
             <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onBack} aria-label="Back to list">
@@ -1692,10 +1692,10 @@ function EventDetailPane({
 
       {/* Two-column body: main content + right action rail */}
       <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-row">
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-4 py-3 space-y-5">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-2.5 py-2 space-y-3">
         {/* Attendees */}
         <section>
-          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
             <button
               type="button"
               onClick={() => setAttendeesExpanded((v) => !v)}
@@ -1895,8 +1895,8 @@ function EventDetailPane({
           </div>
 
           {/* Add note */}
-          <div className="mt-3">
-            <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="mt-2">
+            <div className="flex items-center gap-1.5 mb-1">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
             </div>
@@ -2067,9 +2067,9 @@ function EventDetailPane({
         </div>
 
         {/* Right action rail */}
-        <aside className="w-[188px] shrink-0 border-l border-white/[0.08] px-3 py-3 overflow-y-auto">
-          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="flex flex-col gap-2 [&>*]:w-full [&>*]:min-w-0">
+        <aside className="w-[180px] shrink-0 border-l border-white/[0.08] px-2 py-2 overflow-y-auto">
+          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-1.5">Action items</h3>
+          <div className="flex flex-col gap-1.5 [&>*]:w-full [&>*]:min-w-0">
             <MeetingFollowupInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
@@ -2121,16 +2121,16 @@ function EventDetailPane({
       </div>
 
       {/* Sticky footer */}
-      <div className="border-t border-white/[0.08] px-3 py-2.5 flex items-center gap-2">
-        <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/40" onClick={onResolve}>
+      <div className="border-t border-white/[0.08] px-2 py-1.5 flex items-center gap-1.5">
+        <Button size="sm" className="h-7 text-xs gap-1.5 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/40" onClick={onResolve}>
           <CheckCircle2 className="h-3.5 w-3.5" /> Mark resolved
         </Button>
-        <Button size="sm" variant="ghost" className="h-8 text-xs gap-1.5" onClick={onDismiss}>
+        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5" onClick={onDismiss}>
           <X className="h-3.5 w-3.5" /> Dismiss
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-8 text-xs gap-1.5 ml-auto">
+            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1.5 ml-auto">
               <Clock className="h-3.5 w-3.5" /> Snooze <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
