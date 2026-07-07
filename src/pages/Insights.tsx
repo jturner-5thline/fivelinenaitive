@@ -1443,23 +1443,39 @@ function MetricsInner() {
   // /insights?view=weekly-rundown opens the Weekly Rundown
   // (management-snapshot) dashboard automatically.
   const [searchParams] = useSearchParams();
+  // Track the deep-link params we've already honored so subsequent
+  // searchParam changes (e.g. the global Reporting Period picker writing
+  // `view=month|quarter` + `period=…` to the URL) don't yank the user
+  // back to the Weekly Rundown while they're viewing another dashboard.
+  const lastHandledDeepLinkRef = useRef<{ view: string | null; tab: string | null } | null>(null);
   useEffect(() => {
     const view = searchParams.get('view');
     const tab = searchParams.get('tab');
-    if (view === 'weekly-rundown') {
+    const last = lastHandledDeepLinkRef.current;
+    const isFirstRun = last === null;
+    const viewChanged = !isFirstRun && last!.view !== view;
+    const tabChanged = !isFirstRun && last!.tab !== tab;
+    lastHandledDeepLinkRef.current = { view, tab };
+
+    // Only the Weekly Rundown deep link uses `view`. Other `view` values
+    // (e.g. the ReportingPeriodPicker's `month` / `quarter`) must be
+    // ignored so switching the timeframe doesn't reset the dashboard.
+    if (view === 'weekly-rundown' && (isFirstRun || viewChanged)) {
       setSelectedDashboard('management-snapshot');
       return;
     }
-    // Deep-link from Submit-for-review email: ?tab=jt|jm|sw (or agenda/
-    // dashboard/forecasts/key-metrics) opens the Management Review carousel
-    // and the carousel itself reads the same param to pick the inner tab.
-    if (tab) {
+    // Deep-link from Submit-for-review email: ?tab=jt|jm|sw opens the
+    // Management Review carousel; the carousel picks the inner tab.
+    if (tab && (isFirstRun || tabChanged)) {
       setSelectedDashboard('management-review');
       return;
     }
-    // Plain navigation to /insights (e.g. clicking the sidebar item) should
-    // always land on the Weekly Rundown dashboard.
-    setSelectedDashboard('management-snapshot');
+    // Plain navigation to /insights (no deep-link params) lands on the
+    // Weekly Rundown — but only on the initial mount, never as a reaction
+    // to unrelated searchParam updates.
+    if (isFirstRun && !view && !tab) {
+      setSelectedDashboard('management-snapshot');
+    }
   }, [searchParams]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
