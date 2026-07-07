@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Video, Check, Pencil, X, ExternalLink } from 'lucide-react';
+import { Loader2, Video, Check, Pencil, X, ExternalLink, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -31,18 +31,36 @@ interface ExistingLinkRow {
   recording_url: string | null;
 }
 
+interface CachedMatchRow {
+  id: string;
+  status: 'suggested' | 'approved' | 'rejected' | 'none';
+  locked: boolean;
+  recording_id: string | null;
+  recording_title: string | null;
+  recording_url: string | null;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
+  recorder_name: string | null;
+  recorder_email: string | null;
+  recorded_at: string | null;
+  score: number | null;
+  reasons: any;
+  generated_at: string;
+}
+
 export function MeetingClaapInlineAction(props: Props) {
   const { eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, onOpenPicker } = props;
   const { company } = useCompany();
   const qc = useQueryClient();
   const { recordings, fetchRecordings, loading: loadingRecordings } = useClaapRecordings();
-  const [didFetch, setDidFetch] = useState(false);
   const [ranked, setRanked] = useState<RankedTop | null>(null);
   const [ranking, setRanking] = useState(false);
   const [approving, setApproving] = useState(false);
   const [autoApproved, setAutoApproved] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
   const [locallyLinked, setLocallyLinked] = useState(false);
+  const [source, setSource] = useState<'stored' | 'fresh' | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
 
   // Existing manual link for this event
   const { data: existing, isLoading: existingLoading, isFetching: existingFetching } = useQuery<ExistingLinkRow | null>({
@@ -82,67 +100,165 @@ export function MeetingClaapInlineAction(props: Props) {
   const canonicalLinked = !!canonical.recording && canonical.source === 'claap';
   const canonicalLoading = canonical.isLoading;
 
-  // Lazy load recordings once per mount — but ONLY if this event isn't
-  // already linked. Once a link exists (manual approve or prior match),
-  // skip the Claap API pull entirely so we don't keep "Checking Claap…".
-  useEffect(() => {
-    if (!eventId || didFetch) return;
-    if (existingLoading || existingFetching || canonicalLoading) return; // wait for link queries
-    if (existing || canonicalLinked) { setDidFetch(true); return; }
-    setDidFetch(true);
-    fetchRecordings().catch((err) => console.warn('claap recordings fetch failed', err));
-  }, [eventId, didFetch, fetchRecordings, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading]);
-
-  // Run scoring once recordings load
-  useEffect(() => {
-    if (!eventId || !recordings || recordings.length === 0) return;
-    if (existing || canonicalLinked) return; // skip — already linked
-    if (existingLoading || existingFetching || canonicalLoading) return; // wait for link queries
-    let cancelled = false;
-    let timedOut = false;
-    const timeoutId = setTimeout(() => {
-      timedOut = true;
-      setRanking(false);
-    }, 4000);
-    (async () => {
+  // -------------------------------------------------------------------------
+  // PERSISTED SUGGESTION CACHE
+  // -------------------------------------------------------------------------
+  // Read persisted suggestion FIRST. Opening an item must be a pure read —
+  // we only call the Claap ranking API when no stored row exists OR the
+  // user explicitly triggers "Find again".
+  const { data: cached, isLoading: cachedLoading, isFetching: cachedFetching } = useQuery<CachedMatchRow | null>({
+    queryKey: ['event-claap-match-cache', eventId, company?.id],
+    enabled: !!company?.id && !!eventId,
+    // Session cache — never refetch on mount/focus. Explicit refresh only.
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
       try {
-        setRanking(true);
-        const meeting_context = {
-          title: eventTitle || null,
-          start_time: eventStart || null,
-          end_time: eventEnd || null,
-          organizer_email: organizerEmail || null,
-          attendees: (attendees || []).map(a => ({
-            email: a.email || null,
-            name: a.displayName || null,
-            self: !!a.self,
-          })),
-        };
-        const { data, error } = await supabase.functions.invoke(
-          'claap-rank-recordings-for-meeting',
-          { body: { action: 'rank', event_id: eventId, recordings, meeting_context } },
-        );
-        if (cancelled || timedOut) return;
+        const { data, error } = await (supabase
+          .from('event_claap_match_cache') as any)
+          .select('id,status,locked,recording_id,recording_title,recording_url,thumbnail_url,duration_seconds,recorder_name,recorder_email,recorded_at,score,reasons,generated_at')
+          .eq('org_company_id', company!.id)
+          .eq('event_id', eventId)
+          .maybeSingle();
         if (error) {
-          console.warn('claap inline rank error', error);
-          return;
+          console.warn('claap match cache read failed', error);
+          return null;
         }
-        const top = (data?.ranked || [])[0];
-        if (!top) return;
-        const rec = recordings.find(r => r.id === top.external_id);
-        if (!rec) return;
-        setRanked({ recording: rec, score: top.score || 0, reasons: top.reasons || [] });
+        return (data as CachedMatchRow | null) || null;
       } catch (err) {
-        console.warn('claap inline rank threw', err);
-      } finally {
-        if (!cancelled) {
-          clearTimeout(timeoutId);
-          setRanking(false);
-        }
+        console.warn('claap match cache read threw', err);
+        return null;
       }
-    })();
-    return () => { cancelled = true; clearTimeout(timeoutId); };
-  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading]);
+    },
+  });
+
+  // Hydrate the local `ranked` state from cache exactly once per event —
+  // this is a read, not a compute.
+  useEffect(() => {
+    if (!cached || !cached.recording_id) return;
+    if (cached.status === 'rejected') { setUserRejected(true); setSource('stored'); return; }
+    setRanked({
+      recording: {
+        id: cached.recording_id,
+        title: cached.recording_title || '',
+        url: cached.recording_url || '',
+        thumbnailUrl: cached.thumbnail_url || undefined,
+        durationSeconds: cached.duration_seconds || undefined,
+        recorder: cached.recorder_name || cached.recorder_email ? {
+          name: cached.recorder_name || undefined,
+          email: cached.recorder_email || undefined,
+        } : undefined,
+        createdAt: cached.recorded_at || undefined,
+      } as unknown as ClaapRecording,
+      score: Number(cached.score || 0),
+      reasons: Array.isArray(cached.reasons) ? cached.reasons : [],
+    });
+    setSource('stored');
+  }, [cached]);
+
+  const persistSuggestion = useCallback(async (rec: ClaapRecording, score: number, reasons: any[], status: 'suggested' | 'approved' | 'rejected', locked: boolean) => {
+    if (!company?.id) return;
+    try {
+      await (supabase.from('event_claap_match_cache') as any).upsert({
+        org_company_id: company.id,
+        event_id: eventId,
+        status,
+        locked,
+        recording_id: rec.id,
+        recording_title: rec.title || null,
+        recording_url: rec.url || null,
+        thumbnail_url: (rec as any).thumbnailUrl || null,
+        duration_seconds: (rec as any).durationSeconds || null,
+        recorder_name: (rec as any).recorder?.name || null,
+        recorder_email: (rec as any).recorder?.email || null,
+        recorded_at: (rec as any).createdAt || null,
+        score,
+        reasons,
+        generated_at: new Date().toISOString(),
+      }, { onConflict: 'org_company_id,event_id' });
+      qc.invalidateQueries({ queryKey: ['event-claap-match-cache', eventId, company.id] });
+    } catch (err) {
+      console.warn('claap match cache upsert failed', err);
+    }
+  }, [company?.id, eventId, qc]);
+
+  // Explicit generator — ONLY called when there's no stored suggestion or
+  // the user clicks "Find again".
+  const generateMatch = useCallback(async () => {
+    if (!eventId) return;
+    setRanking(true);
+    setSource('fresh');
+    try {
+      const recs = await fetchRecordings();
+      const list = Array.isArray(recs) ? recs : recordings;
+      if (!list || list.length === 0) return;
+      const meeting_context = {
+        title: eventTitle || null,
+        start_time: eventStart || null,
+        end_time: eventEnd || null,
+        organizer_email: organizerEmail || null,
+        attendees: (attendees || []).map(a => ({
+          email: a.email || null,
+          name: a.displayName || null,
+          self: !!a.self,
+        })),
+      };
+      const { data, error } = await supabase.functions.invoke(
+        'claap-rank-recordings-for-meeting',
+        { body: { action: 'rank', event_id: eventId, recordings: list, meeting_context } },
+      );
+      if (error) { console.warn('claap inline rank error', error); return; }
+      const top = (data?.ranked || [])[0];
+      if (!top) {
+        // Persist a "none" so we don't re-query next open.
+        if (company?.id) {
+          await (supabase.from('event_claap_match_cache') as any).upsert({
+            org_company_id: company.id,
+            event_id: eventId,
+            status: 'none',
+            locked: false,
+            reasons: [],
+            generated_at: new Date().toISOString(),
+          }, { onConflict: 'org_company_id,event_id' });
+          qc.invalidateQueries({ queryKey: ['event-claap-match-cache', eventId, company.id] });
+        }
+        return;
+      }
+      const rec = list.find(r => r.id === top.external_id);
+      if (!rec) return;
+      const score = top.score || 0;
+      const reasons = top.reasons || [];
+      setRanked({ recording: rec, score, reasons });
+      await persistSuggestion(rec, score, reasons, 'suggested', false);
+    } catch (err) {
+      console.warn('claap generate match threw', err);
+    } finally {
+      setRanking(false);
+    }
+  }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, fetchRecordings, company?.id, persistSuggestion, qc]);
+
+  // Trigger generateMatch ONLY when: no stored cache, not already linked,
+  // and either first mount or an explicit refresh tick.
+  const hasStored = !!cached; // any row (including 'none') means we've asked before
+  useEffect(() => {
+    if (!eventId) return;
+    if (existingLoading || existingFetching || canonicalLoading || cachedLoading || cachedFetching) return;
+    if (existing || canonicalLinked) return;      // already linked upstream
+    if (hasStored && refreshTick === 0) return;   // stored answer — read only
+    if (ranking) return;
+    void generateMatch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, existing, existingLoading, existingFetching, canonicalLinked, canonicalLoading, cachedLoading, cachedFetching, hasStored, refreshTick]);
+
+  const handleRefresh = useCallback(() => {
+    setUserRejected(false);
+    setAutoApproved(false);
+    setRanked(null);
+    setRefreshTick((n) => n + 1);
+  }, []);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
     if (existing || locallyLinked || canonicalLinked) return 'linked';
@@ -217,6 +333,8 @@ export function MeetingClaapInlineAction(props: Props) {
       }
       toast.success('Recording linked');
       setLocallyLinked(true);
+      // Lock the cache row so it never re-suggests automatically.
+      await persistSuggestion(ranked.recording, ranked.score, ranked.reasons, 'approved', true);
       qc.invalidateQueries({ queryKey: ['event-claap-inline-link', eventId] });
       qc.invalidateQueries({ queryKey: ['event-claap-links', eventId] });
       qc.invalidateQueries({ queryKey: ['meeting-claap-context', eventId, company?.id] });
@@ -231,6 +349,10 @@ export function MeetingClaapInlineAction(props: Props) {
   useEffect(() => {
     setAutoApproved(false);
     setLocallyLinked(false);
+    setRanked(null);
+    setUserRejected(false);
+    setSource(null);
+    setRefreshTick(0);
   }, [eventId]);
 
   useEffect(() => {
@@ -280,6 +402,13 @@ export function MeetingClaapInlineAction(props: Props) {
   // Primary button cell — always rendered to keep the 4-action row balanced.
   // Label/click handler match the original `none`-state CTA so we don't change
   // semantics: the rich suggestion/linked details render in the portaled bar.
+  const handleReject = useCallback(async () => {
+    setUserRejected(true);
+    if (ranked) {
+      await persistSuggestion(ranked.recording, ranked.score, ranked.reasons, 'rejected', true);
+    }
+  }, [ranked, persistSuggestion]);
+
   const buttonCell = (
     <Button
       size="sm"
