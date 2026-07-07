@@ -828,12 +828,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Deals Sent"
               value={kpis.submitted}
-              hint={
-                submittedDelta == null
-                  ? undefined
-                  : `${submittedDelta >= 0 ? '↑' : '↓'} ${Math.abs(submittedDelta)} vs prior period`
-              }
-              hintTone={submittedDelta == null ? 'muted' : submittedDelta >= 0 ? 'good' : 'bad'}
+              hint="deal_lenders in selected timeframe"
               loading={loading}
             />
             <IntelKpi
