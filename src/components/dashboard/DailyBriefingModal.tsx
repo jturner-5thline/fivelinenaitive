@@ -2369,7 +2369,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                  paddingBottom: 'clamp(0.5rem, 1vw, 1rem)',
+                  paddingBottom: activeTab === 'end_of_day' ? '0.125rem' : 'clamp(0.5rem, 1vw, 1rem)',
                 }}
               >
                 <AddToDealCalendarProvider>
@@ -2377,6 +2377,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     key={activeTab}
                     className={cn(
                       'min-w-0 max-w-full',
+                      activeTab === 'end_of_day' && 'h-full min-h-0',
                       slideDirection === 'left' && 'animate-slide-in-from-right',
                       slideDirection === 'right' && 'animate-slide-in-from-left',
                     )}
