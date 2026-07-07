@@ -922,7 +922,14 @@ export function LenderAnalyticsDialog({
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={conversionChartData} margin={{ top: 4, right: 8, left: -12, bottom: 4 }}>
+                          <BarChart
+                            data={conversionChartData}
+                            margin={{ top: 4, right: 8, left: -12, bottom: 4 }}
+                            onClick={(e: any) => {
+                              const name = e?.activePayload?.[0]?.payload?.name;
+                              if (name) setOpenLenderDeals(name);
+                            }}
+                          >
                             <CartesianGrid stroke="#2a2f3d" strokeDasharray="0" vertical={false} />
                             <XAxis
                               dataKey="short"
@@ -952,9 +959,14 @@ export function LenderAnalyticsDialog({
                               formatter={(v: number, _n, p: any) => [`${v}%`, p.payload.name]}
                               labelFormatter={() => ''}
                             />
-                            <Bar dataKey="pct" radius={[3, 3, 0, 0]}>
+                            <Bar dataKey="pct" radius={[3, 3, 0, 0]} cursor="pointer">
                               {conversionChartData.map((d) => (
-                                <Cell key={d.key} fill={d.color} />
+                                <Cell
+                                  key={d.key}
+                                  fill={d.color}
+                                  onClick={() => setOpenLenderDeals(d.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
                               ))}
                             </Bar>
                           </BarChart>
