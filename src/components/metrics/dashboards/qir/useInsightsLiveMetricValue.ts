@@ -43,6 +43,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { buildBuckets } from '@/lib/insightsTimeRange';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { ReportState } from '../QuarterlyInsightsReport';
+import { subMonths, subQuarters } from 'date-fns';
 
 export interface LiveMetricPeriod {
   start: string; // ymd inclusive
@@ -114,6 +115,12 @@ export interface LiveMetricResolution {
   value?: number;
   /** Human-readable source surface, for the "from" caption on the card. */
   sourceSurface?: string;
+  /** Value for the immediately-preceding period of equal length (when available). */
+  previousValue?: number;
+  /** Absolute delta vs the previous period. */
+  changeAbsolute?: number;
+  /** Percentage change vs the previous period. */
+  changePct?: number;
 }
 
 /**
@@ -164,6 +171,75 @@ export function useInsightsLiveMetricValue(
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []).reduce((s: number, r: any) => s + Number(r.value ?? 0), 0);
+    },
+  });
+
+  // ---- Brand Awareness (workbook-entered metrics) ----
+  const isBrandAwareness = !!metricSourceId && metricSourceId.startsWith('ba-');
+  const baKeys = useMemo(() => {
+    if (!isBrandAwareness || !period) {
+      return { current: [] as string[], prior: [] as string[] };
+    }
+    const monthBuckets = buildBuckets(period.start, period.end, 'monthly');
+    const quarterBuckets = buildBuckets(period.start, period.end, 'quarterly');
+    const startD = new Date(period.start + 'T00:00:00');
+    const priorMonths = monthBuckets.map(b => {
+      const [y, m] = b.key.split('-').map(Number);
+      const d = subMonths(new Date(y, m - 1, 1), monthBuckets.length);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    });
+    const priorQuarters = quarterBuckets.map(b => {
+      const m = /^(\d{4})-Q([1-4])$/.exec(b.key);
+      if (!m) return b.key;
+      const y = Number(m[1]);
+      const q = Number(m[2]);
+      const d = subQuarters(new Date(y, (q - 1) * 3, 1), quarterBuckets.length);
+      return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+    });
+    return {
+      current: [...monthBuckets.map(b => b.key), ...quarterBuckets.map(b => b.key)],
+      prior: [...priorMonths, ...priorQuarters],
+    };
+  }, [isBrandAwareness, period?.start, period?.end]);
+  const brandAwareness = useQuery({
+    enabled: isBrandAwareness && !!metricSourceId && baKeys.current.length > 0,
+    queryKey: [
+      'insights-live-brand-awareness',
+      metricSourceId,
+      company?.id ?? null,
+      baKeys.current.join('|'),
+      baKeys.prior.join('|'),
+    ],
+    staleTime: 30_000,
+    queryFn: async () => {
+      const allKeys = Array.from(new Set([...baKeys.current, ...baKeys.prior]));
+      let q = (supabase.from('metric_manual_inputs') as any)
+        .select('month_key, value')
+        .eq('metric_key', metricSourceId as string)
+        .in('month_key', allKeys);
+      q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+      const isScore =
+        metricSourceId === 'ba-ai-search-readiness-score' ||
+        metricSourceId === 'ba-market-awareness-score';
+      const aggregate = (keys: string[]): number | undefined => {
+        const keySet = new Set(keys);
+        const vals: number[] = [];
+        for (const row of data ?? []) {
+          if (!keySet.has(row.month_key)) continue;
+          if (row.value === null || row.value === undefined) continue;
+          const n = Number(row.value);
+          if (Number.isFinite(n)) vals.push(n);
+        }
+        if (vals.length === 0) return undefined;
+        if (isScore) return vals.reduce((a, b) => a + b, 0) / vals.length;
+        return vals.reduce((a, b) => a + b, 0);
+      };
+      return {
+        current: aggregate(baKeys.current),
+        prior: aggregate(baKeys.prior),
+      };
     },
   });
 
@@ -253,6 +329,35 @@ export function useInsightsLiveMetricValue(
 
   return useMemo<LiveMetricResolution>(() => {
     if (!metricSourceId) return { supported: false, status: 'unmapped' };
+
+    // ---- Brand Awareness (manual workbook inputs) ----
+    if (metricSourceId.startsWith('ba-')) {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'Brand Awareness' };
+      }
+      if (brandAwareness.isLoading) {
+        return { supported: true, status: 'loading', sourceSurface: 'Brand Awareness' };
+      }
+      const current = brandAwareness.data?.current;
+      const prior = brandAwareness.data?.prior;
+      if (current === undefined) {
+        return { supported: true, status: 'ready', value: 0, sourceSurface: 'Brand Awareness' };
+      }
+      const changeAbsolute = prior !== undefined ? current - prior : undefined;
+      const changePct =
+        prior !== undefined && prior !== 0
+          ? ((current - prior) / Math.abs(prior)) * 100
+          : undefined;
+      return {
+        supported: true,
+        status: 'ready',
+        value: current,
+        previousValue: prior,
+        changeAbsolute,
+        changePct,
+        sourceSurface: 'Brand Awareness',
+      };
+    }
 
     // ---- Deal/pipeline metrics (Weekly Rundown) ----
     // Fail-closed: only the four canonical scalar KPIs that map 1:1 to
@@ -407,5 +512,7 @@ export function useInsightsLiveMetricValue(
     finservRev.operatingProfit,
     perHourHours.isLoading,
     perHourHours.data,
+    brandAwareness.isLoading,
+    brandAwareness.data,
   ]);
 }

@@ -885,6 +885,35 @@ function LiveMetricKpiCard({
           Target {formatKPI(kpi.target, kpi.format)}
         </span>
         <Pill tone={tone}>{statusLabel}</Pill>
+        {resolution.status === 'ready' && resolution.changeAbsolute !== undefined && (
+          <span
+            style={{
+              fontSize: 10,
+              fontVariantNumeric: 'tabular-nums',
+              color:
+                resolution.changeAbsolute > 0
+                  ? '#10b981'
+                  : resolution.changeAbsolute < 0
+                    ? '#f43f5e'
+                    : TEXT_MUTED,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+            title={`vs previous ${period?.label ?? 'period'}: ${formatKPI(String(resolution.previousValue ?? 0), kpi.format)}`}
+          >
+            {(() => {
+              const d = resolution.changeAbsolute;
+              const sign = d > 0 ? '+' : d < 0 ? '−' : '';
+              const abs = Math.abs(d);
+              const deltaStr = `${sign}${formatKPI(String(abs), kpi.format)}`;
+              const pct = resolution.changePct;
+              if (pct === undefined) return `${deltaStr} vs prev`;
+              const pctSign = pct > 0 ? '+' : pct < 0 ? '−' : '';
+              return `${deltaStr} (${pctSign}${Math.abs(pct).toFixed(1)}%) vs prev`;
+            })()}
+          </span>
+        )}
         {resolution.supported && resolution.sourceSurface && (
           <span style={{ fontSize: 8, letterSpacing: '.06em', textTransform: 'uppercase', color: TEXT_LABEL, opacity: 0.7 }}>
             Live · {resolution.sourceSurface}
