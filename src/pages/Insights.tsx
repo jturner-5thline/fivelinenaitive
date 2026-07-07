@@ -180,6 +180,37 @@ const DEFAULT_FOLDER_IDS = new Set(
 );
 
 const DEFAULT_FOLDER_EXPANDED_STORAGE_KEY = 'insights-default-folder-expanded-v1';
+const SELECTED_DASHBOARD_SESSION_KEY = 'insights-selected-dashboard-v1';
+
+function readPersistedInsightsDashboard() {
+  try {
+    return globalThis.sessionStorage?.getItem(SELECTED_DASHBOARD_SESSION_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function persistInsightsDashboard(id: string) {
+  try {
+    globalThis.sessionStorage?.setItem(SELECTED_DASHBOARD_SESSION_KEY, id);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function getInitialInsightsDashboard(search: string) {
+  const params = new URLSearchParams(search);
+  const view = params.get('view');
+  if (view === 'weekly-rundown') return 'management-snapshot';
+  if (params.get('tab')) return 'management-review';
+
+  // If the page remounts because a timeframe picker wrote URL params, keep the
+  // user's current dashboard instead of falling back to Weekly Rundown.
+  const hasTimeframeParams = params.has('tf') || params.has('tfStart') || params.has('tfEnd') || params.has('view') || params.has('period');
+  if (hasTimeframeParams) return readPersistedInsightsDashboard() || 'management-snapshot';
+
+  return 'management-snapshot';
+}
 
 type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
 
