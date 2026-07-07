@@ -1,0 +1,1 @@
+ALTER TABLE public.insights_report_submissions ADD COLUMN IF NOT EXISTS content_snapshot jsonb;
