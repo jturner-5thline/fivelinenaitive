@@ -531,6 +531,41 @@ export function AdminAgentDuty1Config() {
     }
   }
 
+  // ── Rename knowledge doc ─────────────────────────────────────
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  function startRename(doc: KnowledgeDoc) {
+    setRenamingId(doc.id);
+    setRenameValue(doc.title);
+  }
+
+  async function commitRename(doc: KnowledgeDoc) {
+    const next = renameValue.trim();
+    setRenamingId(null);
+    if (!next || next === doc.title) return;
+    try {
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ title: next })
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      toast.success('Renamed.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not rename.');
+    }
+  }
+
+  function formatDocSize(n: number | null): string {
+    if (!n || n <= 0) return '';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    let v = n;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+  }
+
   async function addHoliday() {
     if (!companyId || !newHolidayDate) return;
     const { error } = await supabase
