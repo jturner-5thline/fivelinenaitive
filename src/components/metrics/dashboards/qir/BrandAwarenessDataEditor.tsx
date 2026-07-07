@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -60,13 +60,34 @@ export function BrandAwarenessDataEditor({ open, onClose }: Props) {
 
   const metricKeys = BRAND_AWARENESS_METRICS.map(m => m.id);
 
-  const { data: rows = [] } = useQuery({
-    queryKey: ['brand-awareness-inputs', metricKeys],
+  // Resolve the current user's company so entered values are shared across
+  // teammates (and visible to new users joining the same workspace) instead
+  // of being scoped per-user.
+  const { data: companyId } = useQuery({
+    queryKey: ['brand-awareness-inputs:company'],
     enabled: open,
+    queryFn: async (): Promise<string | null> => {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return null;
+      const { data, error } = await (supabase.from('company_members') as any)
+        .select('company_id')
+        .eq('user_id', userData.user.id)
+        .limit(1)
+        .maybeSingle();
+      if (error) return null;
+      return (data?.company_id as string) ?? null;
+    },
+  });
+
+  const { data: rows = [] } = useQuery({
+    queryKey: ['brand-awareness-inputs', companyId, metricKeys],
+    enabled: open && companyId !== undefined,
     queryFn: async (): Promise<Row[]> => {
-      const { data, error } = await (supabase.from('metric_manual_inputs') as any)
+      let q = (supabase.from('metric_manual_inputs') as any)
         .select('metric_key, month_key, value')
         .in('metric_key', metricKeys);
+      q = companyId ? q.eq('company_id', companyId) : q.is('company_id', null);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as Row[];
     },
@@ -90,7 +111,7 @@ export function BrandAwarenessDataEditor({ open, onClose }: Props) {
         .upsert(
           {
             user_id: userData.user.id,
-            company_id: null,
+            company_id: companyId ?? null,
             metric_key: input.metric_key,
             month_key: input.month_key,
             value: input.value,
@@ -199,12 +220,14 @@ export function BrandAwarenessDataEditor({ open, onClose }: Props) {
 
 function PeriodCell({ initial, onCommit }: { initial?: number; onCommit: (v: number | null) => void }) {
   const [text, setText] = useState(initial === undefined ? '' : String(initial));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setText(initial === undefined ? '' : String(initial));
   }, [initial]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  const commit = () => {
-    const trimmed = text.trim();
+  const commitValue = (raw: string) => {
+    const trimmed = raw.trim();
     if (trimmed === '') {
       if (initial !== undefined) onCommit(null);
       return;
@@ -214,14 +237,24 @@ function PeriodCell({ initial, onCommit }: { initial?: number; onCommit: (v: num
     if (n !== initial) onCommit(n);
   };
 
+  const scheduleCommit = (raw: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => commitValue(raw), 500);
+  };
+
+  const flushCommit = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    commitValue(text);
+  };
+
   return (
     <td className="px-1 py-0.5">
       <Input
         value={text}
-        onChange={e => setText(e.target.value)}
-        onBlur={commit}
+        onChange={e => { setText(e.target.value); scheduleCommit(e.target.value); }}
+        onBlur={flushCommit}
         onKeyDown={e => {
-          if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); }
+          if (e.key === 'Enter') { flushCommit(); (e.target as HTMLInputElement).blur(); }
         }}
         inputMode="decimal"
         className="h-8 text-right tabular-nums text-sm px-2"
