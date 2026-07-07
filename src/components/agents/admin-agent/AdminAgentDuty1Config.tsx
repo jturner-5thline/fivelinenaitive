@@ -121,7 +121,7 @@ export function AdminAgentDuty1Config() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('admin_agent_settings')
-        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules')
+        .select('id, company_id, enabled, active_pipeline_ids, active_stage_ids, stale_threshold_business_days, friday_sweep_enabled, custom_rules, knowledge_tag_filter')
         .eq('company_id', companyId)
         .maybeSingle();
       if (error) throw error;
@@ -212,6 +212,7 @@ export function AdminAgentDuty1Config() {
   const [customRules, setCustomRules] = useState<CustomRule[]>([]);
   const [newRuleText, setNewRuleText] = useState('');
   const [isSavingRule, setIsSavingRule] = useState(false);
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -228,6 +229,7 @@ export function AdminAgentDuty1Config() {
         : STALE_THRESHOLD_DEFAULT,
     );
     setCustomRules(Array.isArray(s?.custom_rules) ? (s!.custom_rules as CustomRule[]) : []);
+    setTagFilter(Array.isArray(s?.knowledge_tag_filter) ? (s!.knowledge_tag_filter as string[]) : []);
     setIsLoaded(true);
   }, [settingsQ.data, settingsQ.isLoading, settingsQ.isError]);
 
@@ -264,6 +266,7 @@ export function AdminAgentDuty1Config() {
         active_pipeline_ids: pipelineIds,
         active_stage_ids: stageIds,
         stale_threshold_business_days: Math.max(1, Math.min(30, Math.round(staleThreshold || STALE_THRESHOLD_DEFAULT))),
+        knowledge_tag_filter: tagFilter,
       };
       const { error } = await supabase
         .from('admin_agent_settings')
