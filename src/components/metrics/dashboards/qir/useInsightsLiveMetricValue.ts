@@ -252,13 +252,14 @@ export function useInsightsLiveMetricValue(
         if (isScore) return vals.reduce((a, b) => a + b, 0) / vals.length;
         return vals.reduce((a, b) => a + b, 0);
       };
-      // Prefer monthly workbook entries (more granular; exact Apr–Jun for Q2).
-      // Fall back to a matching quarterly cell only when no monthly data exists
-      // for the window. Prevents double-counting when both are present.
+      // Prefer the quarterly workbook cell for the selected quarter
+      // (e.g. `2026-Q2`). Fall back to aggregating the matching monthly
+      // cells (Apr+May+Jun) only when no quarterly value has been entered.
+      // Prevents double-counting when both are present.
       const pick = (monthKeys: string[], quarterKeys: string[]) => {
-        const monthly = collect(monthKeys);
-        if (monthly.length > 0) return reduce(monthly);
-        return reduce(collect(quarterKeys));
+        const quarterly = collect(quarterKeys);
+        if (quarterly.length > 0) return reduce(quarterly);
+        return reduce(collect(monthKeys));
       };
       return {
         current: pick(baKeys.currentMonths, baKeys.currentQuarters),
