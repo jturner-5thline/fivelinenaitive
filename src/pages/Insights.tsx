@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
@@ -1405,7 +1405,15 @@ function MetricsInner() {
     canEditMetrics,
   } = useMetricsWidgets();
 
-  const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
+  const location = useLocation();
+  const initialDashboardRef = useRef<string | null>(null);
+  if (initialDashboardRef.current === null) {
+    const initialParams = new URLSearchParams(location.search);
+    initialDashboardRef.current = initialParams.get('tab')
+      ? 'management-review'
+      : 'management-snapshot';
+  }
+  const [selectedDashboard, setSelectedDashboard] = useState(initialDashboardRef.current);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Per-user Insights dashboard restrictions. Users listed here only see the
