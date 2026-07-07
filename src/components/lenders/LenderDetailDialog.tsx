@@ -913,6 +913,60 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     )}
                   </div>
                   <div className="grid gap-3">
+                    {(additionalContacts.length > 0 || (editForm.contactName || editForm.email || editForm.contactPhone)) && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Primary Contact</Label>
+                        <Select
+                          value="__current"
+                          onValueChange={async (val) => {
+                            if (val === '__current' || !lender?.id) return;
+                            const promoted = additionalContacts.find((c) => c.id === val);
+                            if (!promoted) return;
+                            const prevPrimary = {
+                              name: editForm.contactName,
+                              email: editForm.email,
+                              phone: editForm.contactPhone,
+                            };
+                            // Promote selected contact into primary form fields
+                            setEditForm((f) => ({
+                              ...f,
+                              contactName: promoted.name || '',
+                              email: promoted.email || '',
+                              contactPhone: promoted.phone || '',
+                            }));
+                            // Remove the promoted contact from the additional list
+                            await deleteAdditionalContact(promoted.id);
+                            // Demote the previous primary into an additional contact if it had data
+                            if (prevPrimary.name || prevPrimary.email || prevPrimary.phone) {
+                              await addContact({
+                                name: prevPrimary.name || 'Previous Primary',
+                                email: prevPrimary.email || null,
+                                phone: prevPrimary.phone || null,
+                              });
+                            }
+                            toast.success(`${promoted.name} is now the primary contact — save to persist`);
+                          }}
+                        >
+                          <SelectTrigger className="text-sm h-9">
+                            <SelectValue placeholder="Select primary contact" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__current">
+                              {editForm.contactName || 'Unnamed primary'}
+                              {editForm.email ? ` — ${editForm.email}` : ''}
+                            </SelectItem>
+                            {additionalContacts.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}{c.email ? ` — ${c.email}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Switching promotes the selected contact and moves the current primary into Additional Contacts.
+                        </p>
+                      </div>
+                    )}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">Primary Contact Name</Label>
                       <Input
