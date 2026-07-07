@@ -1078,9 +1078,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.minDeal ? `$${Number(editForm.minDeal).toLocaleString()}` : ''}
+                          value={editForm.minDeal ? formatLenderCurrency(Number(editForm.minDeal)) : ''}
                           onChange={(e) => setEditForm({ ...editForm, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $500,000"
+                          placeholder="e.g., $0.50MM"
                           className="text-sm"
                         />
                       </div>
@@ -1089,9 +1089,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <Input
                           type="text"
                           inputMode="numeric"
-                          value={editForm.maxDeal ? `$${Number(editForm.maxDeal).toLocaleString()}` : ''}
+                          value={editForm.maxDeal ? formatLenderCurrency(Number(editForm.maxDeal)) : ''}
                           onChange={(e) => setEditForm({ ...editForm, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
-                          placeholder="e.g., $25,000,000"
+                          placeholder="e.g., $25.00MM"
                           className="text-sm"
                         />
                       </div>
@@ -1281,22 +1281,24 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Min Revenue ($)</Label>
+                        <Label className="text-xs text-muted-foreground">Min Revenue</Label>
                         <Input
-                          type="number"
-                          value={editForm.minRevenue}
-                          onChange={(e) => setEditForm({ ...editForm, minRevenue: e.target.value })}
-                          placeholder="e.g., 5000000"
+                          type="text"
+                          inputMode="numeric"
+                          value={editForm.minRevenue ? formatLenderCurrency(Number(editForm.minRevenue)) : ''}
+                          onChange={(e) => setEditForm({ ...editForm, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
+                          placeholder="e.g., $5.00MM"
                           className="text-sm"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">Min EBITDA ($)</Label>
+                        <Label className="text-xs text-muted-foreground">Min EBITDA</Label>
                         <Input
-                          type="number"
-                          value={editForm.ebitdaMin}
-                          onChange={(e) => setEditForm({ ...editForm, ebitdaMin: e.target.value })}
-                          placeholder="e.g., 1000000"
+                          type="text"
+                          inputMode="numeric"
+                          value={editForm.ebitdaMin ? formatLenderCurrency(Number(editForm.ebitdaMin)) : ''}
+                          onChange={(e) => setEditForm({ ...editForm, ebitdaMin: e.target.value.replace(/[^0-9]/g, '') })}
+                          placeholder="e.g., $1.00MM"
                           className="text-sm"
                         />
                       </div>
