@@ -418,8 +418,10 @@ export function LenderAnalyticsDialog({
       const ord = stageOrdinal(label);
       const terminal = isTerminal(label, dl.pass_reason);
       const bucket = bucketFor(label, ord, terminal);
-      // "Ever reached" — without history we infer from current ordinal.
-      const everSubmitted = ord >= 3 || (terminal.passed && (label || '').toLowerCase().includes('drl'));
+      // Denominator = lender was added to a deal at any stage (outreach, inquiry,
+      // sent DRL, in review, mgmt call, terms) or reached a terminal state.
+      // Numerator = lender reached "Terms Issued" (ord === 7).
+      const everSubmitted = ord >= 1 || terminal.passed || terminal.unresponsive || terminal.onHold;
       const everTerms = ord >= 7;
       out.push({
         ...dl,
@@ -837,7 +839,7 @@ export function LenderAnalyticsDialog({
             <IntelKpi
               label="Conversion Rate"
               value={fmtPct(kpis.conv)}
-              hint="deals sent → terms issued"
+              hint="added to deal → terms issued"
               loading={loading}
             />
             <IntelKpi
@@ -910,7 +912,7 @@ export function LenderAnalyticsDialog({
                 <div className="flex flex-col gap-3 min-w-0">
                   <IntelPanel
                     title="Lender Conversion Rate"
-                    subtitle="deal sent → terms issued"
+                    subtitle="added to deal → terms issued"
                     subtitleTone="accent"
                   >
                     <div className="px-3 pb-3 pt-2 h-[240px]">
