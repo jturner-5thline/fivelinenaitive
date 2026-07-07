@@ -220,12 +220,14 @@ export function BrandAwarenessDataEditor({ open, onClose }: Props) {
 
 function PeriodCell({ initial, onCommit }: { initial?: number; onCommit: (v: number | null) => void }) {
   const [text, setText] = useState(initial === undefined ? '' : String(initial));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     setText(initial === undefined ? '' : String(initial));
   }, [initial]);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
-  const commit = () => {
-    const trimmed = text.trim();
+  const commitValue = (raw: string) => {
+    const trimmed = raw.trim();
     if (trimmed === '') {
       if (initial !== undefined) onCommit(null);
       return;
@@ -235,14 +237,24 @@ function PeriodCell({ initial, onCommit }: { initial?: number; onCommit: (v: num
     if (n !== initial) onCommit(n);
   };
 
+  const scheduleCommit = (raw: string) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => commitValue(raw), 500);
+  };
+
+  const flushCommit = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    commitValue(text);
+  };
+
   return (
     <td className="px-1 py-0.5">
       <Input
         value={text}
-        onChange={e => setText(e.target.value)}
-        onBlur={commit}
+        onChange={e => { setText(e.target.value); scheduleCommit(e.target.value); }}
+        onBlur={flushCommit}
         onKeyDown={e => {
-          if (e.key === 'Enter') { commit(); (e.target as HTMLInputElement).blur(); }
+          if (e.key === 'Enter') { flushCommit(); (e.target as HTMLInputElement).blur(); }
         }}
         inputMode="decimal"
         className="h-8 text-right tabular-nums text-sm px-2"
