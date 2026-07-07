@@ -149,11 +149,12 @@ interface LenderFormContact {
   title: string;
   email: string;
   phone: string;
+  geography: string;
   isPrimary: boolean;
 }
 
 const emptyContact = (isPrimary = false): LenderFormContact => ({
-  contact_id: null, name: '', title: '', email: '', phone: '', isPrimary,
+  contact_id: null, name: '', title: '', email: '', phone: '', geography: '', isPrimary,
 });
 
 interface LenderForm {
@@ -1096,6 +1097,7 @@ export default function Lenders() {
                 title: c.title.trim() || null,
                 email: c.email.trim() || null,
                 phone: c.phone.trim() || null,
+                geography: c.geography?.trim() || null,
                 is_primary: c.isPrimary,
               };
             })
@@ -2154,6 +2156,7 @@ export default function Lenders() {
                         title: contact.title,
                         email: contact.email,
                         phone: contact.phone,
+                        geography: contact.geography,
                       }}
                       onChange={(next) => setForm(prev => ({
                         ...prev,
@@ -2164,6 +2167,7 @@ export default function Lenders() {
                           title: next.title,
                           email: next.email,
                           phone: next.phone,
+                          geography: next.geography ?? '',
                         } : c),
                       }))}
                     />

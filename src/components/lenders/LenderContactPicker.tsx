@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Check, ChevronsUpDown, Mail, Phone, Pencil, UserPlus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, ChevronsUpDown, Mail, MapPin, Phone, Pencil, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useCreateContact } from '@/hooks/useContacts';
 import { toast } from '@/hooks/use-toast';
+import { LOCATION_OPTIONS } from '@/constants/locations';
+import { cn } from '@/lib/utils';
 
 export interface PickedContact {
   contact_id: string | null;
@@ -23,6 +25,7 @@ export interface PickedContact {
   title: string;
   email: string;
   phone: string;
+  geography?: string;
 }
 
 interface CrmContactRow {
@@ -59,7 +62,72 @@ export function LenderContactPicker({ value, onChange }: Props) {
     email: '',
     job_title: '',
     phone_work: '',
+    geography: '',
   });
+  const [geographyOpen, setGeographyOpen] = useState(false);
+  const [geographySearch, setGeographySearch] = useState('');
+  const filteredLocations = useMemo(() => {
+    if (!geographySearch) return LOCATION_OPTIONS;
+    const s = geographySearch.toLowerCase();
+    return LOCATION_OPTIONS.filter((loc) => loc.toLowerCase().includes(s));
+  }, [geographySearch]);
+
+  const GeographySelect = ({ current, onPick }: { current: string; onPick: (v: string) => void }) => (
+    <Popover open={geographyOpen} onOpenChange={setGeographyOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={geographyOpen}
+          className="h-8 w-full justify-between text-sm font-normal"
+        >
+          <span className={cn('flex items-center gap-1.5 truncate', !current && 'text-muted-foreground')}>
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            {current || 'Select geography'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0" align="start">
+        <div className="p-2 border-b">
+          <Input
+            placeholder="Search locations..."
+            value={geographySearch}
+            onChange={(e) => setGeographySearch(e.target.value)}
+            className="h-8"
+          />
+        </div>
+        <div className="max-h-[200px] overflow-y-auto p-1">
+          {current && (
+            <div
+              className="flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm text-muted-foreground hover:bg-accent"
+              onClick={() => { onPick(''); setGeographyOpen(false); setGeographySearch(''); }}
+            >
+              Clear selection
+            </div>
+          )}
+          {filteredLocations.length === 0 ? (
+            <div className="py-2 px-3 text-sm text-muted-foreground">No locations found</div>
+          ) : (
+            filteredLocations.map((option) => (
+              <div
+                key={option}
+                className={cn(
+                  'flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-sm hover:bg-accent',
+                  current === option && 'bg-accent',
+                )}
+                onClick={() => { onPick(option); setGeographyOpen(false); setGeographySearch(''); }}
+              >
+                <Check className={cn('h-4 w-4', current === option ? 'opacity-100' : 'opacity-0')} />
+                {option}
+              </div>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
   const createContact = useCreateContact();
 
   useEffect(() => {
@@ -104,6 +172,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
       title: c.job_title || '',
       email: c.email || '',
       phone: c.phone_work || c.phone_mobile || '',
+      geography: value.geography ?? '',
     });
     setOpen(false);
     setQuery('');
@@ -118,13 +187,14 @@ export function LenderContactPicker({ value, onChange }: Props) {
       email: '',
       job_title: '',
       phone_work: '',
+      geography: '',
     });
     setOpen(false);
     setCreating(true);
   };
 
   const submitNew = async () => {
-    const { first_name, last_name, email, job_title, phone_work } = newForm;
+    const { first_name, last_name, email, job_title, phone_work, geography } = newForm;
     if (!first_name.trim() && !last_name.trim() && !email.trim()) {
       toast({ title: 'Add a name or email to create a contact', variant: 'destructive' });
       return;
@@ -147,9 +217,10 @@ export function LenderContactPicker({ value, onChange }: Props) {
         title: created?.job_title || job_title.trim(),
         email: created?.email || email.trim(),
         phone: created?.phone_work || phone_work.trim(),
+        geography: geography.trim(),
       });
       setCreating(false);
-      setNewForm({ first_name: '', last_name: '', email: '', job_title: '', phone_work: '' });
+      setNewForm({ first_name: '', last_name: '', email: '', job_title: '', phone_work: '', geography: '' });
       toast({ title: 'Contact created' });
     } catch (err: any) {
       toast({ title: 'Could not create contact', description: err?.message, variant: 'destructive' });
@@ -157,7 +228,7 @@ export function LenderContactPicker({ value, onChange }: Props) {
   };
 
   const clearSelection = () => {
-    onChange({ contact_id: null, name: '', title: '', email: '', phone: '' });
+    onChange({ contact_id: null, name: '', title: '', email: '', phone: '', geography: '' });
   };
 
   // Selected contact summary (read-only)
@@ -192,6 +263,12 @@ export function LenderContactPicker({ value, onChange }: Props) {
           >
             <Pencil className="h-3 w-3 mr-1" /> Change
           </Button>
+        </div>
+        <div className="pt-1">
+          <GeographySelect
+            current={value.geography ?? ''}
+            onPick={(v) => onChange({ ...value, geography: v })}
+          />
         </div>
       </div>
     );
@@ -238,6 +315,10 @@ export function LenderContactPicker({ value, onChange }: Props) {
             className="h-8 text-sm"
           />
         </div>
+        <GeographySelect
+          current={newForm.geography}
+          onPick={(v) => setNewForm({ ...newForm, geography: v })}
+        />
         <div className="flex justify-end gap-2 pt-1">
           <Button
             type="button"
