@@ -19,6 +19,7 @@ export interface SubmissionRow {
   unsubmitted_at: string | null;
   submit_count: number;
   audit: Array<{ action: string; at: string; by: string | null; by_name: string | null }>;
+  content_snapshot?: any | null;
 }
 
 /**
@@ -80,6 +81,7 @@ export function useInsightsReportSubmission(reportKey: string | null, periodKey:
   const writeState = useCallback(async (
     nextStatus: SubmissionStatus,
     action: 'submitted' | 'unsubmitted' | 'resubmitted',
+    snapshot?: any,
   ): Promise<SubmissionRow | null> => {
     if (!enabled || !user) return null;
     setWorking(true);
@@ -100,6 +102,12 @@ export function useInsightsReportSubmission(reportKey: string | null, periodKey:
         payload.submitted_by_name = userDisplayName;
         payload.submitted_at = nowIso;
         payload.submit_count = (row?.submit_count ?? 0) + 1;
+        // Snapshot the report body at submit time so the submitted
+        // version is always viewable/recoverable even if the live
+        // report is later edited or wiped.
+        if (snapshot !== undefined) {
+          payload.content_snapshot = snapshot;
+        }
       } else {
         payload.unsubmitted_by = user.id;
         payload.unsubmitted_by_name = userDisplayName;
@@ -118,9 +126,9 @@ export function useInsightsReportSubmission(reportKey: string | null, periodKey:
     }
   }, [enabled, user, userDisplayName, row, company?.id, reportKey, periodKey]);
 
-  const submit = useCallback(async () => {
+  const submit = useCallback(async (snapshot?: any) => {
     const isResubmit = (row?.submit_count ?? 0) > 0;
-    return writeState('submitted', isResubmit ? 'resubmitted' : 'submitted');
+    return writeState('submitted', isResubmit ? 'resubmitted' : 'submitted', snapshot);
   }, [writeState, row?.submit_count]);
 
   const unsubmit = useCallback(async () => writeState('draft', 'unsubmitted'), [writeState]);
