@@ -965,9 +965,6 @@ export function AdminAgentDuty1Config() {
 
         {/* ── Calendar (holidays) ─────────────────────────────── */}
         <TabsContent value="calendar" className="mt-3 space-y-2.5">
-
-        </TabsContent>
-        {/* placeholder replaced below */}
           <div className="flex items-start gap-2">
             <CalendarDays className="h-3.5 w-3.5 text-muted-foreground mt-0.5" />
             <p className="text-[11px] text-muted-foreground leading-snug">
