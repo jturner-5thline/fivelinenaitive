@@ -30,13 +30,14 @@ import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useTaskNotifications } from '@/hooks/useTaskNotifications';
 import { lazyRetry } from '@/lib/lazyRetry';
+import { DashboardModal } from '@/components/dashboard/DashboardModal';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
 // the real component's chunk + data hydrate in the background.
-const loadDashboard = lazyRetry(() =>
-  import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal })),
-);
+// NOTE: DashboardModal is imported statically above — its lazy chunk was
+// intermittently failing to fetch in preview ("Failed to fetch dynamically
+// imported module") after the asset manifest went stale.
 const loadTasks = lazyRetry(() =>
   import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay })),
 );
@@ -53,7 +54,6 @@ const loadDealsOverlay = lazyRetry(() =>
   import('@/components/deals/DealsOverlay').then((m) => ({ default: m.DealsOverlay })),
 );
 
-const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
 const FullCalendarView = lazy(loadCalendar);
 const InboxDialog = lazy(loadMail);
