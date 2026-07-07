@@ -166,30 +166,33 @@ function SimpleFilters({
         <div className="space-y-1">
           <Label className={labelCls}>Min Deal Size ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 1000000"
-            value={filters.minDealSize}
-            onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $1,000,000"
+            value={filters.minDealSize ? `$${Number(filters.minDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1">
           <Label className={labelCls}>Max Deal Size ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 50000000"
-            value={filters.maxDealSize}
-            onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $50,000,000"
+            value={filters.maxDealSize ? `$${Number(filters.maxDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1">
           <Label className={labelCls}>Your Revenue ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 5000000"
-            value={filters.minRevenue}
-            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $5,000,000"
+            value={filters.minRevenue ? `$${Number(filters.minRevenue.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
