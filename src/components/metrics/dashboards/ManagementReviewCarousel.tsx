@@ -64,7 +64,7 @@ function useSelectionFromGlobalPeriod(): { selection: ReportSelection; ready: bo
   }, [rp?.view, rp?.period]);
 }
 
-function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, locked = false, lockBanner }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => void; locked?: boolean; lockBanner?: JSX.Element | null }) {
+function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, locked = false, lockBanner }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean, getSnapshot: () => any) => void; locked?: boolean; lockBanner?: JSX.Element | null }) {
   // The active period is derived from the GLOBAL Insights reporting period
   // header (Month / Quarter + period dropdown). The composite key
   // `qir:<reportKey>:<period_type>:<period_value>` uniquely identifies each
@@ -108,14 +108,17 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, l
 
   // When the report is submitted/locked, neutralize edit/save: callers
   // get a no-op save and canEdit=false so the carousel Save button hides.
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
+  const getSnapshot = useCallback(() => stateRef.current, []);
   useEffect(() => {
     if (locked) {
-      onSaveReady?.(null, false, false);
+      onSaveReady?.(null, false, false, getSnapshot);
     } else {
-      onSaveReady?.(save || null, canEdit !== false, isDirty);
+      onSaveReady?.(save || null, canEdit !== false, isDirty, getSnapshot);
     }
-    return () => onSaveReady?.(null, false, false);
-  }, [save, canEdit, isDirty, onSaveReady, locked]);
+    return () => onSaveReady?.(null, false, false, getSnapshot);
+  }, [save, canEdit, isDirty, onSaveReady, locked, getSnapshot]);
 
   const noopSave = useCallback(async () => true, []);
 
