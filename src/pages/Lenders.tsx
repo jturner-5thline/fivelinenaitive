@@ -1097,6 +1097,7 @@ export default function Lenders() {
                 title: c.title.trim() || null,
                 email: c.email.trim() || null,
                 phone: c.phone.trim() || null,
+                geography: c.geography?.trim() || null,
                 is_primary: c.isPrimary,
               };
             })
