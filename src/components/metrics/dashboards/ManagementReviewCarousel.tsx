@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save as SaveIcon, Check, Send, Loader2, Lock, Unlock } from 'lucide-react';
+import { Save as SaveIcon, Check, Send, Loader2, Lock, Unlock, Eye, X as XIcon } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
@@ -181,8 +181,10 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   // Always-current save fn lives in a ref so updates don't re-render
   // (the child's `save` callback gets a new identity every render).
   const saveFnRef = useRef<(() => Promise<boolean>) | null>(null);
-  const handleSaveReady = useCallback((fn: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => {
+  const getSnapshotRef = useRef<(() => any) | null>(null);
+  const handleSaveReady = useCallback((fn: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean, getSnapshot?: () => any) => {
     saveFnRef.current = fn;
+    getSnapshotRef.current = getSnapshot ?? null;
     // Dedupe to prevent an infinite render loop: the child's `save`
     // callback gets a new identity on each render, so blindly calling
     // setReportSave({...}) re-renders the parent, re-renders the child,
@@ -264,7 +266,12 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     setSubmitting(true);
     try {
       const isResubmit = (submission.row?.submit_count ?? 0) > 0;
-      const result = await submission.submit();
+      // Snapshot the current report body so the submitted version is
+      // always viewable/recoverable, even if the live doc is later
+      // edited or cleared.
+      let snapshot: any = undefined;
+      try { snapshot = getSnapshotRef.current?.() ?? undefined; } catch { /* noop */ }
+      const result = await submission.submit(snapshot);
       if (!result) throw new Error('Submission state did not persist');
       const actorName = result.submitted_by_name || 'A teammate';
       await sendReviewEmails(meta, isResubmit ? 'resubmitted' : 'submitted', actorName);
@@ -428,6 +435,8 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const submittedAtLabel = submission.row?.submitted_at
     ? new Date(submission.row.submitted_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : null;
+  const hasSnapshot = isReportTab && !!submission.row?.content_snapshot;
+  const [snapshotOpen, setSnapshotOpen] = useState(false);
   const lockBanner = isReportTab && isLocked ? (
     <div style={{
       maxWidth: 1200,
@@ -447,6 +456,30 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       <span>
         Submitted for review{submission.row?.submitted_by_name ? ` by ${submission.row.submitted_by_name}` : ''}{submittedAtLabel ? ` on ${submittedAtLabel}` : ''}. This report is locked. Click Unsubmit to reopen for editing.
       </span>
+      {hasSnapshot && (
+        <button
+          type="button"
+          onClick={() => setSnapshotOpen(true)}
+          style={{
+            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '0.03em',
+            padding: '4px 10px',
+            borderRadius: 999,
+            border: '0.5px solid rgba(126,184,247,0.55)',
+            background: 'rgba(126,184,247,0.15)',
+            color: 'rgba(230,240,255,0.98)',
+            cursor: 'pointer',
+          }}
+          title="Open the exact report body that was submitted"
+        >
+          <Eye size={12} /> View submitted version
+        </button>
+      )}
     </div>
   ) : null;
 
@@ -537,6 +570,103 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
         {activePage.render()}
+      </div>
+      {snapshotOpen && submission.row?.content_snapshot && (
+        <SubmittedSnapshotDialog
+          snapshot={submission.row.content_snapshot}
+          submittedAtLabel={submittedAtLabel}
+          submittedByName={submission.row?.submitted_by_name ?? null}
+          title={activeMeta ? `Submitted version — ${activeMeta.ownerName}` : 'Submitted version'}
+          onClose={() => setSnapshotOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Read-only modal showing the exact report body that was captured when
+ * the report was submitted for review. Uses the live QIR renderer with
+ * canEdit=false so the layout matches the interactive report 1:1.
+ */
+function SubmittedSnapshotDialog({ snapshot, submittedAtLabel, submittedByName, title, onClose }: {
+  snapshot: any;
+  submittedAtLabel: string | null;
+  submittedByName: string | null;
+  title: string;
+  onClose: () => void;
+}) {
+  const noop = useCallback(() => {}, []);
+  const noopSave = useCallback(async () => true, []);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(4,10,24,0.72)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+        padding: '32px 16px',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'rgba(10,20,40,0.98)',
+          border: '1px solid rgba(80,140,255,0.28)',
+          borderRadius: 12,
+          width: 'min(1200px, 100%)',
+          maxHeight: '100%',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+        }}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '12px 16px',
+          borderBottom: '1px solid rgba(80,140,255,0.18)',
+          color: 'rgba(220,235,255,0.95)',
+        }}>
+          <Lock size={14} />
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.02em' }}>{title}</div>
+          <div style={{ fontSize: 11, color: 'rgba(180,205,240,0.75)' }}>
+            {submittedByName ? `Submitted by ${submittedByName}` : 'Submitted'}
+            {submittedAtLabel ? ` · ${submittedAtLabel}` : ''}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              marginLeft: 'auto',
+              background: 'transparent', border: 'none', color: 'rgba(220,235,255,0.9)',
+              cursor: 'pointer', padding: 4,
+            }}
+          >
+            <XIcon size={16} />
+          </button>
+        </div>
+        <div style={{ overflow: 'auto', padding: 16 }}>
+          <QuarterlyInsightsReportPage
+            s={snapshot}
+            set={noop as any}
+            reset={noop}
+            print={noop}
+            save={noopSave}
+            canEdit={false}
+            reportKey={'snapshot'}
+            titlePrefix={''}
+            ownerName={''}
+            activeCompositeKey={null}
+            fetchedCompositeKey={null}
+            isDirty={false}
+            isSaving={false}
+            unsavedChangesWarning={null}
+          />
+        </div>
       </div>
     </div>
   );
