@@ -280,21 +280,40 @@ function LiabilityHistoryDrilldownBody({ row }: { row: LiabRow }) {
               // item in this reversed list.
               const prev = i < arr.length - 1 ? arr[i + 1].value : null;
               const delta = h.value !== null && prev !== null ? h.value - prev : null;
-              const pct = delta !== null && prev !== null && prev !== 0
-                ? (delta / Math.abs(prev)) * 100
+              // % change is only meaningful when the prior base is a
+              // positive number. If the prior period was zero or negative
+              // (credit balance / net-owed), a raw % is misleading (a
+              // -294% figure came from dividing by a small negative base),
+              // so we surface "n/m" and show the absolute $ change only.
+              const pct = delta !== null && prev !== null && prev > 0
+                ? (delta / prev) * 100
                 : null;
+              const pctUnavailable = delta !== null && (prev === null || prev <= 0);
               const dc = deltaColor(delta);
               return (
                 <tr key={h.label} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   <td style={{ padding: '6px 8px', color: 'hsl(0,0%,100%)' }}>{h.label}</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}
+                    title={h.value !== null ? formatLiabCurrencyFull(h.value) : undefined}
+                  >
                     {h.value !== null ? formatLiabCurrency(h.value) : '—'}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}
+                    title={delta !== null ? `${signPrefix(delta)}${formatLiabCurrencyFull(delta)}` : undefined}
+                  >
                     {delta !== null ? `${signPrefix(delta)}${formatLiabCurrency(delta)}` : '—'}
                   </td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}>
-                    {pct !== null ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%` : '—'}
+                  <td
+                    style={{ padding: '6px 8px', textAlign: 'right', color: dc, fontWeight: 600 }}
+                    title={pctUnavailable ? 'Prior period base was zero or negative, so % change is not meaningful.' : undefined}
+                  >
+                    {pct !== null
+                      ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
+                      : pctUnavailable
+                        ? 'n/m'
+                        : '—'}
                   </td>
                 </tr>
               );
