@@ -384,9 +384,11 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
     (acc, r) => (r.current === null || r.prior === null ? acc : (acc ?? 0) + (r.current - r.prior)),
     null,
   );
-  const totalPct = totalDelta !== null && totalCurrent !== null && totalCurrent - totalDelta !== 0
-    ? (totalDelta / Math.abs(totalCurrent - totalDelta)) * 100
+  const totalPriorBase = totalDelta !== null && totalCurrent !== null ? totalCurrent - totalDelta : null;
+  const totalPct = totalDelta !== null && totalPriorBase !== null && totalPriorBase > 0
+    ? (totalDelta / totalPriorBase) * 100
     : null;
+  const totalPctUnavailable = totalDelta !== null && (totalPriorBase === null || totalPriorBase <= 0);
   const totalDeltaColor = totalDelta === null || totalDelta === 0
     ? 'rgba(255,255,255,0.55)'
     : totalDelta > 0
