@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
+import { BookOpen, Brain, CalendarDays, Check, FileText, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -77,6 +77,18 @@ type OverrideRow = {
   enabled: boolean;
   is_activated: boolean;
   notes: string | null;
+};
+
+type KnowledgeDoc = {
+  id: string;
+  title: string;
+  source_type: 'file' | 'text';
+  storage_path: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  status: 'pending' | 'ready' | 'error';
+  error_message: string | null;
+  created_at: string;
 };
 
 const STALE_THRESHOLD_DEFAULT = 3;
