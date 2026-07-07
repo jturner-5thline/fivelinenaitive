@@ -785,6 +785,19 @@ export function useDealsDatabase() {
       }
     }
 
+    // Auto-adjust status based on terminal stage transitions.
+    // - closed-won  -> clear status ("No status")
+    // - closed-lost -> archived
+    // Only apply when the caller didn't explicitly set status in the same update,
+    // and only when the stage is actually changing to the terminal value.
+    if (updates.stage && updates.stage !== previousDeal?.stage && updates.status === undefined) {
+      if (updates.stage === 'closed-won') {
+        updates = { ...updates, status: null };
+      } else if (updates.stage === 'closed-lost') {
+        updates = { ...updates, status: 'archived' as DealStatus };
+      }
+    }
+
     // Mark as pending to prevent realtime refetch from overwriting optimistic update
     pendingOptimisticUpdatesRef.current.add(`deal-${dealId}`);
 
