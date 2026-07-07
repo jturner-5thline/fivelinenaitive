@@ -8706,16 +8706,30 @@ serve(async (req) => {
 
       // Admin Agent knowledge base — uploaded/pasted reference documents.
       try {
-        const { data: kb } = await supabaseAdmin
+        // Load tag filter from settings — empty array means include all.
+        const { data: kbCfg } = await supabaseAdmin
+          .from("admin_agent_settings")
+          .select("knowledge_tag_filter")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        const tagFilter: string[] = Array.isArray((kbCfg as any)?.knowledge_tag_filter)
+          ? ((kbCfg as any).knowledge_tag_filter as any[]).filter((t: any) => typeof t === "string" && t.length > 0)
+          : [];
+        let kbQuery = supabaseAdmin
           .from("admin_agent_knowledge_docs")
-          .select("title, extracted_text")
+          .select("title, extracted_text, tags")
           .eq("company_id", companyId)
           .eq("agent_key", "admin_agent")
           .eq("status", "ready");
+        if (tagFilter.length > 0) {
+          kbQuery = kbQuery.overlaps("tags", tagFilter);
+        }
+        const { data: kb } = await kbQuery;
         const docs = (kb || [])
           .map((d: any) => ({
             title: String(d?.title || "Untitled").trim(),
             text: String(d?.extracted_text || "").trim(),
+            tags: Array.isArray(d?.tags) ? (d.tags as string[]) : [],
           }))
           .filter((d) => d.text.length > 0);
         if (docs.length > 0) {
@@ -8727,10 +8741,14 @@ serve(async (req) => {
             const snippet = d.text.slice(0, PER_DOC_CAP);
             if (used + snippet.length > TOTAL_CAP) break;
             used += snippet.length;
-            blocks.push(`### ${d.title}\n${snippet}`);
+            const tagLine = d.tags.length > 0 ? ` [${d.tags.join(", ")}]` : "";
+            blocks.push(`### ${d.title}${tagLine}\n${snippet}`);
           }
           if (blocks.length > 0) {
-            orgPreferencesSection += `\n\nADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context):\n\n${blocks.join("\n\n---\n\n")}`;
+            const scopeNote = tagFilter.length > 0
+              ? ` — scoped to tags: ${tagFilter.join(", ")}`
+              : "";
+            orgPreferencesSection += `\n\nADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context${scopeNote}):\n\n${blocks.join("\n\n---\n\n")}`;
           }
         }
       } catch (e) {
