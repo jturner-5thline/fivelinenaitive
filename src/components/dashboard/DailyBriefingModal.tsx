@@ -2369,7 +2369,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                   paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
                   paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                  paddingBottom: 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                  paddingBottom: 'clamp(0.5rem, 1vw, 1rem)',
                 }}
               >
                 <AddToDealCalendarProvider>
