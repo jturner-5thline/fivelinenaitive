@@ -166,30 +166,33 @@ function SimpleFilters({
         <div className="space-y-1">
           <Label className={labelCls}>Min Deal Size ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 1000000"
-            value={filters.minDealSize}
-            onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $1,000,000"
+            value={filters.minDealSize ? `$${Number(filters.minDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1">
           <Label className={labelCls}>Max Deal Size ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 50000000"
-            value={filters.maxDealSize}
-            onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $50,000,000"
+            value={filters.maxDealSize ? `$${Number(filters.maxDealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
         <div className="space-y-1">
           <Label className={labelCls}>Your Revenue ($)</Label>
           <Input
-            type="number"
-            placeholder="e.g. 5000000"
-            value={filters.minRevenue}
-            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $5,000,000"
+            value={filters.minRevenue ? `$${Number(filters.minRevenue.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
             className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
@@ -327,9 +330,9 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   const simpleFilterSummaries = useMemo(() => {
     const summaries: { key: string; label: string }[] = [];
     if (filters.tiers?.length) summaries.push({ key: 'tiers', label: `Tier: ${filters.tiers.join(', ')}` });
-    if (filters.minDealSize) summaries.push({ key: 'minDeal', label: `Min Deal: $${filters.minDealSize}M` });
-    if (filters.maxDealSize) summaries.push({ key: 'maxDeal', label: `Max Deal: $${filters.maxDealSize}M` });
-    if (filters.minRevenue) summaries.push({ key: 'minRev', label: `Min Revenue: $${filters.minRevenue}M` });
+    if (filters.minDealSize) summaries.push({ key: 'minDeal', label: `Min Deal: $${Number(filters.minDealSize).toLocaleString('en-US')}` });
+    if (filters.maxDealSize) summaries.push({ key: 'maxDeal', label: `Max Deal: $${Number(filters.maxDealSize).toLocaleString('en-US')}` });
+    if (filters.minRevenue) summaries.push({ key: 'minRev', label: `Min Revenue: $${Number(filters.minRevenue).toLocaleString('en-US')}` });
     if (filters.loanTypes?.length) summaries.push({ key: 'loans', label: `Loans: ${filters.loanTypes.length > 2 ? `${filters.loanTypes.length} types` : filters.loanTypes.join(', ')}` });
     if (filters.industries?.length) summaries.push({ key: 'industries', label: `Industries: ${filters.industries.length > 2 ? `${filters.industries.length} selected` : filters.industries.join(', ')}` });
     if (filters.geographies?.length) summaries.push({ key: 'geo', label: `Geo: ${filters.geographies.length > 2 ? `${filters.geographies.length} selected` : filters.geographies.join(', ')}` });
@@ -477,7 +480,7 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
 
     // Min deal size
     if (safeFilters.minDealSize) {
-      const minDeal = parseFloat(safeFilters.minDealSize) * 1_000_000;
+      const minDeal = parseFloat(safeFilters.minDealSize);
       result = result.filter((lender) => 
         lender.min_deal == null || lender.min_deal >= minDeal
       );
@@ -485,7 +488,7 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
 
     // Max deal size
     if (safeFilters.maxDealSize) {
-      const maxDeal = parseFloat(safeFilters.maxDealSize) * 1_000_000;
+      const maxDeal = parseFloat(safeFilters.maxDealSize);
       result = result.filter((lender) => 
         lender.max_deal == null || lender.max_deal <= maxDeal
       );
@@ -493,7 +496,7 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
 
     // Min revenue
     if (safeFilters.minRevenue) {
-      const minRev = parseFloat(safeFilters.minRevenue) * 1_000_000;
+      const minRev = parseFloat(safeFilters.minRevenue);
       result = result.filter((lender) => 
         lender.min_revenue == null || lender.min_revenue >= minRev
       );

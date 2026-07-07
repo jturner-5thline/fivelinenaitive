@@ -62,6 +62,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { LenderDetailDialog, LenderEditData } from '@/components/lenders/LenderDetailDialog';
+import { formatCurrencyInput } from '@/utils/formatLenderCurrency';
 import { ImportLendersDialog } from '@/components/lenders/ImportLendersDialog';
 import { DuplicateLendersDialog } from '@/components/lenders/DuplicateLendersDialog';
 import { SideBySideMergeDialog } from '@/components/lenders/SideBySideMergeDialog';
@@ -2239,20 +2240,22 @@ export default function Lenders() {
                     <Label htmlFor="minDeal" className="text-xs text-muted-foreground">Min Deal Size ($)</Label>
                     <Input
                       id="minDeal"
-                      type="number"
-                      value={form.minDeal}
-                      onChange={(e) => setForm({ ...form, minDeal: e.target.value })}
-                      placeholder="e.g., 1000000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(form.minDeal)}
+                      onChange={(e) => setForm({ ...form, minDeal: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="e.g., $1,000,000"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="maxDeal" className="text-xs text-muted-foreground">Max Deal Size ($)</Label>
                     <Input
                       id="maxDeal"
-                      type="number"
-                      value={form.maxDeal}
-                      onChange={(e) => setForm({ ...form, maxDeal: e.target.value })}
-                      placeholder="e.g., 25000000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(form.maxDeal)}
+                      onChange={(e) => setForm({ ...form, maxDeal: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="e.g., $25,000,000"
                     />
                   </div>
                 </div>
@@ -2291,20 +2294,22 @@ export default function Lenders() {
                     <Label htmlFor="minRevenue" className="text-xs text-muted-foreground">Min Revenue ($)</Label>
                     <Input
                       id="minRevenue"
-                      type="number"
-                      value={form.minRevenue}
-                      onChange={(e) => setForm({ ...form, minRevenue: e.target.value })}
-                      placeholder="e.g., 5000000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(form.minRevenue)}
+                      onChange={(e) => setForm({ ...form, minRevenue: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="e.g., $5,000,000"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="ebitdaMin" className="text-xs text-muted-foreground">Min EBITDA ($)</Label>
                     <Input
                       id="ebitdaMin"
-                      type="number"
-                      value={form.ebitdaMin}
-                      onChange={(e) => setForm({ ...form, ebitdaMin: e.target.value })}
-                      placeholder="e.g., 1000000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(form.ebitdaMin)}
+                      onChange={(e) => setForm({ ...form, ebitdaMin: e.target.value.replace(/[^0-9]/g, '') })}
+                      placeholder="e.g., $1,000,000"
                     />
                   </div>
                 </div>
