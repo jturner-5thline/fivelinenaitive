@@ -51,6 +51,7 @@ type SettingsRow = {
   stale_threshold_business_days: number | null;
   friday_sweep_enabled: boolean | null;
   custom_rules: CustomRule[] | null;
+  knowledge_tag_filter: string[] | null;
 };
 
 type CustomRule = {
@@ -89,9 +90,19 @@ type KnowledgeDoc = {
   status: 'pending' | 'ready' | 'error';
   error_message: string | null;
   created_at: string;
+  tags: string[];
 };
 
 const STALE_THRESHOLD_DEFAULT = 3;
+
+export const KB_TAG_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'rules', label: 'Rules' },
+  { value: 'requirements', label: 'Requirements' },
+  { value: 'definitions', label: 'Definitions' },
+  { value: 'glossary', label: 'Glossary' },
+  { value: 'workflow', label: 'Workflow' },
+  { value: 'other', label: 'Other' },
+];
 
 export function AdminAgentDuty1Config() {
   const { company, isAdmin } = useCompany();
