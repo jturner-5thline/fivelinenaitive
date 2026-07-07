@@ -437,9 +437,10 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
         const current = snap?.current ? extractRowValue(snap.current, row) : null;
         const prior = snap?.prior ? extractRowValue(snap.prior, row) : null;
         const delta = current !== null && prior !== null ? current - prior : null;
-        const pct = delta !== null && prior !== null && prior !== 0
-          ? (delta / Math.abs(prior)) * 100
+        const pct = delta !== null && prior !== null && prior > 0
+          ? (delta / prior) * 100
           : null;
+        const pctUnavailable = delta !== null && (prior === null || prior <= 0);
         // For liabilities, an INCREASE (positive delta) is unfavorable → red.
         const deltaColor = delta === null || delta === 0
           ? 'text-muted-foreground'
@@ -466,18 +467,29 @@ function LiabilitiesDebtServiceTable({ onOpenDrilldown }: { onOpenDrilldown?: (r
               )}
               <span className="truncate">{row.name}</span>
             </div>
-            <div className="text-right text-foreground/90">
+            <div
+              className="text-right text-foreground/90"
+              title={current !== null ? formatLiabCurrencyFull(current) : undefined}
+            >
               {current !== null ? formatLiabCurrency(current) : '—'}
             </div>
-            <div className={`text-right ${deltaColor}`}>
+            <div
+              className={`text-right ${deltaColor}`}
+              title={delta !== null ? `${signPrefix(delta)}${formatLiabCurrencyFull(delta)}` : undefined}
+            >
               {delta !== null
                 ? `${signPrefix(delta)}${formatLiabCurrency(delta)}`
                 : '—'}
             </div>
-            <div className={`text-right ${deltaColor}`}>
+            <div
+              className={`text-right ${deltaColor}`}
+              title={pctUnavailable ? 'Prior period base was zero or negative, so % change is not meaningful.' : undefined}
+            >
               {pct !== null
                 ? `${signPrefix(pct)}${Math.abs(pct).toFixed(1)}%`
-                : '—'}
+                : pctUnavailable
+                  ? 'n/m'
+                  : '—'}
             </div>
           </button>
         );
