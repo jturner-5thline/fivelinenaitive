@@ -861,7 +861,7 @@ export function LenderAnalyticsDialog({
             <>
               {/* Row 2 — narrow left volume list + right stacked (conversion chart + pass reasons) */}
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,300px)_1fr] gap-3">
-                <IntelPanel title="Deal Volume by Lender" badge="live">
+                <IntelPanel title="Deal Volume by Lender">
                   <div className="p-2">
                     {lenderStats.length === 0 ? (
                       <div className="py-6 text-center text-[12px] text-slate-500">No lender activity</div>
