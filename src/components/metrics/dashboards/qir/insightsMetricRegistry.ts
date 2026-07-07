@@ -239,12 +239,12 @@ export function buildInsightsMetricOptions(
     'Sales & BD ROI',
     'Consolidated Debt Pipeline Board',
     'Rep Scorecard',
-    'HubSpot Dashboard',
     'Cross-source',
     'Brand Awareness',
     'Custom Metrics',
   ];
-  const all = [...templates, ...metricSources, ...brandAwareness, ...custom];
+  const all = [...templates, ...metricSources, ...brandAwareness, ...custom]
+    .filter(o => o.source !== 'HubSpot Dashboard');
   const grouped = new Map<string, InsightsMetricOption[]>();
   for (const opt of all) {
     const arr = grouped.get(opt.source) ?? [];
