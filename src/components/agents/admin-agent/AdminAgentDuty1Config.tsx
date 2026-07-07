@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Brain, CalendarDays, Check, Loader2, Pencil, Plus, ShieldCheck, Sparkles, Trash2, X } from 'lucide-react';
+import { BookOpen, Brain, CalendarDays, Check, FileText, Loader2, Paperclip, Pencil, Plus, ShieldCheck, Sparkles, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -77,6 +77,18 @@ type OverrideRow = {
   enabled: boolean;
   is_activated: boolean;
   notes: string | null;
+};
+
+type KnowledgeDoc = {
+  id: string;
+  title: string;
+  source_type: 'file' | 'text';
+  storage_path: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  status: 'pending' | 'ready' | 'error';
+  error_message: string | null;
+  created_at: string;
 };
 
 const STALE_THRESHOLD_DEFAULT = 3;
@@ -392,6 +404,133 @@ export function AdminAgentDuty1Config() {
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [newHolidayLabel, setNewHolidayLabel] = useState('');
 
+  // ── Knowledge base (uploaded reference documents) ──────────────
+  const knowledgeQ = useQuery<KnowledgeDoc[]>({
+    queryKey: ['admin-agent-knowledge', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at')
+        .eq('company_id', companyId)
+        .eq('agent_key', 'admin_agent')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as KnowledgeDoc[];
+    },
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteBody, setPasteBody] = useState('');
+  const [isSavingPaste, setIsSavingPaste] = useState(false);
+
+  async function uploadKnowledgeFiles(files: FileList | null) {
+    if (!companyId || !currentUserId || !files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > 25 * 1024 * 1024) {
+          toast.error(`${file.name}: max size is 25MB`);
+          continue;
+        }
+        const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+        const path = `${companyId}/${(globalThis.crypto?.randomUUID?.() ?? Date.now().toString())}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from('admin-agent-knowledge')
+          .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+        if (upErr) throw upErr;
+
+        const { data: row, error: insErr } = await supabase
+          .from('admin_agent_knowledge_docs')
+          .insert({
+            company_id: companyId,
+            agent_key: 'admin_agent',
+            title: file.name,
+            source_type: 'file',
+            storage_path: path,
+            mime_type: file.type || null,
+            size_bytes: file.size,
+            status: 'pending',
+            uploaded_by: currentUserId,
+          })
+          .select('id')
+          .single();
+        if (insErr) throw insErr;
+
+        // Fire-and-forget ingest; UI will refresh status on next query.
+        supabase.functions
+          .invoke('admin-agent-knowledge-ingest', { body: { doc_id: row.id } })
+          .then(() => qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] }))
+          .catch((e) => console.warn('[knowledge-ingest]', e?.message));
+      }
+      toast.success('Uploaded — extracting text in the background.');
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Upload failed.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function savePastedKnowledge() {
+    if (!companyId || !currentUserId) return;
+    const title = pasteTitle.trim();
+    const body = pasteBody.trim();
+    if (!title || !body) return;
+    setIsSavingPaste(true);
+    try {
+      const { error } = await supabase.from('admin_agent_knowledge_docs').insert({
+        company_id: companyId,
+        agent_key: 'admin_agent',
+        title,
+        source_type: 'text',
+        extracted_text: body.slice(0, 200_000),
+        status: 'ready',
+        uploaded_by: currentUserId,
+      });
+      if (error) throw error;
+      setPasteTitle('');
+      setPasteBody('');
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      toast.success('Saved to the agent knowledge base.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save.');
+    } finally {
+      setIsSavingPaste(false);
+    }
+  }
+
+  async function removeKnowledgeDoc(doc: KnowledgeDoc) {
+    try {
+      if (doc.storage_path) {
+        await supabase.storage.from('admin-agent-knowledge').remove([doc.storage_path]);
+      }
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .delete()
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not remove.');
+    }
+  }
+
+  async function reingestDoc(doc: KnowledgeDoc) {
+    if (!doc.storage_path) return;
+    try {
+      await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ status: 'pending', error_message: null })
+        .eq('id', doc.id);
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      await supabase.functions.invoke('admin-agent-knowledge-ingest', { body: { doc_id: doc.id } });
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Re-ingest failed.');
+    }
+  }
+
   async function addHoliday() {
     if (!companyId || !newHolidayDate) return;
     const { error } = await supabase
@@ -574,10 +713,11 @@ export function AdminAgentDuty1Config() {
         </p>
       ) : (
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 h-8">
+        <TabsList className="grid w-full grid-cols-6 h-8">
           <TabsTrigger value="general" className="text-[11px]">General</TabsTrigger>
           <TabsTrigger value="scope" className="text-[11px]">Scope</TabsTrigger>
           <TabsTrigger value="rules" className="text-[11px]">Rules</TabsTrigger>
+          <TabsTrigger value="knowledge" className="text-[11px]">Knowledge</TabsTrigger>
           <TabsTrigger value="calendar" className="text-[11px]">Calendar</TabsTrigger>
           <TabsTrigger value="team" className="text-[11px]">Team</TabsTrigger>
         </TabsList>
@@ -820,6 +960,130 @@ export function AdminAgentDuty1Config() {
                 </ol>
               </ScrollArea>
             )}
+          </div>
+        </TabsContent>
+
+        {/* ── Calendar (holidays) ─────────────────────────────── */}
+        <TabsContent value="knowledge" className="mt-3 space-y-3">
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <BookOpen className="h-3.5 w-3.5 text-primary" />
+              <h5 className="text-xs font-semibold">Knowledge base</h5>
+              <span className="text-[10px] text-muted-foreground ml-auto">
+                {(knowledgeQ.data ?? []).length} document{(knowledgeQ.data ?? []).length === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-snug">
+              Reference documents the agent reads on every run — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted and injected into the agent's context.
+            </p>
+
+            <div className="flex items-center gap-2">
+              <label className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-border/60 bg-card/60 text-[11px] cursor-pointer hover:bg-card ${readOnly || isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                <span>Upload files</span>
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  disabled={readOnly || isUploading}
+                  onChange={(e) => { uploadKnowledgeFiles(e.target.files); e.currentTarget.value = ''; }}
+                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv"
+                />
+              </label>
+              <span className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
+            </div>
+
+            {knowledgeQ.isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (knowledgeQ.data ?? []).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground italic">No documents yet.</p>
+            ) : (
+              <ScrollArea className="max-h-56 rounded border border-border/40 bg-background/30">
+                <ul className="divide-y divide-border/40">
+                  {(knowledgeQ.data ?? []).map((d) => (
+                    <li key={d.id} className="group flex items-start gap-2 px-2 py-1.5">
+                      {d.source_type === 'file' ? (
+                        <Paperclip className="h-3 w-3 mt-1 text-muted-foreground shrink-0" />
+                      ) : (
+                        <FileText className="h-3 w-3 mt-1 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium truncate">{d.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {d.source_type === 'file'
+                            ? `${d.mime_type || 'file'}${d.size_bytes ? ` · ${Math.max(1, Math.round(d.size_bytes / 1024))} KB` : ''}`
+                            : 'Pasted text'}
+                          {' · '}
+                          {d.status === 'ready' ? (
+                            <span className="text-emerald-400">Ready</span>
+                          ) : d.status === 'pending' ? (
+                            <span className="text-amber-400">Extracting…</span>
+                          ) : (
+                            <span className="text-red-400" title={d.error_message || ''}>Error</span>
+                          )}
+                        </p>
+                      </div>
+                      {!readOnly && (
+                        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {d.source_type === 'file' && d.status !== 'pending' && (
+                            <button
+                              type="button"
+                              onClick={() => reingestDoc(d)}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
+                              aria-label="Re-extract text"
+                              title="Re-extract text"
+                            >
+                              <Sparkles className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeKnowledgeDoc(d)}
+                            className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            aria-label="Remove document"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            )}
+          </div>
+
+          <div className="rounded-md border border-border/60 bg-card/40 p-2.5 space-y-2">
+            <div className="flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+              <h5 className="text-xs font-semibold">Or paste text directly</h5>
+            </div>
+            <Input
+              value={pasteTitle}
+              onChange={(e) => setPasteTitle(e.target.value)}
+              placeholder="Title (e.g. Deal terminology glossary)"
+              disabled={readOnly || isSavingPaste}
+              className="h-7 text-xs"
+            />
+            <Textarea
+              value={pasteBody}
+              onChange={(e) => setPasteBody(e.target.value)}
+              placeholder="Paste rules, definitions, or workflow steps…"
+              disabled={readOnly || isSavingPaste}
+              rows={4}
+              className="text-xs"
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={savePastedKnowledge}
+                disabled={readOnly || isSavingPaste || !pasteTitle.trim() || !pasteBody.trim()}
+                className="h-7 text-[11px]"
+              >
+                {isSavingPaste ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                Add
+              </Button>
+            </div>
           </div>
         </TabsContent>
 

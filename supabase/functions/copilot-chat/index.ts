@@ -8703,6 +8703,39 @@ serve(async (req) => {
       } catch (e) {
         console.warn("[copilot-chat] agent_learned_rules load failed", (e as Error)?.message);
       }
+
+      // Admin Agent knowledge base — uploaded/pasted reference documents.
+      try {
+        const { data: kb } = await supabaseAdmin
+          .from("admin_agent_knowledge_docs")
+          .select("title, extracted_text")
+          .eq("company_id", companyId)
+          .eq("agent_key", "admin_agent")
+          .eq("status", "ready");
+        const docs = (kb || [])
+          .map((d: any) => ({
+            title: String(d?.title || "Untitled").trim(),
+            text: String(d?.extracted_text || "").trim(),
+          }))
+          .filter((d) => d.text.length > 0);
+        if (docs.length > 0) {
+          const PER_DOC_CAP = 8000;
+          const TOTAL_CAP = 60_000;
+          let used = 0;
+          const blocks: string[] = [];
+          for (const d of docs) {
+            const snippet = d.text.slice(0, PER_DOC_CAP);
+            if (used + snippet.length > TOTAL_CAP) break;
+            used += snippet.length;
+            blocks.push(`### ${d.title}\n${snippet}`);
+          }
+          if (blocks.length > 0) {
+            orgPreferencesSection += `\n\nADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context):\n\n${blocks.join("\n\n---\n\n")}`;
+          }
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] admin_agent_knowledge_docs load failed", (e as Error)?.message);
+      }
     }
 
     const page = context?.page || "unknown";

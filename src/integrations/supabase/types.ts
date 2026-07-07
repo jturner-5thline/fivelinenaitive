@@ -432,6 +432,57 @@ export type Database = {
           },
         ]
       }
+      admin_agent_knowledge_docs: {
+        Row: {
+          agent_key: string
+          company_id: string
+          created_at: string
+          error_message: string | null
+          extracted_text: string | null
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          source_type: string
+          status: string
+          storage_path: string | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          agent_key?: string
+          company_id: string
+          created_at?: string
+          error_message?: string | null
+          extracted_text?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_type: string
+          status?: string
+          storage_path?: string | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          agent_key?: string
+          company_id?: string
+          created_at?: string
+          error_message?: string | null
+          extracted_text?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          source_type?: string
+          status?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       admin_agent_parse_logs: {
         Row: {
           audit_run_id: string | null

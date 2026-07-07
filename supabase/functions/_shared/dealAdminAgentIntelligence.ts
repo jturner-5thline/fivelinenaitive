@@ -2815,6 +2815,39 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (learnedTexts.length > 0) {
       parts.push(`ADMIN AGENT LEARNED RULES (synthesized from operator feedback — apply with the same weight as custom rules):\n${learnedTexts.map((t, i) => `${i + 1}. ${t}`).join("\n")}`);
     }
+    // Knowledge base — uploaded / pasted reference documents.
+    try {
+      const { data: kb } = await supabase
+        .from("admin_agent_knowledge_docs")
+        .select("title, extracted_text")
+        .eq("company_id", companyId)
+        .eq("agent_key", "admin_agent")
+        .eq("status", "ready");
+      const docs = (kb || [])
+        .map((d: any) => ({
+          title: String(d?.title || "Untitled").trim(),
+          text: String(d?.extracted_text || "").trim(),
+        }))
+        .filter((d) => d.text.length > 0);
+      if (docs.length > 0) {
+        // Cap total injected text so we don't blow the context window.
+        const PER_DOC_CAP = 8000;
+        const TOTAL_CAP = 60_000;
+        let used = 0;
+        const blocks: string[] = [];
+        for (const d of docs) {
+          const snippet = d.text.slice(0, PER_DOC_CAP);
+          if (used + snippet.length > TOTAL_CAP) break;
+          used += snippet.length;
+          blocks.push(`### ${d.title}\n${snippet}`);
+        }
+        if (blocks.length > 0) {
+          parts.push(`ADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context):\n\n${blocks.join("\n\n---\n\n")}`);
+        }
+      }
+    } catch (e) {
+      console.warn("[deal-admin-agent] knowledge-base load failed", (e as Error)?.message);
+    }
     if (parts.length > 0) companyRulesBlock = parts.join("\n\n");
   } catch (e) {
     console.warn("[deal-admin-agent] rule load failed", (e as Error)?.message);
