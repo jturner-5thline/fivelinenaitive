@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
@@ -180,6 +180,37 @@ const DEFAULT_FOLDER_IDS = new Set(
 );
 
 const DEFAULT_FOLDER_EXPANDED_STORAGE_KEY = 'insights-default-folder-expanded-v1';
+const SELECTED_DASHBOARD_SESSION_KEY = 'insights-selected-dashboard-v1';
+
+function readPersistedInsightsDashboard() {
+  try {
+    return globalThis.sessionStorage?.getItem(SELECTED_DASHBOARD_SESSION_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+function persistInsightsDashboard(id: string) {
+  try {
+    globalThis.sessionStorage?.setItem(SELECTED_DASHBOARD_SESSION_KEY, id);
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function getInitialInsightsDashboard(search: string) {
+  const params = new URLSearchParams(search);
+  const view = params.get('view');
+  if (view === 'weekly-rundown') return 'management-snapshot';
+  if (params.get('tab')) return 'management-review';
+
+  // If the page remounts because a timeframe picker wrote URL params, keep the
+  // user's current dashboard instead of falling back to Weekly Rundown.
+  const hasTimeframeParams = params.has('tf') || params.has('tfStart') || params.has('tfEnd') || params.has('view') || params.has('period');
+  if (hasTimeframeParams) return readPersistedInsightsDashboard() || 'management-snapshot';
+
+  return 'management-snapshot';
+}
 
 type ManagementSnapshotCardState = Omit<MetricWidgetConfig, 'id' | 'createdAt'>;
 
@@ -1405,7 +1436,16 @@ function MetricsInner() {
     canEditMetrics,
   } = useMetricsWidgets();
 
-  const [selectedDashboard, setSelectedDashboard] = useState('management-snapshot');
+  const location = useLocation();
+  const initialDashboardRef = useRef<string | null>(null);
+  if (initialDashboardRef.current === null) {
+    initialDashboardRef.current = getInitialInsightsDashboard(location.search);
+  }
+  const [selectedDashboard, setSelectedDashboard] = useState(initialDashboardRef.current);
+  const selectDashboard = useCallback((id: string) => {
+    persistInsightsDashboard(id);
+    setSelectedDashboard(id);
+  }, []);
   const [isEditMode, setIsEditMode] = useState(false);
 
   // Per-user Insights dashboard restrictions. Users listed here only see the
@@ -1431,9 +1471,9 @@ function MetricsInner() {
   useEffect(() => {
     if (allowedDashboardIds && !allowedDashboardIds.has(selectedDashboard)) {
       const first = visibleDashboardOptions[0]?.id;
-      if (first) setSelectedDashboard(first);
+      if (first) selectDashboard(first);
     }
-  }, [allowedDashboardIds, selectedDashboard, visibleDashboardOptions]);
+  }, [allowedDashboardIds, selectedDashboard, selectDashboard, visibleDashboardOptions]);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
@@ -1461,31 +1501,31 @@ function MetricsInner() {
     // (e.g. the ReportingPeriodPicker's `month` / `quarter`) must be
     // ignored so switching the timeframe doesn't reset the dashboard.
     if (view === 'weekly-rundown' && (isFirstRun || viewChanged)) {
-      setSelectedDashboard('management-snapshot');
+      selectDashboard('management-snapshot');
       return;
     }
     // Deep-link from Submit-for-review email: ?tab=jt|jm|sw opens the
     // Management Review carousel; the carousel picks the inner tab.
     if (tab && (isFirstRun || tabChanged)) {
-      setSelectedDashboard('management-review');
+      selectDashboard('management-review');
       return;
     }
     // Plain navigation to /insights (no deep-link params) lands on the
     // Weekly Rundown — but only on the initial mount, never as a reaction
     // to unrelated searchParam updates.
     if (isFirstRun && !view && !tab) {
-      setSelectedDashboard('management-snapshot');
+      selectDashboard('management-snapshot');
     }
-  }, [searchParams]);
+  }, [searchParams, selectDashboard]);
 
   // Legacy redirect: QuickBooks Financial dashboard was merged into the
   // Controller Dashboard. Any deep links or persisted selections pointing
   // at the old id are transparently routed to its replacement.
   useEffect(() => {
     if (selectedDashboard === 'quickbooks-financial') {
-      setSelectedDashboard('controller-dashboard');
+      selectDashboard('controller-dashboard');
     }
-  }, [selectedDashboard]);
+  }, [selectedDashboard, selectDashboard]);
 
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
   useEffect(() => {
@@ -1535,7 +1575,7 @@ function MetricsInner() {
       createdAt: new Date().toISOString(),
     };
     saveCustomDashboards({ dashboards: [...customDashboards, newDashboard] });
-    setSelectedDashboard(newDashboard.id);
+    selectDashboard(newDashboard.id);
     setCreateDashboardOpen(false);
     setNewDashboardName('');
     setIsEditMode(true);
@@ -1544,7 +1584,7 @@ function MetricsInner() {
 
   const handleDeleteCustomDashboard = (dashId: string) => {
     saveCustomDashboards({ dashboards: customDashboards.filter(d => d.id !== dashId) });
-    if (selectedDashboard === dashId) setSelectedDashboard('management-review');
+    if (selectedDashboard === dashId) selectDashboard('management-review');
     toast({ title: 'Dashboard deleted' });
   };
 
@@ -2198,7 +2238,7 @@ function MetricsInner() {
                                 "group/item flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                 selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
-                              onClick={() => setSelectedDashboard(dashboard.id)}
+                              onClick={() => selectDashboard(dashboard.id)}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={cn(
@@ -2274,7 +2314,7 @@ function MetricsInner() {
                                     "flex-1 flex items-center justify-between py-1.5 pl-7 pr-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                     selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                                   )}
-                                  onClick={() => setSelectedDashboard(dashboard.id)}
+                                  onClick={() => selectDashboard(dashboard.id)}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <span className={cn(
@@ -2321,7 +2361,7 @@ function MetricsInner() {
                                 "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                                 selectedDashboard === dashboard.id && "bg-primary/10 text-foreground"
                               )}
-                              onClick={() => setSelectedDashboard(dashboard.id)}
+                              onClick={() => selectDashboard(dashboard.id)}
                             >
                               <div className="flex items-center gap-2 min-w-0">
                                 <span className={cn(
@@ -2371,7 +2411,7 @@ function MetricsInner() {
                               "flex-1 flex items-center justify-between py-1.5 px-2 rounded-md transition-colors focus:bg-white/[0.05] hover:bg-white/[0.04]",
                               selectedDashboard === dash.id && "bg-primary/10 text-foreground"
                             )}
-                            onClick={() => setSelectedDashboard(dash.id)}
+                            onClick={() => selectDashboard(dash.id)}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <LayoutDashboard className="h-3.5 w-3.5 text-chart-4 shrink-0" />
