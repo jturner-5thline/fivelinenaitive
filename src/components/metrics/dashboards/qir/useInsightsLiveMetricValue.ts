@@ -177,12 +177,15 @@ export function useInsightsLiveMetricValue(
   // ---- Brand Awareness (workbook-entered metrics) ----
   const isBrandAwareness = !!metricSourceId && metricSourceId.startsWith('ba-');
   const baKeys = useMemo(() => {
-    if (!isBrandAwareness || !period) {
-      return { current: [] as string[], prior: [] as string[] };
-    }
+    const empty = {
+      currentMonths: [] as string[],
+      currentQuarters: [] as string[],
+      priorMonths: [] as string[],
+      priorQuarters: [] as string[],
+    };
+    if (!isBrandAwareness || !period) return empty;
     const monthBuckets = buildBuckets(period.start, period.end, 'monthly');
     const quarterBuckets = buildBuckets(period.start, period.end, 'quarterly');
-    const startD = new Date(period.start + 'T00:00:00');
     const priorMonths = monthBuckets.map(b => {
       const [y, m] = b.key.split('-').map(Number);
       const d = subMonths(new Date(y, m - 1, 1), monthBuckets.length);
@@ -197,22 +200,32 @@ export function useInsightsLiveMetricValue(
       return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
     });
     return {
-      current: [...monthBuckets.map(b => b.key), ...quarterBuckets.map(b => b.key)],
-      prior: [...priorMonths, ...priorQuarters],
+      currentMonths: monthBuckets.map(b => b.key),
+      currentQuarters: quarterBuckets.map(b => b.key),
+      priorMonths,
+      priorQuarters,
     };
   }, [isBrandAwareness, period?.start, period?.end]);
   const brandAwareness = useQuery({
-    enabled: isBrandAwareness && !!metricSourceId && baKeys.current.length > 0,
+    enabled:
+      isBrandAwareness &&
+      !!metricSourceId &&
+      (baKeys.currentMonths.length > 0 || baKeys.currentQuarters.length > 0),
     queryKey: [
       'insights-live-brand-awareness',
       metricSourceId,
       company?.id ?? null,
-      baKeys.current.join('|'),
-      baKeys.prior.join('|'),
+      baKeys.currentMonths.join('|'),
+      baKeys.currentQuarters.join('|'),
+      baKeys.priorMonths.join('|'),
+      baKeys.priorQuarters.join('|'),
     ],
     staleTime: 30_000,
     queryFn: async () => {
-      const allKeys = Array.from(new Set([...baKeys.current, ...baKeys.prior]));
+      const allKeys = Array.from(new Set([
+        ...baKeys.currentMonths, ...baKeys.currentQuarters,
+        ...baKeys.priorMonths, ...baKeys.priorQuarters,
+      ]));
       let q = (supabase.from('metric_manual_inputs') as any)
         .select('month_key, value')
         .eq('metric_key', metricSourceId as string)
@@ -223,7 +236,7 @@ export function useInsightsLiveMetricValue(
       const isScore =
         metricSourceId === 'ba-ai-search-readiness-score' ||
         metricSourceId === 'ba-market-awareness-score';
-      const aggregate = (keys: string[]): number | undefined => {
+      const collect = (keys: string[]): number[] => {
         const keySet = new Set(keys);
         const vals: number[] = [];
         for (const row of data ?? []) {
@@ -232,13 +245,24 @@ export function useInsightsLiveMetricValue(
           const n = Number(row.value);
           if (Number.isFinite(n)) vals.push(n);
         }
+        return vals;
+      };
+      const reduce = (vals: number[]): number | undefined => {
         if (vals.length === 0) return undefined;
         if (isScore) return vals.reduce((a, b) => a + b, 0) / vals.length;
         return vals.reduce((a, b) => a + b, 0);
       };
+      // Prefer monthly workbook entries (more granular; exact Apr–Jun for Q2).
+      // Fall back to a matching quarterly cell only when no monthly data exists
+      // for the window. Prevents double-counting when both are present.
+      const pick = (monthKeys: string[], quarterKeys: string[]) => {
+        const monthly = collect(monthKeys);
+        if (monthly.length > 0) return reduce(monthly);
+        return reduce(collect(quarterKeys));
+      };
       return {
-        current: aggregate(baKeys.current),
-        prior: aggregate(baKeys.prior),
+        current: pick(baKeys.currentMonths, baKeys.currentQuarters),
+        prior: pick(baKeys.priorMonths, baKeys.priorQuarters),
       };
     },
   });
