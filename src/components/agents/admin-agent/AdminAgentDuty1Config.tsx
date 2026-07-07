@@ -404,6 +404,133 @@ export function AdminAgentDuty1Config() {
   const [newHolidayDate, setNewHolidayDate] = useState('');
   const [newHolidayLabel, setNewHolidayLabel] = useState('');
 
+  // ── Knowledge base (uploaded reference documents) ──────────────
+  const knowledgeQ = useQuery<KnowledgeDoc[]>({
+    queryKey: ['admin-agent-knowledge', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .select('id, title, source_type, storage_path, mime_type, size_bytes, status, error_message, created_at')
+        .eq('company_id', companyId)
+        .eq('agent_key', 'admin_agent')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []) as KnowledgeDoc[];
+    },
+  });
+  const [isUploading, setIsUploading] = useState(false);
+  const [pasteTitle, setPasteTitle] = useState('');
+  const [pasteBody, setPasteBody] = useState('');
+  const [isSavingPaste, setIsSavingPaste] = useState(false);
+
+  async function uploadKnowledgeFiles(files: FileList | null) {
+    if (!companyId || !currentUserId || !files || files.length === 0) return;
+    setIsUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > 25 * 1024 * 1024) {
+          toast.error(`${file.name}: max size is 25MB`);
+          continue;
+        }
+        const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+        const path = `${companyId}/${(globalThis.crypto?.randomUUID?.() ?? Date.now().toString())}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from('admin-agent-knowledge')
+          .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: false });
+        if (upErr) throw upErr;
+
+        const { data: row, error: insErr } = await supabase
+          .from('admin_agent_knowledge_docs')
+          .insert({
+            company_id: companyId,
+            agent_key: 'admin_agent',
+            title: file.name,
+            source_type: 'file',
+            storage_path: path,
+            mime_type: file.type || null,
+            size_bytes: file.size,
+            status: 'pending',
+            uploaded_by: currentUserId,
+          })
+          .select('id')
+          .single();
+        if (insErr) throw insErr;
+
+        // Fire-and-forget ingest; UI will refresh status on next query.
+        supabase.functions
+          .invoke('admin-agent-knowledge-ingest', { body: { doc_id: row.id } })
+          .then(() => qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] }))
+          .catch((e) => console.warn('[knowledge-ingest]', e?.message));
+      }
+      toast.success('Uploaded — extracting text in the background.');
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Upload failed.');
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  async function savePastedKnowledge() {
+    if (!companyId || !currentUserId) return;
+    const title = pasteTitle.trim();
+    const body = pasteBody.trim();
+    if (!title || !body) return;
+    setIsSavingPaste(true);
+    try {
+      const { error } = await supabase.from('admin_agent_knowledge_docs').insert({
+        company_id: companyId,
+        agent_key: 'admin_agent',
+        title,
+        source_type: 'text',
+        extracted_text: body.slice(0, 200_000),
+        status: 'ready',
+        uploaded_by: currentUserId,
+      });
+      if (error) throw error;
+      setPasteTitle('');
+      setPasteBody('');
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      toast.success('Saved to the agent knowledge base.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not save.');
+    } finally {
+      setIsSavingPaste(false);
+    }
+  }
+
+  async function removeKnowledgeDoc(doc: KnowledgeDoc) {
+    try {
+      if (doc.storage_path) {
+        await supabase.storage.from('admin-agent-knowledge').remove([doc.storage_path]);
+      }
+      const { error } = await supabase
+        .from('admin_agent_knowledge_docs')
+        .delete()
+        .eq('id', doc.id);
+      if (error) throw error;
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Could not remove.');
+    }
+  }
+
+  async function reingestDoc(doc: KnowledgeDoc) {
+    if (!doc.storage_path) return;
+    try {
+      await supabase
+        .from('admin_agent_knowledge_docs')
+        .update({ status: 'pending', error_message: null })
+        .eq('id', doc.id);
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+      await supabase.functions.invoke('admin-agent-knowledge-ingest', { body: { doc_id: doc.id } });
+      await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+    } catch (e: any) {
+      toast.error(e?.message || 'Re-ingest failed.');
+    }
+  }
+
   async function addHoliday() {
     if (!companyId || !newHolidayDate) return;
     const { error } = await supabase
