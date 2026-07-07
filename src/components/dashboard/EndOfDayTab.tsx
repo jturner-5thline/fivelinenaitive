@@ -1664,7 +1664,7 @@ function EventDetailPane({
       <div className="px-1.5 pt-1 pb-1 border-b border-white/[0.08]">
         <div className="flex items-start gap-2">
           {onBack && (
-            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={onBack} aria-label="Back to list">
+            <Button size="icon" variant="ghost" className="h-6 w-7 shrink-0" onClick={onBack} aria-label="Back to list">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           )}
@@ -1697,13 +1697,13 @@ function EventDetailPane({
               {event.all_day ? ' · All day' : ` · ${fmtTime(event.start)}${event.end ? ` – ${fmtTime(event.end)}` : ''}`}
             </p>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-7 w-7 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  className="h-6 w-7 text-white/70 hover:text-emerald-300 hover:bg-emerald-500/10"
                   onClick={onDismiss}
                   aria-label="Dismiss"
                 >
@@ -1718,14 +1718,14 @@ function EventDetailPane({
 
       {/* Two-column body: main content + right action rail */}
       <div className="flex-1 min-h-0 min-w-0 w-full max-w-full flex flex-row">
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-1.5 py-1 space-y-1.5">
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-0.5 py-0.5 space-y-0.5">
         {/* Attendees */}
         <section>
-          <div className="flex items-center justify-between gap-1 mb-0.5 flex-wrap">
+          <div className="flex items-center justify-between gap-0.5 mb-0.5 flex-wrap">
             <button
               type="button"
               onClick={() => setAttendeesExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 hover:text-white min-w-0"
+              className="flex items-center gap-0.5 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 hover:text-white min-w-0"
               aria-expanded={attendeesExpanded}
             >
               {attendeesExpanded
@@ -1733,12 +1733,12 @@ function EventDetailPane({
                 : <ChevronRight className="h-3 w-3 shrink-0" />}
               <span className="truncate">Attendees ({attendees.length})</span>
             </button>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-0.5 shrink-0">
               {allEmails.length > 0 && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-6 text-[10px] gap-1"
+                  className="h-6 text-[10px] gap-0.5"
                   onClick={() => {
                     navigator.clipboard.writeText(allEmails.join(', '));
                     toast.success(`Copied ${allEmails.length} email${allEmails.length === 1 ? '' : 's'}`);
@@ -1749,14 +1749,14 @@ function EventDetailPane({
                 </Button>
               )}
               {allEmails.length > 0 && (
-                <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={() => setComposerForAll(v => !v)}>
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-0.5" onClick={() => setComposerForAll(v => !v)}>
                   <Mail className="h-3 w-3" /> Email all
                 </Button>
               )}
             </div>
           </div>
           {composerForAll && allEmails.length > 0 && (
-            <div className="mb-1">
+            <div className="mb-0.5">
               <InlineComposer
                 to={allEmails}
                 defaultSubject={`${eventTitle} Follow Up`}
@@ -1768,7 +1768,7 @@ function EventDetailPane({
             </div>
           )}
           {!attendeesExpanded ? (
-            <div className="flex items-center flex-wrap gap-1.5">
+            <div className="flex items-center flex-wrap gap-0.5">
               {attendees.slice(0, 3).map((a, i) => {
                 const key = (a.email || '').trim().toLowerCase();
                 const m = contactsByEmail[key];
@@ -1794,7 +1794,7 @@ function EventDetailPane({
               )}
             </div>
           ) : (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             {attendees.map((a, i) => {
               const key = (a.email || '').trim().toLowerCase();
               const m = contactsByEmail[key];
@@ -1802,10 +1802,10 @@ function EventDetailPane({
               const rowKey = `${event.id}::${key || i}`;
               const isComposing = composerForOne === rowKey;
               return (
-                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-1.5 py-1">
+                <div key={rowKey} className="rounded-md bg-white/[0.02] border border-white/[0.06] px-0.5 py-0.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-0.5 flex-wrap">
                         <span className="text-xs font-medium text-white truncate">{name}</span>
                         {m?.jobTitle && <span className="text-[10px] text-white/65 truncate">· {m.jobTitle}</span>}
                         {m?.companyName && (
@@ -1880,10 +1880,10 @@ function EventDetailPane({
         {/* Saved notes — selectable narrative */}
         {savedNotes.length > 0 && (
           <section>
-            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-1">
+            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-0.5">
               Notes
             </h3>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {savedNotes.map((n) => (
                 <HighlightCalendarMenu
                   key={n.id}
@@ -1894,7 +1894,7 @@ function EventDetailPane({
                     dealId: linkedDealId ?? null,
                     label: eventTitle,
                   }}
-                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-1.5 py-1 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
+                  className="rounded-md border border-white/[0.06] bg-white/[0.02] px-0.5 py-0.5 text-[12px] leading-relaxed text-white/85 whitespace-pre-wrap select-text"
                 >
                   {n.text}
                 </HighlightCalendarMenu>
@@ -1905,7 +1905,7 @@ function EventDetailPane({
 
         {/* Note / Claap summary */}
         <section>
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <FindATimeDialog
               open={scheduleNextOpen}
               onOpenChange={setScheduleNextOpen}
@@ -1922,13 +1922,13 @@ function EventDetailPane({
 
           {/* Add note */}
           <div className="mt-1">
-            <div className="flex items-center gap-1 mb-0.5">
+            <div className="flex items-center gap-0.5 mb-0.5">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
             </div>
             {notePrefilledFromClaap && (
-              <div className="flex items-center gap-1 mb-1">
-                <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+              <div className="flex items-center gap-0.5 mb-0.5">
+                <span className="inline-flex items-center gap-0.5 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                   <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — Claap
                 </span>
                 <button
@@ -1946,7 +1946,7 @@ function EventDetailPane({
               </div>
             )}
             {!claapTokenPresent && notePrefillSource !== 'claap' && (
-              <div className="mb-1 rounded border border-amber-500/40 bg-amber-500/10 px-1 py-1 text-[10px] text-amber-200 flex items-center justify-between gap-1">
+              <div className="mb-0.5 rounded border border-amber-500/40 bg-amber-500/10 px-0.5 py-0.5 text-[10px] text-amber-200 flex items-center justify-between gap-0.5">
                 <span>Add <code className="font-mono">CLAAP_API_TOKEN</code> secret to fetch real Claap summaries.</span>
                 <a
                   href="https://docs.lovable.dev/integrations/supabase#secrets"
@@ -1958,7 +1958,7 @@ function EventDetailPane({
             )}
             {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (
               (claapSyncStatus?.sync_attempts ?? 0) > 3 && claapSyncStatus?.last_sync_status !== 'ok' ? (
-                <div className="flex items-center gap-1 mb-1 text-[10px] text-rose-300 italic">
+                <div className="flex items-center gap-0.5 mb-0.5 text-[10px] text-rose-300 italic">
                   <span className="not-italic">
                     Claap recording is linked but its summary couldn't be retrieved
                     {claapSyncStatus?.last_sync_status === 'not_found' ? ' (Claap returned 404)' : ''}
@@ -1974,7 +1974,7 @@ function EventDetailPane({
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 mb-1 text-[10px] text-muted-foreground italic">
+                <div className="flex items-center gap-0.5 mb-0.5 text-[10px] text-muted-foreground italic">
                   {claapBackfilling ? (
                     <>
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -2017,7 +2017,7 @@ function EventDetailPane({
               Action items moved to Suggested tasks above.
             </p>
             <div className="flex justify-end mt-1">
-              <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
+              <Button size="sm" className="h-6 text-[11px]" disabled={!noteDraft.trim()}
                 onClick={async () => {
                   const text = noteDraft.trim();
                   onNoteAdded(text);
@@ -2070,11 +2070,11 @@ function EventDetailPane({
 
         {/* History */}
         <section>
-          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-1">Activity</h3>
+          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-0.5">Activity</h3>
           {activityEntries.length === 0 ? (
             <p className="text-[11px] text-muted-foreground italic">No activity yet on this item.</p>
           ) : (
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {activityEntries.map(entry => (
                 <li key={entry.id} className="flex items-start gap-2 text-[11px] text-white/80">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary/60 mt-1.5 shrink-0" />
@@ -2093,9 +2093,9 @@ function EventDetailPane({
         </div>
 
         {/* Right action rail */}
-        <aside className="w-[180px] shrink-0 border-l border-white/[0.08] px-1 py-1 overflow-y-auto">
-          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-1">Action items</h3>
-          <div className="flex flex-col gap-1 [&>*]:w-full [&>*]:min-w-0">
+        <aside className="w-[180px] shrink-0 border-l border-white/[0.08] px-0.5 py-0.5 overflow-y-auto">
+          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-0.5">Action items</h3>
+          <div className="flex flex-col gap-0.5 [&>*]:w-full [&>*]:min-w-0">
             <MeetingFollowupInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
@@ -2147,16 +2147,16 @@ function EventDetailPane({
       </div>
 
       {/* Sticky footer */}
-      <div className="border-t border-white/[0.08] px-1 py-1 flex items-center gap-1">
-        <Button size="sm" className="h-7 text-xs gap-1 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/40" onClick={onResolve}>
+      <div className="border-t border-white/[0.08] px-0.5 py-0.5 flex items-center gap-0.5">
+        <Button size="sm" className="h-6 text-xs gap-0.5 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 border border-emerald-500/40" onClick={onResolve}>
           <CheckCircle2 className="h-3.5 w-3.5" /> Mark resolved
         </Button>
-        <Button size="sm" variant="ghost" className="h-7 text-xs gap-1" onClick={onDismiss}>
+        <Button size="sm" variant="ghost" className="h-6 text-xs gap-0.5" onClick={onDismiss}>
           <X className="h-3.5 w-3.5" /> Dismiss
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 ml-auto">
+            <Button size="sm" variant="ghost" className="h-6 text-xs gap-0.5 ml-auto">
               <Clock className="h-3.5 w-3.5" /> Snooze <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
