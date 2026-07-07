@@ -1118,7 +1118,6 @@ export function LenderAnalyticsDialog({
               <SheetTitle className="text-slate-100">New Funding Sources</SheetTitle>
               <SheetDescription className="text-slate-400">
                 {newLenders.current.length} added · {dateRangeLabel(dateRange)}
-                {newLenders.delta != null && ` · Δ ${newLenders.delta >= 0 ? '+' : ''}${newLenders.delta} vs prior window`}
               </SheetDescription>
             </SheetHeader>
             <div className="mt-3 flex justify-end">
