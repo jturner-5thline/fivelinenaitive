@@ -2478,13 +2478,22 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                     )
                   )}
                   {contentReady && activeTab === 'end_of_day' && (
-                    <EndOfDayTab
-                      enabled={open}
-                      onNavigate={handleNavigate}
-                      targetAssigneeName={targetAssigneeName}
-                      targetUserId={targetUserId}
-                      briefingType={briefingType}
-                    />
+                    <div
+                      style={{
+                        marginLeft: 'calc(-1 * clamp(0.75rem, 1.4vw, 1.5rem))',
+                        marginRight: 'calc(-1 * clamp(0.75rem, 1.4vw, 1.5rem))',
+                        marginTop: 'calc(-1 * clamp(0.5rem, 1vw, 1rem))',
+                        marginBottom: 'calc(-1 * clamp(0.75rem, 1.2vw, 1.5rem))',
+                      }}
+                    >
+                      <EndOfDayTab
+                        enabled={open}
+                        onNavigate={handleNavigate}
+                        targetAssigneeName={targetAssigneeName}
+                        targetUserId={targetUserId}
+                        briefingType={briefingType}
+                      />
+                    </div>
                   )}
                   </div>
                 </AddToDealCalendarProvider>
