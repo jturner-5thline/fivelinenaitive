@@ -2073,6 +2073,11 @@ function BundleDetailPane({
 }) {
   const dealId = (item as any).deal_id as string | undefined;
   const [batchBusy, setBatchBusy] = useState<'a' | 'r' | null>(null);
+  const isEmailBundle = children[0]?.action_type === 'draft_email';
+  const kindLabel = isEmailBundle ? 'drafts' : 'updates';
+  const introCopy = isEmailBundle
+    ? 'Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.'
+    : 'Individual lender / funding-source updates proposed on this deal. Review and approve each one separately, or use Approve all / Reject all above.';
 
   const approveAll = async () => {
     setBatchBusy('a');
@@ -2082,7 +2087,7 @@ function BundleDetailPane({
     setBatchBusy(null);
   };
   const rejectAll = async () => {
-    const ok = window.confirm(`Reject all ${children.length} lender follow-up drafts? This cannot be undone.`);
+    const ok = window.confirm(`Reject all ${children.length} lender ${kindLabel}? This cannot be undone.`);
     if (!ok) return;
     setBatchBusy('r');
     for (const c of children) {
@@ -2142,7 +2147,7 @@ function BundleDetailPane({
           </div>
 
           <p className="text-[14px] leading-[1.6] text-white max-w-[72ch]" style={FONT_BODY}>
-            Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.
+            {introCopy}
           </p>
 
           <BundleChildCarousel
