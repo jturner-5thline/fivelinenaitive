@@ -90,6 +90,45 @@ function bytesLabel(n: number) {
 }
 
 /**
+ * Toolbar button. Hoisted at module scope so it doesn't get a new component
+ * identity on every parent render — otherwise React unmounts and remounts
+ * every toolbar button on each keystroke, which drops the pending
+ * `mousedown → click` sequence and made bold/italic/underline appear to
+ * silently no-op mid-typing.
+ */
+const TbBtn = ({
+  onClick,
+  onPointerDown,
+  active,
+  title,
+  children,
+  preserveFocus = true,
+}: {
+  onClick: () => void;
+  onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
+  active?: boolean;
+  title: string;
+  children: React.ReactNode;
+  preserveFocus?: boolean;
+}) => (
+  <button
+    type="button"
+    title={title}
+    aria-label={title}
+    onPointerDown={onPointerDown}
+    onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
+    onClick={onClick}
+    className={cn(
+      'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
+      'text-[rgba(220,232,248,0.75)] hover:bg-[rgba(120,170,255,0.12)]',
+      active && 'bg-[rgba(120,170,255,0.18)] text-[rgb(220,232,248)]',
+    )}
+  >
+    {children}
+  </button>
+);
+
+/**
  * Rich-text narrative editor for Insights reports. Persists HTML via
  * `onChange` (parent debounces into the existing report save) and pushes
  * uploaded media into the company-scoped `insights-attachments` bucket.
@@ -341,23 +380,12 @@ export function InsightsNarrativeEditor({
     );
   }
 
-  const TbBtn = ({ onClick, onPointerDown, active, title, children, preserveFocus = true }: { onClick: () => void; onPointerDown?: React.PointerEventHandler<HTMLButtonElement>; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onPointerDown={onPointerDown}
-      onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
-      onClick={onClick}
-      className={cn(
-        'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
-        'text-[rgba(220,232,248,0.75)] hover:bg-[rgba(120,170,255,0.12)]',
-        active && 'bg-[rgba(120,170,255,0.18)] text-[rgb(220,232,248)]',
-      )}
-    >
-      {children}
-    </button>
-  );
+  // Toolbar button component is hoisted at module scope (see TbBtn below the
+  // component). Defining it inline would create a new component type on every
+  // render, which unmounts and remounts every button on each keystroke — that
+  // in turn drops the pending `mousedown → click` sequence when the toolbar
+  // is used to toggle formatting mid-typing, and made bold/italic/underline
+  // silently no-op for users.
 
   const sep = <span aria-hidden style={{ width: 1, height: 16, background: 'rgba(120,170,255,0.18)', margin: '0 2px' }} />;
 
@@ -572,12 +600,20 @@ export function InsightsNarrativeEditor({
         .insights-narrative-prose blockquote { border-left: 3px solid rgba(120,170,255,0.4); padding: 2px 0 2px 10px; margin: 6px 0; color: rgba(220,232,248,0.85); font-style: italic; }
         .insights-narrative-prose img.insights-narrative-image, .insights-narrative-prose img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
         .insights-narrative-prose strong,
-        .insights-narrative-prose b { font-weight: 700; color: #f1f5ff; }
+        .insights-narrative-prose b,
+        .insights-narrative-prose .ProseMirror strong,
+        .ProseMirror.insights-narrative-prose strong,
+        .insights-narrative-editor strong { font-weight: 700 !important; color: #f1f5ff; }
         .insights-narrative-prose em,
-        .insights-narrative-prose i { font-style: italic; }
-        .insights-narrative-prose u { text-decoration: underline; }
+        .insights-narrative-prose i,
+        .insights-narrative-editor em,
+        .insights-narrative-editor i { font-style: italic !important; }
+        .insights-narrative-prose u,
+        .insights-narrative-editor u { text-decoration: underline !important; }
         .insights-narrative-prose s,
-        .insights-narrative-prose del { text-decoration: line-through; }
+        .insights-narrative-prose del,
+        .insights-narrative-editor s,
+        .insights-narrative-editor del { text-decoration: line-through !important; }
         .insights-narrative-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; background: rgba(120,170,255,0.12); padding: 1px 4px; border-radius: 4px; }
         .insights-narrative-prose p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
