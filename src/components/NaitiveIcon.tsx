@@ -15,7 +15,6 @@ export const NaitiveIcon = forwardRef<HTMLImageElement, NaitiveIconProps>(
         src={naitiveFavicon}
         alt=""
         aria-hidden="true"
-        style={{ filter: 'brightness(1.8) contrast(1.15)' }}
         className={cn('inline-block shrink-0', className)}
         {...props}
       />
