@@ -631,9 +631,9 @@ function QuickDatePicker({ value, onChange, todayStr, status, completedAt }: { v
     //   upcoming: Today · Tomorrow · Friday · Next Tuesday · MMM d
     const dueDate = new Date(due + 'T00:00:00');
     const weekday = format(dueDate, 'EEEE');
-    if (diff === 0) return { text: 'Today', color: '#f59e0b', bold: true };
+    if (diff === 0) return { text: 'Today', color: '#7fc89a', bold: true };
     if (diff === -1) return { text: 'Yesterday', color: '#ff4d4d', bold: true };
-    if (diff === 1) return { text: 'Tomorrow', color: '#f59e0b', bold: true };
+    if (diff === 1) return { text: 'Tomorrow', color: '#7fc89a', bold: true };
     if (diff >= -6 && diff <= -2) return { text: weekday, color: '#ff4d4d', bold: true };
     if (diff >= -13 && diff <= -7) return { text: `Last ${weekday}`, color: '#ff4d4d', bold: true };
     if (diff >= 2 && diff <= 6) return { text: weekday, color: '#8b92a5', bold: false };
