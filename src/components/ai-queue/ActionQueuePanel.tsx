@@ -398,7 +398,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const approveFlexRequest = useApproveFlexAccessRequest();
   const declineFlexRequest = useDeclineFlexAccessRequest();
 
-  const [tab, setTab] = useState<'queue' | 'staged'>('queue');
+  // Staged drafts are now shown inline in the left rail (no tab split).
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -627,14 +627,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       </div>
 
       {/* Body */}
-      {tab === 'staged' ? (
-        <div className="relative flex-1 min-h-0 overflow-y-auto">
-          <div className="px-3 pt-2 flex items-center justify-end">
-            <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
-          </div>
-          <StagedDraftsPanel />
-        </div>
-      ) : (items.length + accessRequests.length + flexRequests.length) === 0 ? (
+      {(items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
@@ -666,7 +659,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 ) : (
                   <div />
                 )}
-                <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
               </div>
 
               {/* Search */}
@@ -749,6 +741,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   No actions match this view.
                 </div>
               )}
+
+              {/* Staged drafts — merged in from the removed Staged tab */}
+              <div className="pt-3 mt-3 border-t border-white/[0.14]">
+                <p
+                  className="px-1 pb-1 text-[9.5px] uppercase text-[#ecedf4]/45"
+                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                >
+                  Staged drafts
+                </p>
+                <StagedDraftsPanel />
+              </div>
             </div>
           </aside>
 
