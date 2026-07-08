@@ -597,6 +597,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   return (
     <div
+      data-approval-queue-panel
       className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
     >
       {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
@@ -752,7 +753,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </aside>
 
           {/* RIGHT DETAIL */}
-          <section className="min-h-0 flex flex-col">
+          <section data-approval-queue-detail className="min-h-0 flex flex-col bg-[var(--approval-queue-flat-surface)]">
             {selected ? (
               <DetailPane
                 key={selected.id}
@@ -1406,11 +1407,9 @@ function DetailPane({
           </div>
         </div>
       )}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2 bg-[var(--approval-queue-flat-surface)]">
         {/* Single neutral card — flat, modern, no nested cards */}
-        <div
-          className="rounded-xl border border-white/[0.20] p-4 space-y-3"
-        >
+        <div className="rounded-xl border border-white/[0.20] bg-[var(--approval-queue-flat-surface)] p-4 space-y-3 shadow-none">
           {/* Header: title/meta left, actions top-right */}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -1655,7 +1654,7 @@ function DetailPane({
                     )
                   ) : TAG_STYLE_FIELD_KEYS.has(k) && proposedDisplay ? (
                     <span
-                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-semibold border border-[#5ecdf5]/40 bg-[#5ecdf5]/[0.12] text-[#f7f8fc]"
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-semibold border border-white/[0.28] bg-[var(--approval-queue-flat-surface)] text-[#f7f8fc]"
                       style={FONT_BODY}
                     >
                       {prettifyTagLabel(proposedDisplay)}
@@ -1693,9 +1692,9 @@ function DetailPane({
                             </p>
                             {currentBlock}
                           </div>
-                          <div className="rounded-md border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.06] px-3 py-2">
+                          <div className="rounded-md border border-white/[0.20] bg-[var(--approval-queue-flat-surface)] px-3 py-2 shadow-none">
                             <p
-                              className="text-[11px] uppercase tracking-[0.08em] text-[#5ecdf5]/80 mb-1"
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
                               Proposed value
@@ -1714,9 +1713,9 @@ function DetailPane({
                             </p>
                             {currentBlock}
                           </div>
-                          <div className="rounded-md border border-[#5ecdf5]/25 bg-[#5ecdf5]/[0.06] px-3 py-2 min-w-0">
+                          <div className="rounded-md border border-white/[0.20] bg-[var(--approval-queue-flat-surface)] px-3 py-2 min-w-0 shadow-none">
                             <p
-                              className="text-[11px] uppercase tracking-[0.08em] text-[#5ecdf5]/80 mb-1"
+                              className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
                               Proposed value
