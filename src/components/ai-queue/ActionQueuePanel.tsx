@@ -909,10 +909,14 @@ function QueueRow({
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
+        style={{
+          backgroundImage:
+            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
+        }}
         className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
           selected
-            ? 'border-white/[0.28] bg-[#14141c]'
-            : 'border-white/[0.20] bg-[#0f0f16] hover:bg-[#14141c] hover:border-white/[0.24]'
+            ? 'border-white/[0.28]'
+            : 'border-white/[0.20] hover:border-white/[0.32]'
         }`}
       >
         {selected && (
