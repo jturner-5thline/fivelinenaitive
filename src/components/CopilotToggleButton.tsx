@@ -116,7 +116,7 @@ export function CopilotToggleButton() {
   const clearAi = useAiDealFilterStore((s) => s.clear);
   const setTranslating = useAiDealFilterStore((s) => s.setTranslating);
   const setClarification = useAiDealFilterStore((s) => s.setClarification);
-  const { results: quickFind, isFetching: quickFindLoading } = useQuickFind(value);
+  const { results: quickFind } = useQuickFind(value);
 
   // ── Persisted bar width ────────────────────────────────────────────────
   // The user can drag the left edge of the bar to resize it. The pixel
