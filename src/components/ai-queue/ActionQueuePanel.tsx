@@ -398,7 +398,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const approveFlexRequest = useApproveFlexAccessRequest();
   const declineFlexRequest = useDeclineFlexAccessRequest();
 
-  const [tab, setTab] = useState<'queue' | 'staged'>('queue');
+  // Staged drafts are now shown inline in the left rail (no tab split).
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
