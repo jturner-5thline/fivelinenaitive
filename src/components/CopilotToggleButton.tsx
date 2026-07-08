@@ -404,7 +404,7 @@ export function CopilotToggleButton() {
         id: c.id,
         label: c.name,
         sublabel: c.sublabel,
-        path: `/crm/companies/${c.id}`,
+        path: `/crm-companies/${c.id}`,
       });
     }
 
