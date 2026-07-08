@@ -227,13 +227,19 @@ export function useDealAuditLog(dealId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [dealId, user]);
+    // Depend on stable user id — the `user` object reference from AuthContext
+    // can change (e.g., TOKEN_REFRESHED) even when the underlying identity is
+    // the same, which would otherwise cause this hook to re-fire and make the
+    // Activity tab visibly reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealId, user?.id]);
 
   useEffect(() => {
     setPage(0);
     setEntries([]);
     fetchEntries(0);
-  }, [fetchEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealId, user?.id]);
 
   const loadMore = useCallback(() => {
     const next = page + 1;
