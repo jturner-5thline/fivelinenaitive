@@ -3383,10 +3383,22 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
-            <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+            {shouldCollapseGoalsInitiatives ? (
+              <CollapsibleReportSection title="Goals">
+                <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+              </CollapsibleReportSection>
+            ) : (
+              <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+            )}
           </div>
           <div id="qir-section-metrics" className="qir-unified-section">
-            <ReportInitiativesSection s={s} set={set} />
+            {shouldCollapseGoalsInitiatives ? (
+              <CollapsibleReportSection title="Initiatives">
+                <ReportInitiativesSection s={s} set={set} />
+              </CollapsibleReportSection>
+            ) : (
+              <ReportInitiativesSection s={s} set={set} />
+            )}
           </div>
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
