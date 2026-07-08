@@ -634,45 +634,33 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           {/* LEFT RAIL */}
           <aside className="flex flex-col min-h-0 md:border-r border-white/[0.20]">
             <div className="px-3 pt-2 pb-2 space-y-2 shrink-0">
-              <div className="flex items-center justify-between gap-2">
-                {isAdmin ? (
-                  <div className="flex items-center gap-1.5">
-                    <FilterChip
-                      label="All"
-                      count={items.length + accessRequests.length + flexRequests.length}
-                      active={scope === 'all'}
-                      onClick={() => setScope('all')}
-                    />
-                    <FilterChip
-                      label="Me"
-                      count={
-                        (myDealIds
-                          ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
-                            accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
-                            flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
-                          : 0)
-                      }
-                      active={scope === 'me'}
-                      onClick={() => setScope('me')}
-                    />
-                  </div>
-                ) : (
-                  <div />
+              {/* Search + Me filter */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#ecedf4]/40" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search actions, deals…"
+                    className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.035] border-white/[0.20] text-[#ecedf4] placeholder:text-[#ecedf4]/34 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                    style={FONT_BODY}
+                  />
+                </div>
+                {isAdmin && (
+                  <FilterChip
+                    label="Me"
+                    count={
+                      myDealIds
+                        ? items.filter((it) => it.deal_id && myDealIds.has(it.deal_id)).length +
+                          accessRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length +
+                          flexRequests.filter((r) => r.deal_id && myDealIds.has(r.deal_id)).length
+                        : 0
+                    }
+                    active={scope === 'me'}
+                    onClick={() => setScope(scope === 'me' ? 'all' : 'me')}
+                  />
                 )}
               </div>
-
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#ecedf4]/40" />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search actions, deals…"
-                  className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.035] border-white/[0.20] text-[#ecedf4] placeholder:text-[#ecedf4]/34 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
-                  style={FONT_BODY}
-                />
-              </div>
-
             </div>
 
             {/* Scrollable row list */}
