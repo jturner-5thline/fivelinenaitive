@@ -6,8 +6,11 @@ import {
   Building2,
   ArrowRight,
   CornerDownLeft,
+  User,
+  CheckSquare,
 } from 'lucide-react';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { useQuickFind } from '@/hooks/useQuickFind';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenders } from '@/contexts/LendersContext';
@@ -48,6 +51,9 @@ const QUICK_PAGES: { name: string; path: string }[] = [
 type Suggestion =
   | { kind: 'deal'; id: string; label: string; sublabel?: string; path: string }
   | { kind: 'lender'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'contact'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'crm-company'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'task'; id: string; label: string; sublabel?: string; path: string }
   | { kind: 'page'; id: string; label: string; path: string };
 
 /**
