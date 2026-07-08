@@ -3260,6 +3260,27 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  // Collapse Goals / Initiatives for JM, JT, SW reports covering June 2026+
+  // (monthly) or Q2 2026+ (quarterly). Users can still expand to view.
+  const shouldCollapseGoalsInitiatives = useMemo(() => {
+    const name = (ownerName || '').toLowerCase();
+    const isTargetOwner = ['john moffitt', 'james turner', 'scott williams']
+      .some((n) => name.includes(n));
+    if (!isTargetOwner) return false;
+    if (s.period === 'monthly') {
+      const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const [monthName, yearStr] = (s.month || '').toLowerCase().split(' ');
+      const monthIdx = MONTHS.indexOf(monthName);
+      const year = parseInt(yearStr || '', 10);
+      if (monthIdx < 0 || !year) return false;
+      return year > 2026 || (year === 2026 && monthIdx >= 5); // June = 5
+    }
+    const m = /^Q([1-4])\s+(\d{4})$/.exec(s.quarter || '');
+    if (!m) return false;
+    const q = parseInt(m[1], 10);
+    const year = parseInt(m[2], 10);
+    return year > 2026 || (year === 2026 && q >= 2);
+  }, [ownerName, s.period, s.month, s.quarter]);
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
