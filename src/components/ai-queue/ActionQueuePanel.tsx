@@ -1665,7 +1665,7 @@ function DetailPane({
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              Current value
+                              Current
                             </p>
                             {currentBlock}
                           </div>
@@ -1674,7 +1674,7 @@ function DetailPane({
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              Proposed value
+                              New
                             </p>
                             {proposedBlock}
                           </div>
@@ -1686,7 +1686,7 @@ function DetailPane({
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              Current value
+                              Current
                             </p>
                             {currentBlock}
                           </div>
@@ -1695,7 +1695,7 @@ function DetailPane({
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
                             >
-                              Proposed value
+                              New
                             </p>
                             {proposedBlock}
                           </div>
