@@ -623,9 +623,24 @@ function QuickDatePicker({ value, onChange, todayStr, status, completedAt }: { v
     if (!due) return null;
     const diff = daysFromToday(due, { today: todayStr, tomorrow: todayStr, weekEnd: todayStr });
     if (diff === null) return null;
-    if (diff < 0) return { text: `${Math.abs(diff)}d overdue`, color: '#ff4d4d', bold: true };
-    if (diff === 0) return { text: 'Due today', color: '#f59e0b', bold: true };
-    return { text: `Due in ${diff}d`, color: '#8b92a5', bold: false };
+    // Weekday-first relative labels:
+    //   past: Yesterday · Monday · Last Thursday · MMM d
+    //   upcoming: Today · Tomorrow · Friday · Next Tuesday · MMM d
+    const dueDate = new Date(due + 'T00:00:00');
+    const weekday = format(dueDate, 'EEEE');
+    if (diff === 0) return { text: 'Today', color: '#f59e0b', bold: true };
+    if (diff === -1) return { text: 'Yesterday', color: '#ff4d4d', bold: true };
+    if (diff === 1) return { text: 'Tomorrow', color: '#f59e0b', bold: true };
+    if (diff >= -6 && diff <= -2) return { text: weekday, color: '#ff4d4d', bold: true };
+    if (diff >= -13 && diff <= -7) return { text: `Last ${weekday}`, color: '#ff4d4d', bold: true };
+    if (diff >= 2 && diff <= 6) return { text: weekday, color: '#8b92a5', bold: false };
+    if (diff >= 7 && diff <= 13) return { text: `Next ${weekday}`, color: '#8b92a5', bold: false };
+    // Fallback to a compact date for anything > 2 weeks out or > 2 weeks past.
+    return {
+      text: format(dueDate, 'MMM d'),
+      color: diff < 0 ? '#ff4d4d' : '#8b92a5',
+      bold: diff < 0,
+    };
   };
 
   const rel = getRelativeLabel();
