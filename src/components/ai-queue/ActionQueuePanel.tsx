@@ -475,25 +475,27 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         if (rankDiff !== 0) return rankDiff;
         return ((a as any).__order ?? 0) - ((b as any).__order ?? 0);
       });
-      // Collapse 2+ "Nudge …" email drafts on the same deal into a single
-      // synthetic "Follow up with Lenders" bundle. Individual drafts remain
-      // available in the detail pane for edit/approve/reject.
-      const nudges = g.items.filter(
-        (it) => it.action_type === 'draft_email' && /nudge/i.test(it.title || ''),
-      );
-      if (nudges.length >= 2) {
-        const rest = g.items.filter((it) => !nudges.includes(it));
+      // Collapse 2+ email drafts on the same deal into a single synthetic
+      // bundle. Nudge-heavy bundles keep the "Follow up with Lenders" label;
+      // otherwise use a generic "Email drafts" label. Individual drafts stay
+      // available via the carousel in the detail pane.
+      const drafts = g.items.filter((it) => it.action_type === 'draft_email');
+      if (drafts.length >= 2) {
+        const rest = g.items.filter((it) => !drafts.includes(it));
+        const nudgeCount = drafts.filter((it) => /nudge/i.test(it.title || '')).length;
+        const mostlyNudges = nudgeCount >= Math.ceil(drafts.length / 2);
+        const bundleTitle = mostlyNudges ? 'Follow up with Lenders' : 'Email drafts';
         const bundle: QueuedAiAction = {
-          ...nudges[0],
-          id: `bundle:nudges:${g.key}`,
+          ...drafts[0],
+          id: `bundle:drafts:${g.key}`,
           action_type: 'draft_email_bundle' as unknown as AiActionType,
-          title: 'Follow up with Lenders',
-          description: `${nudges.length} lender follow-up drafts`,
-          rationale: `${nudges.length} outbound follow-ups drafted for lenders / funding sources on this deal.`,
+          title: bundleTitle,
+          description: `${drafts.length} email drafts`,
+          rationale: `${drafts.length} outbound email drafts pending on this deal.`,
           old_values: {},
           new_values: {},
         } as QueuedAiAction;
-        (bundle as any).__bundle = nudges;
+        (bundle as any).__bundle = drafts;
         g.items = [bundle, ...rest];
       }
     }
