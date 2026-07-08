@@ -1474,11 +1474,11 @@ function DetailPane({
                   await onApprove(editedCount > 0 ? { editedValues: edits } : undefined);
                   setBusy(null);
                 }}
-                className="inline-flex items-center gap-2 h-8 px-4 rounded-md text-[12px] font-semibold text-[#0a0a14] bg-[#5ecdf5] hover:bg-[#74d4f7] transition-colors disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5ecdf5]"
+                className="relative overflow-hidden inline-flex items-center gap-2 h-8 px-4 rounded-lg text-[12px] font-semibold text-foreground border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] transition-all duration-200 ease-out disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 style={FONT_BODY}
               >
-                {busy === 'a' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                {approveButtonLabel(item, editedCount > 0)}
+                {busy === 'a' ? <Loader2 className="relative h-3.5 w-3.5 animate-spin" /> : null}
+                <span className="relative">{approveButtonLabel(item, editedCount > 0)}</span>
               </button>
             </div>
           </div>
