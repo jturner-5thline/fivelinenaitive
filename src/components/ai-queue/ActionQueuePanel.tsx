@@ -599,15 +599,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     <div
       className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
     >
-      {/* Ambient glows */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 motion-reduce:hidden"
-        style={{
-          background:
-            'radial-gradient(60% 40% at 100% 0%, rgba(155,111,212,0.16) 0%, transparent 60%), radial-gradient(50% 40% at 0% 100%, rgba(94,205,245,0.10) 0%, transparent 65%)',
-        }}
-      />
+      {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
 
       {/* Header */}
       <div className="relative px-4 py-2.5 border-b border-white/[0.20] flex items-center justify-between shrink-0">
@@ -1417,7 +1409,7 @@ function DetailPane({
       <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
-          className="rounded-xl border border-white/[0.20] bg-white/[0.025] p-4 space-y-3"
+          className="rounded-xl border border-white/[0.20] p-4 space-y-3"
         >
           {/* Header: title/meta left, actions top-right */}
           <div className="flex items-start justify-between gap-4">
