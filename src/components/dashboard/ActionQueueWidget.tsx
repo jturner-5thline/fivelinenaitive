@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Inbox as InboxIcon, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { consolidatedAiQueueCount } from '@/lib/consolidatedAiQueueCount';
 
 /**
  * Compact dashboard widget that surfaces the AI Approval Queue above the
@@ -15,10 +16,9 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 export function ActionQueueWidget() {
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const [open, setOpen] = useState(false);
-  const aiCount = useAiActionQueueCount();
   const { data: items = [], refetch } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
-  const count = aiCount + accessRequests.length;
+  const count = consolidatedAiQueueCount(items) + accessRequests.length;
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
