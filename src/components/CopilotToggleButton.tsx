@@ -6,8 +6,11 @@ import {
   Building2,
   ArrowRight,
   CornerDownLeft,
+  User,
+  CheckSquare,
 } from 'lucide-react';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { useQuickFind } from '@/hooks/useQuickFind';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenders } from '@/contexts/LendersContext';
@@ -48,6 +51,9 @@ const QUICK_PAGES: { name: string; path: string }[] = [
 type Suggestion =
   | { kind: 'deal'; id: string; label: string; sublabel?: string; path: string }
   | { kind: 'lender'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'contact'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'crm-company'; id: string; label: string; sublabel?: string; path: string }
+  | { kind: 'task'; id: string; label: string; sublabel?: string; path: string }
   | { kind: 'page'; id: string; label: string; path: string };
 
 /**
@@ -110,6 +116,7 @@ export function CopilotToggleButton() {
   const clearAi = useAiDealFilterStore((s) => s.clear);
   const setTranslating = useAiDealFilterStore((s) => s.setTranslating);
   const setClarification = useAiDealFilterStore((s) => s.setClarification);
+  const { results: quickFind } = useQuickFind(value);
 
   // ── Persisted bar width ────────────────────────────────────────────────
   // The user can drag the left edge of the bar to resize it. The pixel
@@ -356,8 +363,9 @@ export function CopilotToggleButton() {
       let count = 0;
       for (const d of deals) {
         const company = (d.company || '').toLowerCase();
-        if (!company) continue;
-        if (company.includes(q)) {
+        const client = ((d as any).client || '').toLowerCase();
+        if (!company && !client) continue;
+        if (company.includes(q) || client.includes(q)) {
           out.push({
             kind: 'deal',
             id: d.id,
@@ -390,17 +398,50 @@ export function CopilotToggleButton() {
       }
     }
 
+    for (const c of quickFind.crmCompanies) {
+      out.push({
+        kind: 'crm-company',
+        id: c.id,
+        label: c.name,
+        sublabel: c.sublabel,
+        path: `/crm-companies/${c.id}`,
+      });
+    }
+
+    for (const c of quickFind.contacts) {
+      out.push({
+        kind: 'contact',
+        id: c.id,
+        label: c.name,
+        sublabel: c.sublabel,
+        path: `/contacts/${c.id}`,
+      });
+    }
+
+    for (const t of quickFind.tasks) {
+      out.push({
+        kind: 'task',
+        id: t.id,
+        label: t.title,
+        sublabel: t.sublabel,
+        path: `/tasks/${t.id}`,
+      });
+    }
+
     const pages = QUICK_PAGES.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 4);
     for (const p of pages) {
       out.push({ kind: 'page', id: p.path, label: p.name, path: p.path });
     }
 
-    return out.slice(0, 10);
-  }, [value, deals, lenders, pipelines]);
+    return out.slice(0, 16);
+  }, [value, deals, lenders, pipelines, quickFind]);
 
+  // Default the highlighted row to the top real result (index 1) so
+  // pressing Enter navigates directly to the best match. When there are
+  // no suggestions yet, fall back to the AI row at index 0.
   useEffect(() => {
-    setActiveIndex(0);
-  }, [value]);
+    setActiveIndex(suggestions.length > 0 ? 1 : 0);
+  }, [value, suggestions.length]);
 
   // (Previously: `if (hasOpenModal) return null;` — removed so the bar
   // floats above all overlays. Its portal sits on <body> with
@@ -602,9 +643,27 @@ export function CopilotToggleButton() {
               const idx = i + 1;
               const isActive = idx === activeIndex;
               const Icon =
-                s.kind === 'deal' ? Briefcase : s.kind === 'lender' ? Building2 : ArrowRight;
+                s.kind === 'deal'
+                  ? Briefcase
+                  : s.kind === 'lender' || s.kind === 'crm-company'
+                    ? Building2
+                    : s.kind === 'contact'
+                      ? User
+                      : s.kind === 'task'
+                        ? CheckSquare
+                        : ArrowRight;
               const groupLabel =
-                s.kind === 'deal' ? 'Deal' : s.kind === 'lender' ? 'Lender' : 'Page';
+                s.kind === 'deal'
+                  ? 'Deal'
+                  : s.kind === 'lender'
+                    ? 'Lender'
+                    : s.kind === 'crm-company'
+                      ? 'Company'
+                      : s.kind === 'contact'
+                        ? 'Contact'
+                        : s.kind === 'task'
+                          ? 'Task'
+                          : 'Page';
               return (
                 <button
                   type="button"
