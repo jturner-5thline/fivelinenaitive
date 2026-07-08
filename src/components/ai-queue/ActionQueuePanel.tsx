@@ -2210,10 +2210,7 @@ function BundleChildCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[13px] font-semibold text-[#f7f8fc] truncate" style={FONT_BODY}>
-            {extractRecipientLabel(child)}
-          </p>
-          <p className="text-[11px] text-[#ecedf4]/55 mt-0.5" style={FONT_BODY}>
-            {child.title}
+            {extractRecipientLabel(child).split('·')[0].trim()}
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5">
