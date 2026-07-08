@@ -1996,6 +1996,200 @@ function useMyManagedDealIds(enabled: boolean) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Bundle detail pane — renders N nudge email drafts as a stack of per-recipient
+   cards with individual approve/reject controls plus batch actions.
+   ──────────────────────────────────────────────────────────────────────── */
+function extractRecipientLabel(child: QueuedAiAction): string {
+  const nv = (child.new_values || {}) as Record<string, any>;
+  const to = nv.to;
+  const toStr = Array.isArray(to) ? to.filter(Boolean).join(', ') : (to || '');
+  const m = (child.title || '').match(/^\s*nudge\s+(.+)$/i);
+  const namePart = m ? m[1].trim() : (child.title || 'Lender');
+  return toStr ? `${namePart} · ${toStr}` : namePart;
+}
+
+function BundleDetailPane({
+  item,
+  children,
+  onApproveChild,
+  onRejectChild,
+  openDeal,
+}: {
+  item: QueuedAiAction;
+  children: QueuedAiAction[];
+  onApproveChild: (child: QueuedAiAction, opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
+  onRejectChild: (childId: string) => Promise<unknown>;
+  openDeal: (tab?: string) => void;
+}) {
+  const dealId = (item as any).deal_id as string | undefined;
+  const [batchBusy, setBatchBusy] = useState<'a' | 'r' | null>(null);
+
+  const approveAll = async () => {
+    setBatchBusy('a');
+    for (const c of children) {
+      try { await onApproveChild(c); } catch (e) { console.error('[bundle approveAll]', e); }
+    }
+    setBatchBusy(null);
+  };
+  const rejectAll = async () => {
+    const ok = window.confirm(`Reject all ${children.length} lender follow-up drafts? This cannot be undone.`);
+    if (!ok) return;
+    setBatchBusy('r');
+    for (const c of children) {
+      try { await onRejectChild(c.id); } catch (e) { console.error('[bundle rejectAll]', e); }
+    }
+    setBatchBusy(null);
+  };
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2 bg-[var(--approval-queue-flat-surface)]">
+        <div className="rounded-xl border border-white/[0.20] bg-[var(--approval-queue-flat-surface)] p-4 space-y-4 shadow-none">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[18px] font-semibold leading-[1.2] tracking-tight text-[#f7f8fc]" style={FONT_DISPLAY}>
+                {item.title}
+              </h3>
+              <div className="mt-1.5 flex items-center gap-2 text-[12px] text-[#ecedf4]/75" style={FONT_BODY}>
+                {dealId && item.deal_name ? (
+                  <button
+                    type="button"
+                    onClick={() => openDeal()}
+                    className="underline-offset-2 hover:underline hover:text-[#5ecdf5] cursor-pointer"
+                    title={`Open ${item.deal_name}`}
+                  >
+                    {item.deal_name}
+                  </button>
+                ) : (
+                  <span>{item.deal_name || 'Unassigned'}</span>
+                )}
+                <span className="text-[#ecedf4]/40">·</span>
+                <span className="text-[#ecedf4]/65">{children.length} drafts</span>
+              </div>
+            </div>
+            <div className="shrink-0 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={batchBusy !== null}
+                onClick={rejectAll}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/30 disabled:opacity-60"
+                style={FONT_BODY}
+              >
+                {batchBusy === 'r' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                Reject all
+              </button>
+              <button
+                type="button"
+                disabled={batchBusy !== null}
+                onClick={approveAll}
+                className="relative overflow-hidden inline-flex items-center gap-2 h-8 px-4 rounded-lg text-[12px] font-semibold text-foreground border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] transition-all duration-200 ease-out disabled:opacity-60"
+                style={FONT_BODY}
+              >
+                {batchBusy === 'a' ? <Loader2 className="relative h-3.5 w-3.5 animate-spin" /> : null}
+                <span className="relative">Approve all</span>
+              </button>
+            </div>
+          </div>
+
+          <p className="text-[14px] leading-[1.6] text-white max-w-[72ch]" style={FONT_BODY}>
+            Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.
+          </p>
+
+          <div className="space-y-3">
+            {children.map((child) => (
+              <BundleChildCard
+                key={child.id}
+                child={child}
+                onApprove={(opts) => onApproveChild(child, opts)}
+                onReject={() => onRejectChild(child.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BundleChildCard({
+  child,
+  onApprove,
+  onReject,
+}: {
+  child: QueuedAiAction;
+  onApprove: (opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
+  onReject: () => Promise<unknown>;
+}) {
+  const [editMode, setEditMode] = useState(false);
+  const [edits, setEdits] = useState<Record<string, any>>({});
+  const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const [handled, setHandled] = useState<'approved' | 'rejected' | null>(null);
+  const newValues = (child.new_values || {}) as Record<string, any>;
+  const editedCount = Object.keys(edits).length;
+
+  if (handled) {
+    return (
+      <div className="rounded-lg border border-white/[0.16] bg-white/[0.02] px-3.5 py-2.5 text-[12px] text-[#ecedf4]/60" style={FONT_BODY}>
+        {extractRecipientLabel(child)} · {handled === 'approved' ? 'Approved' : 'Rejected'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-white/[0.20] bg-white/[0.02] px-3.5 py-3 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-[#f7f8fc] truncate" style={FONT_BODY}>
+            {extractRecipientLabel(child)}
+          </p>
+          <p className="text-[11px] text-[#ecedf4]/55 mt-0.5" style={FONT_BODY}>
+            {child.title}
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={async () => {
+              setBusy('r');
+              try { await onReject(); setHandled('rejected'); }
+              finally { setBusy(null); }
+            }}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-md text-[11.5px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/25 disabled:opacity-60"
+            style={FONT_BODY}
+          >
+            {busy === 'r' ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+            Reject
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={async () => {
+              setBusy('a');
+              try { await onApprove(editedCount > 0 ? { editedValues: edits } : undefined); setHandled('approved'); }
+              finally { setBusy(null); }
+            }}
+            className="relative overflow-hidden inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-[11.5px] font-semibold text-foreground border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] disabled:opacity-60"
+            style={FONT_BODY}
+          >
+            {busy === 'a' ? <Loader2 className="relative h-3 w-3 animate-spin" /> : null}
+            <span className="relative">{approveButtonLabel(child, editedCount > 0)}</span>
+          </button>
+        </div>
+      </div>
+      <EmailDraftPreview
+        item={child}
+        newValues={newValues}
+        editMode={editMode}
+        onToggleEditMode={() => setEditMode((v) => !v)}
+        edits={edits}
+        setEdits={setEdits}
+      />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Empty state
    ──────────────────────────────────────────────────────────────────────── */
 function EmptyState() {
