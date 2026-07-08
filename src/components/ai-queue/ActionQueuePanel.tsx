@@ -598,7 +598,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   return (
     <div
       className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
-      style={{ background: '#06060a' }}
     >
       {/* Ambient glows */}
       <div
