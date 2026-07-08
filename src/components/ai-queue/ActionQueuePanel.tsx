@@ -597,6 +597,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   return (
     <div
+      data-approval-queue-panel
       className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
     >
       {/* Ambient glows removed — detail pane matches Deal Details flat surface. */}
@@ -752,7 +753,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           </aside>
 
           {/* RIGHT DETAIL */}
-          <section className="min-h-0 flex flex-col">
+          <section data-approval-queue-detail className="min-h-0 flex flex-col bg-[var(--approval-queue-flat-surface)]">
             {selected ? (
               <DetailPane
                 key={selected.id}
