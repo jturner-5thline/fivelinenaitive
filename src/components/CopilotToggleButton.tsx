@@ -21,7 +21,6 @@ import { naturalLanguageToDealFilter } from '@/lib/naturalLanguageToDealFilter';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
-import naitiveBrandIcon from '@/assets/naitive-icon-light.png';
 import { cn } from '@/lib/utils';
 // Lazy-load the (~109KB) AI copilot panel chunk so it doesn't block
 // initial render on every page. The panel returns null until isOpen, so
@@ -572,10 +571,11 @@ export function CopilotToggleButton() {
               }}
             >
               <img
-                src={naitiveBrandIcon}
+                src={naitiveAiIcon}
                 alt=""
                 aria-hidden="true"
-                className="h-[18px] w-[18px]"
+                className="h-5 w-5"
+                style={{ filter: 'brightness(1.16) contrast(1.05)' }}
               />
               {(!isOpen || isMinimized) && unreadCount > 0 && (
                 <span
@@ -626,7 +626,12 @@ export function CopilotToggleButton() {
                     'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
                 }}
               >
-                <img src={naitiveAiIcon} alt="" className="h-3 w-3 brightness-0 invert" />
+                <img
+                  src={naitiveAiIcon}
+                  alt=""
+                  className="h-3.5 w-3.5"
+                  style={{ filter: 'brightness(1.16) contrast(1.05)' }}
+                />
               </span>
               <span className="flex-1 min-w-0 truncate">
                 {aiIntent ? 'Ask naitive AI: ' : 'Ask naitive AI about '}
