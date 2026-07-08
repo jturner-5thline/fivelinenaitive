@@ -51,8 +51,24 @@ function CommentaryBlock({
   const [savedFlash, setSavedFlash] = React.useState(false);
   const tRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = React.useRef<((v: string) => Promise<void>) | null>(null);
+  const pendingValueRef = React.useRef<string | null>(null);
   // Keep latest save fn (captures latest reportKey) for use in flush logic.
   React.useEffect(() => { pendingSaveRef.current = save; }, [save]);
+
+  // Flush any pending debounced save immediately, using the CURRENT save fn
+  // (which is bound to the current reportKey). Safe to call any time.
+  const flushPendingSave = React.useCallback(() => {
+    if (tRef.current) {
+      clearTimeout(tRef.current);
+      tRef.current = null;
+    }
+    const pending = pendingValueRef.current;
+    if (pending == null) return;
+    pendingValueRef.current = null;
+    dirtyRef.current = false;
+    const fn = pendingSaveRef.current;
+    if (fn) void fn(pending);
+  }, []);
 
   // When the report period (reportKey) changes, flush any pending save against
   // the PREVIOUS key, then reset local state so the new period's notes hydrate
@@ -60,14 +76,34 @@ function CommentaryBlock({
   const prevKeyRef = React.useRef(reportKey);
   React.useEffect(() => {
     if (prevKeyRef.current === reportKey) return;
-    // Cancel any pending debounce — the queued save would otherwise write the
-    // old period's text into the new period if reportKey rebinds first.
+    // IMPORTANT: pendingSaveRef is bound to the CURRENT (new) reportKey by
+    // the time this effect runs, so we can't safely flush the pending value
+    // against the previous key. Drop the pending edit rather than write it
+    // to the wrong period.
     if (tRef.current) { clearTimeout(tRef.current); tRef.current = null; }
+    pendingValueRef.current = null;
     prevKeyRef.current = reportKey;
     dirtyRef.current = false;
     setLocal('');
     setEditing(false);
   }, [reportKey]);
+
+  // Flush on unmount and when the tab is hidden (page refresh / close /
+  // switching tabs). This is the safety net that prevents the "typed and
+  // then refreshed too fast" data loss scenario.
+  React.useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') flushPendingSave();
+    };
+    const onBeforeUnload = () => { flushPendingSave(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      flushPendingSave();
+    };
+  }, [flushPendingSave]);
 
   React.useEffect(() => {
     if (!loaded) return;
@@ -77,12 +113,17 @@ function CommentaryBlock({
   const onChange = (v: string) => {
     setLocal(v);
     dirtyRef.current = true;
+    pendingValueRef.current = v;
     if (tRef.current) clearTimeout(tRef.current);
     tRef.current = setTimeout(() => {
+      const val = pendingValueRef.current;
+      pendingValueRef.current = null;
       void save(v);
       dirtyRef.current = false;
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1200);
+      // reference `val` so linters don't complain about unused capture
+      void val;
     }, 500);
   };
 

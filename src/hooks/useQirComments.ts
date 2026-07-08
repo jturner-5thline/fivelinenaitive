@@ -361,6 +361,13 @@ export function useQirSectionNote(reportKey: string, sectionKey: string) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // Reset state whenever the identity of this note changes so a previous
+    // period's body never bleeds into the next period's mount. Without this
+    // reset, switching (or the hook re-keying after a parent save/reload)
+    // would leave stale `body`/`loaded` values in place until the next
+    // fetch — which, if the new key has no row, would never overwrite them.
+    setBody('');
+    setLoaded(false);
     if (!company?.id) return;
     let alive = true;
     (async () => {
@@ -372,7 +379,9 @@ export function useQirSectionNote(reportKey: string, sectionKey: string) {
         .eq('section_key', sectionKey)
         .maybeSingle();
       if (!alive) return;
-      if (data) setBody(((data as any).body as string) || '');
+      // Always set body explicitly (empty string when no row) so the UI
+      // reflects the persisted truth for THIS key deterministically.
+      setBody(data ? (((data as any).body as string) || '') : '');
       setLoaded(true);
     })();
     return () => { alive = false; };
