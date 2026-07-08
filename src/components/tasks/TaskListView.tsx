@@ -17,6 +17,9 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  Tooltip, TooltipContent, TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
   Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3, Mail,
 } from 'lucide-react';
@@ -883,10 +886,27 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           Must render in the SAME order as OPTIONAL_TASK_COLUMNS
           (deal → owner → collab → …) so grid cells line up with headers. */}
       {visibleSet.has('deal') && (
-      <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
-        <TaskAssociationChips task={task} />
-        {!subLabel && <span className="text-[11px]" style={{ color: '#94a3b8' }}>— No deal</span>}
-      </div>
+      (() => {
+        const contactName = task.contact_id ? ((task as any).contact?.full_name || 'Contact') : null;
+        const companyName = task.crm_company_id ? ((task as any).crm_company?.name || 'Company') : null;
+        const tipParts: string[] = [];
+        if (contactName) tipParts.push(`Contact: ${contactName}`);
+        if (companyName) tipParts.push(`Company: ${companyName}`);
+        const cell = (
+          <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
+            <TaskAssociationChips task={task} dealOnly />
+            {!task.deal_id && <span className="text-[11px]" style={{ color: '#94a3b8' }}>— No deal</span>}
+          </div>
+        );
+        return tipParts.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{cell}</TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              {tipParts.map((p, i) => <div key={i}>{p}</div>)}
+            </TooltipContent>
+          </Tooltip>
+        ) : cell;
+      })()
       )}
 
       {/* Owner */}

@@ -8,13 +8,15 @@ interface Props {
   size?: 'xs' | 'sm';
   /** Render greyed-out "Link Deal/Contact/Company" chips for missing associations. */
   showPlaceholders?: boolean;
+  /** Render only the Deal chip (list view uses this; contact/company move to tooltip). */
+  dealOnly?: boolean;
 }
 
 /** Renders Deal / Contact / Company chips for a task, in that order. */
-export function TaskAssociationChips({ task, className, size = 'xs', showPlaceholders = false }: Props) {
+export function TaskAssociationChips({ task, className, size = 'xs', showPlaceholders = false, dealOnly = false }: Props) {
   const dealName = task?.deal_id ? (task.deal?.company || 'Deal') : null;
-  const contactName = task?.contact_id ? (task.contact?.full_name || 'Contact') : null;
-  const companyName = task?.crm_company_id ? (task.crm_company?.name || 'Company') : null;
+  const contactName = !dealOnly && task?.contact_id ? (task.contact?.full_name || 'Contact') : null;
+  const companyName = !dealOnly && task?.crm_company_id ? (task.crm_company?.name || 'Company') : null;
 
   if (!dealName && !contactName && !companyName && !showPlaceholders) return null;
 
