@@ -1,7 +1,7 @@
 import { forwardRef, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import naitiveBrandIcon from '@/assets/naitive-icon-light.png';
+import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -139,9 +139,10 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
         className="pointer-events-none absolute inset-0 flex items-center justify-center"
       >
         <img
-          src={naitiveBrandIcon}
+          src={naitiveAiIcon}
           alt=""
-          className="h-5 w-5 opacity-[0.12] transition-opacity duration-200 group-hover:opacity-[0.18]"
+          className="h-5 w-5 opacity-[0.14] transition-opacity duration-200 group-hover:opacity-[0.2]"
+          style={{ filter: 'brightness(1.16) contrast(1.05)' }}
         />
       </span>
 
@@ -158,7 +159,12 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
             }}
             className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_12px_rgba(59,130,246,0.55),0_0_0_1px_rgba(96,165,250,0.35)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
           >
-            <img src={naitiveBrandIcon} alt="" className="h-8 w-8" />
+            <img
+              src={naitiveAiIcon}
+              alt=""
+              className="h-8 w-8"
+              style={{ filter: 'brightness(1.16) contrast(1.05)' }}
+            />
             {logoOverlay}
           </button>
         </TooltipTrigger>
