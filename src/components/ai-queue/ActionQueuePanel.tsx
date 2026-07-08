@@ -627,14 +627,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       </div>
 
       {/* Body */}
-      {tab === 'staged' ? (
-        <div className="relative flex-1 min-h-0 overflow-y-auto">
-          <div className="px-3 pt-2 flex items-center justify-end">
-            <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
-          </div>
-          <StagedDraftsPanel />
-        </div>
-      ) : (items.length + accessRequests.length + flexRequests.length) === 0 ? (
+      {(items.length + accessRequests.length + flexRequests.length) === 0 ? (
         <EmptyState />
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
@@ -666,7 +659,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 ) : (
                   <div />
                 )}
-                <TabBar tab={tab} setTab={setTab} queueCount={totalCount} stagedCount={0} />
               </div>
 
               {/* Search */}
