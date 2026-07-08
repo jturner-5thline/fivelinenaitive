@@ -835,6 +835,7 @@
      one identical fill, border, blur and elevation treatment. Mirrors
      the Deal pop-up exactly. Do not override locally. */
   .popup-shell-surface {
+    --approval-queue-flat-surface: #020208;
     background:
       linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
     backdrop-filter: blur(18px) saturate(135%);
@@ -844,6 +845,29 @@
       0 40px 120px rgba(0, 0, 0, 0.65),
       0 12px 32px rgba(0, 0, 0, 0.45),
       inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+
+  .popup-shell-surface:has([data-approval-queue-panel]) {
+    background: var(--approval-queue-flat-surface) !important;
+    background-color: var(--approval-queue-flat-surface) !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-panel],
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] * {
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail],
+  .popup-shell-surface:has([data-approval-queue-panel]) [data-approval-queue-detail] :is(div, section, article) {
+    background-color: var(--approval-queue-flat-surface) !important;
+    background-image: none !important;
   }
   .dark .glass-border-soft {
     border-color: hsl(0 0% 100% / 0.06);
