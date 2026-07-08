@@ -341,23 +341,12 @@ export function InsightsNarrativeEditor({
     );
   }
 
-  const TbBtn = ({ onClick, onPointerDown, active, title, children, preserveFocus = true }: { onClick: () => void; onPointerDown?: React.PointerEventHandler<HTMLButtonElement>; active?: boolean; title: string; children: React.ReactNode; preserveFocus?: boolean }) => (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onPointerDown={onPointerDown}
-      onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
-      onClick={onClick}
-      className={cn(
-        'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
-        'text-[rgba(220,232,248,0.75)] hover:bg-[rgba(120,170,255,0.12)]',
-        active && 'bg-[rgba(120,170,255,0.18)] text-[rgb(220,232,248)]',
-      )}
-    >
-      {children}
-    </button>
-  );
+  // Toolbar button component is hoisted at module scope (see TbBtn below the
+  // component). Defining it inline would create a new component type on every
+  // render, which unmounts and remounts every button on each keystroke — that
+  // in turn drops the pending `mousedown → click` sequence when the toolbar
+  // is used to toggle formatting mid-typing, and made bold/italic/underline
+  // silently no-op for users.
 
   const sep = <span aria-hidden style={{ width: 1, height: 16, background: 'rgba(120,170,255,0.18)', margin: '0 2px' }} />;
 
