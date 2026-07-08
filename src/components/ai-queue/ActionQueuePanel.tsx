@@ -1214,6 +1214,8 @@ function DetailPane({
   onNext,
   onApprove,
   onReject,
+  onApproveChild,
+  onRejectChild,
 }: {
   item: QueuedAiAction;
   groupName?: string;
@@ -1225,6 +1227,8 @@ function DetailPane({
   onNext?: () => void;
   onApprove: (opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
   onReject: () => Promise<unknown>;
+  onApproveChild?: (child: QueuedAiAction, opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
+  onRejectChild?: (childId: string) => Promise<unknown>;
 }) {
   const meta = TYPE_META[item.action_type];
   const target = targetSummary(item);
