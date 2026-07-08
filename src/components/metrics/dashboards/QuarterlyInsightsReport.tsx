@@ -3243,6 +3243,41 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
+function CollapsibleReportSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          background: 'transparent',
+          border: 'none',
+          padding: '8px 0',
+          cursor: 'pointer',
+          color: 'inherit',
+          font: 'inherit',
+          textAlign: 'left',
+        }}
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span style={{ fontSize: 18, fontWeight: 700 }}>{title}</span>
+        {!open && (
+          <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.6, marginLeft: 6 }}>
+            (collapsed — click to expand)
+          </span>
+        )}
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
 export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, ownerName, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
   s: ReportState;
   set: ReportSetState;
