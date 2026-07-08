@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
-import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useAllFlexInfoNotifications } from '@/hooks/useAllFlexInfoNotifications';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -16,11 +16,32 @@ import { ActionQueuePanel } from './ActionQueuePanel';
  */
 export function ActionQueueBadge() {
   const { enabled: queueEnabled } = useApprovalQueueAccess();
-  const aiCount = useAiActionQueueCount();
   const { data = [], refetch } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
   const { data: flexRequests = [] } = useAllFlexInfoNotifications();
-  const count = aiCount + accessRequests.length + flexRequests.length;
+  // Mirror the consolidation performed in ActionQueuePanel so the badge
+  // reflects the number of *visible* approval queue items (bundles count as 1).
+  const consolidatedAiCount = useMemo(() => {
+    const byDeal = new Map<string, any[]>();
+    for (const it of data) {
+      const key = (it as any).deal_id || '__unassigned__';
+      if (!byDeal.has(key)) byDeal.set(key, []);
+      byDeal.get(key)!.push(it);
+    }
+    let total = 0;
+    for (const items of byDeal.values()) {
+      const drafts = items.filter((it) => it.action_type === 'draft_email');
+      const fsUpdates = items.filter(
+        (it) => it.action_type === 'update_funding_source' || it.action_type === 'update_lender_status',
+      );
+      let count = items.length;
+      if (drafts.length >= 2) count -= drafts.length - 1;
+      if (fsUpdates.length >= 2) count -= fsUpdates.length - 1;
+      total += count;
+    }
+    return total;
+  }, [data]);
+  const count = consolidatedAiCount + accessRequests.length + flexRequests.length;
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
