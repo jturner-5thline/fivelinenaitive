@@ -741,6 +741,17 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   No actions match this view.
                 </div>
               )}
+
+              {/* Staged drafts — merged in from the removed Staged tab */}
+              <div className="pt-3 mt-3 border-t border-white/[0.14]">
+                <p
+                  className="px-1 pb-1 text-[9.5px] uppercase text-[#ecedf4]/45"
+                  style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
+                >
+                  Staged drafts
+                </p>
+                <StagedDraftsPanel />
+              </div>
             </div>
           </aside>
 
