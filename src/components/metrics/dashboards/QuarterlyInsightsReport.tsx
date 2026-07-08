@@ -3243,6 +3243,41 @@ function ReportAgendaSection({ embedded = false }: { embedded?: boolean } = {}) 
   return <Card className="glass-module qir-page-break">{inner}</Card>;
 }
 
+function CollapsibleReportSection({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          background: 'transparent',
+          border: 'none',
+          padding: '8px 0',
+          cursor: 'pointer',
+          color: 'inherit',
+          font: 'inherit',
+          textAlign: 'left',
+        }}
+        aria-expanded={open}
+      >
+        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        <span style={{ fontSize: 18, fontWeight: 700 }}>{title}</span>
+        {!open && (
+          <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.6, marginLeft: 6 }}>
+            (collapsed — click to expand)
+          </span>
+        )}
+      </button>
+      {open && <div>{children}</div>}
+    </div>
+  );
+}
+
 export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdit, reportKey, titlePrefix, ownerName, activeCompositeKey, fetchedCompositeKey, isDirty = false, isSaving = false, unsavedChangesWarning }: {
   s: ReportState;
   set: ReportSetState;
@@ -3260,6 +3295,27 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  // Collapse Goals / Initiatives for JM, JT, SW reports covering June 2026+
+  // (monthly) or Q2 2026+ (quarterly). Users can still expand to view.
+  const shouldCollapseGoalsInitiatives = useMemo(() => {
+    const name = (ownerName || '').toLowerCase();
+    const isTargetOwner = ['john moffitt', 'james turner', 'scott williams']
+      .some((n) => name.includes(n));
+    if (!isTargetOwner) return false;
+    if (s.period === 'monthly') {
+      const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+      const [monthName, yearStr] = (s.month || '').toLowerCase().split(' ');
+      const monthIdx = MONTHS.indexOf(monthName);
+      const year = parseInt(yearStr || '', 10);
+      if (monthIdx < 0 || !year) return false;
+      return year > 2026 || (year === 2026 && monthIdx >= 5); // June = 5
+    }
+    const m = /^Q([1-4])\s+(\d{4})$/.exec(s.quarter || '');
+    if (!m) return false;
+    const q = parseInt(m[1], 10);
+    const year = parseInt(m[2], 10);
+    return year > 2026 || (year === 2026 && q >= 2);
+  }, [ownerName, s.period, s.month, s.quarter]);
   // Single source of truth: the dashboard header's Reporting Period selector
   // drives s.period / s.quarter / s.month for every section/widget.
   const insightsTf = useInsightsTimeframeOptional();
@@ -3362,10 +3418,22 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
           </div>
           <div id="qir-section-pipeline" className="qir-unified-section">
-            <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+            {shouldCollapseGoalsInitiatives ? (
+              <CollapsibleReportSection title="Goals">
+                <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+              </CollapsibleReportSection>
+            ) : (
+              <ReportGoalsSection s={s} set={set} ownerName={ownerName} />
+            )}
           </div>
           <div id="qir-section-metrics" className="qir-unified-section">
-            <ReportInitiativesSection s={s} set={set} />
+            {shouldCollapseGoalsInitiatives ? (
+              <CollapsibleReportSection title="Initiatives">
+                <ReportInitiativesSection s={s} set={set} />
+              </CollapsibleReportSection>
+            ) : (
+              <ReportInitiativesSection s={s} set={set} />
+            )}
           </div>
           <div id="qir-section-goals" className="qir-unified-section">
             <ReportRisksSection s={s} set={set} print={print} />
