@@ -129,7 +129,7 @@ function NaitiveMark({ size = 22 }: { size?: number }) {
   );
 }
 
-const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof CheckSquare }>> = {
+const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle', { label: string; icon: typeof CheckSquare }>> = {
   create_task: { label: 'Task', icon: CheckSquare },
   update_lender_status: { label: 'Funding source', icon: Building2 },
   save_to_data_room: { label: 'Data room', icon: Save },
@@ -147,7 +147,7 @@ const TYPE_META: Partial<Record<AiActionType, { label: string; icon: typeof Chec
   update_contact: { label: 'Contact', icon: FileText },
   update_company: { label: 'Company', icon: Building2 },
   draft_email: { label: 'Email draft', icon: FileText },
-  draft_email_bundle: { label: 'Email drafts', icon: FileText } as any,
+  draft_email_bundle: { label: 'Email drafts', icon: FileText },
   escalate: { label: 'Escalation', icon: ShieldAlert },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
 };
