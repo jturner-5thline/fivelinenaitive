@@ -864,6 +864,16 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         )}
       </div>
 
+      {/* Deal cell — single-line ellipsis with hover tooltip.
+          Must render in the SAME order as OPTIONAL_TASK_COLUMNS
+          (deal → owner → collab → …) so grid cells line up with headers. */}
+      {visibleSet.has('deal') && (
+      <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
+        <TaskAssociationChips task={task} />
+        {!subLabel && <span className="text-[11px]" style={{ color: '#94a3b8' }}>— No deal</span>}
+      </div>
+      )}
+
       {/* Owner */}
       {visibleSet.has('owner') && (
       <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
@@ -903,15 +913,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
             )}
           </div>
         ) : null}
-      </div>
-      )}
-
-
-      {/* Deal cell — single-line ellipsis with hover tooltip. */}
-      {visibleSet.has('deal') && (
-      <div className="min-w-0 overflow-hidden flex items-center" onClick={e => e.stopPropagation()}>
-        <TaskAssociationChips task={task} />
-        {!subLabel && <span className="text-[11px]" style={{ color: '#94a3b8' }}>— No deal</span>}
       </div>
       )}
 
