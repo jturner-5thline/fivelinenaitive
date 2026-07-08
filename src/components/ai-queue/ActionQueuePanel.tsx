@@ -835,7 +835,7 @@ function TabBtn({
       className={`group relative overflow-hidden inline-flex items-center gap-2 h-8 px-3 rounded-md border text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
         active
           ? 'border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)]'
-          : 'border-white/[0.24] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.06] hover:border-white/[0.14]'
+          : 'border-white/[0.24] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.06] hover:border-white/[0.28]'
       }`}
       style={FONT_BODY}
     >
@@ -916,7 +916,7 @@ function QueueRow({
         className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
           selected
             ? 'border-white/[0.24] shadow-[0_8px_30px_-12px_rgba(155,111,212,0.45)]'
-            : 'border-white/[0.14] hover:bg-white/[0.03] hover:border-white/[0.24]'
+            : 'border-white/[0.28] hover:bg-white/[0.03] hover:border-white/[0.24]'
         }`}
         style={
           selected
@@ -1623,7 +1623,7 @@ function DetailPane({
                       }}
                     >
                       <SelectTrigger
-                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60"
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       >
                         <SelectValue placeholder="Select…" />
@@ -1650,7 +1650,7 @@ function DetailPane({
                           const value = e.target.value;
                           setEdits((p) => ({ ...p, [k]: value }));
                         }}
-                        className="text-[14px] leading-[1.55] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        className="text-[14px] leading-[1.55] px-3 py-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       />
                     ) : (
@@ -1665,7 +1665,7 @@ function DetailPane({
                             : value;
                           setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
                         }}
-                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       />
                     )
@@ -1869,7 +1869,7 @@ function EmailDraftPreview({
                     .filter(Boolean),
                 }))
               }
-              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
@@ -1895,7 +1895,7 @@ function EmailDraftPreview({
               type="text"
               value={subject}
               onChange={(e) => setEdits((p) => ({ ...p, subject: e.target.value }))}
-              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
@@ -1921,7 +1921,7 @@ function EmailDraftPreview({
               rows={Math.min(20, Math.max(8, (body.match(/\n/g)?.length ?? 0) + 4))}
               value={body}
               onChange={(e) => setEdits((p) => ({ ...p, body: e.target.value }))}
-              className="text-[14px] leading-[1.6] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="text-[14px] leading-[1.6] px-3 py-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
