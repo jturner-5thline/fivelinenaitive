@@ -2290,14 +2290,49 @@ function BundleChildCard({
           </button>
         </div>
       </div>
-      <EmailDraftPreview
-        item={child}
-        newValues={newValues}
-        editMode={editMode}
-        onToggleEditMode={() => setEditMode((v) => !v)}
-        edits={edits}
-        setEdits={setEdits}
-      />
+      {child.action_type === 'draft_email' ? (
+        <EmailDraftPreview
+          item={child}
+          newValues={newValues}
+          editMode={editMode}
+          onToggleEditMode={() => setEditMode((v) => !v)}
+          edits={edits}
+          setEdits={setEdits}
+        />
+      ) : (
+        <BundleFieldDiff child={child} />
+      )}
+    </div>
+  );
+}
+
+function BundleFieldDiff({ child }: { child: QueuedAiAction }) {
+  const oldValues = (child.old_values || {}) as Record<string, any>;
+  const newValues = (child.new_values || {}) as Record<string, any>;
+  const norm = (v: any) =>
+    v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
+  const keys = Array.from(new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]))
+    .filter((k) => {
+      const p = norm(newValues[k]);
+      return p && p !== norm(oldValues[k]);
+    });
+  if (keys.length === 0) {
+    return (
+      <p className="text-[12px] text-[#ecedf4]/55" style={FONT_BODY}>
+        {child.rationale || child.description || 'No field changes proposed.'}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      {keys.map((k) => (
+        <div key={k} className="text-[12px]" style={FONT_BODY}>
+          <span className="text-[#ecedf4]/50 uppercase tracking-wide text-[10px] mr-2">{k.replace(/_/g, ' ')}</span>
+          <span className="text-[#ecedf4]/60 line-through mr-1.5">{norm(oldValues[k]) || '—'}</span>
+          <span className="text-[#ecedf4]/40 mr-1.5">→</span>
+          <span className="text-[#f7f8fc] font-medium">{norm(newValues[k])}</span>
+        </div>
+      ))}
     </div>
   );
 }
