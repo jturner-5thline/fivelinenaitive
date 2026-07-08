@@ -475,6 +475,27 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         if (rankDiff !== 0) return rankDiff;
         return ((a as any).__order ?? 0) - ((b as any).__order ?? 0);
       });
+      // Collapse 2+ "Nudge …" email drafts on the same deal into a single
+      // synthetic "Follow up with Lenders" bundle. Individual drafts remain
+      // available in the detail pane for edit/approve/reject.
+      const nudges = g.items.filter(
+        (it) => it.action_type === 'draft_email' && /^\s*nudge\b/i.test(it.title || ''),
+      );
+      if (nudges.length >= 2) {
+        const rest = g.items.filter((it) => !nudges.includes(it));
+        const bundle: QueuedAiAction = {
+          ...nudges[0],
+          id: `bundle:nudges:${g.key}`,
+          action_type: 'draft_email_bundle' as unknown as AiActionType,
+          title: 'Follow up with Lenders',
+          description: `${nudges.length} lender follow-up drafts`,
+          rationale: `${nudges.length} outbound follow-ups drafted for lenders / funding sources on this deal.`,
+          old_values: {},
+          new_values: {},
+        } as QueuedAiAction;
+        (bundle as any).__bundle = nudges;
+        g.items = [bundle, ...rest];
+      }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
   }, [filtered]);
