@@ -90,6 +90,45 @@ function bytesLabel(n: number) {
 }
 
 /**
+ * Toolbar button. Hoisted at module scope so it doesn't get a new component
+ * identity on every parent render — otherwise React unmounts and remounts
+ * every toolbar button on each keystroke, which drops the pending
+ * `mousedown → click` sequence and made bold/italic/underline appear to
+ * silently no-op mid-typing.
+ */
+const TbBtn = ({
+  onClick,
+  onPointerDown,
+  active,
+  title,
+  children,
+  preserveFocus = true,
+}: {
+  onClick: () => void;
+  onPointerDown?: React.PointerEventHandler<HTMLButtonElement>;
+  active?: boolean;
+  title: string;
+  children: React.ReactNode;
+  preserveFocus?: boolean;
+}) => (
+  <button
+    type="button"
+    title={title}
+    aria-label={title}
+    onPointerDown={onPointerDown}
+    onMouseDown={preserveFocus ? e => e.preventDefault() : undefined}
+    onClick={onClick}
+    className={cn(
+      'inline-flex items-center justify-center h-7 w-7 rounded-md transition-colors',
+      'text-[rgba(220,232,248,0.75)] hover:bg-[rgba(120,170,255,0.12)]',
+      active && 'bg-[rgba(120,170,255,0.18)] text-[rgb(220,232,248)]',
+    )}
+  >
+    {children}
+  </button>
+);
+
+/**
  * Rich-text narrative editor for Insights reports. Persists HTML via
  * `onChange` (parent debounces into the existing report save) and pushes
  * uploaded media into the company-scoped `insights-attachments` bucket.
