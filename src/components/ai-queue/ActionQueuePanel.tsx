@@ -1033,26 +1033,6 @@ function DealGroupCard({
           <div className="flex items-center gap-1.5 px-3 pb-2">
             <button
               type="button"
-              disabled={busy !== null || lowCount === 0}
-              onClick={async () => {
-                setBusy('a');
-                await onApproveLowRisk();
-                setBusy(null);
-              }}
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-white/[0.20] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
-              style={FONT_BODY}
-              title={lowCount === 0 ? 'No low-risk items in this deal' : `Approve ${lowCount} low-risk`}
-            >
-              {busy === 'a' ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-              Approve all low-risk
-              {lowCount > 0 && (
-                <span className="text-[#ecedf4]/55" style={FONT_MONO}>
-                  {lowCount}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
               disabled={busy !== null}
               onClick={async () => {
                 setBusy('r');
