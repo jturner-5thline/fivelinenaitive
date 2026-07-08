@@ -571,7 +571,14 @@ export function InsightsNarrativeEditor({
         .insights-narrative-prose a { color: rgb(120,170,255); text-decoration: underline; }
         .insights-narrative-prose blockquote { border-left: 3px solid rgba(120,170,255,0.4); padding: 2px 0 2px 10px; margin: 6px 0; color: rgba(220,232,248,0.85); font-style: italic; }
         .insights-narrative-prose img.insights-narrative-image, .insights-narrative-prose img { max-width: 100%; height: auto; border-radius: 6px; margin: 8px 0; }
-        .insights-narrative-prose strong { color: #f1f5ff; }
+        .insights-narrative-prose strong,
+        .insights-narrative-prose b { font-weight: 700; color: #f1f5ff; }
+        .insights-narrative-prose em,
+        .insights-narrative-prose i { font-style: italic; }
+        .insights-narrative-prose u { text-decoration: underline; }
+        .insights-narrative-prose s,
+        .insights-narrative-prose del { text-decoration: line-through; }
+        .insights-narrative-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; background: rgba(120,170,255,0.12); padding: 1px 4px; border-radius: 4px; }
         .insights-narrative-prose p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
           color: rgba(160,200,255,0.35);
