@@ -999,10 +999,14 @@ function DealGroupCard({
   );
   return (
     <li
+      style={{
+        backgroundImage:
+          'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
+      }}
       className={`rounded-[14px] border transition-colors ${
         expanded
-          ? 'border-white/[0.28] bg-white/[0.035]'
-          : 'border-white/[0.16] bg-white/[0.018] hover:bg-white/[0.03]'
+          ? 'border-white/[0.28]'
+          : 'border-white/[0.16] hover:border-white/[0.28]'
       }`}
     >
       <div className="flex items-center gap-2 px-3 py-2">
