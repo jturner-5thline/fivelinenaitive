@@ -148,6 +148,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle', { label: st
   update_company: { label: 'Company', icon: Building2 },
   draft_email: { label: 'Email draft', icon: FileText },
   draft_email_bundle: { label: 'Email drafts', icon: FileText },
+  update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   escalate: { label: 'Escalation', icon: ShieldAlert },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
 };
