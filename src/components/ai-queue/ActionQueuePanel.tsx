@@ -609,10 +609,9 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             Approval Queue
           </h2>
           <span
-            className="ml-1 inline-flex items-center h-5 px-2 rounded-full text-[10px] uppercase border border-white/[0.24] bg-white/[0.04] text-[#ecedf4]/80"
-            style={{ ...FONT_MONO, letterSpacing: '0.08em' }}
+            className="ml-1 inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full text-[10px] font-semibold bg-red-500 text-white"
           >
-            {totalCount} pending
+            {totalCount}
           </span>
           <span
             className="text-[10px] uppercase text-[#ecedf4]/58"
