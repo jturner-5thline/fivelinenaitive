@@ -605,7 +605,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       {/* Header */}
       <div className="relative px-4 py-2.5 border-b border-white/[0.20] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <NaitiveMark size={22} />
           <h2 className="text-[18px] leading-none tracking-tight" style={FONT_DISPLAY}>
             Approval Queue
           </h2>
