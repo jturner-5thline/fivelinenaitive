@@ -2045,11 +2045,15 @@ function extractRecipientLabel(child: QueuedAiAction): string {
   //   "Nudge Worthy"
   //   "Draft Worthy Lender Nudge"
   //   "Draft Revtek Nudge follow-up"
+  //   "Update Revtek status"
+  //   "Update Worthy funding source"
   let namePart = raw || 'Lender';
   const m1 = raw.match(/^\s*nudge\s+(.+?)(?:\s+(?:lender|funding\s+source))?\s*$/i);
   const m2 = raw.match(/^\s*draft\s+(.+?)\s+(?:lender\s+)?nudge\b.*$/i);
+  const m3 = raw.match(/^\s*update\s+(.+?)(?:\s+(?:lender|funding\s+source|status|contact|stage))?\s*$/i);
   if (m2) namePart = m2[1].trim();
   else if (m1) namePart = m1[1].trim();
+  else if (m3) namePart = m3[1].trim();
   namePart = namePart.replace(/\s+(lender|funding\s+source)$/i, '').trim() || raw;
   return toStr ? `${namePart} · ${toStr}` : namePart;
 }
