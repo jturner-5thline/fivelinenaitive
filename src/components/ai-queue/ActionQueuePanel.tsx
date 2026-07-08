@@ -1029,6 +1029,10 @@ function DealGroupCard({
               type="button"
               disabled={busy !== null}
               onClick={async () => {
+                const confirmed = window.confirm(
+                  `Reject all ${count} pending action${count === 1 ? '' : 's'} for ${group.dealName}? This cannot be undone.`,
+                );
+                if (!confirmed) return;
                 setBusy('r');
                 await onRejectAll();
                 setBusy(null);
