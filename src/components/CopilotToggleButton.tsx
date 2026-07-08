@@ -562,12 +562,13 @@ export function CopilotToggleButton() {
                 'animate-in fade-in duration-150 motion-reduce:animate-none',
               )}
               style={{
-                background: 'rgba(245, 247, 252, 0.96)',
+                background:
+                  'linear-gradient(145deg, hsl(230 25% 10%) 0%, hsl(235 28% 13%) 50%, hsl(245 35% 18%) 80%, hsl(220 50% 22%) 100%)',
                 backdropFilter: 'blur(18px) saturate(1.4)',
                 WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-                border: '1px solid rgba(255, 255, 255, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
                 boxShadow:
-                  '0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.9)',
+                  '0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
               }}
             >
               <img
