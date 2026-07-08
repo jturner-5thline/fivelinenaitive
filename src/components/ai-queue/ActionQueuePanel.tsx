@@ -129,7 +129,7 @@ function NaitiveMark({ size = 22 }: { size?: number }) {
   );
 }
 
-const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle', { label: string; icon: typeof CheckSquare }>> = {
+const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle', { label: string; icon: typeof CheckSquare }>> = {
   create_task: { label: 'Task', icon: CheckSquare },
   update_lender_status: { label: 'Funding source', icon: Building2 },
   save_to_data_room: { label: 'Data room', icon: Save },
