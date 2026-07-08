@@ -784,6 +784,8 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   advanceAfterAction();
                   return dismiss(selected.id);
                 }}
+                onApproveChild={async (child, opts) => approve(child, opts)}
+                onRejectChild={async (childId) => dismiss(childId)}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center text-[#ecedf4]/45 gap-3 px-6">
