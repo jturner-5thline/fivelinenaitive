@@ -479,7 +479,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       // synthetic "Follow up with Lenders" bundle. Individual drafts remain
       // available in the detail pane for edit/approve/reject.
       const nudges = g.items.filter(
-        (it) => it.action_type === 'draft_email' && /^\s*nudge\b/i.test(it.title || ''),
+        (it) => it.action_type === 'draft_email' && /nudge/i.test(it.title || ''),
       );
       if (nudges.length >= 2) {
         const rest = g.items.filter((it) => !nudges.includes(it));
@@ -2003,8 +2003,17 @@ function extractRecipientLabel(child: QueuedAiAction): string {
   const nv = (child.new_values || {}) as Record<string, any>;
   const to = nv.to;
   const toStr = Array.isArray(to) ? to.filter(Boolean).join(', ') : (to || '');
-  const m = (child.title || '').match(/^\s*nudge\s+(.+)$/i);
-  const namePart = m ? m[1].trim() : (child.title || 'Lender');
+  const raw = (child.title || '').trim();
+  // Extract the lender/funding source name from titles like:
+  //   "Nudge Worthy"
+  //   "Draft Worthy Lender Nudge"
+  //   "Draft Revtek Nudge follow-up"
+  let namePart = raw || 'Lender';
+  const m1 = raw.match(/^\s*nudge\s+(.+?)(?:\s+(?:lender|funding\s+source))?\s*$/i);
+  const m2 = raw.match(/^\s*draft\s+(.+?)\s+(?:lender\s+)?nudge\b.*$/i);
+  if (m2) namePart = m2[1].trim();
+  else if (m1) namePart = m1[1].trim();
+  namePart = namePart.replace(/\s+(lender|funding\s+source)$/i, '').trim() || raw;
   return toStr ? `${namePart} · ${toStr}` : namePart;
 }
 
