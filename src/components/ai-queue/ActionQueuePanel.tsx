@@ -2104,18 +2104,79 @@ function BundleDetailPane({
             Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.
           </p>
 
-          <div className="space-y-3">
-            {children.map((child) => (
-              <BundleChildCard
-                key={child.id}
-                child={child}
-                onApprove={(opts) => onApproveChild(child, opts)}
-                onReject={() => onRejectChild(child.id)}
-              />
-            ))}
-          </div>
+          <BundleChildCarousel
+            children={children}
+            onApproveChild={onApproveChild}
+            onRejectChild={onRejectChild}
+          />
         </div>
       </div>
+    </div>
+  );
+}
+
+function BundleChildCarousel({
+  children,
+  onApproveChild,
+  onRejectChild,
+}: {
+  children: QueuedAiAction[];
+  onApproveChild: (child: QueuedAiAction, opts?: { editedValues?: Record<string, any> }) => Promise<unknown>;
+  onRejectChild: (childId: string) => Promise<unknown>;
+}) {
+  const [index, setIndex] = useState(0);
+  const safeIndex = Math.min(index, Math.max(0, children.length - 1));
+  const current = children[safeIndex];
+  const total = children.length;
+  const go = (dir: -1 | 1) => setIndex((i) => {
+    const next = i + dir;
+    if (next < 0) return total - 1;
+    if (next >= total) return 0;
+    return next;
+  });
+  if (!current) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => go(-1)}
+          disabled={total <= 1}
+          aria-label="Previous draft"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.18] bg-white/[0.03] text-[#ecedf4]/75 hover:bg-white/[0.08] hover:text-[#f7f8fc] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </button>
+        <div className="flex items-center gap-1.5">
+          {children.map((c, i) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => setIndex(i)}
+              aria-label={`Go to draft ${i + 1}`}
+              className={`h-1.5 rounded-full transition-all ${i === safeIndex ? 'w-5 bg-[#7eb8f7]' : 'w-1.5 bg-white/25 hover:bg-white/40'}`}
+            />
+          ))}
+          <span className="ml-2 text-[11px] text-[#ecedf4]/55" style={FONT_BODY}>
+            {safeIndex + 1} / {total}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => go(1)}
+          disabled={total <= 1}
+          aria-label="Next draft"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.18] bg-white/[0.03] text-[#ecedf4]/75 hover:bg-white/[0.08] hover:text-[#f7f8fc] disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <BundleChildCard
+        key={current.id}
+        child={current}
+        onApprove={(opts) => onApproveChild(current, opts)}
+        onReject={() => onRejectChild(current.id)}
+      />
     </div>
   );
 }
