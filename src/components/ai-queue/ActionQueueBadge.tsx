@@ -9,6 +9,7 @@ import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useAllFlexInfoNotifications } from '@/hooks/useAllFlexInfoNotifications';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ActionQueuePanel } from './ActionQueuePanel';
+import { consolidatedAiQueueCount } from '@/lib/consolidatedAiQueueCount';
 
 /**
  * Header / sidebar badge that surfaces the count of pending AI Queue items
@@ -21,26 +22,7 @@ export function ActionQueueBadge() {
   const { data: flexRequests = [] } = useAllFlexInfoNotifications();
   // Mirror the consolidation performed in ActionQueuePanel so the badge
   // reflects the number of *visible* approval queue items (bundles count as 1).
-  const consolidatedAiCount = useMemo(() => {
-    const byDeal = new Map<string, any[]>();
-    for (const it of data) {
-      const key = (it as any).deal_id || '__unassigned__';
-      if (!byDeal.has(key)) byDeal.set(key, []);
-      byDeal.get(key)!.push(it);
-    }
-    let total = 0;
-    for (const items of byDeal.values()) {
-      const drafts = items.filter((it) => it.action_type === 'draft_email');
-      const fsUpdates = items.filter(
-        (it) => it.action_type === 'update_funding_source' || it.action_type === 'update_lender_status',
-      );
-      let count = items.length;
-      if (drafts.length >= 2) count -= drafts.length - 1;
-      if (fsUpdates.length >= 2) count -= fsUpdates.length - 1;
-      total += count;
-    }
-    return total;
-  }, [data]);
+  const consolidatedAiCount = useMemo(() => consolidatedAiQueueCount(data), [data]);
   const count = consolidatedAiCount + accessRequests.length + flexRequests.length;
   const [open, setOpen] = useState(false);
 
