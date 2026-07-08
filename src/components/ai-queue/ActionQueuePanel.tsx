@@ -129,7 +129,7 @@ function NaitiveMark({ size = 22 }: { size?: number }) {
   );
 }
 
-const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle', { label: string; icon: typeof CheckSquare }>> = {
+const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle', { label: string; icon: typeof CheckSquare }>> = {
   create_task: { label: 'Task', icon: CheckSquare },
   update_lender_status: { label: 'Funding source', icon: Building2 },
   save_to_data_room: { label: 'Data room', icon: Save },
@@ -148,6 +148,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle', { label: st
   update_company: { label: 'Company', icon: Building2 },
   draft_email: { label: 'Email draft', icon: FileText },
   draft_email_bundle: { label: 'Email drafts', icon: FileText },
+  update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   escalate: { label: 'Escalation', icon: ShieldAlert },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
 };
@@ -475,28 +476,62 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         if (rankDiff !== 0) return rankDiff;
         return ((a as any).__order ?? 0) - ((b as any).__order ?? 0);
       });
-      // Collapse 2+ email drafts on the same deal into a single synthetic
-      // bundle. Nudge-heavy bundles keep the "Follow up with Lenders" label;
-      // otherwise use a generic "Email drafts" label. Individual drafts stay
-      // available via the carousel in the detail pane.
-      const drafts = g.items.filter((it) => it.action_type === 'draft_email');
-      if (drafts.length >= 2) {
-        const rest = g.items.filter((it) => !drafts.includes(it));
-        const nudgeCount = drafts.filter((it) => /nudge/i.test(it.title || '')).length;
-        const mostlyNudges = nudgeCount >= Math.ceil(drafts.length / 2);
-        const bundleTitle = mostlyNudges ? 'Follow up with Lenders' : 'Email drafts';
+      // Bundle helper: collapses N items of a given action-type into a
+      // single synthetic queue entry with __bundle attached.
+      const bundleItems = (
+        matches: (it: QueuedAiAction) => boolean,
+        opts: { idKey: string; actionType: string; title: string; description: string; rationale: string },
+      ) => {
+        const picks = g.items.filter(matches);
+        if (picks.length < 2) return;
+        const rest = g.items.filter((it) => !picks.includes(it));
         const bundle: QueuedAiAction = {
-          ...drafts[0],
-          id: `bundle:drafts:${g.key}`,
-          action_type: 'draft_email_bundle' as unknown as AiActionType,
-          title: bundleTitle,
-          description: `${drafts.length} email drafts`,
-          rationale: `${drafts.length} outbound email drafts pending on this deal.`,
+          ...picks[0],
+          id: `bundle:${opts.idKey}:${g.key}`,
+          action_type: opts.actionType as unknown as AiActionType,
+          title: opts.title,
+          description: opts.description,
+          rationale: opts.rationale,
           old_values: {},
           new_values: {},
         } as QueuedAiAction;
-        (bundle as any).__bundle = drafts;
+        (bundle as any).__bundle = picks;
         g.items = [bundle, ...rest];
+      };
+
+      // Collapse 2+ email drafts on the same deal into a single synthetic
+      // bundle. Nudge-heavy bundles keep the "Follow up with Lenders" label;
+      // otherwise use a generic "Email drafts" label.
+      const drafts = g.items.filter((it) => it.action_type === 'draft_email');
+      if (drafts.length >= 2) {
+        const nudgeCount = drafts.filter((it) => /nudge/i.test(it.title || '')).length;
+        const mostlyNudges = nudgeCount >= Math.ceil(drafts.length / 2);
+        bundleItems((it) => it.action_type === 'draft_email', {
+          idKey: 'drafts',
+          actionType: 'draft_email_bundle',
+          title: mostlyNudges ? 'Follow up with Lenders' : 'Email drafts',
+          description: `${drafts.length} email drafts`,
+          rationale: `${drafts.length} outbound email drafts pending on this deal.`,
+        });
+      }
+
+      // Collapse 2+ funding-source / lender-status updates into a single
+      // "Update Lenders" bundle. Individual updates stay editable via the
+      // carousel in the detail pane.
+      const fsUpdates = g.items.filter(
+        (it) => it.action_type === 'update_funding_source' || it.action_type === 'update_lender_status',
+      );
+      if (fsUpdates.length >= 2) {
+        bundleItems(
+          (it) => it.action_type === 'update_funding_source' || it.action_type === 'update_lender_status',
+          {
+            idKey: 'fs-updates',
+            actionType: 'update_funding_source_bundle',
+            title: 'Update Lenders',
+            description: `${fsUpdates.length} lender updates`,
+            rationale: `${fsUpdates.length} funding source / lender updates pending on this deal.`,
+          },
+        );
       }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
@@ -2010,11 +2045,15 @@ function extractRecipientLabel(child: QueuedAiAction): string {
   //   "Nudge Worthy"
   //   "Draft Worthy Lender Nudge"
   //   "Draft Revtek Nudge follow-up"
+  //   "Update Revtek status"
+  //   "Update Worthy funding source"
   let namePart = raw || 'Lender';
   const m1 = raw.match(/^\s*nudge\s+(.+?)(?:\s+(?:lender|funding\s+source))?\s*$/i);
   const m2 = raw.match(/^\s*draft\s+(.+?)\s+(?:lender\s+)?nudge\b.*$/i);
+  const m3 = raw.match(/^\s*update\s+(.+?)(?:\s+(?:lender|funding\s+source|status|contact|stage))?\s*$/i);
   if (m2) namePart = m2[1].trim();
   else if (m1) namePart = m1[1].trim();
+  else if (m3) namePart = m3[1].trim();
   namePart = namePart.replace(/\s+(lender|funding\s+source)$/i, '').trim() || raw;
   return toStr ? `${namePart} · ${toStr}` : namePart;
 }
@@ -2034,6 +2073,11 @@ function BundleDetailPane({
 }) {
   const dealId = (item as any).deal_id as string | undefined;
   const [batchBusy, setBatchBusy] = useState<'a' | 'r' | null>(null);
+  const isEmailBundle = children[0]?.action_type === 'draft_email';
+  const kindLabel = isEmailBundle ? 'drafts' : 'updates';
+  const introCopy = isEmailBundle
+    ? 'Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.'
+    : 'Individual lender / funding-source updates proposed on this deal. Review and approve each one separately, or use Approve all / Reject all above.';
 
   const approveAll = async () => {
     setBatchBusy('a');
@@ -2043,7 +2087,7 @@ function BundleDetailPane({
     setBatchBusy(null);
   };
   const rejectAll = async () => {
-    const ok = window.confirm(`Reject all ${children.length} lender follow-up drafts? This cannot be undone.`);
+    const ok = window.confirm(`Reject all ${children.length} lender ${kindLabel}? This cannot be undone.`);
     if (!ok) return;
     setBatchBusy('r');
     for (const c of children) {
@@ -2103,7 +2147,7 @@ function BundleDetailPane({
           </div>
 
           <p className="text-[14px] leading-[1.6] text-white max-w-[72ch]" style={FONT_BODY}>
-            Individual follow-up emails drafted for each lender / funding source. Review, edit, and approve each one separately, or use Approve all / Reject all above.
+            {introCopy}
           </p>
 
           <BundleChildCarousel
@@ -2246,14 +2290,49 @@ function BundleChildCard({
           </button>
         </div>
       </div>
-      <EmailDraftPreview
-        item={child}
-        newValues={newValues}
-        editMode={editMode}
-        onToggleEditMode={() => setEditMode((v) => !v)}
-        edits={edits}
-        setEdits={setEdits}
-      />
+      {child.action_type === 'draft_email' ? (
+        <EmailDraftPreview
+          item={child}
+          newValues={newValues}
+          editMode={editMode}
+          onToggleEditMode={() => setEditMode((v) => !v)}
+          edits={edits}
+          setEdits={setEdits}
+        />
+      ) : (
+        <BundleFieldDiff child={child} />
+      )}
+    </div>
+  );
+}
+
+function BundleFieldDiff({ child }: { child: QueuedAiAction }) {
+  const oldValues = (child.old_values || {}) as Record<string, any>;
+  const newValues = (child.new_values || {}) as Record<string, any>;
+  const norm = (v: any) =>
+    v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
+  const keys = Array.from(new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]))
+    .filter((k) => {
+      const p = norm(newValues[k]);
+      return p && p !== norm(oldValues[k]);
+    });
+  if (keys.length === 0) {
+    return (
+      <p className="text-[12px] text-[#ecedf4]/55" style={FONT_BODY}>
+        {child.rationale || child.description || 'No field changes proposed.'}
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      {keys.map((k) => (
+        <div key={k} className="text-[12px]" style={FONT_BODY}>
+          <span className="text-[#ecedf4]/50 uppercase tracking-wide text-[10px] mr-2">{k.replace(/_/g, ' ')}</span>
+          <span className="text-[#ecedf4]/60 line-through mr-1.5">{norm(oldValues[k]) || '—'}</span>
+          <span className="text-[#ecedf4]/40 mr-1.5">→</span>
+          <span className="text-[#f7f8fc] font-medium">{norm(newValues[k])}</span>
+        </div>
+      ))}
     </div>
   );
 }
