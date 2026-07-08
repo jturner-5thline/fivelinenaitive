@@ -116,6 +116,7 @@ export function CopilotToggleButton() {
   const clearAi = useAiDealFilterStore((s) => s.clear);
   const setTranslating = useAiDealFilterStore((s) => s.setTranslating);
   const setClarification = useAiDealFilterStore((s) => s.setClarification);
+  const { results: quickFind, isFetching: quickFindLoading } = useQuickFind(value);
 
   // ── Persisted bar width ────────────────────────────────────────────────
   // The user can drag the left edge of the bar to resize it. The pixel
@@ -362,8 +363,9 @@ export function CopilotToggleButton() {
       let count = 0;
       for (const d of deals) {
         const company = (d.company || '').toLowerCase();
-        if (!company) continue;
-        if (company.includes(q)) {
+        const client = ((d as any).client || '').toLowerCase();
+        if (!company && !client) continue;
+        if (company.includes(q) || client.includes(q)) {
           out.push({
             kind: 'deal',
             id: d.id,
@@ -396,13 +398,43 @@ export function CopilotToggleButton() {
       }
     }
 
+    for (const c of quickFind.crmCompanies) {
+      out.push({
+        kind: 'crm-company',
+        id: c.id,
+        label: c.name,
+        sublabel: c.sublabel,
+        path: `/crm/companies/${c.id}`,
+      });
+    }
+
+    for (const c of quickFind.contacts) {
+      out.push({
+        kind: 'contact',
+        id: c.id,
+        label: c.name,
+        sublabel: c.sublabel,
+        path: `/contacts/${c.id}`,
+      });
+    }
+
+    for (const t of quickFind.tasks) {
+      out.push({
+        kind: 'task',
+        id: t.id,
+        label: t.title,
+        sublabel: t.sublabel,
+        path: `/tasks/${t.id}`,
+      });
+    }
+
     const pages = QUICK_PAGES.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 4);
     for (const p of pages) {
       out.push({ kind: 'page', id: p.path, label: p.name, path: p.path });
     }
 
-    return out.slice(0, 10);
-  }, [value, deals, lenders, pipelines]);
+    return out.slice(0, 16);
+  }, [value, deals, lenders, pipelines, quickFind]);
 
   useEffect(() => {
     setActiveIndex(0);
