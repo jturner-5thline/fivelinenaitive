@@ -46,6 +46,73 @@ interface AsanaSyncContext {
 }
 
 /**
+ * Ensure Asana is firing webhooks back to us for the given project. If a
+ * webhook row already exists for (integration_id, project_gid), no-op.
+ * Otherwise register one with Asana and persist the row so inbound task
+ * changes (completion, due date, assignee, rename) sync back to naitive
+ * regardless of which Asana project the task lives in.
+ *
+ * Best-effort: never throws. A failure here does not fail the outbound
+ * task sync — it only means reverse-sync won't fire until the user (or
+ * the next task push into this project) retries.
+ */
+async function ensureAsanaWebhookForProject(
+  integrationId: string,
+  projectGid: string,
+): Promise<void> {
+  try {
+    const { data: existing } = await supabase
+      .from('asana_webhooks')
+      .select('id, is_active, asana_webhook_gid')
+      .eq('integration_id', integrationId)
+      .eq('asana_project_gid', projectGid)
+      .maybeSingle();
+
+    if (existing?.is_active && existing.asana_webhook_gid) return;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    if (!supabaseUrl) {
+      console.warn('[AsanaSync] VITE_SUPABASE_URL missing; cannot auto-register webhook');
+      return;
+    }
+    const targetUrl = `${supabaseUrl}/functions/v1/asana-webhook?integration_id=${integrationId}&project_gid=${projectGid}`;
+
+    // Upsert placeholder row first so the webhook handshake can persist the secret.
+    await supabase.from('asana_webhooks').upsert(
+      {
+        integration_id: integrationId,
+        asana_project_gid: projectGid,
+        target_url: targetUrl,
+        is_active: true,
+      },
+      { onConflict: 'integration_id,asana_project_gid' },
+    );
+
+    const { data } = await supabase.functions.invoke('asana-proxy', {
+      body: {
+        action: 'register_webhook',
+        integration_id: integrationId,
+        project_gid: projectGid,
+        target_url: targetUrl,
+      },
+    });
+
+    if (data?.success && data.webhook?.gid) {
+      await supabase
+        .from('asana_webhooks')
+        .update({ asana_webhook_gid: data.webhook.gid, is_active: true })
+        .eq('integration_id', integrationId)
+        .eq('asana_project_gid', projectGid);
+      console.log(`[AsanaSync] Auto-registered webhook for project ${projectGid}`);
+    } else {
+      console.warn(`[AsanaSync] Auto-register webhook failed for project ${projectGid}`, data);
+    }
+  } catch (e) {
+    console.warn('[AsanaSync] ensureAsanaWebhookForProject error:', e);
+  }
+}
+
+/**
  * Check if a connected Asana integration exists for the user's company
  * and if sync_on_task_create is enabled.
  * Returns sync context if ready, or null if sync should be skipped.
