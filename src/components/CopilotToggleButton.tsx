@@ -643,9 +643,27 @@ export function CopilotToggleButton() {
               const idx = i + 1;
               const isActive = idx === activeIndex;
               const Icon =
-                s.kind === 'deal' ? Briefcase : s.kind === 'lender' ? Building2 : ArrowRight;
+                s.kind === 'deal'
+                  ? Briefcase
+                  : s.kind === 'lender' || s.kind === 'crm-company'
+                    ? Building2
+                    : s.kind === 'contact'
+                      ? User
+                      : s.kind === 'task'
+                        ? CheckSquare
+                        : ArrowRight;
               const groupLabel =
-                s.kind === 'deal' ? 'Deal' : s.kind === 'lender' ? 'Lender' : 'Page';
+                s.kind === 'deal'
+                  ? 'Deal'
+                  : s.kind === 'lender'
+                    ? 'Lender'
+                    : s.kind === 'crm-company'
+                      ? 'Company'
+                      : s.kind === 'contact'
+                        ? 'Contact'
+                        : s.kind === 'task'
+                          ? 'Task'
+                          : 'Page';
               return (
                 <button
                   type="button"
