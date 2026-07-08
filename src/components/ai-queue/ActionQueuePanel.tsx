@@ -913,19 +913,11 @@ function QueueRow({
         type="button"
         onClick={onSelect}
         aria-current={selected ? 'true' : undefined}
-        className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
+        className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
           selected
-            ? 'border-white/[0.24] shadow-[0_8px_30px_-12px_rgba(155,111,212,0.45)]'
-            : 'border-white/[0.28] hover:bg-white/[0.03] hover:border-white/[0.24]'
+            ? 'border-white/[0.28] bg-[#14141c]'
+            : 'border-white/[0.20] bg-[#0f0f16] hover:bg-[#14141c] hover:border-white/[0.24]'
         }`}
-        style={
-          selected
-            ? {
-                background:
-                  'linear-gradient(110deg, rgba(46,12,96,0.45) 0%, rgba(255,255,255,0.03) 70%)',
-              }
-            : { background: 'rgba(255,255,255,0.018)' }
-        }
       >
         {selected && (
           <span
