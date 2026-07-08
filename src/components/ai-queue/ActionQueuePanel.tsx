@@ -598,7 +598,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   return (
     <div
       className="relative flex flex-col h-full min-h-0 font-sans text-[#ecedf4] motion-reduce:transform-none"
-      style={{ background: '#06060a' }}
     >
       {/* Ambient glows */}
       <div
@@ -611,14 +610,14 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       />
 
       {/* Header */}
-      <div className="relative px-4 py-2.5 border-b border-white/[0.08] flex items-center justify-between shrink-0">
+      <div className="relative px-4 py-2.5 border-b border-white/[0.20] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <NaitiveMark size={22} />
           <h2 className="text-[18px] leading-none tracking-tight" style={FONT_DISPLAY}>
             Approval Queue
           </h2>
           <span
-            className="ml-1 inline-flex items-center h-5 px-2 rounded-full text-[10px] uppercase border border-white/[0.10] bg-white/[0.04] text-[#ecedf4]/80"
+            className="ml-1 inline-flex items-center h-5 px-2 rounded-full text-[10px] uppercase border border-white/[0.24] bg-white/[0.04] text-[#ecedf4]/80"
             style={{ ...FONT_MONO, letterSpacing: '0.08em' }}
           >
             {totalCount} pending
@@ -647,7 +646,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       ) : (
         <div className="relative grid grid-cols-1 md:grid-cols-[392px_1fr] flex-1 min-h-0">
           {/* LEFT RAIL */}
-          <aside className="flex flex-col min-h-0 md:border-r border-white/[0.08]">
+          <aside className="flex flex-col min-h-0 md:border-r border-white/[0.20]">
             <div className="px-3 pt-2 pb-2 space-y-2 shrink-0">
               <div className="flex items-center justify-between gap-2">
                 {isAdmin ? (
@@ -684,7 +683,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search actions, deals…"
-                  className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.035] border-white/[0.08] text-[#ecedf4] placeholder:text-[#ecedf4]/34 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                  className="h-8 pl-8 text-[12px] rounded-lg bg-white/[0.035] border-white/[0.20] text-[#ecedf4] placeholder:text-[#ecedf4]/34 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                   style={FONT_BODY}
                 />
               </div>
@@ -836,7 +835,7 @@ function TabBtn({
       className={`group relative overflow-hidden inline-flex items-center gap-2 h-8 px-3 rounded-md border text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
         active
           ? 'border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)] hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)]'
-          : 'border-white/[0.10] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.06] hover:border-white/[0.14]'
+          : 'border-white/[0.24] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.06] hover:border-white/[0.28]'
       }`}
       style={FONT_BODY}
     >
@@ -878,7 +877,7 @@ function FilterChip({
       className={`inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[11px] border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
         active
           ? 'bg-white/[0.08] border-white/[0.16] text-[#ecedf4]'
-          : 'bg-white/[0.025] border-white/[0.08] text-[#ecedf4]/58 hover:text-[#ecedf4] hover:bg-white/[0.05]'
+          : 'bg-white/[0.025] border-white/[0.20] text-[#ecedf4]/58 hover:text-[#ecedf4] hover:bg-white/[0.05]'
       }`}
       style={FONT_BODY}
     >
@@ -916,8 +915,8 @@ function QueueRow({
         aria-current={selected ? 'true' : undefined}
         className={`relative w-full text-left rounded-[13px] pl-3 pr-3 py-2.5 border transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5] ${
           selected
-            ? 'border-white/[0.10] shadow-[0_8px_30px_-12px_rgba(155,111,212,0.45)]'
-            : 'border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10]'
+            ? 'border-white/[0.24] shadow-[0_8px_30px_-12px_rgba(155,111,212,0.45)]'
+            : 'border-white/[0.28] hover:bg-white/[0.03] hover:border-white/[0.24]'
         }`}
         style={
           selected
@@ -935,7 +934,7 @@ function QueueRow({
           />
         )}
         <div className="flex items-center gap-2.5">
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-[9px] bg-white/[0.04] border border-white/[0.08] shrink-0">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-[9px] bg-white/[0.04] border border-white/[0.20] shrink-0">
             <Icon className="h-3.5 w-3.5 text-[#ecedf4]/75" />
           </span>
           <div className="flex-1 min-w-0">
@@ -1010,8 +1009,8 @@ function DealGroupCard({
     <li
       className={`rounded-[14px] border transition-colors ${
         expanded
-          ? 'border-white/[0.12] bg-white/[0.035]'
-          : 'border-white/[0.06] bg-white/[0.018] hover:bg-white/[0.03]'
+          ? 'border-white/[0.28] bg-white/[0.035]'
+          : 'border-white/[0.16] bg-white/[0.018] hover:bg-white/[0.03]'
       }`}
     >
       <div className="flex items-center gap-2 px-3 py-2">
@@ -1052,7 +1051,7 @@ function DealGroupCard({
                 await onApproveLowRisk();
                 setBusy(null);
               }}
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-white/[0.20] bg-white/[0.04] text-[#ecedf4]/80 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
               style={FONT_BODY}
               title={lowCount === 0 ? 'No low-risk items in this deal' : `Approve ${lowCount} low-risk`}
             >
@@ -1138,7 +1137,7 @@ function AccessRequestRow({
         </Button>
         <Button
           size="sm"
-          className="h-6 px-2 text-[10px] border border-white/[0.10] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
+          className="h-6 px-2 text-[10px] border border-white/[0.24] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
           disabled={busy !== null}
           onClick={async () => {
             setBusy('a');
@@ -1196,7 +1195,7 @@ function FlexAccessRequestRow({
         </Button>
         <Button
           size="sm"
-          className="h-6 px-2 text-[10px] border border-white/[0.10] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
+          className="h-6 px-2 text-[10px] border border-white/[0.24] bg-white/[0.06] hover:bg-white/[0.10] text-[#ecedf4]"
           disabled={busy !== null}
           onClick={async () => {
             setBusy('a');
@@ -1394,7 +1393,7 @@ function DetailPane({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {typeof total === 'number' && total > 0 && (
-        <div className="flex items-center justify-between gap-2 px-4 pt-1.5 pb-1.5 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-1.5 pb-1.5 border-b border-white/[0.16] shrink-0">
           <p
             className="text-[11px] uppercase tracking-[0.10em] text-[#ecedf4]/55 truncate"
             style={FONT_MONO}
@@ -1407,7 +1406,7 @@ function DetailPane({
               onClick={onPrev}
               disabled={!canPrev}
               aria-label="Previous item (↑/K)"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.20] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -1416,7 +1415,7 @@ function DetailPane({
               onClick={onNext}
               disabled={!canNext}
               aria-label="Next item (↓/J)"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.20] bg-white/[0.04] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -1426,7 +1425,7 @@ function DetailPane({
       <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1.5 pb-2">
         {/* Single neutral card — flat, modern, no nested cards */}
         <div
-          className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 space-y-3"
+          className="rounded-xl border border-white/[0.20] bg-white/[0.025] p-4 space-y-3"
         >
           {/* Header: title/meta left, actions top-right */}
           <div className="flex items-start justify-between gap-4">
@@ -1591,14 +1590,14 @@ function DetailPane({
 
                   const currentBlock = TAG_STYLE_FIELD_KEYS.has(k) && !isOldEmpty ? (
                     <span
-                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-medium border border-white/[0.12] bg-white/[0.04] text-[#ecedf4]/90"
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] font-medium border border-white/[0.28] bg-white/[0.04] text-[#ecedf4]/90"
                       style={FONT_BODY}
                     >
                       {prettifyTagLabel(oldDisplay)}
                     </span>
                   ) : isOldEmpty ? (
                     <span
-                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] text-[#ecedf4]/60 border border-white/[0.10] bg-white/[0.03]"
+                      className="inline-flex items-center h-6 px-2.5 rounded-full text-[12px] text-[#ecedf4]/60 border border-white/[0.24] bg-white/[0.03]"
                       style={FONT_BODY}
                     >
                       No current value
@@ -1624,12 +1623,12 @@ function DetailPane({
                       }}
                     >
                       <SelectTrigger
-                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60"
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus:ring-1 focus:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       >
                         <SelectValue placeholder="Select…" />
                       </SelectTrigger>
-                      <SelectContent className="bg-[#0f1420] border-white/[0.12] text-[#f7f8fc]">
+                      <SelectContent className="bg-[#0f1420] border-white/[0.28] text-[#f7f8fc]">
                         {fieldOptions.map((opt) => (
                           <SelectItem
                             key={opt.value}
@@ -1651,7 +1650,7 @@ function DetailPane({
                           const value = e.target.value;
                           setEdits((p) => ({ ...p, [k]: value }));
                         }}
-                        className="text-[14px] leading-[1.55] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        className="text-[14px] leading-[1.55] px-3 py-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       />
                     ) : (
@@ -1666,7 +1665,7 @@ function DetailPane({
                             : value;
                           setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
                         }}
-                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                        className="h-8 text-[13px] px-2.5 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                         style={FONT_BODY}
                       />
                     )
@@ -1691,7 +1690,7 @@ function DetailPane({
                   return (
                     <div
                       key={k}
-                      className="rounded-lg border border-white/[0.08] bg-white/[0.02] px-3.5 py-3"
+                      className="rounded-lg border border-white/[0.20] bg-white/[0.02] px-3.5 py-3"
                     >
                       <p
                         className="text-[13px] font-medium text-[#ecedf4]/70 mb-2.5"
@@ -1701,7 +1700,7 @@ function DetailPane({
                       </p>
                       {stacked ? (
                         <div className="space-y-2">
-                          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                          <div className="rounded-md border border-white/[0.16] bg-white/[0.02] px-3 py-2">
                             <p
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
@@ -1722,7 +1721,7 @@ function DetailPane({
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2 min-w-0">
+                          <div className="rounded-md border border-white/[0.16] bg-white/[0.02] px-3 py-2 min-w-0">
                             <p
                               className="text-[11px] uppercase tracking-[0.08em] text-[#ecedf4]/50 mb-1"
                               style={FONT_BODY}
@@ -1764,7 +1763,7 @@ function DetailPane({
                 value={typeof edits.notes === 'string' ? edits.notes : (oldValues.notes ?? '')}
                 onChange={(e) => setEdits((p) => ({ ...p, notes: e.target.value }))}
                 placeholder="Add context for this status change (optional)…"
-                className="text-[12.5px] px-2.5 py-2 bg-white/[0.06] border-white/[0.12] text-[#f7f8fc] placeholder:text-[#ecedf4]/45 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                className="text-[12.5px] px-2.5 py-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] placeholder:text-[#ecedf4]/45 focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
                 style={FONT_BODY}
               />
             </div>
@@ -1848,9 +1847,9 @@ function EmailDraftPreview({
         </button>
       </div>
 
-      <div className="rounded-lg border border-white/[0.10] bg-white/[0.03] overflow-hidden">
+      <div className="rounded-lg border border-white/[0.24] bg-white/[0.03] overflow-hidden">
         {/* To */}
-        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.06]">
+        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.16]">
           <span
             className="text-[12px] font-medium text-[#ecedf4]/55 shrink-0 w-16"
             style={FONT_BODY}
@@ -1870,7 +1869,7 @@ function EmailDraftPreview({
                     .filter(Boolean),
                 }))
               }
-              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
@@ -1884,7 +1883,7 @@ function EmailDraftPreview({
         </div>
 
         {/* Subject */}
-        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.06]">
+        <div className="flex items-baseline gap-3 px-4 py-2.5 border-b border-white/[0.16]">
           <span
             className="text-[12px] font-medium text-[#ecedf4]/55 shrink-0 w-16"
             style={FONT_BODY}
@@ -1896,7 +1895,7 @@ function EmailDraftPreview({
               type="text"
               value={subject}
               onChange={(e) => setEdits((p) => ({ ...p, subject: e.target.value }))}
-              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="h-7 text-[13px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
@@ -1922,7 +1921,7 @@ function EmailDraftPreview({
               rows={Math.min(20, Math.max(8, (body.match(/\n/g)?.length ?? 0) + 4))}
               value={body}
               onChange={(e) => setEdits((p) => ({ ...p, body: e.target.value }))}
-              className="text-[14px] leading-[1.6] px-3 py-2 bg-white/[0.06] border-white/[0.14] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+              className="text-[14px] leading-[1.6] px-3 py-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
               style={FONT_BODY}
             />
           ) : (
@@ -1996,7 +1995,7 @@ function useMyManagedDealIds(enabled: boolean) {
 function EmptyState() {
   return (
     <div className="relative flex flex-1 h-full flex-col items-center justify-center gap-3 py-20 text-center">
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-[14px] border border-white/[0.08] bg-white/[0.035]">
+      <span className="inline-flex h-12 w-12 items-center justify-center rounded-[14px] border border-white/[0.20] bg-white/[0.035]">
         <InboxIcon className="h-5 w-5 text-[#ecedf4]/55" />
       </span>
       <p className="text-[15px] text-[#ecedf4]" style={FONT_DISPLAY}>
