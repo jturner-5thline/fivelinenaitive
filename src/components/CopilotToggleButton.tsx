@@ -436,9 +436,12 @@ export function CopilotToggleButton() {
     return out.slice(0, 16);
   }, [value, deals, lenders, pipelines, quickFind]);
 
+  // Default the highlighted row to the top real result (index 1) so
+  // pressing Enter navigates directly to the best match. When there are
+  // no suggestions yet, fall back to the AI row at index 0.
   useEffect(() => {
-    setActiveIndex(0);
-  }, [value]);
+    setActiveIndex(suggestions.length > 0 ? 1 : 0);
+  }, [value, suggestions.length]);
 
   // (Previously: `if (hasOpenModal) return null;` — removed so the bar
   // floats above all overlays. Its portal sits on <body> with
