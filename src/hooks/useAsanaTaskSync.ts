@@ -338,6 +338,27 @@ export async function syncTaskToAsana(
       } as any)
       .eq('id', task.id);
 
+    // Ensure inbound webhook coverage for every project this task lives in
+    // so completions and due-date changes made in Asana flow back to
+    // naitive — regardless of which project the task was routed to.
+    try {
+      const projectGids = new Set<string>();
+      if (ctx.projectGid) projectGids.add(ctx.projectGid);
+      // Asana's create response may include additional memberships if the
+      // task was routed via section rules. Cover those too.
+      const createdTask = (lastBody as any)?.data;
+      const memberships: Array<{ project?: { gid?: string } }> = createdTask?.memberships || [];
+      for (const m of memberships) {
+        if (m?.project?.gid) projectGids.add(m.project.gid);
+      }
+      for (const gid of projectGids) {
+        // Fire-and-forget — each helper is best-effort and never throws.
+        void ensureAsanaWebhookForProject(ctx.integrationId, gid);
+      }
+    } catch (e) {
+      console.warn('[AsanaSync] webhook coverage step failed:', e);
+    }
+
     return asanaGid;
   } catch (e) {
     console.error('Asana task sync failed:', e);
