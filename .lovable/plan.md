@@ -1,58 +1,41 @@
 ## Goal
 
-Add the four financial chart widgets that currently live at the top of the FinServ Financial Metrics dashboard to the Debt Advisory Metrics dashboard (`ConsolidatedDebtPipelineDashboard.tsx`), driven by the same live QuickBooks data pipeline but pointed at the "5th Line Capital Advisors LLC" realm (`193514877331929`) instead of "5th Line Financial Services, LLC" (`9341451968897660`).
+Combine per-lender/per-funding-source "Nudge [X]" email drafts on the same deal into a single Approval Queue item titled "Follow up with Lenders", with the right-hand detail pane exposing each individual draft for edit/approve/reject.
 
-### Widgets to replicate
-1. **Total Revenue** — monthly bars for the selected period, with the trend-line + Δ tooltip toggle.
-2. **Gross Profit** — single card with `$` / `%` toggle (GP $ bars vs GP margin % bars).
-3. **Operating Profit** — single card with `$` / `%` toggle (OP $ bars vs OP margin % bars).
-4. **Cashflow** — bar chart of QBO Statement of Cash Flows net cash flow, netted of intercompany adjustments, with trend toggle.
+## What changes
 
-Each chart keeps its current behavior: same visual language (dark glass, cyan/green/red bars), same tooltips (`DeltaTooltip` with period-over-period Δ$/Δ%), same trend-line toggle, same drill-down wiring, and the same global `useInsightsTimeframe` authority.
+Purely a client-side grouping layer on top of the existing queue — no schema, no edge function changes. Each underlying `draft_email` row still exists and is approved/rejected individually via the current mutation paths.
 
-## Approach
+### 1. Detect nudge drafts per deal
+In `ActionQueuePanel.tsx`, after `groups` is built (line ~449) and before the list renders:
+- For each `DealGroup`, partition `items` into `nudgeItems` (action_type `draft_email` whose title matches `/^\s*nudge\b/i` OR whose linked-entity is a lender/funding source) and `otherItems`.
+- If `nudgeItems.length >= 2`, replace them in the group with one synthetic bundle entry: `{ id: 'bundle:nudges:<deal_id>', action_type: 'draft_email_bundle', title: 'Follow up with Lenders', bundled: nudgeItems, deal_id, deal_name, count }`.
+- If only 1 nudge exists, leave it as-is (no bundling).
 
-### 1. Parameterize the data hooks by realm
-`src/hooks/useFinServFinancialMetrics.ts` currently hardcodes `FINSERV_REALM_ID`. Change the four hooks the debt dashboard needs to accept an optional `realmId` argument (default = FinServ realm so all existing FinServ callers keep working):
+### 2. List column
+`QueueRow` gets a small branch: when `item.action_type === 'draft_email_bundle'`, render the standard row with a "· N drafts" suffix and the email icon. Selection uses the synthetic id.
 
-- `useFinServTotalRevenue(period, granularity, realmId?)`
-- `useFinServQuarterlyProfits(period, granularity, realmId?)`
-- `useFinServCashflow(period, granularity, realmId?)`
-- Internal helpers `fetchFinServPnlSnapshots`, `syncFinServPnlSnapshots`, `ensureFinServPnlSnapshots` take a `realmId` parameter and include it in the react-query keys so FinServ and Debt caches never collide.
+### 3. Detail column
+New sub-view in the detail pane (near the existing `isEmailDraft` block, ~line 1341):
+- When the selected item is a bundle, render a vertical list of collapsible cards — one per underlying draft — each showing recipient (funding source / lender name + email), subject, and body using the existing `EmailDraftPreview` component.
+- Each card has its own inline "Approve" and "Reject" buttons wired to the existing per-item mutations (`approveMutation`/`rejectMutation`) passing that child's real id.
+- Header of the pane shows "Follow up with Lenders · {dealName}" and a top-level "Approve all" + "Reject all" that iterates the child ids sequentially (with a confirm() on Reject all, matching the pattern just added).
 
-Also export a new constant `DEBT_ADVISORY_REALM_ID = '193514877331929'` from that hook file so all Debt callers reference a single source of truth.
+### 4. Selection & counts
+- Bundle contributes `1` to the visible list count, but the deal group badge still shows the true underlying count (sum across bundled + other items) so nothing is hidden.
+- After approving/rejecting individual child drafts, the bundle auto-collapses to a single remaining draft once only one child is left, and disappears entirely when all are handled.
 
-The QBO sync (`quickbooks-sync` edge function) is already realm-agnostic — it just receives `realmId` in the body — so no edge-function changes are required. Data lands in the same `qbo_pnl_snapshots` / `qbo_cashflow_snapshots` tables, keyed by realm.
+## Technical notes
 
-### 2. Extract the four widget components
-The `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `DeltaTooltip`, and `TrendDeltaText` helpers are defined inline inside `FinServFinancialMetricsDashboard.tsx`. Extract them (plus the small formatting helpers `fmtCurrency`, `fmtCurrencyFull`, `fmtPercent`, `computeLinearTrend`, `TrendToggleButton`, `createGlassBarShape` reuse) into a shared file:
-
-- `src/components/metrics/finserv-charts/PnlChartCards.tsx` — exports `TotalRevenueCard`, `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `CashflowCard`. Each card accepts the hook data + a `titleSuffix` / drilldown-source id so labels ("FinServ Cashflow" vs "Debt Advisory Cashflow") can differ per dashboard.
-- Re-import these into `FinServFinancialMetricsDashboard.tsx` so nothing visible changes for the existing dashboard.
-
-### 3. Add a "Financial Performance" section to the Debt dashboard
-In `ConsolidatedDebtPipelineDashboard.tsx`, add a new section (above the existing Debt Advisory Metrics pipeline board) that:
-
-- Reads the global `useInsightsTimeframe` range (same as FinServ dashboard).
-- Calls the four hooks with `realmId = DEBT_ADVISORY_REALM_ID`.
-- Renders the four cards in the same layout used on FinServ (Total Revenue full-width, then a 2-col grid for GP + OP, then Cashflow full-width).
-- Uses the same drill-down provider (`DrilldownProvider` / `useDrilldown`) — pass `realm: DEBT_ADVISORY_REALM_ID` on the click payloads so the `client-series` / `pnl` / `cashflow` drill-down bodies query the right realm. `ChartDrilldown.tsx` already accepts an optional `req.realm` and defaults to FinServ, so callers just need to pass it.
-
-### 4. Intercompany netting
-The FinServ cashflow subtracts an `intercompany_adjustment` column (the "Due to/from 5th Line Capital LLC" line). We keep the same subtraction logic for Debt so the two dashboards are symmetric — the column already exists on `qbo_cashflow_snapshots` for both realms; for Capital Advisors it captures the opposite side of the same intercompany pair.
-
-### 5. Access gating
-The Debt Advisory Metrics dashboard is already gated by the existing Insights permissions in `Insights.tsx`. No new gating needed — this addition inherits it.
+- No changes to `useAiActionQueue`, DB, or edge functions. The bundle is a `useMemo`-derived synthetic node keyed off the real queue rows returned by the hook.
+- Recipient labeling reuses the existing `linked_entity_type/linked_entity_id` fields the drafts already carry (funding_source / lender). Fallback to parsing the title (`Nudge Worthy` → `Worthy`) if entity data is absent.
+- `TYPE_META` gets a new `draft_email_bundle` entry (label "Email drafts", icon `FileText`) so the row chip renders correctly.
+- No global styling changes; reuses the current tile gradient and email preview visuals.
 
 ## Files touched
-
-- `src/hooks/useFinServFinancialMetrics.ts` — add optional `realmId` args + `DEBT_ADVISORY_REALM_ID` export; thread `realmId` through query keys and QBO fetch/sync calls. No behavior change for existing FinServ callers.
-- `src/components/metrics/finserv-charts/PnlChartCards.tsx` — new file. Extracted `TotalRevenueCard`, `GrossProfitToggleCard`, `OperatingProfitToggleCard`, `CashflowCard` + shared helpers.
-- `src/components/metrics/dashboards/FinServFinancialMetricsDashboard.tsx` — replace inline definitions with imports from the new file (no visual change).
-- `src/components/metrics/dashboards/ConsolidatedDebtPipelineDashboard.tsx` — mount the four cards inside a new "Financial Performance" section using `realmId = DEBT_ADVISORY_REALM_ID`.
-- `src/components/insights/ChartDrilldown.tsx` — no changes required (already accepts `req.realm`); Debt callers just supply it.
+- `src/components/ai-queue/ActionQueuePanel.tsx` (grouping, row branch, detail pane, bundle approve/reject handlers)
 
 ## Out of scope
-- No changes to QBO sync scheduling, edge functions, or database schema.
-- No changes to the FinServ dashboard's visible layout or data.
-- Not replicating the Average Revenue by Client, Revenue Change by Client, Active Clients, Total MRR, or Income by Product/Service widgets — only the four explicitly requested (Revenue, GP $/%, OP $/%, Cashflow).
+- Combining non-nudge drafts.
+- Combining across different deals.
+- Server-side batch approve endpoint (kept as sequential per-item calls; can be optimized later if slow).
