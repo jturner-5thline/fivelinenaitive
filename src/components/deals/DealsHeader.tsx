@@ -170,7 +170,7 @@ export function DealsHeader() {
   const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
   const { data: dealAccessRequests = [] } = useDealAccessRequests();
   const approvalQueueCount = approvalQueueEnabled
-    ? (actionQueueItems?.length || 0) + (dealAccessRequests?.length || 0)
+    ? consolidatedAiQueueCount(actionQueueItems) + (dealAccessRequests?.length || 0)
     : 0;
   const { overdueCount: tasksOverdueCount, dueTodayCount: tasksDueTodayCount } = useTaskNotifications();
   const myTasksBadgeCount = tasksOverdueCount + tasksDueTodayCount;
