@@ -27,6 +27,10 @@ export function ClaapRoutingTasksBadge() {
   const [activeTask, setActiveTask] = useState<ClaapRoutingTask | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
+  // Hidden per product request — the "Meeting Tasks" pill and its
+  // notification badge should not render anywhere in the app.
+  return null;
+  // eslint-disable-next-line no-unreachable
   if (tasks.length === 0) return null;
 
   const renderDialog = () => {
