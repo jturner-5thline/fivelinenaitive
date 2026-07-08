@@ -1362,6 +1362,20 @@ function DetailPane({
     );
   }
 
+  // Bundle view — multiple "Nudge …" email drafts combined into one queue item.
+  const bundleChildren = (item as any).__bundle as QueuedAiAction[] | undefined;
+  if (bundleChildren && bundleChildren.length > 0) {
+    return (
+      <BundleDetailPane
+        item={item}
+        children={bundleChildren}
+        onApproveChild={onApproveChild!}
+        onRejectChild={onRejectChild!}
+        openDeal={openDeal}
+      />
+    );
+  }
+
   const evidence = Array.isArray(item.evidence) ? item.evidence : [];
   const expires = expiryDaysLabel(item);
   const oldValues = (item.old_values || {}) as Record<string, any>;
