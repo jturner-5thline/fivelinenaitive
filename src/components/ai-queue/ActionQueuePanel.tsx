@@ -614,7 +614,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             {totalCount}
           </span>
           <span
-            className="text-[10px] uppercase text-[#ecedf4]/58"
+            className="text-[8px] uppercase text-[#ecedf4]/58"
             style={{ ...FONT_MONO, letterSpacing: '0.10em' }}
           >
             synced just now
