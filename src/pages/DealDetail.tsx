@@ -4206,6 +4206,7 @@ export default function DealDetail() {
                                       >
                                         <Clock className="h-3.5 w-3.5" />
                                         Hours & Fees
+                                        <DealWeeklyHoursChart dealId={deal.id} />
                                       </h4>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Hours */}
