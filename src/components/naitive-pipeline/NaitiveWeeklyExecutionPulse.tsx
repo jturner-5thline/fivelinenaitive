@@ -641,7 +641,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           <StatCard label="Converted" value={current.converted} prev={previous.converted} />
         </div>
 
-        <div className="flex flex-col gap-4 lg:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:col-span-2">
         {/* Source split */}
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
