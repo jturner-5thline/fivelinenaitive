@@ -426,70 +426,6 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
             </div>
 
             <div className="h-[260px]">
-        ) : (
-          <div className="p-3 space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <StatTile label={`YTD Added ${year}`} value={ytdAdded} valueClass="text-emerald-300" />
-              <StatTile label={`Total ${year}`} value={totalAddedYear} />
-              <StatTile
-                label={cadence === 'monthly' ? 'Best month' : 'Best quarter'}
-                value={bestPeriodIdx >= 0 && addedByPeriod[bestPeriodIdx].length > 0
-                  ? `${periodLabel(bestPeriodIdx)} · ${addedByPeriod[bestPeriodIdx].length}`
-                  : '—'}
-              />
-            </div>
-            <div className="h-[260px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={addedChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
-                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
-                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
-                  <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
-                      const p = payload[0].payload as { added: number };
-                      return (
-                        <div
-                          style={{
-                            background: 'hsl(220 45% 10%)',
-                            border: '1px solid hsl(220 45% 35% / 0.4)',
-                            borderRadius: 8,
-                            padding: '8px 10px',
-                            fontSize: 12,
-                            color: 'hsl(220 30% 92%)',
-                          }}
-                        >
-                          <div className="font-semibold mb-1">{label} {year}</div>
-                          <div className="flex justify-between gap-4">
-                            <span style={{ color: ACTUAL_COLOR }}>Added</span>
-                            <span className="tabular-nums">{p.added}</span>
-                          </div>
-                          <div className="mt-1 text-[10px] text-slate-400">Click to view funding sources</div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <Bar
-                    dataKey="added"
-                    name="Added"
-                    fill={ACTUAL_COLOR}
-                    radius={[3, 3, 0, 0]}
-                    onClick={(d) => {
-                      const idx = (d as { idx?: number })?.idx;
-                      if (idx == null) return;
-                      setAddedDrill({ idx, label: `${periodLabel(idx)} ${year} — Funding Sources Added` });
-                    }}
-                    cursor="pointer"
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-        {viewMode === 'plan' && hasPlan && false && (
-          <div className="p-3 space-y-3">
-            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                   <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
@@ -613,6 +549,68 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                 </UiTooltip>
               </div>
             </TooltipProvider>
+          </div>
+        ) : (
+          <div className="p-3 space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <StatTile label={`YTD Added ${year}`} value={ytdAdded} valueClass="text-emerald-300" />
+              <StatTile label={`Total ${year}`} value={totalAddedYear} />
+              <StatTile
+                label={cadence === 'monthly' ? 'Best month' : 'Best quarter'}
+                value={
+                  bestPeriodIdx >= 0 && addedByPeriod[bestPeriodIdx].length > 0
+                    ? `${periodLabel(bestPeriodIdx)} · ${addedByPeriod[bestPeriodIdx].length}`
+                    : '—'
+                }
+              />
+            </div>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={addedChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <ReTooltip
+                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const p = payload[0].payload as { added: number };
+                      return (
+                        <div
+                          style={{
+                            background: 'hsl(220 45% 10%)',
+                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            borderRadius: 8,
+                            padding: '8px 10px',
+                            fontSize: 12,
+                            color: 'hsl(220 30% 92%)',
+                          }}
+                        >
+                          <div className="font-semibold mb-1">{label} {year}</div>
+                          <div className="flex justify-between gap-4">
+                            <span style={{ color: ACTUAL_COLOR }}>Added</span>
+                            <span className="tabular-nums">{p.added}</span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-400">Click to view funding sources</div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar
+                    dataKey="added"
+                    name="Added"
+                    fill={ACTUAL_COLOR}
+                    radius={[3, 3, 0, 0]}
+                    onClick={(d) => {
+                      const idx = (d as { idx?: number })?.idx;
+                      if (idx == null) return;
+                      setAddedDrill({ idx, label: `${periodLabel(idx)} ${year} — Funding Sources Added` });
+                    }}
+                    cursor="pointer"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </div>
