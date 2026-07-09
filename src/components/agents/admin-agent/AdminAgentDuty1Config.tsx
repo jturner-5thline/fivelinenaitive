@@ -1215,13 +1215,13 @@ export function AdminAgentDuty1Config() {
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
-                          {d.source_type === 'file' && d.status !== 'pending' && (
+                          {d.source_type === 'file' && (
                             <button
                               type="button"
                               onClick={() => reingestDoc(d)}
                               className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-muted"
-                              aria-label="Re-extract text"
-                              title="Re-extract text"
+                              aria-label={d.status === 'pending' ? 'Retry extraction' : 'Re-extract text'}
+                              title={d.status === 'pending' ? 'Retry extraction' : 'Re-extract text'}
                             >
                               <Sparkles className="h-3 w-3" />
                             </button>
