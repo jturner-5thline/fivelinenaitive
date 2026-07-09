@@ -630,8 +630,8 @@
    */
   .glass-module {
     position: relative;
-    background: rgba(135, 165, 210, 0.88) !important;
-    border: 1px solid rgba(210, 232, 255, 0.7) !important;
+    background: rgba(160, 190, 225, 0.90) !important;
+    border: 1px solid rgba(220, 238, 255, 0.78) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
