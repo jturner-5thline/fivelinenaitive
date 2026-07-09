@@ -516,16 +516,21 @@ export function AdminAgentDuty1Config() {
     if (!title || !body) return;
     setIsSavingPaste(true);
     try {
-      const { error } = await supabase.from('admin_agent_knowledge_docs').insert({
+      const { data: row, error } = await supabase.from('admin_agent_knowledge_docs').insert({
         company_id: companyId,
         agent_key: 'admin_agent',
         title,
         source_type: 'text',
         extracted_text: body.slice(0, 200_000),
-        status: 'ready',
+        status: 'pending',
         uploaded_by: currentUserId,
-      });
+      }).select('id').single();
       if (error) throw error;
+      // Chunk + embed in the background.
+      supabase.functions
+        .invoke('admin-agent-knowledge-ingest', { body: { doc_id: row.id } })
+        .then(() => qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] }))
+        .catch((e) => console.warn('[knowledge-ingest]', e?.message));
       setPasteTitle('');
       setPasteBody('');
       await qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
