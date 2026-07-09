@@ -1490,17 +1490,36 @@ function ConversionCard({
   title,
   value,
   subtitle,
+  onClick,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
+  onClick?: () => void;
 }) {
   const display =
     value == null
       ? '—'
       : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+  const clickable = !!onClick;
   return (
-    <div style={glassStyle} className="p-4 flex flex-col gap-2">
+    <div
+      style={glassStyle}
+      className={`p-4 flex flex-col gap-2 ${clickable ? 'cursor-pointer transition-colors hover:bg-white/[0.04]' : ''}`}
+      onClick={onClick}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div
         className="text-[10px] font-medium uppercase"
         style={{ color: C.textMuted, letterSpacing: '0.08em' }}
