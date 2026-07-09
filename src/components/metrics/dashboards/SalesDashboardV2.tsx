@@ -1569,7 +1569,9 @@ function OnBoardToProposalDrilldown({
   React.useEffect(() => { setStep(0); }, [granularity, anchorEnd.getTime()]);
 
   const stepMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
-  const windowMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
+  // Window is ALWAYS trailing 12 months. Granularity only changes how far each
+  // step moves the anchor (1M / 1Q / 1Y) and how the range label is formatted.
+  const windowMonths = 12;
 
   // Compute [start, end) for the currently-selected period and the prior period.
   const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
@@ -1580,31 +1582,22 @@ function OnBoardToProposalDrilldown({
     const pEnd = new Date(start);
     const pStart = new Date(pEnd);
     pStart.setUTCMonth(pStart.getUTCMonth() - windowMonths);
-    const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
-    let lbl: string;
-    if (granularity === 'month') {
-      lbl = new Date(end.getTime() - 1).toLocaleDateString('en-US', mFmt);
-    } else if (granularity === 'quarter') {
-      const e = new Date(end.getTime() - 1);
-      const q = Math.floor(e.getUTCMonth() / 3) + 1;
-      lbl = `Q${q} ${e.getUTCFullYear()}`;
-    } else {
-      const s = new Date(start).toLocaleDateString('en-US', mFmt);
-      const e = new Date(end.getTime() - 1).toLocaleDateString('en-US', mFmt);
-      lbl = `${s} – ${e}`;
-    }
-    let prevLbl: string;
-    if (granularity === 'month') {
-      prevLbl = new Date(pEnd.getTime() - 1).toLocaleDateString('en-US', mFmt);
-    } else if (granularity === 'quarter') {
-      const e = new Date(pEnd.getTime() - 1);
-      const q = Math.floor(e.getUTCMonth() / 3) + 1;
-      prevLbl = `Q${q} ${e.getUTCFullYear()}`;
-    } else {
-      const s = new Date(pStart).toLocaleDateString('en-US', mFmt);
-      const e = new Date(pEnd.getTime() - 1).toLocaleDateString('en-US', mFmt);
-      prevLbl = `${s} – ${e}`;
-    }
+    // TTM range label based on granularity. Data window is always 12 months.
+    const fmtRange = (rStart: Date, rEnd: Date): string => {
+      const eDate = new Date(rEnd.getTime() - 1);
+      const sDate = new Date(rStart);
+      if (granularity === 'quarter') {
+        const sq = Math.floor(sDate.getUTCMonth() / 3) + 1;
+        const eq = Math.floor(eDate.getUTCMonth() / 3) + 1;
+        const sy = String(sDate.getUTCFullYear()).slice(-2);
+        const ey = String(eDate.getUTCFullYear()).slice(-2);
+        return `Q${sq} ${sy} – Q${eq} ${ey}`;
+      }
+      const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
+      return `${sDate.toLocaleDateString('en-US', mFmt)} – ${eDate.toLocaleDateString('en-US', mFmt)}`;
+    };
+    const lbl = fmtRange(start, end);
+    const prevLbl = fmtRange(pStart, pEnd);
     return { curStart: start, curEnd: end, prevStart: pStart, prevEnd: pEnd, label: lbl, prevLabel: prevLbl };
   }, [anchorEnd, step, stepMonths, windowMonths, granularity]);
 
