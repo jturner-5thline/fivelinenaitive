@@ -502,20 +502,6 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
             )}
           </span>
         </div>
-        {chips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {chips.map((c, i) => (
-              <Badge
-                key={`${c.kind}-${i}`}
-                variant="outline"
-                className={cn('text-[10px] gap-1', CHIP_STYLES[c.kind])}
-                title={CHIP_LABEL[c.kind]}
-              >
-                <span className="font-medium">{CHIP_LABEL[c.kind]}:</span> {c.label}
-              </Badge>
-            ))}
-          </div>
-        )}
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-end mb-2">
