@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Clock, UserPlus, Trash2, ArrowRight, CheckCircle } from 'lucide-react';
+import { Clock, UserPlus, Trash2, ArrowRight, CheckCircle, CheckSquare, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,13 +9,99 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useAllActivities } from '@/hooks/useAllActivities';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSidebar } from '@/components/ui/sidebar';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+
+interface TaskUpdate {
+  id: string;
+  kind: 'assigned' | 'collaborator';
+  taskId: string;
+  title: string;
+  created_at: string;
+}
 
 export function LatestUpdatesWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const { activities, isLoading } = useAllActivities({ limit: 50 });
   const { state: sidebarState, isHovering } = useSidebar();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [taskUpdates, setTaskUpdates] = useState<TaskUpdate[]>([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+
+    const load = async () => {
+      const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+
+      const [assignedRes, collabRes] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select('id, title, created_at, assigned_by')
+          .eq('assigned_to', user.id)
+          .is('archived_at', null)
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(25),
+        supabase
+          .from('task_collaborators')
+          .select('id, task_id, created_at, tasks(title, archived_at)')
+          .eq('user_id', user.id)
+          .gte('created_at', since)
+          .order('created_at', { ascending: false })
+          .limit(25),
+      ]);
+
+      if (cancelled) return;
+      const items: TaskUpdate[] = [];
+
+      (assignedRes.data || []).forEach((t: any) => {
+        if (t.assigned_by === user.id) return;
+        items.push({
+          id: `assigned-${t.id}`,
+          kind: 'assigned',
+          taskId: t.id,
+          title: t.title,
+          created_at: t.created_at,
+        });
+      });
+
+      (collabRes.data || []).forEach((c: any) => {
+        if (!c.tasks || c.tasks.archived_at) return;
+        items.push({
+          id: `collab-${c.id}`,
+          kind: 'collaborator',
+          taskId: c.task_id,
+          title: c.tasks.title,
+          created_at: c.created_at,
+        });
+      });
+
+      setTaskUpdates(items);
+    };
+
+    load();
+
+    const channel = supabase
+      .channel(`latest-updates-tasks-${user.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'tasks',
+        filter: `assigned_to=eq.${user.id}`,
+      }, () => load())
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'task_collaborators',
+        filter: `user_id=eq.${user.id}`,
+      }, () => load())
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   // Sidebar appears expanded when actually expanded OR when hovering over collapsed sidebar
   const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
@@ -27,7 +113,17 @@ export function LatestUpdatesWidget() {
     a.description.toLowerCase().includes('milestone changed')
   ).slice(0, 15);
 
-  const updateCount = filteredActivities.length;
+  type MergedItem =
+    | { kind: 'activity'; created_at: string; data: typeof filteredActivities[number] }
+    | { kind: 'task'; created_at: string; data: TaskUpdate };
+
+  const merged: MergedItem[] = [
+    ...filteredActivities.map((a) => ({ kind: 'activity' as const, created_at: a.created_at, data: a })),
+    ...taskUpdates.map((t) => ({ kind: 'task' as const, created_at: t.created_at, data: t })),
+  ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+   .slice(0, 20);
+
+  const updateCount = merged.length;
 
   const getIcon = (activityType: string, description: string) => {
     const isMilestoneChange = activityType === 'lender_substage_change' || description.toLowerCase().includes('milestone changed');
@@ -78,29 +174,61 @@ export function LatestUpdatesWidget() {
           <div className="p-4 max-h-80 overflow-y-auto">
             {isLoading ? (
               <p className="text-sm text-muted-foreground py-4 text-center">Loading...</p>
-            ) : filteredActivities.length === 0 ? (
+            ) : merged.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">No recent updates</p>
             ) : (
               <div className="space-y-3">
-                {filteredActivities.map((activity) => (
-                  <Link 
-                    key={activity.id} 
-                    to={`/deal/${activity.deal_id}`}
-                    className="flex items-start gap-3 text-sm hover:bg-accent/50 -mx-2 px-2 py-1.5 rounded-md transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
-                    <div className="flex-1 min-w-0">
-                      {activity.deal_name && (
-                        <p className="text-xs font-medium text-primary truncate">{activity.deal_name}</p>
-                      )}
-                      <span className="text-foreground">{activity.description}</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {format(new Date(activity.created_at), 'MMM d, h:mm a')}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+                {merged.map((item) => {
+                  if (item.kind === 'activity') {
+                    const activity = item.data;
+                    return (
+                      <Link
+                        key={activity.id}
+                        to={`/deal/${activity.deal_id}`}
+                        className="flex items-start gap-3 text-sm hover:bg-accent/50 -mx-2 px-2 py-1.5 rounded-md transition-colors"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
+                        <div className="flex-1 min-w-0">
+                          {activity.deal_name && (
+                            <p className="text-xs font-medium text-primary truncate">{activity.deal_name}</p>
+                          )}
+                          <span className="text-foreground">{activity.description}</span>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {format(new Date(activity.created_at), 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                      </Link>
+                    );
+                  }
+                  const t = item.data;
+                  const icon = t.kind === 'assigned'
+                    ? <CheckSquare className="h-3.5 w-3.5 text-blue-500" />
+                    : <Users className="h-3.5 w-3.5 text-indigo-500" />;
+                  const label = t.kind === 'assigned'
+                    ? 'Assigned to you'
+                    : 'Added as collaborator';
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate(`/tasks?taskId=${t.taskId}`);
+                      }}
+                      className="w-full flex items-start gap-3 text-sm hover:bg-accent/50 -mx-2 px-2 py-1.5 rounded-md transition-colors text-left"
+                    >
+                      <div className="mt-0.5">{icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-primary truncate">{label}</p>
+                        <span className="text-foreground line-clamp-2">{t.title}</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {format(new Date(t.created_at), 'MMM d, h:mm a')}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
