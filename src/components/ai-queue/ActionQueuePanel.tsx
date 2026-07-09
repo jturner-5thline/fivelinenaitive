@@ -382,6 +382,12 @@ function getFieldOptions(
 
 type FilterKey = 'all' | 'low' | 'review' | 'needs_you';
 
+/** Strip em/en dashes from approval queue display text. */
+function stripEmDashes<T extends string | null | undefined>(s: T): T {
+  if (typeof s !== 'string') return s;
+  return s.replace(/\s*[—–]\s*/g, ' - ').replace(/ {2,}/g, ' ') as T;
+}
+
 interface PanelProps {
   items: QueuedAiAction[];
   onClose?: () => void;
@@ -412,9 +418,19 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const scopeActive = isAdmin && scope === 'me';
 
   const scopedItems = useMemo(() => {
-    if (!scopeActive) return items;
-    const ids = myDealIds ?? new Set<string>();
-    return items.filter((it) => it.deal_id && ids.has(it.deal_id));
+    const base = !scopeActive
+      ? items
+      : items.filter((it) => {
+          const ids = myDealIds ?? new Set<string>();
+          return it.deal_id && ids.has(it.deal_id);
+        });
+    // Strip em dashes from user-facing text on queue items.
+    return base.map((it) => ({
+      ...it,
+      title: stripEmDashes(it.title),
+      description: stripEmDashes(it.description),
+      rationale: stripEmDashes(it.rationale),
+    })) as typeof base;
   }, [items, scopeActive, myDealIds]);
 
   const scopedAccessRequests = useMemo(() => {
