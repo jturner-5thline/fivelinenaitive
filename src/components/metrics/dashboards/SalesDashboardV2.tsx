@@ -1572,7 +1572,7 @@ function OnBoardToProposalDrilldown({
   const windowMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
 
   // Compute [start, end) for the currently-selected period and the prior period.
-  const { curStart, curEnd, prevStart, prevEnd, label } = React.useMemo(() => {
+  const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
     const end = new Date(anchorEnd);
     end.setUTCMonth(end.getUTCMonth() + step * stepMonths);
     const start = new Date(end);
