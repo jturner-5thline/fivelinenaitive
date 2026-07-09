@@ -1608,7 +1608,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
                 onNewTaskCreate={handleCreateTask}
                 onCancelCreate={() => { setIsCreating(false); setNewTaskTitle(''); setTaskNameWarning(''); setTaskNameConfirmed(false); }}
                 taskNameWarning={taskNameWarning}
-                onSelectTask={setSelectedTaskId}
+                onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                 onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                 onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
@@ -1625,7 +1625,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               <TaskBoardView
                 tasks={filtered}
                 statusGroups={allBoardColumns}
-                onSelectTask={setSelectedTaskId}
+                onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                 onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                 onCreateTask={(title, status) => createTask.mutate({ title, status })}
                 selectedTaskId={selectedTaskId}
@@ -1638,7 +1638,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading calendar…</div>}>
                 <TaskCalendarView
                   tasks={filtered}
-                  onSelectTask={setSelectedTaskId}
+                  onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                   onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                   selectedTaskId={selectedTaskId}
                 />
@@ -1658,7 +1658,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           {selectedTask ? (
             <TaskDetailDrawer
               task={selectedTask}
-              onClose={() => setSelectedTaskId(null)}
+              onClose={() => { setDetailDismissed(true); setSelectedTaskId(null); }}
               onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
               onDelete={() => { handleDeleteWithUndo(selectedTask.id); setSelectedTaskId(null); }}
             />
