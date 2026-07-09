@@ -322,20 +322,12 @@ export function LenderAnalyticsDialog({
         const [dlRes, dRes, scRes] = await Promise.all([
           (() => {
             let q = supabase.from('deal_lenders').select('id, deal_id, name, stage, substage, pass_reason, created_at, updated_at').limit(10000);
-            // Include any lender-deal relationship that was created OR had
-            // activity (stage change / update) within the selected window.
-            // Filtering only on created_at was under-counting prior-year
-            // selections (e.g. a lender added in 2024 that progressed to
-            // Terms in 2025 would be excluded from the 2025 view).
-            if (startIso && endIso) {
-              q = q.or(
-                `and(created_at.gte.${startIso},created_at.lt.${endIso}),and(updated_at.gte.${startIso},updated_at.lt.${endIso})`,
-              );
-            } else if (startIso) {
-              q = q.or(`created_at.gte.${startIso},updated_at.gte.${startIso}`);
-            } else if (endIso) {
-              q = q.lt('created_at', endIso);
-            }
+            // Filter by when the lender-deal relationship was created so that
+            // each range (YTD, TTM, prior years) reflects a distinct cohort.
+            // Using updated_at here collapsed windows together because
+            // deal_lenders rows are touched frequently by background jobs.
+            if (startIso) q = q.gte('created_at', startIso);
+            if (endIso) q = q.lt('created_at', endIso);
             return q;
           })(),
           supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
