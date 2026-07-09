@@ -21,6 +21,7 @@
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,9 +31,9 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
-const DEFAULT_MODEL = "google/gemini-2.5-flash";
+const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
 const MAX_CANDIDATES = 200;
 
 interface CandidateEmail {
@@ -184,8 +185,8 @@ serve(async (req: Request): Promise<Response> => {
     }
     const userId = userData.user.id;
 
-    if (!LOVABLE_API_KEY) {
-      console.error(`[email-ai-search ${reqId}] missing LOVABLE_API_KEY`);
+    if (!ANTHROPIC_API_KEY) {
+      console.error(`[email-ai-search ${reqId}] missing ANTHROPIC_API_KEY`);
       return new Response(JSON.stringify({ error: "AI gateway not configured" }), {
         status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -231,49 +232,25 @@ serve(async (req: Request): Promise<Response> => {
     const userContent =
       `Query: ${query}\n\nCandidate emails (JSON):\n` + JSON.stringify(candidates);
 
-    // Call Lovable AI Gateway (OpenAI-compatible).
     const aiStartedAt = Date.now();
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    let aiText = "";
+    try {
+      const result = await callClaude({
         model: DEFAULT_MODEL,
+        system: buildSystemPrompt(today),
+        messages: [{ role: "user", content: userContent }],
         temperature: 0.2,
-        messages: [
-          { role: "system", content: buildSystemPrompt(today) },
-          { role: "user", content: userContent },
-        ],
-      }),
-    });
-
-    if (aiResp.status === 429) {
-      await aiResp.text();
+        maxTokens: 4096,
+      });
+      aiText = result.text;
+    } catch (e: any) {
+      const status = e?.status ?? 500;
+      console.error(`[email-ai-search ${reqId}] claude ${status}: ${e?.message}`);
       return new Response(
-        JSON.stringify({ error: "Rate limited — please retry shortly." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: status === 429 ? "Rate limited — please retry shortly." : "AI error" }),
+        { status: status === 429 ? 429 : 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    if (aiResp.status === 402) {
-      await aiResp.text();
-      return new Response(
-        JSON.stringify({ error: "AI credits exhausted. Add funds in Settings → Workspace → Usage." }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    if (!aiResp.ok) {
-      const errText = await aiResp.text();
-      console.error(`[email-ai-search ${reqId}] gateway ${aiResp.status}: ${errText}`);
-      return new Response(
-        JSON.stringify({ error: "AI gateway error" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const aiJson = await aiResp.json();
-    const aiText: string = aiJson?.choices?.[0]?.message?.content ?? "";
     const parsed = extractJsonBlock(aiText);
 
     if (!parsed || !Array.isArray(parsed.results)) {
