@@ -3205,16 +3205,16 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               value={(() => {
-                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return null;
-                const nda = ndaEnteredTrailing12.count;
-                const props = proposalEnteredTrailing12.count;
+                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return null;
+                const nda = ndaEnteredInRange.count;
+                const props = proposalEnteredInRange.count;
                 if (!nda) return null;
                 return props / nda;
               })()}
               subtitle={(() => {
-                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return 'Loading…';
-                const nda = ndaEnteredTrailing12.count;
-                const props = proposalEnteredTrailing12.count;
+                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return 'Loading…';
+                const nda = ndaEnteredInRange.count;
+                const props = proposalEnteredInRange.count;
                 return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
@@ -3223,8 +3223,8 @@ export function SalesDashboardV2() {
           <OnBoardToProposalDrilldown
             open={onBoardToProposalOpen}
             onOpenChange={setOnBoardToProposalOpen}
-            nda={ndaEnteredTrailing12}
-            proposal={proposalEnteredTrailing12}
+            nda={ndaEnteredInRange}
+            proposal={proposalEnteredInRange}
           />
 
           {/* Sales model sheet */}
