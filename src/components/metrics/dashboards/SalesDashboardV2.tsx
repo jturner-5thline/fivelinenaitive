@@ -1613,18 +1613,15 @@ function OnBoardToProposalDrilldown({
     const pEnd = addMonthsClampedUtc(end, -stepMonths);
     const pStart = addMonthsClampedUtc(pEnd, -windowMonths);
     // TTM range label based on granularity. Data window is always 12 months.
-    const fmtRange = (rStart: Date, rEnd: Date): string => {
+    // TTM window label — show only the end period since data is always TTM.
+    const fmtRange = (_rStart: Date, rEnd: Date): string => {
       const eDate = new Date(rEnd.getTime() - 1);
-      const sDate = new Date(rStart);
       if (granularity === 'quarter') {
-        const sq = Math.floor(sDate.getUTCMonth() / 3) + 1;
         const eq = Math.floor(eDate.getUTCMonth() / 3) + 1;
-        const sy = String(sDate.getUTCFullYear()).slice(-2);
-        const ey = String(eDate.getUTCFullYear()).slice(-2);
-        return `Q${sq} ${sy} – Q${eq} ${ey}`;
+        return `Q${eq} ${eDate.getUTCFullYear()}`;
       }
-      const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric', timeZone: 'UTC' };
-      return `${sDate.toLocaleDateString('en-US', mFmt)} – ${eDate.toLocaleDateString('en-US', mFmt)}`;
+      const mFmt: Intl.DateTimeFormatOptions = { month: 'long', year: 'numeric', timeZone: 'UTC' };
+      return eDate.toLocaleDateString('en-US', mFmt);
     };
     const lbl = fmtRange(start, end);
     const prevLbl = fmtRange(pStart, pEnd);
