@@ -50,6 +50,7 @@ import {
   Bar,
   ComposedChart,
   Legend,
+  LabelList,
 } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -1583,6 +1584,7 @@ function OnBoardToProposalDrilldown({
   type Granularity = 'month' | 'quarter' | 'year';
   const [granularity, setGranularity] = React.useState<Granularity>('year');
   const [tab, setTab] = React.useState<'nda' | 'proposal'>('nda');
+  const [showBars, setShowBars] = React.useState(false);
   // Step offset from the anchor end, in units of the current granularity.
   // 0 = anchor, -1 = one step back, +1 = one step forward.
   const [step, setStep] = React.useState(0);
@@ -1686,7 +1688,15 @@ function OnBoardToProposalDrilldown({
         ratio: n > 0 ? Math.round((p / n) * 1000) / 10 : null,
       });
     }
-    return buckets;
+    // Period-over-period % change on the ratio
+    return buckets.map((b, i) => {
+      const prev = i > 0 ? buckets[i - 1].ratio : null;
+      let pop: number | null = null;
+      if (b.ratio != null && prev != null && prev > 0) {
+        pop = ((b.ratio - prev) / prev) * 100;
+      }
+      return { ...b, pop };
+    });
   }, [curEnd, ndaEvents.events, proposalEvents.events]);
 
   const fmtUsd = (n: number) =>
@@ -1795,15 +1805,28 @@ function OnBoardToProposalDrilldown({
 
         {/* Chart */}
         <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">
-            Monthly trend · last 12 months
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-[11px] uppercase tracking-wider text-slate-400">
+              Monthly trend · last 12 months
+            </div>
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showBars}
+                onChange={(e) => setShowBars(e.target.checked)}
+                className="h-3 w-3 accent-blue-500"
+              />
+              Show stage volumes
+            </label>
           </div>
           <div style={{ width: '100%', height: 220 }}>
             <ResponsiveContainer>
-              <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 16, right: 8, left: -8, bottom: 0 }}>
                 <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
                 <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                {showBars && (
+                  <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                )}
                 <YAxis
                   yAxisId="right"
                   orientation="right"
@@ -1830,8 +1853,12 @@ function OnBoardToProposalDrilldown({
                   }
                 />
                 <Legend wrapperStyle={{ fontSize: 11, color: '#cbd5e1' }} />
-                <Bar yAxisId="left" dataKey="nda" name="Entered NDA" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-                <Bar yAxisId="left" dataKey="proposal" name="Entered Proposal" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                {showBars && (
+                  <Bar yAxisId="left" dataKey="nda" name="Entered NDA" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                )}
+                {showBars && (
+                  <Bar yAxisId="left" dataKey="proposal" name="Entered Proposal" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                )}
                 <Line
                   yAxisId="right"
                   type="monotone"
@@ -1841,7 +1868,31 @@ function OnBoardToProposalDrilldown({
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   connectNulls
-                />
+                >
+                  {!showBars && (
+                    <LabelList
+                      dataKey="pop"
+                      position="top"
+                      content={(props: any) => {
+                        const { x, y, value } = props;
+                        if (value == null || !isFinite(value)) return null;
+                        const color = value > 0 ? '#22c55e' : value < 0 ? '#ef4444' : '#94a3b8';
+                        const sign = value > 0 ? '+' : '';
+                        return (
+                          <text
+                            x={x}
+                            y={y - 6}
+                            fill={color}
+                            fontSize={10}
+                            textAnchor="middle"
+                          >
+                            {`${sign}${value.toFixed(1)}%`}
+                          </text>
+                        );
+                      }}
+                    />
+                  )}
+                </Line>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
