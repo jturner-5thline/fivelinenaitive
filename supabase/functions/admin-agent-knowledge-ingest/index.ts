@@ -7,6 +7,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import * as XLSX from 'npm:xlsx@0.18.5';
 
 const MAX_TEXT_CHARS = 200_000; // truncate very large docs to keep prompts sane
 
@@ -20,6 +21,31 @@ function isTextish(mime: string | null | undefined): boolean {
     mime.endsWith('+json') ||
     mime.endsWith('+xml')
   );
+}
+
+function isSpreadsheet(mime: string | null | undefined, filename: string): boolean {
+  const m = (mime || '').toLowerCase();
+  const f = (filename || '').toLowerCase();
+  return (
+    m === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+    m === 'application/vnd.ms-excel' ||
+    m === 'application/vnd.oasis.opendocument.spreadsheet' ||
+    f.endsWith('.xlsx') ||
+    f.endsWith('.xls') ||
+    f.endsWith('.ods')
+  );
+}
+
+function extractFromSpreadsheet(buf: Uint8Array): string {
+  const wb = XLSX.read(buf, { type: 'array' });
+  const parts: string[] = [];
+  for (const name of wb.SheetNames) {
+    const sheet = wb.Sheets[name];
+    if (!sheet) continue;
+    const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
+    if (csv.trim()) parts.push(`# Sheet: ${name}\n${csv}`);
+  }
+  return parts.join('\n\n');
 }
 
 async function extractViaLovableAI(base64: string, mime: string, filename: string): Promise<string> {
@@ -141,7 +167,10 @@ Deno.serve(async (req) => {
     const mime = doc.mime_type || blob.type || 'application/octet-stream';
 
     try {
-      if (isTextish(mime)) {
+      if (isSpreadsheet(mime, doc.title)) {
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        extracted = extractFromSpreadsheet(buf);
+      } else if (isTextish(mime)) {
         extracted = await blob.text();
       } else {
         const buf = new Uint8Array(await blob.arrayBuffer());
