@@ -419,55 +419,6 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                       );
                     }}
                   />
-                  <Legend
-                    wrapperStyle={{ fontSize: 11 }}
-                    content={() => (
-                      <TooltipProvider delayDuration={100}>
-                        <div className="flex items-center justify-center gap-4 text-[11px] text-slate-300 pt-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className="inline-block h-2 w-3 rounded-sm"
-                              style={{ background: PLAN_COLOR }}
-                            />
-                            <span>Plan</span>
-                          </div>
-                          <UiTooltip>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center gap-1.5 cursor-help">
-                                <span
-                                  className="inline-block h-[2px] w-3"
-                                  style={{ background: ACTUAL_COLOR }}
-                                />
-                                <span className="underline decoration-dotted underline-offset-2">
-                                  Actual
-                                </span>
-                                <Info className="h-3 w-3 text-slate-500" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              side="top"
-                              className="max-w-[340px] text-[11px] leading-relaxed bg-slate-900 border-slate-700 text-slate-100"
-                            >
-                              <div className="font-semibold text-slate-100 mb-1">
-                                Qualified funding source
-                              </div>
-                              <p className="text-slate-300">
-                                Counted when a lender is <em>created</em> — or its Name,
-                                Contact Name, or Contact Email is edited — <strong>and</strong> a
-                                deal is submitted to that lender within{' '}
-                                <strong>72 hours</strong> of the trigger.
-                              </p>
-                              <ul className="mt-2 space-y-1 text-slate-400 list-disc pl-4">
-                                <li>One count per lender per period (earliest trigger wins)</li>
-                                <li>Bucketed by trigger month (or quarter)</li>
-                                <li>YTD line = cumulative sum through current period</li>
-                              </ul>
-                            </TooltipContent>
-                          </UiTooltip>
-                        </div>
-                      </TooltipProvider>
-                    )}
-                  />
                   <Bar
                     dataKey="plan"
                     name="Plan"
@@ -491,6 +442,55 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
+            {/* Legend rendered outside of Recharts so the shadcn tooltip
+                doesn't remount on every chart hover redraw. */}
+            <TooltipProvider delayDuration={100}>
+              <div className="mt-2 flex items-center justify-center gap-4 text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2 w-3 rounded-sm"
+                    style={{ background: PLAN_COLOR }}
+                  />
+                  <span>Plan</span>
+                </div>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 cursor-help focus:outline-none"
+                    >
+                      <span
+                        className="inline-block h-[2px] w-3"
+                        style={{ background: ACTUAL_COLOR }}
+                      />
+                      <span className="underline decoration-dotted underline-offset-2">
+                        Actual
+                      </span>
+                      <Info className="h-3 w-3 text-slate-500" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-[340px] text-[11px] leading-relaxed bg-slate-900 border-slate-700 text-slate-100"
+                  >
+                    <div className="font-semibold text-slate-100 mb-1">
+                      Qualified funding source
+                    </div>
+                    <p className="text-slate-300">
+                      Counted when a lender is <em>created</em> — or its Name,
+                      Contact Name, or Contact Email is edited — <strong>and</strong> a
+                      deal is submitted to that lender within{' '}
+                      <strong>72 hours</strong> of the trigger.
+                    </p>
+                    <ul className="mt-2 space-y-1 text-slate-400 list-disc pl-4">
+                      <li>One count per lender per period (earliest trigger wins)</li>
+                      <li>Bucketed by trigger month (or quarter)</li>
+                      <li>YTD line = cumulative sum through current period</li>
+                    </ul>
+                  </TooltipContent>
+                </UiTooltip>
+              </div>
+            </TooltipProvider>
           </div>
         )}
       </div>
