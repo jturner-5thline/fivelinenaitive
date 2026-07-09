@@ -661,8 +661,11 @@ export function LenderAnalyticsDialog({
 
   const lenderStats: LenderStat[] = useMemo(() => {
     const m = new Map<string, LenderStat & { _respSum: number; _respN: number; _dealIds: Set<string> }>();
-    const now = Date.now();
-    const THIRTY_D = 30 * 86400000;
+    // Tie "flex active" activity window to the popup's timeframe selector so
+    // every widget in the dialog reflects the same period (TTM, YTD, prior
+    // year, etc.) instead of a fixed 30-day rolling window.
+    const activityStart = rangeStart(dateRange)?.getTime() ?? 0;
+    const activityEnd = rangeEnd(dateRange)?.getTime() ?? Date.now();
     for (const r of rows) {
       const name = (r.name || '').trim() || 'Unknown';
       const key = name.toLowerCase();
@@ -697,7 +700,7 @@ export function LenderAnalyticsDialog({
         s._respSum += (u - c) / 86400000;
         s._respN += 1;
       }
-      if (!isNaN(u) && now - u <= THIRTY_D) s.flexActive += 1;
+      if (!isNaN(u) && u >= activityStart && u <= activityEnd) s.flexActive += 1;
     }
     const out: LenderStat[] = [];
     for (const s of m.values()) {
@@ -706,7 +709,7 @@ export function LenderAnalyticsDialog({
       out.push(s);
     }
     return out.sort((a, b) => b.count - a.count);
-  }, [rows, lenderMeta]);
+  }, [rows, lenderMeta, dateRange]);
 
   const activeLenderCount = lenderStats.length;
   const flexActiveLenderCount = useMemo(
