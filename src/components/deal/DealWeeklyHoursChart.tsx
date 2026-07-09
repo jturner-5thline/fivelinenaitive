@@ -19,6 +19,23 @@ import {
   Cell,
 } from 'recharts';
 
+const GRADIENT_ID = 'weekly-hours-cursor-gradient';
+
+function GradientCursor(props: any) {
+  const { x, y, width, height } = props;
+  return (
+    <g>
+      <defs>
+        <linearGradient id={GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(222, 47%, 18%)" stopOpacity={0.95} />
+          <stop offset="100%" stopColor="hsl(222, 47%, 9%)" stopOpacity={0.95} />
+        </linearGradient>
+      </defs>
+      <rect x={x} y={y} width={width} height={height} fill={`url(#${GRADIENT_ID})`} rx={4} />
+    </g>
+  );
+}
+
 interface Row {
   week_start_date: string;
   hours: number;
@@ -125,7 +142,7 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
                   allowDecimals={false}
                 />
                 <Tooltip
-                  cursor={{ fill: 'hsl(var(--foreground) / 0.05)' }}
+                  cursor={<GradientCursor />}
                   contentStyle={{
                     backgroundColor: 'hsl(222, 47%, 11%)',
                     border: '1px solid hsl(var(--border))',
