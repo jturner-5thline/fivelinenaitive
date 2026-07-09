@@ -1780,12 +1780,15 @@ function OnBoardToProposalDrilldown({
                 />
                 <Tooltip
                   contentStyle={{
-                    background: 'hsl(222, 47%, 11%)',
+                    background: 'linear-gradient(180deg, hsl(222, 47%, 18%) 0%, hsl(222, 47%, 9%) 100%)',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 6,
+                    borderRadius: 8,
                     color: 'hsl(0,0%,98%)',
                     fontSize: 12,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                   }}
+                  labelStyle={{ color: 'hsl(0,0%,98%)', fontWeight: 600, marginBottom: 2 }}
+                  itemStyle={{ color: 'hsl(0,0%,92%)' }}
                   cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                   formatter={(v: any, name: string) =>
                     name === 'Conversion' ? [`${v ?? '—'}%`, name] : [v, name]
