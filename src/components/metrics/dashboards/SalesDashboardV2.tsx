@@ -1721,7 +1721,7 @@ function OnBoardToProposalDrilldown({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-4xl w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Deals-on-Board to Proposal</DialogTitle>
           <DialogDescription>
