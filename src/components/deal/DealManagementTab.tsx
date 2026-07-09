@@ -1,4 +1,3 @@
-import { DealTasksPanel } from './DealTasksPanel';
 import { FlexInfoNotificationsPanel } from './FlexInfoNotificationsPanel';
 import { EngagementSummaryCard } from './EngagementSummaryCard';
 import { EngagementTrendsCard } from './EngagementTrendsCard';
@@ -23,14 +22,9 @@ export function DealManagementTab({ dealId, dealName, dealValue, dealStage, deal
 
   return (
     <div className="space-y-4">
-      {/* Row 1 — Tasks · Info Requests — equal-height stretch */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="h-[420px]">
-          <DealTasksPanel dealId={dealId} />
-        </div>
-        <div className="h-[420px]">
-          <FlexInfoNotificationsPanel dealId={dealId} />
-        </div>
+      {/* Row 1 — Info Requests (Tasks moved to Deal Information tab) */}
+      <div className="h-[420px]">
+        <FlexInfoNotificationsPanel dealId={dealId} />
       </div>
 
       {/* Row 2 — Charts — mirrored pair, equal height */}

@@ -4473,6 +4473,13 @@ export default function DealDetail() {
 
                                     {isDealInfoFieldVisible('hoursAndFees') && renderDealInfoField('hoursAndFees')}
 
+                                    {/* Tasks — moved from the Management tab.
+                                        Renders below Hours & Fees when visible,
+                                        otherwise below the deal information items. */}
+                                    <div className="mt-4 h-[420px]">
+                                      <DealTasksPanel dealId={deal.id} />
+                                    </div>
+
                                     {/* Pipeline-specific fields. Driven by
                                         src/config/pipelineFieldSchemas.ts so the
                                         create-deal form and detail view stay in
