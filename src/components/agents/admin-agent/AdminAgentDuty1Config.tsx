@@ -1136,7 +1136,7 @@ export function AdminAgentDuty1Config() {
             ) : (knowledgeQ.data ?? []).length === 0 ? (
               <p className="text-[11px] text-muted-foreground italic">No documents yet.</p>
             ) : (
-              <ScrollArea className="max-h-56 rounded border border-border/40 bg-background/30">
+              <ScrollArea className="h-72 rounded border border-border/40 bg-background/30">
                 <ul className="divide-y divide-border/40">
                   {(knowledgeQ.data ?? []).map((d) => (
                     <li key={d.id} className="group flex items-start gap-2 px-2 py-1.5">
