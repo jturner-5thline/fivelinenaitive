@@ -625,16 +625,13 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       {/* Core KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <EmptyStatCard />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
           label="Qual Calls"
           value={qualCallsCurrent.data?.count ?? 0}
           prev={qualCallsPrevious.data?.count ?? 0}
           onClick={() => setQualCallsOpen(true)}
         />
-        <EmptyStatCard />
-        <EmptyStatCard />
         <StatCard
           label="Demos Started"
           value={current.trialsStarted}
