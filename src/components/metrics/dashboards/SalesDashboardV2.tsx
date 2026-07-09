@@ -11,6 +11,7 @@ import {
   type FinservStageEntry,
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
+import { useStageEntryCount } from '@/hooks/useStageEntryCounts';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
