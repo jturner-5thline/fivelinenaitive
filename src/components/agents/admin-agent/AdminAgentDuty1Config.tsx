@@ -438,6 +438,29 @@ export function AdminAgentDuty1Config() {
   const [pasteBody, setPasteBody] = useState('');
   const [isSavingPaste, setIsSavingPaste] = useState(false);
 
+  // Realtime: reflect ingestion progress as the edge function updates status.
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`admin-agent-knowledge-${companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_agent_knowledge_docs',
+          filter: `company_id=eq.${companyId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId, qc]);
+
   async function uploadKnowledgeFiles(files: FileList | null) {
     if (!companyId || !currentUserId || !files || files.length === 0) return;
     setIsUploading(true);
@@ -1176,11 +1199,19 @@ export function AdminAgentDuty1Config() {
                           {d.status === 'ready' ? (
                             <span className="text-emerald-400">Ready</span>
                           ) : d.status === 'pending' ? (
-                            <span className="text-amber-400">Extracting…</span>
+                            <span className="inline-flex items-center gap-1 text-amber-400">
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                              Extracting…
+                            </span>
                           ) : (
                             <span className="text-red-400" title={d.error_message || ''}>Error</span>
                           )}
                         </p>
+                        {d.status === 'pending' && (
+                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-amber-500/10">
+                            <div className="h-full w-1/3 rounded-full bg-amber-400/70 animate-kb-progress" />
+                          </div>
+                        )}
                         <div className="flex flex-wrap gap-1 mt-1">
                           {KB_TAG_OPTIONS.map((t) => {
                             const on = (d.tags || []).includes(t.value);
