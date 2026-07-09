@@ -257,7 +257,13 @@ function HoursDialog({ dealId, open, onOpenChange, onChanged, lockedPhase }: Dia
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Log Hours</DialogTitle>
+          <DialogTitle>
+            {lockedPhase === 'pre_signing'
+              ? 'Log Pre-Signing Hours'
+              : lockedPhase === 'post_signing'
+                ? 'Log Post-Signing Hours'
+                : 'Log Hours'}
+          </DialogTitle>
           <DialogDescription>
             Each entry is date-stamped. The date defaults to the most recent Friday
             (Monday–Friday of that week) and can be changed.
@@ -317,15 +323,17 @@ function HoursDialog({ dealId, open, onOpenChange, onChanged, lockedPhase }: Dia
               <span className="ml-1">Add</span>
             </Button>
           </div>
-          <Select value={newPhase} onValueChange={(v) => setNewPhase(v as HoursPhase)}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pre_signing">Pre-Signing</SelectItem>
-              <SelectItem value="post_signing">Post-Signing</SelectItem>
-            </SelectContent>
-          </Select>
+          {!lockedPhase && (
+            <Select value={newPhase} onValueChange={(v) => setNewPhase(v as HoursPhase)}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pre_signing">Pre-Signing</SelectItem>
+                <SelectItem value="post_signing">Post-Signing</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Entries list */}
@@ -334,12 +342,12 @@ function HoursDialog({ dealId, open, onOpenChange, onChanged, lockedPhase }: Dia
             <div className="py-4 flex items-center justify-center text-muted-foreground text-xs">
               <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…
             </div>
-          ) : entries.length === 0 ? (
+          ) : entries.filter((e) => !lockedPhase || e.phase === lockedPhase).length === 0 ? (
             <div className="py-3 text-center text-xs text-muted-foreground">
               No hours logged yet.
             </div>
           ) : (
-            entries.map((e) => (
+            entries.filter((e) => !lockedPhase || e.phase === lockedPhase).map((e) => (
               <EntryRow
                 key={e.id}
                 entry={e}
