@@ -1088,7 +1088,7 @@ export function AdminAgentDuty1Config() {
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-snug">
-              Reference documents the agent learns from — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted, digested, and added to the agent's knowledge base so it can recall the relevant parts when needed instead of re-reading every file on every run.
+              Reference documents the agent learns from — rules, requirements, definitions, glossaries, workflows, etc. Text is extracted, split into passages, and embedded into a vector index. For each deal it evaluates, the agent retrieves only the most relevant passages instead of re-reading every file on every run.
             </p>
 
             <div className="flex items-center gap-2">
