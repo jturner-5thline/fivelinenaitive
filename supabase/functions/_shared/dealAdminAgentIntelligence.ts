@@ -60,6 +60,74 @@ async function embedQuery(text: string): Promise<number[] | null> {
   }
 }
 
+function buildKnowledgeQueryText(bundle: DealSignalBundle): string {
+  const parts: string[] = [];
+  parts.push(`Deal: ${bundle.deal_name || bundle.deal_id}`);
+  if (bundle.current.stage) parts.push(`Stage: ${bundle.current.stage}`);
+  if (bundle.current.status) parts.push(`Status: ${bundle.current.status}`);
+  // Recent qualitative signal — status notes + latest activity give the best
+  // topical signal for retrieval.
+  const notes = (bundle.status_notes || [])
+    .slice(0, 3)
+    .map((n: any) => String(n?.note || n?.body || n?.content || "").trim())
+    .filter((s: string) => s.length > 0);
+  if (notes.length) parts.push(`Recent notes: ${notes.join(" | ")}`);
+  const acts = (bundle.activity || [])
+    .slice(0, 5)
+    .map((a: any) => String(a?.title || a?.summary || a?.description || "").trim())
+    .filter((s: string) => s.length > 0);
+  if (acts.length) parts.push(`Recent activity: ${acts.join(" | ")}`);
+  const stages = (bundle.stage_history || [])
+    .slice(0, 3)
+    .map((s: any) => `${s?.from_stage ?? "?"} → ${s?.to_stage ?? "?"}`);
+  if (stages.length) parts.push(`Stage history: ${stages.join(", ")}`);
+  return parts.join("\n");
+}
+
+async function retrieveKnowledgeForDeal(
+  supabase: SupabaseClient,
+  companyId: string,
+  tagFilter: string[],
+  bundle: DealSignalBundle,
+): Promise<string | null> {
+  const query = buildKnowledgeQueryText(bundle);
+  const vec = await embedQuery(query);
+  if (!vec) return null;
+  try {
+    const { data, error } = await supabase.rpc("match_admin_agent_knowledge", {
+      p_company_id: companyId,
+      p_agent_key: "admin_agent",
+      p_query: vec as unknown as string,
+      p_match_count: KB_MATCH_COUNT,
+      p_tag_filter: tagFilter.length > 0 ? tagFilter : null,
+    });
+    if (error) {
+      console.warn("[deal-admin-agent] kb rpc failed", error.message);
+      return null;
+    }
+    const rows: any[] = Array.isArray(data) ? data : [];
+    if (rows.length === 0) return null;
+    let used = 0;
+    const blocks: string[] = [];
+    for (const r of rows) {
+      const snippet = String(r?.content || "").trim().slice(0, KB_PER_CHUNK_CAP);
+      if (!snippet) continue;
+      if (used + snippet.length > KB_TOTAL_CAP) break;
+      used += snippet.length;
+      const title = String(r?.title || "Untitled").trim();
+      const tags = Array.isArray(r?.tags) && r.tags.length > 0 ? ` [${r.tags.join(", ")}]` : "";
+      const sim = typeof r?.similarity === "number" ? ` (relevance ${r.similarity.toFixed(2)})` : "";
+      blocks.push(`### ${title}${tags}${sim}\n${snippet}`);
+    }
+    if (blocks.length === 0) return null;
+    const scopeNote = tagFilter.length > 0 ? ` — scoped to tags: ${tagFilter.join(", ")}` : "";
+    return `ADMIN AGENT KNOWLEDGE BASE (top ${blocks.length} passages retrieved for this deal${scopeNote} — treat as authoritative reference):\n\n${blocks.join("\n\n---\n\n")}`;
+  } catch (e) {
+    console.warn("[deal-admin-agent] kb retrieval failed", (e as Error)?.message);
+    return null;
+  }
+}
+
 // Mirrors the AiActionType union used by the queue UI/executor.
 const SUPPORTED_ACTION_TYPES = [
   "update_deal_stage",
