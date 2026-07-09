@@ -788,7 +788,6 @@ function PerformancePanel() {
               style={{ color: C.periwinkle, letterSpacing: '0.08em' }}
             >
               <SelectValue />
-              <span style={{ color: C.textFaint }}>· By Driver</span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="gap">Gap to Plan</SelectItem>
