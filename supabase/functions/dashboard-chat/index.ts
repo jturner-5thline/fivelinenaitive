@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -618,24 +619,18 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
       const styleMemory = (ctx.memories || []).find((m: any) => m.key === 'email_tone' || m.key === 'communication_style');
       const styleHint = styleMemory ? `\nUser's preferred style: ${styleMemory.value}` : '';
 
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) return { success: false, error: "AI not configured for drafting" };
-
-      const draftResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            { role: "system", content: `You are a professional commercial lending email writer. Write concise, professional emails. Tone: ${args.tone || 'professional'}. Return ONLY the email body (no subject line, no greeting instructions). Use proper HTML formatting with <p> tags.${styleHint}` },
-            { role: "user", content: `Draft an email to ${args.to_name} (${args.to_email || ''}).\nSubject: ${args.subject}\nPurpose: ${args.purpose}\nKey points: ${args.key_points}${dealContext}` },
-          ],
-        }),
-      });
-
-      if (!draftResp.ok) return { success: false, error: "Failed to draft email" };
-      const draftData = await draftResp.json();
-      const emailBody = draftData.choices?.[0]?.message?.content || "";
+      if (!Deno.env.get("ANTHROPIC_API_KEY")) return { success: false, error: "AI not configured for drafting" };
+      let emailBody = "";
+      try {
+        const result = await callClaude({
+          system: `You are a professional commercial lending email writer. Write concise, professional emails. Tone: ${args.tone || 'professional'}. Return ONLY the email body (no subject line, no greeting instructions). Use proper HTML formatting with <p> tags.${styleHint}`,
+          messages: [{ role: "user", content: `Draft an email to ${args.to_name} (${args.to_email || ''}).\nSubject: ${args.subject}\nPurpose: ${args.purpose}\nKey points: ${args.key_points}${dealContext}` }],
+          maxTokens: 2048,
+        });
+        emailBody = result.text;
+      } catch {
+        return { success: false, error: "Failed to draft email" };
+      }
 
       return {
         success: true,
@@ -769,16 +764,17 @@ async function executeTool(supabase: any, userId: string, companyId: string, nam
         lender_update: "Write a professional lender update email covering: Deal Progress, Recent Milestones, Current Lender Status, and Upcoming Actions.",
         risk_assessment: "Provide a detailed risk assessment covering: Financial Risks, Market Risks, Operational Risks, Timeline Risks, and Lender Concentration Risk. Rate each as Low/Medium/High.",
       };
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) return { success: false, error: "AI not configured" };
-      const memoResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: [{ role: "system", content: "You are a senior commercial lending analyst. Write professional, data-driven documents. Use specific numbers and facts from the context provided." }, { role: "user", content: `${typePrompts[args.memo_type]}\n\nContext:\n${memoContext}` }] }),
-      });
-      if (!memoResp.ok) return { success: false, error: "Failed to generate memo" };
-      const memoData = await memoResp.json();
-      return { success: true, message: `${args.memo_type.replace(/_/g, ' ')} generated for ${deal.company}`, content: memoData.choices?.[0]?.message?.content || "" };
+      if (!Deno.env.get("ANTHROPIC_API_KEY")) return { success: false, error: "AI not configured" };
+      try {
+        const result = await callClaude({
+          system: "You are a senior commercial lending analyst. Write professional, data-driven documents. Use specific numbers and facts from the context provided.",
+          messages: [{ role: "user", content: `${typePrompts[args.memo_type]}\n\nContext:\n${memoContext}` }],
+          maxTokens: 4096,
+        });
+        return { success: true, message: `${args.memo_type.replace(/_/g, ' ')} generated for ${deal.company}`, content: result.text };
+      } catch {
+        return { success: false, error: "Failed to generate memo" };
+      }
     }
 
     case "compare_deals": {
