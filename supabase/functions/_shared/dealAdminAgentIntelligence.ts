@@ -27,6 +27,39 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5-20250929";
 
+// Knowledge-base retrieval (RAG) — uses Lovable AI Gateway embeddings so we
+// only pull the chunks relevant to the deal we're evaluating instead of
+// re-injecting every uploaded document on every call.
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const EMBED_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
+const EMBED_MODEL = "openai/text-embedding-3-small";
+const KB_MATCH_COUNT = 6;
+const KB_PER_CHUNK_CAP = 1200;
+const KB_TOTAL_CAP = 8000;
+
+async function embedQuery(text: string): Promise<number[] | null> {
+  if (!LOVABLE_API_KEY) return null;
+  const input = text.trim().slice(0, 6000);
+  if (!input) return null;
+  try {
+    const res = await fetch(EMBED_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": LOVABLE_API_KEY },
+      body: JSON.stringify({ model: EMBED_MODEL, input }),
+    });
+    if (!res.ok) {
+      console.warn(`[deal-admin-agent] embed ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return null;
+    }
+    const json = await res.json();
+    const vec = json?.data?.[0]?.embedding;
+    return Array.isArray(vec) ? (vec as number[]) : null;
+  } catch (e) {
+    console.warn("[deal-admin-agent] embed failed", (e as Error)?.message);
+    return null;
+  }
+}
+
 // Mirrors the AiActionType union used by the queue UI/executor.
 const SUPPORTED_ACTION_TYPES = [
   "update_deal_stage",
