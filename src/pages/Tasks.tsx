@@ -327,6 +327,9 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const undoStack = useUndoStack();
 
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  // Tracks whether the user explicitly dismissed the detail pane so the
+  // auto-select effect below doesn't immediately re-open the first task.
+  const [detailDismissed, setDetailDismissed] = useState(false);
   const [viewMode, setViewMode] = useLocalStorageState<ViewMode>(`${_prefsNs}:viewMode`, 'list');
 
   const updateTaskWithUndo = useCallback((taskId: string, updates: Partial<Task>, label = 'Task change') => {
@@ -700,10 +703,11 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
       if (selectedTaskId) setSelectedTaskId(null);
       return;
     }
+    if (detailDismissed) return;
     if (!selectedTaskId || !filtered.some(t => t.id === selectedTaskId)) {
       setSelectedTaskId(filtered[0].id);
     }
-  }, [filtered, selectedTaskId]);
+  }, [filtered, selectedTaskId, detailDismissed]);
 
   const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
   const [taskNameWarning, setTaskNameWarning] = useState('');
