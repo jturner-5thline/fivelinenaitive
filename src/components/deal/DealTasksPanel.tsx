@@ -71,8 +71,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
-  const [viewFilter, setViewFilter] = useState<'mine' | 'all'>('mine');
-  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed' | 'all'>('incomplete');
+  const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed'>('incomplete');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -123,21 +122,10 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     if (ok) { toast.success('Task deleted'); } else { toast.error('Failed to delete task'); }
   };
 
-  const filteredTasks = useMemo(() => {
-    if (viewFilter === 'mine' && user?.id) return tasks.filter(t => t.assigned_to === user.id);
-    return tasks;
-  }, [tasks, viewFilter, user?.id]);
+  const pendingTasks = tasks.filter(t => !isTaskCompleted(t));
+  const completedTasks = tasks.filter(t => isTaskCompleted(t));
 
-  const pendingTasks = filteredTasks.filter(t => !isTaskCompleted(t));
-  const completedTasks = filteredTasks.filter(t => isTaskCompleted(t));
-
-  const displayedTasks = useMemo(() => {
-    switch (statusFilter) {
-      case 'incomplete': return pendingTasks;
-      case 'completed': return completedTasks;
-      case 'all': return filteredTasks;
-    }
-  }, [statusFilter, pendingTasks, completedTasks, filteredTasks]);
+  const displayedTasks = statusFilter === 'incomplete' ? pendingTasks : completedTasks;
 
   const getInitials = (member: TeamMember | undefined) => {
     if (!member) return '?';
@@ -155,11 +143,19 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
               <Badge variant="secondary" className="text-[10px] h-5 font-normal">{pendingTasks.length} open</Badge>
             )}
           </CardTitle>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setIsCreateOpen(true); }} className="h-7 gap-1 text-xs px-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <ToggleGroup
+              type="single"
+              value={statusFilter}
+              onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed')}
+            >
+              <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Incomplete</ToggleGroupItem>
+              <ToggleGroupItem value="completed" className="text-[10px] h-6 px-2">Complete</ToggleGroupItem>
+            </ToggleGroup>
+            <Button size="sm" variant="outline" onClick={() => setIsCreateOpen(true)} className="h-7 gap-1 text-xs px-2">
               <Plus className="h-3 w-3" /> Add
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setIsOpen(o => !o)}>
               {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
           </div>
@@ -168,17 +164,6 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
         {/* ── Body ── flex-1 so it fills remaining card height */}
         {isOpen && (
           <CardContent className="flex-1 flex flex-col px-4 pb-4 pt-0 space-y-3 min-h-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap shrink-0">
-              <ToggleGroup type="single" value={viewFilter} onValueChange={(v) => v && setViewFilter(v as 'mine' | 'all')} className="justify-start">
-                <ToggleGroupItem value="mine" className="text-[10px] h-6 px-2">My Tasks</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
-              </ToggleGroup>
-              <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as 'incomplete' | 'completed' | 'all')} className="justify-end">
-                <ToggleGroupItem value="incomplete" className="text-[10px] h-6 px-2">Open</ToggleGroupItem>
-                <ToggleGroupItem value="completed" className="text-[10px] h-6 px-2">Done</ToggleGroupItem>
-                <ToggleGroupItem value="all" className="text-[10px] h-6 px-2">All</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
             {isLoading && tasks.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-xs text-muted-foreground">Loading tasks…</p>
