@@ -27,6 +27,107 @@ const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-5-20250929";
 
+// Knowledge-base retrieval (RAG) — uses Lovable AI Gateway embeddings so we
+// only pull the chunks relevant to the deal we're evaluating instead of
+// re-injecting every uploaded document on every call.
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const EMBED_URL = "https://ai.gateway.lovable.dev/v1/embeddings";
+const EMBED_MODEL = "openai/text-embedding-3-small";
+const KB_MATCH_COUNT = 6;
+const KB_PER_CHUNK_CAP = 1200;
+const KB_TOTAL_CAP = 8000;
+
+async function embedQuery(text: string): Promise<number[] | null> {
+  if (!LOVABLE_API_KEY) return null;
+  const input = text.trim().slice(0, 6000);
+  if (!input) return null;
+  try {
+    const res = await fetch(EMBED_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": LOVABLE_API_KEY },
+      body: JSON.stringify({ model: EMBED_MODEL, input }),
+    });
+    if (!res.ok) {
+      console.warn(`[deal-admin-agent] embed ${res.status}: ${(await res.text()).slice(0, 200)}`);
+      return null;
+    }
+    const json = await res.json();
+    const vec = json?.data?.[0]?.embedding;
+    return Array.isArray(vec) ? (vec as number[]) : null;
+  } catch (e) {
+    console.warn("[deal-admin-agent] embed failed", (e as Error)?.message);
+    return null;
+  }
+}
+
+function buildKnowledgeQueryText(bundle: DealSignalBundle): string {
+  const parts: string[] = [];
+  parts.push(`Deal: ${bundle.deal_name || bundle.deal_id}`);
+  if (bundle.current.stage) parts.push(`Stage: ${bundle.current.stage}`);
+  if (bundle.current.status) parts.push(`Status: ${bundle.current.status}`);
+  // Recent qualitative signal — status notes + latest activity give the best
+  // topical signal for retrieval.
+  const notes = (bundle.status_notes || [])
+    .slice(0, 3)
+    .map((n: any) => String(n?.note || n?.body || n?.content || "").trim())
+    .filter((s: string) => s.length > 0);
+  if (notes.length) parts.push(`Recent notes: ${notes.join(" | ")}`);
+  const acts = (bundle.activity || [])
+    .slice(0, 5)
+    .map((a: any) => String(a?.title || a?.summary || a?.description || "").trim())
+    .filter((s: string) => s.length > 0);
+  if (acts.length) parts.push(`Recent activity: ${acts.join(" | ")}`);
+  const stages = (bundle.stage_history || [])
+    .slice(0, 3)
+    .map((s: any) => `${s?.from_stage ?? "?"} → ${s?.to_stage ?? "?"}`);
+  if (stages.length) parts.push(`Stage history: ${stages.join(", ")}`);
+  return parts.join("\n");
+}
+
+async function retrieveKnowledgeForDeal(
+  supabase: SupabaseClient,
+  companyId: string,
+  tagFilter: string[],
+  bundle: DealSignalBundle,
+): Promise<string | null> {
+  const query = buildKnowledgeQueryText(bundle);
+  const vec = await embedQuery(query);
+  if (!vec) return null;
+  try {
+    const { data, error } = await supabase.rpc("match_admin_agent_knowledge", {
+      p_company_id: companyId,
+      p_agent_key: "admin_agent",
+      p_query: vec as unknown as string,
+      p_match_count: KB_MATCH_COUNT,
+      p_tag_filter: tagFilter.length > 0 ? tagFilter : null,
+    });
+    if (error) {
+      console.warn("[deal-admin-agent] kb rpc failed", error.message);
+      return null;
+    }
+    const rows: any[] = Array.isArray(data) ? data : [];
+    if (rows.length === 0) return null;
+    let used = 0;
+    const blocks: string[] = [];
+    for (const r of rows) {
+      const snippet = String(r?.content || "").trim().slice(0, KB_PER_CHUNK_CAP);
+      if (!snippet) continue;
+      if (used + snippet.length > KB_TOTAL_CAP) break;
+      used += snippet.length;
+      const title = String(r?.title || "Untitled").trim();
+      const tags = Array.isArray(r?.tags) && r.tags.length > 0 ? ` [${r.tags.join(", ")}]` : "";
+      const sim = typeof r?.similarity === "number" ? ` (relevance ${r.similarity.toFixed(2)})` : "";
+      blocks.push(`### ${title}${tags}${sim}\n${snippet}`);
+    }
+    if (blocks.length === 0) return null;
+    const scopeNote = tagFilter.length > 0 ? ` — scoped to tags: ${tagFilter.join(", ")}` : "";
+    return `ADMIN AGENT KNOWLEDGE BASE (top ${blocks.length} passages retrieved for this deal${scopeNote} — treat as authoritative reference):\n\n${blocks.join("\n\n---\n\n")}`;
+  } catch (e) {
+    console.warn("[deal-admin-agent] kb retrieval failed", (e as Error)?.message);
+    return null;
+  }
+}
+
 // Mirrors the AiActionType union used by the queue UI/executor.
 const SUPPORTED_ACTION_TYPES = [
   "update_deal_stage",
@@ -2786,6 +2887,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   // Load workspace custom + learned rules once per sweep and inject into
   // every model call so the agent operates under them company-wide.
   let companyRulesBlock: string | null = null;
+  let kbTagFilter: string[] = [];
   try {
     const [{ data: settings }, { data: learned }] = await Promise.all([
       supabase
@@ -2818,49 +2920,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     const tagFilter: string[] = Array.isArray((settings as any)?.knowledge_tag_filter)
       ? ((settings as any).knowledge_tag_filter as any[]).filter((t: any) => typeof t === "string" && t.length > 0)
       : [];
-    // Knowledge base — uploaded / pasted reference documents.
-    try {
-      let kbQuery = supabase
-        .from("admin_agent_knowledge_docs")
-        .select("title, extracted_text, tags")
-        .eq("company_id", companyId)
-        .eq("agent_key", "admin_agent")
-        .eq("status", "ready");
-      if (tagFilter.length > 0) {
-        // Only include docs that carry at least one selected tag.
-        kbQuery = kbQuery.overlaps("tags", tagFilter);
-      }
-      const { data: kb } = await kbQuery;
-      const docs = (kb || [])
-        .map((d: any) => ({
-          title: String(d?.title || "Untitled").trim(),
-          text: String(d?.extracted_text || "").trim(),
-          tags: Array.isArray(d?.tags) ? (d.tags as string[]) : [],
-        }))
-        .filter((d) => d.text.length > 0);
-      if (docs.length > 0) {
-        // Cap total injected text so we don't blow the context window.
-        const PER_DOC_CAP = 8000;
-        const TOTAL_CAP = 60_000;
-        let used = 0;
-        const blocks: string[] = [];
-        for (const d of docs) {
-          const snippet = d.text.slice(0, PER_DOC_CAP);
-          if (used + snippet.length > TOTAL_CAP) break;
-          used += snippet.length;
-          const tagLine = d.tags.length > 0 ? ` [${d.tags.join(", ")}]` : "";
-          blocks.push(`### ${d.title}${tagLine}\n${snippet}`);
-        }
-        if (blocks.length > 0) {
-          const scopeNote = tagFilter.length > 0
-            ? ` — scoped to tags: ${tagFilter.join(", ")}`
-            : "";
-          parts.push(`ADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context${scopeNote}):\n\n${blocks.join("\n\n---\n\n")}`);
-        }
-      }
-    } catch (e) {
-      console.warn("[deal-admin-agent] knowledge-base load failed", (e as Error)?.message);
-    }
+    kbTagFilter = tagFilter;
+    // Knowledge base is now retrieved per-deal via embeddings (RAG) rather
+    // than injected in full here — see retrieveKnowledgeForDeal below.
     if (parts.length > 0) companyRulesBlock = parts.join("\n\n");
   } catch (e) {
     console.warn("[deal-admin-agent] rule load failed", (e as Error)?.message);
@@ -3024,7 +3086,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
-      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, companyRulesBlock), bundle);
+      const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
+      const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
+      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle);
       // Drop lender-scoped proposals (draft_email / update_funding_source)
       // whose target_object_id couldn't be resolved to a real deal_lender on
       // this deal. The LLM occasionally emits the deal id or a hallucinated

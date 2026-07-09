@@ -432,6 +432,50 @@ export type Database = {
           },
         ]
       }
+      admin_agent_knowledge_chunks: {
+        Row: {
+          agent_key: string
+          chunk_index: number
+          company_id: string
+          content: string
+          created_at: string
+          doc_id: string
+          embedding: string | null
+          id: string
+          token_count: number | null
+        }
+        Insert: {
+          agent_key?: string
+          chunk_index?: number
+          company_id: string
+          content: string
+          created_at?: string
+          doc_id: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Update: {
+          agent_key?: string
+          chunk_index?: number
+          company_id?: string
+          content?: string
+          created_at?: string
+          doc_id?: string
+          embedding?: string | null
+          id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_agent_knowledge_chunks_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "admin_agent_knowledge_docs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_agent_knowledge_docs: {
         Row: {
           agent_key: string
@@ -28927,6 +28971,23 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      match_admin_agent_knowledge: {
+        Args: {
+          p_agent_key: string
+          p_company_id: string
+          p_match_count?: number
+          p_query: string
+          p_tag_filter?: string[]
+        }
+        Returns: {
+          chunk_id: string
+          content: string
+          doc_id: string
+          similarity: number
+          tags: string[]
+          title: string
+        }[]
       }
       match_lenders_by_narrative: {
         Args: {
