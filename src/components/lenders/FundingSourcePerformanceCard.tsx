@@ -38,6 +38,7 @@ import { useAcquisitionPlan } from '@/components/lenders/FundingSourcePlanModal'
 import type { MasterLender } from '@/hooks/useMasterLenders';
 
 type Cadence = 'monthly' | 'quarterly';
+type ViewMode = 'plan' | 'added';
 
 const PANEL_STYLE: CSSProperties = {
   background:
@@ -93,6 +94,8 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<number>(currentYear);
   const [cadenceOverride, setCadenceOverride] = useState<Cadence | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('plan');
+  const [addedDrill, setAddedDrill] = useState<{ idx: number; label: string } | null>(null);
   const [drill, setDrill] = useState<
     | { kind: 'period'; period: number; label: string }
     | { kind: 'ytd'; label: string }
@@ -276,6 +279,52 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
 
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
+  // ─── "New Funding Sources Added" view — bucket master_lenders by created_at
+  const addedByPeriod = useMemo(() => {
+    const periods = cadence === 'monthly' ? 12 : 4;
+    const buckets: MasterLender[][] = Array.from({ length: periods }, () => []);
+    for (const l of lenders) {
+      const d = new Date(l.created_at);
+      if (isNaN(d.getTime())) continue;
+      if (d.getFullYear() !== year) continue;
+      const idx = cadence === 'monthly' ? d.getMonth() : Math.floor(d.getMonth() / 3);
+      if (idx >= 0 && idx < periods) buckets[idx].push(l);
+    }
+    return buckets;
+  }, [lenders, year, cadence]);
+
+  const addedChartData = useMemo(
+    () =>
+      addedByPeriod.map((rows, i) => ({
+        period: cadence === 'monthly' ? MONTH_LABELS[i] : `Q${i + 1}`,
+        idx: i,
+        added: rows.length,
+      })),
+    [addedByPeriod, cadence],
+  );
+
+  const ytdAdded = useMemo(
+    () => addedByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, arr) => s + arr.length, 0),
+    [addedByPeriod, ytdMaxIdx],
+  );
+  const totalAddedYear = useMemo(
+    () => addedByPeriod.reduce((s, arr) => s + arr.length, 0),
+    [addedByPeriod],
+  );
+  const bestPeriodIdx = useMemo(() => {
+    let best = -1;
+    let bestVal = -1;
+    addedByPeriod.forEach((arr, i) => {
+      if (arr.length > bestVal) { bestVal = arr.length; best = i; }
+    });
+    return best;
+  }, [addedByPeriod]);
+
+  const addedDrillRows = useMemo(
+    () => (addedDrill ? addedByPeriod[addedDrill.idx] ?? [] : []),
+    [addedDrill, addedByPeriod],
+  );
+
   return (
     <>
       <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
@@ -283,10 +332,19 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
           <div className="flex items-center gap-2 min-w-0">
             <Target className="h-3.5 w-3.5 text-sky-400 shrink-0" />
             <div className="text-[11px] uppercase tracking-wider text-slate-400">
-              Performance — Plan vs Actual
+              {viewMode === 'plan' ? 'Performance — Plan vs Actual' : 'New Funding Sources Added'}
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as ViewMode)}
+            >
+              <TabsList className="h-7 bg-slate-900/60 border border-slate-700/60">
+                <TabsTrigger value="plan" className="text-[11px] h-5 px-2">Plan vs Actual</TabsTrigger>
+                <TabsTrigger value="added" className="text-[11px] h-5 px-2">Added</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Tabs
               value={cadence}
               onValueChange={(v) => setCadenceOverride(v as Cadence)}
@@ -306,18 +364,18 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                 ))}
               </SelectContent>
             </Select>
-            <Button
+            {viewMode === 'plan' && <Button
               variant="ghost"
               size="sm"
               onClick={onOpenPlan}
               className="h-7 text-[11px] text-sky-300 hover:text-sky-200 hover:bg-slate-800/60 gap-1"
             >
               <Pencil className="h-3 w-3" /> Edit plan
-            </Button>
+            </Button>}
           </div>
         </div>
 
-        {!hasPlan && !isLoading ? (
+        {viewMode === 'plan' && !hasPlan && !isLoading ? (
           <div className="p-8 text-center space-y-3">
             <div className="text-[13px] text-slate-300">
               No acquisition plan set for {year}.
@@ -333,7 +391,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
               <Target className="h-3.5 w-3.5" /> Set a plan
             </Button>
           </div>
-        ) : (
+        ) : viewMode === 'plan' ? (
           <div className="p-3 space-y-3">
             {/* YTD summary stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -492,6 +550,68 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
               </div>
             </TooltipProvider>
           </div>
+        ) : (
+          <div className="p-3 space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <StatTile label={`YTD Added ${year}`} value={ytdAdded} valueClass="text-emerald-300" />
+              <StatTile label={`Total ${year}`} value={totalAddedYear} />
+              <StatTile
+                label={cadence === 'monthly' ? 'Best month' : 'Best quarter'}
+                value={
+                  bestPeriodIdx >= 0 && addedByPeriod[bestPeriodIdx].length > 0
+                    ? `${periodLabel(bestPeriodIdx)} · ${addedByPeriod[bestPeriodIdx].length}`
+                    : '—'
+                }
+              />
+            </div>
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={addedChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
+                  <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
+                  <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
+                  <ReTooltip
+                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const p = payload[0].payload as { added: number };
+                      return (
+                        <div
+                          style={{
+                            background: 'hsl(220 45% 10%)',
+                            border: '1px solid hsl(220 45% 35% / 0.4)',
+                            borderRadius: 8,
+                            padding: '8px 10px',
+                            fontSize: 12,
+                            color: 'hsl(220 30% 92%)',
+                          }}
+                        >
+                          <div className="font-semibold mb-1">{label} {year}</div>
+                          <div className="flex justify-between gap-4">
+                            <span style={{ color: ACTUAL_COLOR }}>Added</span>
+                            <span className="tabular-nums">{p.added}</span>
+                          </div>
+                          <div className="mt-1 text-[10px] text-slate-400">Click to view funding sources</div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Bar
+                    dataKey="added"
+                    name="Added"
+                    fill={ACTUAL_COLOR}
+                    radius={[3, 3, 0, 0]}
+                    onClick={(d) => {
+                      const idx = (d as { idx?: number })?.idx;
+                      if (idx == null) return;
+                      setAddedDrill({ idx, label: `${periodLabel(idx)} ${year} — Funding Sources Added` });
+                    }}
+                    cursor="pointer"
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         )}
       </div>
 
@@ -565,6 +685,50 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                   </tbody>
                 </table>
               </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={!!addedDrill} onOpenChange={(o) => { if (!o) setAddedDrill(null); }}>
+        <SheetContent side="right" className="w-[560px] sm:max-w-[640px] z-[1500] bg-slate-950 text-slate-100 border-slate-700/60 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-slate-100">{addedDrill?.label}</SheetTitle>
+            <SheetDescription className="text-slate-400 text-[12px]">
+              {addedDrillRows.length} funding source{addedDrillRows.length === 1 ? '' : 's'} added to the database this period.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-3">
+            {addedDrillRows.length === 0 ? (
+              <div className="p-8 text-center text-[12px] text-slate-500">
+                No new funding sources added in this period.
+              </div>
+            ) : (
+              <table className="w-full text-[12px]">
+                <thead className="text-left text-slate-400 border-b border-slate-700/40">
+                  <tr>
+                    <th className="py-1.5 pr-2">Funding source</th>
+                    <th className="py-1.5 pr-2">Type</th>
+                    <th className="py-1.5 pr-2">Owner</th>
+                    <th className="py-1.5 text-right">Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {addedDrillRows
+                    .slice()
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((l) => (
+                      <tr key={l.id} className="border-t border-slate-700/40 align-top">
+                        <td className="py-1.5 pr-2 text-slate-100 truncate max-w-[220px]">{l.name}</td>
+                        <td className="py-1.5 pr-2 text-slate-300">{l.lender_type || '—'}</td>
+                        <td className="py-1.5 pr-2 text-slate-300 truncate max-w-[140px]">{l.relationship_owners || '—'}</td>
+                        <td className="py-1.5 text-right text-slate-400 tabular-nums whitespace-nowrap">
+                          {new Date(l.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             )}
           </div>
         </SheetContent>
