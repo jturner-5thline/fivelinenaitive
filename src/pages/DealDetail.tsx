@@ -4212,15 +4212,31 @@ export default function DealDetail() {
                                         <div className="space-y-3 min-w-0">
                                           <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Pre-Signing</span>
-                                            <span className="text-sm font-medium h-8 flex items-center tabular-nums">
-                                              {(deal.preSigningHours ?? 0).toLocaleString()}
-                                            </span>
+                                            <div className="flex items-center gap-2 h-8">
+                                              <span className="text-sm font-medium tabular-nums flex-1">
+                                                {(deal.preSigningHours ?? 0).toLocaleString()}
+                                              </span>
+                                              <AddHoursButton
+                                                dealId={deal.id}
+                                                phase="pre_signing"
+                                                iconOnly
+                                                onChanged={() => { void refreshDeals?.(); }}
+                                              />
+                                            </div>
                                           </div>
                                           <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Post-Signing</span>
-                                            <span className="text-sm font-medium h-8 flex items-center tabular-nums">
-                                              {(deal.postSigningHours ?? 0).toLocaleString()}
-                                            </span>
+                                            <div className="flex items-center gap-2 h-8">
+                                              <span className="text-sm font-medium tabular-nums flex-1">
+                                                {(deal.postSigningHours ?? 0).toLocaleString()}
+                                              </span>
+                                              <AddHoursButton
+                                                dealId={deal.id}
+                                                phase="post_signing"
+                                                iconOnly
+                                                onChanged={() => { void refreshDeals?.(); }}
+                                              />
+                                            </div>
                                           </div>
                                           <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Total Hours</span>
@@ -4238,12 +4254,6 @@ export default function DealDetail() {
                                                 return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
                                               })()}
                                             </span>
-                                          </div>
-                                          <div className="pt-1">
-                                            <AddHoursButton
-                                              dealId={deal.id}
-                                              onChanged={() => { void refreshDeals?.(); }}
-                                            />
                                           </div>
                                         </div>
                                         {/* Fees */}
