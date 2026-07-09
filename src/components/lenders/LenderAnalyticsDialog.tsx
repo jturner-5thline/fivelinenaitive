@@ -1032,13 +1032,13 @@ export function LenderAnalyticsDialog({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <IntelPanel
                   title="Flex Engagement by Lender"
-                  subtitle="active sessions (screen refreshes while logged in)"
+                  subtitle={`active sessions · ${dateRangeLabel(dateRange)}`}
                   subtitleTone="accent"
                   badge="live"
                 >
                   <div className="px-4 pb-3 pt-1">
                     <div className="text-[11px] text-slate-500 mb-3">
-                      Avoids inflating counts for users who never log out
+                      Activity counted within the selected timeframe
                     </div>
                     {lenderStats.filter((s) => s.isFlex).length === 0 ? (
                       <div className="py-4 text-center text-[12px] text-slate-500">No Flex-connected lenders</div>
