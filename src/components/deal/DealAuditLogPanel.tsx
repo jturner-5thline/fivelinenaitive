@@ -265,27 +265,29 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
                             {isExit ? (
                               <>
-                                <span className="text-muted-foreground">Exited stage</span>
+                                <span className="text-muted-foreground">Exited</span>
                                 <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
                                   {exitLabel}
                                 </span>
                               </>
                             ) : (
                               <>
-                                <span className="text-muted-foreground">
-                                  {hasFrom ? 'Stage changed from' : 'Entered stage'}
-                                </span>
-                                {hasFrom && (
-                                  <>
-                                    <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground break-words">
-                                      {fromLabel}
+                                <div className="flex flex-col gap-1 w-full">
+                                  {hasFrom && (
+                                    <div className="flex flex-wrap items-center gap-x-1.5">
+                                      <span className="text-muted-foreground">Exited</span>
+                                      <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground break-words">
+                                        {fromLabel}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="flex flex-wrap items-center gap-x-1.5">
+                                    <span className="text-muted-foreground">Entered</span>
+                                    <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
+                                      {toLabel}
                                     </span>
-                                    <span className="text-muted-foreground"> to </span>
-                                  </>
-                                )}
-                                <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
-                                  {toLabel}
-                                </span>
+                                  </div>
+                                </div>
                               </>
                             )}
                             {isBackfill && (
