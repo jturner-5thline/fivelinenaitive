@@ -1480,21 +1480,45 @@ function IntelKpi({
   hint,
   hintTone = 'muted',
   loading,
+  onClick,
 }: {
   label: string;
   value: number | string;
   hint?: string;
   hintTone?: 'muted' | 'good' | 'bad';
   loading?: boolean;
+  onClick?: () => void;
 }) {
   const hintColor = hintTone === 'good' ? '#4dd9ac' : hintTone === 'bad' ? '#f87171' : '#94a3b8';
-  return (
-    <div className="rounded-lg border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
-      <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500 font-medium">{label}</div>
+  const Inner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500 font-medium">{label}</div>
+        {onClick && (
+          <span className="text-[10px] text-slate-500 group-hover:text-sky-300 transition-colors">Drill →</span>
+        )}
+      </div>
       <div className="text-[38px] leading-none font-semibold tabular-nums" style={{ color: '#4dd9ac' }}>
         {loading ? <span className="inline-block h-9 w-16 rounded animate-pulse" style={{ background: '#2a2f3d' }} /> : value}
       </div>
       {hint && <div className="text-[11px] leading-snug mt-0.5" style={{ color: hintColor }}>{hint}</div>}
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="group rounded-lg border p-4 flex flex-col gap-1.5 text-left transition-colors hover:border-sky-500/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+        style={INTEL_CARD_STYLE}
+      >
+        {Inner}
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-lg border p-4 flex flex-col gap-1.5" style={INTEL_CARD_STYLE}>
+      {Inner}
     </div>
   );
 }
