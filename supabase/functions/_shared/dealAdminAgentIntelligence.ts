@@ -3018,7 +3018,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
-      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, companyRulesBlock), bundle);
+      const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
+      const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
+      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle);
       // Drop lender-scoped proposals (draft_email / update_funding_source)
       // whose target_object_id couldn't be resolved to a real deal_lender on
       // this deal. The LLM occasionally emits the deal id or a hallucinated
