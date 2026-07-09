@@ -1,41 +1,57 @@
 ## Goal
+Move the true "agents" and every email-extraction function off `google/gemini-*` on the Lovable AI Gateway and onto `claude-sonnet-4-5-20250929` via the Anthropic Messages API (same pattern the Deal Admin Agent already uses).
 
-Combine per-lender/per-funding-source "Nudge [X]" email drafts on the same deal into a single Approval Queue item titled "Follow up with Lenders", with the right-hand detail pane exposing each individual draft for edit/approve/reject.
+`ANTHROPIC_API_KEY` is already configured — no new secrets needed.
 
-## What changes
+## Functions to migrate (13)
 
-Purely a client-side grouping layer on top of the existing queue — no schema, no edge function changes. Each underlying `draft_email` row still exists and is approved/rejected individually via the current mutation paths.
+**Agents (autonomous decisions / write to queues)**
+1. `dashboard-chat` — main conversational agent (multiple call sites)
+2. `james-top-priority` — daily prioritization agent
+3. `field-suggestion-engine` — writes to `contact_field_suggestions` approval queue (uses tool calling)
+4. `vdr-suggestions` — VDR action proposals
+5. `email-unified-action` — routes email actions (uses tool calling)
+6. `claap-suggest-matches` — meeting↔deal routing decisions
 
-### 1. Detect nudge drafts per deal
-In `ActionQueuePanel.tsx`, after `groups` is built (line ~449) and before the list renders:
-- For each `DealGroup`, partition `items` into `nudgeItems` (action_type `draft_email` whose title matches `/^\s*nudge\b/i` OR whose linked-entity is a lender/funding source) and `otherItems`.
-- If `nudgeItems.length >= 2`, replace them in the group with one synthetic bundle entry: `{ id: 'bundle:nudges:<deal_id>', action_type: 'draft_email_bundle', title: 'Follow up with Lenders', bundled: nudgeItems, deal_id, deal_name, count }`.
-- If only 1 nudge exists, leave it as-is (no bundling).
+**Email extraction**
+7. `analyze-emails` — email classification + signal extraction
+8. `detect-email-followups` — followup detection (uses tool calling)
+9. `email-thread-summarizer` — thread summary (uses `response_format: json_object`)
+10. `parse-email-scheduling-proposals` — extracts proposed slots (uses `response_format: json_object`)
+11. `email-ai-search` — semantic email search
+12. `polish-email-draft` — polishes draft emails
+13. `lender-followup-draft` — drafts lender follow-ups
 
-### 2. List column
-`QueueRow` gets a small branch: when `item.action_type === 'draft_email_bundle'`, render the standard row with a "· N drafts" suffix and the email icon. Selection uses the synthetic id.
+## Not migrating (staying on Gemini)
+Pure extractors/summarizers/drafters that aren't email-related: `ai-news-summary`, `generate-activity-summary`, `lender-summary`, `claap-analyze-meeting`, `claap-extract-action-items`, `extract-lender-fit`, `extract-deal-fit`, `branded-doc-style-extract`, `naitive-task-parse`, `financial-ai`, `semantic-lender-match`, `ai-settings-tool`, `gamma-ai-prompt`. Perplexity calls (`sonar-pro`) inside `dashboard-chat` stay on Perplexity.
 
-### 3. Detail column
-New sub-view in the detail pane (near the existing `isEmailDraft` block, ~line 1341):
-- When the selected item is a bundle, render a vertical list of collapsible cards — one per underlying draft — each showing recipient (funding source / lender name + email), subject, and body using the existing `EmailDraftPreview` component.
-- Each card has its own inline "Approve" and "Reject" buttons wired to the existing per-item mutations (`approveMutation`/`rejectMutation`) passing that child's real id.
-- Header of the pane shows "Follow up with Lenders · {dealName}" and a top-level "Approve all" + "Reject all" that iterates the child ids sequentially (with a confirm() on Reject all, matching the pattern just added).
+## Shared helper
+Create `supabase/functions/_shared/claudeChat.ts` exporting:
+- `callClaude({ system, messages, tools?, toolChoice?, maxTokens?, temperature? })` — POSTs to `https://api.anthropic.com/v1/messages` and returns `{ text, toolUse, stopReason, usage }`.
+- Handles OpenAI-shape → Anthropic-shape conversion for `tools` (`{name, description, input_schema}`) and `tool_choice` (`{type:"tool", name}`).
+- Handles Anthropic response shape: text lives in `content[]` blocks of type `text`; tool calls in blocks of type `tool_use`.
+- Surfaces `429` and `529` as retryable, everything else terminal.
+- No streaming — all 13 targets are one-shot.
 
-### 4. Selection & counts
-- Bundle contributes `1` to the visible list count, but the deal group badge still shows the true underlying count (sum across bundled + other items) so nothing is hidden.
-- After approving/rejecting individual child drafts, the bundle auto-collapses to a single remaining draft once only one child is left, and disappears entirely when all are handled.
+## Per-function changes
+For each of the 13 functions:
+1. Replace the `fetch(https://ai.gateway.lovable.dev/v1/chat/completions, ...)` block with `callClaude(...)`.
+2. Remove `response_format: json_object` — instead instruct in the system prompt "return only valid JSON" (already the case in most). Existing JSON-cleaning code (`replace(/^```json/…)`) stays as belt-and-suspenders.
+3. For the 3 tool-calling functions (`detect-email-followups`, `field-suggestion-engine`, `email-unified-action`, plus tool paths inside `dashboard-chat`): read the tool_use block from Claude's response instead of `choices[0].message.tool_calls[0].function.arguments`.
+4. Keep temperature values as-is; Claude accepts the same 0–1 range.
 
-## Technical notes
+## Not touched
+- `dealAdminAgentIntelligence.ts` — already on Claude.
+- `widget-builder-chat`, `branded-doc-generate`, `claude-ai`, `claude-dashboard-chat` — already on Claude.
+- All non-migrating functions listed above stay on Gemini.
 
-- No changes to `useAiActionQueue`, DB, or edge functions. The bundle is a `useMemo`-derived synthetic node keyed off the real queue rows returned by the hook.
-- Recipient labeling reuses the existing `linked_entity_type/linked_entity_id` fields the drafts already carry (funding_source / lender). Fallback to parsing the title (`Nudge Worthy` → `Worthy`) if entity data is absent.
-- `TYPE_META` gets a new `draft_email_bundle` entry (label "Email drafts", icon `FileText`) so the row chip renders correctly.
-- No global styling changes; reuses the current tile gradient and email preview visuals.
+## Verification
+After the swap, run one of each shape end-to-end via `supabase--curl_edge_functions`:
+- A plain-text call (`polish-email-draft`)
+- A JSON-mode call (`analyze-emails`)
+- A tool-calling call (`field-suggestion-engine`)
 
-## Files touched
-- `src/components/ai-queue/ActionQueuePanel.tsx` (grouping, row branch, detail pane, bundle approve/reject handlers)
+Confirm each returns a well-formed response and the AI Gateway logs (or absence thereof) show the traffic moved off Gemini.
 
-## Out of scope
-- Combining non-nudge drafts.
-- Combining across different deals.
-- Server-side batch approve endpoint (kept as sequential per-item calls; can be optimized later if slow).
+## Cost & latency note
+Claude Sonnet 4.5 is meaningfully more expensive and slower per token than `gemini-2.5-flash*`. Expect ~5–10× cost and ~2× latency on these paths. Worth it for the agent paths; you flagged that this is the tradeoff you want for email extraction too.

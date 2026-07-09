@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 /**
  * detect-email-followups
@@ -63,10 +64,10 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_KEY) {
       // Soft-fail: keep the sidebar usable even if AI is unconfigured.
-      return ok({ suggestions: [], error: "LOVABLE_API_KEY missing" });
+      return ok({ suggestions: [], error: "ANTHROPIC_API_KEY missing" });
     }
 
     const authHeader = req.headers.get("Authorization");
@@ -199,50 +200,21 @@ serve(async (req) => {
       },
     };
 
-    const aiResp = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          // Lite is ~2-3x faster than the preview flash model and is more
-          // than capable of extracting concrete follow-ups from a short
-          // pre-trimmed transcript.
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt },
-          ],
-          tools: [tool],
-          tool_choice: {
-            type: "function",
-            function: { name: "emit_followups" },
-          },
-        }),
-      },
-    );
-
-    if (aiResp.status === 429) {
-      return ok({ suggestions: [], error: "rate_limited" });
-    }
-    if (aiResp.status === 402) {
-      return ok({ suggestions: [], error: "payment_required" });
-    }
-    if (!aiResp.ok) {
-      const t = await aiResp.text().catch(() => "");
-      console.error("detect-email-followups gateway error", aiResp.status, t);
-      return ok({ suggestions: [], error: "ai_gateway_error" });
-    }
-
-    const json = await aiResp.json().catch(() => null) as any;
-    const call = json?.choices?.[0]?.message?.tool_calls?.[0];
-    const argsStr = call?.function?.arguments;
     let parsed: { suggestions?: FollowupSuggestion[] } = {};
-    if (argsStr) {
-      try { parsed = JSON.parse(argsStr); } catch { parsed = {}; }
+    try {
+      const result = await callClaude({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        tools: [tool],
+        toolChoice: { type: "tool", name: "emit_followups" },
+        maxTokens: 2048,
+      });
+      if (result.toolUse?.input) parsed = result.toolUse.input;
+    } catch (e: any) {
+      const status = e?.status;
+      if (status === 429) return ok({ suggestions: [], error: "rate_limited" });
+      console.error("detect-email-followups claude error", status, e?.message);
+      return ok({ suggestions: [], error: "ai_error" });
     }
     const suggestions = Array.isArray(parsed.suggestions)
       ? parsed.suggestions.slice(0, 5)

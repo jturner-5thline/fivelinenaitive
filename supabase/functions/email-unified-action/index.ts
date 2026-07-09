@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,8 +29,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!Deno.env.get("ANTHROPIC_API_KEY")) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -144,27 +144,10 @@ Linked deal: ${dealName ? dealName + " (id " + dealId + ")" : "none"}
 Email thread (truncated):
 ${threadStr}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        // Faster lite model — intent routing + short task title is well
-        // within its capability and cuts latency by ~2x vs. flash preview.
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "route_action",
-              description: "Route the user's request to one structured action",
-              parameters: {
+    const tool = {
+      name: "route_action",
+      description: "Route the user's request to one structured action",
+      input_schema: {
                 type: "object",
                 properties: {
                   intent: {
@@ -206,42 +189,32 @@ ${threadStr}`;
                 },
                 required: ["intent", "title", "body", "rationale"],
                 additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "route_action" } },
-      }),
-    });
+      },
+    };
 
-    if (!aiResp.ok) {
-      if (aiResp.status === 429) {
+    let parsed: any = null;
+    try {
+      const result = await callClaude({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        tools: [tool],
+        toolChoice: { type: "tool", name: "route_action" },
+        maxTokens: 2048,
+      });
+      parsed = result.toolUse?.input ?? null;
+    } catch (e: any) {
+      const status = e?.status ?? 500;
+      console.error("Claude error:", status, e?.message);
+      if (status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit, try again shortly." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await aiResp.text();
-      console.error("AI gateway error:", aiResp.status, t);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
+      return new Response(JSON.stringify({ error: "AI error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    const aiJson = await aiResp.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    let parsed: any = null;
-    try {
-      parsed = JSON.parse(toolCall?.function?.arguments || "{}");
-    } catch {
-      parsed = null;
     }
 
     if (!parsed?.intent) {

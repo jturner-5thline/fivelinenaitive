@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { callClaude } from '../_shared/claudeChat.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -54,19 +55,16 @@ Requirements:
 
 Example format: ["What is the total debt-to-EBITDA ratio?", "Summarize revenue growth from 2022-2024"]`;
 
-    const aiResp = await fetch(`${supabaseUrl}/functions/v1/ai-proxy`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseKey}` },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+    let content = '';
+    try {
+      const result = await callClaude({
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-        max_tokens: 500,
-      }),
-    });
-
-    if (!aiResp.ok) {
-      // Fallback
+        maxTokens: 500,
+      });
+      content = result.text;
+    } catch (e: any) {
+      console.error('vdr-suggestions claude error', e?.status, e?.message);
       return new Response(JSON.stringify({ suggestions: [
         'Summarize the latest financial statements',
         'What are the key risks in this deal?',
@@ -75,9 +73,6 @@ Example format: ["What is the total debt-to-EBITDA ratio?", "Summarize revenue g
         'What is the debt structure?',
       ] }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    const aiData = await aiResp.json();
-    const content = aiData.choices?.[0]?.message?.content || '';
 
     // Parse JSON array from response
     const match = content.match(/\[[\s\S]*\]/);

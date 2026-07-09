@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
@@ -131,33 +131,24 @@ Subject: ${subject}
 Thread (oldest → newest):
 ${threadText}`;
 
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": LOVABLE_API_KEY,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: userMsg },
-        ],
-        response_format: { type: "json_object" },
+    let content = "{}";
+    try {
+      const result = await callClaude({
+        system,
+        messages: [{ role: "user", content: userMsg }],
         temperature: 0.1,
-      }),
-    });
-
-    if (!aiResp.ok) {
-      const txt = await aiResp.text();
-      return new Response(JSON.stringify({ error: "AI gateway failed", detail: txt }), {
-        status: aiResp.status === 429 || aiResp.status === 402 ? aiResp.status : 502,
+        maxTokens: 2048,
+      });
+      // Strip fences if any and grab first JSON object.
+      const cleaned = result.text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      content = match ? match[0] : cleaned || "{}";
+    } catch (e: any) {
+      return new Response(JSON.stringify({ error: "AI failed", detail: e?.message }), {
+        status: e?.status === 429 ? 429 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const aiJson = await aiResp.json();
-    const content = aiJson?.choices?.[0]?.message?.content || "{}";
     let parsed: ParseResult;
     try {
       parsed = JSON.parse(content);

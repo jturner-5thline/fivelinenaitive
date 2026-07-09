@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { callClaude } from '../_shared/claudeChat.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -157,8 +158,7 @@ Deno.serve(async (req) => {
     const baseSubject = tpl.subject;
     const baseBody = tpl.bodyTemplate(fn);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
+    if (!Deno.env.get('ANTHROPIC_API_KEY')) {
       // No AI available — return the deterministic template directly.
       return new Response(JSON.stringify({ subject: baseSubject, body: baseBody, category }), {
         status: 200,
@@ -205,33 +205,22 @@ Deno.serve(async (req) => {
       'Personalize the follow-up now, staying close to the suggested copy.',
     ].filter(Boolean).join('\n');
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: userMsg },
-        ],
+    let raw = '';
+    try {
+      const result = await callClaude({
+        system,
+        messages: [{ role: 'user', content: userMsg }],
         temperature: 0.4,
-      }),
-    });
-
-    if (!aiResp.ok) {
-      // Fall back to the deterministic template on AI failures so the user
-      // always gets a usable draft.
-      console.error('[lender-followup-draft] AI gateway error', aiResp.status);
+        maxTokens: 1024,
+      });
+      raw = result.text;
+    } catch (e: any) {
+      console.error('[lender-followup-draft] Claude error', e?.status, e?.message);
       return new Response(JSON.stringify({ subject: baseSubject, body: baseBody, category }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const aiJson = await aiResp.json();
-    const raw = aiJson?.choices?.[0]?.message?.content || '';
 
     let subject = baseSubject;
     let bodyOut = '';

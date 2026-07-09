@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
 interface EmailForAnalysis {
   cache_id: string;
@@ -47,7 +48,7 @@ serve(async (req: Request): Promise<Response> => {
       });
     }
 
-    if (!LOVABLE_API_KEY) {
+    if (!ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -160,43 +161,27 @@ Enabled features: ${enabledFeatures.join(", ")}
 Return ONLY a valid JSON array with one object per email. Each object must include the "cache_id" from the input.
 Do not include markdown formatting or code blocks. Return raw JSON only.`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 50_000);
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+    let responseText = "";
+    try {
+      const result = await callClaude({
+        system: systemPrompt,
+        messages: [{ role: "user", content: `Analyze these emails:\n\n${emailList}` }],
         temperature: 0.3,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Analyze these emails:\n\n${emailList}` },
-        ],
-      }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
+        maxTokens: 8192,
+      });
+      responseText = result.text;
+    } catch (e: any) {
+      const status = e?.status ?? 500;
+      console.error("Claude error:", status, e?.message);
       return new Response(JSON.stringify({
-        error: response.status === 429 ? "Rate limited, retry later" : "AI analysis failed",
+        error: status === 429 ? "Rate limited, retry later" : "AI analysis failed",
         partial: true,
         results: [],
       }), {
-        status: response.status === 429 ? 429 : (response.status === 402 ? 402 : 502),
+        status: status === 429 ? 429 : 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const aiData = await response.json();
-    const responseText: string = aiData?.choices?.[0]?.message?.content || "";
 
     // Parse JSON response - handle potential markdown wrapping
     let parsed: AnalysisResult[];
