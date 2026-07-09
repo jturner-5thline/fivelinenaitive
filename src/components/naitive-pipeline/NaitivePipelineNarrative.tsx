@@ -478,9 +478,6 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
                 <span>Compared to {prior.label}</span>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Capture the story behind this period's pipeline — AI compares it to the prior period.
-            </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
