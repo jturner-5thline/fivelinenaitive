@@ -566,12 +566,26 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
             </div>
             <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={addedChartData} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                <ComposedChart
+                  data={addedChartData}
+                  margin={{ top: 8, right: 16, left: 0, bottom: 4 }}
+                  onClick={(e) => {
+                    // Fallback: recharts sometimes routes clicks to the tooltip
+                    // cursor rect instead of the Bar itself. This chart-level
+                    // handler grabs the hovered bar index and opens the drill.
+                    const idx = (e as { activeTooltipIndex?: number })?.activeTooltipIndex;
+                    if (idx == null || idx < 0) return;
+                    setAddedDrill({
+                      idx,
+                      label: `${periodLabel(idx)} ${year} — Funding Sources Added`,
+                    });
+                  }}
+                >
                   <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} vertical={false} />
                   <XAxis dataKey="period" tick={{ fontSize: 11, fill: 'hsl(220 20% 75%)' }} stroke="hsl(220 25% 45%)" />
                   <YAxis tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" allowDecimals={false} />
                   <ReTooltip
-                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)' }}
+                    cursor={{ fill: 'hsl(220 40% 30% / 0.18)', style: { cursor: 'pointer' } }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const p = payload[0].payload as { added: number };
