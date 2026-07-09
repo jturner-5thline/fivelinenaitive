@@ -1552,11 +1552,13 @@ function OnBoardToProposalDrilldown({
   onOpenChange,
   nda,
   proposal,
+  timeframeLabel,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   nda: ReturnType<typeof useStageEntryCount>;
   proposal: ReturnType<typeof useStageEntryCount>;
+  timeframeLabel: string;
 }) {
   const [tab, setTab] = React.useState<'nda' | 'proposal'>('nda');
   const fmtUsd = (n: number) =>
@@ -1578,7 +1580,7 @@ function OnBoardToProposalDrilldown({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Deals-on-Board to Proposal · trailing 12 months</DialogTitle>
+          <DialogTitle>Deals-on-Board to Proposal · {timeframeLabel}</DialogTitle>
           <DialogDescription>
             {proposal.count} entered Proposal Issued ÷ {nda.count} entered NDA/Needs List Sent · {ratio}
           </DialogDescription>
