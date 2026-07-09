@@ -47,6 +47,9 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceLine,
+  Bar,
+  ComposedChart,
+  Legend,
 } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
 import {
