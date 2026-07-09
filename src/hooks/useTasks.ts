@@ -148,6 +148,15 @@ function buildBaseTasksQuery() {
     .is('parent_task_id', null);
 }
 
+/** Same as buildBaseTasksQuery but INCLUDES subtasks. Used for "My Tasks" so
+ *  that subtasks assigned to the current user surface in list/board views. */
+function buildBaseTasksQueryIncludingSubtasks() {
+  return supabase
+    .from('tasks')
+    .select('*')
+    .is('archived_at', null);
+}
+
 function sortAndDedupeTasks(tasks: Task[]) {
   const byId = new Map<string, Task>();
   tasks.forEach(task => {
@@ -224,7 +233,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
 
       if (ownerFilter === 'mine') {
         const [assignedResult, collaboratorResult] = await Promise.all([
-          buildBaseTasksQuery()
+          buildBaseTasksQueryIncludingSubtasks()
             .eq('assigned_to', user.id)
             .order('position', { ascending: true })
             .order('created_at', { ascending: false }),
