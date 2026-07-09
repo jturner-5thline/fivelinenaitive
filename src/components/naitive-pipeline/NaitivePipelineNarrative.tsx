@@ -517,60 +517,32 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
         )}
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center gap-2">
-              <TabsList className="grid flex-1 grid-cols-4 h-8">
-                <TabsTrigger value="agenda" className="text-xs gap-1"><ListChecks className="h-3 w-3" />Agenda</TabsTrigger>
-                <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
-                <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
-                <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
-              </TabsList>
-            </div>
+        <div className="flex items-center justify-end mb-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="View history"
+            onClick={() => setHistoryOpen(true)}
+          >
+            <Clock className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 flex flex-col min-h-0">
+          <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
+        </div>
+      </CardContent>
 
-          <TabsContent value="agenda" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
-            <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
-          </TabsContent>
-
-          <TabsContent value="narrative" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
-            <div className="flex flex-wrap items-center gap-0.5 border border-border rounded-t-md bg-muted/30 px-1.5 py-1">
-              {tbBtn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <BoldIcon className="h-3.5 w-3.5" />, 'Bold (⌘B)')}
-              {tbBtn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <ItalicIcon className="h-3.5 w-3.5" />, 'Italic (⌘I)')}
-              {tbBtn(editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <UnderlineIcon className="h-3.5 w-3.5" />, 'Underline (⌘U)')}
-              <span className="w-px h-4 bg-border mx-1" />
-              {tbBtn(editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), <Heading2 className="h-3.5 w-3.5" />, 'Heading')}
-              {tbBtn(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), <List className="h-3.5 w-3.5" />, 'Bulleted list')}
-              {tbBtn(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered className="h-3.5 w-3.5" />, 'Numbered list')}
-              <span className="w-px h-4 bg-border mx-1" />
-              {tbBtn(editor.isActive('link'), setLink, <LinkIcon className="h-3.5 w-3.5" />, 'Add / edit link')}
-            </div>
-            <div className={cn(
-              'flex-1 border border-t-0 border-border rounded-b-md bg-background overflow-y-auto',
-              'max-h-[460px] min-h-[260px]',
-              '[&_.ProseMirror]:min-h-[260px] [&_.ProseMirror_a]:text-primary [&_.ProseMirror_a]:underline',
-              '[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-5 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-5',
-              '[&_.ProseMirror_h2]:text-base [&_.ProseMirror_h2]:font-semibold [&_.ProseMirror_h2]:mt-2',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0',
-              '[&_.ProseMirror_p.is-editor-empty:first-child::before]:whitespace-pre-line',
-            )}>
-              <EditorContent editor={editor} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="analysis" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <AnalysisPanel
-              analysis={analysis}
-              loading={analysisLoading}
-              error={analysisError}
-              draftAware={analysisDraftAware}
-              onRefresh={() => runAnalysis(content, priorContent, false)}
-            />
-          </TabsContent>
-
-          <TabsContent value="history" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <HistoryIcon className="h-4 w-4" />
+              History · {current.label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
             <HistoryPanel
               rows={history}
               currentKey={current.key}
@@ -578,9 +550,9 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
               onRestore={restoreSnapshot}
               currentLabel={current.label}
             />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={qualDemoOpen} onOpenChange={setQualDemoOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
