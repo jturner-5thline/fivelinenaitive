@@ -55,7 +55,7 @@ export function useStageEntryEvents(
         .eq('event_type', 'stage_enter')
         .eq('to_stage_id', stageId)
         .gte('changed_at', startIso)
-        .lte('changed_at', endIso)
+        .lt('changed_at', endIso)
         .order('changed_at', { ascending: false });
       if (err) throw err;
       return rows ?? [];
@@ -117,7 +117,7 @@ export function useStageEntryCount(
         .eq('event_type', 'stage_enter')
         .eq('to_stage_id', stageId)
         .gte('changed_at', startIso)
-        .lte('changed_at', endIso)
+        .lt('changed_at', endIso)
         .order('changed_at', { ascending: false });
       if (err) throw err;
       return rows ?? [];
