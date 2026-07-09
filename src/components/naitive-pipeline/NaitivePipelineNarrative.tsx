@@ -17,7 +17,7 @@ import {
   Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Link as LinkIcon, Heading2, Loader2, Check,
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
-  RotateCcw, ChevronDown, ChevronUp, Clock,
+  RotateCcw, ChevronDown, ChevronUp, Clock, Share2, Send,
 } from 'lucide-react';
 import { ListChecks, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -841,6 +841,12 @@ function AgendaPanel({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
   const notesTimer = useRef<number | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareRecipients, setShareRecipients] = useState(
+    'ppina@5thline.co, ffustinoni@5thline.co, jturner@5thline.co, jmoffitt@5thline.co',
+  );
+  const [shareSubject, setShareSubject] = useState('');
+  const [shareBody, setShareBody] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -951,6 +957,39 @@ function AgendaPanel({
 
   const selected = items.find((i) => i.id === selectedId) || null;
 
+  const buildShareBody = useCallback(() => {
+    if (items.length === 0) return 'No agenda items for this period yet.';
+    const lines: string[] = [];
+    lines.push(`Pipeline Narrative — ${periodLabel}`);
+    lines.push('');
+    items.forEach((it, idx) => {
+      const status = it.completed ? '[x]' : '[ ]';
+      lines.push(`${idx + 1}. ${status} ${it.title || 'Untitled'}`);
+      if (it.notes && it.notes.trim()) {
+        it.notes.split('\n').forEach((n) => lines.push(`    ${n}`));
+      }
+      lines.push('');
+    });
+    return lines.join('\n').trimEnd();
+  }, [items, periodLabel]);
+
+  const openShare = useCallback(() => {
+    setShareSubject(`Pipeline Narrative — ${periodLabel}`);
+    setShareBody(buildShareBody());
+    setShareOpen(true);
+  }, [periodLabel, buildShareBody]);
+
+  const sendShareEmail = useCallback(() => {
+    const to = shareRecipients
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .join(',');
+    const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`;
+    window.location.href = url;
+    setShareOpen(false);
+  }, [shareRecipients, shareSubject, shareBody]);
+
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-3">
       <div className="flex items-center gap-2">
@@ -963,6 +1002,15 @@ function AgendaPanel({
         />
         <Button size="sm" className="h-8 px-2 gap-1" onClick={() => void addItem()} disabled={!newTitle.trim()}>
           <Plus className="h-3 w-3" /> Add
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 px-2 gap-1"
+          onClick={openShare}
+          title={`Share ${periodLabel} via email`}
+        >
+          <Share2 className="h-3 w-3" /> Share
         </Button>
       </div>
 
@@ -1065,6 +1113,50 @@ function AgendaPanel({
           )}
         </div>
       </div>
+
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Share2 className="h-4 w-4" />
+              Share Pipeline Narrative · {periodLabel}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">To</label>
+              <Input
+                value={shareRecipients}
+                onChange={(e) => setShareRecipients(e.target.value)}
+                placeholder="comma-separated emails"
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Subject</label>
+              <Input
+                value={shareSubject}
+                onChange={(e) => setShareSubject(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Message</label>
+              <Textarea
+                value={shareBody}
+                onChange={(e) => setShareBody(e.target.value)}
+                className="text-xs min-h-[240px] font-mono"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setShareOpen(false)}>Cancel</Button>
+              <Button size="sm" className="gap-1" onClick={sendShareEmail}>
+                <Send className="h-3 w-3" /> Send
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
