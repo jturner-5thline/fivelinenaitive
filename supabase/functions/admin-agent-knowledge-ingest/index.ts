@@ -8,6 +8,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
+import mammoth from 'npm:mammoth@1.8.0';
 
 const MAX_TEXT_CHARS = 200_000; // truncate very large docs to keep prompts sane
 
@@ -34,6 +35,20 @@ function isSpreadsheet(mime: string | null | undefined, filename: string): boole
     f.endsWith('.xls') ||
     f.endsWith('.ods')
   );
+}
+
+function isDocx(mime: string | null | undefined, filename: string): boolean {
+  const m = (mime || '').toLowerCase();
+  const f = (filename || '').toLowerCase();
+  return (
+    m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    f.endsWith('.docx')
+  );
+}
+
+async function extractFromDocx(buf: Uint8Array): Promise<string> {
+  const { value } = await mammoth.extractRawText({ buffer: buf });
+  return value || '';
 }
 
 function extractFromSpreadsheet(buf: Uint8Array): string {
@@ -170,6 +185,9 @@ Deno.serve(async (req) => {
       if (isSpreadsheet(mime, doc.title)) {
         const buf = new Uint8Array(await blob.arrayBuffer());
         extracted = extractFromSpreadsheet(buf);
+      } else if (isDocx(mime, doc.title)) {
+        const buf = new Uint8Array(await blob.arrayBuffer());
+        extracted = await extractFromDocx(buf);
       } else if (isTextish(mime)) {
         extracted = await blob.text();
       } else {
