@@ -447,7 +447,7 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold tracking-tight text-foreground">
-                Pipeline Narrative
+                Pipeline Agenda
               </h3>
               <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
                 <Select
