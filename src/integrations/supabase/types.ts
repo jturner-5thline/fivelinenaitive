@@ -26794,6 +26794,7 @@ export type Database = {
           deal_id: string
           hours: number
           id: string
+          phase: string
           source: string
           updated_at: string
           user_id: string
@@ -26804,6 +26805,7 @@ export type Database = {
           deal_id: string
           hours?: number
           id?: string
+          phase?: string
           source?: string
           updated_at?: string
           user_id: string
@@ -26814,6 +26816,7 @@ export type Database = {
           deal_id?: string
           hours?: number
           id?: string
+          phase?: string
           source?: string
           updated_at?: string
           user_id?: string
