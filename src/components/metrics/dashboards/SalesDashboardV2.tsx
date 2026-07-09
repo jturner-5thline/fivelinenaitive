@@ -50,6 +50,7 @@ import {
   Bar,
   ComposedChart,
   Legend,
+  LabelList,
 } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
 import {
