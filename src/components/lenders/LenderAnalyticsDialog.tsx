@@ -766,6 +766,8 @@ export function LenderAnalyticsDialog({
   const conversionChartData = useMemo(() => {
     return lenderStats
       .filter((s) => s.submitted > 0)
+      .slice()
+      .sort((a, b) => b.submitted - a.submitted || b.terms - a.terms)
       .slice(0, 6)
       .map((s) => ({
         key: s.key,
