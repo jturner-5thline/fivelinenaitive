@@ -140,25 +140,25 @@
     /* Surface 2: card glass layer — clearly elevated above page.
        Brightened one step to increase perceived contrast against dark
        page bg without lightening the global background. */
-    --card: 225 26% 73%;
-    --card-foreground: 215 40% 12%;
+    --card: 225 26% 68%;
+    --card-foreground: 0 0% 100%;
 
     /* Surface 3: elevated (popover / deal details popup) — a further
        step brighter than --card so overlays visibly float above cards. */
-    --popover: 224 24% 78%;
-    --popover-foreground: 215 40% 12%;
+    --popover: 224 24% 73%;
+    --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
     --primary: 213 90% 70%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 225 22% 78%;
-    --secondary-foreground: 215 40% 12%;
+    --secondary: 225 22% 74%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Muted */
-    --muted: 225 22% 74%;
-    --muted-foreground: 215 30% 20%;
+    --muted: 225 22% 70%;
+    --muted-foreground: 215 30% 98%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
