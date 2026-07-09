@@ -1246,93 +1246,79 @@ ${activePersona ? `- Indicate your specialist role with "${activePersona.icon}" 
 - When multiple tools are needed, execute them in sequence and report results.
 ${personaAddendum}`;
 
-    const apiCall = async (msgs: any[], stream: boolean, includeTools = false) => {
-      const body: any = {
-        model: DASHBOARD_CHAT_MODEL,
-        messages: msgs,
-        temperature: 0.4,
-        stream,
-      };
-      if (includeTools) body.tools = tools;
-      return callAiGateway(LOVABLE_API_KEY, body);
-    };
+    // Convert incoming OpenAI-style messages to Anthropic (only user/assistant; system is separate).
+    const claudeMessages: any[] = messages
+      .filter((m: any) => m.role === "user" || m.role === "assistant")
+      .map((m: any) => ({ role: m.role, content: String(m.content ?? "") }));
 
-    const allMessages = [{ role: "system", content: systemPrompt }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))];
+    try {
+      // Non-streaming tool loop with Claude.
+      let round = 0;
+      const maxRounds = 4;
+      let lastResult: Awaited<ReturnType<typeof callClaude>> | null = null;
 
-    // First call with tools (non-streaming) to check for tool calls
-    const firstResponse = await apiCall(allMessages, false, true);
+      while (round < maxRounds) {
+        lastResult = await callClaude({
+          system: systemPrompt,
+          messages: claudeMessages,
+          tools,
+          temperature: 0.4,
+          maxTokens: 4096,
+        });
 
-    if (!firstResponse.ok) {
-      const status = firstResponse.status;
+        if (lastResult.toolUses.length === 0) break;
+
+        // Append assistant turn with its raw content blocks (text + tool_use).
+        claudeMessages.push({ role: "assistant", content: lastResult.contentBlocks });
+
+        // Execute each tool_use and append a single user turn with all tool_result blocks.
+        const toolResultBlocks: any[] = [];
+        for (const tu of lastResult.toolUses) {
+          const result = await executeTool(supabase, user.id, companyId as string, tu.name, tu.input || {}, ctx);
+          toolResultBlocks.push({
+            type: "tool_result",
+            tool_use_id: tu.id,
+            content: JSON.stringify(result),
+          });
+        }
+        claudeMessages.push({ role: "user", content: toolResultBlocks });
+        round++;
+      }
+
+      // If the loop already produced final text and no more tools, emit it as one SSE chunk.
+      // Otherwise, ask Claude for the final assistant turn as a real stream.
+      const needsFinalStream = !lastResult || lastResult.toolUses.length > 0 || !lastResult.text;
+
+      if (!needsFinalStream && lastResult) {
+        const encoder = new TextEncoder();
+        const body = new ReadableStream({
+          start(controller) {
+            const payload = JSON.stringify({ choices: [{ delta: { content: lastResult!.text } }] });
+            controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          },
+        });
+        return new Response(body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+      }
+
+      // Final streaming call — no tools so the model must produce the assistant text.
+      return await streamClaudeAsOpenAISSE(
+        {
+          system: systemPrompt,
+          messages: claudeMessages,
+          temperature: 0.4,
+          maxTokens: 4096,
+        },
+        { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } },
+      );
+    } catch (err: any) {
+      const status = err?.status;
       if (status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       if (status === 402) return new Response(JSON.stringify({ error: "AI credits exhausted." }), { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      const errorText = await firstResponse.text();
-      await logDashboardChatFailure(supabase, userId, companyId, `AI gateway returned ${status}: ${errorText.slice(0, 300)}`, lastUserPrompt);
+      await logDashboardChatFailure(supabase, userId, companyId, `Claude call failed: ${err?.message || err}`, lastUserPrompt);
       return new Response(JSON.stringify({ error: "AI processing failed" }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    const firstResult = await firstResponse.json();
-    const choice = firstResult.choices?.[0];
-    if (!choice) {
-      await logDashboardChatFailure(supabase, userId, companyId, 'AI gateway returned a malformed response payload', lastUserPrompt);
-      return new Response(JSON.stringify({ error: 'AI returned a malformed response.' }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-
-    // Handle tool calls (supports multiple rounds)
-    if (choice?.message?.tool_calls?.length > 0) {
-      let currentMessages = [...allMessages, choice.message];
-      let toolCallRound = 0;
-      const maxRounds = 3;
-      let lastChoice = choice;
-
-      while (lastChoice?.message?.tool_calls?.length > 0 && toolCallRound < maxRounds) {
-        const toolResults: any[] = [];
-
-        for (const tc of lastChoice.message.tool_calls) {
-          let args;
-          try { args = JSON.parse(tc.function.arguments); } catch { args = {}; }
-          const result = await executeTool(supabase, user.id, companyId as string, tc.function.name, args, ctx);
-          toolResults.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
-        }
-
-        currentMessages = [...currentMessages, ...toolResults];
-        toolCallRound++;
-
-        const nextResp = await apiCall(currentMessages, false, true);
-        if (!nextResp.ok) break;
-        const nextResult = await nextResp.json();
-        lastChoice = nextResult.choices?.[0];
-        if (lastChoice?.message?.tool_calls?.length > 0) {
-          currentMessages.push(lastChoice.message);
-        }
-      }
-
-      // Final streaming response after all tool calls
-      const streamResp = await apiCall(
-        lastChoice?.message?.tool_calls?.length > 0
-          ? currentMessages
-          : [...currentMessages, ...(lastChoice?.message ? [lastChoice.message] : [])],
-        true
-      );
-
-      if (!streamResp.ok) {
-        const fallback = lastChoice?.message?.content || "Actions completed.";
-        await logDashboardChatFailure(supabase, userId, companyId, `Final stream request failed with ${streamResp.status}`, lastUserPrompt);
-        return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: fallback } }] }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-      }
-      return new Response(streamResp.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
-    }
-
-    // No tool calls - stream directly
-    const streamResp = await apiCall(allMessages, true);
-    if (!streamResp.ok) {
-      const content = choice?.message?.content || "I couldn't generate a response.";
-      await logDashboardChatFailure(supabase, userId, companyId, `Direct stream request failed with ${streamResp.status}`, lastUserPrompt);
-      return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    }
-    return new Response(streamResp.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
 
   } catch (error: unknown) {
     console.error('Error in dashboard-chat:', error);
