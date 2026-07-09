@@ -11,6 +11,51 @@ import * as XLSX from 'https://esm.sh/xlsx@0.18.5';
 import mammoth from 'npm:mammoth@1.8.0';
 
 const MAX_TEXT_CHARS = 200_000; // truncate very large docs to keep prompts sane
+const CHUNK_SIZE = 1500;         // ~character-based chunks for retrieval
+const CHUNK_OVERLAP = 200;
+const EMBED_MODEL = 'openai/text-embedding-3-small'; // 1536-dim, matches DB column
+const EMBED_BATCH = 32;
+
+function chunkText(text: string): string[] {
+  const clean = (text || '').replace(/\r\n/g, '\n').trim();
+  if (!clean) return [];
+  const out: string[] = [];
+  let i = 0;
+  while (i < clean.length) {
+    const end = Math.min(i + CHUNK_SIZE, clean.length);
+    // Prefer to break on a paragraph/sentence boundary near the cap.
+    let cut = end;
+    if (end < clean.length) {
+      const window = clean.slice(i, end);
+      const nl = window.lastIndexOf('\n\n');
+      const per = window.lastIndexOf('. ');
+      const b = Math.max(nl, per);
+      if (b > CHUNK_SIZE * 0.5) cut = i + b + 1;
+    }
+    const piece = clean.slice(i, cut).trim();
+    if (piece) out.push(piece);
+    if (cut >= clean.length) break;
+    i = Math.max(cut - CHUNK_OVERLAP, i + 1);
+  }
+  return out;
+}
+
+async function embedBatch(inputs: string[]): Promise<number[][]> {
+  const key = Deno.env.get('LOVABLE_API_KEY');
+  if (!key) throw new Error('LOVABLE_API_KEY not configured');
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': key },
+    body: JSON.stringify({ model: EMBED_MODEL, input: inputs }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Embeddings ${res.status}: ${body.slice(0, 300)}`);
+  }
+  const json = await res.json();
+  const rows = Array.isArray(json?.data) ? json.data : [];
+  return rows.map((r: any) => r?.embedding as number[]);
+}
 
 function isTextish(mime: string | null | undefined): boolean {
   if (!mime) return false;
