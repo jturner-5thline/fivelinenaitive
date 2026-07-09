@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { z } from 'https://esm.sh/zod@3.25.76';
+import { callClaude } from '../_shared/claudeChat.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -65,8 +66,7 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
+    if (!Deno.env.get('ANTHROPIC_API_KEY')) {
       return new Response(JSON.stringify({ error: 'AI service is not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -86,41 +86,21 @@ serve(async (req) => {
       JSON.stringify({ messages: parsed.data.messages }, null, 2),
     ].join('\n');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an email thread summarizer. You may only use the provided email messages. Never use outside context. Output strict JSON only.',
-          },
-          { role: 'user', content: prompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('[email-thread-summarizer] gateway error', response.status, text);
+    let rawText = '';
+    try {
+      const result = await callClaude({
+        system: 'You are an email thread summarizer. You may only use the provided email messages. Never use outside context. Output strict JSON only.',
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 1024,
+      });
+      rawText = result.text;
+    } catch (e: any) {
+      console.error('[email-thread-summarizer] Claude error', e?.status, e?.message);
       return new Response(JSON.stringify({ error: 'Failed to summarize email thread' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const json = await response.json();
-    const content = json?.choices?.[0]?.message?.content;
-    const rawText = Array.isArray(content)
-      ? content.map((part: any) => part?.text || '').join('')
-      : typeof content === 'string'
-        ? content
-        : '';
 
     let parsedContent: { bullets?: unknown } | null = null;
     const cleaned = rawText
