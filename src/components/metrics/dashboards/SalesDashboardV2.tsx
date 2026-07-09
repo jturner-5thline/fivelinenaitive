@@ -1592,7 +1592,19 @@ function OnBoardToProposalDrilldown({
   // Window is ALWAYS trailing 12 months. Granularity only changes how far each
   // step moves the anchor (1M / 1Q / 1M for Trailing 12M) and how the range label is formatted.
   const windowMonths = 12;
-  const anchorEndExclusive = React.useMemo(() => firstDayOfMonthAfterUtc(anchorEnd), [anchorEnd]);
+  // For quarter granularity, snap the end to the end of the quarter that
+  // contains the anchor's last month so the 12M window aligns to quarter
+  // boundaries (e.g. Q3 25 – Q2 26 instead of May 25 – Apr 26).
+  const anchorEndExclusive = React.useMemo(() => {
+    const monthEndExclusive = firstDayOfMonthAfterUtc(anchorEnd);
+    if (granularity !== 'quarter') return monthEndExclusive;
+    // Last included month index (0-11)
+    const lastMonth = new Date(monthEndExclusive.getTime());
+    lastMonth.setUTCMonth(lastMonth.getUTCMonth() - 1);
+    const qIdx = Math.floor(lastMonth.getUTCMonth() / 3); // 0..3
+    const qEndMonth = qIdx * 3 + 3; // exclusive month index (may be 12)
+    return new Date(Date.UTC(lastMonth.getUTCFullYear(), qEndMonth, 1));
+  }, [anchorEnd, granularity]);
 
   // Compute [start, end) for the currently-selected period and the prior period.
   const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
