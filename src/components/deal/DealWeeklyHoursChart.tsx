@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { BarChart2 } from 'lucide-react';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import {
   ResponsiveContainer,
@@ -76,28 +78,29 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
   const total = data.reduce((s, d) => s + d.total, 0);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-white/15 bg-white/[0.03] text-muted-foreground hover:bg-slate-800 hover:text-foreground hover:border-white/25 transition-colors"
           aria-label="View weekly hours chart"
           onClick={(e) => e.stopPropagation()}
         >
           <BarChart2 className="h-3.5 w-3.5" />
         </button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-[420px] p-3"
-        align="start"
+      </DialogTrigger>
+      <DialogContent
+        className="sm:max-w-[520px] p-4"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs font-medium text-foreground">Weekly Hours</div>
-          <div className="text-[10px] text-muted-foreground tabular-nums">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-medium flex items-center justify-between">
+            <span>Weekly Hours</span>
+            <span className="text-[11px] text-muted-foreground tabular-nums font-normal">
             {total.toLocaleString(undefined, { maximumFractionDigits: 1 })}h total
-          </div>
-        </div>
+            </span>
+          </DialogTitle>
+        </DialogHeader>
         {loading ? (
           <div className="h-[180px] flex items-center justify-center text-xs text-muted-foreground">
             Loading…
@@ -107,7 +110,7 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
             No weekly hours logged yet.
           </div>
         ) : (
-          <div style={{ height: 200 }}>
+          <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.3)" />
@@ -122,12 +125,17 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
                   allowDecimals={false}
                 />
                 <Tooltip
+                  cursor={{ fill: 'hsl(var(--foreground) / 0.05)' }}
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
+                    backgroundColor: 'hsl(222, 47%, 11%)',
                     border: '1px solid hsl(var(--border))',
                     borderRadius: 8,
-                    fontSize: 11,
+                    fontSize: 12,
+                    color: 'hsl(0, 0%, 98%)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
                   }}
+                  labelStyle={{ color: 'hsl(0, 0%, 98%)', fontWeight: 600, marginBottom: 2 }}
+                  itemStyle={{ color: 'hsl(0, 0%, 92%)' }}
                   formatter={(v: number, name: string) => [`${v}h`, name === 'pre' ? 'Pre-Signing' : 'Post-Signing']}
                   labelFormatter={(l) => `Week of ${l}`}
                 />
@@ -141,7 +149,7 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
             </ResponsiveContainer>
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
   );
 }
