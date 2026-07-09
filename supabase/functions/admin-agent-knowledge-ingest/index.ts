@@ -63,35 +63,37 @@ function extractFromSpreadsheet(buf: Uint8Array): string {
   return parts.join('\n\n');
 }
 
-async function extractViaLovableAI(base64: string, mime: string, filename: string): Promise<string> {
-  const key = Deno.env.get('LOVABLE_API_KEY');
-  if (!key) throw new Error('LOVABLE_API_KEY not configured');
+async function extractViaClaude(base64: string, mime: string, filename: string): Promise<string> {
+  const key = Deno.env.get('ANTHROPIC_API_KEY');
+  if (!key) throw new Error('ANTHROPIC_API_KEY not configured');
 
-  const res = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  // Claude currently accepts application/pdf for the document content block.
+  // Other binary types are not supported for document ingestion.
+  if (mime !== 'application/pdf') {
+    throw new Error(`Unsupported file type for Claude extraction: ${mime}`);
+  }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Lovable-API-Key': key,
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 16000,
+      system:
+        'You extract the full plain-text content of documents so an AI agent can use them as reference knowledge. Return ONLY the extracted text — no commentary, no markdown fences, no preamble. Preserve headings, lists, and tables as readable plain text.',
       messages: [
-        {
-          role: 'system',
-          content:
-            'You extract the full plain-text content of documents so an AI agent can use them as reference knowledge. Return ONLY the extracted text — no commentary, no markdown fences, no preamble. Preserve headings, lists, and tables as readable plain text.',
-        },
         {
           role: 'user',
           content: [
-            { type: 'text', text: `Extract the full text content of this document (${filename}).` },
             {
-              type: 'file',
-              file: {
-                filename,
-                file_data: `data:${mime};base64,${base64}`,
-              },
+              type: 'document',
+              source: { type: 'base64', media_type: mime, data: base64 },
             },
+            { type: 'text', text: `Extract the full text content of this document (${filename}).` },
           ],
         },
       ],
@@ -100,11 +102,15 @@ async function extractViaLovableAI(base64: string, mime: string, filename: strin
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Lovable AI ${res.status}: ${body.slice(0, 300)}`);
+    throw new Error(`Claude ${res.status}: ${body.slice(0, 300)}`);
   }
   const json = await res.json();
-  const text: string = json?.choices?.[0]?.message?.content ?? '';
-  return typeof text === 'string' ? text : '';
+  const parts = Array.isArray(json?.content) ? json.content : [];
+  return parts
+    .filter((p: any) => p?.type === 'text' && typeof p.text === 'string')
+    .map((p: any) => p.text)
+    .join('\n')
+    .trim();
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -193,7 +199,7 @@ Deno.serve(async (req) => {
       } else {
         const buf = new Uint8Array(await blob.arrayBuffer());
         const b64 = bytesToBase64(buf);
-        extracted = await extractViaLovableAI(b64, mime, doc.title);
+        extracted = await extractViaClaude(b64, mime, doc.title);
       }
     } catch (e) {
       await userClient
