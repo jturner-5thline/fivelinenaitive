@@ -1490,17 +1490,36 @@ function ConversionCard({
   title,
   value,
   subtitle,
+  onClick,
 }: {
   title: string;
   value: number | null;
   subtitle?: string;
+  onClick?: () => void;
 }) {
   const display =
     value == null
       ? '—'
       : `${(value * 100).toFixed(value >= 1 ? 0 : 1)}%`;
+  const clickable = !!onClick;
   return (
-    <div style={glassStyle} className="p-4 flex flex-col gap-2">
+    <div
+      style={glassStyle}
+      className={`p-4 flex flex-col gap-2 ${clickable ? 'cursor-pointer transition-colors hover:bg-white/[0.04]' : ''}`}
+      onClick={onClick}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+    >
       <div
         className="text-[10px] font-medium uppercase"
         style={{ color: C.textMuted, letterSpacing: '0.08em' }}
@@ -1522,6 +1541,97 @@ function ConversionCard({
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================
+// Drilldown: Deals-on-Board to Proposal
+// ============================================================
+function OnBoardToProposalDrilldown({
+  open,
+  onOpenChange,
+  nda,
+  proposal,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  nda: ReturnType<typeof useStageEntryCount>;
+  proposal: ReturnType<typeof useStageEntryCount>;
+}) {
+  const [tab, setTab] = React.useState<'nda' | 'proposal'>('nda');
+  const fmtUsd = (n: number) =>
+    n >= 1_000_000
+      ? `$${(n / 1_000_000).toFixed(2)}MM`
+      : n > 0
+      ? `$${Math.round(n / 1000).toLocaleString()}K`
+      : '—';
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const ratio =
+    nda.count > 0 ? `${((proposal.count / nda.count) * 100).toFixed(1)}%` : '—';
+
+  const rows = tab === 'nda' ? nda.deals : proposal.deals;
+  const loading = tab === 'nda' ? nda.isLoading : proposal.isLoading;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Deals-on-Board to Proposal · trailing 12 months</DialogTitle>
+          <DialogDescription>
+            {proposal.count} entered Proposal Issued ÷ {nda.count} entered NDA/Needs List Sent · {ratio}
+          </DialogDescription>
+        </DialogHeader>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'nda' | 'proposal')}>
+          <TabsList>
+            <TabsTrigger value="nda">NDA/Needs List Sent ({nda.count})</TabsTrigger>
+            <TabsTrigger value="proposal">Proposal Issued ({proposal.count})</TabsTrigger>
+          </TabsList>
+          <TabsContent value={tab} className="mt-3">
+            <div className="max-h-[60vh] overflow-y-auto rounded-md border border-white/10">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="text-left px-3 py-2">Deal</th>
+                    <th className="text-left px-3 py-2">Owner</th>
+                    <th className="text-right px-3 py-2">Value</th>
+                    <th className="text-right px-3 py-2">Entered</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">Loading…</td>
+                    </tr>
+                  ) : rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-6 text-center text-slate-400">No deals</td>
+                    </tr>
+                  ) : (
+                    rows.map((d) => (
+                      <tr key={d.deal_id} className="border-t border-white/5 hover:bg-white/[0.03]">
+                        <td className="px-3 py-2">
+                          <a
+                            href={`/deal/${d.deal_id}`}
+                            className="text-blue-400 hover:underline"
+                          >
+                            {d.company}
+                          </a>
+                        </td>
+                        <td className="px-3 py-2 text-slate-300">{d.manager ?? '—'}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{fmtUsd(d.value)}</td>
+                        <td className="px-3 py-2 text-right text-slate-300 tabular-nums">{fmtDate(d.changed_at)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -2740,6 +2850,7 @@ export function SalesDashboardV2() {
   // the "Deals-on-Board to Proposal" conversion card below.
   const ndaEnteredTrailing12 = useStageEntryCount('ndaneeds-list-sent', 12);
   const proposalEnteredTrailing12 = useStageEntryCount('proposal-issued', 12);
+  const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3101,8 +3212,15 @@ export function SalesDashboardV2() {
                 const props = proposalEnteredTrailing12.count;
                 return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
               })()}
+              onClick={() => setOnBoardToProposalOpen(true)}
             />
           </div>
+          <OnBoardToProposalDrilldown
+            open={onBoardToProposalOpen}
+            onOpenChange={setOnBoardToProposalOpen}
+            nda={ndaEnteredTrailing12}
+            proposal={proposalEnteredTrailing12}
+          />
 
           {/* Sales model sheet */}
           <SalesModelSheet />
