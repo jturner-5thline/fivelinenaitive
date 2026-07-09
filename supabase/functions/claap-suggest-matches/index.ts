@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
     const body = await req.json().catch(() => ({}));
@@ -360,7 +361,7 @@ serve(async (req) => {
     }
 
     // AI is opt-in (skip on bulk re-match runs to keep latency/cost in check)
-    const useAi = !!lovableApiKey && (meeting_ids?.length || meetings.length <= 25);
+    const useAi = !!anthropicKey && (meeting_ids?.length || meetings.length <= 25);
 
     // Process each meeting
     let totalSuggestions = 0;
@@ -522,44 +523,27 @@ serve(async (req) => {
             `${i + 1}. [${d.match_type}] "${d.label}" (score: ${d.score}, reasons: ${d.reasons.join("; ")})`
           ).join("\n");
 
-          const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${lovableApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
-              messages: [
-                {
-                  role: "system",
-                  content: `You are a deal-matching assistant for a financial advisory CRM. Given a meeting/call context and candidate deals, rank the deals by likelihood this call is about that deal. Return a JSON array of objects with deal_index (1-based), confidence_adjustment (-20 to +20), and reason (short sentence). Only adjust if you have clear signal. Be conservative.`,
-                },
-                {
-                  role: "user",
-                  content: `Meeting context:\n${contextText}\n\nCandidate deals:\n${candidateList}\n\nRank these deals by likelihood. Return JSON array only.`,
-                },
-              ],
-              temperature: 0.1,
-            }),
+          const aiResult = await callClaude({
+            system: `You are a deal-matching assistant for a financial advisory CRM. Given a meeting/call context and candidate deals, rank the deals by likelihood this call is about that deal. Return a JSON array of objects with deal_index (1-based), confidence_adjustment (-20 to +20), and reason (short sentence). Only adjust if you have clear signal. Be conservative.`,
+            messages: [{
+              role: "user",
+              content: `Meeting context:\n${contextText}\n\nCandidate deals:\n${candidateList}\n\nRank these deals by likelihood. Return JSON array only.`,
+            }],
+            temperature: 0.1,
+            maxTokens: 1024,
           });
-
-          if (aiResponse.ok) {
-            const aiData = await aiResponse.json();
-            const content = aiData.choices?.[0]?.message?.content || "";
-            // Extract JSON from response
-            const jsonMatch = content.match(/\[[\s\S]*?\]/);
-            if (jsonMatch) {
-              const adjustments = JSON.parse(jsonMatch[0]);
-              for (const adj of adjustments) {
-                const idx = (adj.deal_index || 0) - 1;
-                if (idx >= 0 && idx < combined.length) {
-                  combined[idx].score = Math.max(0, Math.min(100, combined[idx].score + (adj.confidence_adjustment || 0)));
-                  if (adj.reason) combined[idx].reasons.push(`AI: ${adj.reason}`);
-                }
+          const content = aiResult.text || "";
+          const jsonMatch = content.match(/\[[\s\S]*?\]/);
+          if (jsonMatch) {
+            const adjustments = JSON.parse(jsonMatch[0]);
+            for (const adj of adjustments) {
+              const idx = (adj.deal_index || 0) - 1;
+              if (idx >= 0 && idx < combined.length) {
+                combined[idx].score = Math.max(0, Math.min(100, combined[idx].score + (adj.confidence_adjustment || 0)));
+                if (adj.reason) combined[idx].reasons.push(`AI: ${adj.reason}`);
               }
-              combined.sort((a: any, b: any) => b.score - a.score);
             }
+            combined.sort((a: any, b: any) => b.score - a.score);
           }
         } catch (aiErr) {
           console.error("AI enhancement failed, using deterministic only:", aiErr);
