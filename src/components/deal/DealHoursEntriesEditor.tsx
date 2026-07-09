@@ -67,28 +67,50 @@ interface Props {
   /** Fires after add / edit / delete so the parent can refresh totals. */
   onChanged?: () => void;
   label?: string;
+  /** When set, the dialog is locked to this phase (Pre or Post). */
+  phase?: HoursPhase;
+  /** Render as an icon-only "+" button instead of a labeled button. */
+  iconOnly?: boolean;
   className?: string;
 }
 
-export function AddHoursButton({ dealId, onChanged, label = 'Add Hours', className }: Props) {
+export function AddHoursButton({
+  dealId, onChanged, label = 'Add Hours', phase, iconOnly, className,
+}: Props) {
   const [open, setOpen] = useState(false);
+  const phaseLabel = phase === 'post_signing' ? 'Post-Signing' : phase === 'pre_signing' ? 'Pre-Signing' : null;
   return (
     <>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className={cn('h-8 gap-1.5', className)}
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        {label}
-      </Button>
+      {iconOnly ? (
+        <Button
+          type="button"
+          size="icon"
+          variant="outline"
+          className={cn('h-6 w-6 shrink-0', className)}
+          onClick={() => setOpen(true)}
+          aria-label={phaseLabel ? `Add ${phaseLabel} hours` : 'Add hours'}
+          title={phaseLabel ? `Add ${phaseLabel} hours` : 'Add hours'}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={cn('h-8 gap-1.5', className)}
+          onClick={() => setOpen(true)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          {label}
+        </Button>
+      )}
       <HoursDialog
         dealId={dealId}
         open={open}
         onOpenChange={setOpen}
         onChanged={onChanged}
+        lockedPhase={phase}
       />
     </>
   );
@@ -99,9 +121,10 @@ interface DialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onChanged?: () => void;
+  lockedPhase?: HoursPhase;
 }
 
-function HoursDialog({ dealId, open, onOpenChange, onChanged }: DialogProps) {
+function HoursDialog({ dealId, open, onOpenChange, onChanged, lockedPhase }: DialogProps) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,8 +133,11 @@ function HoursDialog({ dealId, open, onOpenChange, onChanged }: DialogProps) {
   const defaultFriday = useMemo(() => mostRecentFriday(new Date()), []);
   const [newDate, setNewDate] = useState<Date>(defaultFriday);
   const [newHours, setNewHours] = useState<string>('');
-  const [newPhase, setNewPhase] = useState<HoursPhase>('pre_signing');
+  const [newPhase, setNewPhase] = useState<HoursPhase>(lockedPhase ?? 'pre_signing');
   const [dateOpen, setDateOpen] = useState(false);
+
+  // Keep newPhase in sync with the locked phase when the dialog is reopened.
+  useEffect(() => { if (lockedPhase) setNewPhase(lockedPhase); }, [lockedPhase, open]);
 
   const load = useCallback(async () => {
     setLoading(true);
