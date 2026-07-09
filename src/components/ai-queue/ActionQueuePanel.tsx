@@ -382,6 +382,12 @@ function getFieldOptions(
 
 type FilterKey = 'all' | 'low' | 'review' | 'needs_you';
 
+/** Strip em/en dashes from approval queue display text. */
+function stripEmDashes<T extends string | null | undefined>(s: T): T {
+  if (typeof s !== 'string') return s;
+  return s.replace(/\s*[—–]\s*/g, ' - ').replace(/ {2,}/g, ' ') as T;
+}
+
 interface PanelProps {
   items: QueuedAiAction[];
   onClose?: () => void;
