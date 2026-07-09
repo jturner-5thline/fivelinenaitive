@@ -764,62 +764,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {blockerThis?.label ?? 'Top blocker'} · {blockerThis?.count ?? 0}{' '}
-              {blockerThis?.count === 1 ? 'mention' : 'mentions'}
-            </DialogTitle>
-            <DialogDescription>
-              Deals updated this week that cited this reason in "Why Not Moving Forward".
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
-            {blockerThis && blockerThis.deals.length > 0 ? (
-              <ul className="divide-y divide-border">
-                {blockerThis.deals.map(({ deal, reasons }) => (
-                  <li key={deal.id} className="py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          to={`/deal/${deal.id}`}
-                          className="text-sm font-semibold text-foreground hover:text-primary truncate block"
-                          onClick={() => setBlockerOpen(false)}
-                        >
-                          {deal.company || 'Untitled deal'}
-                        </Link>
-                        {deal.stage && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Stage: {formatSlug(deal.stage)}
-                          </p>
-                        )}
-                        <ul className="mt-2 space-y-1">
-                          {reasons.map((r, i) => (
-                            <li
-                              key={i}
-                              className="text-xs text-foreground/90 leading-snug pl-3 border-l-2 border-primary/40"
-                            >
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                        {format(new Date(deal.updatedAt), 'MMM d')}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No deals match this blocker.
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={qualCallsOpen} onOpenChange={setQualCallsOpen}>
         <DialogContent className="max-w-2xl">
