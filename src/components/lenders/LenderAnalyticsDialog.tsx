@@ -851,18 +851,26 @@ export function LenderAnalyticsDialog({
         <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-4" style={{ background: '#0f1117' }}>
           {/* KPI Row — big teal numbers */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <IntelKpi label="Active Lenders" value={activeLenderCount} hint="across all deals" loading={loading} />
+            <IntelKpi
+              label="Active Lenders"
+              value={activeLenderCount}
+              hint="across all deals"
+              loading={loading}
+              onClick={() => setOpenKpi('active')}
+            />
             <IntelKpi
               label="Deals Sent"
               value={kpis.submitted}
               hint="deal_lenders in selected timeframe"
               loading={loading}
+              onClick={() => setOpenKpi('sent')}
             />
             <IntelKpi
               label="Conversion Rate"
               value={fmtPct(kpis.conv)}
               hint="added to deal → terms issued"
               loading={loading}
+              onClick={() => setOpenKpi('conv')}
             />
             <IntelKpi
               label="Flex Active Lenders"
@@ -873,6 +881,7 @@ export function LenderAnalyticsDialog({
                   : 'active in Flex'
               }
               loading={loading}
+              onClick={() => setOpenKpi('flex')}
             />
           </div>
 
