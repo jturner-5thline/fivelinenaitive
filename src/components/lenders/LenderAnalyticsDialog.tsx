@@ -965,8 +965,11 @@ export function LenderAnalyticsDialog({
                               tickLine={false}
                               axisLine={false}
                               tickFormatter={(v) => `${v}%`}
-                              domain={[0, 70]}
-                              ticks={[0, 10, 20, 30, 40, 50, 60, 70]}
+                              domain={[0, (dataMax: number) => {
+                                const m = Math.max(10, Math.ceil((dataMax || 0) / 10) * 10);
+                                return Math.min(100, m);
+                              }]}
+                              allowDecimals={false}
                             />
                             <ReTooltip
                               cursor={{ fill: 'rgba(255,255,255,0.04)' }}
