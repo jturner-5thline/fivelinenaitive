@@ -116,6 +116,7 @@ const DealManagementTab = lazy(loadDealManagementTab);
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
+import { DealWeeklyHoursChart } from '@/components/deal/DealWeeklyHoursChart';
 import { SortableAttachmentTile } from '@/components/deal/SortableAttachmentTile';
 import { DroppableAttachmentFolder } from '@/components/deal/DroppableAttachmentFolder';
 import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
@@ -4206,6 +4207,7 @@ export default function DealDetail() {
                                       >
                                         <Clock className="h-3.5 w-3.5" />
                                         Hours & Fees
+                                        <DealWeeklyHoursChart dealId={deal.id} />
                                       </h4>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Hours */}
