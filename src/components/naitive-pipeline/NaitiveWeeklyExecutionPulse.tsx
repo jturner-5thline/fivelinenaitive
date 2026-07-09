@@ -596,7 +596,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Weekly Execution Pulse</h2>
           <p className="text-sm text-muted-foreground">
             {label} · {format(from, 'MMM d')} – {format(to, 'MMM d, yyyy')} · vs prior {format(prev.from, 'MMM d')} – {format(prev.to, 'MMM d')}
           </p>
