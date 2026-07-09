@@ -3450,9 +3450,7 @@ export function SalesDashboardV2() {
           <OnBoardToProposalDrilldown
             open={onBoardToProposalOpen}
             onOpenChange={setOnBoardToProposalOpen}
-            nda={ndaEnteredInRange}
-            proposal={proposalEnteredInRange}
-            timeframeLabel={selectedQuarter.label}
+            anchorEnd={rangeEnd}
           />
 
           {/* Sales model sheet */}
