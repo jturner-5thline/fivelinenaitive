@@ -78,7 +78,7 @@ export function DealWeeklyHoursChart({ dealId }: Props) {
   const total = data.reduce((s, d) => s + d.total, 0);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
           type="button"
