@@ -1073,10 +1073,10 @@ export function AdminAgentDuty1Config() {
                   className="hidden"
                   disabled={readOnly || isUploading}
                   onChange={(e) => { uploadKnowledgeFiles(e.target.files); e.currentTarget.value = ''; }}
-                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv"
+                  accept=".pdf,.txt,.md,.csv,.json,.docx,.doc,.rtf,.html,.htm,.xml,.tsv,.xlsx,.xls"
                 />
               </label>
-              <span className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
+              <span className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, MD, CSV, JSON, HTML · 25MB max</span>
             </div>
 
             {/* Prompt inclusion filter */}
