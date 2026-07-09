@@ -624,25 +624,25 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </div>
       </div>
 
-      {/* Core KPI strip */}
-      <div className="grid grid-cols-1 gap-3">
-        <StatCard
-          label="Qual Calls"
-          value={qualCallsCurrent.data?.count ?? 0}
-          prev={qualCallsPrevious.data?.count ?? 0}
-          onClick={() => setQualCallsOpen(true)}
-        />
-        <StatCard
-          label="Demos Started"
-          value={current.trialsStarted}
-          prev={previous.trialsStarted}
-          onClick={() => setDemosStartedOpen(true)}
-        />
-        <StatCard label="Converted" value={current.converted} prev={previous.converted} />
-      </div>
+      {/* KPIs on the left, charts on the right */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="flex flex-col gap-3 lg:col-span-1">
+          <StatCard
+            label="Qual Calls"
+            value={qualCallsCurrent.data?.count ?? 0}
+            prev={qualCallsPrevious.data?.count ?? 0}
+            onClick={() => setQualCallsOpen(true)}
+          />
+          <StatCard
+            label="Demos Started"
+            value={current.trialsStarted}
+            prev={previous.trialsStarted}
+            onClick={() => setDemosStartedOpen(true)}
+          />
+          <StatCard label="Converted" value={current.converted} prev={previous.converted} />
+        </div>
 
-      {/* Charts row */}
-      <div className="grid grid-cols-1 gap-4">
+        <div className="flex flex-col gap-4 lg:col-span-2">
         {/* Source split */}
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
@@ -698,6 +698,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
             </ResponsiveContainer>
           </CardContent>
         </Card>
+        </div>
       </div>
 
 
