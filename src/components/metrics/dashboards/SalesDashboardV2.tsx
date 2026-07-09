@@ -2849,12 +2849,15 @@ export function SalesDashboardV2() {
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
   const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
   // Stage-entry counts (from deal_stage_history) driving the
-  // "Deals-on-Board to Proposal" conversion card. Scoped to the selected
-  // timeframe so the card follows the header timeframe like everything else.
-  const stageEntryRange = React.useMemo(
-    () => ({ start: rangeStart, end: rangeEnd }),
-    [rangeStart, rangeEnd],
-  );
+  // "Deals-on-Board to Proposal" conversion card. Always trailing 12 months
+  // ending at the selected timeframe's end date so the ratio stays comparable
+  // regardless of how narrow the header timeframe is.
+  const stageEntryRange = React.useMemo(() => {
+    const end = rangeEnd;
+    const start = new Date(end);
+    start.setUTCMonth(start.getUTCMonth() - 12);
+    return { start, end };
+  }, [rangeEnd]);
   const ndaEnteredInRange = useStageEntryCount('ndaneeds-list-sent', stageEntryRange);
   const proposalEnteredInRange = useStageEntryCount('proposal-issued', stageEntryRange);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
