@@ -445,9 +445,39 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
       <CardHeader className="pb-3 pt-5 px-5">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="text-base font-semibold tracking-tight text-foreground">
-              Pipeline Narrative
-            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold tracking-tight text-foreground">
+                Pipeline Narrative
+              </h3>
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Select
+                  value={current.key}
+                  onValueChange={(key) => {
+                    const opt = periodOptions.find((o) => o.key === key);
+                    if (opt) setRefDate(opt.ref);
+                  }}
+                >
+                  <SelectTrigger
+                    className="h-6 w-auto gap-1 rounded-sm border border-border bg-transparent px-2 py-0 text-[10px] font-normal text-foreground hover:bg-muted/40 focus:ring-0 focus:ring-offset-0 [&>span]:line-clamp-1"
+                    aria-label="Select reporting period"
+                  >
+                    <SelectValue>
+                      {current.label}
+                      {current.key === currentPeriodKey ? ' (Current)' : ''}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[320px]">
+                    {periodOptions.map((o) => (
+                      <SelectItem key={o.key} value={o.key} className="text-xs">
+                        {o.label}{o.isCurrent ? ' (Current)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span>·</span>
+                <span>Compared to {prior.label}</span>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               Capture the story behind this period's pipeline — AI compares it to the prior period.
             </p>
@@ -475,34 +505,6 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
             </SelectContent>
             </Select>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground mt-2">
-          <Select
-            value={current.key}
-            onValueChange={(key) => {
-              const opt = periodOptions.find((o) => o.key === key);
-              if (opt) setRefDate(opt.ref);
-            }}
-          >
-            <SelectTrigger
-              className="h-6 w-auto gap-1 rounded-sm border border-border bg-transparent px-2 py-0 text-[10px] font-normal text-foreground hover:bg-muted/40 focus:ring-0 focus:ring-offset-0 [&>span]:line-clamp-1"
-              aria-label="Select reporting period"
-            >
-              <SelectValue>
-                {current.label}
-                {current.key === currentPeriodKey ? ' (Current)' : ''}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-[320px]">
-              {periodOptions.map((o) => (
-                <SelectItem key={o.key} value={o.key} className="text-xs">
-                  {o.label}{o.isCurrent ? ' (Current)' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span>·</span>
-          <span>Compared to {prior.label}</span>
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
