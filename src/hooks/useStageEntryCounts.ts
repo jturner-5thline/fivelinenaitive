@@ -26,18 +26,30 @@ export interface StageEntryDeal {
   changed_at: string;
 }
 
+/**
+ * Pass either an explicit { start, end } window (preferred — mirrors the
+ * dashboard's selected timeframe) or a trailing-months number (fallback).
+ */
 export function useStageEntryCount(
   stageId: string,
-  trailingMonths: number = 12,
+  range: number | { start: Date | string; end: Date | string } = 12,
 ): StageEntryCountResult {
   const { user } = useAuth();
 
-  const since = new Date();
-  since.setUTCMonth(since.getUTCMonth() - trailingMonths);
-  const sinceIso = since.toISOString();
+  let startIso: string;
+  let endIso: string;
+  if (typeof range === 'number') {
+    const since = new Date();
+    since.setUTCMonth(since.getUTCMonth() - range);
+    startIso = since.toISOString();
+    endIso = new Date().toISOString();
+  } else {
+    startIso = (range.start instanceof Date ? range.start : new Date(range.start)).toISOString();
+    endIso = (range.end instanceof Date ? range.end : new Date(range.end)).toISOString();
+  }
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['stage-entry-count', ACTIVE_PIPELINE_ID, stageId, sinceIso.slice(0, 10)],
+    queryKey: ['stage-entry-count', ACTIVE_PIPELINE_ID, stageId, startIso, endIso],
     queryFn: async () => {
       const { data: rows, error: err } = await supabase
         .from('deal_stage_history')
@@ -45,7 +57,8 @@ export function useStageEntryCount(
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .eq('event_type', 'stage_enter')
         .eq('to_stage_id', stageId)
-        .gte('changed_at', sinceIso)
+        .gte('changed_at', startIso)
+        .lte('changed_at', endIso)
         .order('changed_at', { ascending: false });
       if (err) throw err;
       return rows ?? [];

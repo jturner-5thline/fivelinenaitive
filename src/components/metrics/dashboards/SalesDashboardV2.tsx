@@ -1552,11 +1552,13 @@ function OnBoardToProposalDrilldown({
   onOpenChange,
   nda,
   proposal,
+  timeframeLabel,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   nda: ReturnType<typeof useStageEntryCount>;
   proposal: ReturnType<typeof useStageEntryCount>;
+  timeframeLabel: string;
 }) {
   const [tab, setTab] = React.useState<'nda' | 'proposal'>('nda');
   const fmtUsd = (n: number) =>
@@ -1578,7 +1580,7 @@ function OnBoardToProposalDrilldown({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Deals-on-Board to Proposal · trailing 12 months</DialogTitle>
+          <DialogTitle>Deals-on-Board to Proposal · {timeframeLabel}</DialogTitle>
           <DialogDescription>
             {proposal.count} entered Proposal Issued ÷ {nda.count} entered NDA/Needs List Sent · {ratio}
           </DialogDescription>
@@ -2846,10 +2848,15 @@ export function SalesDashboardV2() {
 
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
   const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
-  // Trailing 12-month stage-entry counts (from deal_stage_history) that back
-  // the "Deals-on-Board to Proposal" conversion card below.
-  const ndaEnteredTrailing12 = useStageEntryCount('ndaneeds-list-sent', 12);
-  const proposalEnteredTrailing12 = useStageEntryCount('proposal-issued', 12);
+  // Stage-entry counts (from deal_stage_history) driving the
+  // "Deals-on-Board to Proposal" conversion card. Scoped to the selected
+  // timeframe so the card follows the header timeframe like everything else.
+  const stageEntryRange = React.useMemo(
+    () => ({ start: rangeStart, end: rangeEnd }),
+    [rangeStart, rangeEnd],
+  );
+  const ndaEnteredInRange = useStageEntryCount('ndaneeds-list-sent', stageEntryRange);
+  const proposalEnteredInRange = useStageEntryCount('proposal-issued', stageEntryRange);
   const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
@@ -3200,17 +3207,17 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               value={(() => {
-                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return null;
-                const nda = ndaEnteredTrailing12.count;
-                const props = proposalEnteredTrailing12.count;
+                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return null;
+                const nda = ndaEnteredInRange.count;
+                const props = proposalEnteredInRange.count;
                 if (!nda) return null;
                 return props / nda;
               })()}
               subtitle={(() => {
-                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return 'Loading…';
-                const nda = ndaEnteredTrailing12.count;
-                const props = proposalEnteredTrailing12.count;
-                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
+                if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return 'Loading…';
+                const nda = ndaEnteredInRange.count;
+                const props = proposalEnteredInRange.count;
+                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · ${selectedQuarter.label}`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
@@ -3218,8 +3225,9 @@ export function SalesDashboardV2() {
           <OnBoardToProposalDrilldown
             open={onBoardToProposalOpen}
             onOpenChange={setOnBoardToProposalOpen}
-            nda={ndaEnteredTrailing12}
-            proposal={proposalEnteredTrailing12}
+            nda={ndaEnteredInRange}
+            proposal={proposalEnteredInRange}
+            timeframeLabel={selectedQuarter.label}
           />
 
           {/* Sales model sheet */}
