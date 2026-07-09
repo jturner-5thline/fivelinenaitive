@@ -11,7 +11,7 @@ import {
   type FinservStageEntry,
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
-import { useStageEntryCount } from '@/hooks/useStageEntryCounts';
+import { useStageEntryCount, useStageEntryEvents } from '@/hooks/useStageEntryCounts';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -47,6 +47,9 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceLine,
+  Bar,
+  ComposedChart,
+  Legend,
 } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -1550,17 +1553,113 @@ function ConversionCard({
 function OnBoardToProposalDrilldown({
   open,
   onOpenChange,
-  nda,
-  proposal,
-  timeframeLabel,
+  anchorEnd,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  nda: ReturnType<typeof useStageEntryCount>;
-  proposal: ReturnType<typeof useStageEntryCount>;
-  timeframeLabel: string;
+  /** End date of the initial trailing-12M window (usually dashboard rangeEnd). */
+  anchorEnd: Date;
 }) {
+  type Granularity = 'month' | 'quarter' | 'year';
+  const [granularity, setGranularity] = React.useState<Granularity>('year');
   const [tab, setTab] = React.useState<'nda' | 'proposal'>('nda');
+  // Step offset from the anchor end, in units of the current granularity.
+  // 0 = anchor, -1 = one step back, +1 = one step forward.
+  const [step, setStep] = React.useState(0);
+  React.useEffect(() => { setStep(0); }, [granularity, anchorEnd.getTime()]);
+
+  const stepMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
+  const windowMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
+
+  // Compute [start, end) for the currently-selected period and the prior period.
+  const { curStart, curEnd, prevStart, prevEnd, label } = React.useMemo(() => {
+    const end = new Date(anchorEnd);
+    end.setUTCMonth(end.getUTCMonth() + step * stepMonths);
+    const start = new Date(end);
+    start.setUTCMonth(start.getUTCMonth() - windowMonths);
+    const pEnd = new Date(start);
+    const pStart = new Date(pEnd);
+    pStart.setUTCMonth(pStart.getUTCMonth() - windowMonths);
+    const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
+    let lbl: string;
+    if (granularity === 'month') {
+      lbl = new Date(end.getTime() - 1).toLocaleDateString('en-US', mFmt);
+    } else if (granularity === 'quarter') {
+      const e = new Date(end.getTime() - 1);
+      const q = Math.floor(e.getUTCMonth() / 3) + 1;
+      lbl = `Q${q} ${e.getUTCFullYear()}`;
+    } else {
+      const s = new Date(start).toLocaleDateString('en-US', mFmt);
+      const e = new Date(end.getTime() - 1).toLocaleDateString('en-US', mFmt);
+      lbl = `${s} – ${e}`;
+    }
+    return { curStart: start, curEnd: end, prevStart: pStart, prevEnd: pEnd, label: lbl };
+  }, [anchorEnd, step, stepMonths, windowMonths, granularity]);
+
+  // Fetch a wide events window covering current + prior period + 12M chart trend.
+  const wideStart = React.useMemo(() => {
+    const chartStart = new Date(curEnd);
+    chartStart.setUTCMonth(chartStart.getUTCMonth() - 12);
+    return chartStart < prevStart ? chartStart : prevStart;
+  }, [curEnd, prevStart]);
+  const wideEnd = curEnd;
+
+  const ndaEvents = useStageEntryEvents('ndaneeds-list-sent', { start: wideStart, end: wideEnd });
+  const proposalEvents = useStageEntryEvents('proposal-issued', { start: wideStart, end: wideEnd });
+
+  const inRange = (iso: string, s: Date, e: Date) => {
+    const t = new Date(iso).getTime();
+    return t >= s.getTime() && t < e.getTime();
+  };
+  const distinctDealsInRange = (
+    evts: { deal_id: string; changed_at: string }[],
+    s: Date,
+    e: Date,
+  ) => {
+    const set = new Set<string>();
+    for (const ev of evts) if (inRange(ev.changed_at, s, e)) set.add(ev.deal_id);
+    return set;
+  };
+
+  const ndaCur = distinctDealsInRange(ndaEvents.events, curStart, curEnd);
+  const propCur = distinctDealsInRange(proposalEvents.events, curStart, curEnd);
+  const ndaPrev = distinctDealsInRange(ndaEvents.events, prevStart, prevEnd);
+  const propPrev = distinctDealsInRange(proposalEvents.events, prevStart, prevEnd);
+
+  const ratio = ndaCur.size > 0 ? propCur.size / ndaCur.size : null;
+  const prevRatio = ndaPrev.size > 0 ? propPrev.size / ndaPrev.size : null;
+  const delta =
+    ratio != null && prevRatio != null && prevRatio > 0
+      ? (ratio - prevRatio) / prevRatio
+      : null;
+
+  // Monthly bucket series for the chart: last 12 months ending at curEnd.
+  const chartData = React.useMemo(() => {
+    const buckets: {
+      key: string;
+      label: string;
+      nda: number;
+      proposal: number;
+      ratio: number | null;
+    }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const bEnd = new Date(curEnd);
+      bEnd.setUTCMonth(bEnd.getUTCMonth() - i);
+      const bStart = new Date(bEnd);
+      bStart.setUTCMonth(bStart.getUTCMonth() - 1);
+      const n = distinctDealsInRange(ndaEvents.events, bStart, bEnd).size;
+      const p = distinctDealsInRange(proposalEvents.events, bStart, bEnd).size;
+      buckets.push({
+        key: `${bStart.getUTCFullYear()}-${bStart.getUTCMonth() + 1}`,
+        label: new Date(bStart).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        nda: n,
+        proposal: p,
+        ratio: n > 0 ? Math.round((p / n) * 1000) / 10 : null,
+      });
+    }
+    return buckets;
+  }, [curEnd, ndaEvents.events, proposalEvents.events]);
+
   const fmtUsd = (n: number) =>
     n >= 1_000_000
       ? `$${(n / 1_000_000).toFixed(2)}MM`
@@ -1570,28 +1669,154 @@ function OnBoardToProposalDrilldown({
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
-  const ratio =
-    nda.count > 0 ? `${((proposal.count / nda.count) * 100).toFixed(1)}%` : '—';
+  // Deal lists for the selected period tab.
+  const tabRows = React.useMemo(() => {
+    const evts = tab === 'nda' ? ndaEvents.events : proposalEvents.events;
+    const seen = new Set<string>();
+    const out: typeof evts = [];
+    for (const ev of evts) {
+      if (!inRange(ev.changed_at, curStart, curEnd)) continue;
+      if (seen.has(ev.deal_id)) continue;
+      seen.add(ev.deal_id);
+      out.push(ev);
+    }
+    return out;
+  }, [tab, ndaEvents.events, proposalEvents.events, curStart, curEnd]);
 
-  const rows = tab === 'nda' ? nda.deals : proposal.deals;
-  const loading = tab === 'nda' ? nda.isLoading : proposal.isLoading;
+  const loading = ndaEvents.isLoading || proposalEvents.isLoading;
+  const pct = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
+  const deltaColor =
+    delta == null ? '#94a3b8' : delta > 0 ? '#22c55e' : delta < 0 ? '#ef4444' : '#94a3b8';
+  const deltaLabel =
+    delta == null ? '—' : `${delta > 0 ? '+' : ''}${(delta * 100).toFixed(1)}% vs prior`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Deals-on-Board to Proposal · {timeframeLabel}</DialogTitle>
+          <DialogTitle>Deals-on-Board to Proposal</DialogTitle>
           <DialogDescription>
-            {proposal.count} entered Proposal Issued ÷ {nda.count} entered NDA/Needs List Sent · {ratio}
+            Distinct deals entering each stage, sourced from stage-change history.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Period navigator */}
+        <div className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.02] px-3 py-2">
+          <div className="flex items-center gap-1">
+            {(['month', 'quarter', 'year'] as Granularity[]).map((g) => (
+              <button
+                key={g}
+                onClick={() => setGranularity(g)}
+                className={`px-2.5 py-1 rounded text-xs capitalize transition-colors ${
+                  granularity === g
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                    : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                }`}
+              >
+                {g === 'year' ? 'Trailing 12M' : g}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStep((s) => s - 1)}
+              className="px-2 py-1 rounded text-slate-300 hover:bg-white/[0.06]"
+              aria-label="Previous period"
+            >
+              ‹
+            </button>
+            <div className="text-sm font-medium text-slate-100 min-w-[160px] text-center tabular-nums">
+              {label}
+            </div>
+            <button
+              onClick={() => setStep((s) => s + 1)}
+              disabled={step >= 0}
+              className="px-2 py-1 rounded text-slate-300 hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next period"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
+        {/* KPI row */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">Conversion</div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{pct(ratio)}</div>
+            <div className="text-[11px] tabular-nums" style={{ color: deltaColor }}>{deltaLabel}</div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">Entered NDA / Needs List</div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{ndaCur.size}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums">prior: {ndaPrev.size}</div>
+          </div>
+          <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">Entered Proposal Issued</div>
+            <div className="text-2xl font-semibold text-slate-100 tabular-nums">{propCur.size}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums">prior: {propPrev.size}</div>
+          </div>
+        </div>
+
+        {/* Chart */}
+        <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
+          <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">
+            Monthly trend · last 12 months
+          </div>
+          <div style={{ width: '100%', height: 220 }}>
+            <ResponsiveContainer>
+              <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
+                <XAxis dataKey="label" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `${v}%`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(222, 47%, 11%)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 6,
+                    color: 'hsl(0,0%,98%)',
+                    fontSize: 12,
+                  }}
+                  cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  formatter={(v: any, name: string) =>
+                    name === 'Conversion' ? [`${v ?? '—'}%`, name] : [v, name]
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: 11, color: '#cbd5e1' }} />
+                <Bar yAxisId="left" dataKey="nda" name="Entered NDA" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+                <Bar yAxisId="left" dataKey="proposal" name="Entered Proposal" fill="#3b82f6" radius={[3, 3, 0, 0]} />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="ratio"
+                  name="Conversion"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  connectNulls
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Deal lists */}
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'nda' | 'proposal')}>
           <TabsList>
-            <TabsTrigger value="nda">NDA/Needs List Sent ({nda.count})</TabsTrigger>
-            <TabsTrigger value="proposal">Proposal Issued ({proposal.count})</TabsTrigger>
+            <TabsTrigger value="nda">NDA / Needs List Sent ({ndaCur.size})</TabsTrigger>
+            <TabsTrigger value="proposal">Proposal Issued ({propCur.size})</TabsTrigger>
           </TabsList>
           <TabsContent value={tab} className="mt-3">
-            <div className="max-h-[60vh] overflow-y-auto rounded-md border border-white/10">
+            <div className="max-h-[40vh] overflow-y-auto rounded-md border border-white/10">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-slate-900/95 text-[11px] uppercase tracking-wider text-slate-400">
                   <tr>
@@ -1606,18 +1831,15 @@ function OnBoardToProposalDrilldown({
                     <tr>
                       <td colSpan={4} className="px-3 py-6 text-center text-slate-400">Loading…</td>
                     </tr>
-                  ) : rows.length === 0 ? (
+                  ) : tabRows.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-3 py-6 text-center text-slate-400">No deals</td>
                     </tr>
                   ) : (
-                    rows.map((d) => (
+                    tabRows.map((d) => (
                       <tr key={d.deal_id} className="border-t border-white/5 hover:bg-white/[0.03]">
                         <td className="px-3 py-2">
-                          <a
-                            href={`/deal/${d.deal_id}`}
-                            className="text-blue-400 hover:underline"
-                          >
+                          <a href={`/deal/${d.deal_id}`} className="text-blue-400 hover:underline">
                             {d.company}
                           </a>
                         </td>
@@ -3228,9 +3450,7 @@ export function SalesDashboardV2() {
           <OnBoardToProposalDrilldown
             open={onBoardToProposalOpen}
             onOpenChange={setOnBoardToProposalOpen}
-            nda={ndaEnteredInRange}
-            proposal={proposalEnteredInRange}
-            timeframeLabel={selectedQuarter.label}
+            anchorEnd={rangeEnd}
           />
 
           {/* Sales model sheet */}
