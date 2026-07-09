@@ -11,6 +11,7 @@ import {
   type FinservStageEntry,
 } from '@/hooks/useFinservStageEntryByMonth';
 import { useDollarsSignedByMonth } from '@/hooks/useDollarsSignedByMonth';
+import { useStageEntryCount } from '@/hooks/useStageEntryCounts';
 import {
   buildQuarterOptions,
   getCurrentQuarter,
@@ -2735,6 +2736,10 @@ export function SalesDashboardV2() {
 
   // Live Deals on Board — mirrors Consolidated Debt Pipeline Board logic
   const dealsOnBoardQuery = useDealsOnBoardByMonth(activeYears);
+  // Trailing 12-month stage-entry counts (from deal_stage_history) that back
+  // the "Deals-on-Board to Proposal" conversion card below.
+  const ndaEnteredTrailing12 = useStageEntryCount('ndaneeds-list-sent', 12);
+  const proposalEnteredTrailing12 = useStageEntryCount('proposal-issued', 12);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3084,16 +3089,17 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               value={(() => {
-                const deals = trailing3(liveDealsOnBoardActual);
-                const props = trailing3(liveProposalsIssuedActual);
-                if (deals == null || props == null || deals === 0) return null;
-                return props / deals;
+                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return null;
+                const nda = ndaEnteredTrailing12.count;
+                const props = proposalEnteredTrailing12.count;
+                if (!nda) return null;
+                return props / nda;
               })()}
               subtitle={(() => {
-                const deals = trailing3(liveDealsOnBoardActual);
-                const props = trailing3(liveProposalsIssuedActual);
-                if (deals == null || props == null) return 'Loading…';
-                return `${props} proposals ÷ ${deals} deals · last 3 months`;
+                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return 'Loading…';
+                const nda = ndaEnteredTrailing12.count;
+                const props = proposalEnteredTrailing12.count;
+                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
               })()}
             />
           </div>
