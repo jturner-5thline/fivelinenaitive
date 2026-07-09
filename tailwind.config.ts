@@ -161,6 +161,10 @@ export default {
 			'task-row-settle': {
 				from: { opacity: '1', transform: 'translateX(0)' },
 				to: { opacity: '0.7', transform: 'translateX(0)' }
+			},
+			'kb-progress': {
+				'0%': { transform: 'translateX(-100%)' },
+				'100%': { transform: 'translateX(400%)' }
 			}
 		},
   		animation: {
@@ -180,6 +184,8 @@ export default {
 			'task-row-settle': 'task-row-settle 400ms ease-out forwards'
 			,
 			'shimmer-sweep': 'shimmer-sweep 1.8s ease-in-out infinite'
+			,
+			'kb-progress': 'kb-progress 1.4s ease-in-out infinite'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
