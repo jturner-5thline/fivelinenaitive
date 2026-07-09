@@ -1,13 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { callClaude } from "../_shared/claudeChat.ts";
+import { callClaude, streamClaudeAsOpenAISSE } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const DASHBOARD_CHAT_MODEL = "google/gemini-3-flash-preview";
-const AI_GATEWAY_TIMEOUT_MS = 45_000;
+const DASHBOARD_CHAT_MODEL = "claude-sonnet-4-5-20250929";
 
 async function logDashboardChatFailure(
   supabase: any,
@@ -41,31 +40,7 @@ async function logDashboardChatFailure(
   }
 }
 
-async function callAiGateway(
-  apiKey: string,
-  body: Record<string, unknown>,
-  timeoutMs = AI_GATEWAY_TIMEOUT_MS,
-) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Dashboard AI timed out after ${Math.round(timeoutMs / 1000)}s`);
-    }
-
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+// Anthropic Messages API is called via the shared callClaude / streamClaudeAsOpenAISSE helpers.
 
 const platformKnowledge = `
 ## Platform Overview
