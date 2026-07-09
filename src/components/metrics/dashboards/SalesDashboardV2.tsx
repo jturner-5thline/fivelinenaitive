@@ -158,6 +158,22 @@ function pad(actuals: number[]): (number | null)[] {
   return out;
 }
 
+function addMonthsClampedUtc(date: Date, months: number): Date {
+  const y = date.getUTCFullYear();
+  const m = date.getUTCMonth() + months;
+  const targetLastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const d = Math.min(date.getUTCDate(), targetLastDay);
+  return new Date(Date.UTC(
+    y,
+    m,
+    d,
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds(),
+    date.getUTCMilliseconds(),
+  ));
+}
+
 // ============================================================
 // FILTERED-VIEW CONTEXT
 // All sub-components read months/plan/actual/elapsed from here so the
@@ -1575,13 +1591,10 @@ function OnBoardToProposalDrilldown({
 
   // Compute [start, end) for the currently-selected period and the prior period.
   const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
-    const end = new Date(anchorEnd);
-    end.setUTCMonth(end.getUTCMonth() + step * stepMonths);
-    const start = new Date(end);
-    start.setUTCMonth(start.getUTCMonth() - windowMonths);
-    const pEnd = new Date(start);
-    const pStart = new Date(pEnd);
-    pStart.setUTCMonth(pStart.getUTCMonth() - windowMonths);
+    const end = addMonthsClampedUtc(anchorEnd, step * stepMonths);
+    const start = addMonthsClampedUtc(end, -windowMonths);
+    const pEnd = addMonthsClampedUtc(end, -stepMonths);
+    const pStart = addMonthsClampedUtc(pEnd, -windowMonths);
     // TTM range label based on granularity. Data window is always 12 months.
     const fmtRange = (rStart: Date, rEnd: Date): string => {
       const eDate = new Date(rEnd.getTime() - 1);
@@ -1593,7 +1606,7 @@ function OnBoardToProposalDrilldown({
         const ey = String(eDate.getUTCFullYear()).slice(-2);
         return `Q${sq} ${sy} – Q${eq} ${ey}`;
       }
-      const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric' };
+      const mFmt: Intl.DateTimeFormatOptions = { month: 'short', year: 'numeric', timeZone: 'UTC' };
       return `${sDate.toLocaleDateString('en-US', mFmt)} – ${eDate.toLocaleDateString('en-US', mFmt)}`;
     };
     const lbl = fmtRange(start, end);
@@ -1648,10 +1661,8 @@ function OnBoardToProposalDrilldown({
       ratio: number | null;
     }[] = [];
     for (let i = 11; i >= 0; i--) {
-      const bEnd = new Date(curEnd);
-      bEnd.setUTCMonth(bEnd.getUTCMonth() - i);
-      const bStart = new Date(bEnd);
-      bStart.setUTCMonth(bStart.getUTCMonth() - 1);
+      const bEnd = addMonthsClampedUtc(curEnd, -i);
+      const bStart = addMonthsClampedUtc(bEnd, -1);
       const n = distinctDealsInRange(ndaEvents.events, bStart, bEnd).size;
       const p = distinctDealsInRange(proposalEvents.events, bStart, bEnd).size;
       buckets.push({
