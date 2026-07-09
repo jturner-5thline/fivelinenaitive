@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { callClaude } from '../_shared/claudeChat.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,42 +89,27 @@ Deno.serve(async (req) => {
       'Return only the polished body.',
     ].filter(Boolean).join('\n\n');
 
-    const aiResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMsg },
-        ],
+    let polished = '';
+    try {
+      const result = await callClaude({
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMsg }],
         temperature: 0.4,
-      }),
-    });
-
-    if (!aiResp.ok) {
-      const txt = await aiResp.text();
-      console.error('AI gateway error', aiResp.status, txt);
-      if (aiResp.status === 429) {
+        maxTokens: 2048,
+      });
+      polished = result.text.trim();
+    } catch (e: any) {
+      const status = e?.status ?? 500;
+      console.error('Claude error', status, e?.message);
+      if (status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limited — please try again in a moment.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits exhausted. Add funds in Settings → Workspace → Usage.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(JSON.stringify({ error: 'AI gateway error' }), {
+      return new Response(JSON.stringify({ error: 'AI error' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const json = await aiResp.json();
-    const polished = (json?.choices?.[0]?.message?.content ?? '').trim();
     if (!polished) {
       return new Response(JSON.stringify({ error: 'Empty AI response' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
