@@ -14,7 +14,7 @@ import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderNoteTimestamp } from '@/components/deal/LenderNoteTimestamp';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
-import { DealHoursEntriesEditor } from '@/components/deal/DealHoursEntriesEditor';
+import { AddHoursButton } from '@/components/deal/DealHoursEntriesEditor';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
@@ -4210,7 +4210,24 @@ export default function DealDetail() {
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Hours */}
                                         <div className="space-y-3 min-w-0">
-                                          <DealHoursEntriesEditor dealId={deal.id} />
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
+                                            <span className="text-muted-foreground text-sm">Pre-Signing</span>
+                                            <span className="text-sm font-medium h-8 flex items-center tabular-nums">
+                                              {(deal.preSigningHours ?? 0).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
+                                            <span className="text-muted-foreground text-sm">Post-Signing</span>
+                                            <span className="text-sm font-medium h-8 flex items-center tabular-nums">
+                                              {(deal.postSigningHours ?? 0).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
+                                            <span className="text-muted-foreground text-sm">Total Hours</span>
+                                            <span className="text-sm font-medium h-8 flex items-center tabular-nums">
+                                              {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
+                                            </span>
+                                          </div>
                                           <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Revenue / Hour</span>
                                             <span className="text-sm font-medium h-8 flex items-center">
@@ -4221,6 +4238,12 @@ export default function DealDetail() {
                                                 return `$${revenuePerHour.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
                                               })()}
                                             </span>
+                                          </div>
+                                          <div className="pt-1">
+                                            <AddHoursButton
+                                              dealId={deal.id}
+                                              onChanged={() => { void refreshDeals?.(); }}
+                                            />
                                           </div>
                                         </div>
                                         {/* Fees */}
