@@ -2759,6 +2759,7 @@ export function SalesDashboardV2() {
   // the "Deals-on-Board to Proposal" conversion card below.
   const ndaEnteredTrailing12 = useStageEntryCount('ndaneeds-list-sent', 12);
   const proposalEnteredTrailing12 = useStageEntryCount('proposal-issued', 12);
+  const [onBoardToProposalOpen, setOnBoardToProposalOpen] = React.useState(false);
   const dealsOnBoardByMonthKey = React.useMemo<Record<string, number>>(() => {
     if (dealsOnBoardQuery.isLoading || dealsOnBoardQuery.isFetching) return {};
     const out: Record<string, number> = {};
@@ -3120,8 +3121,15 @@ export function SalesDashboardV2() {
                 const props = proposalEnteredTrailing12.count;
                 return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
               })()}
+              onClick={() => setOnBoardToProposalOpen(true)}
             />
           </div>
+          <OnBoardToProposalDrilldown
+            open={onBoardToProposalOpen}
+            onOpenChange={setOnBoardToProposalOpen}
+            nda={ndaEnteredTrailing12}
+            proposal={proposalEnteredTrailing12}
+          />
 
           {/* Sales model sheet */}
           <SalesModelSheet />
