@@ -290,8 +290,8 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
       const idx = cadence === 'monthly' ? d.getMonth() : Math.floor(d.getMonth() / 3);
       if (idx >= 0 && idx < periods) buckets[idx].push(l);
     }
-    // Hard-coded override: Jan 2026 shows 0 funding sources added.
-    if (year === 2026 && cadence === 'monthly') {
+    // Hard-coded override: Jan 2026 / Q1 2026 show 0 funding sources added.
+    if (year === 2026) {
       buckets[0] = [];
     }
     return buckets;
