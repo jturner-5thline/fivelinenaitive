@@ -3215,7 +3215,7 @@ export function SalesDashboardV2() {
                 if (ndaEnteredInRange.isLoading || proposalEnteredInRange.isLoading) return 'Loading…';
                 const nda = ndaEnteredInRange.count;
                 const props = proposalEnteredInRange.count;
-                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
+                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · ${selectedQuarter.label}`;
               })()}
               onClick={() => setOnBoardToProposalOpen(true)}
             />
@@ -3225,6 +3225,7 @@ export function SalesDashboardV2() {
             onOpenChange={setOnBoardToProposalOpen}
             nda={ndaEnteredInRange}
             proposal={proposalEnteredInRange}
+            timeframeLabel={selectedQuarter.label}
           />
 
           {/* Sales model sheet */}
