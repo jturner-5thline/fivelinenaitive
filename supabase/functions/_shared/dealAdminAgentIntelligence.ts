@@ -2819,6 +2819,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
   // Load workspace custom + learned rules once per sweep and inject into
   // every model call so the agent operates under them company-wide.
   let companyRulesBlock: string | null = null;
+  let kbTagFilter: string[] = [];
   try {
     const [{ data: settings }, { data: learned }] = await Promise.all([
       supabase
@@ -2851,49 +2852,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     const tagFilter: string[] = Array.isArray((settings as any)?.knowledge_tag_filter)
       ? ((settings as any).knowledge_tag_filter as any[]).filter((t: any) => typeof t === "string" && t.length > 0)
       : [];
-    // Knowledge base — uploaded / pasted reference documents.
-    try {
-      let kbQuery = supabase
-        .from("admin_agent_knowledge_docs")
-        .select("title, extracted_text, tags")
-        .eq("company_id", companyId)
-        .eq("agent_key", "admin_agent")
-        .eq("status", "ready");
-      if (tagFilter.length > 0) {
-        // Only include docs that carry at least one selected tag.
-        kbQuery = kbQuery.overlaps("tags", tagFilter);
-      }
-      const { data: kb } = await kbQuery;
-      const docs = (kb || [])
-        .map((d: any) => ({
-          title: String(d?.title || "Untitled").trim(),
-          text: String(d?.extracted_text || "").trim(),
-          tags: Array.isArray(d?.tags) ? (d.tags as string[]) : [],
-        }))
-        .filter((d) => d.text.length > 0);
-      if (docs.length > 0) {
-        // Cap total injected text so we don't blow the context window.
-        const PER_DOC_CAP = 8000;
-        const TOTAL_CAP = 60_000;
-        let used = 0;
-        const blocks: string[] = [];
-        for (const d of docs) {
-          const snippet = d.text.slice(0, PER_DOC_CAP);
-          if (used + snippet.length > TOTAL_CAP) break;
-          used += snippet.length;
-          const tagLine = d.tags.length > 0 ? ` [${d.tags.join(", ")}]` : "";
-          blocks.push(`### ${d.title}${tagLine}\n${snippet}`);
-        }
-        if (blocks.length > 0) {
-          const scopeNote = tagFilter.length > 0
-            ? ` — scoped to tags: ${tagFilter.join(", ")}`
-            : "";
-          parts.push(`ADMIN AGENT KNOWLEDGE BASE (workspace reference documents — rules, requirements, definitions, glossary, workflows; use as authoritative context${scopeNote}):\n\n${blocks.join("\n\n---\n\n")}`);
-        }
-      }
-    } catch (e) {
-      console.warn("[deal-admin-agent] knowledge-base load failed", (e as Error)?.message);
-    }
+    kbTagFilter = tagFilter;
+    // Knowledge base is now retrieved per-deal via embeddings (RAG) rather
+    // than injected in full here — see retrieveKnowledgeForDeal below.
     if (parts.length > 0) companyRulesBlock = parts.join("\n\n");
   } catch (e) {
     console.warn("[deal-admin-agent] rule load failed", (e as Error)?.message);
