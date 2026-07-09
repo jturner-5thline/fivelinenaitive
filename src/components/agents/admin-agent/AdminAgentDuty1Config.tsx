@@ -438,6 +438,29 @@ export function AdminAgentDuty1Config() {
   const [pasteBody, setPasteBody] = useState('');
   const [isSavingPaste, setIsSavingPaste] = useState(false);
 
+  // Realtime: reflect ingestion progress as the edge function updates status.
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`admin-agent-knowledge-${companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'admin_agent_knowledge_docs',
+          filter: `company_id=eq.${companyId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['admin-agent-knowledge', companyId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId, qc]);
+
   async function uploadKnowledgeFiles(files: FileList | null) {
     if (!companyId || !currentUserId || !files || files.length === 0) return;
     setIsUploading(true);
