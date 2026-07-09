@@ -625,7 +625,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       {/* Core KPI strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <StatCard
           label="Qual Calls"
           value={qualCallsCurrent.data?.count ?? 0}
@@ -642,7 +642,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         {/* Source split */}
         <Card>
           <CardHeader className="pb-3 pt-5 px-5">
@@ -700,114 +700,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </Card>
       </div>
 
-      {/* Top blocker callout — clickable drill-down */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Card className="border-primary/30 bg-primary/5">
-        <button
-          type="button"
-          disabled={!blockerThis || blockerThis.deals.length === 0}
-          onClick={() => setBlockerOpen(true)}
-          className={cn(
-            'w-full text-left p-4 rounded-lg transition-colors',
-            blockerThis && blockerThis.deals.length > 0
-              ? 'hover:bg-primary/10 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50'
-              : 'cursor-default',
-          )}
-        >
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              This Week's #1 Blocker
-            </p>
-            {blockerThis && blockerThis.deals.length > 0 && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary">
-                View {blockerThis.deals.length} {blockerThis.deals.length === 1 ? 'deal' : 'deals'}
-                <ChevronRight className="h-3 w-3" />
-              </span>
-            )}
-          </div>
-          {blockerThis ? (
-            <p className="text-sm text-foreground mt-1">
-              <span className="font-semibold text-primary">Top disqualification this week:</span>{' '}
-              <span className="font-semibold">{blockerThis.label}</span> — {blockerThis.count}{' '}
-              {blockerThis.count === 1 ? 'deal' : 'deals'}.
-              {blockerLast ? (
-                <span className="text-muted-foreground">
-                  {' '}Last week: {blockerLast.label} ({blockerLast.count}).
-                </span>
-              ) : (
-                <span className="text-muted-foreground"> No blocker logged last week.</span>
-              )}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground mt-1">No "Why Not Moving Forward" reasons logged this week yet.</p>
-          )}
-        </button>
-        <div className="px-4 pb-3">
-          <ReasonPie
-            data={blockerBreakdownThis.map((b) => ({ label: b.label, count: b.count }))}
-            emptyText="No data this week"
-            onSliceClick={openBlockerSlice}
-          />
-        </div>
-      </Card>
-
-        {/* This Week's #1 Accelerator — symmetrical to the blocker card */}
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
-          <div className="p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                This Week's #1 Accelerator
-              </p>
-              {acceleratorBreakdown.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setBreakdownOpen((v) => !v)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
-                >
-                  {breakdownOpen ? 'Hide' : 'Breakdown'}
-                  <ChevronDown className={cn('h-3 w-3 transition-transform', breakdownOpen && 'rotate-180')} />
-                </button>
-              )}
-            </div>
-            {accelerator ? (
-              <p className="text-sm text-foreground mt-1">
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Top accelerator this week:</span>{' '}
-                <span className="font-semibold">{ADVANCE_REASON_LABELS[accelerator.category]}</span> — {accelerator.count}{' '}
-                {accelerator.count === 1 ? 'deal' : 'deals'}.
-                {acceleratorLast ? (
-                  <span className="text-muted-foreground">
-                    {' '}Last week: {ADVANCE_REASON_LABELS[acceleratorLast.category]} ({acceleratorLast.count}).
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground"> No accelerator logged last week.</span>
-                )}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-1">No "Why Moving Forward" reasons logged this week yet.</p>
-            )}
-            {breakdownOpen && acceleratorBreakdown.length > 0 && (
-              <ul className="mt-3 space-y-1.5 border-t border-emerald-500/20 pt-2">
-                {acceleratorBreakdown.map((b) => (
-                  <li key={b.category} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground">{ADVANCE_REASON_LABELS[b.category]}</span>
-                    <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{b.count}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-2">
-              <ReasonPie
-                data={acceleratorBreakdown.map((b) => ({
-                  label: ADVANCE_REASON_LABELS[b.category],
-                  count: b.count,
-                }))}
-                emptyText="No data this week"
-                onSliceClick={openAcceleratorSlice}
-              />
-            </div>
-          </div>
-        </Card>
-      </div>
 
       <Dialog open={!!drill} onOpenChange={(o) => { if (!o) setDrill(null); }}>
         <DialogContent className="max-w-2xl">
@@ -872,62 +764,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base">
-              {blockerThis?.label ?? 'Top blocker'} · {blockerThis?.count ?? 0}{' '}
-              {blockerThis?.count === 1 ? 'mention' : 'mentions'}
-            </DialogTitle>
-            <DialogDescription>
-              Deals updated this week that cited this reason in "Why Not Moving Forward".
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
-            {blockerThis && blockerThis.deals.length > 0 ? (
-              <ul className="divide-y divide-border">
-                {blockerThis.deals.map(({ deal, reasons }) => (
-                  <li key={deal.id} className="py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          to={`/deal/${deal.id}`}
-                          className="text-sm font-semibold text-foreground hover:text-primary truncate block"
-                          onClick={() => setBlockerOpen(false)}
-                        >
-                          {deal.company || 'Untitled deal'}
-                        </Link>
-                        {deal.stage && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Stage: {formatSlug(deal.stage)}
-                          </p>
-                        )}
-                        <ul className="mt-2 space-y-1">
-                          {reasons.map((r, i) => (
-                            <li
-                              key={i}
-                              className="text-xs text-foreground/90 leading-snug pl-3 border-l-2 border-primary/40"
-                            >
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
-                        {format(new Date(deal.updatedAt), 'MMM d')}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No deals match this blocker.
-              </p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={qualCallsOpen} onOpenChange={setQualCallsOpen}>
         <DialogContent className="max-w-2xl">
