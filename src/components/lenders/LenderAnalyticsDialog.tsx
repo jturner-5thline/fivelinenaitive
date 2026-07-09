@@ -1377,6 +1377,175 @@ export function LenderAnalyticsDialog({
           </SheetContent>
         </Sheet>
       </DialogContent>
+      {/* KPI drill-down sheet — Active Lenders / Deals Sent / Conversion / Flex Active */}
+      <Sheet open={!!openKpi} onOpenChange={(o) => { if (!o) setOpenKpi(null); }}>
+        <SheetContent side="right" className="w-[640px] sm:max-w-[720px] z-[1600] bg-slate-950 text-slate-100 border-slate-700/60">
+          {openKpi && (() => {
+            const title =
+              openKpi === 'active' ? 'Active Lenders' :
+              openKpi === 'sent' ? 'Deals Sent' :
+              openKpi === 'conv' ? 'Conversion Rate' :
+              'Flex Active Lenders';
+            const subtitle =
+              openKpi === 'active' ? `${activeLenderCount} lenders · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'sent' ? `${kpis.submitted} deal_lenders submitted · ${dateRangeLabel(dateRange)}` :
+              openKpi === 'conv' ? `${kpis.terms} terms of ${kpis.submitted} submitted (${fmtPct(kpis.conv)}) · ${dateRangeLabel(dateRange)}` :
+              `${flexActiveLenderCount} Flex-linked lenders active · ${dateRangeLabel(dateRange)}`;
+            const q = kpiDrillSearch.trim().toLowerCase();
+            // Build rows for the table view depending on drill type
+            let mode: 'lenders' | 'deals' = 'lenders';
+            let lenderRows: LenderStat[] = [];
+            let dealRows: Enriched[] = [];
+            if (openKpi === 'active') {
+              mode = 'lenders';
+              lenderRows = lenderStats;
+            } else if (openKpi === 'flex') {
+              mode = 'lenders';
+              lenderRows = lenderStats.filter((l) => l.isFlex);
+            } else if (openKpi === 'sent') {
+              mode = 'deals';
+              dealRows = rows.filter((r) => r.everSubmitted);
+            } else {
+              // conversion: show terms rows
+              mode = 'deals';
+              dealRows = rows.filter((r) => r.everTerms);
+            }
+            const filteredLenders = q
+              ? lenderRows.filter((l) => l.name.toLowerCase().includes(q))
+              : lenderRows;
+            const filteredDeals = q
+              ? dealRows.filter((r) =>
+                  [r.deal.company, r.name, r.deal.manager, r.label].some((s) =>
+                    (s || '').toLowerCase().includes(q),
+                  ),
+                )
+              : dealRows;
+            const csvExport = () => {
+              if (mode === 'lenders') {
+                downloadCsv(`kpi-${openKpi}`, [
+                  ['lender', 'tier', 'deals', 'submitted', 'terms', 'conv_pct', 'flex'],
+                  ...filteredLenders.map((l) => [
+                    l.name,
+                    l.tier ?? '',
+                    l.count,
+                    l.submitted,
+                    l.terms,
+                    (l.conv * 100).toFixed(1),
+                    l.isFlex ? 'yes' : 'no',
+                  ]),
+                ]);
+              } else {
+                downloadCsv(`kpi-${openKpi}`, [
+                  ['deal', 'lender', 'stage', 'amount', 'owner', 'last_activity'],
+                  ...filteredDeals.map((r) => [
+                    r.deal.company || '',
+                    r.name || '',
+                    r.label || '',
+                    String(r.deal.value ?? ''),
+                    r.deal.manager || '',
+                    r.updated_at,
+                  ]),
+                ]);
+              }
+            };
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="text-slate-100">{title}</SheetTitle>
+                  <SheetDescription className="text-slate-400">{subtitle}</SheetDescription>
+                </SheetHeader>
+                <div className="mt-3 flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
+                    <Input
+                      value={kpiDrillSearch}
+                      onChange={(e) => setKpiDrillSearch(e.target.value)}
+                      placeholder={mode === 'lenders' ? 'Search lender…' : 'Search deal or lender…'}
+                      className="h-8 pl-7 text-[12px] bg-slate-900/60 border-slate-700/60"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[11px] bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70 gap-1.5"
+                    onClick={csvExport}
+                    disabled={mode === 'lenders' ? filteredLenders.length === 0 : filteredDeals.length === 0}
+                  >
+                    <Download className="h-3.5 w-3.5" /> CSV
+                  </Button>
+                </div>
+                <div className="mt-3 max-h-[calc(100vh-200px)] overflow-auto">
+                  {mode === 'lenders' ? (
+                    filteredLenders.length === 0 ? (
+                      <div className="p-6 text-center text-[12px] text-slate-500">No lenders</div>
+                    ) : (
+                      <table className="w-full text-[12px]">
+                        <thead className="text-left text-slate-400">
+                          <tr>
+                            <th className="py-1.5">Lender</th>
+                            <th className="text-right pr-3">Tier</th>
+                            <th className="text-right pr-3">Deals</th>
+                            <th className="text-right pr-3">Submitted</th>
+                            <th className="text-right pr-3">Terms</th>
+                            <th className="text-right pr-3">Conv</th>
+                            <th className="text-right">Flex</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredLenders.map((l) => (
+                            <tr key={l.key} className="border-t border-slate-700/40">
+                              <td className="py-1.5 text-slate-100 truncate max-w-[220px]">{l.name}</td>
+                              <td className="text-right pr-3 text-slate-300 tabular-nums">{l.tier ?? '—'}</td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.count}</td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.submitted}</td>
+                              <td className="text-right pr-3 text-slate-200 tabular-nums">{l.terms}</td>
+                              <td className="text-right pr-3 text-slate-300 tabular-nums">
+                                {l.submitted > 0 ? `${(l.conv * 100).toFixed(1)}%` : '—'}
+                              </td>
+                              <td className="text-right text-slate-300">{l.isFlex ? 'Yes' : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )
+                  ) : filteredDeals.length === 0 ? (
+                    <div className="p-6 text-center text-[12px] text-slate-500">No deals</div>
+                  ) : (
+                    <table className="w-full text-[12px]">
+                      <thead className="text-left text-slate-400">
+                        <tr>
+                          <th className="py-1.5">Deal</th>
+                          <th>Lender</th>
+                          <th>Stage</th>
+                          <th className="text-right pr-3 whitespace-nowrap">Amount</th>
+                          <th className="whitespace-nowrap">Owner</th>
+                          <th className="text-right whitespace-nowrap">Last Activity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDeals.map((r) => (
+                          <tr key={r.id} className="border-t border-slate-700/40">
+                            <td className="py-1.5 text-slate-100 truncate max-w-[160px]">{r.deal.company || '—'}</td>
+                            <td className="text-slate-300 truncate max-w-[140px]">{r.name || '—'}</td>
+                            <td className="max-w-[140px]"><StageTag label={r.label} /></td>
+                            <td className="text-right pr-3 text-slate-200 tabular-nums whitespace-nowrap">
+                              {r.deal.value != null ? formatUSD(Number(r.deal.value)) : '—'}
+                            </td>
+                            <td className="text-slate-300 truncate max-w-[120px]">{r.deal.manager || '—'}</td>
+                            <td className="text-right text-slate-400 tabular-nums whitespace-nowrap">
+                              {new Date(r.updated_at).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
       {isFifthLine && (
         <FundingSourcePlanModal
           open={planOpen}
