@@ -517,6 +517,12 @@ export function LenderAnalyticsDialog({
   const [lenderDrawerSearch, setLenderDrawerSearch] = useState('');
   const [reasonDrawerSearch, setReasonDrawerSearch] = useState('');
 
+  // KPI drill-down (top 4 widgets)
+  type KpiDrill = 'active' | 'sent' | 'conv' | 'flex' | null;
+  const [openKpi, setOpenKpi] = useState<KpiDrill>(null);
+  const [kpiDrillSearch, setKpiDrillSearch] = useState('');
+  useEffect(() => { if (!openKpi) setKpiDrillSearch(''); }, [openKpi]);
+
   // Widget 1: New Funding Sources
   const newLenders = useMemo(() => {
     const start = rangeStart(dateRange);
