@@ -452,7 +452,19 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
               Capture the story behind this period's pipeline — AI compares it to the prior period.
             </p>
           </div>
-          <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              {saveState === 'saving' && (<><Loader2 className="h-3 w-3 animate-spin" /> Saving…</>)}
+              {saveState === 'saved' && (<><Check className="h-3 w-3 text-green-600" /> Saved</>)}
+              {saveState === 'error' && (<span className="text-destructive">Save failed</span>)}
+              {saveState === 'idle' && updatedAt && (
+                <span>
+                  Updated {formatDistanceToNow(updatedAt, { addSuffix: true })}
+                  {updatedByEmail ? ` · ${updatedByEmail}` : ''}
+                </span>
+              )}
+            </span>
+            <Select value={periodType} onValueChange={(v) => setPeriodType(v as PeriodType)}>
             <SelectTrigger className="h-7 w-[110px] text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -461,7 +473,8 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
               <SelectItem value="month">Monthly</SelectItem>
               <SelectItem value="quarter">Quarterly</SelectItem>
             </SelectContent>
-          </Select>
+            </Select>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground mt-2">
           <Select
@@ -490,17 +503,6 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
           </Select>
           <span>·</span>
           <span>Compared to {prior.label}</span>
-          <span className="ml-auto flex items-center gap-1.5">
-            {saveState === 'saving' && (<><Loader2 className="h-3 w-3 animate-spin" /> Saving…</>)}
-            {saveState === 'saved' && (<><Check className="h-3 w-3 text-green-600" /> Saved</>)}
-            {saveState === 'error' && (<span className="text-destructive">Save failed</span>)}
-            {saveState === 'idle' && updatedAt && (
-              <span>
-                Updated {formatDistanceToNow(updatedAt, { addSuffix: true })}
-                {updatedByEmail ? ` · ${updatedByEmail}` : ''}
-              </span>
-            )}
-          </span>
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
