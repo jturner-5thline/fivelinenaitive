@@ -1244,38 +1244,6 @@ export function AdminAgentDuty1Config() {
             )}
           </div>
 
-          <div className="rounded-md border border-border/60 bg-card/40 p-2.5 space-y-2">
-            <div className="flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-              <h5 className="text-xs font-semibold">Or paste text directly</h5>
-            </div>
-            <Input
-              value={pasteTitle}
-              onChange={(e) => setPasteTitle(e.target.value)}
-              placeholder="Title (e.g. Deal terminology glossary)"
-              disabled={readOnly || isSavingPaste}
-              className="h-7 text-xs"
-            />
-            <Textarea
-              value={pasteBody}
-              onChange={(e) => setPasteBody(e.target.value)}
-              placeholder="Paste rules, definitions, or workflow steps…"
-              disabled={readOnly || isSavingPaste}
-              rows={4}
-              className="text-xs"
-            />
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={savePastedKnowledge}
-                disabled={readOnly || isSavingPaste || !pasteTitle.trim() || !pasteBody.trim()}
-                className="h-7 text-[11px]"
-              >
-                {isSavingPaste ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                Add
-              </Button>
-            </div>
-          </div>
         </TabsContent>
 
         {/* ── Calendar (holidays) ─────────────────────────────── */}
