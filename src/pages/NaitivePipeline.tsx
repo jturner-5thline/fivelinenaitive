@@ -707,12 +707,12 @@ export default function NaitivePipeline() {
                           </Button>
                         </div>
                       ) : (
-                      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
-                        <div className="xl:col-span-5 min-w-0 order-1">
-                          <NaitivePipelineNarrative deals={filteredDeals} />
-                        </div>
-                        <div className="xl:col-span-7 min-w-0 order-2">
+                      <div className="flex flex-col gap-4">
+                        <div className="min-w-0">
                           <NaitiveWeeklyExecutionPulse deals={filteredDeals} history={stageHistory} />
+                        </div>
+                        <div className="min-w-0">
+                          <NaitivePipelineNarrative deals={filteredDeals} />
                         </div>
                       </div>
                       )}
