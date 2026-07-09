@@ -31,9 +31,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Target, Pencil, TrendingUp, TrendingDown, Minus, ExternalLink, Plus, UserCog, AtSign } from 'lucide-react';
+import { Target, Pencil, TrendingUp, TrendingDown, Minus, ExternalLink, Plus, UserCog, AtSign, Info } from 'lucide-react';
 import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAcquisitionPlan } from '@/components/lenders/FundingSourcePlanModal';
 import type { MasterLender } from '@/hooks/useMasterLenders';
