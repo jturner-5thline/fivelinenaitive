@@ -182,9 +182,12 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    // Service client — writes to admin_agent_knowledge_chunks (RLS restricts non-service writes).
+    const svcClient = createClient(supabaseUrl, serviceKey);
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
     if (userErr || !userData?.user) {
@@ -205,7 +208,7 @@ Deno.serve(async (req) => {
     // Load the row (RLS scopes to caller's companies).
     const { data: doc, error: docErr } = await userClient
       .from('admin_agent_knowledge_docs')
-      .select('id, company_id, storage_path, mime_type, title')
+      .select('id, company_id, storage_path, mime_type, title, extracted_text, source_type')
       .eq('id', doc_id)
       .maybeSingle();
     if (docErr || !doc) {
@@ -214,8 +217,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!doc.storage_path) {
-      return new Response(JSON.stringify({ error: 'Doc has no file to ingest' }), {
+    if (!doc.storage_path && !doc.extracted_text) {
+      return new Response(JSON.stringify({ error: 'Doc has nothing to ingest' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -230,22 +233,69 @@ Deno.serve(async (req) => {
     }
 
     let extracted = '';
-    const mime = doc.mime_type || blob.type || 'application/octet-stream';
-
     try {
-      if (isSpreadsheet(mime, doc.title)) {
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        extracted = extractFromSpreadsheet(buf);
-      } else if (isDocx(mime, doc.title)) {
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        extracted = await extractFromDocx(buf);
-      } else if (isTextish(mime)) {
-        extracted = await blob.text();
+      if (doc.storage_path) {
+        // Download the file via the user client so storage RLS applies.
+        const { data: blob, error: dlErr } = await userClient.storage
+          .from('admin-agent-knowledge')
+          .download(doc.storage_path);
+        if (dlErr || !blob) throw new Error(`Download failed: ${dlErr?.message ?? 'no blob'}`);
+
+        const mime = doc.mime_type || blob.type || 'application/octet-stream';
+        if (isSpreadsheet(mime, doc.title)) {
+          extracted = extractFromSpreadsheet(new Uint8Array(await blob.arrayBuffer()));
+        } else if (isDocx(mime, doc.title)) {
+          extracted = await extractFromDocx(new Uint8Array(await blob.arrayBuffer()));
+        } else if (isTextish(mime)) {
+          extracted = await blob.text();
+        } else {
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          extracted = await extractViaClaude(bytesToBase64(buf), mime, doc.title);
+        }
       } else {
-        const buf = new Uint8Array(await blob.arrayBuffer());
-        const b64 = bytesToBase64(buf);
-        extracted = await extractViaClaude(b64, mime, doc.title);
+        // Pasted text — already stored on the row.
+        extracted = String(doc.extracted_text || '');
       }
+
+      const trimmed = (extracted || '').trim().slice(0, MAX_TEXT_CHARS);
+
+      // Chunk + embed for retrieval.
+      const chunks = chunkText(trimmed);
+      // Wipe any prior chunks for this doc.
+      await svcClient.from('admin_agent_knowledge_chunks').delete().eq('doc_id', doc.id);
+
+      let totalChunks = 0;
+      for (let i = 0; i < chunks.length; i += EMBED_BATCH) {
+        const batch = chunks.slice(i, i + EMBED_BATCH);
+        const vectors = await embedBatch(batch);
+        const rows = batch.map((content, j) => ({
+          doc_id: doc.id,
+          company_id: doc.company_id,
+          agent_key: 'admin_agent',
+          chunk_index: i + j,
+          content,
+          embedding: vectors[j] as unknown as string,
+          token_count: Math.ceil(content.length / 4),
+        }));
+        const { error: insErr } = await svcClient.from('admin_agent_knowledge_chunks').insert(rows);
+        if (insErr) throw insErr;
+        totalChunks += rows.length;
+      }
+
+      const { error: updErr } = await userClient
+        .from('admin_agent_knowledge_docs')
+        .update({
+          extracted_text: trimmed,
+          status: 'ready',
+          error_message: null,
+        })
+        .eq('id', doc.id);
+      if (updErr) throw updErr;
+
+      return new Response(JSON.stringify({ ok: true, chars: trimmed.length, chunks: totalChunks }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     } catch (e) {
       await userClient
         .from('admin_agent_knowledge_docs')
@@ -256,23 +306,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const trimmed = (extracted || '').trim().slice(0, MAX_TEXT_CHARS);
-
-    const { error: updErr } = await userClient
-      .from('admin_agent_knowledge_docs')
-      .update({
-        extracted_text: trimmed,
-        status: 'ready',
-        error_message: null,
-      })
-      .eq('id', doc.id);
-    if (updErr) throw updErr;
-
-    return new Response(JSON.stringify({ ok: true, chars: trimmed.length }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
