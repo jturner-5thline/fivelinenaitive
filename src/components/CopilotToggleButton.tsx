@@ -568,12 +568,12 @@ export function CopilotToggleButton() {
                 // Stays one clear step brighter than the (now-brighter)
                 // card/popover surfaces so the dark icon still pops.
                 background:
-                  'linear-gradient(145deg, hsl(230 30% 28%) 0%, hsl(232 34% 34%) 50%, hsl(240 42% 40%) 80%, hsl(220 58% 46%) 100%)',
+                  'linear-gradient(145deg, hsl(230 32% 36%) 0%, hsl(232 36% 42%) 50%, hsl(240 44% 48%) 80%, hsl(220 60% 54%) 100%)',
                 backdropFilter: 'blur(18px) saturate(1.5)',
                 WebkitBackdropFilter: 'blur(18px) saturate(1.5)',
-                border: '1.5px solid rgba(190, 220, 255, 0.75)',
+                border: '1.5px solid rgba(200, 228, 255, 0.85)',
                 boxShadow:
-                  '0 10px 28px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(140, 185, 255, 0.28), 0 0 22px rgba(140, 185, 255, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.32)',
+                  '0 12px 32px rgba(0, 0, 0, 0.58), 0 2px 10px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(160, 200, 255, 0.34), 0 0 26px rgba(160, 200, 255, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.38)',
               }}
             >
               <img
