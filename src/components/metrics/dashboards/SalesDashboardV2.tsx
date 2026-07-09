@@ -174,6 +174,10 @@ function addMonthsClampedUtc(date: Date, months: number): Date {
   ));
 }
 
+function firstDayOfMonthAfterUtc(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1));
+}
+
 // ============================================================
 // FILTERED-VIEW CONTEXT
 // All sub-components read months/plan/actual/elapsed from here so the
@@ -1584,14 +1588,15 @@ function OnBoardToProposalDrilldown({
   const [step, setStep] = React.useState(0);
   React.useEffect(() => { setStep(0); }, [granularity, anchorEnd.getTime()]);
 
-  const stepMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
+  const stepMonths = granularity === 'quarter' ? 3 : 1;
   // Window is ALWAYS trailing 12 months. Granularity only changes how far each
-  // step moves the anchor (1M / 1Q / 1Y) and how the range label is formatted.
+  // step moves the anchor (1M / 1Q / 1M for Trailing 12M) and how the range label is formatted.
   const windowMonths = 12;
+  const anchorEndExclusive = React.useMemo(() => firstDayOfMonthAfterUtc(anchorEnd), [anchorEnd]);
 
   // Compute [start, end) for the currently-selected period and the prior period.
   const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
-    const end = addMonthsClampedUtc(anchorEnd, step * stepMonths);
+    const end = addMonthsClampedUtc(anchorEndExclusive, step * stepMonths);
     const start = addMonthsClampedUtc(end, -windowMonths);
     const pEnd = addMonthsClampedUtc(end, -stepMonths);
     const pStart = addMonthsClampedUtc(pEnd, -windowMonths);
@@ -1612,12 +1617,11 @@ function OnBoardToProposalDrilldown({
     const lbl = fmtRange(start, end);
     const prevLbl = fmtRange(pStart, pEnd);
     return { curStart: start, curEnd: end, prevStart: pStart, prevEnd: pEnd, label: lbl, prevLabel: prevLbl };
-  }, [anchorEnd, step, stepMonths, windowMonths, granularity]);
+  }, [anchorEndExclusive, step, stepMonths, windowMonths, granularity]);
 
   // Fetch a wide events window covering current + prior period + 12M chart trend.
   const wideStart = React.useMemo(() => {
-    const chartStart = new Date(curEnd);
-    chartStart.setUTCMonth(chartStart.getUTCMonth() - 12);
+    const chartStart = addMonthsClampedUtc(curEnd, -12);
     return chartStart < prevStart ? chartStart : prevStart;
   }, [curEnd, prevStart]);
   const wideEnd = curEnd;
@@ -1667,7 +1671,7 @@ function OnBoardToProposalDrilldown({
       const p = distinctDealsInRange(proposalEvents.events, bStart, bEnd).size;
       buckets.push({
         key: `${bStart.getUTCFullYear()}-${bStart.getUTCMonth() + 1}`,
-        label: new Date(bStart).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        label: new Date(bStart).toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
         nda: n,
         proposal: p,
         ratio: n > 0 ? Math.round((p / n) * 1000) / 10 : null,
@@ -3100,9 +3104,8 @@ export function SalesDashboardV2() {
   // ending at the selected timeframe's end date so the ratio stays comparable
   // regardless of how narrow the header timeframe is.
   const stageEntryRange = React.useMemo(() => {
-    const end = rangeEnd;
-    const start = new Date(end);
-    start.setUTCMonth(start.getUTCMonth() - 12);
+    const end = firstDayOfMonthAfterUtc(rangeEnd);
+    const start = addMonthsClampedUtc(end, -12);
     return { start, end };
   }, [rangeEnd]);
   const ndaEnteredInRange = useStageEntryCount('ndaneeds-list-sent', stageEntryRange);
