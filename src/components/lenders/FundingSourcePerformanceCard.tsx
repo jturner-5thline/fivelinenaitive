@@ -689,6 +689,50 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
           </div>
         </SheetContent>
       </Sheet>
+
+      <Sheet open={!!addedDrill} onOpenChange={(o) => { if (!o) setAddedDrill(null); }}>
+        <SheetContent side="right" className="w-[560px] sm:max-w-[640px] z-[1500] bg-slate-950 text-slate-100 border-slate-700/60 overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-slate-100">{addedDrill?.label}</SheetTitle>
+            <SheetDescription className="text-slate-400 text-[12px]">
+              {addedDrillRows.length} funding source{addedDrillRows.length === 1 ? '' : 's'} added to the database this period.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-3">
+            {addedDrillRows.length === 0 ? (
+              <div className="p-8 text-center text-[12px] text-slate-500">
+                No new funding sources added in this period.
+              </div>
+            ) : (
+              <table className="w-full text-[12px]">
+                <thead className="text-left text-slate-400 border-b border-slate-700/40">
+                  <tr>
+                    <th className="py-1.5 pr-2">Funding source</th>
+                    <th className="py-1.5 pr-2">Type</th>
+                    <th className="py-1.5 pr-2">Owner</th>
+                    <th className="py-1.5 text-right">Added</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {addedDrillRows
+                    .slice()
+                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                    .map((l) => (
+                      <tr key={l.id} className="border-t border-slate-700/40 align-top">
+                        <td className="py-1.5 pr-2 text-slate-100 truncate max-w-[220px]">{l.name}</td>
+                        <td className="py-1.5 pr-2 text-slate-300">{l.lender_type || '—'}</td>
+                        <td className="py-1.5 pr-2 text-slate-300 truncate max-w-[140px]">{l.relationship_owners || '—'}</td>
+                        <td className="py-1.5 text-right text-slate-400 tabular-nums whitespace-nowrap">
+                          {new Date(l.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
