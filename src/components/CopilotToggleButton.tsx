@@ -562,13 +562,16 @@ export function CopilotToggleButton() {
                 'animate-in fade-in duration-150 motion-reduce:animate-none',
               )}
               style={{
+                // One step lighter than the platform's dark shark bg —
+                // same gradient family, just brighter so the dark icon
+                // reads with high contrast without going white.
                 background:
-                  'linear-gradient(145deg, hsl(230 25% 10%) 0%, hsl(235 28% 13%) 50%, hsl(245 35% 18%) 80%, hsl(220 50% 22%) 100%)',
-                backdropFilter: 'blur(18px) saturate(1.4)',
-                WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-                border: '1px solid rgba(255, 255, 255, 0.45)',
+                  'linear-gradient(145deg, hsl(230 28% 20%) 0%, hsl(232 32% 26%) 50%, hsl(240 40% 32%) 80%, hsl(220 55% 38%) 100%)',
+                backdropFilter: 'blur(18px) saturate(1.5)',
+                WebkitBackdropFilter: 'blur(18px) saturate(1.5)',
+                border: '1.5px solid rgba(180, 210, 255, 0.65)',
                 boxShadow:
-                  '0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                  '0 10px 28px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(120, 170, 255, 0.18), 0 0 18px rgba(120, 170, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28)',
               }}
             >
               <img
