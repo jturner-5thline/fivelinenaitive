@@ -14,6 +14,7 @@ import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
 import { LenderNoteTimestamp } from '@/components/deal/LenderNoteTimestamp';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
+import { DealHoursEntriesEditor } from '@/components/deal/DealHoursEntriesEditor';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
