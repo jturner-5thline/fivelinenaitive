@@ -505,20 +505,8 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
         </div>
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-end mb-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title="View history"
-            onClick={() => setHistoryOpen(true)}
-          >
-            <Clock className="h-4 w-4" />
-          </Button>
-        </div>
         <div className="flex-1 flex flex-col min-h-0">
-          <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
+          <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} onOpenHistory={() => setHistoryOpen(true)} />
         </div>
       </CardContent>
 
@@ -821,8 +809,8 @@ interface AgendaItemRow {
 }
 
 function AgendaPanel({
-  periodType, periodKey, periodLabel,
-}: { periodType: string; periodKey: string; periodLabel: string }) {
+  periodType, periodKey, periodLabel, onOpenHistory,
+}: { periodType: string; periodKey: string; periodLabel: string; onOpenHistory?: () => void }) {
   const [items, setItems] = useState<AgendaItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
@@ -1035,6 +1023,18 @@ function AgendaPanel({
         >
           <Share2 className="h-3 w-3" /> Share
         </Button>
+        {onOpenHistory && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="View history"
+            onClick={onOpenHistory}
+          >
+            <Clock className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0">
