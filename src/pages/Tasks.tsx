@@ -1283,9 +1283,6 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               <SelectItem value="all" className="text-xs">All</SelectItem>
               <SelectItem value="incomplete" className="text-xs">Incomplete</SelectItem>
               <SelectItem value="complete" className="text-xs">Complete</SelectItem>
-              <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
-              <SelectItem value="in_progress" className="text-xs">In Progress</SelectItem>
-              <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
             </SelectContent>
           </Select>
 
