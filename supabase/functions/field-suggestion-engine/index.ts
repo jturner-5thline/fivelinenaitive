@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { callClaude } from "../_shared/claudeChat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +38,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY")!;
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
@@ -187,81 +188,6 @@ Signature block: ${email_data.signature_block || ""}` : ""}
 
 Extract any field change suggestions.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "submit_field_suggestions",
-              description: "Submit detected CRM field change suggestions",
-              parameters: {
-                type: "object",
-                properties: {
-                  suggestions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        field_name: {
-                          type: "string",
-                          enum: ["job_title", "email", "phone_work", "phone_mobile", "department", "seniority", "linkedin_url"],
-                        },
-                        suggested_value: { type: "string" },
-                        confidence: { type: "number" },
-                        source_snippet: { type: "string" },
-                      },
-                      required: ["field_name", "suggested_value", "confidence", "source_snippet"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["suggestions"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "submit_field_suggestions" } },
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted" }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: "AI extraction failed" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    
     let suggestions: Array<{
       field_name: string;
       suggested_value: string;
@@ -269,13 +195,55 @@ Extract any field change suggestions.`;
       source_snippet: string;
     }> = [];
 
-    if (toolCall?.function?.arguments) {
-      try {
-        const parsed = JSON.parse(toolCall.function.arguments);
-        suggestions = parsed.suggestions || [];
-      } catch {
-        console.error("Failed to parse AI tool call arguments");
+    try {
+      const result = await callClaude({
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        tools: [{
+          name: "submit_field_suggestions",
+          description: "Submit detected CRM field change suggestions",
+          input_schema: {
+            type: "object",
+            properties: {
+              suggestions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    field_name: {
+                      type: "string",
+                      enum: ["job_title", "email", "phone_work", "phone_mobile", "department", "seniority", "linkedin_url"],
+                    },
+                    suggested_value: { type: "string" },
+                    confidence: { type: "number" },
+                    source_snippet: { type: "string" },
+                  },
+                  required: ["field_name", "suggested_value", "confidence", "source_snippet"],
+                },
+              },
+            },
+            required: ["suggestions"],
+          },
+        }],
+        toolChoice: { type: "tool", name: "submit_field_suggestions" },
+        maxTokens: 2048,
+      });
+      if (result.toolUse?.input && Array.isArray(result.toolUse.input.suggestions)) {
+        suggestions = result.toolUse.input.suggestions;
       }
+    } catch (e: any) {
+      const status = e?.status ?? 500;
+      console.error("Claude error:", status, e?.message);
+      if (status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded, please try again later" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ error: "AI extraction failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // 4. Process suggestions
