@@ -3089,16 +3089,17 @@ export function SalesDashboardV2() {
             <ConversionCard
               title="Deals-on-Board to Proposal"
               value={(() => {
-                const deals = trailing3(liveDealsOnBoardActual);
-                const props = trailing3(liveProposalsIssuedActual);
-                if (deals == null || props == null || deals === 0) return null;
-                return props / deals;
+                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return null;
+                const nda = ndaEnteredTrailing12.count;
+                const props = proposalEnteredTrailing12.count;
+                if (!nda) return null;
+                return props / nda;
               })()}
               subtitle={(() => {
-                const deals = trailing3(liveDealsOnBoardActual);
-                const props = trailing3(liveProposalsIssuedActual);
-                if (deals == null || props == null) return 'Loading…';
-                return `${props} proposals ÷ ${deals} deals · last 3 months`;
+                if (ndaEnteredTrailing12.isLoading || proposalEnteredTrailing12.isLoading) return 'Loading…';
+                const nda = ndaEnteredTrailing12.count;
+                const props = proposalEnteredTrailing12.count;
+                return `${props} entered Proposal Issued ÷ ${nda} entered NDA/Needs List Sent · last 12 months`;
               })()}
             />
           </div>
