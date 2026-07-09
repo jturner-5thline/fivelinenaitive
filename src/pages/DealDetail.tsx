@@ -4210,20 +4210,7 @@ export default function DealDetail() {
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {/* Hours */}
                                         <div className="space-y-3 min-w-0">
-                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                            <span className="text-muted-foreground text-sm">Pre-Signing</span>
-                                            <DebouncedInput type="number" step="0.25" value={deal.preSigningHours ?? ''} onChange={(value) => updateDeal('preSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
-                                          </div>
-                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                            <span className="text-muted-foreground text-sm">Post-Signing</span>
-                                            <DebouncedInput type="number" step="0.25" value={deal.postSigningHours ?? ''} onChange={(value) => updateDeal('postSigningHours', Number(value) || 0)} placeholder="0" className="w-full h-8 text-sm" min={0} />
-                                          </div>
-                                          <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
-                                            <span className="text-muted-foreground text-sm">Total Hours</span>
-                                            <span className="text-sm font-medium h-8 flex items-center">
-                                              {((deal.preSigningHours ?? 0) + (deal.postSigningHours ?? 0)).toLocaleString()}
-                                            </span>
-                                          </div>
+                                          <DealHoursEntriesEditor dealId={deal.id} />
                                           <div className="flex flex-col gap-1 md:grid md:grid-cols-[6.5rem_1fr] md:items-center md:gap-2">
                                             <span className="text-muted-foreground text-sm">Revenue / Hour</span>
                                             <span className="text-sm font-medium h-8 flex items-center">
