@@ -17,7 +17,7 @@ import {
   Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Link as LinkIcon, Heading2, Loader2, Check,
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
-  RotateCcw, ChevronDown, ChevronUp,
+  RotateCcw, ChevronDown, ChevronUp, Clock,
 } from 'lucide-react';
 import { ListChecks, Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -174,7 +174,7 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'history'>('agenda');
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [qualDemoOpen, setQualDemoOpen] = useState(false);
   const [didNotMoveOpen, setDidNotMoveOpen] = useState(false);
 
