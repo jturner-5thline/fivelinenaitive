@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { Deal } from '@/types/deal';
 import { NaitiveQualToDemoInsights } from './NaitiveQualToDemoInsights';
 import { NaitiveDidNotMoveInsights } from './NaitiveDidNotMoveInsights';
+import { toast } from '@/hooks/use-toast';
 
 type PeriodType = 'week' | 'month' | 'quarter';
 
@@ -847,6 +848,7 @@ function AgendaPanel({
   );
   const [shareSubject, setShareSubject] = useState('');
   const [shareBody, setShareBody] = useState('');
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -979,16 +981,50 @@ function AgendaPanel({
     setShareOpen(true);
   }, [periodLabel, buildShareBody]);
 
-  const sendShareEmail = useCallback(() => {
+  const sendShareEmail = useCallback(async () => {
     const to = shareRecipients
       .split(/[,;\n]/)
       .map((s) => s.trim())
-      .filter(Boolean)
-      .join(',');
-    const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(shareSubject)}&body=${encodeURIComponent(shareBody)}`;
-    window.location.href = url;
-    setShareOpen(false);
-  }, [shareRecipients, shareSubject, shareBody]);
+      .filter(Boolean);
+    if (to.length === 0) {
+      toast({ title: 'Add at least one recipient', variant: 'destructive' });
+      return;
+    }
+    if (!shareSubject.trim()) {
+      toast({ title: 'Subject is required', variant: 'destructive' });
+      return;
+    }
+    setSharing(true);
+    try {
+      const bodyHtml = shareBody
+        .split(/\n\n+/)
+        .map((p) =>
+          `<p style="margin:0 0 12px 0;white-space:pre-wrap;">${p
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')}</p>`,
+        )
+        .join('');
+      const { data, error } = await supabase.functions.invoke('share-pipeline-report', {
+        body: {
+          to,
+          subject: shareSubject.trim(),
+          body: shareBody,
+          bodyHtml,
+          pipelineName: `Pipeline Narrative — ${periodLabel}`,
+        },
+      });
+      if (error || (data as any)?.error) {
+        throw new Error((error as any)?.message || (data as any)?.error || 'Failed to send');
+      }
+      toast({ title: 'Narrative shared', description: `Sent to ${to.length} recipient${to.length === 1 ? '' : 's'}.` });
+      setShareOpen(false);
+    } catch (e) {
+      toast({ title: 'Could not send', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setSharing(false);
+    }
+  }, [shareRecipients, shareSubject, shareBody, periodLabel]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-3">
@@ -1149,9 +1185,10 @@ function AgendaPanel({
               />
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Button variant="ghost" size="sm" onClick={() => setShareOpen(false)}>Cancel</Button>
-              <Button size="sm" className="gap-1" onClick={sendShareEmail}>
-                <Send className="h-3 w-3" /> Send
+              <Button variant="ghost" size="sm" onClick={() => setShareOpen(false)} disabled={sharing}>Cancel</Button>
+              <Button size="sm" className="gap-1" onClick={() => void sendShareEmail()} disabled={sharing}>
+                {sharing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                {sharing ? 'Sending…' : 'Send'}
               </Button>
             </div>
           </div>
