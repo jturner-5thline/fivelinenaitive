@@ -1572,7 +1572,7 @@ function OnBoardToProposalDrilldown({
   const windowMonths = granularity === 'month' ? 1 : granularity === 'quarter' ? 3 : 12;
 
   // Compute [start, end) for the currently-selected period and the prior period.
-  const { curStart, curEnd, prevStart, prevEnd, label } = React.useMemo(() => {
+  const { curStart, curEnd, prevStart, prevEnd, label, prevLabel } = React.useMemo(() => {
     const end = new Date(anchorEnd);
     end.setUTCMonth(end.getUTCMonth() + step * stepMonths);
     const start = new Date(end);
@@ -1593,7 +1593,19 @@ function OnBoardToProposalDrilldown({
       const e = new Date(end.getTime() - 1).toLocaleDateString('en-US', mFmt);
       lbl = `${s} – ${e}`;
     }
-    return { curStart: start, curEnd: end, prevStart: pStart, prevEnd: pEnd, label: lbl };
+    let prevLbl: string;
+    if (granularity === 'month') {
+      prevLbl = new Date(pEnd.getTime() - 1).toLocaleDateString('en-US', mFmt);
+    } else if (granularity === 'quarter') {
+      const e = new Date(pEnd.getTime() - 1);
+      const q = Math.floor(e.getUTCMonth() / 3) + 1;
+      prevLbl = `Q${q} ${e.getUTCFullYear()}`;
+    } else {
+      const s = new Date(pStart).toLocaleDateString('en-US', mFmt);
+      const e = new Date(pEnd.getTime() - 1).toLocaleDateString('en-US', mFmt);
+      prevLbl = `${s} – ${e}`;
+    }
+    return { curStart: start, curEnd: end, prevStart: pStart, prevEnd: pEnd, label: lbl, prevLabel: prevLbl };
   }, [anchorEnd, step, stepMonths, windowMonths, granularity]);
 
   // Fetch a wide events window covering current + prior period + 12M chart trend.
@@ -1744,7 +1756,13 @@ function OnBoardToProposalDrilldown({
           <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
             <div className="text-[10px] uppercase tracking-wider text-slate-400">Conversion</div>
             <div className="text-2xl font-semibold text-slate-100 tabular-nums">{pct(ratio)}</div>
-            <div className="text-[11px] tabular-nums" style={{ color: deltaColor }}>{deltaLabel}</div>
+            <div
+              className="text-[11px] tabular-nums cursor-help"
+              style={{ color: deltaColor }}
+              title={`vs ${prevLabel}: ${pct(prevRatio)} (${propPrev.size} / ${ndaPrev.size})`}
+            >
+              {deltaLabel} ({prevLabel})
+            </div>
           </div>
           <div className="rounded-md border border-white/10 bg-white/[0.02] p-3">
             <div className="text-[10px] uppercase tracking-wider text-slate-400">Entered NDA / Needs List</div>
