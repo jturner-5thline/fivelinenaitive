@@ -286,7 +286,7 @@ function DrilldownBarChart({
 
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
-  metricType = 'dollars', valueFormatter, chartColor,
+  metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
 }: {
   open: boolean;
   onClose: () => void;
@@ -297,6 +297,7 @@ function DrilldownModal({
   metricType?: 'count' | 'dollars' | 'average' | 'none';
   valueFormatter?: (v: number) => string;
   chartColor?: string;
+  conversionBreakdown?: ConversionBreakdown;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -308,7 +309,8 @@ function DrilldownModal({
     }
   }, [open, title]);
 
-  const showChart = metricType !== 'none' && !!selectedQuarter && deals.length > 0;
+  const showChart =
+    !conversionBreakdown && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
   const chartMetricType = (metricType === 'none' ? 'count' : metricType) as 'count' | 'dollars' | 'average';
   const formatter = valueFormatter ?? (chartMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency);
   const color = chartColor ?? 'hsl(var(--chart-3))';
