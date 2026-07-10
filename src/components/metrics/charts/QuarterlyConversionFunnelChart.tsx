@@ -108,7 +108,7 @@ export function QuarterlyConversionFunnelChart() {
           <p className="text-xs text-muted-foreground mt-0.5">
             {activeStep
               ? `TTM conversion % · past 4 quarters · ${activeStep.short}`
-              : 'Trailing 12 months · Proposal Issued → Funded / Invoiced'}
+              : 'Trailing 12 months · Proposal Issued → Closed'}
           </p>
         </div>
         <div className="text-right">
