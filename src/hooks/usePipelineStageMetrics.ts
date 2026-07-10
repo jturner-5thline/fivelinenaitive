@@ -603,8 +603,9 @@ function useStageEntrySplitTrendSeries(
     [anchorEndDate],
   );
 
-  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const rawQueryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
   const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+  const queryStart = rawQueryStart ? shiftIsoDateMonths(rawQueryStart, -12) : '';
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-split-trend-dsh', pipelineId, queryStart, queryEnd],
@@ -645,10 +646,14 @@ function useStageEntrySplitTrendSeries(
   return useMemo(() => {
     const monthly = aggregateStageEntrySplitTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId);
     const quarterly = aggregateStageEntrySplitTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId);
+    const monthlyTtm = aggregateStageEntrySplitTrendBucketsTtm(data ?? [], monthlyBuckets, pipelineId);
+    const quarterlyTtm = aggregateStageEntrySplitTrendBucketsTtm(data ?? [], quarterlyBuckets, pipelineId);
     const total = monthly.reduce((s, b) => s + b.total, 0);
     return {
       monthly,
       quarterly,
+      monthlyTtm,
+      quarterlyTtm,
       total,
       isLoading: isLoading || isFetching,
     };
