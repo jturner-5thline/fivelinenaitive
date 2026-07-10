@@ -287,7 +287,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  enforceSignedFirst, onEnforceSignedFirstChange,
+  signedMode, onSignedModeChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -299,8 +299,8 @@ function DrilldownModal({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
-  enforceSignedFirst?: boolean;
-  onEnforceSignedFirstChange?: (v: boolean) => void;
+  signedMode?: 'off' | 'ttm' | 'lifetime';
+  onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
 }) {
   return (
     <DrilldownModalInner
@@ -314,13 +314,51 @@ function DrilldownModal({
       valueFormatter={valueFormatter}
       chartColor={chartColor}
       conversionBreakdown={conversionBreakdown}
-      enforceSignedFirst={enforceSignedFirst}
-      onEnforceSignedFirstChange={onEnforceSignedFirstChange}
+      signedMode={signedMode}
+      onSignedModeChange={onSignedModeChange}
     />
   );
 }
 
 function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
+  return _ConversionDealsTable({ heading, deals, accent });
+}
+
+function SignedModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'off' | 'ttm' | 'lifetime';
+  onChange: (v: 'off' | 'ttm' | 'lifetime') => void;
+}) {
+  const opts: Array<{ v: 'off' | 'ttm' | 'lifetime'; label: string; hint: string }> = [
+    { v: 'off', label: 'All entries', hint: 'Raw stage-entry counts (no FCI filter)' },
+    { v: 'ttm', label: 'FCI in TTM', hint: 'Only deals that entered FCI in the last 12 months' },
+    { v: 'lifetime', label: 'FCI ever', hint: 'Only deals that entered FCI at any point in their history' },
+  ];
+  return (
+    <div className="inline-flex rounded-md border border-border/40 bg-muted/40 p-0.5 gap-0.5">
+      {opts.map(o => (
+        <button
+          key={o.v}
+          type="button"
+          title={o.hint}
+          onClick={() => onChange(o.v)}
+          className={
+            'px-2.5 py-1 text-[11px] rounded-sm transition-colors ' +
+            (value === o.v
+              ? 'bg-primary text-primary-foreground font-semibold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60')
+          }
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function _ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -366,7 +404,7 @@ function ConversionDealsTable({ heading, deals, accent }: { heading: string; dea
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  enforceSignedFirst, onEnforceSignedFirstChange,
+  signedMode, onSignedModeChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -378,8 +416,8 @@ function DrilldownModalInner({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
-  enforceSignedFirst?: boolean;
-  onEnforceSignedFirstChange?: (v: boolean) => void;
+  signedMode?: 'off' | 'ttm' | 'lifetime';
+  onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -435,21 +473,18 @@ function DrilldownModalInner({
                 {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
               </Badge>
             </div>
-            {onEnforceSignedFirstChange && (
-              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer select-none rounded-md border border-border/40 bg-background/60 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={!!enforceSignedFirst}
-                  onChange={(e) => onEnforceSignedFirstChange(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 accent-primary"
-                />
-                <span>
-                  <span className="font-semibold">Only count deals that entered Final Credit Items in the last 12 months.</span>
-                  <span className="block text-muted-foreground mt-0.5">
-                    Enforces the workflow (FCI → downstream stages) and removes flow-skip inflation from bulk-imported or backfilled deals.
-                  </span>
-                </span>
-              </label>
+            {onSignedModeChange && (
+              <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Restrict to deals that entered Final Credit Items
+                </div>
+                <SignedModeToggle value={signedMode ?? 'off'} onChange={onSignedModeChange} />
+                <p className="text-[11px] text-muted-foreground">
+                  {signedMode === 'ttm' && 'Downstream counts include only deals whose FCI entry falls inside the trailing 12-month window.'}
+                  {signedMode === 'lifetime' && 'Downstream counts include deals that entered FCI at any point in their history (e.g. True North Transportation, Duracell Power Center) — even if the FCI event predates the TTM window.'}
+                  {(!signedMode || signedMode === 'off') && 'Raw stage-entry counts — no FCI-passthrough filter applied.'}
+                </p>
+              </div>
             )}
             <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
               {conversionBreakdown.formula}
@@ -1034,12 +1069,14 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  // When true, restrict every downstream stage count in the Pipeline
-  // Conversion section to deals that ALSO have a Final Credit Items entry
-  // inside the trailing 12-month window. Enforces the workflow rule that a
-  // deal must pass through FCI first, and eliminates flow-skip inflation
-  // (e.g. bulk-imported deals that landed directly at Terms Issued).
-  const [enforceSignedFirst, setEnforceSignedFirst] = useState<boolean>(false);
+  // Conversion filter mode for the Pipeline Conversion section:
+  //   'off'      → count every stage-entry event in the TTM window (raw)
+  //   'ttm'      → downstream stages must ALSO have entered FCI inside TTM
+  //   'lifetime' → downstream stages must have entered FCI at ANY point
+  //                (includes deals whose FCI event predates the TTM window,
+  //                 e.g. True North Transportation, Duracell Power Center)
+  type SignedMode = 'off' | 'ttm' | 'lifetime';
+  const [signedMode, setSignedMode] = useState<SignedMode>('off');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
@@ -1332,16 +1369,26 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Pipeline Conversion',
       description: 'Trailing 12 months stage-to-stage conversion rates',
       cards: (() => {
-        // Optionally restrict downstream stage counts to only deals that
-        // ALSO entered Final Credit Items inside the TTM window, enforcing
-        // the workflow rule that a deal must pass through FCI first.
+        // Optionally restrict downstream stage counts to deals that ALSO
+        // entered Final Credit Items. In 'ttm' mode the FCI event must be
+        // inside the trailing 12-month window (matches the FCI card). In
+        // 'lifetime' mode any historical FCI event qualifies — this pulls
+        // in deals like True North Transportation and Duracell Power Center
+        // whose FCI entry predates the window but who did legitimately
+        // pass through FCI at some point in their history.
         const rawT = m.ttmCounts;
-        const signedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const ttmSignedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const lifetimeSignedIds = m.lifetimeFciDealIds.ids;
+        const activeSignedIds =
+          signedMode === 'ttm' ? ttmSignedIds :
+          signedMode === 'lifetime' ? lifetimeSignedIds :
+          null;
         const restrict = (stage: { count: number; dollarVolume: number; deals: any[]; isLoading: boolean; mrr?: number }) => {
-          const deals = stage.deals.filter(d => signedIds.has(d.deal_id));
+          if (!activeSignedIds) return stage;
+          const deals = stage.deals.filter(d => activeSignedIds.has(d.deal_id));
           return { ...stage, deals, count: deals.length, dollarVolume: deals.reduce((s, d) => s + (d.value ?? 0), 0) };
         };
-        const t = enforceSignedFirst
+        const t = activeSignedIds
           ? {
               ...rawT,
               // proposalIssued is upstream of FCI — leave untouched.
@@ -1466,15 +1513,7 @@ export function ConsolidatedDebtPipelineDashboard({
               <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
             </div>
             {section.id === 'pipeline-conversion' && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none rounded-md border border-border/40 bg-muted/40 px-2.5 py-1.5">
-                <input
-                  type="checkbox"
-                  checked={enforceSignedFirst}
-                  onChange={(e) => setEnforceSignedFirst(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                <span>Only count deals that entered Final Credit Items in the last 12 months</span>
-              </label>
+              <SignedModeToggle value={signedMode} onChange={setSignedMode} />
             )}
           </div>
           {(() => {
@@ -1610,8 +1649,8 @@ export function ConsolidatedDebtPipelineDashboard({
             valueFormatter={drilldown?.valueFormatter}
             chartColor={drilldown?.chartColor}
             conversionBreakdown={liveBreakdown}
-            enforceSignedFirst={drilldown?.conversionCardId ? enforceSignedFirst : undefined}
-            onEnforceSignedFirstChange={drilldown?.conversionCardId ? setEnforceSignedFirst : undefined}
+            signedMode={drilldown?.conversionCardId ? signedMode : undefined}
+            onSignedModeChange={drilldown?.conversionCardId ? setSignedMode : undefined}
           />
         );
       })()}

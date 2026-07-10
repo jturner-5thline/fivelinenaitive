@@ -930,6 +930,14 @@ export interface ConsolidatedDebtPipelineMetrics {
     fundedInvoiced: StageMetricResult;
     isLoading: boolean;
   };
+  /** Set of deal_ids that have EVER entered Final Credit Items on the Active
+   *  Pipeline (any time, not restricted to TTM). Used by the "Lifetime FCI"
+   *  conversion toggle to include deals whose FCI entry predates the window
+   *  (e.g. True North Transportation, Duracell Power Center). */
+  lifetimeFciDealIds: {
+    ids: Set<string>;
+    isLoading: boolean;
+  };
 }
 
 export function useConsolidatedDebtPipelineMetrics(
@@ -997,6 +1005,26 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
 
+  // Lifetime FCI deal_ids for the Active Pipeline — used by the "lifetime FCI"
+  // conversion toggle so deals whose FCI entry predates the TTM window
+  // (e.g. True North Transportation) still qualify as "signed".
+  const { user } = useAuth();
+  const lifetimeFci = useQuery({
+    queryKey: ['lifetime-fci-deal-ids', ACTIVE_PIPELINE_ID],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id')
+        .eq('event_type', 'stage_enter')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .in('to_stage', expandStageLabels([FINAL_CREDIT_ITEMS_STAGE]));
+      if (error) throw error;
+      return new Set<string>((data ?? []).map((r: any) => r.deal_id));
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
   return {
     ndaNeedsList,
     proposalsIssued,
@@ -1028,6 +1056,10 @@ export function useConsolidatedDebtPipelineMetrics(
         termsIssuedRolling12.isLoading ||
         inDueDiligenceRolling12.isLoading ||
         fundedInvoicedOnlyRolling12.isLoading,
+    },
+    lifetimeFciDealIds: {
+      ids: lifetimeFci.data ?? new Set<string>(),
+      isLoading: lifetimeFci.isLoading || lifetimeFci.isFetching,
     },
   };
 }
