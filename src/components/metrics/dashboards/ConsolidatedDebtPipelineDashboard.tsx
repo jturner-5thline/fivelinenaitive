@@ -1427,6 +1427,7 @@ export function ConsolidatedDebtPipelineDashboard({
                 ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
               chartColor: card.drilldownChartColor ?? card.color,
               conversionBreakdown: bucket ? undefined : card.conversionBreakdown,
+              conversionCardId: bucket ? undefined : (card.conversionBreakdown ? card.id : undefined),
             });
           }}
         />
@@ -1480,6 +1481,7 @@ export function ConsolidatedDebtPipelineDashboard({
                             ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
                           chartColor: card.drilldownChartColor ?? card.color,
                           conversionBreakdown: card.conversionBreakdown,
+                          conversionCardId: card.conversionBreakdown ? card.id : undefined,
                         })}
                       />
                     ))}
