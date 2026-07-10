@@ -2737,6 +2737,9 @@ function MetricsInner() {
                           return null;
                         }
                         const isStat = getWidgetDisplayType(widget) === 'stat';
+                        const isQuarterView = reportingPeriod?.view === 'quarter';
+                        const supportsMonthly = isStat && isMonthlyBreakdownSupported(widget.dataSource);
+                        const showBreakdown = !!widget.showMonthlyBreakdown && isQuarterView && supportsMonthly;
                         return (
                           <div key={widget.id}>
                             <GridWidgetCard
@@ -2746,11 +2749,34 @@ function MetricsInner() {
                                 setWidgetToDelete(widget.id);
                                 setDeleteConfirmOpen(true);
                               }}
-                            >
-                              {isStat
-                                ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                                : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                              monthlyBreakdownToggle={
+                                isStat && isQuarterView
+                                  ? {
+                                      enabled: !!widget.showMonthlyBreakdown,
+                                      supported: supportsMonthly,
+                                      onToggle: () =>
+                                        updateWidget(widget.id, {
+                                          showMonthlyBreakdown: !widget.showMonthlyBreakdown,
+                                        }),
+                                    }
+                                  : undefined
                               }
+                            >
+                              {showBreakdown && reportingPeriod ? (
+                                <StatMonthlyBreakdown
+                                  widget={widget}
+                                  quarter={{
+                                    start: reportingPeriod.start,
+                                    end: reportingPeriod.end,
+                                    label: reportingPeriod.label,
+                                  }}
+                                  rawData={{ rawDeals, rawInvoices, rawPayments, rawExpenses }}
+                                />
+                              ) : isStat ? (
+                                renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                              ) : (
+                                renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                              )}
                             </GridWidgetCard>
                           </div>
                         );
