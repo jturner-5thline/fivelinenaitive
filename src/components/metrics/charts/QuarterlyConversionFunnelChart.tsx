@@ -8,7 +8,6 @@ import {
   FUNNEL_STAGE_ORDER,
   useQuarterlyTtmFunnel,
   type FunnelStageKey,
-  type QuarterlyFunnelBucket,
 } from '@/hooks/useQuarterlyTtmFunnel';
 
 // Step-conversion tabs: each pair is a step between two consecutive funnel stages.
