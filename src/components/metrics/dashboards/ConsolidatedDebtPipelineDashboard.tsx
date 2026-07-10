@@ -1770,6 +1770,17 @@ export function ConsolidatedDebtPipelineDashboard({
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div />
+          <div className="flex justify-end">
+            <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
+              <TabsList className="bg-muted/40 border border-border/40">
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
             title="Deals on Board"
             subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
@@ -1808,16 +1819,6 @@ export function ConsolidatedDebtPipelineDashboard({
       </div>
 
       <div className="space-y-3 -mt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div />
-          <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
-            <TabsList className="bg-muted/40 border border-border/40">
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
             title="Deals Closed"
