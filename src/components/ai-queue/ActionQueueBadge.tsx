@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueScope, useMyManagedDealIds } from '@/hooks/useApprovalQueueScope';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { useAllFlexInfoNotifications } from '@/hooks/useAllFlexInfoNotifications';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
@@ -20,10 +22,32 @@ export function ActionQueueBadge() {
   const { data = [], refetch } = useAiActionQueue();
   const { data: accessRequests = [] } = useDealAccessRequests();
   const { data: flexRequests = [] } = useAllFlexInfoNotifications();
-  // Mirror the consolidation performed in ActionQueuePanel so the badge
-  // reflects the number of *visible* approval queue items (bundles count as 1).
-  const consolidatedAiCount = useMemo(() => consolidatedAiQueueCount(data), [data]);
-  const count = consolidatedAiCount + accessRequests.length + flexRequests.length;
+  const { isAdmin } = useAdminRole();
+  const [scope] = useApprovalQueueScope();
+  const scopeActive = isAdmin && scope === 'me';
+  const { data: myDealIds } = useMyManagedDealIds(scopeActive);
+
+  // Mirror the consolidation + "Me" scope filtering performed in
+  // ActionQueuePanel so the badge reflects the number of *visible* approval
+  // queue items (bundles count as 1, and admins on the "Me" filter only see
+  // their own deals).
+  const { consolidatedAiCount, accessCount, flexCount } = useMemo(() => {
+    if (!scopeActive) {
+      return {
+        consolidatedAiCount: consolidatedAiQueueCount(data),
+        accessCount: accessRequests.length,
+        flexCount: flexRequests.length,
+      };
+    }
+    const ids = myDealIds ?? new Set<string>();
+    const scopedItems = data.filter((it: any) => it.deal_id && ids.has(it.deal_id));
+    return {
+      consolidatedAiCount: consolidatedAiQueueCount(scopedItems),
+      accessCount: accessRequests.filter((r: any) => r.deal_id && ids.has(r.deal_id)).length,
+      flexCount: flexRequests.filter((r: any) => r.deal_id && ids.has(r.deal_id)).length,
+    };
+  }, [data, accessRequests, flexRequests, scopeActive, myDealIds]);
+  const count = consolidatedAiCount + accessCount + flexCount;
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
