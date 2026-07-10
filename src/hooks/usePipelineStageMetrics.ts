@@ -930,12 +930,18 @@ export interface ConsolidatedDebtPipelineMetrics {
     fundedInvoiced: StageMetricResult;
     isLoading: boolean;
   };
-  /** Set of deal_ids that have EVER entered Final Credit Items on the Active
-   *  Pipeline (any time, not restricted to TTM). Used by the "Lifetime FCI"
-   *  conversion toggle to include deals whose FCI entry predates the window
-   *  (e.g. True North Transportation, Duracell Power Center). */
-  lifetimeFciDealIds: {
-    ids: Set<string>;
+  /** Sets of deal_ids that have EVER entered each conversion-relevant stage
+   *  on the Active Pipeline (any time, not restricted to TTM). Used by the
+   *  denominator-anchored conversion toggle so each card can filter its
+   *  numerator by whether the deal ever passed through the *denominator*
+   *  stage — not just FCI. */
+  lifetimeStageDealIds: {
+    proposalIssued: Set<string>;
+    finalCreditItems: Set<string>;
+    submittedToLenders: Set<string>;
+    termsIssued: Set<string>;
+    inDueDiligence: Set<string>;
+    fundedInvoiced: Set<string>;
     isLoading: boolean;
   };
 }
@@ -1005,25 +1011,57 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
 
-  // Lifetime FCI deal_ids for the Active Pipeline — used by the "lifetime FCI"
-  // conversion toggle so deals whose FCI entry predates the TTM window
-  // (e.g. True North Transportation) still qualify as "signed".
+  // Lifetime deal_ids per conversion-relevant stage on the Active Pipeline —
+  // used by the denominator-anchored conversion toggle so each card filters
+  // its numerator by whether the deal ever entered *its own* denominator
+  // stage (not just FCI). One query, bucketed client-side.
   const { user } = useAuth();
-  const lifetimeFci = useQuery({
-    queryKey: ['lifetime-fci-deal-ids', ACTIVE_PIPELINE_ID],
+  const STAGE_GROUPS: Record<string, string[]> = {
+    proposalIssued: [PROPOSAL_ISSUED_STAGE],
+    finalCreditItems: [FINAL_CREDIT_ITEMS_STAGE],
+    submittedToLenders: ['submitted-to-lenders', 'lenders-in-review'],
+    termsIssued: [TERMS_ISSUED_STAGE],
+    inDueDiligence: [IN_DUE_DILIGENCE_STAGE],
+    fundedInvoiced: [FUNDED_INVOICED_STAGE],
+  };
+  const lifetimeStages = useQuery({
+    queryKey: ['lifetime-stage-deal-ids', ACTIVE_PIPELINE_ID],
     queryFn: async () => {
+      // Expand all target slugs to observed casings, then fetch in one shot
+      // and bucket rows back to their canonical group key.
+      const slugToGroup = new Map<string, string>();
+      const allSlugs: string[] = [];
+      for (const [group, slugs] of Object.entries(STAGE_GROUPS)) {
+        for (const variant of expandStageLabels(slugs)) {
+          slugToGroup.set(variant, group);
+          allSlugs.push(variant);
+        }
+      }
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id')
+        .select('deal_id, to_stage')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
-        .in('to_stage', expandStageLabels([FINAL_CREDIT_ITEMS_STAGE]));
+        .in('to_stage', allSlugs);
       if (error) throw error;
-      return new Set<string>((data ?? []).map((r: any) => r.deal_id));
+      const out: Record<string, Set<string>> = {
+        proposalIssued: new Set(),
+        finalCreditItems: new Set(),
+        submittedToLenders: new Set(),
+        termsIssued: new Set(),
+        inDueDiligence: new Set(),
+        fundedInvoiced: new Set(),
+      };
+      for (const r of (data ?? []) as Array<{ deal_id: string; to_stage: string }>) {
+        const g = slugToGroup.get(r.to_stage);
+        if (g) out[g].add(r.deal_id);
+      }
+      return out;
     },
     enabled: !!user,
     staleTime: 60_000,
   });
+  const emptySet = useMemo(() => new Set<string>(), []);
 
   return {
     ndaNeedsList,
@@ -1057,9 +1095,14 @@ export function useConsolidatedDebtPipelineMetrics(
         inDueDiligenceRolling12.isLoading ||
         fundedInvoicedOnlyRolling12.isLoading,
     },
-    lifetimeFciDealIds: {
-      ids: lifetimeFci.data ?? new Set<string>(),
-      isLoading: lifetimeFci.isLoading || lifetimeFci.isFetching,
+    lifetimeStageDealIds: {
+      proposalIssued: lifetimeStages.data?.proposalIssued ?? emptySet,
+      finalCreditItems: lifetimeStages.data?.finalCreditItems ?? emptySet,
+      submittedToLenders: lifetimeStages.data?.submittedToLenders ?? emptySet,
+      termsIssued: lifetimeStages.data?.termsIssued ?? emptySet,
+      inDueDiligence: lifetimeStages.data?.inDueDiligence ?? emptySet,
+      fundedInvoiced: lifetimeStages.data?.fundedInvoiced ?? emptySet,
+      isLoading: lifetimeStages.isLoading || lifetimeStages.isFetching,
     },
   };
 }

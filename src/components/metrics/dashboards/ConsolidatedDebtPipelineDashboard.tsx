@@ -77,6 +77,9 @@ interface MetricCardConfig {
   drilldownChartColor?: string;
   /** Optional numerator/denominator breakdown for conversion-rate widgets. */
   conversionBreakdown?: ConversionBreakdown;
+  /** Short label for the denominator stage that anchors this card's
+   *  passthrough filter (e.g. "Submitted to Lenders"). */
+  signedAnchorLabel?: string;
 }
 
 interface ConversionBreakdown {
@@ -287,7 +290,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange,
+  signedMode, onSignedModeChange, signedAnchorLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -301,6 +304,7 @@ function DrilldownModal({
   conversionBreakdown?: ConversionBreakdown;
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
+  signedAnchorLabel?: string;
 }) {
   return (
     <DrilldownModalInner
@@ -316,6 +320,7 @@ function DrilldownModal({
       conversionBreakdown={conversionBreakdown}
       signedMode={signedMode}
       onSignedModeChange={onSignedModeChange}
+      signedAnchorLabel={signedAnchorLabel}
     />
   );
 }
@@ -327,14 +332,16 @@ function ConversionDealsTable({ heading, deals, accent }: { heading: string; dea
 function SignedModeToggle({
   value,
   onChange,
+  anchorLabel,
 }: {
   value: 'off' | 'ttm' | 'lifetime';
   onChange: (v: 'off' | 'ttm' | 'lifetime') => void;
+  anchorLabel: string;
 }) {
   const opts: Array<{ v: 'off' | 'ttm' | 'lifetime'; label: string; hint: string }> = [
-    { v: 'off', label: 'All entries', hint: 'Raw stage-entry counts (no FCI filter)' },
-    { v: 'ttm', label: 'FCI in TTM', hint: 'Only deals that entered FCI in the last 12 months' },
-    { v: 'lifetime', label: 'FCI ever', hint: 'Only deals that entered FCI at any point in their history' },
+    { v: 'off', label: 'All entries', hint: `Raw stage-entry counts — no ${anchorLabel} passthrough filter` },
+    { v: 'ttm', label: `In ${anchorLabel} (TTM)`, hint: `Only deals that entered ${anchorLabel} in the last 12 months` },
+    { v: 'lifetime', label: `In ${anchorLabel} ever`, hint: `Only deals that entered ${anchorLabel} at any point in their history` },
   ];
   return (
     <div className="inline-flex rounded-md border border-border/40 bg-muted/40 p-0.5 gap-0.5">
@@ -404,7 +411,7 @@ function _ConversionDealsTable({ heading, deals, accent }: { heading: string; de
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange,
+  signedMode, onSignedModeChange, signedAnchorLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -418,6 +425,7 @@ function DrilldownModalInner({
   conversionBreakdown?: ConversionBreakdown;
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
+  signedAnchorLabel?: string;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -476,13 +484,17 @@ function DrilldownModalInner({
             {onSignedModeChange && (
               <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Restrict to deals that entered Final Credit Items
+                  Restrict to deals that entered {signedAnchorLabel ?? 'the denominator stage'}
                 </div>
-                <SignedModeToggle value={signedMode ?? 'off'} onChange={onSignedModeChange} />
+                <SignedModeToggle
+                  value={signedMode ?? 'off'}
+                  onChange={onSignedModeChange}
+                  anchorLabel={signedAnchorLabel ?? 'denominator'}
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  {signedMode === 'ttm' && 'Downstream counts include only deals whose FCI entry falls inside the trailing 12-month window.'}
-                  {signedMode === 'lifetime' && 'Downstream counts include deals that entered FCI at any point in their history (e.g. True North Transportation, Duracell Power Center) — even if the FCI event predates the TTM window.'}
-                  {(!signedMode || signedMode === 'off') && 'Raw stage-entry counts — no FCI-passthrough filter applied.'}
+                  {signedMode === 'ttm' && `Numerator only counts deals whose ${signedAnchorLabel ?? 'denominator'} entry falls inside the trailing 12-month window.`}
+                  {signedMode === 'lifetime' && `Numerator only counts deals that entered ${signedAnchorLabel ?? 'the denominator stage'} at any point in their history — even if the ${signedAnchorLabel ?? 'denominator'} event predates the TTM window.`}
+                  {(!signedMode || signedMode === 'off') && `Raw stage-entry counts — no ${signedAnchorLabel ?? 'denominator'}-passthrough filter applied.`}
                 </p>
               </div>
             )}
@@ -1369,37 +1381,22 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Pipeline Conversion',
       description: 'Trailing 12 months stage-to-stage conversion rates',
       cards: (() => {
-        // Optionally restrict downstream stage counts to deals that ALSO
-        // entered Final Credit Items. In 'ttm' mode the FCI event must be
-        // inside the trailing 12-month window (matches the FCI card). In
-        // 'lifetime' mode any historical FCI event qualifies — this pulls
-        // in deals like True North Transportation and Duracell Power Center
-        // whose FCI entry predates the window but who did legitimately
-        // pass through FCI at some point in their history.
-        const rawT = m.ttmCounts;
-        const ttmSignedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
-        const lifetimeSignedIds = m.lifetimeFciDealIds.ids;
-        const activeSignedIds =
-          signedMode === 'ttm' ? ttmSignedIds :
-          signedMode === 'lifetime' ? lifetimeSignedIds :
-          null;
-        const restrict = (stage: { count: number; dollarVolume: number; deals: any[]; isLoading: boolean; mrr?: number }) => {
-          if (!activeSignedIds) return stage;
-          const deals = stage.deals.filter(d => activeSignedIds.has(d.deal_id));
-          return { ...stage, deals, count: deals.length, dollarVolume: deals.reduce((s, d) => s + (d.value ?? 0), 0) };
-        };
-        const t = activeSignedIds
-          ? {
-              ...rawT,
-              // proposalIssued is upstream of FCI — leave untouched.
-              // finalCreditItems is the anchor — leave untouched.
-              submittedToLenders: restrict(rawT.submittedToLenders),
-              termsIssued: restrict(rawT.termsIssued),
-              inDueDiligence: restrict(rawT.inDueDiligence),
-              fundedInvoiced: restrict(rawT.fundedInvoiced),
-            }
-          : rawT;
-        const loading = t.isLoading;
+        // Per-card denominator-anchored conversion filter.
+        //
+        // Each conversion card has a NUMERATOR stage (e.g. Terms Issued) and a
+        // DENOMINATOR stage (e.g. Submitted to Lenders). The toggle restricts
+        // the numerator to deals that ALSO passed through THAT card's own
+        // denominator stage:
+        //   'off'      → raw stage-entry counts (no passthrough filter)
+        //   'ttm'      → numerator deal must have entered the denominator
+        //                stage inside the trailing 12-month window
+        //   'lifetime' → numerator deal must have entered the denominator
+        //                stage at any point in its history (includes deals
+        //                whose denominator event predates the TTM window)
+        //
+        // The denominator itself is the anchor — always shown unfiltered.
+        const t = m.ttmCounts;
+        const loading = t.isLoading || m.lifetimeStageDealIds.isLoading;
         const STAGE_LABELS = {
           proposalIssued: 'Proposal Issued',
           finalCreditItems: 'Final Credit Items',
@@ -1408,6 +1405,14 @@ export function ConsolidatedDebtPipelineDashboard({
           inDueDiligence: 'In Due Diligence (Terms Signed)',
           fundedInvoiced: 'Funded / Invoiced',
         } as const;
+        const SHORT_LABELS: Record<StageKey, string> = {
+          proposalIssued: 'Proposal Issued',
+          finalCreditItems: 'Final Credit Items',
+          submittedToLenders: 'Submitted to Lenders',
+          termsIssued: 'Terms Issued',
+          inDueDiligence: 'Terms Signed',
+          fundedInvoiced: 'Funded / Invoiced',
+        };
         type StageKey = keyof typeof STAGE_LABELS;
         const pctText = (num: number, den: number) =>
           loading ? '…' : den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '—';
@@ -1424,13 +1429,36 @@ export function ConsolidatedDebtPipelineDashboard({
           { title: 'Submission to Funded / Invoiced',   numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
         ];
         return defs.map((d, i) => {
-          const num = t[d.numKey];
+          const rawNum = t[d.numKey];
           const den = t[d.denKey];
+          // Anchor the numerator on THIS card's denominator stage.
+          const anchorIds: Set<string> | null =
+            signedMode === 'ttm'
+              ? new Set(den.deals.map(dl => dl.deal_id))
+              : signedMode === 'lifetime'
+                ? m.lifetimeStageDealIds[d.denKey]
+                : null;
+          const num = anchorIds
+            ? (() => {
+                const deals = rawNum.deals.filter(dl => anchorIds.has(dl.deal_id));
+                return {
+                  ...rawNum,
+                  deals,
+                  count: deals.length,
+                  dollarVolume: deals.reduce((s, dl) => s + (dl.value ?? 0), 0),
+                };
+              })()
+            : rawNum;
           const numLabel = STAGE_LABELS[d.numKey];
           const denLabel = STAGE_LABELS[d.denKey];
+          const denShort = SHORT_LABELS[d.denKey];
           const value = pctText(num.count, den.count);
+          const numQualifier =
+            signedMode === 'ttm' ? ` that also entered ${denShort} in the last 12 months` :
+            signedMode === 'lifetime' ? ` that ever entered ${denShort}` :
+            '';
           const formula =
-            `(Count of deals entering ${numLabel} over the last 12 months) ÷ ` +
+            `(Count of deals entering ${numLabel} over the last 12 months${numQualifier}) ÷ ` +
             `(Count of deals entering ${denLabel} over the last 12 months) = ` +
             `${num.count} ÷ ${den.count} = ${value}`;
           return {
@@ -1446,7 +1474,12 @@ export function ConsolidatedDebtPipelineDashboard({
             drilldownMetricType: 'none' as const,
             conversionBreakdown: {
               formula,
-              numeratorLabel: `Entered ${numLabel} (TTM)`,
+              numeratorLabel:
+                signedMode === 'off'
+                  ? `Entered ${numLabel} (TTM)`
+                  : signedMode === 'ttm'
+                    ? `Entered ${numLabel} (TTM) — filtered to those also in ${denShort} (TTM)`
+                    : `Entered ${numLabel} (TTM) — filtered to those that ever entered ${denShort}`,
               denominatorLabel: `Entered ${denLabel} (TTM)`,
               numeratorDeals: num.deals,
               denominatorDeals: den.deals,
@@ -1454,6 +1487,7 @@ export function ConsolidatedDebtPipelineDashboard({
               denominatorCount: den.count,
               percentText: value,
             },
+            signedAnchorLabel: denShort,
           };
         });
       })(),
@@ -1513,7 +1547,9 @@ export function ConsolidatedDebtPipelineDashboard({
               <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
             </div>
             {section.id === 'pipeline-conversion' && (
-              <SignedModeToggle value={signedMode} onChange={setSignedMode} />
+              <p className="text-[11px] text-muted-foreground max-w-md">
+                Open any tile to filter its numerator by whether the deal ever passed through the tile's denominator stage.
+              </p>
             )}
           </div>
           {(() => {
@@ -1651,6 +1687,11 @@ export function ConsolidatedDebtPipelineDashboard({
             conversionBreakdown={liveBreakdown}
             signedMode={drilldown?.conversionCardId ? signedMode : undefined}
             onSignedModeChange={drilldown?.conversionCardId ? setSignedMode : undefined}
+            signedAnchorLabel={(() => {
+              if (!drilldown?.conversionCardId) return undefined;
+              const conv = sections.find(s => s.id === 'pipeline-conversion');
+              return conv?.cards.find(c => c.id === drilldown.conversionCardId)?.signedAnchorLabel;
+            })()}
           />
         );
       })()}
