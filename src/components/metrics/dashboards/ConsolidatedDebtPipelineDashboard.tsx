@@ -1687,12 +1687,6 @@ export function ConsolidatedDebtPipelineDashboard({
       )}
 
       <div className="space-y-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Deals on Board</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Debt Advisory Metrics — stage_enter into NDA / Needs List Sent, zero-filled periods (rolling, anchored to today)
-          </p>
-        </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
             title="Deals on Board"
@@ -1733,12 +1727,7 @@ export function ConsolidatedDebtPipelineDashboard({
 
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Closed Trend</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Debt Advisory Metrics — stage_enter into Closed or Closed Won, zero-filled periods (rolling, anchored to today)
-            </p>
-          </div>
+          <div />
           <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
             <TabsList className="bg-muted/40 border border-border/40">
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -1789,9 +1778,6 @@ export function ConsolidatedDebtPipelineDashboard({
       <div className="space-y-3">
         <div>
           <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Financial Performance</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Revenue, Gross Profit, Operating Profit, and Cashflow sourced from 5th Line Capital Advisors in QuickBooks.
-          </p>
         </div>
         <PnlFourChartsSection
           realmId={DEBT_ADVISORY_REALM_ID}
