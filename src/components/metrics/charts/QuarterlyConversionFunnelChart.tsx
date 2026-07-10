@@ -49,7 +49,7 @@ export function QuarterlyConversionFunnelChart() {
 
   return (
     <div
-      className="flex h-full flex-col p-4 rounded-lg"
+      className="funnel-chart-dark flex h-full flex-col p-4 rounded-lg"
       style={{
         background:
           'linear-gradient(180deg, hsl(224, 45%, 10%) 0%, hsl(226, 55%, 6%) 100%)',
