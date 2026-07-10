@@ -1283,6 +1283,7 @@ export function ConsolidatedDebtPipelineDashboard({
               valueFormatter: card.drilldownValueFormatter
                 ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
               chartColor: card.drilldownChartColor ?? card.color,
+              conversionBreakdown: bucket ? undefined : card.conversionBreakdown,
             });
           }}
         />
@@ -1322,6 +1323,7 @@ export function ConsolidatedDebtPipelineDashboard({
                           valueFormatter: card.drilldownValueFormatter
                             ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
                           chartColor: card.drilldownChartColor ?? card.color,
+                          conversionBreakdown: card.conversionBreakdown,
                         })}
                       />
                     ))}
@@ -1414,6 +1416,7 @@ export function ConsolidatedDebtPipelineDashboard({
         metricType={drilldown?.metricType}
         valueFormatter={drilldown?.valueFormatter}
         chartColor={drilldown?.chartColor}
+        conversionBreakdown={drilldown?.conversionBreakdown}
       />
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
