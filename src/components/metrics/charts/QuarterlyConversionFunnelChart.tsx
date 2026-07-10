@@ -48,7 +48,14 @@ export function QuarterlyConversionFunnelChart() {
   ];
 
   return (
-    <div className="glass-module flex h-full flex-col p-4">
+    <div
+      className="flex h-full flex-col p-4 rounded-lg"
+      style={{
+        background:
+          'linear-gradient(180deg, hsl(224, 45%, 10%) 0%, hsl(226, 55%, 6%) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h4 className="text-sm font-semibold text-foreground">Conversion Funnel</h4>
@@ -101,9 +108,9 @@ export function QuarterlyConversionFunnelChart() {
             <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 24 }}>
               <defs>
                 <linearGradient id="funnelGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.85} />
-                  <stop offset="55%" stopColor="hsl(224, 76%, 42%)" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="hsl(230, 70%, 20%)" stopOpacity={0.08} />
+                  <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.95} />
+                  <stop offset="45%" stopColor="hsl(222, 80%, 32%)" stopOpacity={0.75} />
+                  <stop offset="100%" stopColor="hsl(226, 70%, 10%)" stopOpacity={0.35} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
