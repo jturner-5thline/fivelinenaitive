@@ -412,7 +412,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
 
   // Admin-only scope filter: "All" vs "Me" (deals where current user is manager).
   const { isAdmin } = useAdminRole();
-  const [scope, setScope] = useState<'all' | 'me'>('all');
+  const [scope, setScope] = useApprovalQueueScope();
   const { data: myDealIds } = useMyManagedDealIds(isAdmin);
 
   const scopeActive = isAdmin && scope === 'me';
