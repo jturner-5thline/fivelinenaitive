@@ -1334,16 +1334,26 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Pipeline Conversion',
       description: 'Trailing 12 months stage-to-stage conversion rates',
       cards: (() => {
-        // Optionally restrict downstream stage counts to only deals that
-        // ALSO entered Final Credit Items inside the TTM window, enforcing
-        // the workflow rule that a deal must pass through FCI first.
+        // Optionally restrict downstream stage counts to deals that ALSO
+        // entered Final Credit Items. In 'ttm' mode the FCI event must be
+        // inside the trailing 12-month window (matches the FCI card). In
+        // 'lifetime' mode any historical FCI event qualifies — this pulls
+        // in deals like True North Transportation and Duracell Power Center
+        // whose FCI entry predates the window but who did legitimately
+        // pass through FCI at some point in their history.
         const rawT = m.ttmCounts;
-        const signedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const ttmSignedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const lifetimeSignedIds = m.lifetimeFciDealIds.ids;
+        const activeSignedIds =
+          signedMode === 'ttm' ? ttmSignedIds :
+          signedMode === 'lifetime' ? lifetimeSignedIds :
+          null;
         const restrict = (stage: { count: number; dollarVolume: number; deals: any[]; isLoading: boolean; mrr?: number }) => {
-          const deals = stage.deals.filter(d => signedIds.has(d.deal_id));
+          if (!activeSignedIds) return stage;
+          const deals = stage.deals.filter(d => activeSignedIds.has(d.deal_id));
           return { ...stage, deals, count: deals.length, dollarVolume: deals.reduce((s, d) => s + (d.value ?? 0), 0) };
         };
-        const t = enforceSignedFirst
+        const t = activeSignedIds
           ? {
               ...rawT,
               // proposalIssued is upstream of FCI — leave untouched.
