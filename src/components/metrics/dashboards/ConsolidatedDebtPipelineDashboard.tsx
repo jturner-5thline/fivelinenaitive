@@ -481,13 +481,17 @@ function DrilldownModalInner({
             {onSignedModeChange && (
               <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Restrict to deals that entered Final Credit Items
+                  Restrict to deals that entered {signedAnchorLabel ?? 'the denominator stage'}
                 </div>
-                <SignedModeToggle value={signedMode ?? 'off'} onChange={onSignedModeChange} />
+                <SignedModeToggle
+                  value={signedMode ?? 'off'}
+                  onChange={onSignedModeChange}
+                  anchorLabel={signedAnchorLabel ?? 'denominator'}
+                />
                 <p className="text-[11px] text-muted-foreground">
-                  {signedMode === 'ttm' && 'Downstream counts include only deals whose FCI entry falls inside the trailing 12-month window.'}
-                  {signedMode === 'lifetime' && 'Downstream counts include deals that entered FCI at any point in their history (e.g. True North Transportation, Duracell Power Center) — even if the FCI event predates the TTM window.'}
-                  {(!signedMode || signedMode === 'off') && 'Raw stage-entry counts — no FCI-passthrough filter applied.'}
+                  {signedMode === 'ttm' && `Numerator only counts deals whose ${signedAnchorLabel ?? 'denominator'} entry falls inside the trailing 12-month window.`}
+                  {signedMode === 'lifetime' && `Numerator only counts deals that entered ${signedAnchorLabel ?? 'the denominator stage'} at any point in their history — even if the ${signedAnchorLabel ?? 'denominator'} event predates the TTM window.`}
+                  {(!signedMode || signedMode === 'off') && `Raw stage-entry counts — no ${signedAnchorLabel ?? 'denominator'}-passthrough filter applied.`}
                 </p>
               </div>
             )}
