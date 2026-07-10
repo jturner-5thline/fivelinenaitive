@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
+import { QuarterlyConversionFunnelChart } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
