@@ -435,6 +435,22 @@ function DrilldownModalInner({
                 {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
               </Badge>
             </div>
+            {onEnforceSignedFirstChange && (
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer select-none rounded-md border border-border/40 bg-background/60 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={!!enforceSignedFirst}
+                  onChange={(e) => onEnforceSignedFirstChange(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 accent-primary"
+                />
+                <span>
+                  <span className="font-semibold">Only count deals that entered Final Credit Items in the last 12 months.</span>
+                  <span className="block text-muted-foreground mt-0.5">
+                    Enforces the workflow (FCI → downstream stages) and removes flow-skip inflation from bulk-imported or backfilled deals.
+                  </span>
+                </span>
+              </label>
+            )}
             <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
               {conversionBreakdown.formula}
             </div>
