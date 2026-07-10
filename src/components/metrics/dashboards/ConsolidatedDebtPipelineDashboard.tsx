@@ -1807,7 +1807,7 @@ export function ConsolidatedDebtPipelineDashboard({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 -mt-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div />
           <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
