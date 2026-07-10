@@ -470,6 +470,30 @@ export function useDealsDatabase() {
       });
       const dbLenders = lendersResult.data || [];
 
+      // Build pipelineId -> pipelineName map so Deal.pipelineName can be
+      // populated during mapping. Enables downstream helpers (isActiveDeal,
+      // isProjectsDeal) to silo the Projects pipeline without extra lookups.
+      const pipelineNameById: Record<string, string> = {};
+      {
+        const pipelineIds = Array.from(new Set(
+          (dbDeals || []).map((d: any) => d.pipeline_id).filter(Boolean)
+        )) as string[];
+        if (pipelineIds.length > 0) {
+          const { data: pipeRows } = await supabase
+            .from('deal_pipelines')
+            .select('id, name')
+            .in('id', pipelineIds);
+          (pipeRows || []).forEach((p: { id: string; name: string }) => {
+            pipelineNameById[p.id] = p.name;
+          });
+        }
+      }
+      const attachPipelineName = (d: Deal): Deal => (
+        d.pipelineId && pipelineNameById[d.pipelineId]
+          ? { ...d, pipelineName: pipelineNameById[d.pipelineId] }
+          : d
+      );
+
       if (!dbDeals || dbDeals.length === 0) {
         // If we previously had deals and now get empty, it's likely a transient auth issue
         // Require multiple consecutive empty fetches before actually clearing
@@ -511,7 +535,7 @@ export function useDealsDatabase() {
         
         // Map deals immediately for faster initial render
       const initialMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
-          mapDbDealToDeal(dbDeal, dbLenders, {})
+          attachPipelineName(mapDbDealToDeal(dbDeal, dbLenders, {}))
         );
         initialMappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals.initial'));
         setDeals(initialMappedDeals);
@@ -533,7 +557,7 @@ export function useDealsDatabase() {
           
           // Update with complete data including notes history
           const fullMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
-            mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
+            attachPipelineName(mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap))
           );
           fullMappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals.full'));
           setDeals(fullMappedDeals);
@@ -543,7 +567,7 @@ export function useDealsDatabase() {
 
       // No lenders - just map deals
       const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
-        mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
+        attachPipelineName(mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap))
       );
       mappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals'));
       setDeals(mappedDeals);

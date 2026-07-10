@@ -343,16 +343,20 @@ export function useDeals(options?: UseDealsOptions) {
   };
 
   const stats = useMemo(() => {
-    const activeDeals = deals.filter((d) => d.status !== 'archived').length;
-    const activeDealValue = deals
+    // Exclude siloed "Projects" pipeline deals from ALL top-line stats.
+    const countable = deals.filter(
+      (d) => (d.pipelineName || '').trim().toLowerCase() !== 'projects'
+    );
+    const activeDeals = countable.filter((d) => d.status !== 'archived').length;
+    const activeDealValue = countable
       .filter((d) => d.status !== 'archived')
       .reduce((sum, deal) => sum + deal.value, 0);
-    const dealsInDiligence = deals.filter((d) => d.stage === 'in-due-diligence').length;
-    const dollarsInDiligence = deals
+    const dealsInDiligence = countable.filter((d) => d.stage === 'in-due-diligence').length;
+    const dollarsInDiligence = countable
       .filter((d) => d.stage === 'in-due-diligence')
       .reduce((sum, deal) => sum + deal.value, 0);
 
-    return { activeDeals, activeDealValue, dealsInDiligence, dollarsInDiligence, totalDeals: deals.length };
+    return { activeDeals, activeDealValue, dealsInDiligence, dollarsInDiligence, totalDeals: countable.length };
   }, [deals]);
 
   return {

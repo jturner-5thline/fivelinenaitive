@@ -119,6 +119,9 @@ export interface Deal {
   milestones?: DealMilestone[];
   migratedFromPersonal?: boolean;
   pipelineId?: string;
+  /** Human-readable pipeline name — populated in useDealsDatabase after mapping.
+   *  Used to detect siloed pipelines (e.g. "Projects") without a pipelines lookup. */
+  pipelineName?: string;
   closingDate?: string | null;
   dashboardClosingDate?: string | null;
   sourcedVia?: string;
