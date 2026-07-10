@@ -23,7 +23,6 @@ import {
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
-import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
@@ -1740,7 +1739,6 @@ export function ConsolidatedDebtPipelineDashboard({
           />
         </div>
 
-        <StageTransitTimeChart />
       </div>
 
       <div className="space-y-3">
