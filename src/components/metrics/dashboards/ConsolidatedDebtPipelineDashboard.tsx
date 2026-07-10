@@ -1468,7 +1468,6 @@ export function ConsolidatedDebtPipelineDashboard({
         const pctText = (num: number, den: number) =>
           loading ? '…' : den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '—';
         const defs: Array<{ title: string; numKey: StageKey; denKey: StageKey }> = [
-          { title: 'Proposal to Signed',                numKey: 'finalCreditItems',    denKey: 'proposalIssued' },
           { title: 'Signed to Submission',              numKey: 'submittedToLenders',  denKey: 'finalCreditItems' },
           { title: 'Submission to Terms Issued',        numKey: 'termsIssued',         denKey: 'submittedToLenders' },
           { title: 'Signed to Terms Issued',            numKey: 'termsIssued',         denKey: 'finalCreditItems' },
