@@ -906,7 +906,7 @@ function StageMovementStackedBarChart({
                         {bucket.label} · {bucket.total} event{bucket.total !== 1 ? 's' : ''}
                       </div>
                       <div style={{ color: FUNDED_INVOICED_COLOR }}>
-                        Funded / Invoiced: {bucket.fundedInvoicedCount}
+                        Closed: {bucket.fundedInvoicedCount}
                       </div>
                       <div style={{ color: CLOSED_WON_COLOR }}>
                         Closed Won: {bucket.closedWonCount}
@@ -923,7 +923,7 @@ function StageMovementStackedBarChart({
               />
               <Bar
                 dataKey="fundedInvoicedCount"
-                name="Funded / Invoiced"
+                name="Closed"
                 stackId="stage"
                 fill={FUNDED_INVOICED_COLOR}
                 fillOpacity={0.85}
@@ -1152,7 +1152,7 @@ export function ConsolidatedDebtPipelineDashboard({
   const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
 
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
-    `${metricLabel} · Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${bucket.label}`;
+    `${metricLabel} · Debt Advisory Metrics → Closed + Closed Won · ${bucket.label}`;
 
   useEffect(() => {
     if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return;
@@ -1257,14 +1257,14 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.finalCreditItems.isLoading,
           deals: m.finalCreditItems.deals,
           color: 'hsl(var(--chart-5))',
-          drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
+          drilldownTitle: 'Debt Deals Signed — entered Signed',
           drilldownMetricType: 'count',
           secondary: {
             value: formatCurrency(m.finalCreditItems.dollarVolume),
             isLoading: m.finalCreditItems.isLoading,
             deals: m.finalCreditItems.deals,
             color: 'hsl(var(--success))',
-            drilldownTitle: 'Dollars Signed — entered Final Credit Items',
+            drilldownTitle: 'Dollars Signed — entered Signed',
             drilldownMetricType: 'dollars',
           },
         },
@@ -1314,14 +1314,14 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.fundedInvoicedOnly.isLoading,
           deals: m.fundedInvoicedOnly.deals,
           color: 'hsl(var(--chart-3))',
-          drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
+          drilldownTitle: 'Deals Closed — entered Closed',
           drilldownMetricType: 'count',
           secondary: {
             value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
             isLoading: m.fundedInvoicedOnly.isLoading,
             deals: m.fundedInvoicedOnly.deals,
             color: 'hsl(var(--success))',
-            drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
+            drilldownTitle: 'Dollars Funded — entered Closed',
             drilldownMetricType: 'dollars',
           },
         },
@@ -1352,7 +1352,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.averageDealSigned.isLoading,
           deals: m.averageDealSigned.deals,
           color: 'hsl(var(--chart-1))',
-          drilldownTitle: 'Average Deal Signed — entered Final Credit Items',
+          drilldownTitle: 'Average Deal Signed — entered Signed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
         },
@@ -1364,7 +1364,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.averageRevenuePerDealSigned.isLoading,
           deals: m.averageRevenuePerDealSigned.deals,
           color: 'hsl(var(--chart-3))',
-          drilldownTitle: 'Average Revenue per Deal Signed — Final Credit Items',
+          drilldownTitle: 'Average Revenue per Deal Signed — Signed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
           drilldownMetricType: 'none',
         },
@@ -1376,7 +1376,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.averageDealClosed.isLoading,
           deals: m.averageDealClosed.deals,
           color: 'hsl(var(--chart-2))',
-          drilldownTitle: 'Average Deal Closed — entered Funded / Invoiced',
+          drilldownTitle: 'Average Deal Closed — entered Closed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
         },
@@ -1388,7 +1388,7 @@ export function ConsolidatedDebtPipelineDashboard({
           isLoading: m.averageRevenuePerDealClosed.isLoading,
           deals: m.averageRevenuePerDealClosed.deals,
           color: 'hsl(var(--chart-5))',
-          drilldownTitle: 'Average Revenue per Deal Closed — Funded / Invoiced',
+          drilldownTitle: 'Average Revenue per Deal Closed — Closed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
           drilldownMetricType: 'none',
         },
@@ -1417,19 +1417,19 @@ export function ConsolidatedDebtPipelineDashboard({
         const loading = t.isLoading || m.lifetimeStageDealIds.isLoading;
         const STAGE_LABELS = {
           proposalIssued: 'Proposal Issued',
-          finalCreditItems: 'Final Credit Items',
-          submittedToLenders: 'Submitted to Lenders / Lenders in Review',
+          finalCreditItems: 'Signed',
+          submittedToLenders: 'Submitted',
           termsIssued: 'Terms Issued',
           inDueDiligence: 'In Due Diligence (Terms Signed)',
-          fundedInvoiced: 'Funded / Invoiced',
+          fundedInvoiced: 'Closed',
         } as const;
         const SHORT_LABELS: Record<StageKey, string> = {
           proposalIssued: 'Proposal Issued',
-          finalCreditItems: 'Final Credit Items',
-          submittedToLenders: 'Submitted to Lenders',
+          finalCreditItems: 'Signed',
+          submittedToLenders: 'Submitted',
           termsIssued: 'Terms Issued',
           inDueDiligence: 'Terms Signed',
-          fundedInvoiced: 'Funded / Invoiced',
+          fundedInvoiced: 'Closed',
         };
         type StageKey = keyof typeof STAGE_LABELS;
         const pctText = (num: number, den: number) =>
@@ -1442,9 +1442,9 @@ export function ConsolidatedDebtPipelineDashboard({
           { title: 'Signed to Terms Signed',            numKey: 'inDueDiligence',      denKey: 'finalCreditItems' },
           { title: 'Submission to Terms Signed',        numKey: 'inDueDiligence',      denKey: 'submittedToLenders' },
           { title: 'Terms Issued to Terms Signed',      numKey: 'inDueDiligence',      denKey: 'termsIssued' },
-          { title: 'Terms Signed to Funded / Invoiced', numKey: 'fundedInvoiced',      denKey: 'inDueDiligence' },
-          { title: 'Signed to Funded / Invoiced',       numKey: 'fundedInvoiced',      denKey: 'finalCreditItems' },
-          { title: 'Submission to Funded / Invoiced',   numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
+          { title: 'Terms Signed to Closed',            numKey: 'fundedInvoiced',      denKey: 'inDueDiligence' },
+          { title: 'Signed to Closed',                  numKey: 'fundedInvoiced',      denKey: 'finalCreditItems' },
+          { title: 'Submission to Closed',              numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
         ];
         return defs.map((d, i) => {
           const den = t[d.denKey];
@@ -1503,7 +1503,7 @@ export function ConsolidatedDebtPipelineDashboard({
     'Signed to Terms Issued',
     'Signed to Terms Signed',
     'Submission to Terms Signed',
-    'Submission to Funded / Invoiced',
+    'Submission to Closed',
   ]);
   const conversionIdx = sections.findIndex(s => s.id === 'pipeline-conversion');
   const otherMetricsCards = conversionIdx >= 0
@@ -1528,7 +1528,7 @@ export function ConsolidatedDebtPipelineDashboard({
         <div>
           <h2 className="text-lg font-semibold text-foreground">Debt Advisory Metrics</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Stage-entry metrics from deal_stage_history (Funded / Invoiced + Closed Won) · {selectedQuarter.label} · Click any tile for detail
+            Stage-entry metrics from deal_stage_history (Closed + Closed Won) · {selectedQuarter.label} · Click any tile for detail
           </p>
         </div>
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
@@ -1659,7 +1659,7 @@ export function ConsolidatedDebtPipelineDashboard({
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Closed Trend</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Debt Advisory Metrics — stage_enter into Funded / Invoiced or Closed Won, zero-filled periods (rolling, anchored to today)
+              Debt Advisory Metrics — stage_enter into Closed or Closed Won, zero-filled periods (rolling, anchored to today)
             </p>
           </div>
           <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
@@ -1673,7 +1673,7 @@ export function ConsolidatedDebtPipelineDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
             title="Deals Closed"
-            subtitle={`Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--chart-3))"
@@ -1690,7 +1690,7 @@ export function ConsolidatedDebtPipelineDashboard({
           />
           <CompactFundedBarChart
             title="Dollars Funded"
-            subtitle={`Debt Advisory Metrics → Funded / Invoiced + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--success))"
