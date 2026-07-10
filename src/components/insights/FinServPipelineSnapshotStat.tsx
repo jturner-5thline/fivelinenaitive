@@ -6,6 +6,7 @@ import { useCompany } from "@/hooks/useCompany";
 import {
   FINSERV_PIPELINE_ID,
   ACTIVE_CLIENT_STAGE,
+  applyActiveClientOverride,
 } from "@/hooks/useFinServFinancialMetrics";
 import { getTimePeriodRange, getTimePeriodLabel } from "@/lib/timePeriodUtils";
 import type { TimePeriod } from "@/contexts/MetricsWidgetsContext";
@@ -117,6 +118,7 @@ function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
         if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
         if (!TERMINAL_STAGES.has(stage)) totalMrr += Number(d.mrr ?? 0);
       }
+      totalClients = applyActiveClientOverride(effective, totalClients);
       return { totalClients, totalMrr };
     },
   });
