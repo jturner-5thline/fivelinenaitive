@@ -101,18 +101,19 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
   const queryEndIso = now.toISOString();
 
   const q = useQuery({
-    queryKey: ['quarterly-ttm-funnel', ACTIVE_PIPELINE_ID, queryStartIso.slice(0, 10)],
+    queryKey: ['quarterly-ttm-funnel-cohort', ACTIVE_PIPELINE_ID, queryStartIso.slice(0, 10)],
     enabled: !!user,
     staleTime: 60_000,
     queryFn: async () => {
+      // Cohort tracking needs ALL stage_enter events for these deals across
+      // time (not just within a TTM window), so we can ask: "did this deal
+      // EVER reach stage X?" independently of when it entered Proposal Issued.
       const { data, error } = await supabase
         .from('deal_stage_history')
         .select('deal_id, changed_at, to_stage, deals!inner(company)')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', allLabels)
-        .gte('changed_at', queryStartIso)
-        .lte('changed_at', queryEndIso)
         .order('changed_at', { ascending: true });
       if (error) throw error;
       return (data ?? []) as Array<{
@@ -133,29 +134,45 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     fundedInvoiced: 0,
   });
 
+  // Pre-index: for each deal, which stages did it EVER enter (lifetime).
+  const dealEverReached: Map<string, Set<FunnelStageKey>> = new Map();
+  // For each deal, earliest entry timestamp per stage (for cohort window check).
+  const dealFirstEntry: Map<string, Partial<Record<FunnelStageKey, Date>>> = new Map();
+  for (const row of q.data ?? []) {
+    if (isExcludedDealName(row.deals?.company ?? null)) continue;
+    const key = labelToKey.get(row.to_stage.toLowerCase())
+      ?? (normalizeStageSlug(row.to_stage) ? slugToKey.get(normalizeStageSlug(row.to_stage)!) : undefined);
+    if (!key) continue;
+    let reached = dealEverReached.get(row.deal_id);
+    if (!reached) { reached = new Set(); dealEverReached.set(row.deal_id, reached); }
+    reached.add(key);
+    let firsts = dealFirstEntry.get(row.deal_id);
+    if (!firsts) { firsts = {}; dealFirstEntry.set(row.deal_id, firsts); }
+    const ts = new Date(row.changed_at);
+    if (!firsts[key] || ts < (firsts[key] as Date)) firsts[key] = ts;
+  }
+
   const bucketFor = (endsAt: Date): QuarterlyFunnelBucket['counts'] => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
-    // Distinct deal per stage per window (first entry wins).
-    const seen: Record<FunnelStageKey, Set<string>> = {
-      proposalIssued: new Set(),
-      finalCreditItems: new Set(),
-      submittedToLenders: new Set(),
-      termsIssued: new Set(),
-      inDueDiligence: new Set(),
-      fundedInvoiced: new Set(),
-    };
-    for (const row of q.data ?? []) {
-      if (isExcludedDealName(row.deals?.company ?? null)) continue;
-      const ts = new Date(row.changed_at);
-      if (ts <= windowStart || ts > endsAt) continue;
-      const key = labelToKey.get(row.to_stage.toLowerCase())
-        ?? (normalizeStageSlug(row.to_stage) ? slugToKey.get(normalizeStageSlug(row.to_stage)!) : undefined);
-      if (!key) continue;
-      seen[key].add(row.deal_id);
+    // Cohort = deals whose FIRST Proposal Issued entry falls inside the window.
+    const cohort: string[] = [];
+    for (const [dealId, firsts] of dealFirstEntry) {
+      const firstProp = firsts.proposalIssued;
+      if (!firstProp) continue;
+      if (firstProp > windowStart && firstProp <= endsAt) cohort.push(dealId);
     }
     const counts = emptyCounts();
-    (Object.keys(seen) as FunnelStageKey[]).forEach(k => { counts[k] = seen[k].size; });
+    counts.proposalIssued = cohort.length;
+    // For each downstream stage: how many cohort deals EVER reached it.
+    (Object.keys(counts) as FunnelStageKey[]).forEach(k => {
+      if (k === 'proposalIssued') return;
+      let n = 0;
+      for (const dealId of cohort) {
+        if (dealEverReached.get(dealId)?.has(k)) n++;
+      }
+      counts[k] = n;
+    });
     return counts;
   };
 
