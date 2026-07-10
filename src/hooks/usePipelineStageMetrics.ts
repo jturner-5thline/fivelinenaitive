@@ -930,6 +930,14 @@ export interface ConsolidatedDebtPipelineMetrics {
     fundedInvoiced: StageMetricResult;
     isLoading: boolean;
   };
+  /** Set of deal_ids that have EVER entered Final Credit Items on the Active
+   *  Pipeline (any time, not restricted to TTM). Used by the "Lifetime FCI"
+   *  conversion toggle to include deals whose FCI entry predates the window
+   *  (e.g. True North Transportation, Duracell Power Center). */
+  lifetimeFciDealIds: {
+    ids: Set<string>;
+    isLoading: boolean;
+  };
 }
 
 export function useConsolidatedDebtPipelineMetrics(
