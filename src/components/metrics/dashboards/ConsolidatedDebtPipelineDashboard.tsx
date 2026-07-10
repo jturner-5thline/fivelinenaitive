@@ -1034,12 +1034,14 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  // When true, restrict every downstream stage count in the Pipeline
-  // Conversion section to deals that ALSO have a Final Credit Items entry
-  // inside the trailing 12-month window. Enforces the workflow rule that a
-  // deal must pass through FCI first, and eliminates flow-skip inflation
-  // (e.g. bulk-imported deals that landed directly at Terms Issued).
-  const [enforceSignedFirst, setEnforceSignedFirst] = useState<boolean>(false);
+  // Conversion filter mode for the Pipeline Conversion section:
+  //   'off'      → count every stage-entry event in the TTM window (raw)
+  //   'ttm'      → downstream stages must ALSO have entered FCI inside TTM
+  //   'lifetime' → downstream stages must have entered FCI at ANY point
+  //                (includes deals whose FCI event predates the TTM window,
+  //                 e.g. True North Transportation, Duracell Power Center)
+  type SignedMode = 'off' | 'ttm' | 'lifetime';
+  const [signedMode, setSignedMode] = useState<SignedMode>('off');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
