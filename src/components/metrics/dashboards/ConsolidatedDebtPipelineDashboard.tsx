@@ -1564,18 +1564,33 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       </div>
 
-      <DrilldownModal
-        open={!!drilldown}
-        onClose={() => setDrilldown(null)}
-        title={drilldown?.title ?? ''}
-        deals={drilldown?.deals ?? []}
-        periodNote={drilldown?.periodNote}
-        selectedQuarter={selectedQuarter}
-        metricType={drilldown?.metricType}
-        valueFormatter={drilldown?.valueFormatter}
-        chartColor={drilldown?.chartColor}
-        conversionBreakdown={drilldown?.conversionBreakdown}
-      />
+      {(() => {
+        // Re-derive the live breakdown from the currently-rendered conversion
+        // card so the FCI-only toggle inside the modal updates counts and
+        // deal lists instantly (drilldown state was captured at click time).
+        const liveBreakdown = (() => {
+          if (!drilldown?.conversionCardId) return drilldown?.conversionBreakdown;
+          const conv = sections.find(s => s.id === 'pipeline-conversion');
+          const card = conv?.cards.find(c => c.id === drilldown.conversionCardId);
+          return card?.conversionBreakdown ?? drilldown?.conversionBreakdown;
+        })();
+        return (
+          <DrilldownModal
+            open={!!drilldown}
+            onClose={() => setDrilldown(null)}
+            title={drilldown?.title ?? ''}
+            deals={drilldown?.deals ?? []}
+            periodNote={drilldown?.periodNote}
+            selectedQuarter={selectedQuarter}
+            metricType={drilldown?.metricType}
+            valueFormatter={drilldown?.valueFormatter}
+            chartColor={drilldown?.chartColor}
+            conversionBreakdown={liveBreakdown}
+            enforceSignedFirst={drilldown?.conversionCardId ? enforceSignedFirst : undefined}
+            onEnforceSignedFirstChange={drilldown?.conversionCardId ? setEnforceSignedFirst : undefined}
+          />
+        );
+      })()}
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
         data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
