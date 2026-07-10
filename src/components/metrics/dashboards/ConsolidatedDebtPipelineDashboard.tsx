@@ -28,6 +28,7 @@ import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFou
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { PipelineVelocitySection } from './PipelineVelocitySection';
 
 /**
  * Debt Advisory Metrics Board currency display.
@@ -1756,7 +1757,8 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       ) : (
         sections.map(section => (
-        <div key={section.id} className="space-y-3">
+        <Fragment key={section.id}>
+        <div className="space-y-3">
           {(section.title || section.description || section.id === 'pipeline-conversion') && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -1878,6 +1880,8 @@ export function ConsolidatedDebtPipelineDashboard({
             );
           })()}
         </div>
+        {section.id === 'pipeline-conversion' && <PipelineVelocitySection />}
+        </Fragment>
         ))
       )}
 
