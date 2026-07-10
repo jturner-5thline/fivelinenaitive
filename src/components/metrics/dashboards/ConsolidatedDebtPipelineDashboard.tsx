@@ -30,14 +30,14 @@ import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/met
 
 /**
  * Debt Advisory Metrics Board currency display.
- * Always renders as abbreviated millions with two decimals, e.g. $2.00MM, $0.75MM.
+ * Always renders as abbreviated millions with one decimal, e.g. $2.0MM, $0.8MM.
  * Used for KPI tiles, drilldown table cells, totals, and chart tooltips so every
  * surface on this board reconciles.
  */
 const formatCurrency = (value: number) => {
   const n = Number(value) || 0;
   const sign = n < 0 ? '-' : '';
-  return `${sign}$${(Math.abs(n) / 1_000_000).toFixed(2)}MM`;
+  return `${sign}$${(Math.abs(n) / 1_000_000).toFixed(1)}MM`;
 };
 
 const formatCurrencyFull = formatCurrency;
