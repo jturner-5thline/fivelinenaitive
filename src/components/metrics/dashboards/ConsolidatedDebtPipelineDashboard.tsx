@@ -287,7 +287,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange,
+  signedMode, onSignedModeChange, signedAnchorLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -301,6 +301,7 @@ function DrilldownModal({
   conversionBreakdown?: ConversionBreakdown;
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
+  signedAnchorLabel?: string;
 }) {
   return (
     <DrilldownModalInner
@@ -316,6 +317,7 @@ function DrilldownModal({
       conversionBreakdown={conversionBreakdown}
       signedMode={signedMode}
       onSignedModeChange={onSignedModeChange}
+      signedAnchorLabel={signedAnchorLabel}
     />
   );
 }
@@ -327,14 +329,16 @@ function ConversionDealsTable({ heading, deals, accent }: { heading: string; dea
 function SignedModeToggle({
   value,
   onChange,
+  anchorLabel,
 }: {
   value: 'off' | 'ttm' | 'lifetime';
   onChange: (v: 'off' | 'ttm' | 'lifetime') => void;
+  anchorLabel: string;
 }) {
   const opts: Array<{ v: 'off' | 'ttm' | 'lifetime'; label: string; hint: string }> = [
-    { v: 'off', label: 'All entries', hint: 'Raw stage-entry counts (no FCI filter)' },
-    { v: 'ttm', label: 'FCI in TTM', hint: 'Only deals that entered FCI in the last 12 months' },
-    { v: 'lifetime', label: 'FCI ever', hint: 'Only deals that entered FCI at any point in their history' },
+    { v: 'off', label: 'All entries', hint: `Raw stage-entry counts — no ${anchorLabel} passthrough filter` },
+    { v: 'ttm', label: `In ${anchorLabel} (TTM)`, hint: `Only deals that entered ${anchorLabel} in the last 12 months` },
+    { v: 'lifetime', label: `In ${anchorLabel} ever`, hint: `Only deals that entered ${anchorLabel} at any point in their history` },
   ];
   return (
     <div className="inline-flex rounded-md border border-border/40 bg-muted/40 p-0.5 gap-0.5">
@@ -404,7 +408,7 @@ function _ConversionDealsTable({ heading, deals, accent }: { heading: string; de
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange,
+  signedMode, onSignedModeChange, signedAnchorLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -418,6 +422,7 @@ function DrilldownModalInner({
   conversionBreakdown?: ConversionBreakdown;
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
+  signedAnchorLabel?: string;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
