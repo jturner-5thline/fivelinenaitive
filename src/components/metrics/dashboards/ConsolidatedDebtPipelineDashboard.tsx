@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
+  ComposedChart, Line,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
@@ -738,6 +739,44 @@ function CompactFundedBarChart({
   onBarClick: (bucket: StageTrendBucket) => void;
 }) {
   const total = buckets.reduce((sum, bucket) => sum + bucket[dataKey], 0);
+  const [showTrend, setShowTrend] = useState(false);
+
+  // Linear regression trend line over the visible buckets.
+  const trendValues = useMemo(() => {
+    const values = buckets.map((b) => Number(b[dataKey]) || 0);
+    const pts = values.map((y, x) => ({ x, y }));
+    if (pts.length < 2) return values.map(() => null as number | null);
+    const n = pts.length;
+    const sumX = pts.reduce((a, p) => a + p.x, 0);
+    const sumY = pts.reduce((a, p) => a + p.y, 0);
+    const sumXY = pts.reduce((a, p) => a + p.x * p.y, 0);
+    const sumXX = pts.reduce((a, p) => a + p.x * p.x, 0);
+    const denom = n * sumXX - sumX * sumX;
+    if (denom === 0) return values.map(() => null);
+    const slope = (n * sumXY - sumX * sumY) / denom;
+    const intercept = (sumY - slope * sumX) / n;
+    return values.map((_, i) => intercept + slope * i);
+  }, [buckets, dataKey]);
+
+  const chartData = useMemo(
+    () => buckets.map((b, i) => ({ ...b, trend: trendValues[i] })),
+    [buckets, trendValues],
+  );
+
+  // Period-over-period change: latest bucket vs prior bucket.
+  const latestVal = buckets.length ? Number(buckets[buckets.length - 1][dataKey]) || 0 : 0;
+  const prevVal = buckets.length > 1 ? Number(buckets[buckets.length - 2][dataKey]) || 0 : null;
+  const popDelta = prevVal != null ? latestVal - prevVal : null;
+  const popPct = prevVal != null && prevVal !== 0 ? ((latestVal - prevVal) / Math.abs(prevVal)) * 100 : null;
+  const popPositive = (popDelta ?? 0) >= 0;
+
+  // Trend delta: linear-regression endpoints across the visible period.
+  const firstTrend = trendValues.find((v) => v != null) ?? null;
+  const lastTrend = [...trendValues].reverse().find((v) => v != null) ?? null;
+  const trendDelta = firstTrend != null && lastTrend != null ? lastTrend - firstTrend : null;
+  const trendPct = firstTrend != null && firstTrend !== 0 && trendDelta != null
+    ? (trendDelta / firstTrend) * 100 : null;
+  const trendPositive = (trendDelta ?? 0) >= 0;
 
   if (isLoading) {
     return (
@@ -759,16 +798,53 @@ function CompactFundedBarChart({
         <div>
           <CardTitle className="text-sm font-medium text-foreground">{title}</CardTitle>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+          {showTrend && trendDelta != null && (
+            <p className={cn(
+              'text-[11px] font-medium mt-1',
+              trendDelta > 0 ? 'text-emerald-400' : trendDelta < 0 ? 'text-rose-400' : 'text-muted-foreground',
+            )}>
+              Trend: {trendPositive ? '+' : ''}{trendPct != null ? `${trendPct.toFixed(1)}%` : '—'}
+              {' / '}{trendPositive ? '+' : ''}{valueFormatter(trendDelta)}
+              <span className="text-muted-foreground font-normal"> vs start of period</span>
+            </p>
+          )}
         </div>
-        <div className="text-right">
-          <p className="text-lg font-bold text-foreground">{totalFormatter(total)}</p>
-          <p className="text-[10px] text-muted-foreground">{buckets.length} {buckets.length === 6 ? 'Months' : 'Quarters'}</p>
+        <div className="flex items-start gap-2">
+          <div className="text-right">
+            <p className="text-lg font-bold text-foreground leading-tight">{totalFormatter(total)}</p>
+            {popDelta != null ? (
+              <p className={cn(
+                'text-[10px] font-medium leading-tight',
+                popDelta > 0 ? 'text-emerald-400' : popDelta < 0 ? 'text-rose-400' : 'text-muted-foreground',
+              )}>
+                {popPositive ? '▲' : '▼'} {popPositive ? '+' : ''}{valueFormatter(popDelta)}
+                {popPct != null ? ` (${popPositive ? '+' : ''}${popPct.toFixed(1)}%)` : ''}
+                <span className="text-muted-foreground font-normal"> vs prev</span>
+              </p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground leading-tight">{buckets.length} {buckets.length === 6 ? 'Months' : 'Quarters'}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTrend((v) => !v)}
+            aria-pressed={showTrend}
+            title="Toggle trend line"
+            className={cn(
+              'text-[11px] px-2 py-0.5 rounded-md border transition-colors shrink-0',
+              showTrend
+                ? 'bg-primary/20 border-primary/40 text-foreground'
+                : 'bg-muted/40 border-border/40 text-muted-foreground hover:text-foreground',
+            )}
+          >
+            Trend
+          </button>
         </div>
       </CardHeader>
       <CardContent>
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={buckets} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
               <XAxis
                 dataKey="label"
@@ -789,6 +865,13 @@ function CompactFundedBarChart({
                   if (!active || !payload || !payload.length) return null;
                   const bucket = payload[0].payload as StageTrendBucket;
                   const value = dataKey === 'dollarVolume' ? bucket.dollarVolume : bucket.count;
+                  const idx = buckets.findIndex((b) => b.key === bucket.key);
+                  const prev = idx > 0 ? buckets[idx - 1] : null;
+                  const prevValInner = prev ? Number(prev[dataKey]) || 0 : null;
+                  const deltaInner = prevValInner != null ? value - prevValInner : null;
+                  const pctInner = prevValInner != null && prevValInner !== 0
+                    ? ((value - prevValInner) / Math.abs(prevValInner)) * 100 : null;
+                  const posInner = (deltaInner ?? 0) >= 0;
                   return (
                     <div
                       style={{
@@ -806,6 +889,16 @@ function CompactFundedBarChart({
                       <div style={{ fontWeight: 600, marginBottom: 4, color: 'hsl(0 0% 100%)' }}>
                         {bucket.label} · {valueFormatter(value)}
                       </div>
+                      {deltaInner != null && (
+                        <div style={{
+                          color: posInner ? '#5EEAD4' : '#FB7185',
+                          fontSize: 11,
+                          marginBottom: 4,
+                        }}>
+                          {posInner ? '▲' : '▼'} {posInner ? '+' : ''}{valueFormatter(deltaInner)}
+                          {pctInner != null ? ` (${posInner ? '+' : ''}${pctInner.toFixed(1)}%)` : ''} vs prev
+                        </div>
+                      )}
                       <div style={{ color: 'hsl(0 0% 100% / 0.82)', marginBottom: bucket.deals.length ? 6 : 0 }}>
                         {bucket.count} deal{bucket.count !== 1 ? 's' : ''} · {formatCurrency(bucket.dollarVolume)}
                       </div>
@@ -841,7 +934,19 @@ function CompactFundedBarChart({
                   );
                 })}
               </Bar>
-            </BarChart>
+              {showTrend && (
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="hsl(142 71% 45%)"
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={false}
+                />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
