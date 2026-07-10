@@ -161,6 +161,13 @@ export interface StageTrendBucket extends PeriodBucketDef {
 export interface StageTrendSeriesResult {
   monthly: StageTrendBucket[];
   quarterly: StageTrendBucket[];
+  /**
+   * Trailing-twelve-month rollups. Same X-axis buckets as `monthly`/`quarterly`,
+   * but each bucket's `count`/`dollarVolume`/`deals` are the sum of all
+   * stage-entry events in the 12 months ending on that bucket's `end` date.
+   */
+  monthlyTtm: StageTrendBucket[];
+  quarterlyTtm: StageTrendBucket[];
   isLoading: boolean;
 }
 
@@ -174,6 +181,8 @@ export interface StageSplitTrendBucket extends PeriodBucketDef {
 export interface StageSplitTrendSeriesResult {
   monthly: StageSplitTrendBucket[];
   quarterly: StageSplitTrendBucket[];
+  monthlyTtm: StageSplitTrendBucket[];
+  quarterlyTtm: StageSplitTrendBucket[];
   total: number;
   isLoading: boolean;
 }
