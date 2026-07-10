@@ -161,6 +161,13 @@ export interface StageTrendBucket extends PeriodBucketDef {
 export interface StageTrendSeriesResult {
   monthly: StageTrendBucket[];
   quarterly: StageTrendBucket[];
+  /**
+   * Trailing-twelve-month rollups. Same X-axis buckets as `monthly`/`quarterly`,
+   * but each bucket's `count`/`dollarVolume`/`deals` are the sum of all
+   * stage-entry events in the 12 months ending on that bucket's `end` date.
+   */
+  monthlyTtm: StageTrendBucket[];
+  quarterlyTtm: StageTrendBucket[];
   isLoading: boolean;
 }
 
@@ -174,6 +181,8 @@ export interface StageSplitTrendBucket extends PeriodBucketDef {
 export interface StageSplitTrendSeriesResult {
   monthly: StageSplitTrendBucket[];
   quarterly: StageSplitTrendBucket[];
+  monthlyTtm: StageSplitTrendBucket[];
+  quarterlyTtm: StageSplitTrendBucket[];
   total: number;
   isLoading: boolean;
 }
@@ -261,6 +270,135 @@ function getQuarterKey(timestamp: string): string {
   return `${year}-Q${Math.floor((month - 1) / 3) + 1}`;
 }
 
+/** Shift an ISO date (YYYY-MM-DD) by N months, preserving day-of-month. */
+function shiftIsoDateMonths(isoDate: string, months: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setMonth(dt.getMonth() + months);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+/**
+ * TTM aggregator: for each output bucket, sum all stage-entry events whose
+ * `changed_at` falls in the 12 months ending at bucket.end (inclusive).
+ * A single deal is only counted once per bucket, so TTM counts reflect
+ * unique deals (matching the semantics of the non-TTM aggregator).
+ */
+function aggregateStageEntryTrendBucketsTtm(
+  rows: Array<Record<string, any>>,
+  bucketDefs: PeriodBucketDef[],
+  pipelineId: string,
+  targetStages: string[],
+): StageTrendBucket[] {
+  const buckets: StageTrendBucket[] = bucketDefs.map((bucket) => ({
+    ...bucket,
+    count: 0,
+    dollarVolume: 0,
+    deals: [],
+  }));
+  if (bucketDefs.length === 0) return buckets;
+
+  const windows = buckets.map((bucket) => ({
+    bucket,
+    startIso: `${shiftIsoDateMonths(bucket.end, -12)}T00:00:00.000Z`,
+    endIso: `${bucket.end}T23:59:59.999Z`,
+    seen: new Set<string>(),
+  }));
+
+  for (const row of rows ?? []) {
+    const ts: string = row.changed_at;
+    if (!ts) continue;
+
+    const stageSlug = normalizeStageSlug(row.to_stage, row.to_stage_id);
+    if (!stageSlug || !targetStages.includes(stageSlug)) continue;
+
+    const deal = row.deals as Record<string, any> | null;
+    if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
+
+    for (const w of windows) {
+      if (ts < w.startIso || ts > w.endIso) continue;
+      if (w.seen.has(row.deal_id)) continue;
+      w.seen.add(row.deal_id);
+      const entry: StageEntryDeal = {
+        deal_id: row.deal_id,
+        company: deal.company ?? '—',
+        value: Number(deal.value) || 0,
+        manager: deal.manager ?? null,
+        current_stage: deal.stage ?? '',
+        entered_at: ts,
+        pipeline_id: deal.pipeline_id ?? '',
+        from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
+        to_stage: stageSlug,
+      };
+      w.bucket.count += 1;
+      w.bucket.dollarVolume += entry.value;
+      w.bucket.deals.push(entry);
+    }
+  }
+
+  return buckets;
+}
+
+function aggregateStageEntrySplitTrendBucketsTtm(
+  rows: Array<Record<string, any>>,
+  bucketDefs: PeriodBucketDef[],
+  pipelineId: string,
+): StageSplitTrendBucket[] {
+  const buckets: StageSplitTrendBucket[] = bucketDefs.map((bucket) => ({
+    ...bucket,
+    fundedInvoicedCount: 0,
+    closedWonCount: 0,
+    total: 0,
+    deals: [],
+  }));
+  if (bucketDefs.length === 0) return buckets;
+
+  const windows = buckets.map((bucket) => ({
+    bucket,
+    startIso: `${shiftIsoDateMonths(bucket.end, -12)}T00:00:00.000Z`,
+    endIso: `${bucket.end}T23:59:59.999Z`,
+    seen: new Set<string>(),
+  }));
+
+  for (const row of rows ?? []) {
+    const ts: string = row.changed_at;
+    if (!ts) continue;
+    const stageId = normalizeStageSlug(row.to_stage, row.to_stage_id);
+    if (stageId !== 'funded-invoiced' && stageId !== 'closed-won') continue;
+
+    const deal = row.deals as Record<string, any> | null;
+    if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
+
+    for (const w of windows) {
+      if (ts < w.startIso || ts > w.endIso) continue;
+      const dedupeKey = `${row.deal_id}|${stageId}`;
+      if (w.seen.has(dedupeKey)) continue;
+      w.seen.add(dedupeKey);
+
+      const entry: StageEntryDeal = {
+        deal_id: row.deal_id,
+        company: deal.company ?? '—',
+        value: Number(deal.value) || 0,
+        manager: deal.manager ?? null,
+        current_stage: deal.stage ?? '',
+        entered_at: ts,
+        pipeline_id: deal.pipeline_id ?? '',
+        from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
+        to_stage: stageId ?? '',
+      };
+      if (stageId === 'funded-invoiced') w.bucket.fundedInvoicedCount += 1;
+      else w.bucket.closedWonCount += 1;
+      w.bucket.total += 1;
+      w.bucket.deals.push(entry);
+    }
+  }
+
+  return buckets;
+}
+
 function aggregateStageEntryTrendBuckets(
   rows: Array<Record<string, any>>,
   bucketDefs: PeriodBucketDef[],
@@ -336,8 +474,11 @@ function useStageEntryTrendSeries(
     [anchorEndDate],
   );
 
-  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const rawQueryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
   const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+  // Extend the fetch window 12 months earlier so TTM rollups anchored at the
+  // first bucket's `end` have a full trailing-12-month lookback of history.
+  const queryStart = rawQueryStart ? shiftIsoDateMonths(rawQueryStart, -12) : '';
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-trend-series-dsh', targetStages.join(','), pipelineId, queryStart, queryEnd],
@@ -378,6 +519,8 @@ function useStageEntryTrendSeries(
   return useMemo(() => ({
     monthly: aggregateStageEntryTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId, targetStages),
     quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStages),
+    monthlyTtm: aggregateStageEntryTrendBucketsTtm(data ?? [], monthlyBuckets, pipelineId, targetStages),
+    quarterlyTtm: aggregateStageEntryTrendBucketsTtm(data ?? [], quarterlyBuckets, pipelineId, targetStages),
     isLoading: isLoading || isFetching,
   }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStages.join(',')]);
 }
@@ -460,8 +603,9 @@ function useStageEntrySplitTrendSeries(
     [anchorEndDate],
   );
 
-  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const rawQueryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
   const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+  const queryStart = rawQueryStart ? shiftIsoDateMonths(rawQueryStart, -12) : '';
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-split-trend-dsh', pipelineId, queryStart, queryEnd],
@@ -502,10 +646,14 @@ function useStageEntrySplitTrendSeries(
   return useMemo(() => {
     const monthly = aggregateStageEntrySplitTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId);
     const quarterly = aggregateStageEntrySplitTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId);
+    const monthlyTtm = aggregateStageEntrySplitTrendBucketsTtm(data ?? [], monthlyBuckets, pipelineId);
+    const quarterlyTtm = aggregateStageEntrySplitTrendBucketsTtm(data ?? [], quarterlyBuckets, pipelineId);
     const total = monthly.reduce((s, b) => s + b.total, 0);
     return {
       monthly,
       quarterly,
+      monthlyTtm,
+      quarterlyTtm,
       total,
       isLoading: isLoading || isFetching,
     };

@@ -1147,6 +1147,9 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
+  // When true, each bucket in the chart shows the trailing-12-month rollup
+  // ending at that bucket's period end, instead of the bucket's own period.
+  const [ttmCharts, setTtmCharts] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   // Conversion filter mode for the Pipeline Conversion section:
   //   'off'      → count every stage-entry event in the TTM window (raw)
@@ -1180,7 +1183,17 @@ export function ConsolidatedDebtPipelineDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoiced.isLoading, m.fundedInvoicedTrend.monthly]);
 
-  const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
+  const pickTrend = <T,>(series: { monthly: T; quarterly: T; monthlyTtm: T; quarterlyTtm: T }): T => {
+    if (trendMode === 'monthly') return ttmCharts ? series.monthlyTtm : series.monthly;
+    return ttmCharts ? series.quarterlyTtm : series.quarterly;
+  };
+  const ndaNeedsListTrendBuckets = pickTrend(m.ndaNeedsListTrend);
+  const finalCreditItemsTrendBuckets = pickTrend(m.finalCreditItemsTrend);
+  const fundedTrendBuckets = pickTrend(m.fundedInvoicedTrend);
+  const trendPeriodLabel = ttmCharts
+    ? (trendMode === 'monthly' ? 'TTM as of each of the past 6 months' : 'TTM as of each of the past 4 quarters')
+    : (trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters');
+  const ttmSuffix = ttmCharts ? ' (TTM)' : '';
 
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
     `${metricLabel} · Debt Advisory Metrics → Closed + Closed Won · ${bucket.label}`;
@@ -1771,7 +1784,20 @@ export function ConsolidatedDebtPipelineDashboard({
       <div className="space-y-3">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div />
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTtmCharts((v) => !v)}
+              title="Show trailing-12-month rollups anchored at each period end"
+              className={
+                'text-xs px-2.5 py-1 rounded-md border transition-colors ' +
+                (ttmCharts
+                  ? 'bg-primary/20 border-primary/40 text-foreground'
+                  : 'bg-muted/40 border-border/40 text-muted-foreground hover:text-foreground')
+              }
+            >
+              TTM
+            </button>
             <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
               <TabsList className="bg-muted/40 border border-border/40">
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
@@ -1782,9 +1808,9 @@ export function ConsolidatedDebtPipelineDashboard({
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
-            title="Deals on Board"
-            subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
-            buckets={trendMode === 'monthly' ? m.ndaNeedsListTrend.monthly : m.ndaNeedsListTrend.quarterly}
+            title={`Deals on Board${ttmSuffix}`}
+            subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendPeriodLabel}`}
+            buckets={ndaNeedsListTrendBuckets}
             isLoading={m.ndaNeedsListTrend.isLoading}
             color="hsl(var(--chart-2))"
             dataKey="count"
@@ -1792,16 +1818,16 @@ export function ConsolidatedDebtPipelineDashboard({
             totalFormatter={(value) => `${Math.round(value)}`}
             onBarClick={(bucket) =>
               setDrilldown({
-                title: `Deals on Board — ${bucket.label}`,
+                title: `Deals on Board${ttmSuffix} — ${bucket.label}`,
                 deals: bucket.deals,
-                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+                periodNote: buildTrendPeriodNote(bucket, ttmCharts ? 'Deal count (TTM)' : 'Deal count'),
               })
             }
           />
           <CompactFundedBarChart
-            title="Deals Signed"
-            subtitle={`Debt Advisory Metrics → Final Credit Items · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
-            buckets={trendMode === 'monthly' ? m.finalCreditItemsTrend.monthly : m.finalCreditItemsTrend.quarterly}
+            title={`Deals Signed${ttmSuffix}`}
+            subtitle={`Debt Advisory Metrics → Final Credit Items · ${trendPeriodLabel}`}
+            buckets={finalCreditItemsTrendBuckets}
             isLoading={m.finalCreditItemsTrend.isLoading}
             color="hsl(var(--chart-4))"
             dataKey="count"
@@ -1809,9 +1835,9 @@ export function ConsolidatedDebtPipelineDashboard({
             totalFormatter={(value) => `${Math.round(value)}`}
             onBarClick={(bucket) =>
               setDrilldown({
-                title: `Deals Signed — ${bucket.label}`,
+                title: `Deals Signed${ttmSuffix} — ${bucket.label}`,
                 deals: bucket.deals,
-                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+                periodNote: buildTrendPeriodNote(bucket, ttmCharts ? 'Deal count (TTM)' : 'Deal count'),
               })
             }
           />
@@ -1821,8 +1847,8 @@ export function ConsolidatedDebtPipelineDashboard({
       <div className="space-y-3 -mt-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <CompactFundedBarChart
-            title="Deals Closed"
-            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            title={`Deals Closed${ttmSuffix}`}
+            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendPeriodLabel}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--chart-3))"
@@ -1831,15 +1857,15 @@ export function ConsolidatedDebtPipelineDashboard({
             totalFormatter={(value) => `${Math.round(value)}`}
             onBarClick={(bucket) =>
               setDrilldown({
-                title: `Deals Closed — ${bucket.label}`,
+                title: `Deals Closed${ttmSuffix} — ${bucket.label}`,
                 deals: bucket.deals,
-                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+                periodNote: buildTrendPeriodNote(bucket, ttmCharts ? 'Deal count (TTM)' : 'Deal count'),
               })
             }
           />
           <CompactFundedBarChart
-            title="Dollars Funded"
-            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            title={`Dollars Funded${ttmSuffix}`}
+            subtitle={`Debt Advisory Metrics → Closed + Closed Won · ${trendPeriodLabel}`}
             buckets={fundedTrendBuckets}
             isLoading={m.fundedInvoicedTrend.isLoading}
             color="hsl(var(--success))"
@@ -1848,9 +1874,9 @@ export function ConsolidatedDebtPipelineDashboard({
             totalFormatter={formatCurrency}
             onBarClick={(bucket) =>
               setDrilldown({
-                title: `Dollars Funded — ${bucket.label}`,
+                title: `Dollars Funded${ttmSuffix} — ${bucket.label}`,
                 deals: bucket.deals,
-                periodNote: buildTrendPeriodNote(bucket, 'Dollar volume'),
+                periodNote: buildTrendPeriodNote(bucket, ttmCharts ? 'Dollar volume (TTM)' : 'Dollar volume'),
               })
             }
           />
