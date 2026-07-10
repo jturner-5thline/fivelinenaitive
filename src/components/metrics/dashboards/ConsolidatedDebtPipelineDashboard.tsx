@@ -1614,8 +1614,8 @@ export function ConsolidatedDebtPipelineDashboard({
             valueFormatter={drilldown?.valueFormatter}
             chartColor={drilldown?.chartColor}
             conversionBreakdown={liveBreakdown}
-            enforceSignedFirst={drilldown?.conversionCardId ? enforceSignedFirst : undefined}
-            onEnforceSignedFirstChange={drilldown?.conversionCardId ? setEnforceSignedFirst : undefined}
+            signedMode={drilldown?.conversionCardId ? signedMode : undefined}
+            onSignedModeChange={drilldown?.conversionCardId ? setSignedMode : undefined}
           />
         );
       })()}
