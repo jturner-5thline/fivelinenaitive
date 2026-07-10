@@ -1168,30 +1168,52 @@ export function ConsolidatedDebtPipelineDashboard({
     {
       id: 'pipeline-conversion',
       title: 'Pipeline Conversion',
-      description: 'Stage-to-stage conversion rates across the pipeline',
-      cards: [
-        'Proposal to Engagement',
-        'Signed to Submission',
-        'Submission to Terms Issued',
-        'Signed to Terms Issued',
-        'Signed to Terms Signed',
-        'Submission to Terms Signed',
-        'Terms Issued to Terms Signed',
-        'Terms Signed to Funded / Invoiced',
-        'Signed to Funded / Invoiced',
-        'Submission to Funded / Invoiced',
-      ].map((title, i) => ({
-        id: `conversion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
-        title,
-        icon: Sigma,
-        value: '—',
-        isLoading: false,
-        deals: [] as StageEntryDeal[],
-        color: `hsl(var(--chart-${(i % 5) + 1}))`,
-        drilldownTitle: title,
-        drilldownPeriodNote: 'Trailing 12 months conversion rate — data coming soon',
-        drilldownMetricType: 'none' as const,
-      })),
+      description: 'Trailing 12 months stage-to-stage conversion rates',
+      cards: (() => {
+        const t = m.ttmCounts;
+        const loading = t.isLoading;
+        const pct = (num: number, den: number) =>
+          !loading && den > 0 ? `${((num / den) * 100).toFixed(1)}%` : loading ? '…' : '—';
+        const defs: Array<{
+          title: string;
+          num: number;
+          den: number;
+          note: string;
+        }> = [
+          { title: 'Proposal to Engagement', num: t.finalCreditItems, den: t.proposalIssued,
+            note: 'Deals entering Final Credit Items ÷ Deals entering Proposal Issued (TTM)' },
+          { title: 'Signed to Submission', num: t.submittedToLenders, den: t.finalCreditItems,
+            note: 'Deals entering Submitted to Lenders ÷ Deals entering Final Credit Items (TTM)' },
+          { title: 'Submission to Terms Issued', num: t.termsIssued, den: t.submittedToLenders,
+            note: 'Deals entering Terms Issued ÷ Deals entering Submitted to Lenders (TTM)' },
+          { title: 'Signed to Terms Issued', num: t.termsIssued, den: t.finalCreditItems,
+            note: 'Deals entering Terms Issued ÷ Deals entering Final Credit Items (TTM)' },
+          { title: 'Signed to Terms Signed', num: t.inDueDiligence, den: t.finalCreditItems,
+            note: 'Deals entering In Due Diligence ÷ Deals entering Final Credit Items (TTM)' },
+          { title: 'Submission to Terms Signed', num: t.inDueDiligence, den: t.submittedToLenders,
+            note: 'Deals entering In Due Diligence ÷ Deals entering Submitted to Lenders (TTM)' },
+          { title: 'Terms Issued to Terms Signed', num: t.inDueDiligence, den: t.termsIssued,
+            note: 'Deals entering In Due Diligence ÷ Deals entering Terms Issued (TTM)' },
+          { title: 'Terms Signed to Funded / Invoiced', num: t.fundedInvoiced, den: t.inDueDiligence,
+            note: 'Deals entering Funded / Invoiced ÷ Deals entering In Due Diligence (TTM)' },
+          { title: 'Signed to Funded / Invoiced', num: t.fundedInvoiced, den: t.finalCreditItems,
+            note: 'Deals entering Funded / Invoiced ÷ Deals entering Final Credit Items (TTM)' },
+          { title: 'Submission to Funded / Invoiced', num: t.fundedInvoiced, den: t.submittedToLenders,
+            note: 'Deals entering Funded / Invoiced ÷ Deals entering Submitted to Lenders (TTM)' },
+        ];
+        return defs.map((d, i) => ({
+          id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
+          title: d.title,
+          icon: Sigma,
+          value: pct(d.num, d.den),
+          isLoading: loading,
+          deals: [] as StageEntryDeal[],
+          color: `hsl(var(--chart-${(i % 5) + 1}))`,
+          drilldownTitle: d.title,
+          drilldownPeriodNote: d.note,
+          drilldownMetricType: 'none' as const,
+        }));
+      })(),
     },
   ];
 
