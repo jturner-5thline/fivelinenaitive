@@ -35,6 +35,7 @@ const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
   'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
   'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders'],
+  'lenders-in-review': ['lenders-in-review', 'Lenders in Review'],
   'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
   'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
   'fs-active-client': ['fs-active-client', 'Active Client'],
@@ -982,7 +983,15 @@ export function useConsolidatedDebtPipelineMetrics(
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const proposalIssuedRolling12 = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
-  const submittedToLendersRolling12 = useStageEntryMetric('submitted-to-lenders', twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  // "Submitted to Lenders" for conversion widgets includes BOTH the
+  // `submitted-to-lenders` and `lenders-in-review` stage entries. The metric
+  // hook dedupes by deal_id (first entry wins), so a deal that hit both
+  // stages inside the TTM window is only counted once.
+  const submittedToLendersRolling12 = useStageEntryMetric(
+    ['submitted-to-lenders', 'lenders-in-review'],
+    twelveMonthPeriod,
+    ACTIVE_PIPELINE_ID,
+  );
   const termsIssuedRolling12 = useStageEntryMetric(TERMS_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);

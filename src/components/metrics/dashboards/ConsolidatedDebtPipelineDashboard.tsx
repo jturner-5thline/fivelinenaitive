@@ -1304,7 +1304,7 @@ export function ConsolidatedDebtPipelineDashboard({
         const STAGE_LABELS = {
           proposalIssued: 'Proposal Issued',
           finalCreditItems: 'Final Credit Items',
-          submittedToLenders: 'Submitted to Lenders',
+          submittedToLenders: 'Submitted to Lenders / Lenders in Review',
           termsIssued: 'Terms Issued',
           inDueDiligence: 'In Due Diligence (Terms Signed)',
           fundedInvoiced: 'Funded / Invoiced',
