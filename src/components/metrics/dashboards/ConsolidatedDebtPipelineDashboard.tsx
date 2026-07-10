@@ -1740,8 +1740,8 @@ export function ConsolidatedDebtPipelineDashboard({
             valueFormatter={drilldown?.valueFormatter}
             chartColor={drilldown?.chartColor}
             conversionBreakdown={liveBreakdown}
-            signedMode={drilldown?.conversionCardId ? signedMode : undefined}
-            onSignedModeChange={drilldown?.conversionCardId ? setSignedMode : undefined}
+            signedMode={undefined}
+            onSignedModeChange={undefined}
             signedAnchorLabel={(() => {
               if (!drilldown?.conversionCardId) return undefined;
               const conv = sections.find(s => s.id === 'pipeline-conversion');
