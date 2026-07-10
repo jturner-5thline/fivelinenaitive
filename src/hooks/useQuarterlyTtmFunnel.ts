@@ -16,11 +16,11 @@ export type FunnelStageKey =
 
 export const FUNNEL_STAGE_ORDER: { key: FunnelStageKey; label: string }[] = [
   { key: 'proposalIssued',     label: 'Proposal Issued' },
-  { key: 'finalCreditItems',   label: 'Final Credit Items' },
-  { key: 'submittedToLenders', label: 'Submitted to Lenders' },
+  { key: 'finalCreditItems',   label: 'Signed' },
+  { key: 'submittedToLenders', label: 'Submitted' },
   { key: 'termsIssued',        label: 'Terms Issued' },
   { key: 'inDueDiligence',     label: 'Terms Signed' },
-  { key: 'fundedInvoiced',     label: 'Funded / Invoiced' },
+  { key: 'fundedInvoiced',     label: 'Closed' },
 ];
 
 const STAGE_SLUG_GROUPS: Record<FunnelStageKey, string[]> = {
