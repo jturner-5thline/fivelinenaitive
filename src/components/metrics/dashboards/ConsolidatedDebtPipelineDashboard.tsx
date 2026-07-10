@@ -1210,7 +1210,7 @@ export function ConsolidatedDebtPipelineDashboard({
     for (const [from, to] of steps) {
       const denominator = m.ttmCounts[from];
       const reachedNumerator = m.lifetimeStageDealIds[to];
-      out[`${from}__${to}`] = {
+      out[`${from}__${to}` as keyof QuarterlyStepConversionOverrides] = {
         fromCount: denominator.count,
         toCount: denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id)).length,
       };
