@@ -524,9 +524,6 @@ function DrilldownModalInner({
                 </p>
               </div>
             )}
-            <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
-              {conversionBreakdown.formula}
-            </div>
             <p className="text-[11px] text-muted-foreground">
               Source: deal_stage_history · stage_enter events on the Active Pipeline,
               deduplicated to the first entry per deal per stage over the trailing 12 months.
