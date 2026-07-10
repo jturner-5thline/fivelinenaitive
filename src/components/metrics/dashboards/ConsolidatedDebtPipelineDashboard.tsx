@@ -1435,37 +1435,25 @@ export function ConsolidatedDebtPipelineDashboard({
           { title: 'Submission to Funded / Invoiced',   numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
         ];
         return defs.map((d, i) => {
-          const rawNum = t[d.numKey];
           const den = t[d.denKey];
-          // Anchor the numerator on THIS card's denominator stage.
-          const anchorIds: Set<string> | null =
-            signedMode === 'ttm'
-              ? new Set(den.deals.map(dl => dl.deal_id))
-              : signedMode === 'lifetime'
-                ? m.lifetimeStageDealIds[d.denKey]
-                : null;
-          const num = anchorIds
-            ? (() => {
-                const deals = rawNum.deals.filter(dl => anchorIds.has(dl.deal_id));
-                return {
-                  ...rawNum,
-                  deals,
-                  count: deals.length,
-                  dollarVolume: deals.reduce((s, dl) => s + (dl.value ?? 0), 0),
-                };
-              })()
-            : rawNum;
+          const numShort = SHORT_LABELS[d.numKey];
           const numLabel = STAGE_LABELS[d.numKey];
           const denLabel = STAGE_LABELS[d.denKey];
           const denShort = SHORT_LABELS[d.denKey];
+          // Cohort tracking: of the deals that entered the DENOMINATOR stage
+          // in the last 12 months, how many EVER progressed to the NUMERATOR
+          // stage (any time — including after the TTM window).
+          const reachedNumIds = m.lifetimeStageDealIds[d.numKey];
+          const numDeals = den.deals.filter(dl => reachedNumIds.has(dl.deal_id));
+          const num = {
+            deals: numDeals,
+            count: numDeals.length,
+            dollarVolume: numDeals.reduce((s, dl) => s + (dl.value ?? 0), 0),
+          };
           const value = pctText(num.count, den.count);
-          const numQualifier =
-            signedMode === 'ttm' ? ` that also entered ${denShort} in the last 12 months` :
-            signedMode === 'lifetime' ? ` that ever entered ${denShort}` :
-            '';
           const formula =
-            `(Count of deals entering ${numLabel} over the last 12 months${numQualifier}) ÷ ` +
-            `(Count of deals entering ${denLabel} over the last 12 months) = ` +
+            `(Deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
+            `(Deals that entered ${denLabel} in the last 12 months) = ` +
             `${num.count} ÷ ${den.count} = ${value}`;
           return {
             id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
@@ -1480,12 +1468,7 @@ export function ConsolidatedDebtPipelineDashboard({
             drilldownMetricType: 'none' as const,
             conversionBreakdown: {
               formula,
-              numeratorLabel:
-                signedMode === 'off'
-                  ? `Entered ${numLabel} (TTM)`
-                  : signedMode === 'ttm'
-                    ? `Entered ${numLabel} (TTM) — filtered to those also in ${denShort} (TTM)`
-                    : `Entered ${numLabel} (TTM) — filtered to those that ever entered ${denShort}`,
+              numeratorLabel: `Entered ${denLabel} (TTM) and ever reached ${numShort}`,
               denominatorLabel: `Entered ${denLabel} (TTM)`,
               numeratorDeals: num.deals,
               denominatorDeals: den.deals,
