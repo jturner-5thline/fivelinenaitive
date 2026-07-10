@@ -4,6 +4,7 @@ import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import {
   Loader2, Users, DollarSign, FileCheck, FileSignature, FileText, ClipboardCheck,
   Coins, ScrollText, Handshake, Banknote, Briefcase, Sigma, LayoutGrid, Table as TableIcon,
@@ -496,9 +497,20 @@ function DrilldownModalInner({
           <div className="rounded-lg border border-border/40 bg-muted/10 p-4 space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Conversion rate
-                </div>
+                <TooltipProvider delayDuration={100}>
+                  <UITooltip>
+                    <TooltipTrigger asChild>
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground cursor-help underline decoration-dotted underline-offset-2">
+                        Conversion rate
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-[11px] leading-relaxed">
+                      Source: deal_stage_history · stage_enter events on the Active Pipeline,
+                      deduplicated to the first entry per deal per stage over the trailing 12 months.
+                      Numerator = {conversionBreakdown.numeratorLabel}. Denominator = {conversionBreakdown.denominatorLabel}.
+                    </TooltipContent>
+                  </UITooltip>
+                </TooltipProvider>
                 <div className="text-2xl font-bold text-foreground mt-0.5">
                   {conversionBreakdown.percentText}
                 </div>
@@ -524,11 +536,6 @@ function DrilldownModalInner({
                 </p>
               </div>
             )}
-            <p className="text-[11px] text-muted-foreground">
-              Source: deal_stage_history · stage_enter events on the Active Pipeline,
-              deduplicated to the first entry per deal per stage over the trailing 12 months.
-              Numerator = {conversionBreakdown.numeratorLabel}. Denominator = {conversionBreakdown.denominatorLabel}.
-            </p>
           </div>
         )}
 
