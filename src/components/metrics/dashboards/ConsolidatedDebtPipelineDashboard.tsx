@@ -1499,11 +1499,17 @@ export function ConsolidatedDebtPipelineDashboard({
             count: numDeals.length,
             dollarVolume: numDeals.reduce((s, dl) => s + (dl.value ?? 0), 0),
           };
-          const value = pctText(num.count, den.count);
-          const formula =
-            `(Deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
-            `(Deals that entered ${denLabel} in the last 12 months) = ` +
-            `${num.count} ÷ ${den.count} = ${value}`;
+          const denDollars = den.deals.reduce((s, dl) => s + (dl.value ?? 0), 0);
+          const value = conversionMode === 'dollars'
+            ? pctText(num.dollarVolume, denDollars)
+            : pctText(num.count, den.count);
+          const formula = conversionMode === 'dollars'
+            ? `($ of deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
+              `($ of deals that entered ${denLabel} in the last 12 months) = ` +
+              `${formatCurrency(num.dollarVolume)} ÷ ${formatCurrency(denDollars)} = ${value}`
+            : `(Deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
+              `(Deals that entered ${denLabel} in the last 12 months) = ` +
+              `${num.count} ÷ ${den.count} = ${value}`;
           return {
             id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
             title: d.title,
@@ -1517,12 +1523,16 @@ export function ConsolidatedDebtPipelineDashboard({
             drilldownMetricType: 'none' as const,
             conversionBreakdown: {
               formula,
-              numeratorLabel: `Entered ${denLabel} (TTM) and ever reached ${numShort}`,
-              denominatorLabel: `Entered ${denLabel} (TTM)`,
+              numeratorLabel: conversionMode === 'dollars'
+                ? `$ of deals that entered ${denLabel} (TTM) and ever reached ${numShort}`
+                : `Entered ${denLabel} (TTM) and ever reached ${numShort}`,
+              denominatorLabel: conversionMode === 'dollars'
+                ? `$ of deals that entered ${denLabel} (TTM)`
+                : `Entered ${denLabel} (TTM)`,
               numeratorDeals: num.deals,
               denominatorDeals: den.deals,
-              numeratorCount: num.count,
-              denominatorCount: den.count,
+              numeratorCount: conversionMode === 'dollars' ? num.dollarVolume : num.count,
+              denominatorCount: conversionMode === 'dollars' ? denDollars : den.count,
               percentText: value,
             },
             signedAnchorLabel: denShort,
