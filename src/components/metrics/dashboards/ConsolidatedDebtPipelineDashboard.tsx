@@ -1481,7 +1481,7 @@ export function ConsolidatedDebtPipelineDashboard({
             deals: den.deals,
             color: `hsl(var(--chart-${(i % 5) + 1}))`,
             drilldownTitle: d.title,
-            drilldownPeriodNote: formula,
+            drilldownPeriodNote: undefined,
             drilldownMetricType: 'none' as const,
             conversionBreakdown: {
               formula,
