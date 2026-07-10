@@ -911,6 +911,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   fundedInvoiced: StageMetricResult;
   fundedInvoicedOnly: StageMetricResult;
   fundedInvoicedTrend: StageTrendSeriesResult;
+  ndaNeedsListTrend: StageTrendSeriesResult;
   closedSplitTrend: StageSplitTrendSeriesResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
