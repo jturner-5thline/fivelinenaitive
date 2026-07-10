@@ -967,6 +967,11 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const proposalIssuedRolling12 = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const submittedToLendersRolling12 = useStageEntryMetric('submitted-to-lenders', twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const termsIssuedRolling12 = useStageEntryMetric(TERMS_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
 
   return {
@@ -986,5 +991,20 @@ export function useConsolidatedDebtPipelineMetrics(
     averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
     averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
+    ttmCounts: {
+      proposalIssued: proposalIssuedRolling12.count,
+      finalCreditItems: finalCreditItemsRolling12.count,
+      submittedToLenders: submittedToLendersRolling12.count,
+      termsIssued: termsIssuedRolling12.count,
+      inDueDiligence: inDueDiligenceRolling12.count,
+      fundedInvoiced: fundedInvoicedOnlyRolling12.count,
+      isLoading:
+        proposalIssuedRolling12.isLoading ||
+        finalCreditItemsRolling12.isLoading ||
+        submittedToLendersRolling12.isLoading ||
+        termsIssuedRolling12.isLoading ||
+        inDueDiligenceRolling12.isLoading ||
+        fundedInvoicedOnlyRolling12.isLoading,
+    },
   };
 }
