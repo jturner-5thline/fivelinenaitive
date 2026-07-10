@@ -1,4 +1,5 @@
 import type { Deal } from '@/types/deal';
+import { isProjectsPipeline } from '@/lib/projectsPipeline';
 
 // Substring keywords (lowercased, hyphens/underscores stripped) that mark a
 // deal as inactive. Stage values in the DB are inconsistent — some are slugs
@@ -32,7 +33,11 @@ const normalize = (s: unknown) =>
  * still in the working pipeline. Excludes Closed Won/Lost, On Hold,
  * Dead/Do Not Contact, Unqualified, Dormant, Churned, Archived.
  */
-export function isActiveDeal(deal: Pick<Deal, 'stage' | 'status'>): boolean {
+export function isActiveDeal(
+  deal: Pick<Deal, 'stage' | 'status'> & { pipelineName?: string | null }
+): boolean {
+  // Projects pipeline is fully siloed — never counts toward "active" metrics.
+  if (isProjectsPipeline({ name: (deal as { pipelineName?: string | null }).pipelineName ?? null })) return false;
   const status = normalize(deal.status);
   if (INACTIVE_STATUSES.has(status)) return false;
   const stage = normalize(deal.stage);
