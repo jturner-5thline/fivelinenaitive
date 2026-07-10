@@ -352,8 +352,8 @@ function DrilldownModal({
   );
 }
 
-function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
-  return _ConversionDealsTable({ heading, deals, accent });
+function ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
+  return _ConversionDealsTable({ heading, deals, accent, dropoutIds });
 }
 
 function SignedModeToggle({
@@ -392,14 +392,20 @@ function SignedModeToggle({
   );
 }
 
-function _ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
+function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
+  const dropoutCount = dropoutIds ? deals.filter(d => dropoutIds.has(d.deal_id)).length : 0;
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
           <span className="text-xs font-semibold text-foreground">{heading}</span>
+          {dropoutIds && dropoutCount > 0 && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
+              {dropoutCount} dropped off
+            </span>
+          )}
         </div>
         <span className="text-[11px] font-mono text-muted-foreground">
           {deals.length} deal{deals.length !== 1 ? 's' : ''} · {formatCurrencyFull(total)}
@@ -418,15 +424,34 @@ function _ConversionDealsTable({ heading, deals, accent }: { heading: string; de
               </tr>
             </thead>
             <tbody>
-              {deals.map((d) => (
-                <tr key={d.deal_id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-3 py-1.5 font-medium">{d.company}</td>
-                  <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">
-                    {new Date(d.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </td>
-                </tr>
-              ))}
+              {deals.map((d) => {
+                const dropped = dropoutIds?.has(d.deal_id) ?? false;
+                return (
+                  <tr
+                    key={d.deal_id}
+                    className={cn(
+                      'border-b last:border-0',
+                      dropped ? 'bg-destructive/10 hover:bg-destructive/15' : 'hover:bg-muted/20',
+                    )}
+                  >
+                    <td className="px-3 py-1.5 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        {dropped && (
+                          <span
+                            className="h-1.5 w-1.5 rounded-full bg-destructive"
+                            aria-label="Did not advance"
+                          />
+                        )}
+                        <span className={dropped ? 'text-destructive-foreground' : undefined}>{d.company}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
+                    <td className="px-3 py-1.5 text-muted-foreground">
+                      {new Date(d.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -601,6 +626,11 @@ function DrilldownModalInner({
               heading={conversionBreakdown.denominatorLabel}
               deals={conversionBreakdown.denominatorDeals}
               accent="hsl(var(--chart-4))"
+              dropoutIds={new Set(
+                conversionBreakdown.denominatorDeals
+                  .filter(d => !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id))
+                  .map(d => d.deal_id),
+              )}
             />
             <ConversionDealsTable
               heading={conversionBreakdown.numeratorLabel}
