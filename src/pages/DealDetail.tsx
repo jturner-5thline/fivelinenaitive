@@ -175,6 +175,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useSaveOperation } from '@/hooks/useSaveOperation';
 import { useDealPanelOrder, DealPanelId } from '@/hooks/useDealPanelOrder';
 import { useDealInfoFieldOrder, DealInfoFieldId, DEAL_INFO_FIELD_DEFINITIONS } from '@/hooks/useDealInfoFieldOrder';
+import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
 import { SaveIndicator, GlobalSaveBar } from '@/components/ui/save-indicator';
 import { useSidebar } from '@/components/ui/sidebar';
 import {
@@ -1329,6 +1330,7 @@ export default function DealDetail() {
   // Panel reorder functionality
   const { panelOrder, panelVisibility, visiblePanels, reorderPanels, togglePanelVisibility, isPanelVisible, resetToDefault } = useDealPanelOrder();
   const { fieldOrder: dealInfoFieldOrder, isFieldVisible: isDealInfoFieldVisible } = useDealInfoFieldOrder();
+  const { options: sourcedViaOptions } = useDealSourcedViaOptions();
   const [isPanelReorderDialogOpen, setIsPanelReorderDialogOpen] = useState(false);
   
   // Mark info requests as read when Deal Management tab is viewed
@@ -4171,21 +4173,7 @@ export default function DealDetail() {
                                       <SelectTrigger className="w-full h-8 text-sm"><SelectValue placeholder="Select source..." /></SelectTrigger>
                                       <SelectContent side="bottom" align="start">
                                         <SelectItem value="__none__">None</SelectItem>
-                                        {[
-                                          'Email Campaign',
-                                          'LinkedIn Campaign',
-                                          'Inbound',
-                                          'Paid',
-                                          'Outsourced Sales Group',
-                                          'Internal',
-                                          'Event',
-                                          'Channel Partner',
-                                          'Referral - Bank',
-                                          'Referral - Lender',
-                                          'Referral - Service Provider',
-                                          'Referral - Client',
-                                          'Referral - Personal Connection',
-                                        ].map((option) => (
+                                        {Array.from(new Set([...(deal.sourcedVia ? [deal.sourcedVia] : []), ...sourcedViaOptions])).map((option) => (
                                           <SelectItem key={option} value={option}>{option}</SelectItem>
                                         ))}
                                       </SelectContent>

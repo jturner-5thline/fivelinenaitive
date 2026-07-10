@@ -13,11 +13,7 @@ export const DEFAULT_DEAL_SOURCED_VIA_OPTIONS = [
   'Internal',
   'Event',
   'Channel Partner',
-  'Referral - Bank',
-  'Referral - Lender',
-  'Referral - Service Provider',
-  'Referral - Client',
-  'Referral - Personal Connection',
+  'Referral',
 ] as const;
 
 /** @deprecated Use `useDealSourcedViaOptions()` for the workspace-configurable list. */
