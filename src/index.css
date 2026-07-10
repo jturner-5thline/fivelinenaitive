@@ -1363,6 +1363,13 @@ button[role="combobox"] {
   fill: rgba(180, 200, 230, 0.55) !important;
   font-size: 10px;
 }
+/* Conversion funnel chart: force high-contrast white tick labels on dark bg,
+   overriding the low-contrast .insights-glass-skin defaults above. */
+.funnel-chart-dark .recharts-cartesian-axis-tick text,
+.funnel-chart-dark .recharts-text {
+  fill: rgba(255, 255, 255, 0.92) !important;
+  font-size: 11px;
+}
 .dark .insights-glass-skin .recharts-legend-item-text {
   color: rgba(180, 200, 230, 0.65) !important;
   font-size: 10px;
