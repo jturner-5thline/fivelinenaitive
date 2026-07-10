@@ -1581,9 +1581,37 @@ export function ConsolidatedDebtPipelineDashboard({
             // reuses the exact same grid so each tile lines up with a Sales
             // column instead of stretching to fill a wider 4-col layout.
             const gridClass =
-              section.id === 'sales' || section.id === 'averages' || section.id === 'pipeline-conversion'
+              section.id === 'sales' || section.id === 'averages'
                 ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2'
                 : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
+            // Pipeline Conversion: stack tiles single-column on the left with a
+            // trailing-12-month funnel chart on the right.
+            if (section.id === 'pipeline-conversion') {
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] gap-3">
+                  <div className="flex flex-col gap-2">
+                    {section.cards.map(card => (
+                      <MetricKPICard
+                        key={card.id}
+                        config={card}
+                        onClick={() => setDrilldown({
+                          title: card.drilldownTitle,
+                          deals: card.deals,
+                          periodNote: card.drilldownPeriodNote,
+                          metricType: card.drilldownMetricType ?? 'dollars',
+                          valueFormatter: card.drilldownValueFormatter
+                            ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                          chartColor: card.drilldownChartColor ?? card.color,
+                          conversionBreakdown: card.conversionBreakdown,
+                          conversionCardId: card.conversionBreakdown ? card.id : undefined,
+                        })}
+                      />
+                    ))}
+                  </div>
+                  <QuarterlyConversionFunnelChart />
+                </div>
+              );
+            }
             return (
               <div className="space-y-3">
                 {rows.map((rowCards, idx) => (
