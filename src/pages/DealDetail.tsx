@@ -1017,6 +1017,13 @@ export default function DealDetail() {
   // FinServ deals use same simplified detail view as naitive deals
   const isSimplifiedDeal = isNaitiveDeal || isFinServDeal;
 
+  // Projects pipeline (currently Blount Capital only) is a fully siloed
+  // pipeline: only Deal Info + Data Room tabs are visible/functional, no
+  // outstanding items widget, no dollar value, and pipeline moves are
+  // blocked in both directions.
+  const dealPipelineName = (deal?.pipelineName || '').trim().toLowerCase();
+  const isProjectsDeal = dealPipelineName === 'projects';
+
   const [editHistory, setEditHistory] = useState<EditHistory[]>([]);
   
   // Memoize existing lender names to pass to the search component
