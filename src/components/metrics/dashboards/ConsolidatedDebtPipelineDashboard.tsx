@@ -1147,6 +1147,9 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
+  // When true, each bucket in the chart shows the trailing-12-month rollup
+  // ending at that bucket's period end, instead of the bucket's own period.
+  const [ttmCharts, setTtmCharts] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   // Conversion filter mode for the Pipeline Conversion section:
   //   'off'      → count every stage-entry event in the TTM window (raw)
@@ -1180,7 +1183,17 @@ export function ConsolidatedDebtPipelineDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoiced.isLoading, m.fundedInvoicedTrend.monthly]);
 
-  const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
+  const pickTrend = <T,>(series: { monthly: T; quarterly: T; monthlyTtm: T; quarterlyTtm: T }): T => {
+    if (trendMode === 'monthly') return ttmCharts ? series.monthlyTtm : series.monthly;
+    return ttmCharts ? series.quarterlyTtm : series.quarterly;
+  };
+  const ndaNeedsListTrendBuckets = pickTrend(m.ndaNeedsListTrend);
+  const finalCreditItemsTrendBuckets = pickTrend(m.finalCreditItemsTrend);
+  const fundedTrendBuckets = pickTrend(m.fundedInvoicedTrend);
+  const trendPeriodLabel = ttmCharts
+    ? (trendMode === 'monthly' ? 'TTM as of each of the past 6 months' : 'TTM as of each of the past 4 quarters')
+    : (trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters');
+  const ttmSuffix = ttmCharts ? ' (TTM)' : '';
 
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
     `${metricLabel} · Debt Advisory Metrics → Closed + Closed Won · ${bucket.label}`;
