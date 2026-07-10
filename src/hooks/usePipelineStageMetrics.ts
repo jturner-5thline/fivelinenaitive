@@ -912,6 +912,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   fundedInvoicedOnly: StageMetricResult;
   fundedInvoicedTrend: StageTrendSeriesResult;
   ndaNeedsListTrend: StageTrendSeriesResult;
+  finalCreditItemsTrend: StageTrendSeriesResult;
   closedSplitTrend: StageSplitTrendSeriesResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
@@ -990,6 +991,7 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedOnly = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, todayAnchor, ACTIVE_PIPELINE_ID);
   const ndaNeedsListTrend = useStageEntryTrendSeries(NDA_NEEDS_LIST_STAGE, todayAnchor, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsTrend = useStageEntryTrendSeries(FINAL_CREDIT_ITEMS_STAGE, todayAnchor, ACTIVE_PIPELINE_ID);
   const closedSplitTrend = useStageEntrySplitTrendSeries(todayAnchor, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
@@ -1073,6 +1075,7 @@ export function useConsolidatedDebtPipelineMetrics(
     fundedInvoicedOnly,
     fundedInvoicedTrend,
     ndaNeedsListTrend,
+    finalCreditItemsTrend,
     closedSplitTrend,
     termsIssued,
     inDueDiligence,
