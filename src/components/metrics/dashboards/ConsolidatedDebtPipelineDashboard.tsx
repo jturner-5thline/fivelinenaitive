@@ -1693,23 +1693,42 @@ export function ConsolidatedDebtPipelineDashboard({
             Debt Advisory Metrics — stage_enter into NDA / Needs List Sent, zero-filled periods (rolling, anchored to today)
           </p>
         </div>
-        <CompactFundedBarChart
-          title="Deals on Board"
-          subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
-          buckets={trendMode === 'monthly' ? m.ndaNeedsListTrend.monthly : m.ndaNeedsListTrend.quarterly}
-          isLoading={m.ndaNeedsListTrend.isLoading}
-          color="hsl(var(--chart-2))"
-          dataKey="count"
-          valueFormatter={(value) => `${Math.round(value)}`}
-          totalFormatter={(value) => `${Math.round(value)}`}
-          onBarClick={(bucket) =>
-            setDrilldown({
-              title: `Deals on Board — ${bucket.label}`,
-              deals: bucket.deals,
-              periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
-            })
-          }
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <CompactFundedBarChart
+            title="Deals on Board"
+            subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            buckets={trendMode === 'monthly' ? m.ndaNeedsListTrend.monthly : m.ndaNeedsListTrend.quarterly}
+            isLoading={m.ndaNeedsListTrend.isLoading}
+            color="hsl(var(--chart-2))"
+            dataKey="count"
+            valueFormatter={(value) => `${Math.round(value)}`}
+            totalFormatter={(value) => `${Math.round(value)}`}
+            onBarClick={(bucket) =>
+              setDrilldown({
+                title: `Deals on Board — ${bucket.label}`,
+                deals: bucket.deals,
+                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+              })
+            }
+          />
+          <CompactFundedBarChart
+            title="Deals Signed"
+            subtitle={`Debt Advisory Metrics → Final Credit Items · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+            buckets={trendMode === 'monthly' ? m.finalCreditItemsTrend.monthly : m.finalCreditItemsTrend.quarterly}
+            isLoading={m.finalCreditItemsTrend.isLoading}
+            color="hsl(var(--chart-4))"
+            dataKey="count"
+            valueFormatter={(value) => `${Math.round(value)}`}
+            totalFormatter={(value) => `${Math.round(value)}`}
+            onBarClick={(bucket) =>
+              setDrilldown({
+                title: `Deals Signed — ${bucket.label}`,
+                deals: bucket.deals,
+                periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+              })
+            }
+          />
+        </div>
       </div>
 
       <div className="space-y-3">
