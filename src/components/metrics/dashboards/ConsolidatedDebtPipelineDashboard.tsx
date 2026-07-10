@@ -1579,11 +1579,6 @@ export function ConsolidatedDebtPipelineDashboard({
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
             </div>
-            {section.id === 'pipeline-conversion' && (
-              <p className="text-[11px] text-muted-foreground max-w-md">
-                Open any tile to filter its numerator by whether the deal ever passed through the tile's denominator stage.
-              </p>
-            )}
           </div>
           {(() => {
             const rows = [section.cards];
@@ -1715,9 +1710,6 @@ export function ConsolidatedDebtPipelineDashboard({
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">{otherMetricsSection.description}</p>
             </div>
-            <p className="text-[11px] text-muted-foreground max-w-md">
-              Open any tile to filter its numerator by whether the deal ever passed through the tile's denominator stage.
-            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
             {otherMetricsSection.cards.map(card => (
