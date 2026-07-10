@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -24,10 +24,17 @@ export function QuarterlyConversionFunnelChart() {
 
   const data = useMemo(
     () =>
-      FUNNEL_STAGE_ORDER.map(s => ({
-        stage: s.label,
-        count: activeBucket.counts[s.key as FunnelStageKey],
-      })),
+      FUNNEL_STAGE_ORDER.map((s, i, arr) => {
+        const count = activeBucket.counts[s.key as FunnelStageKey];
+        const first = activeBucket.counts[arr[0].key as FunnelStageKey];
+        const prev = i > 0 ? activeBucket.counts[arr[i - 1].key as FunnelStageKey] : count;
+        return {
+          stage: s.label,
+          count,
+          pctOfTop: first > 0 ? (count / first) * 100 : null,
+          pctOfPrev: i > 0 && prev > 0 ? (count / prev) * 100 : null,
+        };
+      }),
     [activeBucket],
   );
 
@@ -113,19 +120,44 @@ export function QuarterlyConversionFunnelChart() {
                 width={36}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 8,
-                  fontSize: 12,
+                cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25, strokeWidth: 1 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as (typeof data)[number];
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        minWidth: 180,
+                      }}
+                    >
+                      <div className="font-semibold text-foreground mb-1">{p.stage}</div>
+                      <div className="flex justify-between gap-3 text-muted-foreground">
+                        <span>Deals</span>
+                        <span className="text-foreground font-medium">{p.count}</span>
+                      </div>
+                      <div className="flex justify-between gap-3 text-muted-foreground">
+                        <span>% of Proposal Issued</span>
+                        <span className="text-foreground font-medium">
+                          {p.pctOfTop == null ? '—' : `${p.pctOfTop.toFixed(1)}%`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 text-muted-foreground">
+                        <span>Step conversion</span>
+                        <span className="text-foreground font-medium">
+                          {p.pctOfPrev == null ? '—' : `${p.pctOfPrev.toFixed(1)}%`}
+                        </span>
+                      </div>
+                      <div className="mt-1 pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
+                        {activeBucket.label} · TTM
+                      </div>
+                    </div>
+                  );
                 }}
-                formatter={(v: number, _n, item: any) => {
-                  const idx = data.findIndex(d => d.stage === item?.payload?.stage);
-                  const first = data[0]?.count ?? 0;
-                  const pct = first > 0 ? `${((v / first) * 100).toFixed(1)}%` : '—';
-                  return [`${v} deals · ${pct} of Proposal Issued`, `Stage`];
-                }}
-                labelFormatter={(l) => `${l}`}
               />
               <Area
                 type="monotone"
@@ -136,7 +168,43 @@ export function QuarterlyConversionFunnelChart() {
                 dot={{ r: 3, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
                 activeDot={{ r: 5 }}
                 isAnimationActive
-              />
+              >
+                <LabelList
+                  dataKey="count"
+                  position="top"
+                  offset={10}
+                  content={({ x, y, value, index }) => {
+                    if (x == null || y == null || value == null || index == null) return null;
+                    const p = data[index as number];
+                    const pct = p?.pctOfTop == null ? '' : `${p.pctOfTop.toFixed(0)}%`;
+                    return (
+                      <g>
+                        <text
+                          x={Number(x)}
+                          y={Number(y) - 12}
+                          textAnchor="middle"
+                          fill="hsl(var(--foreground))"
+                          fontSize={11}
+                          fontWeight={600}
+                        >
+                          {value}
+                        </text>
+                        {pct && (
+                          <text
+                            x={Number(x)}
+                            y={Number(y) - 1}
+                            textAnchor="middle"
+                            fill="hsl(var(--muted-foreground))"
+                            fontSize={9}
+                          >
+                            {pct}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  }}
+                />
+              </Area>
             </AreaChart>
           </ResponsiveContainer>
         )}
