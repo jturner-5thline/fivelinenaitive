@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
-import { QuarterlyConversionFunnelChart } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
+import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
@@ -1197,6 +1197,39 @@ export function ConsolidatedDebtPipelineDashboard({
 
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
 
+  const latestStepConversions = useMemo<QuarterlyStepConversionOverrides>(() => {
+    const steps = [
+      ['proposalIssued', 'finalCreditItems'],
+      ['finalCreditItems', 'submittedToLenders'],
+      ['submittedToLenders', 'termsIssued'],
+      ['termsIssued', 'inDueDiligence'],
+      ['inDueDiligence', 'fundedInvoiced'],
+    ] as const;
+
+    const out: QuarterlyStepConversionOverrides = {};
+    for (const [from, to] of steps) {
+      const denominator = m.ttmCounts[from];
+      const reachedNumerator = m.lifetimeStageDealIds[to];
+      out[`${from}__${to}`] = {
+        fromCount: denominator.count,
+        toCount: denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id)).length,
+      };
+    }
+    return out;
+  }, [
+    m.ttmCounts.proposalIssued,
+    m.ttmCounts.finalCreditItems,
+    m.ttmCounts.submittedToLenders,
+    m.ttmCounts.termsIssued,
+    m.ttmCounts.inDueDiligence,
+    m.ttmCounts.fundedInvoiced,
+    m.lifetimeStageDealIds.finalCreditItems,
+    m.lifetimeStageDealIds.submittedToLenders,
+    m.lifetimeStageDealIds.termsIssued,
+    m.lifetimeStageDealIds.inDueDiligence,
+    m.lifetimeStageDealIds.fundedInvoiced,
+  ]);
+
   if (!selectedQuarter) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
@@ -1608,7 +1641,7 @@ export function ConsolidatedDebtPipelineDashboard({
                       />
                     ))}
                   </div>
-                  <QuarterlyConversionFunnelChart />
+                  <QuarterlyConversionFunnelChart latestStepConversions={latestStepConversions} />
                 </div>
               );
             }
