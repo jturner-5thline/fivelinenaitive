@@ -1126,6 +1126,8 @@ export function ConsolidatedDebtPipelineDashboard({
   //                 e.g. True North Transportation, Duracell Power Center)
   type SignedMode = 'off' | 'ttm' | 'lifetime';
   const [signedMode, setSignedMode] = useState<SignedMode>('off');
+  // Pipeline Conversion display mode: deal-count cohort vs deal-value ($ USD) cohort.
+  const [conversionMode, setConversionMode] = useState<'count' | 'dollars'>('count');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
@@ -1209,9 +1211,12 @@ export function ConsolidatedDebtPipelineDashboard({
     for (const [from, to] of steps) {
       const denominator = m.ttmCounts[from];
       const reachedNumerator = m.lifetimeStageDealIds[to];
+      const reachedDeals = denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id));
       out[`${from}__${to}` as keyof QuarterlyStepConversionOverrides] = {
         fromCount: denominator.count,
-        toCount: denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id)).length,
+        toCount: reachedDeals.length,
+        fromDollars: denominator.deals.reduce((s, d) => s + (d.value ?? 0), 0),
+        toDollars: reachedDeals.reduce((s, d) => s + (d.value ?? 0), 0),
       };
     }
     return out;
