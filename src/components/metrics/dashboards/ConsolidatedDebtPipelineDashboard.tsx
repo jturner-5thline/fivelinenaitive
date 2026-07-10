@@ -1748,7 +1748,9 @@ export function ConsolidatedDebtPipelineDashboard({
         const liveBreakdown = (() => {
           if (!drilldown?.conversionCardId) return drilldown?.conversionBreakdown;
           const conv = sections.find(s => s.id === 'pipeline-conversion');
-          const card = conv?.cards.find(c => c.id === drilldown.conversionCardId);
+          const card =
+            conv?.cards.find(c => c.id === drilldown.conversionCardId)
+            ?? otherMetricsSection.cards.find(c => c.id === drilldown.conversionCardId);
           return card?.conversionBreakdown ?? drilldown?.conversionBreakdown;
         })();
         return (
