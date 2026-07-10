@@ -1,0 +1,144 @@
+/**
+ * CreateDealApprovalCard — Approval Queue detail card for
+ * `action_type === 'create_new_deal'` items produced by the Deal Admin
+ * Agent's post-sales-call detector (see edge function
+ * detect-sales-call-deals). The user can review the AI-drafted fields,
+ * open the standard Create Deal dialog prefilled, edit anything, and hit
+ * Create Deal to finalize. On successful create the queue item is marked
+ * approved.
+ */
+import { useState } from 'react';
+import { Video, Calendar, Building2, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
+import { useQueryClient } from '@tanstack/react-query';
+
+interface Props {
+  item: QueuedAiAction;
+}
+
+export function CreateDealApprovalCard({ item }: Props) {
+  const payload = (item.payload ?? {}) as Record<string, any>;
+  const source = (item.source ?? {}) as Record<string, any>;
+  const [open, setOpen] = useState(false);
+  const qc = useQueryClient();
+
+  const rows: Array<{ label: string; value: string }> = [
+    { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
+    { label: 'Deal amount', value: payload.dealAmount ? `$${Number(payload.dealAmount).toLocaleString()}` : '—' },
+    { label: 'Client contact', value: payload.contactName || '—' },
+    { label: 'Client email', value: payload.contactInfo || '—' },
+    { label: 'Deal status', value: payload.dealStatusNote || '—' },
+    { label: 'Narrative', value: payload.narrative || '—' },
+    { label: 'Referred by', value: payload.referralName || '—' },
+  ];
+
+  const initialValues = {
+    dealName: payload.dealName || source.company_name || '',
+    dealAmount: payload.dealAmount || '',
+    contactName: payload.contactName || '',
+    contactInfo: payload.contactInfo || '',
+    dealStatusNote: payload.dealStatusNote || '',
+    narrative: payload.narrative || '',
+    referralName: payload.referralName || '',
+    referralEmail: payload.referralEmail || '',
+    dealClass: (payload.dealClass || 'standard') as 'standard' | 'naitive' | 'finserv',
+  };
+
+  async function markApproved(newDealId: string) {
+    try {
+      const now = new Date().toISOString();
+      await supabase
+        .from('ai_action_queue')
+        .update({
+          status: 'approved',
+          approved_at: now,
+          executed_at: now,
+          execution_result: { deal_id: newDealId, created_via: 'create_deal_dialog' },
+        })
+        .eq('id', item.id);
+      qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
+      qc.invalidateQueries({ queryKey: ['ai-action-queue-count'] });
+      toast.success('New deal created and item cleared from Approval Queue');
+    } catch (e: any) {
+      console.warn('[CreateDealApprovalCard] mark approved failed', e?.message);
+    }
+  }
+
+  return (
+    <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      <div className="rounded-md border border-white/[0.14] bg-white/[0.03] p-3">
+        <div className="flex items-center gap-2 text-[13px] text-[#ecedf4]">
+          <Sparkles className="h-3.5 w-3.5 text-[#5ecdf5]" />
+          <span className="font-medium">{item.title}</span>
+        </div>
+        {item.description ? (
+          <p className="mt-1.5 text-xs text-[#ecedf4]/65 leading-relaxed">{item.description}</p>
+        ) : null}
+        <div className="mt-2.5 flex flex-wrap gap-3 text-[11px] text-[#ecedf4]/55">
+          {source.event_title ? (
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {source.event_title}
+            </span>
+          ) : null}
+          {source.claap_meeting_id ? (
+            <span className="inline-flex items-center gap-1">
+              <Video className="h-3 w-3" />
+              Claap recording matched
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-amber-300/80">
+              <Video className="h-3 w-3" />
+              No Claap recording matched yet
+            </span>
+          )}
+          {source.company_name ? (
+            <span className="inline-flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              {source.company_name}
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="rounded-md border border-white/[0.14] bg-white/[0.03] divide-y divide-white/[0.08]">
+        {rows.map((r) => (
+          <div key={r.label} className="grid grid-cols-[140px_1fr] gap-3 px-3 py-2 text-xs">
+            <div className="text-[#ecedf4]/55 uppercase tracking-wide text-[10px] pt-0.5">{r.label}</div>
+            <div className="text-[#ecedf4]/90 whitespace-pre-wrap break-words">{r.value}</div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[11px] text-[#ecedf4]/50">
+        Review the drafted fields. Click <span className="text-[#ecedf4]/80">Review &amp; Create Deal</span> to open the standard Create Deal form pre-filled from the call — you can edit any field before finalizing.
+      </p>
+
+      <div className="flex gap-2">
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-gradient-to-r from-[#5ecdf5] to-[#9b6fd4] text-black hover:opacity-90"
+        >
+          Review &amp; Create Deal
+        </Button>
+      </div>
+
+      <CreateDealDialog
+        open={open}
+        onOpenChange={setOpen}
+        initialValues={{
+          ...initialValues,
+          onCreated: (dealId) => {
+            setOpen(false);
+            void markApproved(dealId);
+          },
+          onDismiss: () => setOpen(false),
+        }}
+      />
+    </div>
+  );
+}

@@ -57,6 +57,7 @@ import {
   useDismissManyAiActions,
 } from '@/hooks/useAiActionQueue';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { CreateDealApprovalCard } from './CreateDealApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
@@ -151,6 +152,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_fu
   update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   escalate: { label: 'Escalation', icon: ShieldAlert },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
+  create_new_deal: { label: 'New deal', icon: Briefcase },
 };
 
 /* Grouping order within a deal accordion: funding-source items first, then
@@ -1402,6 +1404,12 @@ function DetailPane({
         <ClaapApprovalCard item={item} />
       </div>
     );
+  }
+
+  // Post-sales-call "Create new deal" items get a dedicated card that
+  // reuses the standard Create Deal dialog for edit + finalize.
+  if (item.action_type === 'create_new_deal') {
+    return <CreateDealApprovalCard item={item} />;
   }
 
   // Bundle view — multiple "Nudge …" email drafts combined into one queue item.
