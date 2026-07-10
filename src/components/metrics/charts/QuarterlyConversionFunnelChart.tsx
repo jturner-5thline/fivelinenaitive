@@ -11,23 +11,35 @@ import {
   type QuarterlyFunnelBucket,
 } from '@/hooks/useQuarterlyTtmFunnel';
 
-type ViewKey = 'funnel' | string; // 'funnel' = current TTM, other = quarter label
+// Step-conversion tabs: each pair is a step between two consecutive funnel stages.
+type StepKey = `${FunnelStageKey}__${FunnelStageKey}`;
+type ViewKey = 'funnel' | StepKey;
+
+const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label: string; short: string }[] =
+  FUNNEL_STAGE_ORDER.slice(0, -1).map((s, i) => {
+    const next = FUNNEL_STAGE_ORDER[i + 1];
+    return {
+      key: `${s.key}__${next.key}` as StepKey,
+      from: s.key as FunnelStageKey,
+      to: next.key as FunnelStageKey,
+      label: `${s.label} → ${next.label}`,
+      short: `${s.label} → ${next.label}`,
+    };
+  });
 
 export function QuarterlyConversionFunnelChart() {
   const { current, quarters, isLoading } = useQuarterlyTtmFunnel();
   const [view, setView] = useState<ViewKey>('funnel');
 
-  const activeBucket: QuarterlyFunnelBucket = useMemo(() => {
-    if (view === 'funnel') return current;
-    return quarters.find(q => q.label === view) ?? current;
-  }, [view, current, quarters]);
+  const activeStep = view === 'funnel' ? null : STEP_TABS.find(t => t.key === view) ?? null;
 
-  const data = useMemo(
+  // Funnel view = current TTM across stages. Step view = one step's conversion % across past 4 quarters.
+  const funnelData = useMemo(
     () =>
       FUNNEL_STAGE_ORDER.map((s, i, arr) => {
-        const count = activeBucket.counts[s.key as FunnelStageKey];
-        const first = activeBucket.counts[arr[0].key as FunnelStageKey];
-        const prev = i > 0 ? activeBucket.counts[arr[i - 1].key as FunnelStageKey] : count;
+        const count = current.counts[s.key as FunnelStageKey];
+        const first = current.counts[arr[0].key as FunnelStageKey];
+        const prev = i > 0 ? current.counts[arr[i - 1].key as FunnelStageKey] : count;
         return {
           stage: s.label,
           count,
@@ -35,17 +47,50 @@ export function QuarterlyConversionFunnelChart() {
           pctOfPrev: i > 0 && prev > 0 ? (count / prev) * 100 : null,
         };
       }),
-    [activeBucket],
+    [current],
   );
 
-  const startCount = data[0]?.count ?? 0;
-  const endCount = data[data.length - 1]?.count ?? 0;
-  const overallRate = startCount > 0 ? ((endCount / startCount) * 100).toFixed(1) : '—';
+  // Quarters come newest first — reverse for chronological left→right reading.
+  const stepData = useMemo(() => {
+    if (!activeStep) return [];
+    const chrono = [...quarters].reverse();
+    return chrono.map(q => {
+      const from = q.counts[activeStep.from];
+      const to = q.counts[activeStep.to];
+      const pct = from > 0 ? (to / from) * 100 : null;
+      return {
+        stage: q.label,
+        count: pct == null ? 0 : Number(pct.toFixed(1)),
+        pctOfTop: pct,
+        pctOfPrev: null as number | null,
+        fromCount: from,
+        toCount: to,
+      };
+    });
+  }, [activeStep, quarters]);
+
+  const data = activeStep ? stepData : funnelData;
+
+  const headerMetric = useMemo(() => {
+    if (!activeStep) {
+      const startCount = funnelData[0]?.count ?? 0;
+      const endCount = funnelData[funnelData.length - 1]?.count ?? 0;
+      const rate = startCount > 0 ? ((endCount / startCount) * 100).toFixed(1) + '%' : '—';
+      return { label: `${current.label} · Proposal → Funded`, value: rate };
+    }
+    // Latest completed quarter conversion for this step
+    const latest = stepData[stepData.length - 1];
+    const val = latest?.pctOfTop == null ? '—' : `${latest.pctOfTop.toFixed(1)}%`;
+    return { label: `${latest?.stage ?? ''} · ${activeStep.short}`, value: val };
+  }, [activeStep, funnelData, stepData, current.label]);
 
   const tabs: { key: ViewKey; label: string }[] = [
     { key: 'funnel', label: 'Funnel' },
-    ...quarters.map(q => ({ key: q.label, label: q.label })),
+    ...STEP_TABS.map(s => ({ key: s.key as ViewKey, label: s.short })),
   ];
+
+  const yDomain: [number | 'auto', number | 'auto'] = activeStep ? [0, 100] : ['auto', 'auto'];
+  const yTickFormatter = activeStep ? (v: number) => `${v}%` : (v: number) => `${v}`;
 
   return (
     <div
@@ -58,17 +103,21 @@ export function QuarterlyConversionFunnelChart() {
     >
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">Conversion Funnel</h4>
+          <h4 className="text-sm font-semibold text-foreground">
+            {activeStep ? 'Step Conversion by Quarter' : 'Conversion Funnel'}
+          </h4>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Trailing 12 months · Proposal Issued → Funded / Invoiced
+            {activeStep
+              ? `TTM conversion % · past 4 quarters · ${activeStep.short}`
+              : 'Trailing 12 months · Proposal Issued → Funded / Invoiced'}
           </p>
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            {activeBucket.label} · Proposal → Funded
+            {headerMetric.label}
           </div>
           <div className="text-lg font-semibold text-foreground">
-            {isLoading ? '…' : `${overallRate}${overallRate === '—' ? '' : '%'}`}
+            {isLoading ? '…' : headerMetric.value}
           </div>
         </div>
       </div>
@@ -119,21 +168,57 @@ export function QuarterlyConversionFunnelChart() {
                 tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.85)' }}
                 stroke="rgba(255,255,255,0.35)"
                 interval={0}
-                angle={-18}
-                textAnchor="end"
+                angle={activeStep ? 0 : -18}
+                textAnchor={activeStep ? 'middle' : 'end'}
                 height={50}
               />
               <YAxis
                 allowDecimals={false}
                 tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.85)' }}
                 stroke="rgba(255,255,255,0.35)"
-                width={36}
+                width={44}
+                domain={yDomain}
+                tickFormatter={yTickFormatter as any}
               />
               <Tooltip
                 cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25, strokeWidth: 1 }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;
                   const p = payload[0].payload as (typeof data)[number];
+                  if (activeStep) {
+                    const sp = p as any;
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          minWidth: 200,
+                        }}
+                      >
+                        <div className="font-semibold text-foreground mb-1">{sp.stage}</div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>Conversion</span>
+                          <span className="text-foreground font-medium">
+                            {sp.pctOfTop == null ? '—' : `${sp.pctOfTop.toFixed(1)}%`}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>{activeStep.short.split(' → ')[0]}</span>
+                          <span className="text-foreground font-medium">{sp.fromCount}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>{activeStep.short.split(' → ')[1]}</span>
+                          <span className="text-foreground font-medium">{sp.toCount}</span>
+                        </div>
+                        <div className="mt-1 pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
+                          {sp.stage} · TTM
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div
                       style={{
@@ -163,7 +248,7 @@ export function QuarterlyConversionFunnelChart() {
                         </span>
                       </div>
                       <div className="mt-1 pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
-                        {activeBucket.label} · TTM
+                        {current.label} · TTM
                       </div>
                     </div>
                   );
@@ -186,7 +271,12 @@ export function QuarterlyConversionFunnelChart() {
                   content={({ x, y, value, index }) => {
                     if (x == null || y == null || value == null || index == null) return null;
                     const p = data[index as number];
-                    const pct = p?.pctOfTop == null ? '' : `${p.pctOfTop.toFixed(0)}%`;
+                    const primaryLabel = activeStep
+                      ? (p?.pctOfTop == null ? '—' : `${p.pctOfTop.toFixed(1)}%`)
+                      : `${value}`;
+                    const secondaryLabel = activeStep
+                      ? ''
+                      : (p?.pctOfTop == null ? '' : `${p.pctOfTop.toFixed(0)}%`);
                     return (
                       <g>
                         <text
@@ -197,9 +287,9 @@ export function QuarterlyConversionFunnelChart() {
                           fontSize={11}
                           fontWeight={600}
                         >
-                          {value}
+                          {primaryLabel}
                         </text>
-                        {pct && (
+                        {secondaryLabel && (
                           <text
                             x={Number(x)}
                             y={Number(y) - 1}
@@ -207,7 +297,7 @@ export function QuarterlyConversionFunnelChart() {
                             fill="hsl(var(--muted-foreground))"
                             fontSize={9}
                           >
-                            {pct}
+                            {secondaryLabel}
                           </text>
                         )}
                       </g>
