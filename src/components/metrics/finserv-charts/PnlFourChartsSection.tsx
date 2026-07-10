@@ -20,7 +20,7 @@ import { buildBuckets } from '@/lib/insightsTimeRange';
 // ── Formatters (mirrors FinServFinancialMetricsDashboard) ──
 const fmtCurrency = (v: number) => {
   if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}k`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
   return `$${v.toFixed(0)}`;
 };
 const fmtCurrencyFull = (v: number) =>
@@ -166,7 +166,7 @@ function TotalRevenueCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.total)}</div>
+          <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
           <div className="text-xs text-muted-foreground">Total Income from QuickBooks P&amp;L</div>
           {showTrend && (
             <div className="mt-1">
@@ -238,8 +238,11 @@ function GrossProfitToggleCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div className="text-3xl font-semibold text-foreground">
-            {isDollar ? fmtCurrencyPrecise(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
+          <div
+            className="text-3xl font-semibold text-foreground"
+            title={isDollar ? fmtCurrencyPrecise(totalRev.grossProfit) : undefined}
+          >
+            {isDollar ? fmtCurrency(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
           </div>
           <div className="text-xs text-muted-foreground">
             {isDollar ? 'Gross Profit from QuickBooks P&L' : 'Gross Profit ÷ Revenue'}
@@ -322,8 +325,11 @@ function OperatingProfitToggleCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div className="text-3xl font-semibold text-foreground">
-            {isDollar ? fmtCurrencyPrecise(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
+          <div
+            className="text-3xl font-semibold text-foreground"
+            title={isDollar ? fmtCurrencyPrecise(totalRev.operatingProfit) : undefined}
+          >
+            {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
           </div>
           <div className="text-xs text-muted-foreground">
             {isDollar ? 'Gross Profit − Operating Expenses from QuickBooks P&L' : 'Operating Profit ÷ Revenue'}
