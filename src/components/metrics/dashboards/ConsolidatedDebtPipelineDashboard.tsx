@@ -435,21 +435,18 @@ function DrilldownModalInner({
                 {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
               </Badge>
             </div>
-            {onEnforceSignedFirstChange && (
-              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer select-none rounded-md border border-border/40 bg-background/60 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={!!enforceSignedFirst}
-                  onChange={(e) => onEnforceSignedFirstChange(e.target.checked)}
-                  className="mt-0.5 h-3.5 w-3.5 accent-primary"
-                />
-                <span>
-                  <span className="font-semibold">Only count deals that entered Final Credit Items in the last 12 months.</span>
-                  <span className="block text-muted-foreground mt-0.5">
-                    Enforces the workflow (FCI → downstream stages) and removes flow-skip inflation from bulk-imported or backfilled deals.
-                  </span>
-                </span>
-              </label>
+            {onSignedModeChange && (
+              <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Restrict to deals that entered Final Credit Items
+                </div>
+                <SignedModeToggle value={signedMode ?? 'off'} onChange={onSignedModeChange} />
+                <p className="text-[11px] text-muted-foreground">
+                  {signedMode === 'ttm' && 'Downstream counts include only deals whose FCI entry falls inside the trailing 12-month window.'}
+                  {signedMode === 'lifetime' && 'Downstream counts include deals that entered FCI at any point in their history (e.g. True North Transportation, Duracell Power Center) — even if the FCI event predates the TTM window.'}
+                  {(!signedMode || signedMode === 'off') && 'Raw stage-entry counts — no FCI-passthrough filter applied.'}
+                </p>
+              </div>
             )}
             <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
               {conversionBreakdown.formula}
