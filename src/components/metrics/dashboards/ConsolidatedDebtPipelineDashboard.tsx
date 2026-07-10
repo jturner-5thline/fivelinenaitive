@@ -1614,7 +1614,7 @@ export function ConsolidatedDebtPipelineDashboard({
       ) : (
         sections.map(section => (
         <div key={section.id} className="space-y-3">
-          {(section.title || section.description) && (
+          {(section.title || section.description || section.id === 'pipeline-conversion') && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 {section.title && (
@@ -1626,6 +1626,34 @@ export function ConsolidatedDebtPipelineDashboard({
                   <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
                 )}
               </div>
+              {section.id === 'pipeline-conversion' && (
+                <div
+                  className="inline-flex rounded-md p-1"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  role="tablist"
+                  aria-label="Conversion basis"
+                >
+                  {(['count', 'dollars'] as const).map(k => {
+                    const active = conversionMode === k;
+                    return (
+                      <button
+                        key={k}
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setConversionMode(k)}
+                        className={cn(
+                          'h-7 px-3 rounded text-xs font-medium transition-colors',
+                          active
+                            ? 'bg-primary/20 text-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                        )}
+                      >
+                        {k === 'count' ? '# Deals' : '$ Value'}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           {(() => {
@@ -1661,7 +1689,10 @@ export function ConsolidatedDebtPipelineDashboard({
                       />
                     ))}
                   </div>
-                  <QuarterlyConversionFunnelChart latestStepConversions={latestStepConversions} />
+                  <QuarterlyConversionFunnelChart
+                    latestStepConversions={latestStepConversions}
+                    mode={conversionMode}
+                  />
                 </div>
               );
             }
