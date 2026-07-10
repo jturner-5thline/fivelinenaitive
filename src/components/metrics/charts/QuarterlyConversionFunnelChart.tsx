@@ -75,7 +75,7 @@ export function QuarterlyConversionFunnelChart() {
       const startCount = funnelData[0]?.count ?? 0;
       const endCount = funnelData[funnelData.length - 1]?.count ?? 0;
       const rate = startCount > 0 ? ((endCount / startCount) * 100).toFixed(1) + '%' : '—';
-      return { label: `${current.label} · Proposal → Funded`, value: rate };
+      return { label: `${current.label} · Proposal → Closed`, value: rate };
     }
     // Latest completed quarter conversion for this step
     const latest = stepData[stepData.length - 1];
