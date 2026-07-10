@@ -1430,11 +1430,24 @@ export function ConsolidatedDebtPipelineDashboard({
       ) : (
         sections.map(section => (
         <div key={section.id} className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              {section.title}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                {section.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+            </div>
+            {section.id === 'pipeline-conversion' && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none rounded-md border border-border/40 bg-muted/40 px-2.5 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={enforceSignedFirst}
+                  onChange={(e) => setEnforceSignedFirst(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                <span>Only count deals that entered Final Credit Items in the last 12 months</span>
+              </label>
+            )}
           </div>
           {(() => {
             const rows = section.id === 'sales'
