@@ -1757,7 +1757,8 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       ) : (
         sections.map(section => (
-        <div key={section.id} className="space-y-3">
+        <Fragment key={section.id}>
+        <div className="space-y-3">
           {(section.title || section.description || section.id === 'pipeline-conversion') && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -1879,6 +1880,8 @@ export function ConsolidatedDebtPipelineDashboard({
             );
           })()}
         </div>
+        {section.id === 'pipeline-conversion' && <PipelineVelocitySection />}
+        </Fragment>
         ))
       )}
 
