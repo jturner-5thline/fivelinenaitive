@@ -166,17 +166,26 @@ Deno.serve(async (req) => {
           if (endMs > cutoffEndMs) continue;
           if (endMs < windowStartMs) continue;
 
-          // Dedupe on nylas_event_id in ai_action_queue.source.
+          // Dedupe on nylas_event_id in ai_action_queue.source. If an item
+          // already exists AND already has a Claap match, skip. If it exists
+          // but was queued before the recording synced, we'll re-draft and
+          // UPDATE it in place so the user sees fresh AI-drafted fields the
+          // moment Claap syncs.
           const { data: existing } = await admin
             .from("ai_action_queue")
-            .select("id")
+            .select("id, status, source")
             .eq("action_type", "create_new_deal")
             .filter("source->>nylas_event_id", "eq", ev.id)
             .in("status", ["pending", "approved"])
             .limit(1)
             .maybeSingle();
-          if (existing?.id) {
-            results.push({ nylas_event_id: ev.id, skipped: "already_queued" });
+          if (existing?.id && existing.status === "approved") {
+            results.push({ nylas_event_id: ev.id, skipped: "already_approved" });
+            continue;
+          }
+          const existingHasClaap = !!(existing?.source && (existing.source as any).claap_meeting_id);
+          if (existing?.id && existingHasClaap) {
+            results.push({ nylas_event_id: ev.id, skipped: "already_queued_with_claap" });
             continue;
           }
 
@@ -300,6 +309,41 @@ Deno.serve(async (req) => {
             ref_id: ev.id,
           });
 
+          const commonFields = {
+            title: `Create new deal for ${company}`,
+            description: claap
+              ? `Sales call "${title}" ended ${new Date(endMs).toLocaleString()}. Pre-filled from the matched Claap recording — review and edit before approving.`
+              : `Sales call "${title}" ended ${new Date(endMs).toLocaleString()}. No matched Claap recording yet — review and complete the details before approving.`,
+            payload,
+            source,
+            evidence,
+            rationale: claap
+              ? "The call title matches the 5th Line Financing Review pattern and was linked to a Claap recording. Fields were drafted from the transcript."
+              : "The call title matches the 5th Line Financing Review pattern. No transcript was available yet, so only defaults are pre-filled.",
+            new_values: payload,
+          };
+
+          if (existing?.id) {
+            // Update in place so the user sees drafted fields instantly once
+            // Claap syncs — no duplicate queue row.
+            const { error: updErr } = await admin
+              .from("ai_action_queue")
+              .update({ ...commonFields, updated_at: new Date().toISOString() })
+              .eq("id", existing.id);
+            if (updErr) {
+              results.push({ nylas_event_id: ev.id, error: updErr.message });
+              continue;
+            }
+            results.push({
+              nylas_event_id: ev.id,
+              queue_id: existing.id,
+              company,
+              claap_meeting_id: claap?.id ?? null,
+              updated: true,
+            });
+            continue;
+          }
+
           const { data: inserted, error: insErr } = await admin
             .from("ai_action_queue")
             .insert({
@@ -308,17 +352,7 @@ Deno.serve(async (req) => {
               deal_id: null,
               deal_name: company,
               action_type: "create_new_deal",
-              title: `Create new deal for ${company}`,
-              description: claap
-                ? `Sales call "${title}" ended ${new Date(endMs).toLocaleString()}. Pre-filled from the matched Claap recording — review and edit before approving.`
-                : `Sales call "${title}" ended ${new Date(endMs).toLocaleString()}. No matched Claap recording yet — review and complete the details before approving.`,
-              payload,
-              source,
-              evidence,
-              rationale: claap
-                ? "The call title matches the 5th Line Financing Review pattern and was linked to a Claap recording. Fields were drafted from the transcript."
-                : "The call title matches the 5th Line Financing Review pattern. No transcript was available yet, so only defaults are pre-filled.",
-              new_values: payload,
+              ...commonFields,
               old_values: {},
               target_object_type: "deal",
               target_object_id: null,
