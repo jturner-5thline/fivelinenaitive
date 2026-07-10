@@ -57,6 +57,7 @@ import {
   useDismissManyAiActions,
 } from '@/hooks/useAiActionQueue';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { CreateDealApprovalCard } from './CreateDealApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
@@ -1403,6 +1404,12 @@ function DetailPane({
         <ClaapApprovalCard item={item} />
       </div>
     );
+  }
+
+  // Post-sales-call "Create new deal" items get a dedicated card that
+  // reuses the standard Create Deal dialog for edit + finalize.
+  if (item.action_type === 'create_new_deal') {
+    return <CreateDealApprovalCard item={item} />;
   }
 
   // Bundle view — multiple "Nudge …" email drafts combined into one queue item.
