@@ -4,7 +4,11 @@ import {
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/formatCurrency';
+const formatCurrency = (value: number) => {
+  const n = Number(value) || 0;
+  const sign = n < 0 ? '-' : '';
+  return `${sign}$${(Math.abs(n) / 1_000_000).toFixed(2)}MM`;
+};
 import {
   FUNNEL_STAGE_ORDER,
   useQuarterlyTtmFunnel,
