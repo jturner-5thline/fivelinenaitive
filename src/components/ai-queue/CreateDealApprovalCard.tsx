@@ -16,7 +16,7 @@ import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePipelineContext } from '@/contexts/PipelineContext';
-import { useDealStages } from '@/hooks/useDealStages';
+import { useDealStages } from '@/contexts/DealStagesContext';
 
 function findNdaStageId(stages: Array<{ id: string; label: string }>): string {
   const match = stages.find((s) => {
