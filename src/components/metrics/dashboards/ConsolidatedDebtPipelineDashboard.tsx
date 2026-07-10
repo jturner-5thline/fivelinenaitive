@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
+  ComposedChart, Line,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
