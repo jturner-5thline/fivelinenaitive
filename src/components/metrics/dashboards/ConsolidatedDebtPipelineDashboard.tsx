@@ -1163,30 +1163,35 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
           drilldownMetricType: 'none',
         },
-        ...[
-          'Proposal to Engagement',
-          'Signed to Submission',
-          'Submission to Terms Issued',
-          'Signed to Terms Issued',
-          'Signed to Terms Signed',
-          'Submission to Terms Signed',
-          'Terms Issued to Terms Signed',
-          'Terms Signed to Funded / Invoiced',
-          'Signed to Funded / Invoiced',
-          'Submission to Funded / Invoiced',
-        ].map((title, i) => ({
-          id: `conversion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
-          title,
-          icon: Sigma,
-          value: '—',
-          isLoading: false,
-          deals: [] as StageEntryDeal[],
-          color: `hsl(var(--chart-${(i % 5) + 1}))`,
-          drilldownTitle: title,
-          drilldownPeriodNote: 'Trailing 12 months conversion rate — data coming soon',
-          drilldownMetricType: 'none' as const,
-        })),
       ],
+    },
+    {
+      id: 'pipeline-conversion',
+      title: 'Pipeline Conversion',
+      description: 'Stage-to-stage conversion rates across the pipeline',
+      cards: [
+        'Proposal to Engagement',
+        'Signed to Submission',
+        'Submission to Terms Issued',
+        'Signed to Terms Issued',
+        'Signed to Terms Signed',
+        'Submission to Terms Signed',
+        'Terms Issued to Terms Signed',
+        'Terms Signed to Funded / Invoiced',
+        'Signed to Funded / Invoiced',
+        'Submission to Funded / Invoiced',
+      ].map((title, i) => ({
+        id: `conversion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
+        title,
+        icon: Sigma,
+        value: '—',
+        isLoading: false,
+        deals: [] as StageEntryDeal[],
+        color: `hsl(var(--chart-${(i % 5) + 1}))`,
+        drilldownTitle: title,
+        drilldownPeriodNote: 'Trailing 12 months conversion rate — data coming soon',
+        drilldownMetricType: 'none' as const,
+      })),
     },
   ];
 
@@ -1247,7 +1252,7 @@ export function ConsolidatedDebtPipelineDashboard({
             // reuses the exact same grid so each tile lines up with a Sales
             // column instead of stretching to fill a wider 4-col layout.
             const gridClass =
-              section.id === 'sales' || section.id === 'averages'
+              section.id === 'sales' || section.id === 'averages' || section.id === 'pipeline-conversion'
                 ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2'
                 : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
             return (
