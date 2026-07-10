@@ -177,7 +177,9 @@ export function ReferralSourceContactInput({ value, onChange, className }: Props
     (r) => formatName(r).toLowerCase() === trimmed.toLowerCase()
   ) || refSources.some((r) => r.name.toLowerCase() === trimmed.toLowerCase());
   const showCreate = trimmed.length > 0 && !hasExactMatch && !loading;
-  const showCreateRs = showCreate;
+  // Referral source must come from the contact database only — disable free-form
+  // "referral source" fallback creation.
+  const showCreateRs = false;
   // action indexes (after contacts + ref sources)
   const createContactIdx = results.length + refSources.length;
   const createRsIdx = createContactIdx + 1;
@@ -427,25 +429,6 @@ export function ReferralSourceContactInput({ value, onChange, className }: Props
                       <Plus className="h-4 w-4" />
                     )}
                     Create contact "{trimmed}"
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'w-full justify-start gap-2 text-primary hover:text-primary',
-                      highlight === createRsIdx && 'bg-muted',
-                    )}
-                    onMouseEnter={() => setHighlight(createRsIdx)}
-                    onClick={handleCreateRs}
-                    disabled={creatingRs}
-                  >
-                    {creatingRs ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    Use "{trimmed}" as referral source
                   </Button>
                 </div>
               )}
