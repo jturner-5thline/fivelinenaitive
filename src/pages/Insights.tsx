@@ -84,6 +84,8 @@ import {
 import { useMetricsData } from "@/hooks/useMetricsData";
 import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize, MetricChartType } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
+import { StatMonthlyBreakdown } from "@/components/insights/StatMonthlyBreakdown";
+import { isMonthlyBreakdownSupported } from "@/lib/insights/monthlyStatResolvers";
 import { FinServPerHourStat } from "@/components/insights/FinServPerHourStat";
 import {
   FinServActiveClientCountStat,
