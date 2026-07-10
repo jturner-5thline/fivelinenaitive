@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/formatCurrency';
 import {
   FUNNEL_STAGE_ORDER,
   useQuarterlyTtmFunnel,
@@ -15,7 +16,12 @@ import {
 type StepKey = FunnelStepKey;
 type ViewKey = 'funnel' | StepKey;
 
-export type QuarterlyStepConversionOverrides = Partial<Record<FunnelStepKey, { fromCount: number; toCount: number }>>;
+export type QuarterlyStepConversionOverrides = Partial<Record<FunnelStepKey, {
+  fromCount: number;
+  toCount: number;
+  fromDollars?: number;
+  toDollars?: number;
+}>>;
 
 const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label: string; short: string }[] =
   FUNNEL_STAGE_ORDER.slice(0, -1).map((s, i) => {
@@ -31,22 +37,27 @@ const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label
 
 export function QuarterlyConversionFunnelChart({
   latestStepConversions,
+  mode = 'count',
 }: {
   /** Exact widget conversion counts for the latest displayed period. */
   latestStepConversions?: QuarterlyStepConversionOverrides;
+  /** 'count' = deal count cohort, 'dollars' = deal value cohort. */
+  mode?: 'count' | 'dollars';
 }) {
   const { current, quarters, isLoading } = useQuarterlyTtmFunnel();
   const [view, setView] = useState<ViewKey>('funnel');
 
   const activeStep = view === 'funnel' ? null : STEP_TABS.find(t => t.key === view) ?? null;
+  const isDollars = mode === 'dollars';
 
   // Funnel view = current TTM across stages. Step view = one step's conversion % across past 4 quarters.
   const funnelData = useMemo(
     () =>
       FUNNEL_STAGE_ORDER.map((s, i, arr) => {
-        const count = current.counts[s.key as FunnelStageKey];
-        const first = current.counts[arr[0].key as FunnelStageKey];
-        const prev = i > 0 ? current.counts[arr[i - 1].key as FunnelStageKey] : count;
+        const src = isDollars ? current.dollars : current.counts;
+        const count = src[s.key as FunnelStageKey];
+        const first = src[arr[0].key as FunnelStageKey];
+        const prev = i > 0 ? src[arr[i - 1].key as FunnelStageKey] : count;
         return {
           stage: s.label,
           count,
@@ -54,7 +65,7 @@ export function QuarterlyConversionFunnelChart({
           pctOfPrev: i > 0 && prev > 0 ? (count / prev) * 100 : null,
         };
       }),
-    [current],
+    [current, isDollars],
   );
 
   // Quarters come newest first — reverse for chronological left→right reading.
@@ -66,8 +77,8 @@ export function QuarterlyConversionFunnelChart({
       const step = isLatest
         ? latestStepConversions?.[activeStep.key] ?? q.stepConversions[activeStep.key]
         : q.stepConversions[activeStep.key];
-      const from = step?.fromCount ?? 0;
-      const to = step?.toCount ?? 0;
+      const from = isDollars ? (step?.fromDollars ?? 0) : (step?.fromCount ?? 0);
+      const to = isDollars ? (step?.toDollars ?? 0) : (step?.toCount ?? 0);
       const pct = from > 0 ? (to / from) * 100 : null;
       return {
         stage: q.label,
@@ -78,7 +89,7 @@ export function QuarterlyConversionFunnelChart({
         toCount: to,
       };
     });
-  }, [activeStep, latestStepConversions, quarters]);
+  }, [activeStep, latestStepConversions, quarters, isDollars]);
 
   const data = activeStep ? stepData : funnelData;
 
@@ -101,7 +112,8 @@ export function QuarterlyConversionFunnelChart({
   ];
 
   const yDomain: [number | 'auto', number | 'auto'] = activeStep ? [0, 100] : ['auto', 'auto'];
-  const yTickFormatter = activeStep ? (v: number) => `${v}%` : (v: number) => `${v}`;
+  const valueFmt = (v: number) => (isDollars ? formatCurrency(v) : `${v}`);
+  const yTickFormatter = activeStep ? (v: number) => `${v}%` : valueFmt;
 
   return (
     <div
@@ -218,11 +230,11 @@ export function QuarterlyConversionFunnelChart({
                         </div>
                         <div className="flex justify-between gap-3 text-muted-foreground">
                           <span>{activeStep.short.split(' → ')[0]}</span>
-                          <span className="text-foreground font-medium">{sp.fromCount}</span>
+                          <span className="text-foreground font-medium">{valueFmt(sp.fromCount)}</span>
                         </div>
                         <div className="flex justify-between gap-3 text-muted-foreground">
                           <span>{activeStep.short.split(' → ')[1]}</span>
-                          <span className="text-foreground font-medium">{sp.toCount}</span>
+                          <span className="text-foreground font-medium">{valueFmt(sp.toCount)}</span>
                         </div>
                         <div className="mt-1 pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
                           {sp.stage} · TTM
@@ -243,8 +255,8 @@ export function QuarterlyConversionFunnelChart({
                     >
                       <div className="font-semibold text-foreground mb-1">{p.stage}</div>
                       <div className="flex justify-between gap-3 text-muted-foreground">
-                        <span>Deals</span>
-                        <span className="text-foreground font-medium">{p.count}</span>
+                        <span>{isDollars ? 'Deal Value' : 'Deals'}</span>
+                        <span className="text-foreground font-medium">{valueFmt(p.count)}</span>
                       </div>
                       <div className="flex justify-between gap-3 text-muted-foreground">
                         <span>% of Proposal Issued</span>
@@ -284,7 +296,7 @@ export function QuarterlyConversionFunnelChart({
                     const p = data[index as number];
                     const primaryLabel = activeStep
                       ? (p?.pctOfTop == null ? '—' : `${p.pctOfTop.toFixed(1)}%`)
-                      : `${value}`;
+                      : valueFmt(Number(value));
                     const secondaryLabel = activeStep
                       ? ''
                       : (p?.pctOfTop == null ? '' : `${p.pctOfTop.toFixed(0)}%`);
