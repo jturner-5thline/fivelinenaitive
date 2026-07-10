@@ -1010,6 +1010,12 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  // When true, restrict every downstream stage count in the Pipeline
+  // Conversion section to deals that ALSO have a Final Credit Items entry
+  // inside the trailing 12-month window. Enforces the workflow rule that a
+  // deal must pass through FCI first, and eliminates flow-skip inflation
+  // (e.g. bulk-imported deals that landed directly at Terms Issued).
+  const [enforceSignedFirst, setEnforceSignedFirst] = useState<boolean>(false);
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
@@ -1299,7 +1305,26 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Pipeline Conversion',
       description: 'Trailing 12 months stage-to-stage conversion rates',
       cards: (() => {
-        const t = m.ttmCounts;
+        // Optionally restrict downstream stage counts to only deals that
+        // ALSO entered Final Credit Items inside the TTM window, enforcing
+        // the workflow rule that a deal must pass through FCI first.
+        const rawT = m.ttmCounts;
+        const signedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const restrict = (stage: { count: number; dollarVolume: number; deals: any[]; isLoading: boolean; mrr?: number }) => {
+          const deals = stage.deals.filter(d => signedIds.has(d.deal_id));
+          return { ...stage, deals, count: deals.length, dollarVolume: deals.reduce((s, d) => s + (d.value ?? 0), 0) };
+        };
+        const t = enforceSignedFirst
+          ? {
+              ...rawT,
+              // proposalIssued is upstream of FCI — leave untouched.
+              // finalCreditItems is the anchor — leave untouched.
+              submittedToLenders: restrict(rawT.submittedToLenders),
+              termsIssued: restrict(rawT.termsIssued),
+              inDueDiligence: restrict(rawT.inDueDiligence),
+              fundedInvoiced: restrict(rawT.fundedInvoiced),
+            }
+          : rawT;
         const loading = t.isLoading;
         const STAGE_LABELS = {
           proposalIssued: 'Proposal Issued',
@@ -1405,11 +1430,24 @@ export function ConsolidatedDebtPipelineDashboard({
       ) : (
         sections.map(section => (
         <div key={section.id} className="space-y-3">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              {section.title}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                {section.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+            </div>
+            {section.id === 'pipeline-conversion' && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none rounded-md border border-border/40 bg-muted/40 px-2.5 py-1.5">
+                <input
+                  type="checkbox"
+                  checked={enforceSignedFirst}
+                  onChange={(e) => setEnforceSignedFirst(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                <span>Only count deals that entered Final Credit Items in the last 12 months</span>
+              </label>
+            )}
           </div>
           {(() => {
             const rows = section.id === 'sales'
