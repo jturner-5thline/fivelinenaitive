@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 import {
   FUNNEL_STAGE_ORDER,
   useQuarterlyTtmFunnel,
+  type FunnelStepKey,
   type FunnelStageKey,
 } from '@/hooks/useQuarterlyTtmFunnel';
 
 // Step-conversion tabs: each pair is a step between two consecutive funnel stages.
-type StepKey = `${FunnelStageKey}__${FunnelStageKey}`;
+type StepKey = FunnelStepKey;
 type ViewKey = 'funnel' | StepKey;
 
 const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label: string; short: string }[] =
@@ -54,8 +55,9 @@ export function QuarterlyConversionFunnelChart() {
     if (!activeStep) return [];
     const chrono = [...quarters].reverse();
     return chrono.map(q => {
-      const from = q.counts[activeStep.from];
-      const to = q.counts[activeStep.to];
+      const step = q.stepConversions[activeStep.key];
+      const from = step?.fromCount ?? 0;
+      const to = step?.toCount ?? 0;
       const pct = from > 0 ? (to / from) * 100 : null;
       return {
         stage: q.label,
