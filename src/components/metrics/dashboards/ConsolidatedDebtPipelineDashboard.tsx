@@ -598,12 +598,12 @@ function DrilldownModalInner({
         {conversionBreakdown ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <ConversionDealsTable
-              heading={`Denominator · ${conversionBreakdown.denominatorLabel}`}
+              heading={conversionBreakdown.denominatorLabel}
               deals={conversionBreakdown.denominatorDeals}
               accent="hsl(var(--chart-4))"
             />
             <ConversionDealsTable
-              heading={`Numerator · ${conversionBreakdown.numeratorLabel}`}
+              heading={conversionBreakdown.numeratorLabel}
               deals={conversionBreakdown.numeratorDeals}
               accent="hsl(var(--chart-3))"
             />
