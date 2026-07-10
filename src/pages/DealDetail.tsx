@@ -3408,7 +3408,7 @@ export default function DealDetail() {
                     onFlagCountChange={setActiveFlagCount}
                   />
                 </div>
-                {!isSimplifiedDeal && (
+                {!isSimplifiedDeal && !isProjectsDeal && (
                   <InlineEditField
                     value={formatValue(deal.value)}
                     // Edit mode shows the raw USD amount with thousands
@@ -3517,7 +3517,14 @@ export default function DealDetail() {
                             Move to Pipeline
                           </DropdownMenuSubTrigger>
                           <DropdownMenuSubContent className="bg-popover min-w-[180px]">
-                            {pipelines.map((pipeline) => (
+                            {pipelines
+                              .filter((pipeline) => {
+                                // Projects pipeline is fully siloed: no moves in or out.
+                                const pipeIsProjects = (pipeline.name || '').trim().toLowerCase() === 'projects';
+                                if (isProjectsDeal) return pipeIsProjects; // only itself
+                                return !pipeIsProjects; // hide Projects target for non-Projects deals
+                              })
+                              .map((pipeline) => (
                               <DropdownMenuSub key={pipeline.id}>
                                 <DropdownMenuSubTrigger
                                   className={cn("text-xs", deal.pipelineId === pipeline.id && "bg-accent font-medium")}
@@ -4491,8 +4498,8 @@ export default function DealDetail() {
                         }
                         case 'outstanding-items':
                           // Outstanding Items is a debt-pipeline concept —
-                          // skip it entirely for Naitive pipeline deals.
-                          if (isNaitiveDeal) return null;
+                          // skip it entirely for Naitive and Projects pipeline deals.
+                          if (isNaitiveDeal || isProjectsDeal) return null;
                           {
                           // computed below; isolated block to keep variable scoped
                           }
