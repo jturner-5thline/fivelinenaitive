@@ -31,7 +31,8 @@ export type AiActionType =
   | 'update_company'
   | 'draft_email'
   | 'escalate'
-  | 'reassign_deal';
+  | 'reassign_deal'
+  | 'create_new_deal';
 
 export type AiActionStatus =
   | 'pending'
