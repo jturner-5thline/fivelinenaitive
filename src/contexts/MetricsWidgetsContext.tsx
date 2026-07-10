@@ -34,6 +34,13 @@ export interface MetricWidgetConfig {
   comparisonPeriod?: ComparisonPeriod;
   timePeriod?: TimePeriod;
   datarailsConfig?: Record<string, any>;
+  /**
+   * When true AND the Insights page is in quarterly view, stat widgets
+   * render the metric's value for each of the quarter's three months with
+   * month-over-month change instead of a single quarter total. No effect
+   * on chart widgets or non-quarterly views.
+   */
+  showMonthlyBreakdown?: boolean;
   createdAt: string;
 }
 
