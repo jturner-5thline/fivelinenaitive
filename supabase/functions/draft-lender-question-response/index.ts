@@ -181,14 +181,26 @@ Deno.serve(async (req) => {
   // Load lender row for this deal + sender if not already resolved.
   if (!dealLender) {
     const dom = domainOf(email.from_email);
+    const domCore = dom.split(".")[0];
     const { data: lenders } = await admin
       .from("deal_lenders")
       .select("id, name, stage, substage, notes, tracking_status")
       .eq("deal_id", dealId);
+    // Match a lender by comparing tokens of its name against the sender's
+    // domain core. e.g. "LAGO Innovation Fund" vs "lagogcm.com" → "lago" is
+    // a prefix of "lagogcm" and vice-versa. Also fall back to notes contents.
     const match = (lenders || []).find((l: any) => {
-      const n = String(l.name || "").toLowerCase();
-      return dom && (n.includes(dom.split(".")[0]) || String(l.notes || "").toLowerCase().includes(dom));
-    }) || (lenders || [])[0];
+      const nameTokens = String(l.name || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+      const notesLower = String(l.notes || "").toLowerCase();
+      if (!domCore) return false;
+      if (notesLower.includes(dom)) return true;
+      return nameTokens.some((tok) => {
+        if (!tok) return false;
+        if (tok.length >= 4 && (domCore.startsWith(tok) || tok.startsWith(domCore))) return true;
+        if (tok.length >= 5 && domCore.includes(tok)) return true;
+        return false;
+      });
+    }) || null;
     if (match) {
       dealLender = match;
       dealLenderId = match.id;
