@@ -1010,6 +1010,12 @@ export function ConsolidatedDebtPipelineDashboard({
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  // When true, restrict every downstream stage count in the Pipeline
+  // Conversion section to deals that ALSO have a Final Credit Items entry
+  // inside the trailing 12-month window. Enforces the workflow rule that a
+  // deal must pass through FCI first, and eliminates flow-skip inflation
+  // (e.g. bulk-imported deals that landed directly at Terms Issued).
+  const [enforceSignedFirst, setEnforceSignedFirst] = useState<boolean>(false);
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
