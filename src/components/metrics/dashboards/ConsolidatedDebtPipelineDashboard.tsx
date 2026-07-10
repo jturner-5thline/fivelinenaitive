@@ -1720,12 +1720,7 @@ export function ConsolidatedDebtPipelineDashboard({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Debt Advisory Metrics</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Stage-entry metrics from deal_stage_history (Closed + Closed Won) · {selectedQuarter.label} · Click any tile for detail
-          </p>
-        </div>
+        <div />
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
