@@ -1687,6 +1687,11 @@ export function ConsolidatedDebtPipelineDashboard({
             conversionBreakdown={liveBreakdown}
             signedMode={drilldown?.conversionCardId ? signedMode : undefined}
             onSignedModeChange={drilldown?.conversionCardId ? setSignedMode : undefined}
+            signedAnchorLabel={(() => {
+              if (!drilldown?.conversionCardId) return undefined;
+              const conv = sections.find(s => s.id === 'pipeline-conversion');
+              return conv?.cards.find(c => c.id === drilldown.conversionCardId)?.signedAnchorLabel;
+            })()}
           />
         );
       })()}
