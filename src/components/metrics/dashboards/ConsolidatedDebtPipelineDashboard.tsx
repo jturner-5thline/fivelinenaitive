@@ -287,6 +287,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+  enforceSignedFirst, onEnforceSignedFirstChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -298,6 +299,8 @@ function DrilldownModal({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
+  enforceSignedFirst?: boolean;
+  onEnforceSignedFirstChange?: (v: boolean) => void;
 }) {
   return (
     <DrilldownModalInner
@@ -311,6 +314,8 @@ function DrilldownModal({
       valueFormatter={valueFormatter}
       chartColor={chartColor}
       conversionBreakdown={conversionBreakdown}
+      enforceSignedFirst={enforceSignedFirst}
+      onEnforceSignedFirstChange={onEnforceSignedFirstChange}
     />
   );
 }
@@ -361,6 +366,7 @@ function ConversionDealsTable({ heading, deals, accent }: { heading: string; dea
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+  enforceSignedFirst, onEnforceSignedFirstChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -372,6 +378,8 @@ function DrilldownModalInner({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
+  enforceSignedFirst?: boolean;
+  onEnforceSignedFirstChange?: (v: boolean) => void;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -427,6 +435,22 @@ function DrilldownModalInner({
                 {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
               </Badge>
             </div>
+            {onEnforceSignedFirstChange && (
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer select-none rounded-md border border-border/40 bg-background/60 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={!!enforceSignedFirst}
+                  onChange={(e) => onEnforceSignedFirstChange(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 accent-primary"
+                />
+                <span>
+                  <span className="font-semibold">Only count deals that entered Final Credit Items in the last 12 months.</span>
+                  <span className="block text-muted-foreground mt-0.5">
+                    Enforces the workflow (FCI → downstream stages) and removes flow-skip inflation from bulk-imported or backfilled deals.
+                  </span>
+                </span>
+              </label>
+            )}
             <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
               {conversionBreakdown.formula}
             </div>
@@ -1025,6 +1049,9 @@ export function ConsolidatedDebtPipelineDashboard({
     valueFormatter?: (v: number) => string;
     chartColor?: string;
     conversionBreakdown?: ConversionBreakdown;
+    /** When set, the modal re-derives the breakdown from the live card by id
+     *  so the FCI-only toggle inside the modal updates counts instantly. */
+    conversionCardId?: string;
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
 
@@ -1424,6 +1451,7 @@ export function ConsolidatedDebtPipelineDashboard({
                 ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
               chartColor: card.drilldownChartColor ?? card.color,
               conversionBreakdown: bucket ? undefined : card.conversionBreakdown,
+              conversionCardId: bucket ? undefined : (card.conversionBreakdown ? card.id : undefined),
             });
           }}
         />
@@ -1477,6 +1505,7 @@ export function ConsolidatedDebtPipelineDashboard({
                             ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
                           chartColor: card.drilldownChartColor ?? card.color,
                           conversionBreakdown: card.conversionBreakdown,
+                          conversionCardId: card.conversionBreakdown ? card.id : undefined,
                         })}
                       />
                     ))}
@@ -1559,18 +1588,33 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       </div>
 
-      <DrilldownModal
-        open={!!drilldown}
-        onClose={() => setDrilldown(null)}
-        title={drilldown?.title ?? ''}
-        deals={drilldown?.deals ?? []}
-        periodNote={drilldown?.periodNote}
-        selectedQuarter={selectedQuarter}
-        metricType={drilldown?.metricType}
-        valueFormatter={drilldown?.valueFormatter}
-        chartColor={drilldown?.chartColor}
-        conversionBreakdown={drilldown?.conversionBreakdown}
-      />
+      {(() => {
+        // Re-derive the live breakdown from the currently-rendered conversion
+        // card so the FCI-only toggle inside the modal updates counts and
+        // deal lists instantly (drilldown state was captured at click time).
+        const liveBreakdown = (() => {
+          if (!drilldown?.conversionCardId) return drilldown?.conversionBreakdown;
+          const conv = sections.find(s => s.id === 'pipeline-conversion');
+          const card = conv?.cards.find(c => c.id === drilldown.conversionCardId);
+          return card?.conversionBreakdown ?? drilldown?.conversionBreakdown;
+        })();
+        return (
+          <DrilldownModal
+            open={!!drilldown}
+            onClose={() => setDrilldown(null)}
+            title={drilldown?.title ?? ''}
+            deals={drilldown?.deals ?? []}
+            periodNote={drilldown?.periodNote}
+            selectedQuarter={selectedQuarter}
+            metricType={drilldown?.metricType}
+            valueFormatter={drilldown?.valueFormatter}
+            chartColor={drilldown?.chartColor}
+            conversionBreakdown={liveBreakdown}
+            enforceSignedFirst={drilldown?.conversionCardId ? enforceSignedFirst : undefined}
+            onEnforceSignedFirstChange={drilldown?.conversionCardId ? setEnforceSignedFirst : undefined}
+          />
+        );
+      })()}
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
         data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
