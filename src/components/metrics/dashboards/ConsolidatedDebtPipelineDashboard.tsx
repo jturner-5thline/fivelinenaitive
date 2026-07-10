@@ -1788,15 +1788,26 @@ export function ConsolidatedDebtPipelineDashboard({
             <button
               type="button"
               onClick={() => setTtmCharts((v) => !v)}
-              title="Show trailing-12-month rollups anchored at each period end"
+              aria-pressed={ttmCharts}
+              title={ttmCharts
+                ? 'TTM on — each bar shows the trailing-12-month rollup ending at that period'
+                : 'Show trailing-12-month rollups anchored at each period end'}
               className={
-                'text-xs px-2.5 py-1 rounded-md border transition-colors ' +
+                'group inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border transition-all ' +
                 (ttmCharts
-                  ? 'bg-primary/20 border-primary/40 text-foreground'
-                  : 'bg-muted/40 border-border/40 text-muted-foreground hover:text-foreground')
+                  ? 'bg-primary text-primary-foreground border-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.35),0_4px_14px_-4px_hsl(var(--primary)/0.55)]'
+                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:border-border')
               }
             >
+              <span
+                className={
+                  'inline-block h-1.5 w-1.5 rounded-full transition-colors ' +
+                  (ttmCharts ? 'bg-primary-foreground shadow-[0_0_6px_hsl(var(--primary-foreground)/0.9)]' : 'bg-muted-foreground/50')
+                }
+                aria-hidden
+              />
               TTM
+              {ttmCharts && <span className="text-[10px] font-medium opacity-80">ON</span>}
             </button>
             <Tabs value={trendMode} onValueChange={(value) => setTrendMode(value as TrendChartMode)}>
               <TabsList className="bg-muted/40 border border-border/40">
