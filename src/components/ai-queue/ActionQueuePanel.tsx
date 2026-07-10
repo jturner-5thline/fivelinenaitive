@@ -151,6 +151,7 @@ const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_fu
   update_funding_source_bundle: { label: 'Funding sources', icon: Building2 },
   escalate: { label: 'Escalation', icon: ShieldAlert },
   reassign_deal: { label: 'Reassign', icon: Briefcase },
+  create_new_deal: { label: 'New deal', icon: Briefcase },
 };
 
 /* Grouping order within a deal accordion: funding-source items first, then
