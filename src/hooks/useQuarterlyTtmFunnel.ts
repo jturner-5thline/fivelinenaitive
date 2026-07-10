@@ -134,10 +134,10 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     fundedInvoiced: 0,
   });
 
-  // Pre-index: for each deal, which stages did it EVER enter (lifetime).
+  // Pre-index: for each deal, which stages did it EVER enter (lifetime), plus
+  // every Proposal Issued entry timestamp (a deal can re-enter the stage).
   const dealEverReached: Map<string, Set<FunnelStageKey>> = new Map();
-  // For each deal, earliest entry timestamp per stage (for cohort window check).
-  const dealFirstEntry: Map<string, Partial<Record<FunnelStageKey, Date>>> = new Map();
+  const dealProposalEntries: Map<string, Date[]> = new Map();
   for (const row of q.data ?? []) {
     if (isExcludedDealName(row.deals?.company ?? null)) continue;
     const key = labelToKey.get(row.to_stage.toLowerCase())
@@ -146,21 +146,21 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     let reached = dealEverReached.get(row.deal_id);
     if (!reached) { reached = new Set(); dealEverReached.set(row.deal_id, reached); }
     reached.add(key);
-    let firsts = dealFirstEntry.get(row.deal_id);
-    if (!firsts) { firsts = {}; dealFirstEntry.set(row.deal_id, firsts); }
-    const ts = new Date(row.changed_at);
-    if (!firsts[key] || ts < (firsts[key] as Date)) firsts[key] = ts;
+    if (key === 'proposalIssued') {
+      const arr = dealProposalEntries.get(row.deal_id) ?? [];
+      arr.push(new Date(row.changed_at));
+      dealProposalEntries.set(row.deal_id, arr);
+    }
   }
 
   const bucketFor = (endsAt: Date): QuarterlyFunnelBucket['counts'] => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
-    // Cohort = deals whose FIRST Proposal Issued entry falls inside the window.
+    // Cohort = deals with ANY Proposal Issued entry inside the window
+    // (matches the widget's TTM stage-entry semantics; deduped by deal_id).
     const cohort: string[] = [];
-    for (const [dealId, firsts] of dealFirstEntry) {
-      const firstProp = firsts.proposalIssued;
-      if (!firstProp) continue;
-      if (firstProp > windowStart && firstProp <= endsAt) cohort.push(dealId);
+    for (const [dealId, entries] of dealProposalEntries) {
+      if (entries.some(ts => ts > windowStart && ts <= endsAt)) cohort.push(dealId);
     }
     const counts = emptyCounts();
     counts.proposalIssued = cohort.length;
