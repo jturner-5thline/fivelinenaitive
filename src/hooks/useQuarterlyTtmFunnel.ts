@@ -14,6 +14,8 @@ export type FunnelStageKey =
   | 'inDueDiligence'
   | 'fundedInvoiced';
 
+export type FunnelStepKey = `${FunnelStageKey}__${FunnelStageKey}`;
+
 export const FUNNEL_STAGE_ORDER: { key: FunnelStageKey; label: string }[] = [
   { key: 'proposalIssued',     label: 'Proposal Issued' },
   { key: 'finalCreditItems',   label: 'Signed' },
@@ -37,8 +39,10 @@ export interface QuarterlyFunnelBucket {
   label: string;
   /** Anchor date this TTM window ends on (inclusive). */
   endsAt: Date;
-  /** Distinct-deal count per stage across the trailing 12 months to `endsAt`. */
+  /** Distinct-deal count per stage for the proposal-issued cohort. */
   counts: Record<FunnelStageKey, number>;
+  /** Widget-style denominator cohort counts for each consecutive conversion step. */
+  stepConversions: Partial<Record<FunnelStepKey, { fromCount: number; toCount: number }>>;
 }
 
 export interface QuarterlyTtmFunnelResult {
@@ -110,7 +114,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       // EVER reach stage X?" independently of when it entered Proposal Issued.
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, changed_at, to_stage, deals!inner(company)')
+        .select('deal_id, changed_at, to_stage, deals!inner(company, pipeline_id)')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', allLabels)
@@ -120,7 +124,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
         deal_id: string;
         changed_at: string;
         to_stage: string;
-        deals: { company: string | null } | null;
+        deals: { company: string | null; pipeline_id: string | null } | null;
       }>;
     },
   });
@@ -135,57 +139,87 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
   });
 
   // Pre-index: for each deal, which stages did it EVER enter (lifetime), plus
-  // every Proposal Issued entry timestamp (a deal can re-enter the stage).
+  // every stage-entry timestamp by stage (a deal can re-enter a stage).
   const dealEverReached: Map<string, Set<FunnelStageKey>> = new Map();
-  const dealProposalEntries: Map<string, Date[]> = new Map();
+  const dealStageEntries: Map<FunnelStageKey, Map<string, Date[]>> = new Map<FunnelStageKey, Map<string, Date[]>>(
+    FUNNEL_STAGE_ORDER.map(s => [s.key, new Map<string, Date[]>()] as const),
+  );
   for (const row of q.data ?? []) {
-    if (isExcludedDealName(row.deals?.company ?? null)) continue;
+    if (row.deals?.pipeline_id !== ACTIVE_PIPELINE_ID || isExcludedDealName(row.deals?.company ?? null)) continue;
     const key = labelToKey.get(row.to_stage.toLowerCase())
       ?? (normalizeStageSlug(row.to_stage) ? slugToKey.get(normalizeStageSlug(row.to_stage)!) : undefined);
     if (!key) continue;
     let reached = dealEverReached.get(row.deal_id);
     if (!reached) { reached = new Set(); dealEverReached.set(row.deal_id, reached); }
     reached.add(key);
-    if (key === 'proposalIssued') {
-      const arr = dealProposalEntries.get(row.deal_id) ?? [];
-      arr.push(new Date(row.changed_at));
-      dealProposalEntries.set(row.deal_id, arr);
-    }
+    const entriesByDeal = dealStageEntries.get(key);
+    const arr = entriesByDeal?.get(row.deal_id) ?? [];
+    arr.push(new Date(row.changed_at));
+    entriesByDeal?.set(row.deal_id, arr);
   }
 
-  const bucketFor = (endsAt: Date): QuarterlyFunnelBucket['counts'] => {
+  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'stepConversions'> => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
-    // Cohort = deals with ANY Proposal Issued entry inside the window
-    // (matches the widget's TTM stage-entry semantics; deduped by deal_id).
-    const cohort: string[] = [];
-    for (const [dealId, entries] of dealProposalEntries) {
-      if (entries.some(ts => ts > windowStart && ts <= endsAt)) cohort.push(dealId);
-    }
-    const counts = emptyCounts();
-    counts.proposalIssued = cohort.length;
-    // For each downstream stage: how many cohort deals EVER reached it.
-    (Object.keys(counts) as FunnelStageKey[]).forEach(k => {
-      if (k === 'proposalIssued') return;
+
+    // Cohort = deals with ANY entry into the anchor stage inside the TTM window
+    // (matches the widget's stage-entry semantics; deduped by deal_id).
+    const cohortFor = (stage: FunnelStageKey): string[] => {
+      const cohort: string[] = [];
+      for (const [dealId, entries] of dealStageEntries.get(stage) ?? []) {
+        if (entries.some(ts => ts > windowStart && ts <= endsAt)) cohort.push(dealId);
+      }
+      return cohort;
+    };
+
+    const proposalCohort = cohortFor('proposalIssued');
+    const countReached = (cohort: string[], stage: FunnelStageKey) => {
       let n = 0;
       for (const dealId of cohort) {
-        if (dealEverReached.get(dealId)?.has(k)) n++;
+        if (dealEverReached.get(dealId)?.has(stage)) n++;
       }
-      counts[k] = n;
+      return n;
+    };
+
+    const stepConversions: QuarterlyFunnelBucket['stepConversions'] = {};
+    for (let i = 0; i < FUNNEL_STAGE_ORDER.length - 1; i++) {
+      const from = FUNNEL_STAGE_ORDER[i].key;
+      const to = FUNNEL_STAGE_ORDER[i + 1].key;
+      const fromCohort = cohortFor(from);
+      stepConversions[`${from}__${to}` as FunnelStepKey] = {
+        fromCount: fromCohort.length,
+        toCount: countReached(fromCohort, to),
+      };
+    }
+
+    const counts = emptyCounts();
+    counts.proposalIssued = proposalCohort.length;
+    // Funnel view remains proposal-cohort based: how many Proposal Issued deals
+    // ever reached each downstream stage.
+    (Object.keys(counts) as FunnelStageKey[]).forEach(k => {
+      if (k === 'proposalIssued') return;
+      counts[k] = countReached(proposalCohort, k);
     });
-    return counts;
+    return { counts, stepConversions };
   };
+
+  const currentBucket = bucketFor(now);
 
   const current: QuarterlyFunnelBucket = {
     label: 'Current (TTM)',
     endsAt: now,
-    counts: bucketFor(now),
+    counts: currentBucket.counts,
+    stepConversions: currentBucket.stepConversions,
   };
-  const quarters: QuarterlyFunnelBucket[] = quarterAnchors.map(a => ({
-    label: a.label,
-    endsAt: a.endsAt,
-    counts: bucketFor(a.endsAt),
-  }));
+  const quarters: QuarterlyFunnelBucket[] = quarterAnchors.map(a => {
+    const bucket = bucketFor(a.endsAt);
+    return {
+      label: a.label,
+      endsAt: a.endsAt,
+      counts: bucket.counts,
+      stepConversions: bucket.stepConversions,
+    };
+  });
 
   return { current, quarters, isLoading: q.isLoading || q.isFetching };
 }
