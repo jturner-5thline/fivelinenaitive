@@ -1706,6 +1706,41 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       </div>
 
+      {otherMetricsSection.cards.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                {otherMetricsSection.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">{otherMetricsSection.description}</p>
+            </div>
+            <p className="text-[11px] text-muted-foreground max-w-md">
+              Open any tile to filter its numerator by whether the deal ever passed through the tile's denominator stage.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {otherMetricsSection.cards.map(card => (
+              <MetricKPICard
+                key={card.id}
+                config={card}
+                onClick={() => setDrilldown({
+                  title: card.drilldownTitle,
+                  deals: card.deals,
+                  periodNote: card.drilldownPeriodNote,
+                  metricType: card.drilldownMetricType ?? 'dollars',
+                  valueFormatter: card.drilldownValueFormatter
+                    ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                  chartColor: card.drilldownChartColor ?? card.color,
+                  conversionBreakdown: card.conversionBreakdown,
+                  conversionCardId: card.conversionBreakdown ? card.id : undefined,
+                })}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {(() => {
         // Re-derive the live breakdown from the currently-rendered conversion
         // card so the FCI-only toggle inside the modal updates counts and
