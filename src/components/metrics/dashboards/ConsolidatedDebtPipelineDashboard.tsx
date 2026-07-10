@@ -1510,7 +1510,7 @@ export function ConsolidatedDebtPipelineDashboard({
           { title: 'Submission to Terms Signed',        numKey: 'inDueDiligence',      denKey: 'submittedToLenders' },
           { title: 'Terms Issued to Terms Signed',      numKey: 'inDueDiligence',      denKey: 'termsIssued' },
           { title: 'Terms Signed to Closed',            numKey: 'fundedInvoiced',      denKey: 'inDueDiligence' },
-          { title: 'Signed to Closed',                  numKey: 'fundedInvoiced',      denKey: 'finalCreditItems' },
+          { title: 'Deal Signed to Closed & Funded',   numKey: 'fundedInvoiced',      denKey: 'finalCreditItems' },
           { title: 'Submission to Closed',              numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
         ];
         return defs.map((d, i) => {
