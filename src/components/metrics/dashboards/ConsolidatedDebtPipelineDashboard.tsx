@@ -75,6 +75,19 @@ interface MetricCardConfig {
   drilldownValueFormatter?: (value: number) => string;
   /** Bar/total color override. Defaults to card color. */
   drilldownChartColor?: string;
+  /** Optional numerator/denominator breakdown for conversion-rate widgets. */
+  conversionBreakdown?: ConversionBreakdown;
+}
+
+interface ConversionBreakdown {
+  formula: string;
+  numeratorLabel: string;
+  denominatorLabel: string;
+  numeratorDeals: StageEntryDeal[];
+  denominatorDeals: StageEntryDeal[];
+  numeratorCount: number;
+  denominatorCount: number;
+  percentText: string;
 }
 
 function MetricKPICard({
