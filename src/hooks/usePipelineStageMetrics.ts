@@ -32,6 +32,7 @@ const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'final-credit-items': ['final-credit-items', 'Final Credit Items'],
   'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
   'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
+  'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders', 'SUBMITTED TO LENDERS'],
   'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
   'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
   'fs-active-client': ['fs-active-client', 'Active Client'],
@@ -903,6 +904,17 @@ export interface ConsolidatedDebtPipelineMetrics {
   averageDealClosed: AverageMetricResult;
   averageRevenuePerDealSigned: AverageMetricResult;
   averageRevenuePerDealClosed: AverageMetricResult;
+  // Trailing-12-month stage-entry counts, anchored on today. Used by the
+  // Pipeline Conversion widgets on the Consolidated Debt dashboard.
+  ttmCounts: {
+    proposalIssued: number;
+    finalCreditItems: number;
+    submittedToLenders: number;
+    termsIssued: number;
+    inDueDiligence: number;
+    fundedInvoiced: number;
+    isLoading: boolean;
+  };
 }
 
 export function useConsolidatedDebtPipelineMetrics(
@@ -955,6 +967,11 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const proposalIssuedRolling12 = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const submittedToLendersRolling12 = useStageEntryMetric('submitted-to-lenders', twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const termsIssuedRolling12 = useStageEntryMetric(TERMS_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
 
   return {
@@ -974,5 +991,20 @@ export function useConsolidatedDebtPipelineMetrics(
     averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
     averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
+    ttmCounts: {
+      proposalIssued: proposalIssuedRolling12.count,
+      finalCreditItems: finalCreditItemsRolling12.count,
+      submittedToLenders: submittedToLendersRolling12.count,
+      termsIssued: termsIssuedRolling12.count,
+      inDueDiligence: inDueDiligenceRolling12.count,
+      fundedInvoiced: fundedInvoicedOnlyRolling12.count,
+      isLoading:
+        proposalIssuedRolling12.isLoading ||
+        finalCreditItemsRolling12.isLoading ||
+        submittedToLendersRolling12.isLoading ||
+        termsIssuedRolling12.isLoading ||
+        inDueDiligenceRolling12.isLoading ||
+        fundedInvoicedOnlyRolling12.isLoading,
+    },
   };
 }
