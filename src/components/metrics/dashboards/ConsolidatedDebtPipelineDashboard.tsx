@@ -527,9 +527,6 @@ function DrilldownModalInner({
                 {formatCurrencyFull(total)}
               </Badge>
             </div>
-            <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
-              {conversionBreakdown.formula}
-            </div>
             {onSignedModeChange && (
               <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
