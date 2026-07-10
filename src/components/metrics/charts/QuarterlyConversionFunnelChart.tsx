@@ -15,6 +15,8 @@ import {
 type StepKey = FunnelStepKey;
 type ViewKey = 'funnel' | StepKey;
 
+export type QuarterlyStepConversionOverrides = Partial<Record<FunnelStepKey, { fromCount: number; toCount: number }>>;
+
 const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label: string; short: string }[] =
   FUNNEL_STAGE_ORDER.slice(0, -1).map((s, i) => {
     const next = FUNNEL_STAGE_ORDER[i + 1];
@@ -27,7 +29,12 @@ const STEP_TABS: { key: StepKey; from: FunnelStageKey; to: FunnelStageKey; label
     };
   });
 
-export function QuarterlyConversionFunnelChart() {
+export function QuarterlyConversionFunnelChart({
+  latestStepConversions,
+}: {
+  /** Exact widget conversion counts for the latest displayed period. */
+  latestStepConversions?: QuarterlyStepConversionOverrides;
+}) {
   const { current, quarters, isLoading } = useQuarterlyTtmFunnel();
   const [view, setView] = useState<ViewKey>('funnel');
 
@@ -54,8 +61,11 @@ export function QuarterlyConversionFunnelChart() {
   const stepData = useMemo(() => {
     if (!activeStep) return [];
     const chrono = [...quarters].reverse();
-    return chrono.map(q => {
-      const step = q.stepConversions[activeStep.key];
+    return chrono.map((q, index) => {
+      const isLatest = index === chrono.length - 1;
+      const step = isLatest
+        ? latestStepConversions?.[activeStep.key] ?? q.stepConversions[activeStep.key]
+        : q.stepConversions[activeStep.key];
       const from = step?.fromCount ?? 0;
       const to = step?.toCount ?? 0;
       const pct = from > 0 ? (to / from) * 100 : null;
@@ -68,7 +78,7 @@ export function QuarterlyConversionFunnelChart() {
         toCount: to,
       };
     });
-  }, [activeStep, quarters]);
+  }, [activeStep, latestStepConversions, quarters]);
 
   const data = activeStep ? stepData : funnelData;
 
