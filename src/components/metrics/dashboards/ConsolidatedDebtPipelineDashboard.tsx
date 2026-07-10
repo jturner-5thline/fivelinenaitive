@@ -1126,6 +1126,8 @@ export function ConsolidatedDebtPipelineDashboard({
   //                 e.g. True North Transportation, Duracell Power Center)
   type SignedMode = 'off' | 'ttm' | 'lifetime';
   const [signedMode, setSignedMode] = useState<SignedMode>('off');
+  // Pipeline Conversion display mode: deal-count cohort vs deal-value ($ USD) cohort.
+  const [conversionMode, setConversionMode] = useState<'count' | 'dollars'>('count');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{
     title: string;
@@ -1209,9 +1211,12 @@ export function ConsolidatedDebtPipelineDashboard({
     for (const [from, to] of steps) {
       const denominator = m.ttmCounts[from];
       const reachedNumerator = m.lifetimeStageDealIds[to];
+      const reachedDeals = denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id));
       out[`${from}__${to}` as keyof QuarterlyStepConversionOverrides] = {
         fromCount: denominator.count,
-        toCount: denominator.deals.filter(deal => reachedNumerator.has(deal.deal_id)).length,
+        toCount: reachedDeals.length,
+        fromDollars: denominator.deals.reduce((s, d) => s + (d.value ?? 0), 0),
+        toDollars: reachedDeals.reduce((s, d) => s + (d.value ?? 0), 0),
       };
     }
     return out;
@@ -1494,11 +1499,17 @@ export function ConsolidatedDebtPipelineDashboard({
             count: numDeals.length,
             dollarVolume: numDeals.reduce((s, dl) => s + (dl.value ?? 0), 0),
           };
-          const value = pctText(num.count, den.count);
-          const formula =
-            `(Deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
-            `(Deals that entered ${denLabel} in the last 12 months) = ` +
-            `${num.count} ÷ ${den.count} = ${value}`;
+          const denDollars = den.deals.reduce((s, dl) => s + (dl.value ?? 0), 0);
+          const value = conversionMode === 'dollars'
+            ? pctText(num.dollarVolume, denDollars)
+            : pctText(num.count, den.count);
+          const formula = conversionMode === 'dollars'
+            ? `($ of deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
+              `($ of deals that entered ${denLabel} in the last 12 months) = ` +
+              `${formatCurrency(num.dollarVolume)} ÷ ${formatCurrency(denDollars)} = ${value}`
+            : `(Deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
+              `(Deals that entered ${denLabel} in the last 12 months) = ` +
+              `${num.count} ÷ ${den.count} = ${value}`;
           return {
             id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
             title: d.title,
@@ -1512,12 +1523,16 @@ export function ConsolidatedDebtPipelineDashboard({
             drilldownMetricType: 'none' as const,
             conversionBreakdown: {
               formula,
-              numeratorLabel: `Entered ${denLabel} (TTM) and ever reached ${numShort}`,
-              denominatorLabel: `Entered ${denLabel} (TTM)`,
+              numeratorLabel: conversionMode === 'dollars'
+                ? `$ of deals that entered ${denLabel} (TTM) and ever reached ${numShort}`
+                : `Entered ${denLabel} (TTM) and ever reached ${numShort}`,
+              denominatorLabel: conversionMode === 'dollars'
+                ? `$ of deals that entered ${denLabel} (TTM)`
+                : `Entered ${denLabel} (TTM)`,
               numeratorDeals: num.deals,
               denominatorDeals: den.deals,
-              numeratorCount: num.count,
-              denominatorCount: den.count,
+              numeratorCount: conversionMode === 'dollars' ? num.dollarVolume : num.count,
+              denominatorCount: conversionMode === 'dollars' ? denDollars : den.count,
               percentText: value,
             },
             signedAnchorLabel: denShort,
@@ -1599,7 +1614,7 @@ export function ConsolidatedDebtPipelineDashboard({
       ) : (
         sections.map(section => (
         <div key={section.id} className="space-y-3">
-          {(section.title || section.description) && (
+          {(section.title || section.description || section.id === 'pipeline-conversion') && (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 {section.title && (
@@ -1611,6 +1626,34 @@ export function ConsolidatedDebtPipelineDashboard({
                   <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
                 )}
               </div>
+              {section.id === 'pipeline-conversion' && (
+                <div
+                  className="inline-flex rounded-md p-1"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  role="tablist"
+                  aria-label="Conversion basis"
+                >
+                  {(['count', 'dollars'] as const).map(k => {
+                    const active = conversionMode === k;
+                    return (
+                      <button
+                        key={k}
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setConversionMode(k)}
+                        className={cn(
+                          'h-7 px-3 rounded text-xs font-medium transition-colors',
+                          active
+                            ? 'bg-primary/20 text-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                        )}
+                      >
+                        {k === 'count' ? '# Deals' : '$ Value'}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           {(() => {
@@ -1646,7 +1689,10 @@ export function ConsolidatedDebtPipelineDashboard({
                       />
                     ))}
                   </div>
-                  <QuarterlyConversionFunnelChart latestStepConversions={latestStepConversions} />
+                  <QuarterlyConversionFunnelChart
+                    latestStepConversions={latestStepConversions}
+                    mode={conversionMode}
+                  />
                 </div>
               );
             }
