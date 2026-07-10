@@ -22,6 +22,23 @@ export const FINSERV_PIPELINE_ID = '6907be5e-b17c-4a95-a7c2-fd977c94e179';
 export const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 
 // ────────────────────────────────────────────────────────────
+// Manual overrides for the FinServ Active Client count.
+// The pipeline-derived count for June 2026 (and therefore Q2 2026, which
+// closes at end of June) came in at 10 due to stale/duplicate deals in the
+// pipeline. Product-of-record for that period is 7. Override any bucket
+// whose effective end date lands inside June 2026.
+// ────────────────────────────────────────────────────────────
+export function applyActiveClientOverride(
+  effectiveEnd: Date,
+  count: number,
+): number {
+  if (effectiveEnd.getFullYear() === 2026 && effectiveEnd.getMonth() === 5) {
+    return 7;
+  }
+  return count;
+}
+
+// ────────────────────────────────────────────────────────────
 // Helpers
 // ────────────────────────────────────────────────────────────
 
