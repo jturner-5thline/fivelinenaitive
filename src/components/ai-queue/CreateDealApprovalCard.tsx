@@ -68,13 +68,28 @@ export function CreateDealApprovalCard({ item }: Props) {
   async function markApproved(newDealId: string) {
     try {
       const now = new Date().toISOString();
+      // Backdate the deal's created_at and initial stage-history entry to the
+      // sales call date so "Created" and "Entered <stage>" reflect when the
+      // call actually happened, not when the approver clicked Create.
+      const callDate = source.event_start || source.event_end || null;
+      if (callDate) {
+        try {
+          await supabase.from('deals').update({ created_at: callDate }).eq('id', newDealId);
+          await supabase
+            .from('deal_stage_history')
+            .update({ changed_at: callDate })
+            .eq('deal_id', newDealId);
+        } catch (e: any) {
+          console.warn('[CreateDealApprovalCard] backdate to call date failed', e?.message);
+        }
+      }
       await supabase
         .from('ai_action_queue')
         .update({
           status: 'approved',
           approved_at: now,
           executed_at: now,
-          execution_result: { deal_id: newDealId, created_via: 'create_deal_dialog' },
+          execution_result: { deal_id: newDealId, created_via: 'create_deal_dialog', backdated_to: callDate },
         })
         .eq('id', item.id);
       qc.invalidateQueries({ queryKey: ['ai-action-queue'] });
