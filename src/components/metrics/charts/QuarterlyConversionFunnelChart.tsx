@@ -101,8 +101,9 @@ export function QuarterlyConversionFunnelChart() {
             <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 24 }}>
               <defs>
                 <linearGradient id="funnelGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.55} />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.85} />
+                  <stop offset="55%" stopColor="hsl(224, 76%, 42%)" stopOpacity={0.55} />
+                  <stop offset="100%" stopColor="hsl(230, 70%, 20%)" stopOpacity={0.08} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
@@ -162,11 +163,11 @@ export function QuarterlyConversionFunnelChart() {
               <Area
                 type="monotone"
                 dataKey="count"
-                stroke="hsl(var(--primary))"
+                stroke="hsl(217, 91%, 65%)"
                 strokeWidth={2}
                 fill="url(#funnelGradient)"
-                dot={{ r: 3, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
-                activeDot={{ r: 5 }}
+                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
+                activeDot={{ r: 5, fill: 'hsl(217, 91%, 70%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
                 isAnimationActive
               >
                 <LabelList
