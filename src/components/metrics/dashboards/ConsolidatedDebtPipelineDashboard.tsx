@@ -28,6 +28,7 @@ import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFou
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { PipelineVelocitySection } from './PipelineVelocitySection';
 
 /**
  * Debt Advisory Metrics Board currency display.
