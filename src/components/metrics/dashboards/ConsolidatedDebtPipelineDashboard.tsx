@@ -626,6 +626,11 @@ function DrilldownModalInner({
               heading={conversionBreakdown.denominatorLabel}
               deals={conversionBreakdown.denominatorDeals}
               accent="hsl(var(--chart-4))"
+              dropoutIds={new Set(
+                conversionBreakdown.denominatorDeals
+                  .filter(d => !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id))
+                  .map(d => d.deal_id),
+              )}
             />
             <ConversionDealsTable
               heading={conversionBreakdown.numeratorLabel}
