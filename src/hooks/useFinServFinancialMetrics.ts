@@ -709,7 +709,8 @@ export function useFinServActiveClients(
         // Client stage. Uses deal_stage_history to reconstruct the point-in-
         // time stage; falls back to the current stage for deals with no
         // history (see stageAt).
-        const count = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
+        const rawCount = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
+        const count = applyActiveClientOverride(effectiveEnd, rawCount);
         return { month: b.label, monthKey: b.key, count, variance: 0 };
       });
 
