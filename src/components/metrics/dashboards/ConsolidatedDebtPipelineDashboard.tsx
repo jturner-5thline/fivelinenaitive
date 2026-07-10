@@ -321,6 +321,44 @@ function DrilldownModal({
 }
 
 function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
+  return _ConversionDealsTable({ heading, deals, accent });
+}
+
+function SignedModeToggle({
+  value,
+  onChange,
+}: {
+  value: 'off' | 'ttm' | 'lifetime';
+  onChange: (v: 'off' | 'ttm' | 'lifetime') => void;
+}) {
+  const opts: Array<{ v: 'off' | 'ttm' | 'lifetime'; label: string; hint: string }> = [
+    { v: 'off', label: 'All entries', hint: 'Raw stage-entry counts (no FCI filter)' },
+    { v: 'ttm', label: 'FCI in TTM', hint: 'Only deals that entered FCI in the last 12 months' },
+    { v: 'lifetime', label: 'FCI ever', hint: 'Only deals that entered FCI at any point in their history' },
+  ];
+  return (
+    <div className="inline-flex rounded-md border border-border/40 bg-muted/40 p-0.5 gap-0.5">
+      {opts.map(o => (
+        <button
+          key={o.v}
+          type="button"
+          title={o.hint}
+          onClick={() => onChange(o.v)}
+          className={
+            'px-2.5 py-1 text-[11px] rounded-sm transition-colors ' +
+            (value === o.v
+              ? 'bg-primary text-primary-foreground font-semibold'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60')
+          }
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function _ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   return (
     <div className="border rounded-lg overflow-hidden">
