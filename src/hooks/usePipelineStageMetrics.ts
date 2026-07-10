@@ -474,8 +474,11 @@ function useStageEntryTrendSeries(
     [anchorEndDate],
   );
 
-  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const rawQueryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
   const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+  // Extend the fetch window 12 months earlier so TTM rollups anchored at the
+  // first bucket's `end` have a full trailing-12-month lookback of history.
+  const queryStart = rawQueryStart ? shiftIsoDateMonths(rawQueryStart, -12) : '';
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['stage-entry-trend-series-dsh', targetStages.join(','), pipelineId, queryStart, queryEnd],
@@ -516,6 +519,8 @@ function useStageEntryTrendSeries(
   return useMemo(() => ({
     monthly: aggregateStageEntryTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId, targetStages),
     quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStages),
+    monthlyTtm: aggregateStageEntryTrendBucketsTtm(data ?? [], monthlyBuckets, pipelineId, targetStages),
+    quarterlyTtm: aggregateStageEntryTrendBucketsTtm(data ?? [], quarterlyBuckets, pipelineId, targetStages),
     isLoading: isLoading || isFetching,
   }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStages.join(',')]);
 }
