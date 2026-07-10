@@ -248,6 +248,62 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
       }
     }
 
+    // Auto-draft a response for inbound funding-source questions.
+    // Trigger draft-lender-question-response when an email is classified as
+    // a lender/funding-source communication that contains questions and we
+    // matched it to a deal. The draft lands in the Approval Queue for the
+    // deal manager to review/edit/send — nothing is sent automatically.
+    try {
+      const questionSignals = new Set([
+        "question_asked", "questions_asked", "info_request", "diligence_question",
+      ]);
+      const lenderCategories = new Set(["lender_communication", "due_diligence"]);
+      const draftCandidates = parsed.filter((r) => {
+        if (!r.deal_match?.deal_id) return false;
+        if (!lenderCategories.has((r.category || "").toLowerCase())) return false;
+        const src = emails.find(e => e.cache_id === r.cache_id);
+        const bodyHasQuestion = /\?/.test(src?.body_text || src?.snippet || "");
+        const signalMatch = (r.signals || []).some(s => questionSignals.has(String(s).toLowerCase()));
+        return bodyHasQuestion || signalMatch;
+      });
+
+      if (draftCandidates.length > 0) {
+        // Skip any email that already has a queued/pending draft for it.
+        const ids = draftCandidates.map(r => r.cache_id);
+        const { data: existing } = await serviceClient
+          .from("ai_action_queue")
+          .select("id, source")
+          .eq("action_type", "draft_email")
+          .in("status", ["pending", "approved"])
+          .filter("source->>email_cache_id", "in", `(${ids.map(i => `"${i}"`).join(",")})`);
+        const already = new Set((existing || [])
+          .map((row: any) => row?.source?.email_cache_id)
+          .filter(Boolean));
+
+        await Promise.all(draftCandidates
+          .filter(r => !already.has(r.cache_id))
+          .map(async (r) => {
+            try {
+              await fetch(`${SUPABASE_URL}/functions/v1/draft-lender-question-response`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": authHeader!,
+                },
+                body: JSON.stringify({
+                  email_cache_id: r.cache_id,
+                  deal_id: r.deal_match!.deal_id,
+                }),
+              });
+            } catch (err) {
+              console.error("[analyze-emails] draft-lender-question-response invoke failed", r.cache_id, err);
+            }
+          }));
+      }
+    } catch (autoErr) {
+      console.error("[analyze-emails] auto-draft trigger failed", autoErr);
+    }
+
     return new Response(JSON.stringify({ results: parsed }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
