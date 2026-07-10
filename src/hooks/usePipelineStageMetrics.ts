@@ -22,21 +22,32 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
  */
 const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'funded-invoiced': ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
-  'closed-won': ['closed-won', 'Closed Won', 'Closed won'],
+  'closed-won': ['closed-won', 'Closed Won'],
   // Active Pipeline canonical stages — `deal_stage_history.to_stage` is
-  // written in mixed slug/label forms across historical and current rows.
-  // Both variants must be included or the SQL `.in()` filter and the
-  // normalize-back-to-slug safety check will drop valid entries.
+  // written in mixed slug/label forms across historical and current rows
+  // (slug, Title Case, and UPPERCASE all appear in the historical import).
+  // Matching in `normalizeStageSlug` is case-insensitive, but the SQL `.in()`
+  // filter is exact-match — so `expandStageLabels` must emit every observed
+  // casing. `expandStageLabels` handles the casing expansion below.
   'proposal-issued': ['proposal-issued', 'Proposal Issued'],
   'terms-issued': ['terms-issued', 'Terms Issued'],
   'final-credit-items': ['final-credit-items', 'Final Credit Items'],
   'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
   'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
-  'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders', 'SUBMITTED TO LENDERS'],
+  'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders'],
   'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
   'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
   'fs-active-client': ['fs-active-client', 'Active Client'],
 };
+
+// Build a case-insensitive reverse-lookup once. Keys are lowercase.
+const STAGE_LABEL_LOOKUP: Map<string, string> = (() => {
+  const map = new Map<string, string>();
+  for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
+    for (const v of variants) map.set(v.toLowerCase(), slug);
+  }
+  return map;
+})();
 
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
@@ -77,7 +88,13 @@ export function expandStageLabels(slugs: string[]): string[] {
   const out = new Set<string>();
   for (const slug of slugs) {
     out.add(slug);
-    for (const v of STAGE_LABEL_VARIANTS[slug] ?? []) out.add(v);
+    for (const v of STAGE_LABEL_VARIANTS[slug] ?? []) {
+      out.add(v);
+      // Historical imports store labels in UPPERCASE ("FINAL CREDIT ITEMS",
+      // "IN DUE DILIGENCE", etc.). Emit both the original casing and an
+      // UPPERCASE variant so the exact-match `.in()` filter catches every row.
+      out.add(v.toUpperCase());
+    }
   }
   return Array.from(out);
 }
@@ -91,10 +108,7 @@ export function expandStageLabels(slugs: string[]): string[] {
  */
 export function normalizeStageSlug(toStage: string | null | undefined, _toStageId?: string | null): string | null {
   if (!toStage) return null;
-  for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
-    if (variants.includes(toStage)) return slug;
-  }
-  return null;
+  return STAGE_LABEL_LOOKUP.get(toStage.toLowerCase()) ?? null;
 }
 
 export interface StageEntryDeal {
