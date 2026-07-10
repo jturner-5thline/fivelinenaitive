@@ -35,6 +35,7 @@ const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
   'in-due-diligence': ['in-due-diligence', 'In Due Diligence'],
   'ndaneeds-list-sent': ['ndaneeds-list-sent', 'NDA/Needs List Sent'],
   'submitted-to-lenders': ['submitted-to-lenders', 'Submitted to Lenders'],
+  'lenders-in-review': ['lenders-in-review', 'Lenders in Review'],
   'pre-credit-needs': ['pre-credit-needs', 'Pre-Credit Needs'],
   'proposal-in-development': ['proposal-in-development', 'Proposal in Development'],
   'fs-active-client': ['fs-active-client', 'Active Client'],
