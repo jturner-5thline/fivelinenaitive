@@ -1305,7 +1305,26 @@ export function ConsolidatedDebtPipelineDashboard({
       title: 'Pipeline Conversion',
       description: 'Trailing 12 months stage-to-stage conversion rates',
       cards: (() => {
-        const t = m.ttmCounts;
+        // Optionally restrict downstream stage counts to only deals that
+        // ALSO entered Final Credit Items inside the TTM window, enforcing
+        // the workflow rule that a deal must pass through FCI first.
+        const rawT = m.ttmCounts;
+        const signedIds = new Set(rawT.finalCreditItems.deals.map(d => d.deal_id));
+        const restrict = (stage: { count: number; dollarVolume: number; deals: any[]; isLoading: boolean; mrr?: number }) => {
+          const deals = stage.deals.filter(d => signedIds.has(d.deal_id));
+          return { ...stage, deals, count: deals.length, dollarVolume: deals.reduce((s, d) => s + (d.value ?? 0), 0) };
+        };
+        const t = enforceSignedFirst
+          ? {
+              ...rawT,
+              // proposalIssued is upstream of FCI — leave untouched.
+              // finalCreditItems is the anchor — leave untouched.
+              submittedToLenders: restrict(rawT.submittedToLenders),
+              termsIssued: restrict(rawT.termsIssued),
+              inDueDiligence: restrict(rawT.inDueDiligence),
+              fundedInvoiced: restrict(rawT.fundedInvoiced),
+            }
+          : rawT;
         const loading = t.isLoading;
         const STAGE_LABELS = {
           proposalIssued: 'Proposal Issued',
