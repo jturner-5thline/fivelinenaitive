@@ -80,6 +80,21 @@ interface MetricCardConfig {
   /** Short label for the denominator stage that anchors this card's
    *  passthrough filter (e.g. "Submitted to Lenders"). */
   signedAnchorLabel?: string;
+  /** Optional secondary value displayed beneath the primary value
+   *  (e.g. a dollar total under a deal count). Clicking it opens its own
+   *  drilldown so users can inspect the count and dollar views separately. */
+  secondary?: {
+    label?: string;
+    value: string | number;
+    isLoading: boolean;
+    deals: StageEntryDeal[];
+    color?: string;
+    drilldownTitle: string;
+    drilldownPeriodNote?: string;
+    drilldownMetricType?: 'count' | 'dollars' | 'average' | 'none';
+    drilldownValueFormatter?: (value: number) => string;
+    drilldownChartColor?: string;
+  };
 }
 
 interface ConversionBreakdown {
@@ -96,9 +111,11 @@ interface ConversionBreakdown {
 function MetricKPICard({
   config,
   onClick,
+  onSecondaryClick,
 }: {
   config: MetricCardConfig;
   onClick: () => void;
+  onSecondaryClick?: () => void;
 }) {
   const Icon = config.icon;
   return (
@@ -136,6 +153,22 @@ function MetricKPICard({
               </button>
             )}
           </div>
+          {config.secondary && (
+            <div className="mt-0.5">
+              {config.secondary.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSecondaryClick}
+                  className="drilldown-value text-sm font-semibold font-mono tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                  style={config.secondary.color ? { color: config.secondary.color } : undefined}
+                >
+                  {config.secondary.value}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -1183,6 +1216,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--primary))',
           drilldownTitle: 'Deals on the Board — added to Active Pipeline',
           drilldownMetricType: 'count',
+          secondary: {
+            value: formatCurrency(m.ndaNeedsList.dollarVolume),
+            isLoading: m.ndaNeedsList.isLoading,
+            deals: m.ndaNeedsList.deals,
+            color: 'hsl(var(--chart-2))',
+            drilldownTitle: 'Dollars on the Board — added to Active Pipeline',
+            drilldownMetricType: 'dollars',
+          },
         },
         {
           id: 'proposals-issued',
@@ -1194,6 +1235,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Proposals Issued — entered Proposal Issued',
           drilldownMetricType: 'count',
+          secondary: {
+            value: formatCurrency(m.proposalsIssued.dollarVolume),
+            isLoading: m.proposalsIssued.isLoading,
+            deals: m.proposalsIssued.deals,
+            color: 'hsl(var(--chart-4))',
+            drilldownTitle: 'Dollars Proposed — entered Proposal Issued',
+            drilldownMetricType: 'dollars',
+          },
         },
         {
           id: 'debt-deals-signed',
@@ -1205,6 +1254,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Debt Deals Signed — entered Final Credit Items',
           drilldownMetricType: 'count',
+          secondary: {
+            value: formatCurrency(m.finalCreditItems.dollarVolume),
+            isLoading: m.finalCreditItems.isLoading,
+            deals: m.finalCreditItems.deals,
+            color: 'hsl(var(--success))',
+            drilldownTitle: 'Dollars Signed — entered Final Credit Items',
+            drilldownMetricType: 'dollars',
+          },
         },
         {
           id: 'terms-issued',
@@ -1216,6 +1273,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Terms Issued — entered Terms Issued',
           drilldownMetricType: 'count',
+          secondary: {
+            value: formatCurrency(m.termsIssued.dollarVolume),
+            isLoading: m.termsIssued.isLoading,
+            deals: m.termsIssued.deals,
+            color: 'hsl(var(--chart-2))',
+            drilldownTitle: 'Terms Issued $ — entered Terms Issued',
+            drilldownMetricType: 'dollars',
+          },
         },
         {
           id: 'terms-signed',
@@ -1227,6 +1292,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Terms Signed — entered In Due Diligence',
           drilldownMetricType: 'count',
+          secondary: {
+            value: formatCurrency(m.inDueDiligence.dollarVolume),
+            isLoading: m.inDueDiligence.isLoading,
+            deals: m.inDueDiligence.deals,
+            color: 'hsl(var(--chart-4))',
+            drilldownTitle: 'Terms Signed $ — entered In Due Diligence',
+            drilldownMetricType: 'dollars',
+          },
         },
         {
           id: 'deals-closed',
@@ -1238,74 +1311,14 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Deals Closed — entered Funded / Invoiced',
           drilldownMetricType: 'count',
-        },
-        // Row 2 — dollar/value KPIs, in the exact order:
-        // Dollars on the Board | Dollars Proposed | Dollars Signed | Terms Issued $ | Terms Signed $ | Dollars Funded
-        {
-          id: 'debt-dollar-on-board',
-          title: 'Dollars on the Board',
-          icon: DollarSign,
-          value: formatCurrency(m.ndaNeedsList.dollarVolume),
-          isLoading: m.ndaNeedsList.isLoading,
-          deals: m.ndaNeedsList.deals,
-          color: 'hsl(var(--chart-2))',
-          drilldownTitle: 'Dollars on the Board — added to Active Pipeline',
-          drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'dollars-proposed',
-          title: 'Dollars Proposed',
-          icon: DollarSign,
-          value: formatCurrency(m.proposalsIssued.dollarVolume),
-          isLoading: m.proposalsIssued.isLoading,
-          deals: m.proposalsIssued.deals,
-          color: 'hsl(var(--chart-4))',
-          drilldownTitle: 'Dollars Proposed — entered Proposal Issued',
-          drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'debt-dollar-signed',
-          title: 'Dollars Signed',
-          icon: DollarSign,
-          value: formatCurrency(m.finalCreditItems.dollarVolume),
-          isLoading: m.finalCreditItems.isLoading,
-          deals: m.finalCreditItems.deals,
-          color: 'hsl(var(--success))',
-          drilldownTitle: 'Dollars Signed — entered Final Credit Items',
-          drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'terms-issued-dollars',
-          title: 'Terms Issued $',
-          icon: DollarSign,
-          value: formatCurrency(m.termsIssued.dollarVolume),
-          isLoading: m.termsIssued.isLoading,
-          deals: m.termsIssued.deals,
-          color: 'hsl(var(--chart-2))',
-          drilldownTitle: 'Terms Issued $ — entered Terms Issued',
-          drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'terms-signed-dollars',
-          title: 'Terms Signed $',
-          icon: DollarSign,
-          value: formatCurrency(m.inDueDiligence.dollarVolume),
-          isLoading: m.inDueDiligence.isLoading,
-          deals: m.inDueDiligence.deals,
-          color: 'hsl(var(--chart-4))',
-          drilldownTitle: 'Terms Signed $ — entered In Due Diligence',
-          drilldownMetricType: 'dollars',
-        },
-        {
-          id: 'dollars-funded',
-          title: 'Dollars Funded',
-          icon: DollarSign,
-          value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
-          isLoading: m.fundedInvoicedOnly.isLoading,
-          deals: m.fundedInvoicedOnly.deals,
-          color: 'hsl(var(--success))',
-          drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
-          drilldownMetricType: 'dollars',
+          secondary: {
+            value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
+            isLoading: m.fundedInvoicedOnly.isLoading,
+            deals: m.fundedInvoicedOnly.deals,
+            color: 'hsl(var(--success))',
+            drilldownTitle: 'Dollars Funded — entered Funded / Invoiced',
+            drilldownMetricType: 'dollars',
+          },
         },
       ],
     },
@@ -1553,9 +1566,7 @@ export function ConsolidatedDebtPipelineDashboard({
             )}
           </div>
           {(() => {
-            const rows = section.id === 'sales'
-              ? [section.cards.slice(0, 6), section.cards.slice(6, 12)]
-              : [section.cards];
+            const rows = [section.cards];
             // Sales KPI grid is the canonical tile-sizing template. Averages
             // reuses the exact same grid so each tile lines up with a Sales
             // column instead of stretching to fill a wider 4-col layout.
@@ -1582,6 +1593,18 @@ export function ConsolidatedDebtPipelineDashboard({
                           conversionBreakdown: card.conversionBreakdown,
                           conversionCardId: card.conversionBreakdown ? card.id : undefined,
                         })}
+                        onSecondaryClick={card.secondary ? () => {
+                          const s = card.secondary!;
+                          setDrilldown({
+                            title: s.drilldownTitle,
+                            deals: s.deals,
+                            periodNote: s.drilldownPeriodNote,
+                            metricType: s.drilldownMetricType ?? 'dollars',
+                            valueFormatter: s.drilldownValueFormatter
+                              ?? (s.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                            chartColor: s.drilldownChartColor ?? s.color ?? card.color,
+                          });
+                        } : undefined}
                       />
                     ))}
                   </div>
