@@ -299,7 +299,20 @@ function DrilldownModal({
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
 }) {
-  return DrilldownModalInner({ open, onClose, title, deals, periodNote, selectedQuarter, metricType, valueFormatter, chartColor, conversionBreakdown });
+  return (
+    <DrilldownModalInner
+      open={open}
+      onClose={onClose}
+      title={title}
+      deals={deals}
+      periodNote={periodNote}
+      selectedQuarter={selectedQuarter}
+      metricType={metricType}
+      valueFormatter={valueFormatter}
+      chartColor={chartColor}
+      conversionBreakdown={conversionBreakdown}
+    />
+  );
 }
 
 function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
