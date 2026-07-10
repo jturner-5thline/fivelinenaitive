@@ -287,6 +287,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+  enforceSignedFirst, onEnforceSignedFirstChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -298,6 +299,8 @@ function DrilldownModal({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
+  enforceSignedFirst?: boolean;
+  onEnforceSignedFirstChange?: (v: boolean) => void;
 }) {
   return (
     <DrilldownModalInner
@@ -311,6 +314,8 @@ function DrilldownModal({
       valueFormatter={valueFormatter}
       chartColor={chartColor}
       conversionBreakdown={conversionBreakdown}
+      enforceSignedFirst={enforceSignedFirst}
+      onEnforceSignedFirstChange={onEnforceSignedFirstChange}
     />
   );
 }
@@ -361,6 +366,7 @@ function ConversionDealsTable({ heading, deals, accent }: { heading: string; dea
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+  enforceSignedFirst, onEnforceSignedFirstChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -372,6 +378,8 @@ function DrilldownModalInner({
   valueFormatter?: (v: number) => string;
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
+  enforceSignedFirst?: boolean;
+  onEnforceSignedFirstChange?: (v: boolean) => void;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
