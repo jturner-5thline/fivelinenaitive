@@ -1770,7 +1770,10 @@ export function ConsolidatedDebtPipelineDashboard({
             signedAnchorLabel={(() => {
               if (!drilldown?.conversionCardId) return undefined;
               const conv = sections.find(s => s.id === 'pipeline-conversion');
-              return conv?.cards.find(c => c.id === drilldown.conversionCardId)?.signedAnchorLabel;
+              return (
+                conv?.cards.find(c => c.id === drilldown.conversionCardId)?.signedAnchorLabel
+                ?? otherMetricsSection.cards.find(c => c.id === drilldown.conversionCardId)?.signedAnchorLabel
+              );
             })()}
           />
         );
