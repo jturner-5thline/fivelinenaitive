@@ -154,14 +154,14 @@ function MetricKPICard({
             )}
           </div>
           {config.secondary && (
-            <div className="mt-0.5">
+            <div className="mt-1 pt-1 border-t border-border/40">
               {config.secondary.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
                 <button
                   type="button"
                   onClick={onSecondaryClick}
-                  className="drilldown-value text-sm font-semibold font-mono tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                  className="drilldown-value text-[1.3125rem] leading-tight font-semibold font-mono tabular-nums text-muted-foreground hover:text-foreground transition-colors"
                   style={config.secondary.color ? { color: config.secondary.color } : undefined}
                 >
                   {config.secondary.value}
