@@ -1998,56 +1998,8 @@ function EmailDraftPreview({
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Hook: deal IDs where the current user is tagged as the deal manager.
-   Used by the admin-only "Me" filter in the Approval Queue.
-   ──────────────────────────────────────────────────────────────────────── */
-function useMyManagedDealIds(enabled: boolean) {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ['approval-queue', 'my-managed-deal-ids', user?.id],
-    enabled: !!user?.id && enabled,
-    staleTime: 60_000,
-    queryFn: async (): Promise<Set<string>> => {
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('first_name,last_name,display_name,email')
-        .eq('id', user!.id)
-        .maybeSingle();
-      // Build candidate name tokens (first, last, full, display, email-prefix)
-      const tokens = new Set<string>();
-      const add = (v?: string | null) => {
-        const t = (v ?? '').trim();
-        if (t && t.length >= 2) tokens.add(t.toLowerCase());
-      };
-      add(prof?.display_name);
-      add(prof?.first_name);
-      add(prof?.last_name);
-      if (prof?.first_name && prof?.last_name) add(`${prof.first_name} ${prof.last_name}`);
-      if (prof?.email) add(prof.email.split('@')[0]);
-      add(user?.email?.split('@')[0]);
-      add((user?.user_metadata as any)?.full_name);
-      add((user?.user_metadata as any)?.name);
-      if (!tokens.size) return new Set();
-      // Fetch all visible deals (RLS-scoped) and match client-side so that
-      // multi-name managers like "Alice, Bob" or "Alice & Bob" all resolve.
-      const { data, error } = await supabase.from('deals').select('id,manager');
-      if (error) return new Set();
-      const matched = new Set<string>();
-      for (const row of (data || []) as Array<{ id: string; manager: string | null }>) {
-        const m = (row.manager ?? '').toLowerCase();
-        if (!m) continue;
-        for (const t of tokens) {
-          if (m.includes(t)) {
-            matched.add(row.id);
-            break;
-          }
-        }
-      }
-      return matched;
-    },
-  });
-}
+/* useMyManagedDealIds moved to @/hooks/useApprovalQueueScope so the header
+   badge can share the same match logic as the queue panel. */
 
 /* ─────────────────────────────────────────────────────────────────────────
    Bundle detail pane — renders N nudge email drafts as a stack of per-recipient
