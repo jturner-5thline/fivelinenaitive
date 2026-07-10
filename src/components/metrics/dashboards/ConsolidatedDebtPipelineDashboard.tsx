@@ -1687,6 +1687,32 @@ export function ConsolidatedDebtPipelineDashboard({
       )}
 
       <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Deals on Board</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Debt Advisory Metrics — stage_enter into NDA / Needs List Sent, zero-filled periods (rolling, anchored to today)
+          </p>
+        </div>
+        <CompactFundedBarChart
+          title="Deals on Board"
+          subtitle={`Debt Advisory Metrics → NDA / Needs List Sent · ${trendMode === 'monthly' ? 'Past 6 months' : 'Past 4 quarters'}`}
+          buckets={trendMode === 'monthly' ? m.ndaNeedsListTrend.monthly : m.ndaNeedsListTrend.quarterly}
+          isLoading={m.ndaNeedsListTrend.isLoading}
+          color="hsl(var(--chart-2))"
+          dataKey="count"
+          valueFormatter={(value) => `${Math.round(value)}`}
+          totalFormatter={(value) => `${Math.round(value)}`}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `Deals on Board — ${bucket.label}`,
+              deals: bucket.deals,
+              periodNote: buildTrendPeriodNote(bucket, 'Deal count'),
+            })
+          }
+        />
+      </div>
+
+      <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">Closed Trend</h3>
