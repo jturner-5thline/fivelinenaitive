@@ -113,10 +113,11 @@ export function QuarterlyConversionFunnelChart() {
                   <stop offset="100%" stopColor="hsl(226, 70%, 10%)" stopOpacity={0.35} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" vertical={false} />
               <XAxis
                 dataKey="stage"
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.85)' }}
+                stroke="rgba(255,255,255,0.35)"
                 interval={0}
                 angle={-18}
                 textAnchor="end"
@@ -124,7 +125,8 @@ export function QuarterlyConversionFunnelChart() {
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.85)' }}
+                stroke="rgba(255,255,255,0.35)"
                 width={36}
               />
               <Tooltip
