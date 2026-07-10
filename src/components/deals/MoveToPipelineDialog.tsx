@@ -16,6 +16,7 @@ import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { useSwallowClickThrough } from '@/hooks/useSwallowClickThrough';
+import { isProjectsPipeline } from '@/lib/projectsPipeline';
 import { toast } from 'sonner';
 
 interface MoveToPipelineDialogProps {
@@ -45,7 +46,15 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
     });
   };
 
-  const availablePipelines = pipelines;
+  // "Projects" is a fully siloed pipeline — deals can never be moved into
+  // or out of it. If the current deal lives in a Projects pipeline the
+  // move dialog is a no-op; otherwise Projects pipelines are hidden as
+  // possible targets.
+  const currentPipeline = pipelines.find(p => p.id === currentPipelineId);
+  const isCurrentProjects = isProjectsPipeline(currentPipeline);
+  const availablePipelines = isCurrentProjects
+    ? []
+    : pipelines.filter(p => !isProjectsPipeline(p));
   const selectedPipeline = pipelines.find(p => p.id === selectedPipelineId);
 
   const handleMove = async () => {
@@ -97,9 +106,14 @@ export function MoveToPipelineDialog({ dealId, dealName, currentPipelineId, isOp
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {isCurrentProjects && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+              Deals in the <span className="font-semibold">Projects</span> pipeline are siloed and cannot be moved to another pipeline.
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Target Pipeline</Label>
-            <Select value={selectedPipelineId} onValueChange={(val) => { setSelectedPipelineId(val); setSelectedStageId(''); }}>
+            <Select value={selectedPipelineId} onValueChange={(val) => { setSelectedPipelineId(val); setSelectedStageId(''); }} disabled={isCurrentProjects}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a pipeline..." />
               </SelectTrigger>
