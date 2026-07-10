@@ -338,6 +338,32 @@ function DrilldownModal({
 
   const body = (
     <div className="p-4 space-y-4 text-foreground">
+        {conversionBreakdown && (
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Conversion rate
+                </div>
+                <div className="text-2xl font-bold text-foreground mt-0.5">
+                  {conversionBreakdown.percentText}
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs font-mono">
+                {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
+              </Badge>
+            </div>
+            <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              {conversionBreakdown.formula}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Source: deal_stage_history · stage_enter events on the Active Pipeline,
+              deduplicated to the first entry per deal per stage over the trailing 12 months.
+              Numerator = {conversionBreakdown.numeratorLabel}. Denominator = {conversionBreakdown.denominatorLabel}.
+            </p>
+          </div>
+        )}
+
       <div className="flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {deals.length} deal{deals.length !== 1 ? 's' : ''}
@@ -387,7 +413,20 @@ function DrilldownModal({
           </div>
         )}
 
-        {filteredDeals.length === 0 ? (
+        {conversionBreakdown ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ConversionDealsTable
+              heading={`Numerator · ${conversionBreakdown.numeratorLabel}`}
+              deals={conversionBreakdown.numeratorDeals}
+              accent="hsl(var(--chart-3))"
+            />
+            <ConversionDealsTable
+              heading={`Denominator · ${conversionBreakdown.denominatorLabel}`}
+              deals={conversionBreakdown.denominatorDeals}
+              accent="hsl(var(--chart-4))"
+            />
+          </div>
+        ) : filteredDeals.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             {selectedBucketKey ? 'No deals in this bucket.' : 'No deals found for this period.'}
           </p>
