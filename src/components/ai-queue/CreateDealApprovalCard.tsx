@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { Video, Calendar, Building2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
@@ -39,6 +40,7 @@ export function CreateDealApprovalCard({ item }: Props) {
   const { stages: globalStages } = useDealStages();
   const stageList = (activePipeline?.stages?.length ? activePipeline.stages : globalStages) as Array<{ id: string; label: string }>;
   const defaultNdaStageId = findNdaStageId(stageList);
+  const [selectedStageId, setSelectedStageId] = useState<string>(payload.dealStage || defaultNdaStageId || '');
 
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
@@ -60,7 +62,7 @@ export function CreateDealApprovalCard({ item }: Props) {
     referralName: payload.referralName || '',
     referralEmail: payload.referralEmail || '',
     dealClass: (payload.dealClass || 'standard') as 'standard' | 'naitive' | 'finserv',
-    dealStage: payload.dealStage || defaultNdaStageId || '',
+    dealStage: selectedStageId || payload.dealStage || defaultNdaStageId || '',
   };
 
   async function markApproved(newDealId: string) {
@@ -132,6 +134,25 @@ export function CreateDealApprovalCard({ item }: Props) {
       <p className="text-[11px] text-[#ecedf4]/50">
         Review the drafted fields. Click <span className="text-[#ecedf4]/80">Review &amp; Create Deal</span> to open the standard Create Deal form pre-filled from the call — you can edit any field before finalizing.
       </p>
+
+      <div className="rounded-md border border-white/[0.14] bg-white/[0.03] p-3 space-y-2">
+        <div className="text-[10px] uppercase tracking-wide text-[#ecedf4]/55">Pipeline stage</div>
+        <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+          <SelectTrigger className="h-8 bg-white/[0.04] border-white/[0.14] text-xs text-[#ecedf4]">
+            <SelectValue placeholder="Select a stage" />
+          </SelectTrigger>
+          <SelectContent>
+            {stageList.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="text-xs">
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-[#ecedf4]/45">
+          Defaults to “NDA / Needs List Sent”. Change here to override before approving.
+        </p>
+      </div>
 
       <div className="flex gap-2">
         <Button
