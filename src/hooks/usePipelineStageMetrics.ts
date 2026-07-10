@@ -907,12 +907,12 @@ export interface ConsolidatedDebtPipelineMetrics {
   // Trailing-12-month stage-entry counts, anchored on today. Used by the
   // Pipeline Conversion widgets on the Consolidated Debt dashboard.
   ttmCounts: {
-    proposalIssued: number;
-    finalCreditItems: number;
-    submittedToLenders: number;
-    termsIssued: number;
-    inDueDiligence: number;
-    fundedInvoiced: number;
+    proposalIssued: StageMetricResult;
+    finalCreditItems: StageMetricResult;
+    submittedToLenders: StageMetricResult;
+    termsIssued: StageMetricResult;
+    inDueDiligence: StageMetricResult;
+    fundedInvoiced: StageMetricResult;
     isLoading: boolean;
   };
 }
@@ -992,12 +992,12 @@ export function useConsolidatedDebtPipelineMetrics(
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
     averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
     ttmCounts: {
-      proposalIssued: proposalIssuedRolling12.count,
-      finalCreditItems: finalCreditItemsRolling12.count,
-      submittedToLenders: submittedToLendersRolling12.count,
-      termsIssued: termsIssuedRolling12.count,
-      inDueDiligence: inDueDiligenceRolling12.count,
-      fundedInvoiced: fundedInvoicedOnlyRolling12.count,
+      proposalIssued: proposalIssuedRolling12,
+      finalCreditItems: finalCreditItemsRolling12,
+      submittedToLenders: submittedToLendersRolling12,
+      termsIssued: termsIssuedRolling12,
+      inDueDiligence: inDueDiligenceRolling12,
+      fundedInvoiced: fundedInvoicedOnlyRolling12,
       isLoading:
         proposalIssuedRolling12.isLoading ||
         finalCreditItemsRolling12.isLoading ||

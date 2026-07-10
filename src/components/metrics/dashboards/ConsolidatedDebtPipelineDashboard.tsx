@@ -75,6 +75,19 @@ interface MetricCardConfig {
   drilldownValueFormatter?: (value: number) => string;
   /** Bar/total color override. Defaults to card color. */
   drilldownChartColor?: string;
+  /** Optional numerator/denominator breakdown for conversion-rate widgets. */
+  conversionBreakdown?: ConversionBreakdown;
+}
+
+interface ConversionBreakdown {
+  formula: string;
+  numeratorLabel: string;
+  denominatorLabel: string;
+  numeratorDeals: StageEntryDeal[];
+  denominatorDeals: StageEntryDeal[];
+  numeratorCount: number;
+  denominatorCount: number;
+  percentText: string;
 }
 
 function MetricKPICard({
@@ -273,7 +286,7 @@ function DrilldownBarChart({
 
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
-  metricType = 'dollars', valueFormatter, chartColor,
+  metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
 }: {
   open: boolean;
   onClose: () => void;
@@ -284,6 +297,81 @@ function DrilldownModal({
   metricType?: 'count' | 'dollars' | 'average' | 'none';
   valueFormatter?: (v: number) => string;
   chartColor?: string;
+  conversionBreakdown?: ConversionBreakdown;
+}) {
+  return (
+    <DrilldownModalInner
+      open={open}
+      onClose={onClose}
+      title={title}
+      deals={deals}
+      periodNote={periodNote}
+      selectedQuarter={selectedQuarter}
+      metricType={metricType}
+      valueFormatter={valueFormatter}
+      chartColor={chartColor}
+      conversionBreakdown={conversionBreakdown}
+    />
+  );
+}
+
+function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
+  const total = deals.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+          <span className="text-xs font-semibold text-foreground">{heading}</span>
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground">
+          {deals.length} deal{deals.length !== 1 ? 's' : ''} · {formatCurrencyFull(total)}
+        </span>
+      </div>
+      {deals.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6">No deals entered this stage in the trailing 12 months.</p>
+      ) : (
+        <div className="max-h-[320px] overflow-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted/20">
+              <tr className="border-b">
+                <th className="text-left px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Deal</th>
+                <th className="text-right px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Amount</th>
+                <th className="text-left px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Entered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deals.map((d) => (
+                <tr key={d.deal_id} className="border-b last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-1.5 font-medium">{d.company}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">
+                    {new Date(d.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrilldownModalInner({
+  open, onClose, title, deals, periodNote, selectedQuarter,
+  metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  deals: StageEntryDeal[];
+  periodNote?: string;
+  selectedQuarter?: QuarterOption;
+  metricType?: 'count' | 'dollars' | 'average' | 'none';
+  valueFormatter?: (v: number) => string;
+  chartColor?: string;
+  conversionBreakdown?: ConversionBreakdown;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -295,7 +383,8 @@ function DrilldownModal({
     }
   }, [open, title]);
 
-  const showChart = metricType !== 'none' && !!selectedQuarter && deals.length > 0;
+  const showChart =
+    !conversionBreakdown && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
   const chartMetricType = (metricType === 'none' ? 'count' : metricType) as 'count' | 'dollars' | 'average';
   const formatter = valueFormatter ?? (chartMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency);
   const color = chartColor ?? 'hsl(var(--chart-3))';
@@ -323,6 +412,32 @@ function DrilldownModal({
 
   const body = (
     <div className="p-4 space-y-4 text-foreground">
+        {conversionBreakdown && (
+          <div className="rounded-lg border border-border/40 bg-muted/10 p-4 space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Conversion rate
+                </div>
+                <div className="text-2xl font-bold text-foreground mt-0.5">
+                  {conversionBreakdown.percentText}
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs font-mono">
+                {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
+              </Badge>
+            </div>
+            <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              {conversionBreakdown.formula}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Source: deal_stage_history · stage_enter events on the Active Pipeline,
+              deduplicated to the first entry per deal per stage over the trailing 12 months.
+              Numerator = {conversionBreakdown.numeratorLabel}. Denominator = {conversionBreakdown.denominatorLabel}.
+            </p>
+          </div>
+        )}
+
       <div className="flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {deals.length} deal{deals.length !== 1 ? 's' : ''}
@@ -372,7 +487,20 @@ function DrilldownModal({
           </div>
         )}
 
-        {filteredDeals.length === 0 ? (
+        {conversionBreakdown ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ConversionDealsTable
+              heading={`Numerator · ${conversionBreakdown.numeratorLabel}`}
+              deals={conversionBreakdown.numeratorDeals}
+              accent="hsl(var(--chart-3))"
+            />
+            <ConversionDealsTable
+              heading={`Denominator · ${conversionBreakdown.denominatorLabel}`}
+              deals={conversionBreakdown.denominatorDeals}
+              accent="hsl(var(--chart-4))"
+            />
+          </div>
+        ) : filteredDeals.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             {selectedBucketKey ? 'No deals in this bucket.' : 'No deals found for this period.'}
           </p>
@@ -890,6 +1018,7 @@ export function ConsolidatedDebtPipelineDashboard({
     metricType?: 'count' | 'dollars' | 'average' | 'none';
     valueFormatter?: (v: number) => string;
     chartColor?: string;
+    conversionBreakdown?: ConversionBreakdown;
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
 
@@ -1172,47 +1301,62 @@ export function ConsolidatedDebtPipelineDashboard({
       cards: (() => {
         const t = m.ttmCounts;
         const loading = t.isLoading;
-        const pct = (num: number, den: number) =>
-          !loading && den > 0 ? `${((num / den) * 100).toFixed(1)}%` : loading ? '…' : '—';
-        const defs: Array<{
-          title: string;
-          num: number;
-          den: number;
-          note: string;
-        }> = [
-          { title: 'Proposal to Engagement', num: t.finalCreditItems, den: t.proposalIssued,
-            note: 'Deals entering Final Credit Items ÷ Deals entering Proposal Issued (TTM)' },
-          { title: 'Signed to Submission', num: t.submittedToLenders, den: t.finalCreditItems,
-            note: 'Deals entering Submitted to Lenders ÷ Deals entering Final Credit Items (TTM)' },
-          { title: 'Submission to Terms Issued', num: t.termsIssued, den: t.submittedToLenders,
-            note: 'Deals entering Terms Issued ÷ Deals entering Submitted to Lenders (TTM)' },
-          { title: 'Signed to Terms Issued', num: t.termsIssued, den: t.finalCreditItems,
-            note: 'Deals entering Terms Issued ÷ Deals entering Final Credit Items (TTM)' },
-          { title: 'Signed to Terms Signed', num: t.inDueDiligence, den: t.finalCreditItems,
-            note: 'Deals entering In Due Diligence ÷ Deals entering Final Credit Items (TTM)' },
-          { title: 'Submission to Terms Signed', num: t.inDueDiligence, den: t.submittedToLenders,
-            note: 'Deals entering In Due Diligence ÷ Deals entering Submitted to Lenders (TTM)' },
-          { title: 'Terms Issued to Terms Signed', num: t.inDueDiligence, den: t.termsIssued,
-            note: 'Deals entering In Due Diligence ÷ Deals entering Terms Issued (TTM)' },
-          { title: 'Terms Signed to Funded / Invoiced', num: t.fundedInvoiced, den: t.inDueDiligence,
-            note: 'Deals entering Funded / Invoiced ÷ Deals entering In Due Diligence (TTM)' },
-          { title: 'Signed to Funded / Invoiced', num: t.fundedInvoiced, den: t.finalCreditItems,
-            note: 'Deals entering Funded / Invoiced ÷ Deals entering Final Credit Items (TTM)' },
-          { title: 'Submission to Funded / Invoiced', num: t.fundedInvoiced, den: t.submittedToLenders,
-            note: 'Deals entering Funded / Invoiced ÷ Deals entering Submitted to Lenders (TTM)' },
+        const STAGE_LABELS = {
+          proposalIssued: 'Proposal Issued',
+          finalCreditItems: 'Final Credit Items',
+          submittedToLenders: 'Submitted to Lenders',
+          termsIssued: 'Terms Issued',
+          inDueDiligence: 'In Due Diligence (Terms Signed)',
+          fundedInvoiced: 'Funded / Invoiced',
+        } as const;
+        type StageKey = keyof typeof STAGE_LABELS;
+        const pctText = (num: number, den: number) =>
+          loading ? '…' : den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '—';
+        const defs: Array<{ title: string; numKey: StageKey; denKey: StageKey }> = [
+          { title: 'Proposal to Engagement',            numKey: 'finalCreditItems',    denKey: 'proposalIssued' },
+          { title: 'Signed to Submission',              numKey: 'submittedToLenders',  denKey: 'finalCreditItems' },
+          { title: 'Submission to Terms Issued',        numKey: 'termsIssued',         denKey: 'submittedToLenders' },
+          { title: 'Signed to Terms Issued',            numKey: 'termsIssued',         denKey: 'finalCreditItems' },
+          { title: 'Signed to Terms Signed',            numKey: 'inDueDiligence',      denKey: 'finalCreditItems' },
+          { title: 'Submission to Terms Signed',        numKey: 'inDueDiligence',      denKey: 'submittedToLenders' },
+          { title: 'Terms Issued to Terms Signed',      numKey: 'inDueDiligence',      denKey: 'termsIssued' },
+          { title: 'Terms Signed to Funded / Invoiced', numKey: 'fundedInvoiced',      denKey: 'inDueDiligence' },
+          { title: 'Signed to Funded / Invoiced',       numKey: 'fundedInvoiced',      denKey: 'finalCreditItems' },
+          { title: 'Submission to Funded / Invoiced',   numKey: 'fundedInvoiced',      denKey: 'submittedToLenders' },
         ];
-        return defs.map((d, i) => ({
-          id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
-          title: d.title,
-          icon: Sigma,
-          value: pct(d.num, d.den),
-          isLoading: loading,
-          deals: [] as StageEntryDeal[],
-          color: `hsl(var(--chart-${(i % 5) + 1}))`,
-          drilldownTitle: d.title,
-          drilldownPeriodNote: d.note,
-          drilldownMetricType: 'none' as const,
-        }));
+        return defs.map((d, i) => {
+          const num = t[d.numKey];
+          const den = t[d.denKey];
+          const numLabel = STAGE_LABELS[d.numKey];
+          const denLabel = STAGE_LABELS[d.denKey];
+          const value = pctText(num.count, den.count);
+          const formula =
+            `(Count of deals entering ${numLabel} over the last 12 months) ÷ ` +
+            `(Count of deals entering ${denLabel} over the last 12 months) = ` +
+            `${num.count} ÷ ${den.count} = ${value}`;
+          return {
+            id: `conversion-${d.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`,
+            title: d.title,
+            icon: Sigma,
+            value,
+            isLoading: loading,
+            deals: den.deals,
+            color: `hsl(var(--chart-${(i % 5) + 1}))`,
+            drilldownTitle: d.title,
+            drilldownPeriodNote: formula,
+            drilldownMetricType: 'none' as const,
+            conversionBreakdown: {
+              formula,
+              numeratorLabel: `Entered ${numLabel} (TTM)`,
+              denominatorLabel: `Entered ${denLabel} (TTM)`,
+              numeratorDeals: num.deals,
+              denominatorDeals: den.deals,
+              numeratorCount: num.count,
+              denominatorCount: den.count,
+              percentText: value,
+            },
+          };
+        });
       })(),
     },
   ];
@@ -1254,6 +1398,7 @@ export function ConsolidatedDebtPipelineDashboard({
               valueFormatter: card.drilldownValueFormatter
                 ?? (metricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
               chartColor: card.drilldownChartColor ?? card.color,
+              conversionBreakdown: bucket ? undefined : card.conversionBreakdown,
             });
           }}
         />
@@ -1293,6 +1438,7 @@ export function ConsolidatedDebtPipelineDashboard({
                           valueFormatter: card.drilldownValueFormatter
                             ?? (card.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
                           chartColor: card.drilldownChartColor ?? card.color,
+                          conversionBreakdown: card.conversionBreakdown,
                         })}
                       />
                     ))}
@@ -1385,6 +1531,7 @@ export function ConsolidatedDebtPipelineDashboard({
         metricType={drilldown?.metricType}
         valueFormatter={drilldown?.valueFormatter}
         chartColor={drilldown?.chartColor}
+        conversionBreakdown={drilldown?.conversionBreakdown}
       />
 
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
