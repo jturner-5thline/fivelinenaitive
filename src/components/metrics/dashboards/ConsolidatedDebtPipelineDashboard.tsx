@@ -299,6 +299,67 @@ function DrilldownModal({
   chartColor?: string;
   conversionBreakdown?: ConversionBreakdown;
 }) {
+  return DrilldownModalInner({ open, onClose, title, deals, periodNote, selectedQuarter, metricType, valueFormatter, chartColor, conversionBreakdown });
+}
+
+function ConversionDealsTable({ heading, deals, accent }: { heading: string; deals: StageEntryDeal[]; accent: string }) {
+  const total = deals.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent }} />
+          <span className="text-xs font-semibold text-foreground">{heading}</span>
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground">
+          {deals.length} deal{deals.length !== 1 ? 's' : ''} · {formatCurrencyFull(total)}
+        </span>
+      </div>
+      {deals.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-6">No deals entered this stage in the trailing 12 months.</p>
+      ) : (
+        <div className="max-h-[320px] overflow-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-muted/20">
+              <tr className="border-b">
+                <th className="text-left px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Deal</th>
+                <th className="text-right px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Amount</th>
+                <th className="text-left px-3 py-1.5 text-[11px] font-medium text-muted-foreground">Entered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deals.map((d) => (
+                <tr key={d.deal_id} className="border-b last:border-0 hover:bg-muted/20">
+                  <td className="px-3 py-1.5 font-medium">{d.company}</td>
+                  <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">
+                    {new Date(d.entered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrilldownModalInner({
+  open, onClose, title, deals, periodNote, selectedQuarter,
+  metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  deals: StageEntryDeal[];
+  periodNote?: string;
+  selectedQuarter?: QuarterOption;
+  metricType?: 'count' | 'dollars' | 'average' | 'none';
+  valueFormatter?: (v: number) => string;
+  chartColor?: string;
+  conversionBreakdown?: ConversionBreakdown;
+}) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
 
