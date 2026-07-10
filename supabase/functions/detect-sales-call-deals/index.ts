@@ -160,6 +160,21 @@ Deno.serve(async (req) => {
           const company = (m[1] || "").trim();
           if (!company || company.toLowerCase() === "5th line") continue;
 
+          // Only process this event on the calendar of its actual host /
+          // organizer. Nylas returns the same event on every attendee's
+          // calendar, so without this guard the queue item would be
+          // duplicated (or assigned to the wrong teammate) whenever
+          // multiple 5th Line teammates were on the call.
+          const organizerEmailRaw: string =
+            (ev?.organizer?.email || ev?.organizer_email || "").toLowerCase();
+          if (!organizerEmailRaw) {
+            // Fall back to the calendar owner if Nylas didn't return an
+            // organizer (rare — e.g. imported events).
+          } else if (organizerEmailRaw !== ownerEmail) {
+            continue;
+          }
+          const hostEmail = organizerEmailRaw || ownerEmail;
+
           const endMs = extractEndMs(ev.when);
           if (endMs == null) continue;
           // Only events that ended already AND ended ≥5 min ago.
@@ -259,8 +274,10 @@ Deno.serve(async (req) => {
             nextSteps: Array.isArray(claap?.next_steps) ? claap.next_steps : [],
           });
 
-          // Resolve the assignee = owner (the 5th Line teammate whose
-          // calendar produced the event).
+          // Resolve the assignee = event host / organizer (the 5th Line
+          // teammate who owns the calendar event). Because we already
+          // guarded above that ownerEmail === organizer, tok.user_id IS
+          // the host's user_id.
           const assignedTo = tok.user_id;
 
           const payload = {
@@ -287,7 +304,7 @@ Deno.serve(async (req) => {
             event_title: title,
             event_start: new Date(startMs).toISOString(),
             event_end: new Date(endMs).toISOString(),
-            organizer_email: ownerEmail,
+            organizer_email: hostEmail,
             claap_meeting_id: claap?.id ?? null,
             claap_id: claap?.claap_id ?? null,
             claap_matched_by: claap ? "title" : null,
