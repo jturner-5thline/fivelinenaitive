@@ -41,8 +41,15 @@ export interface QuarterlyFunnelBucket {
   endsAt: Date;
   /** Distinct-deal count per stage for the proposal-issued cohort. */
   counts: Record<FunnelStageKey, number>;
+  /** Sum of deal `value` per stage for the proposal-issued cohort. */
+  dollars: Record<FunnelStageKey, number>;
   /** Widget-style denominator cohort counts for each consecutive conversion step. */
-  stepConversions: Partial<Record<FunnelStepKey, { fromCount: number; toCount: number }>>;
+  stepConversions: Partial<Record<FunnelStepKey, {
+    fromCount: number;
+    toCount: number;
+    fromDollars: number;
+    toDollars: number;
+  }>>;
 }
 
 export interface QuarterlyTtmFunnelResult {
@@ -114,7 +121,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       // EVER reach stage X?" independently of when it entered Proposal Issued.
       const { data, error } = await supabase
         .from('deal_stage_history')
-        .select('deal_id, changed_at, to_stage, deals!inner(company, pipeline_id)')
+        .select('deal_id, changed_at, to_stage, deals!inner(company, pipeline_id, value)')
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('to_stage', allLabels)
@@ -124,7 +131,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
         deal_id: string;
         changed_at: string;
         to_stage: string;
-        deals: { company: string | null; pipeline_id: string | null } | null;
+        deals: { company: string | null; pipeline_id: string | null; value: number | null } | null;
       }>;
     },
   });
@@ -137,10 +144,12 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     inDueDiligence: 0,
     fundedInvoiced: 0,
   });
+  const emptyDollars = emptyCounts;
 
   // Pre-index: for each deal, which stages did it EVER enter (lifetime), plus
   // every stage-entry timestamp by stage (a deal can re-enter a stage).
   const dealEverReached: Map<string, Set<FunnelStageKey>> = new Map();
+  const dealValue: Map<string, number> = new Map();
   const dealStageEntries: Map<FunnelStageKey, Map<string, Date[]>> = new Map<FunnelStageKey, Map<string, Date[]>>(
     FUNNEL_STAGE_ORDER.map(s => [s.key, new Map<string, Date[]>()] as const),
   );
@@ -149,6 +158,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     const key = labelToKey.get(row.to_stage.toLowerCase())
       ?? (normalizeStageSlug(row.to_stage) ? slugToKey.get(normalizeStageSlug(row.to_stage)!) : undefined);
     if (!key) continue;
+    if (!dealValue.has(row.deal_id)) dealValue.set(row.deal_id, row.deals?.value ?? 0);
     let reached = dealEverReached.get(row.deal_id);
     if (!reached) { reached = new Set(); dealEverReached.set(row.deal_id, reached); }
     reached.add(key);
@@ -158,7 +168,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     entriesByDeal?.set(row.deal_id, arr);
   }
 
-  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'stepConversions'> => {
+  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'dollars' | 'stepConversions'> => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
 
@@ -180,27 +190,42 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       }
       return n;
     };
+    const sumDollars = (dealIds: string[]) =>
+      dealIds.reduce((s, id) => s + (dealValue.get(id) ?? 0), 0);
+    const dollarsReached = (cohort: string[], stage: FunnelStageKey) => {
+      let s = 0;
+      for (const dealId of cohort) {
+        if (dealEverReached.get(dealId)?.has(stage)) s += dealValue.get(dealId) ?? 0;
+      }
+      return s;
+    };
 
     const stepConversions: QuarterlyFunnelBucket['stepConversions'] = {};
     for (let i = 0; i < FUNNEL_STAGE_ORDER.length - 1; i++) {
       const from = FUNNEL_STAGE_ORDER[i].key;
       const to = FUNNEL_STAGE_ORDER[i + 1].key;
       const fromCohort = cohortFor(from);
+      const toReachedIds = fromCohort.filter(id => dealEverReached.get(id)?.has(to));
       stepConversions[`${from}__${to}` as FunnelStepKey] = {
         fromCount: fromCohort.length,
         toCount: countReached(fromCohort, to),
+        fromDollars: sumDollars(fromCohort),
+        toDollars: sumDollars(toReachedIds),
       };
     }
 
     const counts = emptyCounts();
+    const dollars = emptyDollars();
     counts.proposalIssued = proposalCohort.length;
+    dollars.proposalIssued = sumDollars(proposalCohort);
     // Funnel view remains proposal-cohort based: how many Proposal Issued deals
     // ever reached each downstream stage.
     (Object.keys(counts) as FunnelStageKey[]).forEach(k => {
       if (k === 'proposalIssued') return;
       counts[k] = countReached(proposalCohort, k);
+      dollars[k] = dollarsReached(proposalCohort, k);
     });
-    return { counts, stepConversions };
+    return { counts, dollars, stepConversions };
   };
 
   const currentBucket = bucketFor(now);
@@ -209,6 +234,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     label: 'Current (TTM)',
     endsAt: now,
     counts: currentBucket.counts,
+    dollars: currentBucket.dollars,
     stepConversions: currentBucket.stepConversions,
   };
   const quarters: QuarterlyFunnelBucket[] = quarterAnchors.map(a => {
@@ -217,6 +243,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       label: a.label,
       endsAt: a.endsAt,
       counts: bucket.counts,
+      dollars: bucket.dollars,
       stepConversions: bucket.stepConversions,
     };
   });
