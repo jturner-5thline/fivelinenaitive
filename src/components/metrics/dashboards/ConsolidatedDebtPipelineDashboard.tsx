@@ -1252,7 +1252,7 @@ export function ConsolidatedDebtPipelineDashboard({
             // reuses the exact same grid so each tile lines up with a Sales
             // column instead of stretching to fill a wider 4-col layout.
             const gridClass =
-              section.id === 'sales' || section.id === 'averages'
+              section.id === 'sales' || section.id === 'averages' || section.id === 'pipeline-conversion'
                 ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2'
                 : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2';
             return (
