@@ -1566,9 +1566,7 @@ export function ConsolidatedDebtPipelineDashboard({
             )}
           </div>
           {(() => {
-            const rows = section.id === 'sales'
-              ? [section.cards.slice(0, 6), section.cards.slice(6, 12)]
-              : [section.cards];
+            const rows = [section.cards];
             // Sales KPI grid is the canonical tile-sizing template. Averages
             // reuses the exact same grid so each tile lines up with a Sales
             // column instead of stretching to fill a wider 4-col layout.
@@ -1595,6 +1593,18 @@ export function ConsolidatedDebtPipelineDashboard({
                           conversionBreakdown: card.conversionBreakdown,
                           conversionCardId: card.conversionBreakdown ? card.id : undefined,
                         })}
+                        onSecondaryClick={card.secondary ? () => {
+                          const s = card.secondary!;
+                          setDrilldown({
+                            title: s.drilldownTitle,
+                            deals: s.deals,
+                            periodNote: s.drilldownPeriodNote,
+                            metricType: s.drilldownMetricType ?? 'dollars',
+                            valueFormatter: s.drilldownValueFormatter
+                              ?? (s.drilldownMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency),
+                            chartColor: s.drilldownChartColor ?? s.color ?? card.color,
+                          });
+                        } : undefined}
                       />
                     ))}
                   </div>
