@@ -80,6 +80,21 @@ interface MetricCardConfig {
   /** Short label for the denominator stage that anchors this card's
    *  passthrough filter (e.g. "Submitted to Lenders"). */
   signedAnchorLabel?: string;
+  /** Optional secondary value displayed beneath the primary value
+   *  (e.g. a dollar total under a deal count). Clicking it opens its own
+   *  drilldown so users can inspect the count and dollar views separately. */
+  secondary?: {
+    label?: string;
+    value: string | number;
+    isLoading: boolean;
+    deals: StageEntryDeal[];
+    color?: string;
+    drilldownTitle: string;
+    drilldownPeriodNote?: string;
+    drilldownMetricType?: 'count' | 'dollars' | 'average' | 'none';
+    drilldownValueFormatter?: (value: number) => string;
+    drilldownChartColor?: string;
+  };
 }
 
 interface ConversionBreakdown {
@@ -96,9 +111,11 @@ interface ConversionBreakdown {
 function MetricKPICard({
   config,
   onClick,
+  onSecondaryClick,
 }: {
   config: MetricCardConfig;
   onClick: () => void;
+  onSecondaryClick?: () => void;
 }) {
   const Icon = config.icon;
   return (
@@ -136,6 +153,22 @@ function MetricKPICard({
               </button>
             )}
           </div>
+          {config.secondary && (
+            <div className="mt-0.5">
+              {config.secondary.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <button
+                  type="button"
+                  onClick={onSecondaryClick}
+                  className="drilldown-value text-sm font-semibold font-mono tabular-nums text-muted-foreground hover:text-foreground transition-colors"
+                  style={config.secondary.color ? { color: config.secondary.color } : undefined}
+                >
+                  {config.secondary.value}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
