@@ -141,8 +141,8 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
   // Pre-index: for each deal, which stages did it EVER enter (lifetime), plus
   // every stage-entry timestamp by stage (a deal can re-enter a stage).
   const dealEverReached: Map<string, Set<FunnelStageKey>> = new Map();
-  const dealStageEntries: Map<FunnelStageKey, Map<string, Date[]>> = new Map(
-    FUNNEL_STAGE_ORDER.map(s => [s.key, new Map<string, Date[]>()]),
+  const dealStageEntries: Map<FunnelStageKey, Map<string, Date[]>> = new Map<FunnelStageKey, Map<string, Date[]>>(
+    FUNNEL_STAGE_ORDER.map(s => [s.key, new Map<string, Date[]>()] as const),
   );
   for (const row of q.data ?? []) {
     if (row.deals?.pipeline_id !== ACTIVE_PIPELINE_ID || isExcludedDealName(row.deals?.company ?? null)) continue;
