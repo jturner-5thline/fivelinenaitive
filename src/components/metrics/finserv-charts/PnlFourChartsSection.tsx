@@ -565,19 +565,21 @@ function PnlFourChartsSectionInner({
         </div>
       )}
 
-      <TotalRevenueCard
-        periodBadge={periodBadge}
-        totalRev={totalRev}
-        onBarClick={(d) => openPnl('revenue', 'Total Revenue', d)}
-      />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TotalRevenueCard
+          periodBadge={periodBadge}
+          totalRev={totalRev}
+          onBarClick={(d) => openPnl('revenue', 'Total Revenue', d)}
+        />
         <GrossProfitToggleCard
           periodBadge={periodBadge}
           totalRev={totalRev}
           profits={profits}
           onBarClick={(d, mode) => openPnl(mode === '$' ? 'gross_profit' : 'gross_margin', mode === '$' ? 'Gross Profit' : 'Gross Margin %', d)}
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <OperatingProfitToggleCard
           periodBadge={periodBadge}
           totalRev={totalRev}
