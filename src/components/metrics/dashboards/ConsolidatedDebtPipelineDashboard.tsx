@@ -903,6 +903,7 @@ export function ConsolidatedDebtPipelineDashboard({
     metricType?: 'count' | 'dollars' | 'average' | 'none';
     valueFormatter?: (v: number) => string;
     chartColor?: string;
+    conversionBreakdown?: ConversionBreakdown;
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
 
