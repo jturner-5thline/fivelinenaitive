@@ -77,6 +77,9 @@ interface MetricCardConfig {
   drilldownChartColor?: string;
   /** Optional numerator/denominator breakdown for conversion-rate widgets. */
   conversionBreakdown?: ConversionBreakdown;
+  /** Short label for the denominator stage that anchors this card's
+   *  passthrough filter (e.g. "Submitted to Lenders"). */
+  signedAnchorLabel?: string;
 }
 
 interface ConversionBreakdown {
