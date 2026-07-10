@@ -1198,6 +1198,16 @@ export default function DealDetail() {
   const [isAddLenderSlideOverOpen, setIsAddLenderSlideOverOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
+
+  // Projects deals only expose Deal Info + Data Room. If the persisted/URL
+  // tab is anything else, snap back to Deal Info so the modal never renders
+  // an empty pane after a hidden tab is auto-selected.
+  useEffect(() => {
+    if (!isProjectsDeal) return;
+    if (dealInfoTab !== 'deal-info' && dealInfoTab !== 'data-room') {
+      setDealInfoTab('deal-info');
+    }
+  }, [isProjectsDeal, dealInfoTab]);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   
