@@ -1,19 +1,13 @@
 import { forwardRef, ReactNode } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { GripVertical, Pencil, Trash2, CalendarRange } from 'lucide-react';
+import { GripVertical, Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface GridWidgetCardProps {
   isEditMode: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
-  /** Show the "monthly breakdown" toggle. Only render when meaningful (stat widget + quarterly view). */
-  monthlyBreakdownToggle?: {
-    enabled: boolean;
-    supported: boolean;
-    onToggle: () => void;
-  };
   children: ReactNode;
   className?: string;
   style?: React.CSSProperties;
@@ -24,7 +18,7 @@ interface GridWidgetCardProps {
  * The title area has `.widget-drag-handle` for dragging.
  */
 export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
-  ({ isEditMode, onEdit, onDelete, monthlyBreakdownToggle, children, className, style, ...rest }, ref) => {
+  ({ isEditMode, onEdit, onDelete, children, className, style, ...rest }, ref) => {
     return (
       <div
         ref={ref}
@@ -50,30 +44,6 @@ export const GridWidgetCard = forwardRef<HTMLDivElement, GridWidgetCardProps>(
 
           {/* Edit/Delete buttons */}
           <div className="absolute top-1.5 right-1.5 z-20 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {monthlyBreakdownToggle && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  'h-6 w-6',
-                  monthlyBreakdownToggle.enabled
-                    ? 'text-primary hover:text-primary'
-                    : 'text-muted-foreground',
-                  !monthlyBreakdownToggle.supported && 'opacity-50'
-                )}
-                title={
-                  !monthlyBreakdownToggle.supported
-                    ? 'Monthly breakdown not available for this metric'
-                    : monthlyBreakdownToggle.enabled
-                      ? 'Hide monthly breakdown'
-                      : 'Show monthly breakdown (Apr / May / Jun)'
-                }
-                disabled={!monthlyBreakdownToggle.supported}
-                onClick={(e) => { e.stopPropagation(); monthlyBreakdownToggle.onToggle(); }}
-              >
-                <CalendarRange className="h-3 w-3" />
-              </Button>
-            )}
             {onEdit && (
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                 <Pencil className="h-3 w-3" />

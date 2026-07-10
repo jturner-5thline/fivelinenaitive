@@ -84,8 +84,6 @@ import {
 import { useMetricsData } from "@/hooks/useMetricsData";
 import { useMetricsWidgets, MetricWidgetConfig, MetricWidgetSize, MetricChartType } from "@/contexts/MetricsWidgetsContext";
 import { SortableMetricWidget, StatWidgetContent, ChartWidgetContent } from "@/components/metrics/SortableMetricWidget";
-import { StatMonthlyBreakdown } from "@/components/insights/StatMonthlyBreakdown";
-import { isMonthlyBreakdownSupported } from "@/lib/insights/monthlyStatResolvers";
 import { FinServPerHourStat } from "@/components/insights/FinServPerHourStat";
 import {
   FinServActiveClientCountStat,
@@ -2737,9 +2735,6 @@ function MetricsInner() {
                           return null;
                         }
                         const isStat = getWidgetDisplayType(widget) === 'stat';
-                        const isQuarterView = reportingPeriod?.view === 'quarter';
-                        const supportsMonthly = isStat && isMonthlyBreakdownSupported(widget.dataSource);
-                        const showBreakdown = !!widget.showMonthlyBreakdown && isQuarterView && supportsMonthly;
                         return (
                           <div key={widget.id}>
                             <GridWidgetCard
@@ -2749,34 +2744,11 @@ function MetricsInner() {
                                 setWidgetToDelete(widget.id);
                                 setDeleteConfirmOpen(true);
                               }}
-                              monthlyBreakdownToggle={
-                                isStat && isQuarterView
-                                  ? {
-                                      enabled: !!widget.showMonthlyBreakdown,
-                                      supported: supportsMonthly,
-                                      onToggle: () =>
-                                        updateWidget(widget.id, {
-                                          showMonthlyBreakdown: !widget.showMonthlyBreakdown,
-                                        }),
-                                    }
-                                  : undefined
-                              }
                             >
-                              {showBreakdown && reportingPeriod ? (
-                                <StatMonthlyBreakdown
-                                  widget={widget}
-                                  quarter={{
-                                    start: reportingPeriod.start,
-                                    end: reportingPeriod.end,
-                                    label: reportingPeriod.label,
-                                  }}
-                                  rawData={{ rawDeals, rawInvoices, rawPayments, rawExpenses }}
-                                />
-                              ) : isStat ? (
-                                renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                              ) : (
-                                renderChartContent(widget, metrics, qbMetrics, hsMetrics)
-                              )}
+                              {isStat
+                                ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                                : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                              }
                             </GridWidgetCard>
                           </div>
                         );
@@ -2842,9 +2814,6 @@ function MetricsInner() {
                       .filter(w => activeCustomDashboard.widgetIds.includes(w.id))
                       .map((widget) => {
                         const isStat = getWidgetDisplayType(widget) === 'stat';
-                        const isQuarterView = reportingPeriod?.view === 'quarter';
-                        const supportsMonthly = isStat && isMonthlyBreakdownSupported(widget.dataSource);
-                        const showBreakdown = !!widget.showMonthlyBreakdown && isQuarterView && supportsMonthly;
                         return (
                           <GridWidgetCard
                             key={widget.id}
@@ -2854,34 +2823,11 @@ function MetricsInner() {
                               setWidgetToDelete(widget.id);
                               setDeleteConfirmOpen(true);
                             }}
-                            monthlyBreakdownToggle={
-                              isStat && isQuarterView
-                                ? {
-                                    enabled: !!widget.showMonthlyBreakdown,
-                                    supported: supportsMonthly,
-                                    onToggle: () =>
-                                      updateWidget(widget.id, {
-                                        showMonthlyBreakdown: !widget.showMonthlyBreakdown,
-                                      }),
-                                  }
-                                : undefined
-                            }
                           >
-                            {showBreakdown && reportingPeriod ? (
-                              <StatMonthlyBreakdown
-                                widget={widget}
-                                quarter={{
-                                  start: reportingPeriod.start,
-                                  end: reportingPeriod.end,
-                                  label: reportingPeriod.label,
-                                }}
-                                rawData={{ rawDeals, rawInvoices, rawPayments, rawExpenses }}
-                              />
-                            ) : isStat ? (
-                              renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
-                            ) : (
-                              renderChartContent(widget, metrics, qbMetrics, hsMetrics)
-                            )}
+                            {isStat
+                              ? renderStatContent(widget, metrics, qbMetrics, hsMetrics, customMetricDefs, widgets, { rawDeals, rawInvoices, rawPayments, rawExpenses })
+                              : renderChartContent(widget, metrics, qbMetrics, hsMetrics)
+                            }
                           </GridWidgetCard>
                         );
                       })}
