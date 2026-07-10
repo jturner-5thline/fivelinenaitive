@@ -125,7 +125,8 @@ export function QuarterlyConversionFunnelChart({
       style={{
         background:
           'linear-gradient(180deg, hsl(224, 45%, 10%) 0%, hsl(226, 55%, 6%) 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.04)',
       }}
     >
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
