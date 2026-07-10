@@ -15,6 +15,16 @@ import { toast } from 'sonner';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { useQueryClient } from '@tanstack/react-query';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
+
+function findNdaStageId(stages: Array<{ id: string; label: string }>): string {
+  const match = stages.find((s) => {
+    const n = (s.label || '').toLowerCase().replace(/[^a-z]/g, '');
+    return n.includes('nda') && n.includes('needslist');
+  });
+  return match?.id || '';
+}
 
 interface Props {
   item: QueuedAiAction;
@@ -25,6 +35,10 @@ export function CreateDealApprovalCard({ item }: Props) {
   const source = (item.source ?? {}) as Record<string, any>;
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
+  const { activePipeline } = usePipelineContext();
+  const { stages: globalStages } = useDealStages();
+  const stageList = (activePipeline?.stages?.length ? activePipeline.stages : globalStages) as Array<{ id: string; label: string }>;
+  const defaultNdaStageId = findNdaStageId(stageList);
 
   const rows: Array<{ label: string; value: string }> = [
     { label: 'Company / Deal name', value: payload.dealName || source.company_name || '—' },
@@ -46,6 +60,7 @@ export function CreateDealApprovalCard({ item }: Props) {
     referralName: payload.referralName || '',
     referralEmail: payload.referralEmail || '',
     dealClass: (payload.dealClass || 'standard') as 'standard' | 'naitive' | 'finserv',
+    dealStage: payload.dealStage || defaultNdaStageId || '',
   };
 
   async function markApproved(newDealId: string) {
