@@ -206,6 +206,38 @@ Deno.serve(async (req) => {
             }
           }
 
+          // Fallback: also scan claap_recordings (the local mirror). Match by
+          // title OR by started_at proximity (±30 min) to the calendar event.
+          if (!claap) {
+            const { data: recs } = await admin
+              .from("claap_recordings")
+              .select("id, external_id, title, summary, action_items, key_takeaways, synthesized_note, started_at, ended_at")
+              .gte("started_at", winStart)
+              .lte("started_at", winEnd)
+              .limit(50);
+            for (const r of recs || []) {
+              const cn = normalizeTitleForMatch(r.title || "");
+              const startClose = r.started_at
+                ? Math.abs(new Date(r.started_at).getTime() - startMs) <= 30 * 60_000
+                : false;
+              if (
+                (cn && (cn === evNorm || cn.includes(companyNorm) || evNorm.includes(cn))) ||
+                startClose
+              ) {
+                claap = {
+                  id: r.id,
+                  claap_id: r.external_id,
+                  title: r.title,
+                  transcript: "",
+                  ai_summary: r.summary || r.synthesized_note || "",
+                  key_decisions: Array.isArray(r.key_takeaways) ? r.key_takeaways : [],
+                  next_steps: Array.isArray(r.action_items) ? r.action_items : [],
+                };
+                break;
+              }
+            }
+          }
+
           // Draft the create-deal fields via Lovable AI when a transcript
           // is available; otherwise fall back to bare defaults.
           const drafted = await draftDealFields({
