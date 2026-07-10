@@ -117,7 +117,6 @@ function MetricKPICard({
   onClick: () => void;
   onSecondaryClick?: () => void;
 }) {
-  const Icon = config.icon;
   return (
     <Card
       className={cn(
@@ -132,12 +131,6 @@ function MetricKPICard({
         style={{ background: `linear-gradient(90deg, ${config.color}, transparent)` }}
       />
       <CardContent className="flex items-center gap-2 py-4 px-2">
-        <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/20"
-          style={{ background: `linear-gradient(135deg, ${config.color}20, transparent)` }}
-        >
-          <Icon className="h-3.5 w-3.5" style={{ color: config.color }} />
-        </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground font-medium truncate">{config.title}</p>
           <div className="flex items-baseline gap-1.5 mt-0.5">
