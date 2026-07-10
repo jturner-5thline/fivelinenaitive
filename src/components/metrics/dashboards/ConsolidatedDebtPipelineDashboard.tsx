@@ -515,9 +515,6 @@ function DrilldownModalInner({
                   {conversionBreakdown.percentText}
                 </div>
               </div>
-              <Badge variant="secondary" className="text-xs font-mono">
-                {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
-              </Badge>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <Badge variant="outline" className="text-xs">
