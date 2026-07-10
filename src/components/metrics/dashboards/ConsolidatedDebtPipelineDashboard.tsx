@@ -1478,15 +1478,7 @@ export function ConsolidatedDebtPipelineDashboard({
               <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
             </div>
             {section.id === 'pipeline-conversion' && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none rounded-md border border-border/40 bg-muted/40 px-2.5 py-1.5">
-                <input
-                  type="checkbox"
-                  checked={enforceSignedFirst}
-                  onChange={(e) => setEnforceSignedFirst(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                <span>Only count deals that entered Final Credit Items in the last 12 months</span>
-              </label>
+              <SignedModeToggle value={signedMode} onChange={setSignedMode} />
             )}
           </div>
           {(() => {
