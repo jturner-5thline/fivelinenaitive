@@ -1241,7 +1241,7 @@ export function ConsolidatedDebtPipelineDashboard({
     {
       id: 'sales',
       title: 'Sales',
-      description: 'Top-line KPIs for the Active Pipeline',
+      description: '',
       cards: [
         {
           id: 'deals-on-board',
@@ -1361,8 +1361,8 @@ export function ConsolidatedDebtPipelineDashboard({
     },
     {
       id: 'averages',
-      title: 'Averages',
-      description: 'Supporting averages — deal size and revenue per deal across the pipeline',
+      title: '',
+      description: '',
       cards: [
         {
           id: 'average-deal-on-board',
@@ -1599,14 +1599,20 @@ export function ConsolidatedDebtPipelineDashboard({
       ) : (
         sections.map(section => (
         <div key={section.id} className="space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                {section.title}
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+          {(section.title || section.description) && (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                {section.title && (
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                    {section.title}
+                  </h3>
+                )}
+                {section.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{section.description}</p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           {(() => {
             const rows = [section.cards];
             // Sales KPI grid is the canonical tile-sizing template. Averages
