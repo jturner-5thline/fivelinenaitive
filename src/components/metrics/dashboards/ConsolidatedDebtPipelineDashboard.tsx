@@ -519,6 +519,17 @@ function DrilldownModalInner({
                 {conversionBreakdown.numeratorCount} ÷ {conversionBreakdown.denominatorCount}
               </Badge>
             </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Badge variant="outline" className="text-xs">
+                {deals.length} deal{deals.length !== 1 ? 's' : ''}
+              </Badge>
+              <Badge variant="secondary" className="text-xs font-mono">
+                {formatCurrencyFull(total)}
+              </Badge>
+            </div>
+            <div className="rounded-md bg-background/60 border border-border/30 p-3 text-xs font-mono leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              {conversionBreakdown.formula}
+            </div>
             {onSignedModeChange && (
               <div className="rounded-md border border-border/40 bg-background/60 p-3 space-y-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -539,7 +550,8 @@ function DrilldownModalInner({
           </div>
         )}
 
-      <div className="flex items-center gap-3 flex-wrap">
+      {!conversionBreakdown && (
+        <div className="flex items-center gap-3 flex-wrap">
           <Badge variant="outline" className="text-xs">
             {deals.length} deal{deals.length !== 1 ? 's' : ''}
           </Badge>
@@ -552,6 +564,7 @@ function DrilldownModalInner({
               : (periodNote ?? 'Filtered by selected period')}
           </span>
         </div>
+      )}
 
         {showChart && (
           <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
