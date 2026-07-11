@@ -565,15 +565,6 @@ export function VelocityDrilldownDialog({
                   tickFormatter={(v: number) => `${v}${UNIT_SUFFIX[unit]}`}
                   width={48}
                 />
-                <YAxis
-                  yAxisId="deals"
-                  orientation="right"
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                  allowDecimals={false}
-                />
                 <Tooltip
                   cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
                   contentStyle={{
