@@ -83,6 +83,31 @@ export function CreateDealApprovalCard({ item }: Props) {
           console.warn('[CreateDealApprovalCard] backdate to call date failed', e?.message);
         }
       }
+      // Auto-create a follow-up task for the deal manager so a new deal
+      // never sits without a next action. Non-fatal on failure.
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        const { data: deal } = await supabase
+          .from('deals')
+          .select('company, manager, company_id')
+          .eq('id', newDealId)
+          .maybeSingle();
+        const dealName = (deal?.company as string | null) || payload.dealName || source.company_name || 'New Deal';
+        const assignee = (deal?.manager as string | null) || userId || null;
+        if (assignee && userId) {
+          await supabase.from('tasks').insert({
+            title: `Follow Up on ${dealName} - Needs Items`,
+            assigned_to: assignee,
+            assigned_by: userId,
+            deal_id: newDealId,
+            company_id: (deal?.company_id as string | null) ?? null,
+            status: 'not_started',
+          } as never);
+        }
+      } catch (e: any) {
+        console.warn('[CreateDealApprovalCard] auto follow-up task failed', e?.message);
+      }
       await supabase
         .from('ai_action_queue')
         .update({
