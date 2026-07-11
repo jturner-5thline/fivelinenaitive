@@ -1816,6 +1816,20 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
           drilldownMetricType: 'none',
         },
+        {
+          id: 'revenue-per-deal-hour',
+          title: 'Revenue per Deal Hour',
+          icon: Sigma,
+          value: m.revenuePerDealHour.value == null
+            ? 'N/A'
+            : `$${Math.round(m.revenuePerDealHour.value).toLocaleString()}/hr`,
+          isLoading: m.revenuePerDealHour.isLoading,
+          deals: m.revenuePerDealHour.deals,
+          color: 'hsl(var(--chart-4))',
+          drilldownTitle: 'Revenue per Deal Hour',
+          drilldownPeriodNote: 'Trailing 12 months 5th Line Capital Advisors revenue ÷ hours logged on Active Pipeline + In Development deals',
+          drilldownMetricType: 'none',
+        },
       ],
     },
     {

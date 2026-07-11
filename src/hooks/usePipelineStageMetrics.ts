@@ -710,6 +710,71 @@ function useRevenuePerDealMetric(
 }
 
 /**
+ * Total hours logged (via weekly_time_entries) across all deals whose
+ * `pipeline_id` falls in the supplied set, restricted to the given period.
+ * Used for "Revenue per Deal Hour" on the Consolidated Debt board.
+ */
+function useDealHoursInPeriod(
+  pipelineIds: string[],
+  period: QuarterOption,
+): { total: number; isLoading: boolean } {
+  const { user } = useAuth();
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['deal-hours-in-period', pipelineIds.slice().sort().join(','), period.value],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('weekly_time_entries')
+        .select('hours, deal_id, week_start_date')
+        .gte('week_start_date', period.startDate)
+        .lte('week_start_date', period.endDate);
+      if (error) throw error;
+
+      const dealIds = Array.from(
+        new Set((rows ?? []).map((r: { deal_id: string | null }) => r.deal_id).filter(Boolean) as string[]),
+      );
+      if (dealIds.length === 0) return 0;
+
+      // Filter to deals whose pipeline_id is in the requested set.
+      const { data: deals, error: dealsErr } = await supabase
+        .from('deals')
+        .select('id, pipeline_id, company')
+        .in('id', dealIds);
+      if (dealsErr) throw dealsErr;
+
+      const eligible = new Set(
+        (deals ?? [])
+          .filter(d => d.pipeline_id && pipelineIds.includes(d.pipeline_id))
+          .filter(d => !isExcludedDealName(d.company ?? ''))
+          .map(d => d.id),
+      );
+      return (rows ?? []).reduce(
+        (sum, r: { deal_id: string | null; hours: number | string | null }) =>
+          r.deal_id && eligible.has(r.deal_id) ? sum + (Number(r.hours) || 0) : sum,
+        0,
+      );
+    },
+    enabled: !!user && !!period.startDate && !!period.endDate && pipelineIds.length > 0,
+    staleTime: 30_000,
+  });
+
+  return { total: data ?? 0, isLoading: isLoading || isFetching };
+}
+
+function useRevenuePerHourMetric(
+  revenueTotal: RevenuePeriodTotalResult,
+  hours: { total: number; isLoading: boolean },
+): AverageMetricResult {
+  return useMemo(() => ({
+    value: hours.total > 0 ? revenueTotal.total / hours.total : null,
+    numerator: revenueTotal.total,
+    denominator: hours.total,
+    deals: [],
+    isLoading: revenueTotal.isLoading || hours.isLoading,
+  }), [revenueTotal.total, revenueTotal.isLoading, hours.total, hours.isLoading]);
+}
+
+/**
  * Returns deals that entered a specific stage within a quarter,
  * using activity_logs (stage_change) as the source of truth.
  * Deduplication: only the FIRST entry into the target stage per deal is counted.
@@ -1069,6 +1134,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   averageDealClosed: AverageMetricResult;
   averageRevenuePerDealSigned: AverageMetricResult;
   averageRevenuePerDealClosed: AverageMetricResult;
+  revenuePerDealHour: AverageMetricResult;
   // Trailing-12-month stage-entry counts, anchored on today. Used by the
   // Pipeline Conversion widgets on the Consolidated Debt dashboard.
   ttmCounts: {
@@ -1162,6 +1228,11 @@ export function useConsolidatedDebtPipelineMetrics(
   const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
+  const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+  const dealHoursRolling12 = useDealHoursInPeriod(
+    [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
+    twelveMonthPeriod,
+  );
 
   // Lifetime deal_ids per conversion-relevant stage on the Active Pipeline —
   // used by the denominator-anchored conversion toggle so each card filters
@@ -1234,6 +1305,7 @@ export function useConsolidatedDebtPipelineMetrics(
     averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
     averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
+    revenuePerDealHour: useRevenuePerHourMetric(debtRevenueRolling12, dealHoursRolling12),
     ttmCounts: {
       proposalIssued: proposalIssuedRolling12,
       finalCreditItems: finalCreditItemsRolling12,
