@@ -537,6 +537,23 @@ export function VelocityDrilldownDialog({
           {isLoading ? (
             <Skeleton className="h-full w-full" />
           ) : (
+            <>
+              <div className="flex items-center justify-end gap-4 mb-1 text-[10px] text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-2 w-4 rounded-sm"
+                    style={{ background: 'hsl(var(--muted-foreground))', opacity: 0.25 }}
+                  />
+                  <span>Deals closed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block h-[2px] w-4 rounded"
+                    style={{ background: tile.color }}
+                  />
+                  <span>Avg time ({unit})</span>
+                </div>
+              </div>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={monthly} margin={{ top: 12, right: 12, left: 0, bottom: 24 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
@@ -623,6 +640,7 @@ export function VelocityDrilldownDialog({
                 />
               </ComposedChart>
             </ResponsiveContainer>
+            </>
           )}
         </div>
 
