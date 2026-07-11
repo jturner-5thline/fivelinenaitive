@@ -50,6 +50,16 @@ export interface QuarterlyFunnelBucket {
     fromDollars: number;
     toDollars: number;
   }>>;
+  /** Denominator-anchored conversion counts for every (from → to) stage pair.
+   *  Matches the Pipeline Conversion widget semantics: cohort = deals that
+   *  entered `from` within this bucket's TTM window; numerator = cohort deals
+   *  that EVER reached `to`. */
+  allConversions: Partial<Record<FunnelStepKey, {
+    fromCount: number;
+    toCount: number;
+    fromDollars: number;
+    toDollars: number;
+  }>>;
 }
 
 export interface QuarterlyTtmFunnelResult {
@@ -168,7 +178,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     entriesByDeal?.set(row.deal_id, arr);
   }
 
-  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'dollars' | 'stepConversions'> => {
+  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'dollars' | 'stepConversions' | 'allConversions'> => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
 
@@ -214,6 +224,27 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       };
     }
 
+    // All (from → to) pairs — used by Pipeline Conversion widgets for
+    // period-over-period comparisons on non-consecutive stage pairs
+    // (e.g. "Terms Signed to Closed", "Submission to Closed").
+    const allConversions: QuarterlyFunnelBucket['allConversions'] = {};
+    for (let i = 0; i < FUNNEL_STAGE_ORDER.length; i++) {
+      const from = FUNNEL_STAGE_ORDER[i].key;
+      const fromCohort = cohortFor(from);
+      const fromDollars = sumDollars(fromCohort);
+      for (let j = 0; j < FUNNEL_STAGE_ORDER.length; j++) {
+        if (i === j) continue;
+        const to = FUNNEL_STAGE_ORDER[j].key;
+        const toReachedIds = fromCohort.filter(id => dealEverReached.get(id)?.has(to));
+        allConversions[`${from}__${to}` as FunnelStepKey] = {
+          fromCount: fromCohort.length,
+          toCount: toReachedIds.length,
+          fromDollars,
+          toDollars: sumDollars(toReachedIds),
+        };
+      }
+    }
+
     const counts = emptyCounts();
     const dollars = emptyDollars();
     counts.proposalIssued = proposalCohort.length;
@@ -225,7 +256,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       counts[k] = countReached(proposalCohort, k);
       dollars[k] = dollarsReached(proposalCohort, k);
     });
-    return { counts, dollars, stepConversions };
+    return { counts, dollars, stepConversions, allConversions };
   };
 
   const currentBucket = bucketFor(now);
@@ -236,6 +267,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     counts: currentBucket.counts,
     dollars: currentBucket.dollars,
     stepConversions: currentBucket.stepConversions,
+    allConversions: currentBucket.allConversions,
   };
   const quarters: QuarterlyFunnelBucket[] = quarterAnchors.map(a => {
     const bucket = bucketFor(a.endsAt);
@@ -245,6 +277,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
       counts: bucket.counts,
       dollars: bucket.dollars,
       stepConversions: bucket.stepConversions,
+      allConversions: bucket.allConversions,
     };
   });
 

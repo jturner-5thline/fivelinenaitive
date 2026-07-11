@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
+import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
@@ -83,6 +84,17 @@ interface MetricCardConfig {
   /** Short label for the denominator stage that anchors this card's
    *  passthrough filter (e.g. "Submitted to Lenders"). */
   signedAnchorLabel?: string;
+  /** Period-over-period conversion change (latest completed quarter vs prior). */
+  changePct?: {
+    /** Percentage-point delta, negative = worsened, positive = improved. */
+    delta: number;
+    /** Latest quarter conversion pct (0-100). */
+    latestPct: number;
+    /** Previous quarter conversion pct (0-100). */
+    prevPct: number;
+    latestLabel: string;
+    prevLabel: string;
+  };
   /** Optional secondary value displayed beneath the primary value
    *  (e.g. a dollar total under a deal count). Clicking it opens its own
    *  drilldown so users can inspect the count and dollar views separately. */
@@ -136,7 +148,7 @@ function MetricKPICard({
       <CardContent className="flex items-center gap-2 py-4 px-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground font-medium truncate">{config.title}</p>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
             {config.isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
@@ -148,6 +160,29 @@ function MetricKPICard({
                 {config.value}
               </button>
             )}
+            {!config.isLoading && config.changePct && (() => {
+              const { delta, latestLabel, prevLabel } = config.changePct;
+              const neutral = Math.abs(delta) < 0.05;
+              const improved = delta > 0; // higher conversion pct = better
+              return neutral ? (
+                <span
+                  className="text-[15px] text-muted-foreground font-mono tabular-nums"
+                  title={`${latestLabel} vs ${prevLabel}`}
+                >
+                  No change
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    'text-[15px] font-medium font-mono tabular-nums',
+                    improved ? 'text-emerald-400' : 'text-rose-400',
+                  )}
+                  title={`${latestLabel} vs ${prevLabel}`}
+                >
+                  {improved ? '▲' : '▼'} {improved ? '+' : '−'}{Math.abs(delta).toFixed(1)}pp
+                </span>
+              );
+            })()}
           </div>
           {config.secondary && (
             <div className="mt-1 pt-1 border-t border-border/40">
@@ -1252,6 +1287,7 @@ export function ConsolidatedDebtPipelineDashboard({
   selectedQuarter?: QuarterOption;
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
+  const quarterlyFunnel = useQuarterlyTtmFunnel();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
@@ -1652,6 +1688,29 @@ export function ConsolidatedDebtPipelineDashboard({
           const value = conversionMode === 'dollars'
             ? pctText(num.dollarVolume, denDollars)
             : pctText(num.count, den.count);
+          // Period-over-period conversion change: latest completed quarter vs prior.
+          const latestQ = quarterlyFunnel.quarters[0];
+          const prevQ = quarterlyFunnel.quarters[1];
+          const stepKey = `${d.denKey}__${d.numKey}` as const;
+          const pctFor = (q: typeof latestQ | undefined) => {
+            if (!q) return null;
+            const s = q.allConversions[stepKey];
+            if (!s) return null;
+            const from = conversionMode === 'dollars' ? s.fromDollars : s.fromCount;
+            const to = conversionMode === 'dollars' ? s.toDollars : s.toCount;
+            return from > 0 ? (to / from) * 100 : null;
+          };
+          const latestPct = pctFor(latestQ);
+          const prevPct = pctFor(prevQ);
+          const changePct = !quarterlyFunnel.isLoading && latestPct != null && prevPct != null && latestQ && prevQ
+            ? {
+                delta: latestPct - prevPct,
+                latestPct,
+                prevPct,
+                latestLabel: latestQ.label,
+                prevLabel: prevQ.label,
+              }
+            : undefined;
           const formula = conversionMode === 'dollars'
             ? `($ of deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
               `($ of deals that entered ${denLabel} in the last 12 months) = ` +
@@ -1685,6 +1744,7 @@ export function ConsolidatedDebtPipelineDashboard({
               percentText: value,
             },
             signedAnchorLabel: denShort,
+            changePct,
           };
         });
       })(),
