@@ -390,13 +390,13 @@ function UtilizationActualsDialog({
                     {PEOPLE.map((p) => (
                       <td key={p.slug} className="px-1 py-1 border-l border-border">
                         <Input
-                          type="number" inputMode="decimal" step="any"
+                          type="text" inputMode="decimal"
                           placeholder="%"
                           value={values[cellKey(`util_pct_${p.slug}`, mk)] ?? ''}
                           onChange={(e) => setValues((v) => ({
                             ...v, [cellKey(`util_pct_${p.slug}`, mk)]: e.target.value,
                           }))}
-                          className="h-7 text-right tabular-nums text-xs w-24"
+                          className="h-7 text-right tabular-nums text-xs w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </td>
                     ))}
@@ -523,11 +523,11 @@ function UtilizationGoalsDialog({
                   <div className="flex items-center gap-1">
                     <Input
                       id={metric}
-                      type="number" inputMode="decimal" step="any"
+                      type="text" inputMode="decimal"
                       placeholder="e.g. 75"
                       value={values[metric] ?? ''}
                       onChange={(e) => setValues((v) => ({ ...v, [metric]: e.target.value }))}
-                      className="h-8 text-right tabular-nums w-28"
+                      className="h-8 text-right tabular-nums w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <span className="text-sm text-muted-foreground">%</span>
                   </div>
