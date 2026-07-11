@@ -2730,6 +2730,15 @@ export function ConsolidatedDebtPipelineDashboard({
         open={revPerHourOpen}
         onClose={() => setRevPerHourOpen(false)}
       />
+      <NaitiveDealOverlay
+        deal={openDealId ? ({ id: openDealId, company: 'Deal' } as unknown as Deal) : null}
+        orderedDeals={[]}
+        stages={[]}
+        onClose={() => setOpenDealId(null)}
+        onNavigate={(d) => setOpenDealId(d.id)}
+        onStageChange={() => { /* stage changes handled inside embedded deal detail */ }}
+      />
+      </OpenDealContext.Provider>
     </div>
   );
 }
