@@ -12,12 +12,15 @@ import {
   Link as LinkIcon, Image as ImageIcon, Paperclip,
   X, Loader2, FileText, ExternalLink, Check,
 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { UploadCloud } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MessageSquarePlus } from 'lucide-react';
+import type { Editor } from '@tiptap/core';
+import { KpiEmbedNode } from '@/components/insights/narrative/KpiEmbedNode';
 import {
   computeSelectionBubblePosition,
   getSelectionAnchorRect,
@@ -57,6 +60,10 @@ interface Props {
    * render as document prose at rest.
    */
   chromeless?: boolean;
+  /** When set, an "Add KPI" button appears in the toolbar and calls this handler. */
+  onRequestInsertKpi?: () => void;
+  /** Called once the tiptap editor is ready so the parent can insert nodes. */
+  onEditorReady?: (editor: Editor) => void;
 }
 
 const BUCKET = 'insights-attachments';
@@ -137,6 +144,7 @@ export function InsightsNarrativeEditor({
   value, attachments, scopeKey,
   onChange, onAttachmentsChange,
   isSaving, savedAt, readOnly, chromeless,
+  onRequestInsertKpi, onEditorReady,
 }: Props) {
   const { company } = useCompany();
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
@@ -166,6 +174,7 @@ export function InsightsNarrativeEditor({
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
       Image.configure({ inline: false, allowBase64: false, HTMLAttributes: { class: 'insights-narrative-image' } }),
       Placeholder.configure({ placeholder: 'Write the executive summary…' }),
+      KpiEmbedNode,
     ],
     content: initialHTMLRef.current,
     onUpdate: ({ editor: ed }) => {
@@ -190,6 +199,11 @@ export function InsightsNarrativeEditor({
       }, 100);
     },
   });
+
+  // Expose editor upward so the parent can call `insertContent` for KPI embeds.
+  useEffect(() => {
+    if (editor && onEditorReady) onEditorReady(editor);
+  }, [editor, onEditorReady]);
 
   // Sync incoming value updates (e.g. after period switch or hydration).
   //
@@ -482,6 +496,26 @@ export function InsightsNarrativeEditor({
             }}
             onClick={openAttachDialog}
           ><Paperclip size={14} /></TbBtn>
+          {onRequestInsertKpi && (
+            <>
+              {sep}
+              <button
+                type="button"
+                title="Insert widget / KPI"
+                aria-label="Insert widget or KPI"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => onRequestInsertKpi()}
+                className={cn(
+                  'inline-flex items-center gap-1 h-7 px-2 rounded-md transition-colors',
+                  'text-[rgba(220,232,248,0.85)] hover:bg-[rgba(120,170,255,0.16)]',
+                  'text-[11px] font-semibold uppercase tracking-wide',
+                )}
+              >
+                <BarChart3 size={13} />
+                Add KPI
+              </button>
+            </>
+          )}
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11, color: 'rgba(160,200,255,0.55)', paddingRight: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             {uploading ? (<><Loader2 size={11} className="animate-spin" /> Uploading…</>)
