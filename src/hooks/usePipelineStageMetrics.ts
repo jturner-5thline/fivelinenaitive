@@ -1421,3 +1421,98 @@ export function useConsolidatedDebtPipelineMetrics(
     },
   };
 }
+
+/**
+ * Total Revenue Opportunity: sum of `total_fee` across current Active Pipeline
+ * deals whose stage sits anywhere in the Final Credit Items → In Due Diligence
+ * range (inclusive). Excludes closed / on-hold / archived deals and the
+ * globally-excluded demo/test companies.
+ *
+ * Returns a StageMetricResult so it slots into the existing MetricCardConfig
+ * drilldown pipeline. Each returned deal's `value` is the deal's `total_fee`,
+ * so the drilldown bar chart aggregates fees (not deal size).
+ */
+const TOTAL_REVENUE_OPPORTUNITY_STAGES: readonly string[] = [
+  'final-credit-items',
+  'client-strategy-review',
+  'write-up-pending',
+  'submitted-to-lenders',
+  'lenders-in-review',
+  'terms-issued',
+  'in-due-diligence',
+];
+
+const TOTAL_REVENUE_OPPORTUNITY_STAGE_LABELS: Record<string, string> = {
+  'final-credit-items': 'Final Credit Items',
+  'client-strategy-review': 'Client Strategy Review',
+  'write-up-pending': 'Write-Up Pending',
+  'submitted-to-lenders': 'Submitted to Lenders',
+  'lenders-in-review': 'Lenders in Review',
+  'terms-issued': 'Terms Issued',
+  'in-due-diligence': 'In Due Diligence',
+};
+
+export function useTotalRevenueOpportunity(): StageMetricResult {
+  const { user } = useAuth();
+
+  const stageSlugs = TOTAL_REVENUE_OPPORTUNITY_STAGES;
+  const stageLabels = stageSlugs.map(s => TOTAL_REVENUE_OPPORTUNITY_STAGE_LABELS[s]);
+  const stageFilterValues = Array.from(new Set([...stageSlugs, ...stageLabels]));
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['total-revenue-opportunity', ACTIVE_PIPELINE_ID],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('deals')
+        .select('id, company, value, total_fee, success_fee_percent, manager, stage, pipeline_id, created_at, status')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .in('stage', stageFilterValues);
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user,
+  });
+
+  return useMemo(() => {
+    const loading = isLoading || isFetching;
+    if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading };
+
+    const excludedStatuses = new Set(['closed-won', 'closed-lost', 'on-hold', 'archived']);
+
+    const deals: StageEntryDeal[] = data
+      .filter((d: any) => {
+        const status = String(d.status ?? '').toLowerCase();
+        if (excludedStatuses.has(status)) return false;
+        if (isExcludedDealName(d.company)) return false;
+        return true;
+      })
+      .map((d: any) => {
+        const stored = Number(d.total_fee);
+        const totalFee = Number.isFinite(stored) && stored > 0
+          ? stored
+          : (() => {
+              const v = Number(d.value) || 0;
+              const pctRaw = Number(d.success_fee_percent);
+              if (!Number.isFinite(pctRaw) || pctRaw <= 0) return 0;
+              const pct = pctRaw > 1 ? pctRaw / 100 : pctRaw;
+              return v * pct;
+            })();
+        return {
+          deal_id: d.id,
+          company: d.company ?? '—',
+          value: totalFee,
+          manager: d.manager ?? null,
+          current_stage: d.stage,
+          entered_at: d.created_at,
+          pipeline_id: d.pipeline_id ?? '',
+        } as StageEntryDeal;
+      });
+
+    return {
+      count: deals.length,
+      dollarVolume: deals.reduce((s, d) => s + (d.value || 0), 0),
+      deals,
+      isLoading: loading,
+    };
+  }, [data, isLoading, isFetching]);
+}
