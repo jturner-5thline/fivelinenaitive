@@ -331,6 +331,8 @@ export interface ReportState {
   authors: string[];
   kpis: KPI[];
   narrative: string;
+  /** Optional row of KPI-style widgets embedded inside the Narrative section (max 5). */
+  narrativeKpis?: KPI[];
   /** Optional file/image attachments persisted with the narrative section. */
   narrativeAttachments?: NarrativeAttachment[];
   goals: Goal[];
@@ -1091,51 +1093,56 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
   );
 }
 
-function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: ReportSetState; reportLabel: string }) {
-  const updateKPI = (id: string, patch: Partial<KPI>) => set(prev => ({ ...prev, kpis: prev.kpis.map(k => k.id === id ? { ...k, ...patch } : k) }));
-  const removeKPI = (id: string) => set(prev => ({ ...prev, kpis: prev.kpis.filter(k => k.id !== id) }));
-  const addCustomKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
+function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KPIs', subtitleSuffix }: {
+  s: ReportState;
+  set: ReportSetState;
+  reportLabel: string;
+  sliceKey?: 'kpis' | 'narrativeKpis';
+  title?: string;
+  subtitleSuffix?: string;
+}) {
+  const getList = (state: ReportState): KPI[] => ((state[sliceKey] as KPI[] | undefined) ?? []);
+  const setList = (updater: (list: KPI[]) => KPI[]) =>
+    set(prev => ({ ...prev, [sliceKey]: updater(getList(prev)) } as ReportState));
+  const updateKPI = (id: string, patch: Partial<KPI>) => setList(list => list.map(k => k.id === id ? { ...k, ...patch } : k));
+  const removeKPI = (id: string) => setList(list => list.filter(k => k.id !== id));
+  const addCustomKPI = () => setList(list => [...list, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }]);
   /** Insert a KPI seeded from a generic Insights metric (non-template).
    *  Persists the metric source id alongside the KPI so future renderers
    *  can swap in live values without losing the user's selection. */
   const addMetricKPI = (opt: InsightsMetricOption) => {
     const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
-    set(prev => ({
-      ...prev,
-      kpis: [...prev.kpis, {
-        id: uid(),
-        label: opt.label,
-        actual: '0',
-        target: '0',
-        format: fmt,
-        templateConfig: {
-          metricSourceId: opt.metricSourceId ?? null,
-          customMetricId: opt.customMetricId ?? null,
-          sourceArea: opt.source,
-        } as unknown as Record<string, unknown>,
-      }],
-    }));
+    setList(list => [...list, {
+      id: uid(),
+      label: opt.label,
+      actual: '0',
+      target: '0',
+      format: fmt,
+      templateConfig: {
+        metricSourceId: opt.metricSourceId ?? null,
+        customMetricId: opt.customMetricId ?? null,
+        sourceArea: opt.source,
+      } as unknown as Record<string, unknown>,
+    }]);
   };
   const addTemplateKPI = (templateId: KpiTemplateId) => {
     const tpl = getKpiTemplate(templateId);
     if (!tpl) return;
-    set(prev => ({
-      ...prev,
-      kpis: [...prev.kpis, {
-        id: uid(),
-        label: tpl.defaultTitle,
-        actual: '0', target: '0', format: 'number',
-        template: tpl.id,
-        templateConfig: { ...tpl.defaultConfig },
-      }],
-    }));
+    setList(list => [...list, {
+      id: uid(),
+      label: tpl.defaultTitle,
+      actual: '0', target: '0', format: 'number',
+      template: tpl.id,
+      templateConfig: { ...tpl.defaultConfig },
+    }]);
   };
   const [addOpen, setAddOpen] = useState(false);
   const [drillKpi, setDrillKpi] = useState<KpiLike | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const MAX_KPIS = 5;
-  const visibleKpis = s.kpis.slice(0, MAX_KPIS);
-  const canAdd = s.kpis.length < MAX_KPIS;
+  const listAll = getList(s);
+  const visibleKpis = listAll.slice(0, MAX_KPIS);
+  const canAdd = listAll.length < MAX_KPIS;
 
   return (
     <Card className="glass-module">
@@ -1157,7 +1164,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
           >
             + Manage KPIs
           </button>
-        }>KPIs</SectionTitle>
+        }>{title}</SectionTitle>
         <div
           className="qir-no-print"
           style={{
@@ -1166,7 +1173,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
           }}
           title="KPI selection is saved per reporting period"
         >
-          KPIs for {reportLabel} · saved per reporting period
+          {title} for {reportLabel} · saved per reporting period{subtitleSuffix ? ` · ${subtitleSuffix}` : ''}
         </div>
         <div style={{
           display: 'grid',
@@ -1419,12 +1426,13 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
   );
 }
 
-function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
+function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel }: {
   s: ReportState;
   set: ReportSetState;
   scopeKey: string;
   save?: () => Promise<boolean>;
   isSaving?: boolean;
+  reportLabel: string;
 }) {
   const attachments = s.narrativeAttachments ?? [];
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1447,6 +1455,16 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
+        <div style={{ marginBottom: 12 }}>
+          <ReportKpisSection
+            s={s}
+            set={set}
+            reportLabel={reportLabel}
+            sliceKey="narrativeKpis"
+            title="Widgets"
+            subtitleSuffix="up to 5"
+          />
+        </div>
         <InsightsNarrativeEditor
           value={s.narrative}
           attachments={attachments}
@@ -3451,6 +3469,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
               scopeKey={activeCompositeKey || rk}
               save={save}
               isSaving={isSaving}
+              reportLabel={reportLabel}
             />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
