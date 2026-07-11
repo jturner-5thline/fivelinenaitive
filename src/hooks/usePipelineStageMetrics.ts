@@ -226,6 +226,31 @@ function buildRollingMonthsPeriod(anchorEndDate: string, monthCount: number): Qu
   };
 }
 
+/**
+ * Returns a QuarterOption spanning the same duration as `period`, ending the
+ * day immediately before `period.startDate`. Used to compute prior-period
+ * comparison values for KPI deltas.
+ */
+function buildPriorPeriodFor(period: QuarterOption): QuarterOption {
+  if (!period.startDate || !period.endDate) return period;
+  const start = new Date(period.startDate + 'T00:00:00');
+  const end = new Date(period.endDate + 'T00:00:00');
+  const lengthMs = end.getTime() - start.getTime();
+  const priorEnd = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const priorStart = new Date(priorEnd.getTime() - lengthMs);
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const startStr = iso(priorStart);
+  const endStr = iso(priorEnd);
+  return {
+    label: `prior of ${period.value}`,
+    value: `prior-${startStr}_${endStr}`,
+    startDate: startStr,
+    endDate: endStr,
+    months: [],
+  };
+}
+
 function buildRollingMonthBuckets(anchorEndDate: string, monthCount: number): PeriodBucketDef[] {
   const period = buildRollingMonthsPeriod(anchorEndDate, monthCount);
   return period.months.map((month) => ({
