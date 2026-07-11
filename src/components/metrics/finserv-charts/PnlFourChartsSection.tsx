@@ -559,9 +559,38 @@ function PnlFourChartsSectionInner({
   halfWidthCashflow?: boolean;
 }) {
   const { timeframe } = useInsightsTimeframe();
+
+  // Detect a single-month selection so we can offer a "past 3 months" toggle.
+  const isSingleMonth = useMemo(() => {
+    const s = new Date(timeframe.start + 'T00:00:00');
+    const e = new Date(timeframe.end + 'T00:00:00');
+    const lastOfMonth = new Date(e.getFullYear(), e.getMonth() + 1, 0);
+    return (
+      s.getDate() === 1 &&
+      e.getDate() === lastOfMonth.getDate() &&
+      s.getFullYear() === e.getFullYear() &&
+      s.getMonth() === e.getMonth()
+    );
+  }, [timeframe.start, timeframe.end]);
+  const [showPast3, setShowPast3] = useState(false);
+  const useTrailing3 = isSingleMonth && showPast3;
+
+  // Effective timeframe: expand back 2 months when trailing-3 is on.
+  const effective = useMemo(() => {
+    if (!useTrailing3) {
+      return { start: timeframe.start, end: timeframe.end, label: timeframe.label };
+    }
+    const s = new Date(timeframe.start + 'T00:00:00');
+    const ns = new Date(s.getFullYear(), s.getMonth() - 2, 1);
+    const toISO = (d: Date) => d.toISOString().slice(0, 10);
+    const e = new Date(timeframe.end + 'T00:00:00');
+    const label = `${ns.toLocaleString('en-US', { month: 'short', year: 'numeric' })} – ${e.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
+    return { start: toISO(ns), end: timeframe.end, label };
+  }, [useTrailing3, timeframe.start, timeframe.end, timeframe.label]);
+
   const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
-    const s = new Date(timeframe.start);
-    const e = new Date(timeframe.end);
+    const s = new Date(effective.start);
+    const e = new Date(effective.end);
     const months = Math.max(
       1,
       (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1,
@@ -569,21 +598,21 @@ function PnlFourChartsSectionInner({
     if (months > 36) return 'yearly';
     if (months > 18) return 'quarterly';
     return 'monthly';
-  }, [timeframe.start, timeframe.end]);
+  }, [effective.start, effective.end]);
 
   const selectedPeriod = useMemo(() => ({
-    start_date: timeframe.start,
-    end_date: timeframe.end,
-    label: timeframe.label,
-  }), [timeframe.start, timeframe.end, timeframe.label]);
+    start_date: effective.start,
+    end_date: effective.end,
+    label: effective.label,
+  }), [effective.start, effective.end, effective.label]);
 
   // Previous-period comparison. Aligns to whole months when the current
   // timeframe is month-boundary aligned (e.g. Feb 2026 → Jan 2026, Q2 → Q1,
   // 2026 → 2025); otherwise falls back to a same-length day shift.
   const prevPeriod = useMemo(() => {
     const toISO = (d: Date) => d.toISOString().slice(0, 10);
-    const s = new Date(timeframe.start + 'T00:00:00');
-    const e = new Date(timeframe.end + 'T00:00:00');
+    const s = new Date(effective.start + 'T00:00:00');
+    const e = new Date(effective.end + 'T00:00:00');
     const lastOfMonth = new Date(e.getFullYear(), e.getMonth() + 1, 0);
     const monthAligned = s.getDate() === 1 && e.getDate() === lastOfMonth.getDate();
     let ps: Date; let pe: Date; let label: string;
@@ -609,7 +638,7 @@ function PnlFourChartsSectionInner({
       label = 'prev period';
     }
     return { start_date: toISO(ps), end_date: toISO(pe), label };
-  }, [timeframe.start, timeframe.end]);
+  }, [effective.start, effective.end]);
 
   const totalRev = useFinServTotalRevenue(selectedPeriod, granularity, realmId);
   const profits = useFinServQuarterlyProfits(selectedPeriod, granularity, realmId);
@@ -632,17 +661,17 @@ function PnlFourChartsSectionInner({
   const { open: openDrill } = useDrilldown();
   const bucketIndex = useMemo(() => {
     const map = new Map<string, { start: string; end: string; label: string }>();
-    const buckets = buildBuckets(timeframe.start, timeframe.end, granularity);
+    const buckets = buildBuckets(effective.start, effective.end, granularity);
     for (const b of buckets) {
       const entry = { start: b.start_date, end: b.end_date, label: b.label };
       map.set(b.key, entry);
       map.set(b.label, entry);
     }
     return map;
-  }, [timeframe.start, timeframe.end, granularity]);
+  }, [effective.start, effective.end, granularity]);
   const resolveBucket = (keyOrLabel: string | undefined) => {
     if (keyOrLabel && bucketIndex.has(keyOrLabel)) return bucketIndex.get(keyOrLabel)!;
-    return { start: timeframe.start, end: timeframe.end, label: timeframe.label };
+    return { start: effective.start, end: effective.end, label: effective.label };
   };
 
   const openPnl = (
@@ -678,13 +707,29 @@ function PnlFourChartsSectionInner({
 
   return (
     <div className="space-y-4">
-      {(sectionTitle || sectionSubtitle) && (
-        <div>
-          {sectionTitle && (
-            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{sectionTitle}</h3>
-          )}
-          {sectionSubtitle && (
-            <p className="text-xs text-muted-foreground mt-0.5">{sectionSubtitle}</p>
+      {(sectionTitle || sectionSubtitle || isSingleMonth) && (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            {sectionTitle && (
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{sectionTitle}</h3>
+            )}
+            {sectionSubtitle && (
+              <p className="text-xs text-muted-foreground mt-0.5">{sectionSubtitle}</p>
+            )}
+          </div>
+          {isSingleMonth && (
+            <div className="inline-flex rounded-md border border-border overflow-hidden shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowPast3(false)}
+                className={'px-2.5 py-1 text-xs font-medium transition-colors ' + (!showPast3 ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >Selected month</button>
+              <button
+                type="button"
+                onClick={() => setShowPast3(true)}
+                className={'px-2.5 py-1 text-xs font-medium transition-colors ' + (showPast3 ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >Past 3 months</button>
+            </div>
           )}
         </div>
       )}
