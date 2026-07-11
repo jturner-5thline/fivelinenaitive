@@ -598,7 +598,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange, signedAnchorLabel,
+  signedMode, onSignedModeChange, signedAnchorLabel, stackedFees,
 }: {
   open: boolean;
   onClose: () => void;
@@ -613,6 +613,7 @@ function DrilldownModal({
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
   signedAnchorLabel?: string;
+  stackedFees?: boolean;
 }) {
   return (
     <DrilldownModalInner
@@ -629,6 +630,7 @@ function DrilldownModal({
       signedMode={signedMode}
       onSignedModeChange={onSignedModeChange}
       signedAnchorLabel={signedAnchorLabel}
+      stackedFees={stackedFees}
     />
   );
 }
