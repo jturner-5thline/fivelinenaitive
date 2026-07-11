@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { toast as sonnerToast } from 'sonner';
