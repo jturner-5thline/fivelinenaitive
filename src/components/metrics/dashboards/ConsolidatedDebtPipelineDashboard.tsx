@@ -2337,6 +2337,7 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
+      <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
