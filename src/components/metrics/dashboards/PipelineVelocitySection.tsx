@@ -123,11 +123,8 @@ function VelocityTile({ tile }: { tile: VelocityTileDef }) {
               </span>
             )}
           </div>
-          {!isLoading && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {totalDeals > 0 ? `n = ${totalDeals} deal${totalDeals === 1 ? '' : 's'}` : 'No completed transits'}
-            </p>
-          )}
+          {/* subtext intentionally removed per design */}
+          {void totalDeals}
         </div>
       </CardContent>
     </Card>
