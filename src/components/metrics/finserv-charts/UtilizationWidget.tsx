@@ -24,7 +24,7 @@ import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
  *
  * Metric keys:
  *   util_pct_<slug>    monthly actual utilization %  (month_key = YYYY-MM)
- *   util_goal_<slug>   goal utilization %            (month_key = 'goal')
+ *   util_goal_<slug>   goal utilization %            (month_key = YYYY-MM)
  */
 
 type PersonSlug = 'scott' | 'siddhi' | 'kris';
@@ -37,7 +37,6 @@ const PEOPLE: Array<{ slug: PersonSlug; name: string }> = [
 
 const PCT_KEYS = PEOPLE.map((p) => `util_pct_${p.slug}`);
 const GOAL_KEYS = PEOPLE.map((p) => `util_goal_${p.slug}`);
-const GOAL_MONTH_KEY = 'goal';
 
 const avg = (nums: number[]) =>
   nums.length ? nums.reduce((s, n) => s + n, 0) / nums.length : null;
@@ -65,7 +64,7 @@ export function UtilizationWidget({
     queryFn: async () => {
       const out: Record<string, Record<string, number>> = {};
       const allKeys = [...PCT_KEYS, ...GOAL_KEYS];
-      const monthFilter = [...monthKeys, GOAL_MONTH_KEY];
+      const monthFilter = [...monthKeys];
       if (monthFilter.length === 0) return out;
       let q = supabase
         .from('metric_manual_inputs')
@@ -89,13 +88,15 @@ export function UtilizationWidget({
   const perPerson = useMemo(() => {
     return PEOPLE.map((p) => {
       const pcts = data?.[`util_pct_${p.slug}`] ?? {};
-      const goal = data?.[`util_goal_${p.slug}`]?.[GOAL_MONTH_KEY] ?? null;
+      const goals = data?.[`util_goal_${p.slug}`] ?? {};
       const series = monthKeys.map((mk, i) => {
         const raw = pcts[mk];
         const pct = raw == null ? null : Number(raw);
         return { month: monthLabels[i] ?? mk, monthKey: mk, pct };
       });
       const headline = avg(series.map((r) => r.pct).filter((v): v is number => v != null));
+      const goalVals = monthKeys.map((mk) => (goals[mk] == null ? null : Number(goals[mk])));
+      const goal = avg(goalVals.filter((v): v is number => v != null));
       return { ...p, series, headline, goal };
     });
   }, [data, monthKeys, monthLabels]);
@@ -195,10 +196,16 @@ export function UtilizationWidget({
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ['utilization-widget'] });
         }}
+        onOpenGoals={() => {
+          setActualsOpen(false);
+          setGoalsOpen(true);
+        }}
       />
       <UtilizationGoalsDialog
         open={goalsOpen}
         onOpenChange={setGoalsOpen}
+        monthKeys={monthKeys}
+        monthLabels={monthLabels}
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ['utilization-widget'] });
         }}
@@ -270,12 +277,14 @@ function UtilizationActualsDialog({
   monthKeys,
   monthLabels,
   onSaved,
+  onOpenGoals,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthKeys: string[];
   monthLabels: string[];
   onSaved?: () => void;
+  onOpenGoals?: () => void;
 }) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
@@ -361,10 +370,27 @@ function UtilizationActualsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Enter Utilization %</DialogTitle>
-          <DialogDescription>
-            Monthly actual utilization % per person. Set goals via the gear icon.
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>Enter Utilization %</DialogTitle>
+              <DialogDescription>
+                Monthly actual utilization % per person. Set goals via the gear icon.
+              </DialogDescription>
+            </div>
+            {onOpenGoals && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 mr-6"
+                aria-label="Set utilization goals"
+                title="Set goal % per person / month"
+                onClick={onOpenGoals}
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         {loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
@@ -421,10 +447,14 @@ function UtilizationActualsDialog({
 function UtilizationGoalsDialog({
   open,
   onOpenChange,
+  monthKeys,
+  monthLabels,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  monthKeys: string[];
+  monthLabels: string[];
   onSaved?: () => void;
 }) {
   const { company } = useCompany();
@@ -441,17 +471,18 @@ function UtilizationGoalsDialog({
       try {
         let q = supabase
           .from('metric_manual_inputs')
-          .select('metric_key, value')
+          .select('metric_key, month_key, value')
           .in('metric_key', GOAL_KEYS)
-          .eq('month_key', GOAL_MONTH_KEY);
+          .in('month_key', monthKeys);
         q = companyId ? q.eq('company_id', companyId) : q.is('company_id', null);
         const { data, error } = await q;
         if (error) throw error;
         if (cancelled) return;
         const next: Record<string, string> = {};
         for (const r of data ?? []) {
+          const key = `${(r as any).metric_key}|${(r as any).month_key}`;
           const v = (r as any).value;
-          next[(r as any).metric_key] = v == null ? '' : String(v);
+          next[key] = v == null ? '' : String(v);
         }
         setValues(next);
       } catch (e: any) {
@@ -461,7 +492,10 @@ function UtilizationGoalsDialog({
       }
     })();
     return () => { cancelled = true; };
-  }, [open, companyId]);
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, companyId, monthKeys.join('|')]);
+
+  const cellKey = (metric: string, mk: string) => `${metric}|${mk}`;
 
   async function save() {
     const { data: userData } = await supabase.auth.getUser();
@@ -469,21 +503,26 @@ function UtilizationGoalsDialog({
     if (!uid) { toast.error('Not signed in'); return; }
     setSaving(true);
     try {
-      const payload = PEOPLE.map((p) => {
-        const metric = `util_goal_${p.slug}`;
-        const raw = (values[metric] ?? '').trim();
-        const num = raw === '' ? null : Number(raw);
-        if (raw !== '' && Number.isNaN(num)) {
-          throw new Error(`Invalid goal for ${p.name}`);
+      const payload: Array<{
+        company_id: string | null;
+        user_id: string;
+        metric_key: string;
+        month_key: string;
+        value: number | null;
+      }> = [];
+      for (const mk of monthKeys) {
+        for (const p of PEOPLE) {
+          const metric = `util_goal_${p.slug}`;
+          const raw = (values[cellKey(metric, mk)] ?? '').trim();
+          const num = raw === '' ? null : Number(raw);
+          if (raw !== '' && Number.isNaN(num)) {
+            throw new Error(`Invalid goal for ${p.name} ${mk}`);
+          }
+          payload.push({
+            company_id: companyId, user_id: uid, metric_key: metric, month_key: mk, value: num,
+          });
         }
-        return {
-          company_id: companyId,
-          user_id: uid,
-          metric_key: metric,
-          month_key: GOAL_MONTH_KEY,
-          value: num,
-        };
-      });
+      }
       const { error } = await supabase
         .from('metric_manual_inputs')
         .upsert(payload, { onConflict: 'company_id,metric_key,month_key' });
@@ -500,11 +539,11 @@ function UtilizationGoalsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Utilization Goals</DialogTitle>
           <DialogDescription>
-            Target utilization % per person. Blended goal is the average.
+            Monthly target utilization % per person. Blended goal is the average.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
@@ -512,28 +551,39 @@ function UtilizationGoalsDialog({
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-3 py-2">
-            {PEOPLE.map((p) => {
-              const metric = `util_goal_${p.slug}`;
-              return (
-                <div key={p.slug} className="flex items-center justify-between gap-3">
-                  <label htmlFor={metric} className="text-sm font-medium text-foreground">
-                    {p.name}
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      id={metric}
-                      type="text" inputMode="decimal"
-                      placeholder="e.g. 75"
-                      value={values[metric] ?? ''}
-                      onChange={(e) => setValues((v) => ({ ...v, [metric]: e.target.value }))}
-                      className="h-8 text-right tabular-nums w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    />
-                    <span className="text-sm text-muted-foreground">%</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="max-h-[60vh] overflow-auto border border-border rounded-md">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card z-10">
+                <tr className="border-b border-border">
+                  <th className="text-left px-3 py-2 font-medium uppercase tracking-wider text-muted-foreground">Month</th>
+                  {PEOPLE.map((p) => (
+                    <th key={p.slug} className="text-right px-2 py-2 font-medium uppercase tracking-wider text-muted-foreground border-l border-border">
+                      {p.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthKeys.map((mk, i) => (
+                  <tr key={mk} className="border-b border-border/50 last:border-0">
+                    <td className="px-3 py-1.5 text-foreground/90 whitespace-nowrap">{monthLabels[i] ?? mk}</td>
+                    {PEOPLE.map((p) => (
+                      <td key={p.slug} className="px-1 py-1 border-l border-border">
+                        <Input
+                          type="text" inputMode="decimal"
+                          placeholder="%"
+                          value={values[cellKey(`util_goal_${p.slug}`, mk)] ?? ''}
+                          onChange={(e) => setValues((v) => ({
+                            ...v, [cellKey(`util_goal_${p.slug}`, mk)]: e.target.value,
+                          }))}
+                          className="h-7 text-right tabular-nums text-xs w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
         <DialogFooter>
