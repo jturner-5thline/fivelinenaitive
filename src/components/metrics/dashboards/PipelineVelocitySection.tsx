@@ -1,10 +1,12 @@
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
-  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, LabelList,
+  ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 /**
  * Pipeline Velocity — trailing-12-month average number of days between
@@ -72,15 +74,6 @@ const TILES: VelocityTileDef[] = [
 
 const DAYS_PER_MONTH = 30.4375;
 
-/** Short label used on the summary chart X-axis. */
-const TILE_SHORT_LABEL: Record<string, string> = {
-  'proposal-to-engagement': 'Prop → Eng',
-  'submission-to-terms-issued': 'Sub → TI',
-  'terms-issued-to-terms-signed': 'TI → TS',
-  'terms-signed-to-funded': 'TS → Funded',
-  'signed-to-funded': 'Signed → Funded',
-};
-
 function useVelocityAvgDays(tile: VelocityTileDef) {
   const { buckets, isLoading } = useStageTransitMetrics({
     fromVariants: tile.fromVariants,
@@ -141,91 +134,216 @@ function VelocityTile({ tile }: { tile: VelocityTileDef }) {
   );
 }
 
+/** End-of-last-completed-quarter date (UTC), used as the anchor so the
+ *  monthly transit buckets align to the 4 most recently completed quarters
+ *  — matching the X axis of "Step Conversion by Quarter". */
+function anchorEndOfLastCompletedQuarter(now: Date): Date {
+  const y = now.getUTCFullYear();
+  const currentQuarterStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
+  // First day of current quarter, minus 1 ms → end of previous quarter.
+  return new Date(Date.UTC(y, currentQuarterStartMonth, 1) - 1);
+}
+
+function pastFourQuarterLabels(anchor: Date): { key: string; label: string; year: number; q: number }[] {
+  // anchor is end of last completed quarter.
+  const y = anchor.getUTCFullYear();
+  const m = anchor.getUTCMonth();
+  const q = Math.floor(m / 3) + 1;
+  const out: { key: string; label: string; year: number; q: number }[] = [];
+  let cy = y;
+  let cq = q;
+  for (let i = 0; i < 4; i++) {
+    out.unshift({ key: `${cy}-Q${cq}`, label: `Q${cq} ${cy}`, year: cy, q: cq });
+    cq -= 1;
+    if (cq === 0) { cq = 4; cy -= 1; }
+  }
+  return out;
+}
+
 function VelocitySummaryChart() {
-  // Fetch each transit's aggregate — hooks run in a fixed order via a stable
-  // TILES array, so this satisfies the Rules of Hooks.
-  const rows = TILES.map((tile) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { avgDays, totalDeals, isLoading } = useVelocityAvgDays(tile);
-    return {
-      id: tile.id,
-      label: TILE_SHORT_LABEL[tile.id] ?? tile.title,
-      fullLabel: tile.title,
-      color: tile.color,
-      avgDays,
-      totalDeals,
-      isLoading,
-    };
+  const [tileId, setTileId] = useState<string>(TILES[0].id);
+  const activeTile = TILES.find((t) => t.id === tileId) ?? TILES[0];
+
+  // Anchor to the end of the last completed calendar quarter and pull 12
+  // monthly buckets so we cover exactly the past 4 quarters.
+  const anchor = useMemo(() => anchorEndOfLastCompletedQuarter(new Date()), []);
+  const quarterAxis = useMemo(() => pastFourQuarterLabels(anchor), [anchor]);
+
+  const { buckets, isLoading } = useStageTransitMetrics({
+    fromVariants: activeTile.fromVariants,
+    toVariants: activeTile.toVariants,
+    windowMonths: 12,
+    anchorDate: anchor,
+    logInverted: false,
   });
-  const anyLoading = rows.some((r) => r.isLoading);
+
+  const data = useMemo(() => {
+    // Group monthly buckets → calendar quarters, weighted by dealCount.
+    const agg = new Map<string, { sumMonths: number; deals: number }>();
+    for (const b of buckets) {
+      if (b.isOpen) continue;
+      const d = new Date(b.monthStart);
+      const qy = d.getUTCFullYear();
+      const qq = Math.floor(d.getUTCMonth() / 3) + 1;
+      const key = `${qy}-Q${qq}`;
+      const cur = agg.get(key) ?? { sumMonths: 0, deals: 0 };
+      cur.sumMonths += b.avgMonths * b.dealCount;
+      cur.deals += b.dealCount;
+      agg.set(key, cur);
+    }
+    return quarterAxis.map((q) => {
+      const cur = agg.get(q.key);
+      const avgDays = cur && cur.deals > 0
+        ? Math.round((cur.sumMonths / cur.deals) * DAYS_PER_MONTH)
+        : 0;
+      return {
+        stage: q.label,
+        days: avgDays,
+        deals: cur?.deals ?? 0,
+      };
+    });
+  }, [buckets, quarterAxis]);
+
+  const latest = data[data.length - 1];
 
   return (
-    <Card
-      className={cn('relative overflow-hidden glass-module')}
-      style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.04)' }}
+    <div
+      className="funnel-chart-dark flex h-full flex-col p-4 rounded-lg"
+      style={{
+        background: 'linear-gradient(180deg, hsl(224, 45%, 10%) 0%, hsl(226, 55%, 6%) 100%)',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.04)',
+      }}
     >
-      <CardContent className="py-4 px-3">
-        <div className="flex items-baseline justify-between mb-2">
-          <div>
-            <p className="text-[11px] text-muted-foreground font-medium">Avg days by transition</p>
-            <p className="text-[10px] text-muted-foreground/70">Trailing 12 months · Active Pipeline</p>
-          </div>
-          {anyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">Avg Days by Quarter</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {activeTile.title} · past 4 quarters
+          </p>
         </div>
-        <div style={{ height: 300 }}>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {latest?.stage ?? ''}
+          </div>
+          <div className="text-lg font-semibold text-foreground">
+            {isLoading ? '…' : (latest && latest.deals > 0 ? `${latest.days}d` : '—')}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="mb-3 inline-flex flex-wrap gap-1 rounded-md p-1"
+        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+        role="tablist"
+        aria-label="Velocity transition"
+      >
+        {TILES.map((t) => {
+          const active = tileId === t.id;
+          return (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTileId(t.id)}
+              className={cn(
+                'h-7 px-2.5 rounded text-xs font-medium transition-colors',
+                active
+                  ? 'bg-primary/20 text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+              )}
+            >
+              {t.title}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex-1 min-h-[260px]">
+        {isLoading ? (
+          <Skeleton className="h-full w-full" />
+        ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows} margin={{ top: 16, right: 12, left: -12, bottom: 28 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
+            <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 24 }}>
+              <defs>
+                <linearGradient id="velocityGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.95} />
+                  <stop offset="45%" stopColor="hsl(222, 80%, 32%)" stopOpacity={0.75} />
+                  <stop offset="100%" stopColor="hsl(226, 70%, 10%)" stopOpacity={0.35} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" vertical={false} />
               <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={{ stroke: 'hsl(var(--border))' }}
-                tickLine={false}
+                dataKey="stage"
+                tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.85)' }}
+                stroke="rgba(255,255,255,0.35)"
                 interval={0}
+                height={40}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `${v}d`}
-                width={48}
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.85)' }}
+                stroke="rgba(255,255,255,0.35)"
+                width={44}
+                tickFormatter={(v: number) => `${v}d`}
               />
               <Tooltip
-                cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
-                formatter={(value: number, _name, entry) => {
-                  const p = entry?.payload as { totalDeals?: number } | undefined;
-                  return [
-                    `${value} days${p?.totalDeals ? ` · n = ${p.totalDeals}` : ''}`,
-                    'Avg',
-                  ];
-                }}
-                labelFormatter={(_l, payload) => {
-                  const p = payload?.[0]?.payload as { fullLabel?: string } | undefined;
-                  return p?.fullLabel ?? '';
+                cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25, strokeWidth: 1 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const p = payload[0].payload as (typeof data)[number];
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        minWidth: 180,
+                      }}
+                    >
+                      <div className="font-semibold text-foreground mb-1">{p.stage}</div>
+                      <div className="flex justify-between gap-3 text-muted-foreground">
+                        <span>Avg days</span>
+                        <span className="text-foreground font-medium">
+                          {p.deals > 0 ? `${p.days}d` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-3 text-muted-foreground">
+                        <span>Deals</span>
+                        <span className="text-foreground font-medium">{p.deals}</span>
+                      </div>
+                      <div className="mt-1 pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
+                        {activeTile.title}
+                      </div>
+                    </div>
+                  );
                 }}
               />
-              <Bar dataKey="avgDays" radius={[4, 4, 0, 0]}>
-                {rows.map((r) => (
-                  <Cell key={r.id} fill={r.color} />
-                ))}
+              <Area
+                type="monotone"
+                dataKey="days"
+                stroke="hsl(217, 91%, 65%)"
+                strokeWidth={2}
+                fill="url(#velocityGradient)"
+                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
+                activeDot={{ r: 5, fill: 'hsl(217, 91%, 70%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                isAnimationActive
+              >
                 <LabelList
-                  dataKey="avgDays"
+                  dataKey="days"
                   position="top"
+                  offset={10}
                   formatter={(v: number) => (v > 0 ? `${v}d` : '')}
-                  style={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
+                  style={{ fill: 'hsl(var(--foreground))', fontSize: 11, fontWeight: 600 }}
                 />
-              </Bar>
-            </BarChart>
+              </Area>
+            </AreaChart>
           </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }
 
