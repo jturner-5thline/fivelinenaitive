@@ -1437,6 +1437,8 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
   const attachments = s.narrativeAttachments ?? [];
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [addKpiOpen, setAddKpiOpen] = useState(false);
+  const editorRef = useRef<import('@tiptap/core').Editor | null>(null);
 
   // Debounced autosave that triggers the existing report save() so narrative
   // changes + attachments persist without a manual "Save" click.
@@ -1451,20 +1453,23 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
 
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
 
+  /** Insert a KPI as an inline `kpiEmbed` node at the current caret. */
+  const insertKpiNode = React.useCallback((attrs: {
+    id: string; label: string; format: KPIFormat; actual: string; target: string;
+  }) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.chain().focus().insertContent({
+      type: 'kpiEmbed',
+      attrs,
+    }).run();
+    scheduleSave();
+  }, [scheduleSave]);
+
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
-        <div style={{ marginBottom: 12 }}>
-          <ReportKpisSection
-            s={s}
-            set={set}
-            reportLabel={reportLabel}
-            sliceKey="narrativeKpis"
-            title="Widgets"
-            subtitleSuffix="up to 5"
-          />
-        </div>
         <InsightsNarrativeEditor
           value={s.narrative}
           attachments={attachments}
@@ -1472,6 +1477,8 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
           isSaving={isSaving}
           savedAt={savedAt}
           chromeless
+          onEditorReady={(ed) => { editorRef.current = ed; }}
+          onRequestInsertKpi={() => setAddKpiOpen(true)}
           onChange={(html) => {
             set(prev => ({ ...prev, narrative: html }));
             scheduleSave();
@@ -1479,6 +1486,40 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
           onAttachmentsChange={(next) => {
             set(prev => ({ ...prev, narrativeAttachments: next }));
             scheduleSave();
+          }}
+        />
+        <AddKpiDialog
+          open={addKpiOpen}
+          onClose={() => setAddKpiOpen(false)}
+          reportPeriod={deriveReportPeriod(s)}
+          onPickTemplate={(id) => {
+            const tpl = getKpiTemplate(id);
+            insertKpiNode({
+              id: uid(),
+              label: tpl?.defaultTitle ?? 'KPI',
+              format: 'number',
+              actual: '0',
+              target: '0',
+            });
+          }}
+          onPickCustom={() => {
+            insertKpiNode({
+              id: uid(),
+              label: 'New KPI',
+              format: 'number',
+              actual: '0',
+              target: '0',
+            });
+          }}
+          onPickMetric={(opt) => {
+            const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            insertKpiNode({
+              id: uid(),
+              label: opt.label,
+              format: fmt,
+              actual: '0',
+              target: '0',
+            });
           }}
         />
       </div>
