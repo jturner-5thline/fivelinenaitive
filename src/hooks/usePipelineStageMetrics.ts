@@ -143,6 +143,8 @@ export interface AverageMetricResult {
   denominator: number;
   deals: StageEntryDeal[];
   isLoading: boolean;
+  /** Prior-period value (same-length window, immediately preceding). */
+  previousValue?: number | null;
 }
 
 interface PeriodBucketDef {
