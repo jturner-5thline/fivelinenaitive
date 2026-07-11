@@ -541,8 +541,8 @@ export function VelocityDrilldownDialog({
               <div className="flex items-center justify-end gap-4 mb-1 text-[10px] text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="inline-block h-2 w-4 rounded-sm"
-                    style={{ background: 'hsl(var(--muted-foreground))', opacity: 0.25 }}
+                    className="inline-block h-[2px] w-4 rounded"
+                    style={{ background: 'hsl(var(--muted-foreground))' }}
                   />
                   <span>Deals closed</span>
                 </div>
@@ -622,12 +622,15 @@ export function VelocityDrilldownDialog({
                     );
                   }}
                 />
-                <Bar
+                <Line
                   yAxisId="deals"
+                  type="monotone"
                   dataKey="deals"
-                  fill="hsl(var(--muted-foreground))"
-                  fillOpacity={0.25}
-                  radius={[3, 3, 0, 0]}
+                  stroke="hsl(var(--muted-foreground))"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  dot={{ r: 2, fill: 'hsl(var(--muted-foreground))' }}
+                  activeDot={{ r: 4 }}
                 />
                 <Line
                   yAxisId="time"
