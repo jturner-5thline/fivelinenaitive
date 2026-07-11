@@ -30,6 +30,41 @@ const fmtCurrencyPrecise = (v: number) =>
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 const fmtPctPrecise = (v: number) => `${v.toFixed(2)}%`;
 
+// Small badge showing $ / % change vs the equivalent previous period.
+function PrevPeriodChange({
+  current,
+  previous,
+  format,
+  prevLabel,
+  invert = false,
+}: {
+  current: number | null | undefined;
+  previous: number | null | undefined;
+  format: (v: number) => string;
+  prevLabel: string;
+  invert?: boolean;
+}) {
+  if (
+    current == null || previous == null ||
+    !Number.isFinite(current) || !Number.isFinite(previous)
+  ) return null;
+  const delta = (current as number) - (previous as number);
+  const pct = previous !== 0 ? (delta / Math.abs(previous as number)) * 100 : null;
+  const positive = delta >= 0;
+  const good = invert ? !positive : positive;
+  const color =
+    delta === 0 ? 'text-muted-foreground'
+    : good ? 'text-emerald-500'
+    : 'text-rose-500';
+  return (
+    <div className={`mt-1 text-xs font-medium ${color}`}>
+      {positive ? '▲ +' : '▼ '}{format(delta)}
+      {pct != null ? ` (${positive ? '+' : ''}${pct.toFixed(1)}%)` : ''}
+      <span className="text-muted-foreground font-normal"> vs {prevLabel}</span>
+    </div>
+  );
+}
+
 function WidgetLoading({ subtitle = 'Fetching from QuickBooks…' }: { subtitle?: string }) {
   return (
     <div className="space-y-3 p-4">
@@ -142,10 +177,12 @@ function DeltaTooltip({
 // ── Card variants ──
 
 function TotalRevenueCard({
-  periodBadge, totalRev, onBarClick,
+  periodBadge, totalRev, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
+  prev?: { total: number } | null;
+  prevLabel: string;
   onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(false);
@@ -167,6 +204,7 @@ function TotalRevenueCard({
       <CardContent>
         <div className="mb-4">
           <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
+          <PrevPeriodChange current={totalRev.total} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={totalRev.months.map((m) => m.amount)} format={fmtCurrencyFull} />
@@ -197,11 +235,13 @@ function TotalRevenueCard({
 }
 
 function GrossProfitToggleCard({
-  periodBadge, totalRev, profits, onBarClick,
+  periodBadge, totalRev, profits, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
   profits: ReturnType<typeof useFinServQuarterlyProfits>;
+  prev?: { grossProfit: number; grossMargin: number | null } | null;
+  prevLabel: string;
   onBarClick?: (d: any, mode: '$' | '%') => void;
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
@@ -243,6 +283,12 @@ function GrossProfitToggleCard({
           >
             {isDollar ? fmtCurrency(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
           </div>
+          <PrevPeriodChange
+            current={isDollar ? totalRev.grossProfit : (totalRev.grossMargin ?? null)}
+            previous={isDollar ? prev?.grossProfit : (prev?.grossMargin ?? null)}
+            format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
+            prevLabel={prevLabel}
+          />
           {!isDollar && (
             <div className="text-xs text-muted-foreground">Gross Profit ÷ Revenue</div>
           )}
@@ -284,11 +330,13 @@ function GrossProfitToggleCard({
 }
 
 function OperatingProfitToggleCard({
-  periodBadge, totalRev, profits, onBarClick,
+  periodBadge, totalRev, profits, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
   profits: ReturnType<typeof useFinServQuarterlyProfits>;
+  prev?: { operatingProfit: number; operatingMargin: number | null } | null;
+  prevLabel: string;
   onBarClick?: (d: any, mode: '$' | '%') => void;
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
@@ -330,6 +378,12 @@ function OperatingProfitToggleCard({
           >
             {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
           </div>
+          <PrevPeriodChange
+            current={isDollar ? totalRev.operatingProfit : (totalRev.operatingMargin ?? null)}
+            previous={isDollar ? prev?.operatingProfit : (prev?.operatingMargin ?? null)}
+            format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
+            prevLabel={prevLabel}
+          />
           {!isDollar && (
             <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
           )}
@@ -380,14 +434,20 @@ function OperatingProfitToggleCard({
 }
 
 function CashflowCard({
-  periodBadge, cashflow, title, onBarClick,
+  periodBadge, cashflow, title, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   cashflow: ReturnType<typeof useFinServCashflow>;
   title: string;
+  prev?: { total: number } | null;
+  prevLabel: string;
   onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(true);
+  const currentTotal = useMemo(
+    () => cashflow.points.reduce((s, p) => s + (Number(p.value) || 0), 0),
+    [cashflow.points],
+  );
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -400,6 +460,12 @@ function CashflowCard({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-3">
+          <div className="text-2xl font-semibold text-foreground" title={fmtCurrencyPrecise(currentTotal)}>
+            {fmtCurrency(currentTotal)}
+          </div>
+          <PrevPeriodChange current={currentTotal} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
+        </div>
         {showTrend && (
           <div className="mb-3">
             <TrendDeltaText values={cashflow.points.map((p) => p.value)} format={fmtCurrencyFull} />
@@ -503,12 +569,57 @@ function PnlFourChartsSectionInner({
     label: timeframe.label,
   }), [timeframe.start, timeframe.end, timeframe.label]);
 
+  // Previous-period comparison. Aligns to whole months when the current
+  // timeframe is month-boundary aligned (e.g. Feb 2026 → Jan 2026, Q2 → Q1,
+  // 2026 → 2025); otherwise falls back to a same-length day shift.
+  const prevPeriod = useMemo(() => {
+    const toISO = (d: Date) => d.toISOString().slice(0, 10);
+    const s = new Date(timeframe.start + 'T00:00:00');
+    const e = new Date(timeframe.end + 'T00:00:00');
+    const lastOfMonth = new Date(e.getFullYear(), e.getMonth() + 1, 0);
+    const monthAligned = s.getDate() === 1 && e.getDate() === lastOfMonth.getDate();
+    let ps: Date; let pe: Date; let label: string;
+    if (monthAligned) {
+      const nMonths = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+      pe = new Date(s); pe.setDate(pe.getDate() - 1);
+      ps = new Date(s); ps.setMonth(ps.getMonth() - nMonths);
+      // Q label
+      if (nMonths === 3 && s.getMonth() % 3 === 0) {
+        const prevQ = Math.floor(ps.getMonth() / 3) + 1;
+        label = `Q${prevQ} ${ps.getFullYear()}`;
+      } else if (nMonths === 1) {
+        label = ps.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      } else if (nMonths === 12 && s.getMonth() === 0) {
+        label = String(ps.getFullYear());
+      } else {
+        label = `${ps.toLocaleString('en-US', { month: 'short', year: 'numeric' })} – ${pe.toLocaleString('en-US', { month: 'short', year: 'numeric' })}`;
+      }
+    } else {
+      const days = Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1;
+      pe = new Date(s); pe.setDate(pe.getDate() - 1);
+      ps = new Date(pe); ps.setDate(ps.getDate() - days + 1);
+      label = 'prev period';
+    }
+    return { start_date: toISO(ps), end_date: toISO(pe), label };
+  }, [timeframe.start, timeframe.end]);
+
   const totalRev = useFinServTotalRevenue(selectedPeriod, granularity, realmId);
   const profits = useFinServQuarterlyProfits(selectedPeriod, granularity, realmId);
   const cashflow = useFinServCashflow(selectedPeriod, granularity, realmId);
 
+  // Previous period only needs the aggregate totals — request monthly
+  // granularity so buildBuckets always returns valid buckets even when
+  // prev is misaligned with quarters/years.
+  const prevTotalRev = useFinServTotalRevenue(prevPeriod, 'monthly', realmId);
+  const prevCashflow = useFinServCashflow(prevPeriod, 'monthly', realmId);
+  const prevCashflowTotal = useMemo(
+    () => prevCashflow.points.reduce((s, p) => s + (Number(p.value) || 0), 0),
+    [prevCashflow.points],
+  );
+
   const granularityLabel = granularity === 'monthly' ? 'Monthly' : granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
+  const prevLabel = prevPeriod.label;
 
   const { open: openDrill } = useDrilldown();
   const bucketIndex = useMemo(() => {
@@ -574,12 +685,16 @@ function PnlFourChartsSectionInner({
         <TotalRevenueCard
           periodBadge={periodBadge}
           totalRev={totalRev}
+          prev={{ total: prevTotalRev.total }}
+          prevLabel={prevLabel}
           onBarClick={(d) => openPnl('revenue', 'Total Revenue', d)}
         />
         <GrossProfitToggleCard
           periodBadge={periodBadge}
           totalRev={totalRev}
           profits={profits}
+          prev={{ grossProfit: prevTotalRev.grossProfit, grossMargin: prevTotalRev.grossMargin }}
+          prevLabel={prevLabel}
           onBarClick={(d, mode) => openPnl(mode === '$' ? 'gross_profit' : 'gross_margin', mode === '$' ? 'Gross Profit' : 'Gross Margin %', d)}
         />
       </div>
@@ -590,12 +705,16 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             totalRev={totalRev}
             profits={profits}
+            prev={{ operatingProfit: prevTotalRev.operatingProfit, operatingMargin: prevTotalRev.operatingMargin }}
+            prevLabel={prevLabel}
             onBarClick={(d, mode) => openPnl(mode === '$' ? 'operating_profit' : 'operating_margin', mode === '$' ? 'Operating Profit' : 'Operating Margin %', d)}
           />
           <CashflowCard
             periodBadge={periodBadge}
             cashflow={cashflow}
             title={cashflowTitle}
+            prev={{ total: prevCashflowTotal }}
+            prevLabel={prevLabel}
             onBarClick={(d) => openCashflow(d)}
           />
         </div>
@@ -605,12 +724,16 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             totalRev={totalRev}
             profits={profits}
+            prev={{ operatingProfit: prevTotalRev.operatingProfit, operatingMargin: prevTotalRev.operatingMargin }}
+            prevLabel={prevLabel}
             onBarClick={(d, mode) => openPnl(mode === '$' ? 'operating_profit' : 'operating_margin', mode === '$' ? 'Operating Profit' : 'Operating Margin %', d)}
           />
           <CashflowCard
             periodBadge={periodBadge}
             cashflow={cashflow}
             title={cashflowTitle}
+            prev={{ total: prevCashflowTotal }}
+            prevLabel={prevLabel}
             onBarClick={(d) => openCashflow(d)}
           />
         </>
