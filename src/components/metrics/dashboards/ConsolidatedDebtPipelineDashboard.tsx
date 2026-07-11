@@ -1583,6 +1583,7 @@ export function ConsolidatedDebtPipelineDashboard({
   }, [m.fundedInvoicedTrend.monthly, m.fundedInvoicedTrend.quarterly, pendingTrendReopen, trendMode]);
 
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
+  const formatMetricCurrencyK = (value: number | null) => (value == null ? 'N/A' : formatCurrencyKOrMM(value));
 
   const latestStepConversions = useMemo<QuarterlyStepConversionOverrides>(() => {
     const steps = [
