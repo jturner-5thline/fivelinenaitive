@@ -1624,6 +1624,24 @@ export function ConsolidatedDebtPipelineDashboard({
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
   const formatMetricCurrencyK = (value: number | null) => (value == null ? 'N/A' : formatCurrencyKOrMM(value));
 
+  /** Build a KPI card `delta` config from an AverageMetricResult. Returns
+   *  undefined when either the current or prior value is unavailable so the
+   *  card renders without a delta row. */
+  const buildAverageDelta = (
+    metric: { value: number | null; previousValue?: number | null },
+    formatDiff: (value: number) => string,
+    priorLabel: string,
+  ) => {
+    if (metric.value == null || metric.previousValue == null) return undefined;
+    const diff = metric.value - metric.previousValue;
+    const pct = metric.previousValue !== 0 ? (diff / metric.previousValue) * 100 : null;
+    return { diff, formatDiff, pct, priorLabel };
+  };
+  const formatHourlyRate = (value: number) => {
+    const sign = value < 0 ? '-' : '';
+    return `${sign}$${Math.round(Math.abs(value)).toLocaleString()}/hr`;
+  };
+
   const latestStepConversions = useMemo<QuarterlyStepConversionOverrides>(() => {
     const steps = [
       ['proposalIssued', 'finalCreditItems'],
