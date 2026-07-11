@@ -1557,6 +1557,7 @@ export function ConsolidatedDebtPipelineDashboard({
     valueFormatter?: (v: number) => string;
     chartColor?: string;
     conversionBreakdown?: ConversionBreakdown;
+    stackedFees?: boolean;
     /** When set, the modal re-derives the breakdown from the live card by id
      *  so the FCI-only toggle inside the modal updates counts instantly. */
     conversionCardId?: string;
