@@ -330,9 +330,9 @@ function OperatingProfitToggleCard({
           >
             {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {isDollar ? 'Gross Profit − Operating Expenses from QuickBooks P&L' : 'Operating Profit ÷ Revenue'}
-          </div>
+          {!isDollar && (
+            <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
+          )}
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={profits.quarters.map((q) => (isDollar ? q.operatingProfit : q.operatingMargin))} format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)}%`} />
