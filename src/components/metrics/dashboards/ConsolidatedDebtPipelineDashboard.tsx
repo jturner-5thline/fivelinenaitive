@@ -649,6 +649,7 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
     if (abs < 1_000_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
     return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
   };
+  const [xAxis, setXAxis] = useState<'deal' | 'month'>('deal');
   const rows = useMemo(() => {
     return deals
       .map(d => {
@@ -669,6 +670,49 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
       .sort((a, b) => b.total - a.total);
   }, [deals]);
 
+  const monthRows = useMemo(() => {
+    const UNSCHED = 'Unscheduled';
+    const bucket = new Map<string, { key: string; label: string; retainer_fee: number; milestone_fee: number; closing_fee: number; total: number; sortKey: string }>();
+    const add = (rawDate: string | null | undefined, field: 'retainer_fee' | 'milestone_fee' | 'closing_fee', amount: number) => {
+      if (!amount) return;
+      let key: string;
+      let label: string;
+      let sortKey: string;
+      if (!rawDate) {
+        key = UNSCHED; label = UNSCHED; sortKey = '9999-99';
+      } else {
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) { key = UNSCHED; label = UNSCHED; sortKey = '9999-99'; }
+        else {
+          const y = d.getUTCFullYear();
+          const m = d.getUTCMonth();
+          key = `${y}-${String(m + 1).padStart(2, '0')}`;
+          label = d.toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+          sortKey = key;
+        }
+      }
+      let row = bucket.get(key);
+      if (!row) {
+        row = { key, label, retainer_fee: 0, milestone_fee: 0, closing_fee: 0, total: 0, sortKey };
+        bucket.set(key, row);
+      }
+      row[field] += amount;
+      row.total += amount;
+    };
+    for (const d of deals) {
+      // Milestone revenue → Qualified Term Sheet milestone due date
+      add(d.qts_due_date, 'milestone_fee', Number(d.milestone_fee) || 0);
+      // Closing/Success revenue → deal projected close date
+      add(d.projected_close_date, 'closing_fee', Number(d.closing_fee) || 0);
+      // Retainer → also anchored to projected close date (no dedicated date)
+      add(d.projected_close_date, 'retainer_fee', Number(d.retainer_fee) || 0);
+    }
+    return Array.from(bucket.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  }, [deals]);
+
+  const activeRows = xAxis === 'deal' ? rows : monthRows;
+  const xKey = xAxis === 'deal' ? 'company' : 'label';
+
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, r) => {
@@ -682,15 +726,35 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
     );
   }, [rows]);
 
-  const height = Math.max(220, Math.min(560, rows.length * 26 + 40));
+  const height = xAxis === 'deal'
+    ? Math.max(260, Math.min(600, activeRows.length * 42 + 60))
+    : Math.max(260, Math.min(560, activeRows.length * 48 + 80));
 
   return (
     <div className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Fee mix by deal
+          Fee mix by {xAxis === 'deal' ? 'deal' : 'forecasted month'}
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+          <div className="inline-flex rounded-md border border-border/40 bg-muted/40 p-0.5 gap-0.5">
+            {(['deal', 'month'] as const).map(opt => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setXAxis(opt)}
+                className={
+                  'px-2.5 py-1 text-[11px] rounded-sm transition-colors ' +
+                  (xAxis === opt
+                    ? 'bg-primary text-primary-foreground font-semibold'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60')
+                }
+                title={opt === 'deal' ? 'One bar per deal' : 'Bucketed by forecasted revenue month (QTS milestone due date for milestone fees; projected close date for retainer & closing/success)'}
+              >
+                By {opt === 'deal' ? 'deal' : 'month'}
+              </button>
+            ))}
+          </div>
           {FEE_SEGMENTS.map(s => {
             const v =
               s.key === 'retainer_fee' ? totals.retainer
@@ -708,29 +772,32 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
       </div>
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} horizontal={false} />
+          <BarChart data={activeRows} margin={{ top: 8, right: 16, left: 8, bottom: xAxis === 'deal' ? 64 : 24 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
             <XAxis
-              type="number"
+              type="category"
+              dataKey={xKey}
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
-              tickFormatter={(v: number) => fmt(v)}
+              interval={0}
+              angle={xAxis === 'deal' ? -35 : 0}
+              textAnchor={xAxis === 'deal' ? 'end' : 'middle'}
+              height={xAxis === 'deal' ? 70 : 30}
             />
             <YAxis
-              type="category"
-              dataKey="company"
+              type="number"
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={false}
               tickLine={false}
-              width={140}
-              interval={0}
+              width={64}
+              tickFormatter={(v: number) => fmt(v)}
             />
             <Tooltip
               cursor={{ fill: 'hsl(var(--accent) / 0.08)' }}
               content={({ active, payload, label }) => {
                 if (!active || !payload || !payload.length) return null;
-                const row = payload[0].payload as typeof rows[number];
+                const row = payload[0].payload as { retainer_fee: number; milestone_fee: number; closing_fee: number; total: number };
                 return (
                   <div
                     style={{
@@ -769,6 +836,11 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
+      {xAxis === 'month' && (
+        <div className="text-[10px] text-muted-foreground/80 leading-relaxed">
+          Milestone fees bucketed by the "Qualified Term Sheet" milestone due date. Retainer & Closing/Success fees bucketed by projected close date. Deals missing those dates roll up under "Unscheduled".
+        </div>
+      )}
     </div>
   );
 }

@@ -130,6 +130,10 @@ export interface StageEntryDeal {
   retainer_fee?: number;
   milestone_fee?: number;
   closing_fee?: number;
+  /** Projected close date for the deal (drives Closing/Success fee timing). */
+  projected_close_date?: string | null;
+  /** Due date of the "Qualified Term Sheet" milestone (drives Milestone fee timing). */
+  qts_due_date?: string | null;
 }
 
 interface StageMetricResult {
@@ -1468,11 +1472,30 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('deals')
-        .select('id, company, value, total_fee, success_fee_percent, retainer_fee, milestone_fee, manager, stage, pipeline_id, created_at, status')
+        .select('id, company, value, total_fee, success_fee_percent, retainer_fee, milestone_fee, manager, stage, pipeline_id, created_at, status, projected_close_date')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('stage', stageFilterValues);
       if (error) throw error;
-      return rows ?? [];
+      const dealRows = rows ?? [];
+      const dealIds = dealRows.map((d: any) => d.id).filter(Boolean);
+      let qtsByDeal = new Map<string, string>();
+      if (dealIds.length > 0) {
+        const { data: msRows, error: msErr } = await supabase
+          .from('deal_milestones')
+          .select('deal_id, title, due_date')
+          .in('deal_id', dealIds)
+          .ilike('title', '%qualified%');
+        if (msErr) throw msErr;
+        for (const m of msRows ?? []) {
+          const t = String((m as any).title ?? '').toLowerCase();
+          if (!t.includes('term')) continue;
+          const dd = (m as any).due_date as string | null;
+          if (!dd) continue;
+          const existing = qtsByDeal.get((m as any).deal_id);
+          if (!existing || dd < existing) qtsByDeal.set((m as any).deal_id, dd);
+        }
+      }
+      return dealRows.map((d: any) => ({ ...d, __qts_due_date: qtsByDeal.get(d.id) ?? null }));
     },
     enabled: !!user,
   });
@@ -1517,6 +1540,8 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
           retainer_fee: retainer,
           milestone_fee: milestone,
           closing_fee: closing,
+          projected_close_date: d.projected_close_date ?? null,
+          qts_due_date: d.__qts_due_date ?? null,
         } as StageEntryDeal;
       });
 
