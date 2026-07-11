@@ -126,6 +126,10 @@ export interface StageEntryDeal {
   to_stage?: string | null;
   /** Recurring revenue contribution for this deal (FinServ widgets). */
   mrr?: number;
+  /** Optional fee breakdown (Total Revenue Opportunity drilldown). */
+  retainer_fee?: number;
+  milestone_fee?: number;
+  closing_fee?: number;
 }
 
 interface StageMetricResult {
