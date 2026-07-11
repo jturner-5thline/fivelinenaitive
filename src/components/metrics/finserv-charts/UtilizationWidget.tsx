@@ -24,7 +24,7 @@ import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
  *
  * Metric keys:
  *   util_pct_<slug>    monthly actual utilization %  (month_key = YYYY-MM)
- *   util_goal_<slug>   goal utilization %            (month_key = 'goal')
+ *   util_goal_<slug>   goal utilization %            (month_key = YYYY-MM)
  */
 
 type PersonSlug = 'scott' | 'siddhi' | 'kris';
@@ -37,7 +37,6 @@ const PEOPLE: Array<{ slug: PersonSlug; name: string }> = [
 
 const PCT_KEYS = PEOPLE.map((p) => `util_pct_${p.slug}`);
 const GOAL_KEYS = PEOPLE.map((p) => `util_goal_${p.slug}`);
-const GOAL_MONTH_KEY = 'goal';
 
 const avg = (nums: number[]) =>
   nums.length ? nums.reduce((s, n) => s + n, 0) / nums.length : null;
@@ -65,7 +64,7 @@ export function UtilizationWidget({
     queryFn: async () => {
       const out: Record<string, Record<string, number>> = {};
       const allKeys = [...PCT_KEYS, ...GOAL_KEYS];
-      const monthFilter = [...monthKeys, GOAL_MONTH_KEY];
+      const monthFilter = [...monthKeys];
       if (monthFilter.length === 0) return out;
       let q = supabase
         .from('metric_manual_inputs')
@@ -89,13 +88,15 @@ export function UtilizationWidget({
   const perPerson = useMemo(() => {
     return PEOPLE.map((p) => {
       const pcts = data?.[`util_pct_${p.slug}`] ?? {};
-      const goal = data?.[`util_goal_${p.slug}`]?.[GOAL_MONTH_KEY] ?? null;
+      const goals = data?.[`util_goal_${p.slug}`] ?? {};
       const series = monthKeys.map((mk, i) => {
         const raw = pcts[mk];
         const pct = raw == null ? null : Number(raw);
         return { month: monthLabels[i] ?? mk, monthKey: mk, pct };
       });
       const headline = avg(series.map((r) => r.pct).filter((v): v is number => v != null));
+      const goalVals = monthKeys.map((mk) => (goals[mk] == null ? null : Number(goals[mk])));
+      const goal = avg(goalVals.filter((v): v is number => v != null));
       return { ...p, series, headline, goal };
     });
   }, [data, monthKeys, monthLabels]);
@@ -195,10 +196,16 @@ export function UtilizationWidget({
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ['utilization-widget'] });
         }}
+        onOpenGoals={() => {
+          setActualsOpen(false);
+          setGoalsOpen(true);
+        }}
       />
       <UtilizationGoalsDialog
         open={goalsOpen}
         onOpenChange={setGoalsOpen}
+        monthKeys={monthKeys}
+        monthLabels={monthLabels}
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ['utilization-widget'] });
         }}
