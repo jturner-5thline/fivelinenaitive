@@ -143,6 +143,8 @@ export interface AverageMetricResult {
   denominator: number;
   deals: StageEntryDeal[];
   isLoading: boolean;
+  /** Prior-period value (same-length window, immediately preceding). */
+  previousValue?: number | null;
 }
 
 interface PeriodBucketDef {
@@ -221,6 +223,31 @@ function buildRollingMonthsPeriod(anchorEndDate: string, monthCount: number): Qu
     startDate: months[0]?.start ?? '',
     endDate: anchorEndDate,
     months,
+  };
+}
+
+/**
+ * Returns a QuarterOption spanning the same duration as `period`, ending the
+ * day immediately before `period.startDate`. Used to compute prior-period
+ * comparison values for KPI deltas.
+ */
+function buildPriorPeriodFor(period: QuarterOption): QuarterOption {
+  if (!period.startDate || !period.endDate) return period;
+  const start = new Date(period.startDate + 'T00:00:00');
+  const end = new Date(period.endDate + 'T00:00:00');
+  const lengthMs = end.getTime() - start.getTime();
+  const priorEnd = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const priorStart = new Date(priorEnd.getTime() - lengthMs);
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const startStr = iso(priorStart);
+  const endStr = iso(priorEnd);
+  return {
+    label: `prior of ${period.value}`,
+    value: `prior-${startStr}_${endStr}`,
+    startDate: startStr,
+    endDate: endStr,
+    months: [],
   };
 }
 
@@ -686,19 +713,26 @@ function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): Reven
   };
 }
 
-function useAverageDealMetric(stageMetric: StageMetricResult): AverageMetricResult {
+function useAverageDealMetric(
+  stageMetric: StageMetricResult,
+  previous?: StageMetricResult,
+): AverageMetricResult {
   return useMemo(() => ({
     value: stageMetric.count > 0 ? stageMetric.dollarVolume / stageMetric.count : null,
     numerator: stageMetric.dollarVolume,
     denominator: stageMetric.count,
     deals: stageMetric.deals,
     isLoading: stageMetric.isLoading,
-  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading]);
+    previousValue: previous && previous.count > 0
+      ? previous.dollarVolume / previous.count
+      : previous ? null : undefined,
+  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading, previous?.count, previous?.dollarVolume]);
 }
 
 function useRevenuePerDealMetric(
   revenueTotal: RevenuePeriodTotalResult,
   stageMetric: StageMetricResult,
+  previous?: { revenueTotal: RevenuePeriodTotalResult; stageMetric: StageMetricResult },
 ): AverageMetricResult {
   return useMemo(() => ({
     value: stageMetric.count > 0 ? revenueTotal.total / stageMetric.count : null,
@@ -706,7 +740,10 @@ function useRevenuePerDealMetric(
     denominator: stageMetric.count,
     deals: stageMetric.deals,
     isLoading: revenueTotal.isLoading || stageMetric.isLoading,
-  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading]);
+    previousValue: previous && previous.stageMetric.count > 0
+      ? previous.revenueTotal.total / previous.stageMetric.count
+      : previous ? null : undefined,
+  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading, previous?.revenueTotal.total, previous?.stageMetric.count]);
 }
 
 /**
@@ -764,6 +801,7 @@ function useDealHoursInPeriod(
 function useRevenuePerHourMetric(
   revenueTotal: RevenuePeriodTotalResult,
   hours: { total: number; isLoading: boolean },
+  previous?: { revenueTotal: RevenuePeriodTotalResult; hours: { total: number; isLoading: boolean } },
 ): AverageMetricResult {
   return useMemo(() => ({
     value: hours.total > 0 ? revenueTotal.total / hours.total : null,
@@ -771,7 +809,10 @@ function useRevenuePerHourMetric(
     denominator: hours.total,
     deals: [],
     isLoading: revenueTotal.isLoading || hours.isLoading,
-  }), [revenueTotal.total, revenueTotal.isLoading, hours.total, hours.isLoading]);
+    previousValue: previous && previous.hours.total > 0
+      ? previous.revenueTotal.total / previous.hours.total
+      : previous ? null : undefined,
+  }), [revenueTotal.total, revenueTotal.isLoading, hours.total, hours.isLoading, previous?.revenueTotal.total, previous?.hours.total]);
 }
 
 /**
@@ -1185,6 +1226,16 @@ export function useConsolidatedDebtPipelineMetrics(
     () => buildRollingMonthsPeriod(todayAnchor, 12),
     [todayAnchor],
   );
+  // Prior windows (same length, immediately preceding) drive KPI deltas.
+  const priorSixMonthPeriod = useMemo(
+    () => buildPriorPeriodFor(sixMonthPeriod),
+    [sixMonthPeriod],
+  );
+  const priorTwelveMonthPeriod = useMemo(
+    () => buildPriorPeriodFor(twelveMonthPeriod),
+    [twelveMonthPeriod],
+  );
+  const priorQuarter = useMemo(() => buildPriorPeriodFor(quarter), [quarter]);
 
   // "Deals on the Board" / "Debt $ on the Board" / "Average Deal on the Board":
   // deals ADDED TO the Active Pipeline within the selected period. Mirrors the
@@ -1193,6 +1244,7 @@ export function useConsolidatedDebtPipelineMetrics(
   // excluding closed-won / closed-lost / on-hold / archived deals. Dollar value
   // uses `deals.value` (same as other Active-pipeline widgets).
   const ndaNeedsList = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
+  const ndaNeedsListPrior = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, priorQuarter);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
@@ -1214,6 +1266,11 @@ export function useConsolidatedDebtPipelineMetrics(
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  // Prior-period stage & revenue metrics for delta calculations.
+  const finalCreditItemsRolling6Prior = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, priorSixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling6Prior = useStageEntryMetric(CLOSED_STAGES, priorSixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsRolling12Prior = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, priorTwelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling12Prior = useStageEntryMetric(CLOSED_STAGES, priorTwelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const proposalIssuedRolling12 = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   // "Submitted to Lenders" for conversion widgets includes BOTH the
   // `submitted-to-lenders` and `lenders-in-review` stage entries. The metric
@@ -1228,10 +1285,15 @@ export function useConsolidatedDebtPipelineMetrics(
   const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
+  const debtRevenueRolling12Prior = useRevenueTotalForPeriod(DEBT_REALM_ID, priorTwelveMonthPeriod);
   const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
   const dealHoursRolling12 = useDealHoursInPeriod(
     [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
     twelveMonthPeriod,
+  );
+  const dealHoursRolling12Prior = useDealHoursInPeriod(
+    [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
+    priorTwelveMonthPeriod,
   );
 
   // Lifetime deal_ids per conversion-relevant stage on the Active Pipeline —
@@ -1300,12 +1362,24 @@ export function useConsolidatedDebtPipelineMetrics(
     inDueDiligence,
     // Average Deal on the Board = Debt $ on the Board / Deals on the Board for
     // the selected period (N/A when count is 0).
-    averageDealOnBoard: useAverageDealMetric(ndaNeedsList),
-    averageDealSigned: useAverageDealMetric(finalCreditItemsRolling6),
-    averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
-    averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
-    averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
-    revenuePerDealHour: useRevenuePerHourMetric(debtRevenueRolling12, dealHoursRolling12),
+    averageDealOnBoard: useAverageDealMetric(ndaNeedsList, ndaNeedsListPrior),
+    averageDealSigned: useAverageDealMetric(finalCreditItemsRolling6, finalCreditItemsRolling6Prior),
+    averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6, fundedInvoicedRolling6Prior),
+    averageRevenuePerDealSigned: useRevenuePerDealMetric(
+      debtRevenueRolling12,
+      finalCreditItemsRolling12,
+      { revenueTotal: debtRevenueRolling12Prior, stageMetric: finalCreditItemsRolling12Prior },
+    ),
+    averageRevenuePerDealClosed: useRevenuePerDealMetric(
+      debtRevenueRolling12,
+      fundedInvoicedRolling12,
+      { revenueTotal: debtRevenueRolling12Prior, stageMetric: fundedInvoicedRolling12Prior },
+    ),
+    revenuePerDealHour: useRevenuePerHourMetric(
+      debtRevenueRolling12,
+      dealHoursRolling12,
+      { revenueTotal: debtRevenueRolling12Prior, hours: dealHoursRolling12Prior },
+    ),
     ttmCounts: {
       proposalIssued: proposalIssuedRolling12,
       finalCreditItems: finalCreditItemsRolling12,

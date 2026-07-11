@@ -131,6 +131,18 @@ interface MetricCardConfig {
     drilldownValueFormatter?: (value: number) => string;
     drilldownChartColor?: string;
   };
+  /** Period-over-period delta shown below the primary value ($ change and %
+   *  change vs the equal-length prior window). */
+  delta?: {
+    /** Signed absolute change in the metric's native units. */
+    diff: number;
+    /** Formatter used to render the signed diff (e.g. $12.3K). */
+    formatDiff: (value: number) => string;
+    /** Signed percentage change vs prior (e.g. -12.5). Null → prior was 0. */
+    pct: number | null;
+    /** Short prior-period label used for the hover tooltip. */
+    priorLabel?: string;
+  };
 }
 
 interface ConversionBreakdown {
@@ -223,6 +235,31 @@ function MetricKPICard({
               )}
             </div>
           )}
+          {!config.isLoading && config.delta && (() => {
+            const { diff, formatDiff, pct, priorLabel } = config.delta;
+            const neutral = diff === 0;
+            const improved = diff > 0;
+            const arrow = neutral ? '–' : improved ? '▲' : '▼';
+            const toneClass = neutral
+              ? 'text-muted-foreground'
+              : improved
+                ? 'text-emerald-400'
+                : 'text-rose-400';
+            const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
+            const pctText = pct == null
+              ? '—'
+              : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+            return (
+              <div
+                className={cn('mt-1 flex items-baseline gap-1.5 text-[11px] font-mono tabular-nums', toneClass)}
+                title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
+              >
+                <span>{arrow}</span>
+                <span className="font-semibold">{signedDiff}</span>
+                <span className="opacity-80">({pctText})</span>
+              </div>
+            );
+          })()}
         </div>
       </CardContent>
     </Card>
@@ -1587,6 +1624,24 @@ export function ConsolidatedDebtPipelineDashboard({
   const formatMetricCurrency = (value: number | null) => (value == null ? 'N/A' : formatCurrency(value));
   const formatMetricCurrencyK = (value: number | null) => (value == null ? 'N/A' : formatCurrencyKOrMM(value));
 
+  /** Build a KPI card `delta` config from an AverageMetricResult. Returns
+   *  undefined when either the current or prior value is unavailable so the
+   *  card renders without a delta row. */
+  const buildAverageDelta = (
+    metric: { value: number | null; previousValue?: number | null },
+    formatDiff: (value: number) => string,
+    priorLabel: string,
+  ) => {
+    if (metric.value == null || metric.previousValue == null) return undefined;
+    const diff = metric.value - metric.previousValue;
+    const pct = metric.previousValue !== 0 ? (diff / metric.previousValue) * 100 : null;
+    return { diff, formatDiff, pct, priorLabel };
+  };
+  const formatHourlyRate = (value: number) => {
+    const sign = value < 0 ? '-' : '';
+    return `${sign}$${Math.round(Math.abs(value)).toLocaleString()}/hr`;
+  };
+
   const latestStepConversions = useMemo<QuarterlyStepConversionOverrides>(() => {
     const steps = [
       ['proposalIssued', 'finalCreditItems'],
@@ -1769,6 +1824,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
           drilldownPeriodNote: 'Selected period · Dollars on the Board ÷ Deals on the Board',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealOnBoard, formatCurrency, 'prior period'),
         },
         {
           id: 'average-deal-signed',
@@ -1781,6 +1837,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal Signed — entered Signed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealSigned, formatCurrency, 'prior 6 months'),
         },
         {
           id: 'average-revenue-per-deal-signed',
@@ -1793,6 +1850,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Revenue per Deal Signed — Signed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.averageRevenuePerDealSigned, formatCurrencyKOrMM, 'prior 12 months'),
         },
         {
           id: 'average-deal-closed',
@@ -1805,6 +1863,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal Closed — entered Closed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealClosed, formatCurrency, 'prior 6 months'),
         },
         {
           id: 'average-revenue-per-deal-closed',
@@ -1817,6 +1876,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Revenue per Deal Closed — Closed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.averageRevenuePerDealClosed, formatCurrencyKOrMM, 'prior 12 months'),
         },
         {
           id: 'revenue-per-deal-hour',
@@ -1831,6 +1891,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Revenue per Deal Hour',
           drilldownPeriodNote: 'Trailing 12 months 5th Line Capital Advisors revenue ÷ hours logged on Active Pipeline + In Development deals',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.revenuePerDealHour, formatHourlyRate, 'prior 12 months'),
         },
       ],
     },
