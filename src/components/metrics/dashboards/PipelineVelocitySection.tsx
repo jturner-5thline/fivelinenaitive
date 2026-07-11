@@ -195,7 +195,7 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
               )}
               title={`${latestQuarter?.label ?? ''} vs ${prevQuarter?.label ?? ''}`}
             >
-              {isImprovement ? '▼' : '▲'} {Math.abs(delta!)}{UNIT_SUFFIX[unit]}
+              {isImprovement ? '▼' : '▲'} {unit === 'days' ? Math.round(Math.abs(delta!)) : Math.abs(delta!).toFixed(1)}{UNIT_SUFFIX[unit]}
               {pct != null && Number.isFinite(pct) && ` (${isImprovement ? '−' : '+'}${Math.abs(pct).toFixed(1)}%)`}
             </span>
             )}
