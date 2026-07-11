@@ -36,6 +36,7 @@ import {
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
+import { RevenuePerHourDrilldownDialog } from './RevenuePerHourDrilldownDialog';
 
 /**
  * Debt Advisory Metrics Board currency display.
@@ -1518,6 +1519,7 @@ export function ConsolidatedDebtPipelineDashboard({
     conversionCardId?: string;
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
+  const [revPerHourOpen, setRevPerHourOpen] = useState(false);
 
   useEffect(() => {
     if (!m.fundedInvoicedTrend.isLoading && !m.fundedInvoiced.isLoading) {
@@ -2125,7 +2127,12 @@ export function ConsolidatedDebtPipelineDashboard({
                       <MetricKPICard
                         key={card.id}
                         config={card}
-                        onClick={() => setDrilldown({
+                        onClick={() => {
+                          if (card.id === 'revenue-per-deal-hour') {
+                            setRevPerHourOpen(true);
+                            return;
+                          }
+                          setDrilldown({
                           title: card.drilldownTitle,
                           deals: card.deals,
                           periodNote: card.drilldownPeriodNote,
@@ -2135,7 +2142,8 @@ export function ConsolidatedDebtPipelineDashboard({
                           chartColor: card.drilldownChartColor ?? card.color,
                           conversionBreakdown: card.conversionBreakdown,
                           conversionCardId: card.conversionBreakdown ? card.id : undefined,
-                        })}
+                          });
+                        }}
                         onSecondaryClick={card.secondary ? () => {
                           const s = card.secondary!;
                           setDrilldown({
@@ -2375,6 +2383,10 @@ export function ConsolidatedDebtPipelineDashboard({
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
         data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
       </div>
+      <RevenuePerHourDrilldownDialog
+        open={revPerHourOpen}
+        onClose={() => setRevPerHourOpen(false)}
+      />
     </div>
   );
 }
