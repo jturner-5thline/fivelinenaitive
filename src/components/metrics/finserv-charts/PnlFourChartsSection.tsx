@@ -167,7 +167,6 @@ function TotalRevenueCard({
       <CardContent>
         <div className="mb-4">
           <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
-          <div className="text-xs text-muted-foreground">Total Income from QuickBooks P&amp;L</div>
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={totalRev.months.map((m) => m.amount)} format={fmtCurrencyFull} />
@@ -244,9 +243,9 @@ function GrossProfitToggleCard({
           >
             {isDollar ? fmtCurrency(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {isDollar ? 'Gross Profit from QuickBooks P&L' : 'Gross Profit ÷ Revenue'}
-          </div>
+          {!isDollar && (
+            <div className="text-xs text-muted-foreground">Gross Profit ÷ Revenue</div>
+          )}
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={profits.quarters.map((q) => (isDollar ? q.grossProfit : q.grossMargin))} format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)}%`} />
