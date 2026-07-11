@@ -123,8 +123,6 @@ function VelocityTile({ tile }: { tile: VelocityTileDef }) {
               </span>
             )}
           </div>
-          {/* subtext intentionally removed per design */}
-          {void totalDeals}
         </div>
       </CardContent>
     </Card>
