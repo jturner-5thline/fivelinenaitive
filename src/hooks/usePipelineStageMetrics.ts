@@ -1134,6 +1134,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   averageDealClosed: AverageMetricResult;
   averageRevenuePerDealSigned: AverageMetricResult;
   averageRevenuePerDealClosed: AverageMetricResult;
+  revenuePerDealHour: AverageMetricResult;
   // Trailing-12-month stage-entry counts, anchored on today. Used by the
   // Pipeline Conversion widgets on the Consolidated Debt dashboard.
   ttmCounts: {
