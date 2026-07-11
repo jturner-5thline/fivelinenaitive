@@ -28,6 +28,11 @@ import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFou
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
+import {
+  VelocityDrilldownDialog,
+  anchorEndOfLastCompletedQuarter,
+  pastFourQuarterLabels,
+} from '@/components/metrics/dashboards/PipelineVelocitySection';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
