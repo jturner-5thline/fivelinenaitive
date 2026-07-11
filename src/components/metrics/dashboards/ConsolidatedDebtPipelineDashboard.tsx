@@ -52,6 +52,20 @@ const formatCurrency = (value: number) => {
 const formatCurrencyFull = formatCurrency;
 
 /**
+ * Currency formatter that keeps small values readable — renders as $K when the
+ * absolute value is under $1MM (e.g. $100.0K), otherwise falls back to the
+ * board-wide $MM format (e.g. $2.0MM). Used on the average-revenue-per-deal
+ * tiles where sub-million values would otherwise collapse to $0.1MM.
+ */
+const formatCurrencyKOrMM = (value: number) => {
+  const n = Number(value) || 0;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs < 1_000_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+  return `${sign}$${(abs / 1_000_000).toFixed(1)}MM`;
+};
+
+/**
  * Stage-slug → display-label map for this board. Centralized so KPI tiles,
  * drilldown tables, and tooltips never show a malformed title-cased slug
  * (e.g. "Ndaneeds List Sent").
