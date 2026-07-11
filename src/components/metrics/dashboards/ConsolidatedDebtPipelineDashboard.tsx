@@ -1519,6 +1519,7 @@ export function ConsolidatedDebtPipelineDashboard({
     conversionCardId?: string;
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
+  const [revPerHourOpen, setRevPerHourOpen] = useState(false);
 
   useEffect(() => {
     if (!m.fundedInvoicedTrend.isLoading && !m.fundedInvoiced.isLoading) {
