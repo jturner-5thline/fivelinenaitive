@@ -147,7 +147,7 @@ function MetricKPICard({
       <CardContent className="flex items-center gap-2 py-4 px-2">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] text-muted-foreground font-medium truncate">{config.title}</p>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
             {config.isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
@@ -159,6 +159,29 @@ function MetricKPICard({
                 {config.value}
               </button>
             )}
+            {!config.isLoading && config.changePct && (() => {
+              const { delta, latestLabel, prevLabel } = config.changePct;
+              const neutral = Math.abs(delta) < 0.05;
+              const improved = delta > 0; // higher conversion pct = better
+              return neutral ? (
+                <span
+                  className="text-[15px] text-muted-foreground font-mono tabular-nums"
+                  title={`${latestLabel} vs ${prevLabel}`}
+                >
+                  No change
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    'text-[15px] font-medium font-mono tabular-nums',
+                    improved ? 'text-emerald-400' : 'text-rose-400',
+                  )}
+                  title={`${latestLabel} vs ${prevLabel}`}
+                >
+                  {improved ? '▲' : '▼'} {improved ? '+' : '−'}{Math.abs(delta).toFixed(1)}pp
+                </span>
+              );
+            })()}
           </div>
           {config.secondary && (
             <div className="mt-1 pt-1 border-t border-border/40">
