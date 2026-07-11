@@ -131,6 +131,18 @@ interface MetricCardConfig {
     drilldownValueFormatter?: (value: number) => string;
     drilldownChartColor?: string;
   };
+  /** Period-over-period delta shown below the primary value ($ change and %
+   *  change vs the equal-length prior window). */
+  delta?: {
+    /** Signed absolute change in the metric's native units. */
+    diff: number;
+    /** Formatter used to render the signed diff (e.g. $12.3K). */
+    formatDiff: (value: number) => string;
+    /** Signed percentage change vs prior (e.g. -12.5). Null → prior was 0. */
+    pct: number | null;
+    /** Short prior-period label used for the hover tooltip. */
+    priorLabel?: string;
+  };
 }
 
 interface ConversionBreakdown {
