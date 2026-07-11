@@ -73,8 +73,34 @@ const TILES: VelocityTileDef[] = [
 ];
 
 const DAYS_PER_MONTH = 30.4375;
+const DAYS_PER_WEEK = 7;
 
-function useVelocityAvgDays(tile: VelocityTileDef) {
+type VelocityUnit = 'days' | 'weeks' | 'months';
+
+const UNIT_LABEL: Record<VelocityUnit, string> = { days: 'Days', weeks: 'Weeks', months: 'Months' };
+const UNIT_SUFFIX: Record<VelocityUnit, string> = { days: 'd', weeks: 'w', months: 'mo' };
+
+/** Convert an average-months figure into the selected unit + a display string. */
+function formatVelocity(avgMonths: number, unit: VelocityUnit): string {
+  if (!(avgMonths > 0)) return '—';
+  if (unit === 'days') {
+    return `${Math.round(avgMonths * DAYS_PER_MONTH)}${UNIT_SUFFIX.days}`;
+  }
+  if (unit === 'weeks') {
+    return `${((avgMonths * DAYS_PER_MONTH) / DAYS_PER_WEEK).toFixed(1)}${UNIT_SUFFIX.weeks}`;
+  }
+  return `${avgMonths.toFixed(1)}${UNIT_SUFFIX.months}`;
+}
+
+/** Numeric value only, used for chart axis / data points. */
+function velocityValue(avgMonths: number, unit: VelocityUnit): number {
+  if (!(avgMonths > 0)) return 0;
+  if (unit === 'days') return Math.round(avgMonths * DAYS_PER_MONTH);
+  if (unit === 'weeks') return Number(((avgMonths * DAYS_PER_MONTH) / DAYS_PER_WEEK).toFixed(1));
+  return Number(avgMonths.toFixed(1));
+}
+
+function useVelocityAvgMonths(tile: VelocityTileDef) {
   const { buckets, isLoading } = useStageTransitMetrics({
     fromVariants: tile.fromVariants,
     toVariants: tile.toVariants,
@@ -86,15 +112,11 @@ function useVelocityAvgDays(tile: VelocityTileDef) {
   const avgMonths = totalDeals > 0
     ? closed.reduce((s, b) => s + b.avgMonths * b.dealCount, 0) / totalDeals
     : 0;
-  return {
-    avgDays: Math.round(avgMonths * DAYS_PER_MONTH),
-    totalDeals,
-    isLoading,
-  };
+  return { avgMonths, totalDeals, isLoading };
 }
 
-function VelocityTile({ tile }: { tile: VelocityTileDef }) {
-  const { avgDays, totalDeals, isLoading } = useVelocityAvgDays(tile);
+function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUnit }) {
+  const { avgMonths, totalDeals, isLoading } = useVelocityAvgMonths(tile);
 
   return (
     <Card
@@ -119,7 +141,7 @@ function VelocityTile({ tile }: { tile: VelocityTileDef }) {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
               <span className="text-xl font-bold font-mono tabular-nums text-foreground">
-                {totalDeals > 0 ? `${avgDays}d` : '—'}
+                {totalDeals > 0 ? formatVelocity(avgMonths, unit) : '—'}
               </span>
             )}
           </div>
@@ -155,7 +177,7 @@ function pastFourQuarterLabels(anchor: Date): { key: string; label: string; year
   return out;
 }
 
-function VelocitySummaryChart() {
+function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
   const [tileId, setTileId] = useState<string>(TILES[0].id);
   const activeTile = TILES.find((t) => t.id === tileId) ?? TILES[0];
 
@@ -188,16 +210,16 @@ function VelocitySummaryChart() {
     }
     return quarterAxis.map((q) => {
       const cur = agg.get(q.key);
-      const avgDays = cur && cur.deals > 0
-        ? Math.round((cur.sumMonths / cur.deals) * DAYS_PER_MONTH)
-        : 0;
+      const avgMonths = cur && cur.deals > 0 ? cur.sumMonths / cur.deals : 0;
       return {
         stage: q.label,
-        days: avgDays,
+        value: velocityValue(avgMonths, unit),
+        display: formatVelocity(avgMonths, unit),
+        avgMonths,
         deals: cur?.deals ?? 0,
       };
     });
-  }, [buckets, quarterAxis]);
+  }, [buckets, quarterAxis, unit]);
 
   const latest = data[data.length - 1];
 
@@ -212,7 +234,7 @@ function VelocitySummaryChart() {
     >
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">Avg Days by Quarter</h4>
+          <h4 className="text-sm font-semibold text-foreground">Avg {UNIT_LABEL[unit]} by Quarter</h4>
           <p className="text-xs text-muted-foreground mt-0.5">
             {activeTile.title} · past 4 quarters
           </p>
@@ -222,7 +244,7 @@ function VelocitySummaryChart() {
             {latest?.stage ?? ''}
           </div>
           <div className="text-lg font-semibold text-foreground">
-            {isLoading ? '…' : (latest && latest.deals > 0 ? `${latest.days}d` : '—')}
+            {isLoading ? '…' : (latest && latest.deals > 0 ? latest.display : '—')}
           </div>
         </div>
       </div>
@@ -276,11 +298,11 @@ function VelocitySummaryChart() {
                 height={40}
               />
               <YAxis
-                allowDecimals={false}
+                allowDecimals={unit !== 'days'}
                 tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.85)' }}
                 stroke="rgba(255,255,255,0.35)"
                 width={44}
-                tickFormatter={(v: number) => `${v}d`}
+                tickFormatter={(v: number) => `${v}${UNIT_SUFFIX[unit]}`}
               />
               <Tooltip
                 cursor={{ stroke: 'hsl(var(--primary))', strokeOpacity: 0.25, strokeWidth: 1 }}
@@ -300,9 +322,9 @@ function VelocitySummaryChart() {
                     >
                       <div className="font-semibold text-foreground mb-1">{p.stage}</div>
                       <div className="flex justify-between gap-3 text-muted-foreground">
-                        <span>Avg days</span>
+                        <span>Avg {UNIT_LABEL[unit].toLowerCase()}</span>
                         <span className="text-foreground font-medium">
-                          {p.deals > 0 ? `${p.days}d` : '—'}
+                          {p.deals > 0 ? p.display : '—'}
                         </span>
                       </div>
                       <div className="flex justify-between gap-3 text-muted-foreground">
@@ -318,7 +340,7 @@ function VelocitySummaryChart() {
               />
               <Area
                 type="monotone"
-                dataKey="days"
+                dataKey="value"
                 stroke="hsl(217, 91%, 65%)"
                 strokeWidth={2}
                 fill="url(#velocityGradient)"
@@ -327,10 +349,10 @@ function VelocitySummaryChart() {
                 isAnimationActive
               >
                 <LabelList
-                  dataKey="days"
+                  dataKey="value"
                   position="top"
                   offset={10}
-                  formatter={(v: number) => (v > 0 ? `${v}d` : '')}
+                  formatter={(v: number) => (v > 0 ? `${v}${UNIT_SUFFIX[unit]}` : '')}
                   style={{ fill: 'hsl(var(--foreground))', fontSize: 11, fontWeight: 600 }}
                 />
               </Area>
@@ -343,6 +365,7 @@ function VelocitySummaryChart() {
 }
 
 export function PipelineVelocitySection() {
+  const [unit, setUnit] = useState<VelocityUnit>('days');
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -351,17 +374,43 @@ export function PipelineVelocitySection() {
             Pipeline Velocity
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Average days between stages · trailing 12 months (Active Pipeline)
+            Average {unit} between stages · trailing 12 months (Active Pipeline)
           </p>
+        </div>
+        <div
+          className="inline-flex rounded-md p-1"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}
+          role="tablist"
+          aria-label="Velocity unit"
+        >
+          {(['days', 'weeks', 'months'] as const).map((u) => {
+            const active = unit === u;
+            return (
+              <button
+                key={u}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setUnit(u)}
+                className={cn(
+                  'h-7 px-3 rounded text-xs font-medium transition-colors capitalize',
+                  active
+                    ? 'bg-primary/20 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/5',
+                )}
+              >
+                {u}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] gap-3">
         <div className="flex flex-col gap-2">
           {TILES.map((tile) => (
-            <VelocityTile key={tile.id} tile={tile} />
+            <VelocityTile key={tile.id} tile={tile} unit={unit} />
           ))}
         </div>
-        <VelocitySummaryChart />
+        <VelocitySummaryChart unit={unit} />
       </div>
     </div>
   );
