@@ -456,16 +456,25 @@ export function InsightsNarrativeEditor({
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
       onFocus={() => setFocused(true)}
     >
-      {showToolbar && (
+      {showToolbar && typeof document !== 'undefined' && createPortal(
         <div
           role="toolbar"
           aria-label="Narrative formatting"
+          onMouseDown={e => e.preventDefault()}
           style={{
+            position: 'fixed',
+            top: `calc(var(--app-top-bar-height, 0px) + 12px)`,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1400,
             display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
             padding: '6px 8px',
             borderRadius: 8,
-            background: 'rgba(10,18,36,0.45)',
-            border: '1px solid rgba(120,170,255,0.18)',
+            background: 'rgba(10,18,36,0.92)',
+            border: '1px solid rgba(120,170,255,0.28)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+            backdropFilter: 'blur(6px)',
+            maxWidth: 'min(96vw, 720px)',
           }}
         >
           <TbBtn title="Bold" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={14} /></TbBtn>
@@ -523,7 +532,8 @@ export function InsightsNarrativeEditor({
               : savedAt ? (<><Check size={11} /> Saved</>)
               : null}
           </span>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* Persistent file picker: always mounted and never display:none. */}
