@@ -289,29 +289,14 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                         if (!active || !payload || !payload.length) return null;
                         const p = payload[0].payload as (typeof chartData)[number];
                         return (
-                          <div
-                            style={{
-                              background:
-                                'linear-gradient(145deg, hsl(var(--popover) / 0.98) 0%, hsl(var(--card) / 0.96) 50%, hsl(var(--accent) / 0.18) 100%)',
-                              border: '1px solid hsl(0 0% 100% / 0.14)',
-                              borderRadius: 8,
-                              padding: '8px 10px',
-                              fontSize: 12,
-                              color: 'hsl(0 0% 100%)',
-                              boxShadow:
-                                '0 18px 45px hsl(0 0% 0% / 0.45), inset 0 1px 0 hsl(0 0% 100% / 0.10)',
-                              backdropFilter: 'blur(16px)',
-                              WebkitBackdropFilter: 'blur(16px)',
-                              minWidth: 180,
-                            }}
-                          >
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                          <div className="revenue-per-hour-tooltip">
+                            <div className="revenue-per-hour-tooltip__title">
                               TTM ending {label}
                             </div>
-                            <div style={{ color: 'hsl(0 0% 100% / 0.9)' }}>
+                            <div className="revenue-per-hour-tooltip__rate">
                               {fmtRate(p.rate)}
                             </div>
-                            <div style={{ color: 'hsl(0 0% 100% / 0.72)', marginTop: 2 }}>
+                            <div className="revenue-per-hour-tooltip__detail">
                               {fmtUSD(p.revenue)} ÷ {p.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs
                             </div>
                           </div>
