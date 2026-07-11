@@ -870,6 +870,10 @@ function DrilldownModalInner({
         </div>
       )}
 
+        {showStackedFeesChart && (
+          <StackedFeesChart deals={deals} />
+        )}
+
         {showChart && (
           <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
             <div className="flex items-center justify-between mb-2">
