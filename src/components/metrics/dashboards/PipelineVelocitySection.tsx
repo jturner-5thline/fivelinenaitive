@@ -2,6 +2,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
+import {
+  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, LabelList,
+} from 'recharts';
 
 /**
  * Pipeline Velocity — trailing-12-month average number of days between
@@ -69,20 +72,36 @@ const TILES: VelocityTileDef[] = [
 
 const DAYS_PER_MONTH = 30.4375;
 
-function VelocityTile({ tile }: { tile: VelocityTileDef }) {
+/** Short label used on the summary chart X-axis. */
+const TILE_SHORT_LABEL: Record<string, string> = {
+  'proposal-to-engagement': 'Prop → Eng',
+  'submission-to-terms-issued': 'Sub → TI',
+  'terms-issued-to-terms-signed': 'TI → TS',
+  'terms-signed-to-funded': 'TS → Funded',
+  'signed-to-funded': 'Signed → Funded',
+};
+
+function useVelocityAvgDays(tile: VelocityTileDef) {
   const { buckets, isLoading } = useStageTransitMetrics({
     fromVariants: tile.fromVariants,
     toVariants: tile.toVariants,
     windowMonths: 12,
     logInverted: false,
   });
-
   const closed = buckets.filter((b) => !b.isOpen);
   const totalDeals = closed.reduce((s, b) => s + b.dealCount, 0);
   const avgMonths = totalDeals > 0
     ? closed.reduce((s, b) => s + b.avgMonths * b.dealCount, 0) / totalDeals
     : 0;
-  const avgDays = Math.round(avgMonths * DAYS_PER_MONTH);
+  return {
+    avgDays: Math.round(avgMonths * DAYS_PER_MONTH),
+    totalDeals,
+    isLoading,
+  };
+}
+
+function VelocityTile({ tile }: { tile: VelocityTileDef }) {
+  const { avgDays, totalDeals, isLoading } = useVelocityAvgDays(tile);
 
   return (
     <Card
@@ -122,6 +141,94 @@ function VelocityTile({ tile }: { tile: VelocityTileDef }) {
   );
 }
 
+function VelocitySummaryChart() {
+  // Fetch each transit's aggregate — hooks run in a fixed order via a stable
+  // TILES array, so this satisfies the Rules of Hooks.
+  const rows = TILES.map((tile) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { avgDays, totalDeals, isLoading } = useVelocityAvgDays(tile);
+    return {
+      id: tile.id,
+      label: TILE_SHORT_LABEL[tile.id] ?? tile.title,
+      fullLabel: tile.title,
+      color: tile.color,
+      avgDays,
+      totalDeals,
+      isLoading,
+    };
+  });
+  const anyLoading = rows.some((r) => r.isLoading);
+
+  return (
+    <Card
+      className={cn('relative overflow-hidden glass-module')}
+      style={{ boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.04)' }}
+    >
+      <CardContent className="py-4 px-3">
+        <div className="flex items-baseline justify-between mb-2">
+          <div>
+            <p className="text-[11px] text-muted-foreground font-medium">Avg days by transition</p>
+            <p className="text-[10px] text-muted-foreground/70">Trailing 12 months · Active Pipeline</p>
+          </div>
+          {anyLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+        <div style={{ height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} margin={{ top: 16, right: 12, left: -12, bottom: 28 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.35} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+                tickLine={false}
+                interval={0}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `${v}d`}
+                width={48}
+              />
+              <Tooltip
+                cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(value: number, _name, entry) => {
+                  const p = entry?.payload as { totalDeals?: number } | undefined;
+                  return [
+                    `${value} days${p?.totalDeals ? ` · n = ${p.totalDeals}` : ''}`,
+                    'Avg',
+                  ];
+                }}
+                labelFormatter={(_l, payload) => {
+                  const p = payload?.[0]?.payload as { fullLabel?: string } | undefined;
+                  return p?.fullLabel ?? '';
+                }}
+              />
+              <Bar dataKey="avgDays" radius={[4, 4, 0, 0]}>
+                {rows.map((r) => (
+                  <Cell key={r.id} fill={r.color} />
+                ))}
+                <LabelList
+                  dataKey="avgDays"
+                  position="top"
+                  formatter={(v: number) => (v > 0 ? `${v}d` : '')}
+                  style={{ fill: 'hsl(var(--foreground))', fontSize: 10, fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PipelineVelocitySection() {
   return (
     <div className="space-y-3">
@@ -135,10 +242,13 @@ export function PipelineVelocitySection() {
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        {TILES.map((tile) => (
-          <VelocityTile key={tile.id} tile={tile} />
-        ))}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)] gap-3">
+        <div className="flex flex-col gap-2">
+          {TILES.map((tile) => (
+            <VelocityTile key={tile.id} tile={tile} />
+          ))}
+        </div>
+        <VelocitySummaryChart />
       </div>
     </div>
   );
