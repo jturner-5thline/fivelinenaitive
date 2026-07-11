@@ -50,6 +50,16 @@ export interface QuarterlyFunnelBucket {
     fromDollars: number;
     toDollars: number;
   }>>;
+  /** Denominator-anchored conversion counts for every (from → to) stage pair.
+   *  Matches the Pipeline Conversion widget semantics: cohort = deals that
+   *  entered `from` within this bucket's TTM window; numerator = cohort deals
+   *  that EVER reached `to`. */
+  allConversions: Partial<Record<FunnelStepKey, {
+    fromCount: number;
+    toCount: number;
+    fromDollars: number;
+    toDollars: number;
+  }>>;
 }
 
 export interface QuarterlyTtmFunnelResult {
