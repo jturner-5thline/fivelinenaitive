@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { Pencil, Loader2, Users, Settings } from 'lucide-react';
+import { Pencil, Loader2, Users, Settings, TrendingUp, TrendingDown, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -231,37 +231,109 @@ function PersonCard({
   const hasSeries = series.some((s) => s.pct != null);
   const vsGoal =
     headline != null && goal != null ? headline - goal : null;
+  // Status thresholds (percentage points vs. goal)
+  //   >= +2 pts  → overachieved
+  //   within ±2 → hit
+  //   <  -2 pts → missed
+  const status: 'over' | 'hit' | 'miss' | null =
+    vsGoal == null
+      ? null
+      : vsGoal >= 2
+        ? 'over'
+        : vsGoal > -2
+          ? 'hit'
+          : 'miss';
+  const statusMeta =
+    status === 'over'
+      ? { label: 'Overachieved', Icon: TrendingUp, tone: 'emerald' }
+      : status === 'hit'
+        ? { label: 'On goal', Icon: Check, tone: 'sky' }
+        : status === 'miss'
+          ? { label: 'Missed', Icon: TrendingDown, tone: 'rose' }
+          : null;
+  const toneClasses: Record<string, { pill: string; stroke: string; bar: string; ring: string }> = {
+    emerald: {
+      pill: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+      stroke: 'hsl(152 76% 55%)',
+      bar: 'bg-emerald-500',
+      ring: 'ring-emerald-500/30',
+    },
+    sky: {
+      pill: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
+      stroke: 'hsl(200 90% 60%)',
+      bar: 'bg-sky-500',
+      ring: 'ring-sky-500/30',
+    },
+    rose: {
+      pill: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+      stroke: 'hsl(350 85% 60%)',
+      bar: 'bg-rose-500',
+      ring: 'ring-rose-500/30',
+    },
+  };
+  const tone = statusMeta ? toneClasses[statusMeta.tone] : null;
+  const progressPct =
+    headline != null && goal != null && goal > 0
+      ? Math.max(0, Math.min(150, (headline / goal) * 100))
+      : null;
   return (
     <div
       className={
-        'rounded-lg border border-border/60 bg-card/40 p-3 flex flex-col gap-2 ' +
-        (emphasized ? 'ring-1 ring-primary/40 bg-primary/5' : '')
+        'rounded-lg border border-border/60 bg-card/40 p-3 flex flex-col gap-2.5 transition-colors ' +
+        (emphasized ? 'ring-1 ring-primary/40 bg-primary/5 ' : '') +
+        (tone ? `ring-1 ${tone.ring} ` : '')
       }
     >
       <div className="flex items-center justify-between">
         <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {name}
         </div>
-        <div className="text-[10px] tabular-nums text-muted-foreground">
-          {goal != null ? `Goal ${fmtPct(goal)}` : 'No goal'}
-        </div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <div className="text-2xl font-semibold tabular-nums text-foreground">
-          {fmtPct(headline)}
-        </div>
-        {vsGoal != null && (
+        {statusMeta && tone ? (
           <div
             className={
-              'text-[11px] tabular-nums ' +
-              (vsGoal >= 0 ? 'text-emerald-500' : 'text-rose-500')
+              'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ' +
+              tone.pill
             }
           >
-            {vsGoal >= 0 ? '+' : ''}
-            {vsGoal.toFixed(1)} pts
+            <statusMeta.Icon className="h-3 w-3" />
+            {statusMeta.label}
+          </div>
+        ) : (
+          <div className="text-[10px] tabular-nums text-muted-foreground">
+            {goal != null ? `Goal ${fmtPct(goal)}` : 'No goal'}
           </div>
         )}
       </div>
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="text-2xl font-semibold tabular-nums text-foreground">
+          {fmtPct(headline)}
+        </div>
+        {vsGoal != null && tone ? (
+          <div className={'text-[11px] font-medium tabular-nums ' + tone.pill.split(' ')[1]}>
+            {vsGoal >= 0 ? '+' : ''}
+            {vsGoal.toFixed(1)} pts
+          </div>
+        ) : goal != null ? (
+          <div className="text-[10px] tabular-nums text-muted-foreground">
+            vs {fmtPct(goal)}
+          </div>
+        ) : null}
+      </div>
+      {/* Progress bar: actual as % of goal, with a goal marker at 100% */}
+      {progressPct != null && (
+        <div className="relative h-1.5 w-full rounded-full bg-muted/40 overflow-hidden">
+          <div
+            className={'absolute inset-y-0 left-0 rounded-full ' + (tone?.bar ?? 'bg-primary')}
+            style={{ width: `${Math.min(100, progressPct)}%` }}
+          />
+          {/* goal tick at 100% of goal */}
+          <div
+            className="absolute top-[-2px] bottom-[-2px] w-px bg-foreground/50"
+            style={{ left: `${100 / 1.5}%` }}
+            aria-hidden
+          />
+        </div>
+      )}
       <div className="h-12">
         {hasSeries && (
           <ResponsiveContainer width="100%" height="100%">
@@ -282,7 +354,7 @@ function PersonCard({
               <Line
                 type="monotone"
                 dataKey="pct"
-                stroke="hsl(var(--primary))"
+                stroke={tone?.stroke ?? 'hsl(var(--primary))'}
                 strokeWidth={1.75}
                 dot={false}
                 isAnimationActive={false}
