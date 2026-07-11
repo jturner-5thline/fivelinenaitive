@@ -22,6 +22,7 @@ import {
   type StageSplitTrendBucket,
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
+import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
