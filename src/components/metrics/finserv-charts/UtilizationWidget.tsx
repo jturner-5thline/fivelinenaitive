@@ -167,23 +167,23 @@ export function UtilizationWidget({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Blended headline */}
-            <div>
-              <div className="text-3xl font-semibold tabular-nums text-foreground">
-                {fmtPct(blended.headline)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Blended{blended.goal != null ? ` · Goal ${fmtPct(blended.goal)}` : ''}
-              </div>
-            </div>
-
-            {/* Per-person rows */}
-            <div className="space-y-2">
-              {perPerson.map((p) => (
-                <PersonRow key={p.slug} name={p.name} series={p.series} headline={p.headline} goal={p.goal} />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {perPerson.map((p) => (
+              <PersonCard
+                key={p.slug}
+                name={p.name}
+                series={p.series}
+                headline={p.headline}
+                goal={p.goal}
+              />
+            ))}
+            <PersonCard
+              name="Blended"
+              series={blended.series}
+              headline={blended.headline}
+              goal={blended.goal}
+              emphasized
+            />
           </div>
         )}
       </CardContent>
