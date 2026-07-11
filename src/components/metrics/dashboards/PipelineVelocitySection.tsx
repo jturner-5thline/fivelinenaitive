@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
-  ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
+  ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, Line,
+  CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -117,8 +119,10 @@ function useVelocityAvgMonths(tile: VelocityTileDef) {
 
 function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUnit }) {
   const { avgMonths, totalDeals, isLoading } = useVelocityAvgMonths(tile);
+  const [drilldown, setDrilldown] = useState(false);
 
   return (
+    <>
     <Card
       className={cn(
         'relative group overflow-hidden transition-all duration-200',
@@ -140,14 +144,25 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+              <button
+                type="button"
+                onClick={() => setDrilldown(true)}
+                className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground"
+              >
                 {totalDeals > 0 ? formatVelocity(avgMonths, unit) : '—'}
-              </span>
+              </button>
             )}
           </div>
         </div>
       </CardContent>
     </Card>
+    <VelocityDrilldownDialog
+      open={drilldown}
+      onOpenChange={setDrilldown}
+      tile={tile}
+      unit={unit}
+    />
+    </>
   );
 }
 
@@ -180,6 +195,7 @@ function pastFourQuarterLabels(anchor: Date): { key: string; label: string; year
 function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
   const [tileId, setTileId] = useState<string>(TILES[0].id);
   const activeTile = TILES.find((t) => t.id === tileId) ?? TILES[0];
+  const [drilldown, setDrilldown] = useState(false);
 
   // Anchor to the end of the last completed calendar quarter and pull 12
   // monthly buckets so we cover exactly the past 4 quarters.
@@ -344,9 +360,18 @@ function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
                 stroke="hsl(217, 91%, 65%)"
                 strokeWidth={2}
                 fill="url(#velocityGradient)"
-                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
-                activeDot={{ r: 5, fill: 'hsl(217, 91%, 70%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1, cursor: 'pointer' }}
+                activeDot={{
+                  r: 6,
+                  fill: 'hsl(217, 91%, 70%)',
+                  stroke: 'hsl(var(--card))',
+                  strokeWidth: 2,
+                  cursor: 'pointer',
+                  onClick: () => setDrilldown(true),
+                }}
                 isAnimationActive
+                onClick={() => setDrilldown(true)}
+                style={{ cursor: 'pointer' }}
               >
                 <LabelList
                   dataKey="value"
@@ -360,7 +385,200 @@ function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
           </ResponsiveContainer>
         )}
       </div>
+      <VelocityDrilldownDialog
+        open={drilldown}
+        onOpenChange={setDrilldown}
+        tile={activeTile}
+        unit={unit}
+      />
     </div>
+  );
+}
+
+/**
+ * VelocityDrilldownDialog — deep-dive modal for a single stage transition.
+ * Shows the trailing-24-month monthly trend: average time in the selected
+ * unit as a line, and closed deal count per month as bars. Sourced from the
+ * same `get_stage_transit_monthly` RPC the tiles and summary chart use.
+ */
+function VelocityDrilldownDialog({
+  open,
+  onOpenChange,
+  tile,
+  unit,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  tile: VelocityTileDef;
+  unit: VelocityUnit;
+}) {
+  const { buckets, isLoading, completedCount, openCount, openAvgMonths } = useStageTransitMetrics({
+    fromVariants: tile.fromVariants,
+    toVariants: tile.toVariants,
+    windowMonths: 24,
+    logInverted: false,
+  });
+
+  const monthly = useMemo(
+    () =>
+      buckets
+        .filter((b) => !b.isOpen)
+        .map((b) => ({
+          label: b.label,
+          value: velocityValue(b.avgMonths, unit),
+          display: formatVelocity(b.avgMonths, unit),
+          median: velocityValue(b.medianMonths, unit),
+          deals: b.dealCount,
+        })),
+    [buckets, unit],
+  );
+
+  const totalDeals = completedCount;
+  const weightedAvgMonths = totalDeals > 0
+    ? monthly.reduce((s, m, i) => {
+        const raw = buckets.filter((b) => !b.isOpen)[i];
+        return s + (raw?.avgMonths ?? 0) * (raw?.dealCount ?? 0);
+      }, 0) / totalDeals
+    : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: tile.color }}
+            />
+            {tile.title}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="rounded-md border border-border/50 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Trailing 24-mo avg
+            </p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+              {isLoading ? '…' : formatVelocity(weightedAvgMonths, unit)}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/50 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Deals completed
+            </p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+              {isLoading ? '…' : totalDeals}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/50 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Still open · avg age
+            </p>
+            <p className="text-2xl font-bold font-mono tabular-nums text-foreground mt-1">
+              {isLoading ? '…' : `${openCount} · ${formatVelocity(openAvgMonths, unit)}`}
+            </p>
+          </div>
+        </div>
+
+        <div style={{ height: 280 }}>
+          {isLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={monthly} margin={{ top: 12, right: 12, left: 0, bottom: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  yAxisId="time"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v: number) => `${v}${UNIT_SUFFIX[unit]}`}
+                  width={48}
+                />
+                <YAxis
+                  yAxisId="deals"
+                  orientation="right"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  cursor={{ fill: 'hsl(var(--muted) / 0.2)' }}
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const p = payload[0].payload as (typeof monthly)[number];
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          minWidth: 180,
+                        }}
+                      >
+                        <div className="font-semibold text-foreground mb-1">{label}</div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>Avg</span>
+                          <span className="text-foreground font-medium">{p.deals > 0 ? p.display : '—'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>Median</span>
+                          <span className="text-foreground font-medium">
+                            {p.deals > 0 ? `${p.median}${UNIT_SUFFIX[unit]}` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-3 text-muted-foreground">
+                          <span>Deals</span>
+                          <span className="text-foreground font-medium">{p.deals}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+                <Bar
+                  yAxisId="deals"
+                  dataKey="deals"
+                  fill="hsl(var(--muted-foreground))"
+                  fillOpacity={0.25}
+                  radius={[3, 3, 0, 0]}
+                />
+                <Line
+                  yAxisId="time"
+                  type="monotone"
+                  dataKey="value"
+                  stroke={tile.color}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: tile.color, stroke: 'hsl(var(--card))', strokeWidth: 1 }}
+                  activeDot={{ r: 5 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Monthly trend · past 24 months · line = average time in {unit}, bars = closed deal count. Buckets are anchored on the destination stage entry.
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 }
 
