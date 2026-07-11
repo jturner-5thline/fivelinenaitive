@@ -2267,7 +2267,7 @@ export function ConsolidatedDebtPipelineDashboard({
               <p className="text-xs text-muted-foreground mt-0.5">{otherMetricsSection.description}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {otherMetricsSection.cards.map(card => (
               <MetricKPICard
                 key={card.id}
