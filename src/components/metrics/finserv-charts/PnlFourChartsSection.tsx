@@ -330,11 +330,13 @@ function GrossProfitToggleCard({
 }
 
 function OperatingProfitToggleCard({
-  periodBadge, totalRev, profits, onBarClick,
+  periodBadge, totalRev, profits, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
   profits: ReturnType<typeof useFinServQuarterlyProfits>;
+  prev?: { operatingProfit: number; operatingMargin: number | null } | null;
+  prevLabel: string;
   onBarClick?: (d: any, mode: '$' | '%') => void;
 }) {
   const [mode, setMode] = useState<'$' | '%'>('$');
@@ -376,6 +378,12 @@ function OperatingProfitToggleCard({
           >
             {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
           </div>
+          <PrevPeriodChange
+            current={isDollar ? totalRev.operatingProfit : (totalRev.operatingMargin ?? null)}
+            previous={isDollar ? prev?.operatingProfit : (prev?.operatingMargin ?? null)}
+            format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
+            prevLabel={prevLabel}
+          />
           {!isDollar && (
             <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
           )}
