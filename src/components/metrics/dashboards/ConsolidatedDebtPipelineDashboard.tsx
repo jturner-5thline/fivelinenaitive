@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,6 +25,34 @@ import {
 import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import type { Deal } from '@/types/deal';
+
+// ------------------------------------------------------------------
+// Deal drilldown open context — lets any nested drilldown table row
+// open the deal overlay without prop-drilling a callback everywhere.
+// ------------------------------------------------------------------
+const OpenDealContext = createContext<((dealId: string) => void) | null>(null);
+function useOpenDeal(): ((dealId: string) => void) | null {
+  return useContext(OpenDealContext);
+}
+function DealLink({ dealId, children, className }: { dealId: string; children: React.ReactNode; className?: string }) {
+  const open = useOpenDeal();
+  if (!open) return <span className={className}>{children}</span>;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); open(dealId); }}
+      className={cn(
+        'text-left underline decoration-dotted underline-offset-2 decoration-muted-foreground/40 hover:decoration-primary hover:text-primary transition-colors',
+        className,
+      )}
+      title="Open deal"
+    >
+      {children}
+    </button>
+  );
+}
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
