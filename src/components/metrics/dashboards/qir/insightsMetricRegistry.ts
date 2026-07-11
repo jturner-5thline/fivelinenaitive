@@ -112,6 +112,7 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'finserv-profit-per-hour': 'FinServ Financial Metrics',
   'finserv-active-client-count': 'FinServ Financial Metrics',
   'finserv-total-mrr': 'FinServ Financial Metrics',
+  'finserv-utilization': 'FinServ Financial Metrics',
   // Brand Awareness — placeholder widgets (no live resolver yet)
   'ba-website-users': 'Brand Awareness',
   'ba-seo-clicks': 'Brand Awareness',
