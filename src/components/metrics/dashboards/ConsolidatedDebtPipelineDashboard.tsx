@@ -1824,6 +1824,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal on the Board — added to Active Pipeline',
           drilldownPeriodNote: 'Selected period · Dollars on the Board ÷ Deals on the Board',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealOnBoard, formatCurrency, 'prior period'),
         },
         {
           id: 'average-deal-signed',
@@ -1836,6 +1837,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal Signed — entered Signed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealSigned, formatCurrency, 'prior 6 months'),
         },
         {
           id: 'average-revenue-per-deal-signed',
@@ -1848,6 +1850,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Revenue per Deal Signed — Signed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months signed-deal count',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.averageRevenuePerDealSigned, formatCurrencyKOrMM, 'prior 12 months'),
         },
         {
           id: 'average-deal-closed',
@@ -1860,6 +1863,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Deal Closed — entered Closed',
           drilldownPeriodNote: 'Trailing 6 months · based on stage-entry deal volume ÷ deal count',
           drilldownMetricType: 'average',
+          delta: buildAverageDelta(m.averageDealClosed, formatCurrency, 'prior 6 months'),
         },
         {
           id: 'average-revenue-per-deal-closed',
@@ -1872,6 +1876,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Average Revenue per Deal Closed — Closed',
           drilldownPeriodNote: 'Trailing 12 months revenue ÷ trailing 12 months funded-deal count',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.averageRevenuePerDealClosed, formatCurrencyKOrMM, 'prior 12 months'),
         },
         {
           id: 'revenue-per-deal-hour',
@@ -1886,6 +1891,7 @@ export function ConsolidatedDebtPipelineDashboard({
           drilldownTitle: 'Revenue per Deal Hour',
           drilldownPeriodNote: 'Trailing 12 months 5th Line Capital Advisors revenue ÷ hours logged on Active Pipeline + In Development deals',
           drilldownMetricType: 'none',
+          delta: buildAverageDelta(m.revenuePerDealHour, formatHourlyRate, 'prior 12 months'),
         },
       ],
     },
