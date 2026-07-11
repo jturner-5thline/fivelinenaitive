@@ -2328,8 +2328,6 @@ export function ConsolidatedDebtPipelineDashboard({
       deals: totalRevenueOpportunity.deals,
       color: 'hsl(var(--chart-2))',
       drilldownTitle: 'Total Revenue Opportunity',
-      drilldownPeriodNote:
-        'Sum of Total Fee across Active Pipeline deals currently in Final Credit Items → In Due Diligence.',
       drilldownMetricType: 'dollars' as const,
       drilldownValueFormatter: formatCurrency,
       drilldownStackedFees: true,
