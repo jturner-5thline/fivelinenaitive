@@ -1226,15 +1226,30 @@ export function useConsolidatedDebtPipelineMetrics(
     () => buildRollingMonthsPeriod(todayAnchor, 12),
     [todayAnchor],
   );
-  // Prior windows (same length, immediately preceding) drive KPI deltas.
+  // Prior windows for KPI deltas.
+  // For TTM-based KPIs the comparison is the TTM dataset ending one selected
+  // period earlier (e.g. Apr 2026 selected → TTM as of Mar 2026 end; Q2 2026
+  // selected → TTM as of Q1 2026 end). We anchor the prior rolling window on
+  // the day immediately before the selected period's start date.
+  const priorRollingAnchor = useMemo(() => {
+    if (!quarter.startDate) return todayAnchor;
+    const d = new Date(quarter.startDate + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, [quarter.startDate, todayAnchor]);
   const priorSixMonthPeriod = useMemo(
-    () => buildPriorPeriodFor(sixMonthPeriod),
-    [sixMonthPeriod],
+    () => buildRollingMonthsPeriod(priorRollingAnchor, 6),
+    [priorRollingAnchor],
   );
   const priorTwelveMonthPeriod = useMemo(
-    () => buildPriorPeriodFor(twelveMonthPeriod),
-    [twelveMonthPeriod],
+    () => buildRollingMonthsPeriod(priorRollingAnchor, 12),
+    [priorRollingAnchor],
   );
+  // "On the board" is scoped to the selected period itself, so its prior
+  // comparison is the immediately preceding equal-length window.
   const priorQuarter = useMemo(() => buildPriorPeriodFor(quarter), [quarter]);
 
   // "Deals on the Board" / "Debt $ on the Board" / "Average Deal on the Board":
