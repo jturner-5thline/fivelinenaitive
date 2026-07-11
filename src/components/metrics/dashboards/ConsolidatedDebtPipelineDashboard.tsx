@@ -235,6 +235,31 @@ function MetricKPICard({
               )}
             </div>
           )}
+          {!config.isLoading && config.delta && (() => {
+            const { diff, formatDiff, pct, priorLabel } = config.delta;
+            const neutral = diff === 0;
+            const improved = diff > 0;
+            const arrow = neutral ? '–' : improved ? '▲' : '▼';
+            const toneClass = neutral
+              ? 'text-muted-foreground'
+              : improved
+                ? 'text-emerald-400'
+                : 'text-rose-400';
+            const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
+            const pctText = pct == null
+              ? '—'
+              : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+            return (
+              <div
+                className={cn('mt-1 flex items-baseline gap-1.5 text-[11px] font-mono tabular-nums', toneClass)}
+                title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
+              >
+                <span>{arrow}</span>
+                <span className="font-semibold">{signedDiff}</span>
+                <span className="opacity-80">({pctText})</span>
+              </div>
+            );
+          })()}
         </div>
       </CardContent>
     </Card>
