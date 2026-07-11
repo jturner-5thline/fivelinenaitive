@@ -44,6 +44,8 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'finserv-total-mrr', 'finserv-active-client-count',
   // FinServ Financial Metrics (per-hour tiles)
   'finserv-revenue-per-hour', 'finserv-profit-per-hour',
+  // FinServ Financial Metrics (utilization)
+  'finserv-utilization',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
