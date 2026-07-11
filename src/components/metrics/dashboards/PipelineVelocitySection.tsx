@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
-  ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
+  ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, Line,
+  CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 
