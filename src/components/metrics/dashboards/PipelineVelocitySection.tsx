@@ -175,7 +175,7 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
           <p className="text-[11px] text-muted-foreground font-medium truncate" title={tile.title}>
             {tile.title}
           </p>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
@@ -187,11 +187,10 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
                 {totalDeals > 0 ? formatVelocity(avgMonths, unit) : '—'}
               </button>
             )}
-          </div>
-          {!isLoading && !isNeutral && (
-            <p
+            {!isLoading && !isNeutral && (
+            <span
               className={cn(
-                'text-[10px] font-medium font-mono tabular-nums mt-0.5',
+                'text-[10px] font-medium font-mono tabular-nums',
                 isImprovement ? 'text-emerald-400' : 'text-rose-400',
               )}
               title={`${latestQuarter?.label ?? ''} vs ${prevQuarter?.label ?? ''}`}
@@ -199,13 +198,14 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
               {isImprovement ? '▼' : '▲'} {Math.abs(delta!)}{UNIT_SUFFIX[unit]}
               {pct != null && Number.isFinite(pct) && ` (${isImprovement ? '−' : '+'}${Math.abs(pct).toFixed(1)}%)`}
               <span className="text-muted-foreground font-normal"> vs {prevQuarter?.label}</span>
-            </p>
-          )}
-          {!isLoading && isNeutral && prevQuarter && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              No change vs {prevQuarter.label}
-            </p>
-          )}
+            </span>
+            )}
+            {!isLoading && isNeutral && prevQuarter && (
+              <span className="text-[10px] text-muted-foreground">
+                No change vs {prevQuarter.label}
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
