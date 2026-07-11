@@ -251,7 +251,7 @@ function MetricKPICard({
               : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
             return (
               <div
-                className={cn('mt-1 flex items-baseline gap-1.5 text-[11px] font-mono tabular-nums', toneClass)}
+                className={cn('mt-1 flex items-baseline gap-1.5 text-[16px] font-mono tabular-nums', toneClass)}
                 title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
               >
                 <span>{arrow}</span>
