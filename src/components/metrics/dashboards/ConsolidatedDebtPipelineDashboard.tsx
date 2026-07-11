@@ -2455,6 +2455,7 @@ export function ConsolidatedDebtPipelineDashboard({
             valueFormatter={drilldown?.valueFormatter}
             chartColor={drilldown?.chartColor}
             conversionBreakdown={liveBreakdown}
+            stackedFees={drilldown?.stackedFees}
             signedMode={undefined}
             onSignedModeChange={undefined}
             signedAnchorLabel={(() => {
