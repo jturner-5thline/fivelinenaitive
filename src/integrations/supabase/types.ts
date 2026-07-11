@@ -21360,6 +21360,42 @@ export type Database = {
         }
         Relationships: []
       }
+      qir_report_versions: {
+        Row: {
+          company_id: string
+          content: Json
+          created_at: string
+          id: string
+          period_key: string
+          report_key: string
+          saved_by: string | null
+          saved_by_name: string | null
+          source: string
+        }
+        Insert: {
+          company_id: string
+          content: Json
+          created_at?: string
+          id?: string
+          period_key: string
+          report_key: string
+          saved_by?: string | null
+          saved_by_name?: string | null
+          source?: string
+        }
+        Update: {
+          company_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          period_key?: string
+          report_key?: string
+          saved_by?: string | null
+          saved_by_name?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
       qir_section_notes: {
         Row: {
           body: string

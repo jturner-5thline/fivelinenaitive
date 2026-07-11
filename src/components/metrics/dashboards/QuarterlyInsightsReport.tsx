@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Printer, RotateCcw, RefreshCw, ExternalLink, Link2, SlidersHorizontal, Save as SaveIcon, Loader2, Pencil, X as XIcon, Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { toast as sonnerToast } from 'sonner';
@@ -26,6 +26,7 @@ import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEdit
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
+import { QirVersionHistoryButton } from './qir/QirVersionHistoryButton';
 import type { InsightsMetricOption } from './qir/insightsMetricRegistry';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
@@ -479,6 +480,7 @@ export function useQuarterlyReportState(
   },
 ) {
   const { company } = useCompany();
+  const { user } = useAuth();
   const seed = useMemo<ReportState>(
     () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -690,6 +692,29 @@ export function useQuarterlyReportState(
       setIsDirty(false);
       setUnsavedChangesWarning(null);
       sonnerToast.success('Report saved');
+
+      // Immutable version history: every successful save (manual OR
+      // debounced autosave) writes a full snapshot to qir_report_versions
+      // so any prior state of a JT/JM/SW report can be restored later.
+      // Non-blocking — a failed history insert must never fail the save.
+      try {
+        const displayName = ((user?.user_metadata as any)?.display_name
+          || (user?.user_metadata as any)?.full_name
+          || user?.email
+          || null) as string | null;
+        void supabase.from('qir_report_versions' as any).insert({
+          company_id: company.id,
+          report_key: configKey,
+          period_key: `${payload.period}:${payload.period === 'monthly' ? payload.month : payload.quarter}`,
+          content: next as any,
+          source: overrideState ? 'reset' : 'save',
+          saved_by: user?.id ?? null,
+          saved_by_name: displayName,
+        });
+      } catch (histErr) {
+        console.warn('[QIR] Failed to write version history:', histErr);
+      }
+
       return true;
     } catch (err) {
       console.error('[QIR] Error saving report config:', err);
@@ -3295,6 +3320,11 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  const { company: hdrCompany } = useCompany();
+  const handleRestoreVersion = useCallback((content: any) => {
+    if (!content || typeof content !== 'object') return;
+    set(() => ({ ...content } as ReportState));
+  }, [set]);
   // Collapse Goals / Initiatives for JM, JT, SW reports covering June 2026+
   // (monthly) or Q2 2026+ (quarterly). Users can still expand to view.
   const shouldCollapseGoalsInitiatives = useMemo(() => {
@@ -3404,6 +3434,15 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-header" className="qir-unified-section qir-unified-section--header">
             <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
+            {activeCompositeKey && hdrCompany?.id && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
+                <QirVersionHistoryButton
+                  companyId={hdrCompany.id}
+                  configKey={activeCompositeKey}
+                  onRestore={handleRestoreVersion}
+                />
+              </div>
+            )}
           </div>
           <div id="qir-section-summary" className="qir-unified-section">
             <ReportNarrativeSection
