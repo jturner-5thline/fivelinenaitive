@@ -197,12 +197,11 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
             >
               {isImprovement ? '▼' : '▲'} {Math.abs(delta!)}{UNIT_SUFFIX[unit]}
               {pct != null && Number.isFinite(pct) && ` (${isImprovement ? '−' : '+'}${Math.abs(pct).toFixed(1)}%)`}
-              <span className="text-muted-foreground font-normal"> vs {prevQuarter?.label}</span>
             </span>
             )}
             {!isLoading && isNeutral && prevQuarter && (
               <span className="text-[10px] text-muted-foreground">
-                No change vs {prevQuarter.label}
+                No change
               </span>
             )}
           </div>
