@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 const formatCurrency = (value: number) => {
   const n = Number(value) || 0;
   const sign = n < 0 ? '-' : '';
@@ -50,6 +51,7 @@ export function QuarterlyConversionFunnelChart({
 }) {
   const { current, quarters, isLoading } = useQuarterlyTtmFunnel();
   const [view, setView] = useState<ViewKey>('funnel');
+  const [drilldownIdx, setDrilldownIdx] = useState<number | null>(null);
 
   const activeStep = view === 'funnel' ? null : STEP_TABS.find(t => t.key === view) ?? null;
   const isDollars = mode === 'dollars';
@@ -288,8 +290,17 @@ export function QuarterlyConversionFunnelChart({
                 stroke="hsl(217, 91%, 65%)"
                 strokeWidth={2}
                 fill="url(#funnelGradient)"
-                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1 }}
-                activeDot={{ r: 5, fill: 'hsl(217, 91%, 70%)', stroke: 'hsl(var(--card))', strokeWidth: 2 }}
+                dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1, cursor: 'pointer' }}
+                activeDot={{
+                  r: 6,
+                  fill: 'hsl(217, 91%, 70%)',
+                  stroke: 'hsl(var(--card))',
+                  strokeWidth: 2,
+                  cursor: 'pointer',
+                  onClick: (_e: unknown, payload: { index?: number }) => {
+                    if (payload?.index != null) setDrilldownIdx(payload.index);
+                  },
+                }}
                 isAnimationActive
               >
                 <LabelList
@@ -337,7 +348,84 @@ export function QuarterlyConversionFunnelChart({
           </ResponsiveContainer>
         )}
       </div>
+      <FunnelDrilldownDialog
+        open={drilldownIdx !== null}
+        onOpenChange={(v) => { if (!v) setDrilldownIdx(null); }}
+        title={
+          drilldownIdx !== null
+            ? (activeStep
+                ? `${activeStep.short} · ${(data[drilldownIdx] as any)?.stage ?? ''}`
+                : `Funnel · ${(data[drilldownIdx] as any)?.stage ?? ''}`)
+            : ''
+        }
+        rows={
+          drilldownIdx === null
+            ? []
+            : activeStep
+              ? stepData.map((r) => ({
+                  label: r.stage,
+                  primary: r.pctOfTop == null ? '—' : `${r.pctOfTop.toFixed(1)}%`,
+                  secondary: `${valueFmt(r.fromCount)} → ${valueFmt(r.toCount)}`,
+                  highlight: r.stage === (data[drilldownIdx] as any)?.stage,
+                }))
+              : funnelData.map((r) => ({
+                  label: r.stage,
+                  primary: valueFmt(r.count),
+                  secondary: r.pctOfTop == null ? '' : `${r.pctOfTop.toFixed(1)}% of top`,
+                  highlight: r.stage === (data[drilldownIdx] as any)?.stage,
+                }))
+        }
+        subtitle={
+          activeStep
+            ? `Step conversion % across the last ${stepData.length} quarters`
+            : `${current.label} · TTM cohort across the funnel`
+        }
+      />
     </div>
+  );
+}
+
+function FunnelDrilldownDialog({
+  open,
+  onOpenChange,
+  title,
+  subtitle,
+  rows,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  subtitle: string;
+  rows: { label: string; primary: string; secondary: string; highlight?: boolean }[];
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground -mt-2 mb-3">{subtitle}</p>
+        <div className="rounded-md border border-border/50 divide-y divide-border/40">
+          {rows.map((r) => (
+            <div
+              key={r.label}
+              className={cn(
+                'flex items-center justify-between px-3 py-2 text-sm',
+                r.highlight && 'bg-primary/10',
+              )}
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">{r.label}</p>
+                {r.secondary && (
+                  <p className="text-[11px] text-muted-foreground truncate">{r.secondary}</p>
+                )}
+              </div>
+              <p className="font-mono tabular-nums font-semibold text-foreground">{r.primary}</p>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
