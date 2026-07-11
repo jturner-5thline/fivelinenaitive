@@ -28,6 +28,11 @@ import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFou
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
+import {
+  VelocityDrilldownDialog,
+  anchorEndOfLastCompletedQuarter,
+  pastFourQuarterLabels,
+} from '@/components/metrics/dashboards/PipelineVelocitySection';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
@@ -248,7 +253,37 @@ function AvgTimeTile({
   const DAYS_PER_MONTH = 30.4375;
   const avgDays = avgMonths * DAYS_PER_MONTH;
   const display = totalDeals > 0 && avgDays > 0 ? `${Math.round(avgDays)}d` : '—';
+
+  // Period-over-period: latest completed quarter vs the one before.
+  const anchor = anchorEndOfLastCompletedQuarter(new Date());
+  const axis = pastFourQuarterLabels(anchor); // oldest → newest
+  const agg = new Map<string, { sumMonths: number; deals: number }>();
+  for (const b of buckets) {
+    if (b.isOpen) continue;
+    const d = new Date(b.monthStart);
+    const key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+    const cur = agg.get(key) ?? { sumMonths: 0, deals: 0 };
+    cur.sumMonths += b.avgMonths * b.dealCount;
+    cur.deals += b.dealCount;
+    agg.set(key, cur);
+  }
+  const quarterAvgDays = (k: string): number | null => {
+    const v = agg.get(k);
+    return v && v.deals > 0 ? (v.sumMonths / v.deals) * DAYS_PER_MONTH : null;
+  };
+  const latestQ = axis[axis.length - 1];
+  const prevQ = axis[axis.length - 2];
+  const curDays = latestQ ? quarterAvgDays(latestQ.key) : null;
+  const prevDays = prevQ ? quarterAvgDays(prevQ.key) : null;
+  const delta = curDays != null && prevDays != null ? curDays - prevDays : null;
+  const pct = delta != null && prevDays! > 0 ? (delta / prevDays!) * 100 : null;
+  const isImprovement = delta != null && delta < 0; // lower time = better
+  const isNeutral = delta == null || Math.abs(delta) < 0.5;
+
+  const [drilldown, setDrilldown] = useState(false);
+
   return (
+    <>
     <Card
       className={cn(
         'relative group overflow-hidden transition-all duration-200',
@@ -266,18 +301,44 @@ function AvgTimeTile({
           <p className="text-[11px] text-muted-foreground font-medium truncate" title={title}>
             {title}
           </p>
-          <div className="flex items-baseline gap-1.5 mt-0.5">
+          <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+              <button
+                type="button"
+                onClick={() => setDrilldown(true)}
+                className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground"
+              >
                 {display}
+              </button>
+            )}
+            {!isLoading && !isNeutral && (
+              <span
+                className={cn(
+                  'text-[15px] font-medium font-mono tabular-nums',
+                  isImprovement ? 'text-emerald-400' : 'text-rose-400',
+                )}
+                title={`${latestQ?.label ?? ''} vs ${prevQ?.label ?? ''}`}
+              >
+                {isImprovement ? '▼' : '▲'} {Math.round(Math.abs(delta!))}d
+                {pct != null && Number.isFinite(pct) && ` (${isImprovement ? '−' : '+'}${Math.abs(pct).toFixed(1)}%)`}
               </span>
+            )}
+            {!isLoading && isNeutral && prevQ && (
+              <span className="text-[15px] text-muted-foreground">No change</span>
             )}
           </div>
         </div>
       </CardContent>
     </Card>
+    <VelocityDrilldownDialog
+      open={drilldown}
+      onOpenChange={setDrilldown}
+      tile={{ id: title, title, color, fromVariants, toVariants }}
+      unit="days"
+    />
+    </>
   );
 }
 

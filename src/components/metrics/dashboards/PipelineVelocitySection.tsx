@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
  * the two sections read as one unit.
  */
 
-interface VelocityTileDef {
+export interface VelocityTileDef {
   id: string;
   title: string;
   color: string;
@@ -221,14 +221,14 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
 /** End-of-last-completed-quarter date (UTC), used as the anchor so the
  *  monthly transit buckets align to the 4 most recently completed quarters
  *  — matching the X axis of "Step Conversion by Quarter". */
-function anchorEndOfLastCompletedQuarter(now: Date): Date {
+export function anchorEndOfLastCompletedQuarter(now: Date): Date {
   const y = now.getUTCFullYear();
   const currentQuarterStartMonth = Math.floor(now.getUTCMonth() / 3) * 3;
   // First day of current quarter, minus 1 ms → end of previous quarter.
   return new Date(Date.UTC(y, currentQuarterStartMonth, 1) - 1);
 }
 
-function pastFourQuarterLabels(anchor: Date): { key: string; label: string; year: number; q: number }[] {
+export function pastFourQuarterLabels(anchor: Date): { key: string; label: string; year: number; q: number }[] {
   // anchor is end of last completed quarter.
   const y = anchor.getUTCFullYear();
   const m = anchor.getUTCMonth();
@@ -453,7 +453,7 @@ function VelocitySummaryChart({ unit }: { unit: VelocityUnit }) {
  * unit as a line, and closed deal count per month as bars. Sourced from the
  * same `get_stage_transit_monthly` RPC the tiles and summary chart use.
  */
-function VelocityDrilldownDialog({
+export function VelocityDrilldownDialog({
   open,
   onOpenChange,
   tile,
