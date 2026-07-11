@@ -1186,7 +1186,9 @@ function DrilldownModalInner({
               <tbody>
                 {filteredDeals.map(deal => (
                   <tr key={deal.deal_id} className="border-b last:border-0 hover:bg-muted/20">
-                    <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
+                    <td className="px-3 py-2 text-xs font-medium">
+                      <DealLink dealId={deal.deal_id}>{deal.company}</DealLink>
+                    </td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {formatStageLabel(deal.current_stage)}
