@@ -1814,6 +1814,7 @@ export function ConsolidatedDebtPipelineDashboard({
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
   const [revPerHourOpen, setRevPerHourOpen] = useState(false);
+  const [openDealId, setOpenDealId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!m.fundedInvoicedTrend.isLoading && !m.fundedInvoiced.isLoading) {
