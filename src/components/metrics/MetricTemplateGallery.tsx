@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, DollarSign, TrendingUp, BarChart3, Percent, Building2, Zap, Users } from 'lucide-react';
+import { Search, DollarSign, TrendingUp, BarChart3, Percent, Building2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MetricWidgetConfig, MetricWidgetSize } from '@/contexts/MetricsWidgetsContext';
 
@@ -11,13 +11,13 @@ export interface MetricTemplate {
   id: string;
   name: string;
   description: string;
-  category: 'platform' | 'quickbooks' | 'hubspot' | 'cross-source';
+  category: 'platform' | 'quickbooks' | 'hubspot' | 'cross-source' | 'finserv';
   type: 'stat' | 'chart';
   chartType?: string;
   dataSource: string;
   defaultSize: MetricWidgetSize;
   defaultColor: string;
-  icon: 'dollar' | 'trending-up' | 'percent' | 'pipeline' | 'chart' | 'users';
+  icon: 'dollar' | 'trending-up' | 'percent' | 'pipeline' | 'chart';
 }
 
 const METRIC_TEMPLATES: MetricTemplate[] = [
@@ -64,7 +64,7 @@ const METRIC_TEMPLATES: MetricTemplate[] = [
   { id: 'tpl-xs-rev-deal', name: 'Revenue per Deal', description: 'QB Revenue ÷ HubSpot Deals Won', category: 'cross-source', type: 'stat', dataSource: 'xs-revenue-per-deal', defaultSize: 'small', defaultColor: 'hsl(var(--chart-5))', icon: 'dollar' },
   { id: 'tpl-xs-ar-deal', name: 'AR per Active Deal', description: 'QB AR ÷ Active Deals', category: 'cross-source', type: 'stat', dataSource: 'xs-ar-per-active-deal', defaultSize: 'small', defaultColor: 'hsl(var(--chart-4))', icon: 'dollar' },
   { id: 'tpl-xs-collect', name: 'Collection Rate', description: 'Collected vs invoiced across sources', category: 'cross-source', type: 'stat', dataSource: 'xs-collection-rate-by-entity', defaultSize: 'small', defaultColor: 'hsl(var(--chart-2))', icon: 'percent' },
-  { id: 'tpl-finserv-utilization', name: 'Utilization', description: 'Blended utilization plus Scott, Siddhi, and Kris', category: 'quickbooks', type: 'stat', dataSource: 'finserv-utilization', defaultSize: 'medium', defaultColor: 'hsl(var(--chart-4))', icon: 'users' },
+  { id: 'tpl-finserv-utilization', name: 'Utilization', description: 'Blended utilization plus Scott, Siddhi, and Kris', category: 'finserv', type: 'stat', dataSource: 'finserv-utilization', defaultSize: 'medium', defaultColor: 'hsl(var(--chart-4))', icon: 'percent' },
 ];
 
 const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -72,6 +72,7 @@ const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; colo
   quickbooks: { label: 'QuickBooks', icon: <DollarSign className="h-4 w-4" />, color: 'text-chart-3' },
   hubspot: { label: 'HubSpot', icon: <TrendingUp className="h-4 w-4" />, color: 'text-chart-4' },
   'cross-source': { label: 'Cross-Source', icon: <Zap className="h-4 w-4" />, color: 'text-chart-5' },
+  finserv: { label: 'FinServ Financial Metrics', icon: <Percent className="h-4 w-4" />, color: 'text-chart-4' },
 };
 
 interface MetricTemplateGalleryProps {
@@ -92,7 +93,7 @@ export function MetricTemplateGallery({ onSelect, existingDataSources = [] }: Me
     return true;
   });
 
-  const categories = ['platform', 'quickbooks', 'hubspot', 'cross-source'];
+  const categories = ['platform', 'quickbooks', 'finserv', 'hubspot', 'cross-source'];
 
   return (
     <div className="space-y-3">
