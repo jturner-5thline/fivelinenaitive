@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
-  ComposedChart, Line,
+  ComposedChart, Line, LineChart,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
@@ -459,7 +459,7 @@ function DrilldownBarChart({
   return (
     <div style={{ height: 140 }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={buckets} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+        <LineChart data={buckets} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
           <XAxis
             dataKey="label"
@@ -500,26 +500,39 @@ function DrilldownBarChart({
               );
             }}
             wrapperStyle={{ outline: 'none' }}
-            cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+            cursor={{ stroke: 'hsl(var(--accent))', strokeOpacity: 0.4 }}
           />
-          <Bar
+          <Line
+            type="monotone"
             dataKey="value"
-            shape={createGlassBarShape({ radius: 3, dataKey: 'value' })}
-            cursor="pointer"
-            onClick={(b: DrilldownBucket) => onSelect(selectedKey === b.key ? null : b.key)}
-          >
-            {buckets.map((b, i) => {
-              const isActive = selectedKey === null || selectedKey === b.key;
+            stroke={color}
+            strokeWidth={2}
+            dot={(props: { cx?: number; cy?: number; payload?: DrilldownBucket; index?: number }) => {
+              const { cx, cy, payload, index } = props;
+              if (cx == null || cy == null || !payload) {
+                return <g key={`empty-${index ?? 0}`} />;
+              }
+              const isActive = selectedKey === null || selectedKey === payload.key;
+              const isSelected = selectedKey === payload.key;
               return (
-                <Cell
-                  key={`${b.key}-${i}`}
-                  fill={b.value > 0 ? color : 'hsl(var(--muted))'}
-                  fillOpacity={b.value > 0 ? (isActive ? 0.85 : 0.35) : 0.25}
+                <circle
+                  key={`${payload.key}-${index ?? 0}`}
+                  cx={cx}
+                  cy={cy}
+                  r={isSelected ? 5 : 3.5}
+                  fill={payload.value > 0 ? color : 'hsl(var(--muted))'}
+                  fillOpacity={isActive ? 1 : 0.35}
+                  stroke="hsl(var(--card))"
+                  strokeWidth={1}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => onSelect(selectedKey === payload.key ? null : payload.key)}
                 />
               );
-            })}
-          </Bar>
-        </BarChart>
+            }}
+            activeDot={{ r: 5, style: { cursor: 'pointer' } }}
+            isAnimationActive={false}
+          />
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
