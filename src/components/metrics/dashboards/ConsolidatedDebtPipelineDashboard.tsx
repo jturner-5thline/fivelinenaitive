@@ -2183,7 +2183,7 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       </div>
 
-      {otherMetricsSection.cards.length > 0 && (
+      {(otherMetricsSection.cards.length > 0 || AVG_TIME_TILES.length > 0) && (
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -2211,6 +2211,22 @@ export function ConsolidatedDebtPipelineDashboard({
                 })}
               />
             ))}
+          </div>
+          <div className="pt-2">
+            <p className="text-[11px] text-muted-foreground mb-2">
+              Average time between Active Pipeline stage entries (trailing 12 months).
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {AVG_TIME_TILES.map(t => (
+                <AvgTimeTile
+                  key={t.id}
+                  title={t.title}
+                  color={t.color}
+                  fromVariants={t.from}
+                  toVariants={t.to}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
