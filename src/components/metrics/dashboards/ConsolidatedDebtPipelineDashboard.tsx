@@ -2220,6 +2220,7 @@ export function ConsolidatedDebtPipelineDashboard({
         'Sum of Total Fee across Active Pipeline deals currently in Final Credit Items → In Due Diligence.',
       drilldownMetricType: 'dollars' as const,
       drilldownValueFormatter: formatCurrency,
+      drilldownStackedFees: true,
     },
   ];
 
