@@ -3434,6 +3434,15 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-header" className="qir-unified-section qir-unified-section--header">
             <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
+            {activeCompositeKey && hdrCompany?.id && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 12px 0' }}>
+                <QirVersionHistoryButton
+                  companyId={hdrCompany.id}
+                  configKey={activeCompositeKey}
+                  onRestore={handleRestoreVersion}
+                />
+              </div>
+            )}
           </div>
           <div id="qir-section-summary" className="qir-unified-section">
             <ReportNarrativeSection
