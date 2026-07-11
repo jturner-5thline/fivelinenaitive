@@ -30,6 +30,7 @@ import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/components/insights/ChartDrilldown';
 import { buildBuckets } from '@/lib/insightsTimeRange';
+import { UtilizationWidget } from '@/components/metrics/finserv-charts/UtilizationWidget';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -1887,6 +1888,15 @@ function FinServFinancialMetricsDashboardInner() {
           monthLabels={monthlyLabels}
           badge={`Monthly · ${selectedPeriod.label}`}
           numeratorByMonth={monthlyProfitByKey}
+        />
+      </div>
+
+      {/* ── Row 9: Utilization (Scott / Siddhi / Kris / Blended) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <UtilizationWidget
+          monthKeys={monthlyKeys}
+          monthLabels={monthlyLabels}
+          badge={`Monthly · ${selectedPeriod.label}`}
         />
       </div>
     </div>
