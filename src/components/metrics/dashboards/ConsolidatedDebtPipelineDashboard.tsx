@@ -963,7 +963,9 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
                             aria-label="Did not advance"
                           />
                         )}
-                        <span className={dropped ? 'text-destructive-foreground' : undefined}>{d.company}</span>
+                        <DealLink dealId={d.deal_id} className={dropped ? 'text-destructive-foreground' : undefined}>
+                          {d.company}
+                        </DealLink>
                       </div>
                     </td>
                     <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
