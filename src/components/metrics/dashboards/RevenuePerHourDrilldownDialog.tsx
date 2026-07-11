@@ -173,7 +173,7 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
 
   const chartData = useMemo(() => {
     if (!data) return [];
-    return ttmMonths.map((m) => {
+    const rows = ttmMonths.map((m) => {
       let rev = 0;
       let hrs = 0;
       for (let j = 0; j < 12; j++) {
@@ -188,6 +188,14 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
         revenue: rev,
         hours: hrs,
         rate: hrs > 0 ? rev / hrs : null,
+      };
+    });
+    return rows.map((r, i) => {
+      const prev = i > 0 ? rows[i - 1] : null;
+      return {
+        ...r,
+        prevRate: prev?.rate ?? null,
+        prevLabel: prev?.label ?? null,
       };
     });
   }, [data, ttmMonths]);
@@ -288,6 +296,13 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                       content={({ active, payload, label }) => {
                         if (!active || !payload || !payload.length) return null;
                         const p = payload[0].payload as (typeof chartData)[number];
+                        const diff =
+                          p.rate != null && p.prevRate != null ? p.rate - p.prevRate : null;
+                        const pct =
+                          diff != null && p.prevRate != null && p.prevRate !== 0
+                            ? (diff / p.prevRate) * 100
+                            : null;
+                        const up = diff != null && diff >= 0;
                         return (
                           <div className="revenue-per-hour-tooltip">
                             <div className="revenue-per-hour-tooltip__title">
@@ -299,6 +314,28 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                             <div className="revenue-per-hour-tooltip__detail">
                               {fmtUSD(p.revenue)} ÷ {p.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs
                             </div>
+                            {diff != null && (
+                              <div
+                                className="revenue-per-hour-tooltip__detail"
+                                style={{
+                                  marginTop: 4,
+                                  color: up ? 'hsl(142 71% 55%)' : 'hsl(0 84% 65%)',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {up ? '▲' : '▼'} {up ? '+' : '−'}${Math.abs(Math.round(diff)).toLocaleString()}/hr
+                                {pct != null && (
+                                  <span style={{ marginLeft: 6, opacity: 0.85 }}>
+                                    ({up ? '+' : '−'}{Math.abs(pct).toFixed(1)}%)
+                                  </span>
+                                )}
+                                {p.prevLabel && (
+                                  <span style={{ marginLeft: 6, opacity: 0.7, fontWeight: 400 }}>
+                                    vs {p.prevLabel}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       }}
