@@ -83,6 +83,17 @@ interface MetricCardConfig {
   /** Short label for the denominator stage that anchors this card's
    *  passthrough filter (e.g. "Submitted to Lenders"). */
   signedAnchorLabel?: string;
+  /** Period-over-period conversion change (latest completed quarter vs prior). */
+  changePct?: {
+    /** Percentage-point delta, negative = worsened, positive = improved. */
+    delta: number;
+    /** Latest quarter conversion pct (0-100). */
+    latestPct: number;
+    /** Previous quarter conversion pct (0-100). */
+    prevPct: number;
+    latestLabel: string;
+    prevLabel: string;
+  };
   /** Optional secondary value displayed beneath the primary value
    *  (e.g. a dollar total under a deal count). Clicking it opens its own
    *  drilldown so users can inspect the count and dollar views separately. */
