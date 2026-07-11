@@ -272,7 +272,14 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                       width={54}
                     />
                     <Tooltip
-                      wrapperStyle={{ outline: 'none' }}
+                      wrapperStyle={{
+                        outline: 'none',
+                        background: 'transparent',
+                        border: 'none',
+                        boxShadow: 'none',
+                        padding: 0,
+                      }}
+                      allowEscapeViewBox={{ x: false, y: true }}
                       cursor={{
                         stroke: 'hsl(var(--accent))',
                         strokeWidth: 2,
@@ -317,7 +324,12 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                       stroke="hsl(var(--chart-4))"
                       strokeWidth={2}
                       dot={{ r: 3, fill: 'hsl(var(--chart-4))' }}
-                      activeDot={{ r: 5 }}
+                      activeDot={{
+                        r: 5,
+                        fill: 'hsl(var(--chart-4))',
+                        stroke: 'hsl(var(--background))',
+                        strokeWidth: 2,
+                      }}
                       connectNulls
                     />
                   </LineChart>
