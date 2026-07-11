@@ -277,12 +277,14 @@ function UtilizationActualsDialog({
   monthKeys,
   monthLabels,
   onSaved,
+  onOpenGoals,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   monthKeys: string[];
   monthLabels: string[];
   onSaved?: () => void;
+  onOpenGoals?: () => void;
 }) {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
@@ -368,10 +370,27 @@ function UtilizationActualsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Enter Utilization %</DialogTitle>
-          <DialogDescription>
-            Monthly actual utilization % per person. Set goals via the gear icon.
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <DialogTitle>Enter Utilization %</DialogTitle>
+              <DialogDescription>
+                Monthly actual utilization % per person. Set goals via the gear icon.
+              </DialogDescription>
+            </div>
+            {onOpenGoals && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 mr-6"
+                aria-label="Set utilization goals"
+                title="Set goal % per person / month"
+                onClick={onOpenGoals}
+              >
+                <Settings className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         {loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
