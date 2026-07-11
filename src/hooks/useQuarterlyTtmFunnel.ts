@@ -178,7 +178,7 @@ export function useQuarterlyTtmFunnel(): QuarterlyTtmFunnelResult {
     entriesByDeal?.set(row.deal_id, arr);
   }
 
-  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'dollars' | 'stepConversions'> => {
+  const bucketFor = (endsAt: Date): Pick<QuarterlyFunnelBucket, 'counts' | 'dollars' | 'stepConversions' | 'allConversions'> => {
     const windowStart = new Date(endsAt);
     windowStart.setUTCMonth(windowStart.getUTCMonth() - 12);
 
