@@ -1509,7 +1509,7 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
         return {
           deal_id: d.id,
           company: d.company ?? '—',
-          value: totalFee + retainer,
+          value: totalFee,
           manager: d.manager ?? null,
           current_stage: d.stage,
           entered_at: d.created_at,
