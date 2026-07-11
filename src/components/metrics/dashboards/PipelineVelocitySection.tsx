@@ -114,12 +114,47 @@ function useVelocityAvgMonths(tile: VelocityTileDef) {
   const avgMonths = totalDeals > 0
     ? closed.reduce((s, b) => s + b.avgMonths * b.dealCount, 0) / totalDeals
     : 0;
-  return { avgMonths, totalDeals, isLoading };
+  // Latest completed quarter vs the quarter before it — used for the
+  // period-over-period delta shown under the main value.
+  const anchor = anchorEndOfLastCompletedQuarter(new Date());
+  const axis = pastFourQuarterLabels(anchor); // oldest → newest
+  const agg = new Map<string, { sumMonths: number; deals: number }>();
+  for (const b of buckets) {
+    if (b.isOpen) continue;
+    const d = new Date(b.monthStart);
+    const key = `${d.getUTCFullYear()}-Q${Math.floor(d.getUTCMonth() / 3) + 1}`;
+    const cur = agg.get(key) ?? { sumMonths: 0, deals: 0 };
+    cur.sumMonths += b.avgMonths * b.dealCount;
+    cur.deals += b.dealCount;
+    agg.set(key, cur);
+  }
+  const quarterAvg = (k: string) => {
+    const v = agg.get(k);
+    return v && v.deals > 0 ? { avgMonths: v.sumMonths / v.deals, deals: v.deals } : null;
+  };
+  const latestQ = axis[axis.length - 1];
+  const prevQ = axis[axis.length - 2];
+  return {
+    avgMonths,
+    totalDeals,
+    isLoading,
+    latestQuarter: latestQ ? { label: latestQ.label, ...(quarterAvg(latestQ.key) ?? { avgMonths: 0, deals: 0 }) } : null,
+    prevQuarter: prevQ ? { label: prevQ.label, ...(quarterAvg(prevQ.key) ?? { avgMonths: 0, deals: 0 }) } : null,
+  };
 }
 
 function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUnit }) {
-  const { avgMonths, totalDeals, isLoading } = useVelocityAvgMonths(tile);
+  const { avgMonths, totalDeals, isLoading, latestQuarter, prevQuarter } = useVelocityAvgMonths(tile);
   const [drilldown, setDrilldown] = useState(false);
+
+  // Period-over-period delta: latest completed quarter vs the quarter before.
+  // Velocity semantics — LOWER is better, so a decrease is positive (green).
+  const curVal = latestQuarter && latestQuarter.deals > 0 ? velocityValue(latestQuarter.avgMonths, unit) : null;
+  const prevVal = prevQuarter && prevQuarter.deals > 0 ? velocityValue(prevQuarter.avgMonths, unit) : null;
+  const delta = curVal != null && prevVal != null ? curVal - prevVal : null;
+  const pct = delta != null && prevVal! > 0 ? (delta / prevVal!) * 100 : null;
+  const isImprovement = delta != null && delta < 0;
+  const isNeutral = delta == null || delta === 0 || prevVal == null || curVal == null;
 
   return (
     <>
@@ -153,6 +188,24 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
               </button>
             )}
           </div>
+          {!isLoading && !isNeutral && (
+            <p
+              className={cn(
+                'text-[10px] font-medium font-mono tabular-nums mt-0.5',
+                isImprovement ? 'text-emerald-400' : 'text-rose-400',
+              )}
+              title={`${latestQuarter?.label ?? ''} vs ${prevQuarter?.label ?? ''}`}
+            >
+              {isImprovement ? '▼' : '▲'} {Math.abs(delta!)}{UNIT_SUFFIX[unit]}
+              {pct != null && Number.isFinite(pct) && ` (${isImprovement ? '−' : '+'}${Math.abs(pct).toFixed(1)}%)`}
+              <span className="text-muted-foreground font-normal"> vs {prevQuarter?.label}</span>
+            </p>
+          )}
+          {!isLoading && isNeutral && prevQuarter && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              No change vs {prevQuarter.label}
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
