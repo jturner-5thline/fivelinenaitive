@@ -130,6 +130,10 @@ export interface StageEntryDeal {
   retainer_fee?: number;
   milestone_fee?: number;
   closing_fee?: number;
+  /** Projected close date for the deal (drives Closing/Success fee timing). */
+  projected_close_date?: string | null;
+  /** Due date of the "Qualified Term Sheet" milestone (drives Milestone fee timing). */
+  qts_due_date?: string | null;
 }
 
 interface StageMetricResult {
