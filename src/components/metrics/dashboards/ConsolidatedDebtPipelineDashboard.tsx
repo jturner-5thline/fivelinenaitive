@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
+import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
