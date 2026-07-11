@@ -479,6 +479,7 @@ export function useQuarterlyReportState(
   },
 ) {
   const { company } = useCompany();
+  const { user } = useAuth();
   const seed = useMemo<ReportState>(
     () => (initialState ? createQuarterlyReportSeed(initialState) : cloneSeed()),
     // eslint-disable-next-line react-hooks/exhaustive-deps
