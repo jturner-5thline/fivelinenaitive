@@ -161,9 +161,11 @@ function MetricKPICard({
               </button>
             )}
             {!config.isLoading && config.changePct && (() => {
-              const { delta, latestLabel, prevLabel } = config.changePct;
-              const neutral = Math.abs(delta) < 0.05;
-              const improved = delta > 0; // higher conversion pct = better
+              const { delta, prevPct, latestLabel, prevLabel } = config.changePct;
+              const relPct = prevPct > 0 ? (delta / prevPct) * 100 : null;
+              if (relPct == null || !Number.isFinite(relPct)) return null;
+              const neutral = Math.abs(relPct) < 0.05;
+              const improved = relPct > 0; // higher conversion pct = better
               return neutral ? (
                 <span
                   className="text-[15px] text-muted-foreground font-mono tabular-nums"
@@ -179,7 +181,7 @@ function MetricKPICard({
                   )}
                   title={`${latestLabel} vs ${prevLabel}`}
                 >
-                  {improved ? '▲' : '▼'} {improved ? '+' : '−'}{Math.abs(delta).toFixed(1)}pp
+                  {improved ? '▲' : '▼'} {improved ? '+' : '−'}{Math.abs(relPct).toFixed(1)}%
                 </span>
               );
             })()}
