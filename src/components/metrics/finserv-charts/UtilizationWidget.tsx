@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -265,7 +265,7 @@ function UtilizationInputDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  useMemo(() => {
+  useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
@@ -368,10 +368,10 @@ function UtilizationInputDialog({
                 </tr>
                 <tr className="border-b border-border">
                   {PEOPLE.map((p) => (
-                    <>
-                      <th key={`${p.slug}-b`} className="text-right px-2 py-1 font-normal text-[10px] text-muted-foreground border-l border-border">Billable</th>
-                      <th key={`${p.slug}-c`} className="text-right px-2 py-1 font-normal text-[10px] text-muted-foreground">Capacity</th>
-                    </>
+                    <Fragment key={p.slug}>
+                      <th className="text-right px-2 py-1 font-normal text-[10px] text-muted-foreground border-l border-border">Billable</th>
+                      <th className="text-right px-2 py-1 font-normal text-[10px] text-muted-foreground">Capacity</th>
+                    </Fragment>
                   ))}
                 </tr>
               </thead>
@@ -380,8 +380,8 @@ function UtilizationInputDialog({
                   <tr key={mk} className="border-b border-border/50 last:border-0">
                     <td className="px-3 py-1.5 text-foreground/90 whitespace-nowrap">{monthLabels[i] ?? mk}</td>
                     {PEOPLE.map((p) => (
-                      <>
-                        <td key={`${p.slug}-b-${mk}`} className="px-1 py-1 border-l border-border">
+                      <Fragment key={p.slug}>
+                        <td className="px-1 py-1 border-l border-border">
                           <Input
                             type="number" inputMode="decimal" step="any"
                             value={values[cellKey(`util_bill_${p.slug}`, mk)] ?? ''}
@@ -391,7 +391,7 @@ function UtilizationInputDialog({
                             className="h-7 text-right tabular-nums text-xs w-20"
                           />
                         </td>
-                        <td key={`${p.slug}-c-${mk}`} className="px-1 py-1">
+                        <td className="px-1 py-1">
                           <Input
                             type="number" inputMode="decimal" step="any"
                             value={values[cellKey(`util_cap_${p.slug}`, mk)] ?? ''}
@@ -401,7 +401,7 @@ function UtilizationInputDialog({
                             className="h-7 text-right tabular-nums text-xs w-20"
                           />
                         </td>
-                      </>
+                      </Fragment>
                     ))}
                   </tr>
                 ))}
