@@ -203,8 +203,10 @@ function TotalRevenueCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
-          <PrevPeriodChange current={totalRev.total} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
+            <PrevPeriodChange current={totalRev.total} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
+          </div>
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={totalRev.months.map((m) => m.amount)} format={fmtCurrencyFull} />
@@ -277,18 +279,20 @@ function GrossProfitToggleCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div
-            className="text-3xl font-semibold text-foreground"
-            title={isDollar ? fmtCurrencyPrecise(totalRev.grossProfit) : undefined}
-          >
-            {isDollar ? fmtCurrency(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <div
+              className="text-3xl font-semibold text-foreground"
+              title={isDollar ? fmtCurrencyPrecise(totalRev.grossProfit) : undefined}
+            >
+              {isDollar ? fmtCurrency(totalRev.grossProfit) : typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
+            </div>
+            <PrevPeriodChange
+              current={isDollar ? totalRev.grossProfit : (totalRev.grossMargin ?? null)}
+              previous={isDollar ? prev?.grossProfit : (prev?.grossMargin ?? null)}
+              format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
+              prevLabel={prevLabel}
+            />
           </div>
-          <PrevPeriodChange
-            current={isDollar ? totalRev.grossProfit : (totalRev.grossMargin ?? null)}
-            previous={isDollar ? prev?.grossProfit : (prev?.grossMargin ?? null)}
-            format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
-            prevLabel={prevLabel}
-          />
           {!isDollar && (
             <div className="text-xs text-muted-foreground">Gross Profit ÷ Revenue</div>
           )}
@@ -372,18 +376,20 @@ function OperatingProfitToggleCard({
       </CardHeader>
       <CardContent>
         <div className="mb-4">
-          <div
-            className="text-3xl font-semibold text-foreground"
-            title={isDollar ? fmtCurrencyPrecise(totalRev.operatingProfit) : undefined}
-          >
-            {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <div
+              className="text-3xl font-semibold text-foreground"
+              title={isDollar ? fmtCurrencyPrecise(totalRev.operatingProfit) : undefined}
+            >
+              {isDollar ? fmtCurrency(totalRev.operatingProfit) : typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
+            </div>
+            <PrevPeriodChange
+              current={isDollar ? totalRev.operatingProfit : (totalRev.operatingMargin ?? null)}
+              previous={isDollar ? prev?.operatingProfit : (prev?.operatingMargin ?? null)}
+              format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
+              prevLabel={prevLabel}
+            />
           </div>
-          <PrevPeriodChange
-            current={isDollar ? totalRev.operatingProfit : (totalRev.operatingMargin ?? null)}
-            previous={isDollar ? prev?.operatingProfit : (prev?.operatingMargin ?? null)}
-            format={isDollar ? fmtCurrencyFull : (v: number) => `${v.toFixed(1)} pts`}
-            prevLabel={prevLabel}
-          />
           {!isDollar && (
             <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
           )}
@@ -461,10 +467,12 @@ function CashflowCard({
       </CardHeader>
       <CardContent>
         <div className="mb-3">
-          <div className="text-2xl font-semibold text-foreground" title={fmtCurrencyPrecise(currentTotal)}>
-            {fmtCurrency(currentTotal)}
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <div className="text-2xl font-semibold text-foreground" title={fmtCurrencyPrecise(currentTotal)}>
+              {fmtCurrency(currentTotal)}
+            </div>
+            <PrevPeriodChange current={currentTotal} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
           </div>
-          <PrevPeriodChange current={currentTotal} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
         </div>
         {showTrend && (
           <div className="mb-3">
