@@ -1426,12 +1426,13 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
   );
 }
 
-function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
+function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel }: {
   s: ReportState;
   set: ReportSetState;
   scopeKey: string;
   save?: () => Promise<boolean>;
   isSaving?: boolean;
+  reportLabel: string;
 }) {
   const attachments = s.narrativeAttachments ?? [];
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1454,6 +1455,16 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
+        <div style={{ marginBottom: 12 }}>
+          <ReportKpisSection
+            s={s}
+            set={set}
+            reportLabel={reportLabel}
+            sliceKey="narrativeKpis"
+            title="Widgets"
+            subtitleSuffix="up to 5"
+          />
+        </div>
         <InsightsNarrativeEditor
           value={s.narrative}
           attachments={attachments}
