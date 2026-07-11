@@ -635,6 +635,137 @@ function DrilldownModal({
   );
 }
 
+const FEE_SEGMENTS = [
+  { key: 'retainer_fee' as const, label: 'Retainer', color: 'hsl(160, 65%, 50%)' },
+  { key: 'milestone_fee' as const, label: 'Milestone', color: 'hsl(280, 65%, 60%)' },
+  { key: 'closing_fee' as const, label: 'Closing / Success', color: 'hsl(35, 85%, 55%)' },
+];
+
+function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
+  const rows = useMemo(() => {
+    return deals
+      .map(d => {
+        const retainer = Number(d.retainer_fee) || 0;
+        const milestone = Number(d.milestone_fee) || 0;
+        const closing = Number(d.closing_fee) || 0;
+        const total = retainer + milestone + closing;
+        return {
+          deal_id: d.deal_id,
+          company: d.company,
+          retainer_fee: retainer,
+          milestone_fee: milestone,
+          closing_fee: closing,
+          total,
+        };
+      })
+      .filter(r => r.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [deals]);
+
+  const totals = useMemo(() => {
+    return rows.reduce(
+      (acc, r) => {
+        acc.retainer += r.retainer_fee;
+        acc.milestone += r.milestone_fee;
+        acc.closing += r.closing_fee;
+        acc.total += r.total;
+        return acc;
+      },
+      { retainer: 0, milestone: 0, closing: 0, total: 0 },
+    );
+  }, [rows]);
+
+  const height = Math.max(220, Math.min(560, rows.length * 26 + 40));
+
+  return (
+    <div className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Fee mix by deal
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          {FEE_SEGMENTS.map(s => {
+            const v =
+              s.key === 'retainer_fee' ? totals.retainer
+              : s.key === 'milestone_fee' ? totals.milestone
+              : totals.closing;
+            return (
+              <span key={s.key} className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
+                <span>{s.label}</span>
+                <span className="font-mono text-foreground/80">{formatCurrency(v)}</span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} horizontal={false} />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tickLine={false}
+              tickFormatter={(v: number) => formatCurrency(v)}
+            />
+            <YAxis
+              type="category"
+              dataKey="company"
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+              width={140}
+              interval={0}
+            />
+            <Tooltip
+              cursor={{ fill: 'hsl(var(--accent) / 0.08)' }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0].payload as typeof rows[number];
+                return (
+                  <div
+                    style={{
+                      backgroundColor: 'hsl(var(--popover) / 0.96)',
+                      border: '1px solid hsl(0 0% 100% / 0.14)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      fontSize: 12,
+                      color: 'hsl(0 0% 100%)',
+                      boxShadow: 'var(--shadow-xl)',
+                      backdropFilter: 'blur(16px)',
+                      minWidth: 200,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                    {FEE_SEGMENTS.map(s => (
+                      <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, opacity: 0.9 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ height: 8, width: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
+                          {s.label}
+                        </span>
+                        <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row[s.key])}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 4, paddingTop: 4, borderTop: '1px solid hsl(0 0% 100% / 0.12)', fontWeight: 600 }}>
+                      <span>Total</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row.total)}</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            {FEE_SEGMENTS.map(s => (
+              <Bar key={s.key} dataKey={s.key} stackId="fees" fill={s.color} isAnimationActive={false} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
   return _ConversionDealsTable({ heading, deals, accent, dropoutIds });
 }
