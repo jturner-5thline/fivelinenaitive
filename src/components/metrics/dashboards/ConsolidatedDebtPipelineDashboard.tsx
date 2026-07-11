@@ -2383,6 +2383,10 @@ export function ConsolidatedDebtPipelineDashboard({
       <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
         data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
       </div>
+      <RevenuePerHourDrilldownDialog
+        open={revPerHourOpen}
+        onClose={() => setRevPerHourOpen(false)}
+      />
     </div>
   );
 }
