@@ -272,17 +272,37 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                       width={54}
                     />
                     <Tooltip
-                      contentStyle={{
-                        background: 'hsl(var(--popover))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: 6,
-                        fontSize: 12,
+                      wrapperStyle={{ outline: 'none' }}
+                      cursor={{ stroke: 'hsl(var(--accent))', strokeOpacity: 0.4 }}
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload || !payload.length) return null;
+                        const p = payload[0].payload as (typeof chartData)[number];
+                        return (
+                          <div
+                            style={{
+                              backgroundColor: 'hsl(var(--popover) / 0.96)',
+                              border: '1px solid hsl(0 0% 100% / 0.14)',
+                              borderRadius: 8,
+                              padding: '8px 10px',
+                              fontSize: 12,
+                              color: 'hsl(0 0% 100%)',
+                              boxShadow: 'var(--shadow-xl)',
+                              backdropFilter: 'blur(16px)',
+                              minWidth: 180,
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                              TTM ending {label}
+                            </div>
+                            <div style={{ color: 'hsl(0 0% 100% / 0.9)' }}>
+                              {fmtRate(p.rate)}
+                            </div>
+                            <div style={{ color: 'hsl(0 0% 100% / 0.72)', marginTop: 2 }}>
+                              {fmtUSD(p.revenue)} ÷ {p.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} hrs
+                            </div>
+                          </div>
+                        );
                       }}
-                      formatter={(value: number | null, name: string) => {
-                        if (name === 'rate') return [fmtRate(value), 'TTM $/hr'];
-                        return [value, name];
-                      }}
-                      labelFormatter={(l) => `TTM ending ${l}`}
                     />
                     <Line
                       type="monotone"
