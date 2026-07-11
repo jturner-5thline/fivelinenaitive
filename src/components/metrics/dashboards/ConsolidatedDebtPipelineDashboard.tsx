@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,6 +25,34 @@ import {
 import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import type { Deal } from '@/types/deal';
+
+// ------------------------------------------------------------------
+// Deal drilldown open context — lets any nested drilldown table row
+// open the deal overlay without prop-drilling a callback everywhere.
+// ------------------------------------------------------------------
+const OpenDealContext = createContext<((dealId: string) => void) | null>(null);
+function useOpenDeal(): ((dealId: string) => void) | null {
+  return useContext(OpenDealContext);
+}
+function DealLink({ dealId, children, className }: { dealId: string; children: React.ReactNode; className?: string }) {
+  const open = useOpenDeal();
+  if (!open) return <span className={className}>{children}</span>;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); open(dealId); }}
+      className={cn(
+        'text-left underline decoration-dotted underline-offset-2 decoration-muted-foreground/40 hover:decoration-primary hover:text-primary transition-colors',
+        className,
+      )}
+      title="Open deal"
+    >
+      {children}
+    </button>
+  );
+}
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
@@ -935,7 +963,9 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
                             aria-label="Did not advance"
                           />
                         )}
-                        <span className={dropped ? 'text-destructive-foreground' : undefined}>{d.company}</span>
+                        <DealLink dealId={d.deal_id} className={dropped ? 'text-destructive-foreground' : undefined}>
+                          {d.company}
+                        </DealLink>
                       </div>
                     </td>
                     <td className="px-3 py-1.5 text-right font-mono">{formatCurrencyFull(d.value)}</td>
@@ -1156,7 +1186,9 @@ function DrilldownModalInner({
               <tbody>
                 {filteredDeals.map(deal => (
                   <tr key={deal.deal_id} className="border-b last:border-0 hover:bg-muted/20">
-                    <td className="px-3 py-2 text-xs font-medium">{deal.company}</td>
+                    <td className="px-3 py-2 text-xs font-medium">
+                      <DealLink dealId={deal.deal_id}>{deal.company}</DealLink>
+                    </td>
                     <td className="px-3 py-2 text-xs text-right font-mono">{formatCurrencyFull(deal.value)}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {formatStageLabel(deal.current_stage)}
@@ -1782,6 +1814,7 @@ export function ConsolidatedDebtPipelineDashboard({
   } | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
   const [revPerHourOpen, setRevPerHourOpen] = useState(false);
+  const [openDealId, setOpenDealId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!m.fundedInvoicedTrend.isLoading && !m.fundedInvoiced.isLoading) {
@@ -2305,6 +2338,7 @@ export function ConsolidatedDebtPipelineDashboard({
 
   return (
     <div className="space-y-6">
+      <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
@@ -2696,6 +2730,15 @@ export function ConsolidatedDebtPipelineDashboard({
         open={revPerHourOpen}
         onClose={() => setRevPerHourOpen(false)}
       />
+      <NaitiveDealOverlay
+        deal={openDealId ? ({ id: openDealId, company: 'Deal' } as unknown as Deal) : null}
+        orderedDeals={[]}
+        stages={[]}
+        onClose={() => setOpenDealId(null)}
+        onNavigate={(d) => setOpenDealId(d.id)}
+        onStageChange={() => { /* stage changes handled inside embedded deal detail */ }}
+      />
+      </OpenDealContext.Provider>
     </div>
   );
 }
