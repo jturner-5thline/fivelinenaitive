@@ -30,6 +30,41 @@ const fmtCurrencyPrecise = (v: number) =>
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 const fmtPctPrecise = (v: number) => `${v.toFixed(2)}%`;
 
+// Small badge showing $ / % change vs the equivalent previous period.
+function PrevPeriodChange({
+  current,
+  previous,
+  format,
+  prevLabel,
+  invert = false,
+}: {
+  current: number | null | undefined;
+  previous: number | null | undefined;
+  format: (v: number) => string;
+  prevLabel: string;
+  invert?: boolean;
+}) {
+  if (
+    current == null || previous == null ||
+    !Number.isFinite(current) || !Number.isFinite(previous)
+  ) return null;
+  const delta = (current as number) - (previous as number);
+  const pct = previous !== 0 ? (delta / Math.abs(previous as number)) * 100 : null;
+  const positive = delta >= 0;
+  const good = invert ? !positive : positive;
+  const color =
+    delta === 0 ? 'text-muted-foreground'
+    : good ? 'text-emerald-500'
+    : 'text-rose-500';
+  return (
+    <div className={`mt-1 text-xs font-medium ${color}`}>
+      {positive ? '▲ +' : '▼ '}{format(delta)}
+      {pct != null ? ` (${positive ? '+' : ''}${pct.toFixed(1)}%)` : ''}
+      <span className="text-muted-foreground font-normal"> vs {prevLabel}</span>
+    </div>
+  );
+}
+
 function WidgetLoading({ subtitle = 'Fetching from QuickBooks…' }: { subtitle?: string }) {
   return (
     <div className="space-y-3 p-4">
