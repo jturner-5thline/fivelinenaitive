@@ -642,6 +642,13 @@ const FEE_SEGMENTS = [
 ];
 
 function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
+  const fmt = (v: number) => {
+    const n = Number(v) || 0;
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (abs < 1_000_000) return `${sign}$${(abs / 1_000).toFixed(1)}K`;
+    return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
+  };
   const rows = useMemo(() => {
     return deals
       .map(d => {
@@ -693,7 +700,7 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
               <span key={s.key} className="inline-flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
                 <span>{s.label}</span>
-                <span className="font-mono text-foreground/80">{formatCurrency(v)}</span>
+                <span className="font-mono text-foreground/80">{fmt(v)}</span>
               </span>
             );
           })}
@@ -708,7 +715,7 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
               tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
               axisLine={{ stroke: 'hsl(var(--border))' }}
               tickLine={false}
-              tickFormatter={(v: number) => formatCurrency(v)}
+              tickFormatter={(v: number) => fmt(v)}
             />
             <YAxis
               type="category"
@@ -745,12 +752,12 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
                           <span style={{ height: 8, width: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
                           {s.label}
                         </span>
-                        <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row[s.key])}</span>
+                        <span style={{ fontFamily: 'ui-monospace, monospace' }}>{fmt(row[s.key])}</span>
                       </div>
                     ))}
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 4, paddingTop: 4, borderTop: '1px solid hsl(0 0% 100% / 0.12)', fontWeight: 600 }}>
                       <span>Total</span>
-                      <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row.total)}</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace' }}>{fmt(row.total)}</span>
                     </div>
                   </div>
                 );
