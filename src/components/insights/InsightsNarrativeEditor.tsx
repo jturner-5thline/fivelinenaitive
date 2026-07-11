@@ -163,6 +163,34 @@ export function InsightsNarrativeEditor({
   >(null);
   // Signed-URL cache for attachments (refresh on mount + when list changes).
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  // Dynamic top offset so the floating toolbar always sits just below the
+  // sticky dashboard header (which itself sits below the global top bar).
+  const [toolbarTop, setToolbarTop] = useState<number>(12);
+  useEffect(() => {
+    const compute = () => {
+      const header = document.querySelector('[data-sticky-dashboard-header]') as HTMLElement | null;
+      if (header) {
+        const rect = header.getBoundingClientRect();
+        setToolbarTop(Math.max(8, rect.bottom + 8));
+      } else {
+        const topBar = getComputedStyle(document.documentElement)
+          .getPropertyValue('--app-top-bar-height').trim();
+        const px = parseInt(topBar, 10) || 0;
+        setToolbarTop(px + 12);
+      }
+    };
+    compute();
+    window.addEventListener('scroll', compute, true);
+    window.addEventListener('resize', compute);
+    const ro = new ResizeObserver(compute);
+    const header = document.querySelector('[data-sticky-dashboard-header]');
+    if (header) ro.observe(header);
+    return () => {
+      window.removeEventListener('scroll', compute, true);
+      window.removeEventListener('resize', compute);
+      ro.disconnect();
+    };
+  }, []);
 
   const editor = useEditor({
     editable: !readOnly,
@@ -463,7 +491,7 @@ export function InsightsNarrativeEditor({
           onMouseDown={e => e.preventDefault()}
           style={{
             position: 'fixed',
-            top: `calc(var(--app-top-bar-height, 0px) + 12px)`,
+            top: toolbarTop,
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1400,
