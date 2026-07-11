@@ -184,7 +184,7 @@ export function useInsightsLiveMetricValue(
     [utilEnabled, period?.start, period?.end],
   );
   const utilMetricKeys = useMemo(
-    () => ['scott', 'siddhi', 'kris'].flatMap(s => [`util_bill_${s}`, `util_cap_${s}`]),
+    () => ['scott', 'siddhi', 'kris'].map(s => `util_pct_${s}`),
     [],
   );
   const utilization = useQuery({
@@ -194,19 +194,18 @@ export function useInsightsLiveMetricValue(
     queryFn: async () => {
       let q = supabase
         .from('metric_manual_inputs')
-        .select('metric_key, value')
+        .select('value')
         .in('metric_key', utilMetricKeys)
         .in('month_key', utilMonthKeys);
       q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
       const { data, error } = await q;
       if (error) throw error;
-      let bill = 0, cap = 0;
+      const vals: number[] = [];
       for (const r of data ?? []) {
-        const v = Number((r as any).value ?? 0);
-        if (String((r as any).metric_key).startsWith('util_bill_')) bill += v;
-        else if (String((r as any).metric_key).startsWith('util_cap_')) cap += v;
+        const v = (r as any).value;
+        if (v != null && Number.isFinite(Number(v))) vals.push(Number(v));
       }
-      return cap > 0 ? (bill / cap) * 100 : 0;
+      return vals.length ? vals.reduce((s, n) => s + n, 0) / vals.length : 0;
     },
   });
 
