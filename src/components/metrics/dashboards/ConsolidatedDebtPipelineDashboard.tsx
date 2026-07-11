@@ -1688,6 +1688,29 @@ export function ConsolidatedDebtPipelineDashboard({
           const value = conversionMode === 'dollars'
             ? pctText(num.dollarVolume, denDollars)
             : pctText(num.count, den.count);
+          // Period-over-period conversion change: latest completed quarter vs prior.
+          const latestQ = quarterlyFunnel.quarters[0];
+          const prevQ = quarterlyFunnel.quarters[1];
+          const stepKey = `${d.denKey}__${d.numKey}` as const;
+          const pctFor = (q: typeof latestQ | undefined) => {
+            if (!q) return null;
+            const s = q.allConversions[stepKey];
+            if (!s) return null;
+            const from = conversionMode === 'dollars' ? s.fromDollars : s.fromCount;
+            const to = conversionMode === 'dollars' ? s.toDollars : s.toCount;
+            return from > 0 ? (to / from) * 100 : null;
+          };
+          const latestPct = pctFor(latestQ);
+          const prevPct = pctFor(prevQ);
+          const changePct = !quarterlyFunnel.isLoading && latestPct != null && prevPct != null && latestQ && prevQ
+            ? {
+                delta: latestPct - prevPct,
+                latestPct,
+                prevPct,
+                latestLabel: latestQ.label,
+                prevLabel: prevQ.label,
+              }
+            : undefined;
           const formula = conversionMode === 'dollars'
             ? `($ of deals that entered ${denLabel} in the last 12 months and ever reached ${numLabel}) ÷ ` +
               `($ of deals that entered ${denLabel} in the last 12 months) = ` +
@@ -1721,6 +1744,7 @@ export function ConsolidatedDebtPipelineDashboard({
               percentText: value,
             },
             signedAnchorLabel: denShort,
+            changePct,
           };
         });
       })(),
