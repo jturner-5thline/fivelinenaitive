@@ -26,6 +26,7 @@ import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEdit
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
+import { QirVersionHistoryButton } from './qir/QirVersionHistoryButton';
 import type { InsightsMetricOption } from './qir/insightsMetricRegistry';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
