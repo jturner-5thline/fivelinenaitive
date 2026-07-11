@@ -1528,6 +1528,7 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const quarterlyFunnel = useQuarterlyTtmFunnel();
+  const totalRevenueOpportunity = useTotalRevenueOpportunity();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
