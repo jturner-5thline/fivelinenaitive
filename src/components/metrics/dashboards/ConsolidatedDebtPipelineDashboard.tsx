@@ -746,7 +746,7 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange, signedAnchorLabel,
+  signedMode, onSignedModeChange, signedAnchorLabel, stackedFees,
 }: {
   open: boolean;
   onClose: () => void;
@@ -761,6 +761,7 @@ function DrilldownModalInner({
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
   signedAnchorLabel?: string;
+  stackedFees?: boolean;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -772,8 +773,9 @@ function DrilldownModalInner({
     }
   }, [open, title]);
 
+  const showStackedFeesChart = !conversionBreakdown && !!stackedFees && deals.length > 0;
   const showChart =
-    !conversionBreakdown && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
+    !conversionBreakdown && !showStackedFeesChart && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
   const chartMetricType = (metricType === 'none' ? 'count' : metricType) as 'count' | 'dollars' | 'average';
   const formatter = valueFormatter ?? (chartMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency);
   const color = chartColor ?? 'hsl(var(--chart-3))';
