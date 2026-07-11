@@ -1228,6 +1228,11 @@ export function useConsolidatedDebtPipelineMetrics(
   const inDueDiligenceRolling12 = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedOnlyRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
+  const IN_DEVELOPMENT_PIPELINE_ID = '40b17dfb-9122-49e0-bf7c-5aa993d5d615';
+  const dealHoursRolling12 = useDealHoursInPeriod(
+    [ACTIVE_PIPELINE_ID, IN_DEVELOPMENT_PIPELINE_ID],
+    twelveMonthPeriod,
+  );
 
   // Lifetime deal_ids per conversion-relevant stage on the Active Pipeline —
   // used by the denominator-anchored conversion toggle so each card filters
@@ -1300,6 +1305,7 @@ export function useConsolidatedDebtPipelineMetrics(
     averageDealClosed: useAverageDealMetric(fundedInvoicedRolling6),
     averageRevenuePerDealSigned: useRevenuePerDealMetric(debtRevenueRolling12, finalCreditItemsRolling12),
     averageRevenuePerDealClosed: useRevenuePerDealMetric(debtRevenueRolling12, fundedInvoicedRolling12),
+    revenuePerDealHour: useRevenuePerHourMetric(debtRevenueRolling12, dealHoursRolling12),
     ttmCounts: {
       proposalIssued: proposalIssuedRolling12,
       finalCreditItems: finalCreditItemsRolling12,
