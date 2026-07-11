@@ -688,19 +688,26 @@ function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): Reven
   };
 }
 
-function useAverageDealMetric(stageMetric: StageMetricResult): AverageMetricResult {
+function useAverageDealMetric(
+  stageMetric: StageMetricResult,
+  previous?: StageMetricResult,
+): AverageMetricResult {
   return useMemo(() => ({
     value: stageMetric.count > 0 ? stageMetric.dollarVolume / stageMetric.count : null,
     numerator: stageMetric.dollarVolume,
     denominator: stageMetric.count,
     deals: stageMetric.deals,
     isLoading: stageMetric.isLoading,
-  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading]);
+    previousValue: previous && previous.count > 0
+      ? previous.dollarVolume / previous.count
+      : previous ? null : undefined,
+  }), [stageMetric.count, stageMetric.dollarVolume, stageMetric.deals, stageMetric.isLoading, previous?.count, previous?.dollarVolume]);
 }
 
 function useRevenuePerDealMetric(
   revenueTotal: RevenuePeriodTotalResult,
   stageMetric: StageMetricResult,
+  previous?: { revenueTotal: RevenuePeriodTotalResult; stageMetric: StageMetricResult },
 ): AverageMetricResult {
   return useMemo(() => ({
     value: stageMetric.count > 0 ? revenueTotal.total / stageMetric.count : null,
@@ -708,7 +715,10 @@ function useRevenuePerDealMetric(
     denominator: stageMetric.count,
     deals: stageMetric.deals,
     isLoading: revenueTotal.isLoading || stageMetric.isLoading,
-  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading]);
+    previousValue: previous && previous.stageMetric.count > 0
+      ? previous.revenueTotal.total / previous.stageMetric.count
+      : previous ? null : undefined,
+  }), [revenueTotal.total, revenueTotal.isLoading, stageMetric.count, stageMetric.deals, stageMetric.isLoading, previous?.revenueTotal.total, previous?.stageMetric.count]);
 }
 
 /**
@@ -766,6 +776,7 @@ function useDealHoursInPeriod(
 function useRevenuePerHourMetric(
   revenueTotal: RevenuePeriodTotalResult,
   hours: { total: number; isLoading: boolean },
+  previous?: { revenueTotal: RevenuePeriodTotalResult; hours: { total: number; isLoading: boolean } },
 ): AverageMetricResult {
   return useMemo(() => ({
     value: hours.total > 0 ? revenueTotal.total / hours.total : null,
@@ -773,7 +784,10 @@ function useRevenuePerHourMetric(
     denominator: hours.total,
     deals: [],
     isLoading: revenueTotal.isLoading || hours.isLoading,
-  }), [revenueTotal.total, revenueTotal.isLoading, hours.total, hours.isLoading]);
+    previousValue: previous && previous.hours.total > 0
+      ? previous.revenueTotal.total / previous.hours.total
+      : previous ? null : undefined,
+  }), [revenueTotal.total, revenueTotal.isLoading, hours.total, hours.isLoading, previous?.revenueTotal.total, previous?.hours.total]);
 }
 
 /**
