@@ -174,6 +174,42 @@ export function useInsightsLiveMetricValue(
     },
   });
 
+  // Utilization = sum(billable) / sum(capacity) across Scott/Siddhi/Kris
+  // for every month bucket in the report period. Blended % returned.
+  const utilEnabled = metricSourceId === 'finserv-utilization';
+  const utilMonthKeys = useMemo(
+    () => utilEnabled && period
+      ? buildBuckets(period.start, period.end, 'monthly').map(b => b.key)
+      : [],
+    [utilEnabled, period?.start, period?.end],
+  );
+  const utilMetricKeys = useMemo(
+    () => ['scott', 'siddhi', 'kris'].flatMap(s => [`util_bill_${s}`, `util_cap_${s}`]),
+    [],
+  );
+  const utilization = useQuery({
+    enabled: utilEnabled && utilMonthKeys.length > 0,
+    queryKey: ['insights-live-finserv-utilization', company?.id ?? null, utilMonthKeys.join('|')],
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from('metric_manual_inputs')
+        .select('metric_key, value')
+        .in('metric_key', utilMetricKeys)
+        .in('month_key', utilMonthKeys);
+      q = company?.id ? q.eq('company_id', company.id) : q.is('company_id', null);
+      const { data, error } = await q;
+      if (error) throw error;
+      let bill = 0, cap = 0;
+      for (const r of data ?? []) {
+        const v = Number((r as any).value ?? 0);
+        if (String((r as any).metric_key).startsWith('util_bill_')) bill += v;
+        else if (String((r as any).metric_key).startsWith('util_cap_')) cap += v;
+      }
+      return cap > 0 ? (bill / cap) * 100 : 0;
+    },
+  });
+
   // ---- Brand Awareness (workbook-entered metrics) ----
   const isBrandAwareness = !!metricSourceId && metricSourceId.startsWith('ba-');
   const baKeys = useMemo(() => {
@@ -492,6 +528,17 @@ export function useInsightsLiveMetricValue(
         : finservRev.operatingProfit;
       const v = hours > 0 ? numerator / hours : 0;
       return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
+    // ---- FinServ Financial Metrics (Utilization %) ----
+    if (metricSourceId === 'finserv-utilization') {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      if (utilization.isLoading) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      return { supported: true, status: 'ready', value: utilization.data ?? 0, sourceSurface: 'FinServ Financial Metrics' };
     }
 
     // ---- Cross-source metrics (combine deal + QB) ----
