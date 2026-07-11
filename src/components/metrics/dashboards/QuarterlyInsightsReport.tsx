@@ -331,6 +331,8 @@ export interface ReportState {
   authors: string[];
   kpis: KPI[];
   narrative: string;
+  /** Optional row of KPI-style widgets embedded inside the Narrative section (max 5). */
+  narrativeKpis?: KPI[];
   /** Optional file/image attachments persisted with the narrative section. */
   narrativeAttachments?: NarrativeAttachment[];
   goals: Goal[];
