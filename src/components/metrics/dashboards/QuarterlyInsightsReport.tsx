@@ -3469,6 +3469,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
               scopeKey={activeCompositeKey || rk}
               save={save}
               isSaving={isSaving}
+              reportLabel={reportLabel}
             />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
