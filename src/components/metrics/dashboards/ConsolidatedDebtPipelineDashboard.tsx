@@ -101,6 +101,10 @@ interface MetricCardConfig {
   drilldownValueFormatter?: (value: number) => string;
   /** Bar/total color override. Defaults to card color. */
   drilldownChartColor?: string;
+  /** If true, drilldown renders a stacked bar chart per deal showing
+   *  retainer / milestone / closing fee segments (uses fee_breakdown fields
+   *  on the StageEntryDeal rows). */
+  drilldownStackedFees?: boolean;
   /** Optional numerator/denominator breakdown for conversion-rate widgets. */
   conversionBreakdown?: ConversionBreakdown;
   /** Short label for the denominator stage that anchors this card's
