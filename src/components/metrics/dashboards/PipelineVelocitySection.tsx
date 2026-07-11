@@ -119,8 +119,10 @@ function useVelocityAvgMonths(tile: VelocityTileDef) {
 
 function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUnit }) {
   const { avgMonths, totalDeals, isLoading } = useVelocityAvgMonths(tile);
+  const [drilldown, setDrilldown] = useState(false);
 
   return (
+    <>
     <Card
       className={cn(
         'relative group overflow-hidden transition-all duration-200',
@@ -142,14 +144,25 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
             {isLoading ? (
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             ) : (
-              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+              <button
+                type="button"
+                onClick={() => setDrilldown(true)}
+                className="drilldown-value text-xl font-bold font-mono tabular-nums text-foreground"
+              >
                 {totalDeals > 0 ? formatVelocity(avgMonths, unit) : '—'}
-              </span>
+              </button>
             )}
           </div>
         </div>
       </CardContent>
     </Card>
+    <VelocityDrilldownDialog
+      open={drilldown}
+      onOpenChange={setDrilldown}
+      tile={tile}
+      unit={unit}
+    />
+    </>
   );
 }
 
