@@ -190,7 +190,7 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
             {!isLoading && !isNeutral && (
             <span
               className={cn(
-                'text-[10px] font-medium font-mono tabular-nums',
+                'text-[15px] font-medium font-mono tabular-nums',
                 isImprovement ? 'text-emerald-400' : 'text-rose-400',
               )}
               title={`${latestQuarter?.label ?? ''} vs ${prevQuarter?.label ?? ''}`}
@@ -200,7 +200,7 @@ function VelocityTile({ tile, unit }: { tile: VelocityTileDef; unit: VelocityUni
             </span>
             )}
             {!isLoading && isNeutral && prevQuarter && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[15px] text-muted-foreground">
                 No change
               </span>
             )}
