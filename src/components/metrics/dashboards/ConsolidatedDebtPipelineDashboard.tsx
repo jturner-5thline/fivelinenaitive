@@ -27,6 +27,7 @@ import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
 import { QuarterlyConversionFunnelChart, type QuarterlyStepConversionOverrides } from '@/components/metrics/charts/QuarterlyConversionFunnelChart';
 import { useQuarterlyTtmFunnel } from '@/hooks/useQuarterlyTtmFunnel';
+import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import { DEBT_ADVISORY_REALM_ID } from '@/hooks/useFinServFinancialMetrics';
 import { InsightsDrilldownDrawer, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { PipelineVelocitySection } from './PipelineVelocitySection';
@@ -207,6 +208,116 @@ function MetricKPICard({
     </Card>
   );
 }
+
+/**
+ * Compact "average time between two stage entries" tile — matches
+ * MetricKPICard visually. Uses trailing-12-month stage transit data on the
+ * Active Pipeline (deals that entered `from` in the window and later
+ * reached `to`; average difference in days).
+ */
+const AVG_TIME_STAGE_VARIANTS = {
+  finalCreditItems: ['final-credit-items', 'Final Credit Items'],
+  lendersInReview: ['lenders-in-review', 'Lenders in Review'],
+  termsIssued: ['terms-issued', 'Terms Issued'],
+  inDueDiligence: ['in-due-diligence', 'In Due Diligence'],
+  fundedInvoiced: ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
+};
+
+function AvgTimeTile({
+  title,
+  color,
+  fromVariants,
+  toVariants,
+}: {
+  title: string;
+  color: string;
+  fromVariants: string[];
+  toVariants: string[];
+}) {
+  const { buckets, isLoading } = useStageTransitMetrics({
+    fromVariants,
+    toVariants,
+    windowMonths: 12,
+    logInverted: false,
+  });
+  const closed = buckets.filter(b => !b.isOpen && b.dealCount > 0);
+  const totalDeals = closed.reduce((s, b) => s + b.dealCount, 0);
+  const avgMonths = totalDeals > 0
+    ? closed.reduce((s, b) => s + b.avgMonths * b.dealCount, 0) / totalDeals
+    : 0;
+  const DAYS_PER_MONTH = 30.4375;
+  const avgDays = avgMonths * DAYS_PER_MONTH;
+  const display = totalDeals > 0 && avgDays > 0 ? `${Math.round(avgDays)}d` : '—';
+  return (
+    <Card
+      className={cn(
+        'relative group overflow-hidden transition-all duration-200',
+        'glass-module',
+        'hover:border-primary/40 hover:-translate-y-0.5',
+        'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
+      )}
+    >
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+        style={{ background: `linear-gradient(90deg, ${color}, transparent)` }}
+      />
+      <CardContent className="flex items-center gap-2 py-4 px-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] text-muted-foreground font-medium truncate" title={title}>
+            {title}
+          </p>
+          <div className="flex items-baseline gap-1.5 mt-0.5">
+            {isLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            ) : (
+              <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                {display}
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const AVG_TIME_TILES: Array<{ id: string; title: string; color: string; from: string[]; to: string[] }> = [
+  {
+    id: 'avg-signed-to-submission',
+    title: 'Signed to Submission',
+    color: 'hsl(var(--chart-1))',
+    from: AVG_TIME_STAGE_VARIANTS.finalCreditItems,
+    to: AVG_TIME_STAGE_VARIANTS.lendersInReview,
+  },
+  {
+    id: 'avg-signed-to-terms-issued',
+    title: 'Signed to Terms Issued',
+    color: 'hsl(var(--chart-2))',
+    from: AVG_TIME_STAGE_VARIANTS.finalCreditItems,
+    to: AVG_TIME_STAGE_VARIANTS.termsIssued,
+  },
+  {
+    id: 'avg-signed-to-terms-signed',
+    title: 'Signed to Terms Signed',
+    color: 'hsl(var(--chart-3))',
+    from: AVG_TIME_STAGE_VARIANTS.finalCreditItems,
+    to: AVG_TIME_STAGE_VARIANTS.inDueDiligence,
+  },
+  {
+    id: 'avg-submission-to-terms-signed',
+    title: 'Submission to Terms Signed',
+    color: 'hsl(var(--chart-4))',
+    from: AVG_TIME_STAGE_VARIANTS.lendersInReview,
+    to: AVG_TIME_STAGE_VARIANTS.inDueDiligence,
+  },
+  {
+    id: 'avg-submission-to-funded',
+    title: 'Submission to Funded / Invoiced',
+    color: 'hsl(var(--chart-5))',
+    from: AVG_TIME_STAGE_VARIANTS.lendersInReview,
+    to: AVG_TIME_STAGE_VARIANTS.fundedInvoiced,
+  },
+];
 
 interface DrilldownBucket {
   key: string;
@@ -2072,7 +2183,7 @@ export function ConsolidatedDebtPipelineDashboard({
         />
       </div>
 
-      {otherMetricsSection.cards.length > 0 && (
+      {(otherMetricsSection.cards.length > 0 || AVG_TIME_TILES.length > 0) && (
         <div className="space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -2100,6 +2211,22 @@ export function ConsolidatedDebtPipelineDashboard({
                 })}
               />
             ))}
+          </div>
+          <div className="pt-2">
+            <p className="text-[11px] text-muted-foreground mb-2">
+              Average time between Active Pipeline stage entries (trailing 12 months).
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {AVG_TIME_TILES.map(t => (
+                <AvgTimeTile
+                  key={t.id}
+                  title={t.title}
+                  color={t.color}
+                  fromVariants={t.from}
+                  toVariants={t.to}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
