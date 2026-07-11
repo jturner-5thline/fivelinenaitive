@@ -273,21 +273,28 @@ export function RevenuePerHourDrilldownDialog({ open, onClose }: Props) {
                     />
                     <Tooltip
                       wrapperStyle={{ outline: 'none' }}
-                      cursor={{ stroke: 'hsl(var(--accent))', strokeOpacity: 0.4 }}
+                      cursor={{
+                        stroke: 'hsl(var(--accent))',
+                        strokeWidth: 2,
+                        strokeOpacity: 0.55,
+                      }}
                       content={({ active, payload, label }) => {
                         if (!active || !payload || !payload.length) return null;
                         const p = payload[0].payload as (typeof chartData)[number];
                         return (
                           <div
                             style={{
-                              backgroundColor: 'hsl(var(--popover) / 0.96)',
+                              background:
+                                'linear-gradient(145deg, hsl(var(--popover) / 0.98) 0%, hsl(var(--card) / 0.96) 50%, hsl(var(--accent) / 0.18) 100%)',
                               border: '1px solid hsl(0 0% 100% / 0.14)',
                               borderRadius: 8,
                               padding: '8px 10px',
                               fontSize: 12,
                               color: 'hsl(0 0% 100%)',
-                              boxShadow: 'var(--shadow-xl)',
+                              boxShadow:
+                                '0 18px 45px hsl(0 0% 0% / 0.45), inset 0 1px 0 hsl(0 0% 100% / 0.10)',
                               backdropFilter: 'blur(16px)',
+                              WebkitBackdropFilter: 'blur(16px)',
                               minWidth: 180,
                             }}
                           >
