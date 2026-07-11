@@ -177,10 +177,12 @@ function DeltaTooltip({
 // ── Card variants ──
 
 function TotalRevenueCard({
-  periodBadge, totalRev, onBarClick,
+  periodBadge, totalRev, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   totalRev: ReturnType<typeof useFinServTotalRevenue>;
+  prev?: { total: number } | null;
+  prevLabel: string;
   onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(false);
@@ -202,6 +204,7 @@ function TotalRevenueCard({
       <CardContent>
         <div className="mb-4">
           <div className="text-3xl font-semibold text-foreground" title={fmtCurrencyPrecise(totalRev.total)}>{fmtCurrency(totalRev.total)}</div>
+          <PrevPeriodChange current={totalRev.total} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
           {showTrend && (
             <div className="mt-1">
               <TrendDeltaText values={totalRev.months.map((m) => m.amount)} format={fmtCurrencyFull} />
