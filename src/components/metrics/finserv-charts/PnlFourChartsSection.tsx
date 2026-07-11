@@ -434,14 +434,20 @@ function OperatingProfitToggleCard({
 }
 
 function CashflowCard({
-  periodBadge, cashflow, title, onBarClick,
+  periodBadge, cashflow, title, prev, prevLabel, onBarClick,
 }: {
   periodBadge: string;
   cashflow: ReturnType<typeof useFinServCashflow>;
   title: string;
+  prev?: { total: number } | null;
+  prevLabel: string;
   onBarClick?: (d: any) => void;
 }) {
   const [showTrend, setShowTrend] = useState(true);
+  const currentTotal = useMemo(
+    () => cashflow.points.reduce((s, p) => s + (Number(p.value) || 0), 0),
+    [cashflow.points],
+  );
   return (
     <Card className="glass-module">
       <CardHeader className="pb-2">
@@ -454,6 +460,12 @@ function CashflowCard({
         </div>
       </CardHeader>
       <CardContent>
+        <div className="mb-3">
+          <div className="text-2xl font-semibold text-foreground" title={fmtCurrencyPrecise(currentTotal)}>
+            {fmtCurrency(currentTotal)}
+          </div>
+          <PrevPeriodChange current={currentTotal} previous={prev?.total} format={fmtCurrencyFull} prevLabel={prevLabel} />
+        </div>
         {showTrend && (
           <div className="mb-3">
             <TrendDeltaText values={cashflow.points.map((p) => p.value)} format={fmtCurrencyFull} />
