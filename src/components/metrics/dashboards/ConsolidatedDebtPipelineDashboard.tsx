@@ -2407,6 +2407,7 @@ export function ConsolidatedDebtPipelineDashboard({
                   chartColor: card.drilldownChartColor ?? card.color,
                   conversionBreakdown: card.conversionBreakdown,
                   conversionCardId: card.conversionBreakdown ? card.id : undefined,
+                  stackedFees: card.drilldownStackedFees,
                 })}
               />
             ))}
