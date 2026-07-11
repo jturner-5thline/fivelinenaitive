@@ -738,14 +738,14 @@ function useDealHoursInPeriod(
       // Filter to deals whose pipeline_id is in the requested set.
       const { data: deals, error: dealsErr } = await supabase
         .from('deals')
-        .select('id, pipeline_id, name')
+        .select('id, pipeline_id, company')
         .in('id', dealIds);
       if (dealsErr) throw dealsErr;
 
       const eligible = new Set(
         (deals ?? [])
           .filter(d => d.pipeline_id && pipelineIds.includes(d.pipeline_id))
-          .filter(d => !isExcludedDealName(d.name))
+          .filter(d => !isExcludedDealName(d.company ?? ''))
           .map(d => d.id),
       );
       return (rows ?? []).reduce(
