@@ -2127,7 +2127,12 @@ export function ConsolidatedDebtPipelineDashboard({
                       <MetricKPICard
                         key={card.id}
                         config={card}
-                        onClick={() => setDrilldown({
+                        onClick={() => {
+                          if (card.id === 'revenue-per-deal-hour') {
+                            setRevPerHourOpen(true);
+                            return;
+                          }
+                          setDrilldown({
                           title: card.drilldownTitle,
                           deals: card.deals,
                           periodNote: card.drilldownPeriodNote,
@@ -2137,7 +2142,8 @@ export function ConsolidatedDebtPipelineDashboard({
                           chartColor: card.drilldownChartColor ?? card.color,
                           conversionBreakdown: card.conversionBreakdown,
                           conversionCardId: card.conversionBreakdown ? card.id : undefined,
-                        })}
+                          });
+                        }}
                         onSecondaryClick={card.secondary ? () => {
                           const s = card.secondary!;
                           setDrilldown({
