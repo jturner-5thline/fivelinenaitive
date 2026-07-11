@@ -184,7 +184,16 @@ export function QuarterlyConversionFunnelChart({
           <Skeleton className="h-full w-full" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 24 }}>
+            <AreaChart
+              data={data}
+              margin={{ top: 10, right: 12, left: 0, bottom: 24 }}
+              onClick={(state: { activeTooltipIndex?: number } | null) => {
+                if (state && typeof state.activeTooltipIndex === 'number') {
+                  setDrilldownIdx(state.activeTooltipIndex);
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               <defs>
                 <linearGradient id="funnelGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.95} />
@@ -291,16 +300,7 @@ export function QuarterlyConversionFunnelChart({
                 strokeWidth={2}
                 fill="url(#funnelGradient)"
                 dot={{ r: 3, fill: 'hsl(217, 91%, 65%)', stroke: 'hsl(var(--card))', strokeWidth: 1, cursor: 'pointer' }}
-                activeDot={{
-                  r: 6,
-                  fill: 'hsl(217, 91%, 70%)',
-                  stroke: 'hsl(var(--card))',
-                  strokeWidth: 2,
-                  cursor: 'pointer',
-                  onClick: (_e: unknown, payload: { index?: number }) => {
-                    if (payload?.index != null) setDrilldownIdx(payload.index);
-                  },
-                }}
+                activeDot={{ r: 6, fill: 'hsl(217, 91%, 70%)', stroke: 'hsl(var(--card))', strokeWidth: 2, cursor: 'pointer' }}
                 isAnimationActive
               >
                 <LabelList
