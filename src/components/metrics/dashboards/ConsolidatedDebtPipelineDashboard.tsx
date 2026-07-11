@@ -2059,6 +2059,26 @@ export function ConsolidatedDebtPipelineDashboard({
     cards: otherMetricsCards,
   };
 
+  // Total Revenue Opportunity: sum of `total_fee` across current Active
+  // Pipeline deals in stages Final Credit Items → In Due Diligence.
+  otherMetricsSection.cards = [
+    ...otherMetricsSection.cards,
+    {
+      id: 'total-revenue-opportunity',
+      title: 'Total Revenue Opportunity',
+      icon: DollarSign,
+      value: formatCurrency(totalRevenueOpportunity.dollarVolume),
+      isLoading: totalRevenueOpportunity.isLoading,
+      deals: totalRevenueOpportunity.deals,
+      color: 'hsl(var(--chart-2))',
+      drilldownTitle: 'Total Revenue Opportunity',
+      drilldownPeriodNote:
+        'Sum of Total Fee across Active Pipeline deals currently in Final Credit Items → In Due Diligence.',
+      drilldownMetricType: 'dollars' as const,
+      drilldownValueFormatter: formatCurrency,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
