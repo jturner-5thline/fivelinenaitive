@@ -1891,8 +1891,8 @@ function FinServFinancialMetricsDashboardInner() {
         />
       </div>
 
-      {/* ── Row 9: Utilization (Scott / Siddhi / Kris / Blended) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Row 9: Utilization (Scott / Siddhi / Kris / Blended) — full width ── */}
+      <div className="w-full">
         <UtilizationWidget
           monthKeys={monthlyKeys}
           monthLabels={monthlyLabels}

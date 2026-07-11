@@ -167,23 +167,23 @@ export function UtilizationWidget({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Blended headline */}
-            <div>
-              <div className="text-3xl font-semibold tabular-nums text-foreground">
-                {fmtPct(blended.headline)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Blended{blended.goal != null ? ` · Goal ${fmtPct(blended.goal)}` : ''}
-              </div>
-            </div>
-
-            {/* Per-person rows */}
-            <div className="space-y-2">
-              {perPerson.map((p) => (
-                <PersonRow key={p.slug} name={p.name} series={p.series} headline={p.headline} goal={p.goal} />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {perPerson.map((p) => (
+              <PersonCard
+                key={p.slug}
+                name={p.name}
+                series={p.series}
+                headline={p.headline}
+                goal={p.goal}
+              />
+            ))}
+            <PersonCard
+              name="Blended"
+              series={blended.series}
+              headline={blended.headline}
+              goal={blended.goal}
+              emphasized
+            />
           </div>
         )}
       </CardContent>
@@ -214,28 +214,55 @@ export function UtilizationWidget({
   );
 }
 
-function PersonRow({
+function PersonCard({
   name,
   series,
   headline,
   goal,
+  emphasized,
 }: {
   name: string;
   series: Array<{ month: string; pct: number | null }>;
   headline: number | null;
   goal: number | null;
+  emphasized?: boolean;
 }) {
   const chartData = series.map((s) => ({ month: s.month, pct: s.pct }));
   const hasSeries = series.some((s) => s.pct != null);
+  const vsGoal =
+    headline != null && goal != null ? headline - goal : null;
   return (
-    <div className="grid grid-cols-[80px_1fr_70px] items-center gap-3 border-t border-border/40 pt-2 first:border-0 first:pt-0">
-      <div>
-        <div className="text-sm font-medium text-foreground">{name}</div>
-        <div className="text-[10px] text-muted-foreground tabular-nums">
+    <div
+      className={
+        'rounded-lg border border-border/60 bg-card/40 p-3 flex flex-col gap-2 ' +
+        (emphasized ? 'ring-1 ring-primary/40 bg-primary/5' : '')
+      }
+    >
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {name}
+        </div>
+        <div className="text-[10px] tabular-nums text-muted-foreground">
           {goal != null ? `Goal ${fmtPct(goal)}` : 'No goal'}
         </div>
       </div>
-      <div className="h-8">
+      <div className="flex items-baseline gap-2">
+        <div className="text-2xl font-semibold tabular-nums text-foreground">
+          {fmtPct(headline)}
+        </div>
+        {vsGoal != null && (
+          <div
+            className={
+              'text-[11px] tabular-nums ' +
+              (vsGoal >= 0 ? 'text-emerald-500' : 'text-rose-500')
+            }
+          >
+            {vsGoal >= 0 ? '+' : ''}
+            {vsGoal.toFixed(1)} pts
+          </div>
+        )}
+      </div>
+      <div className="h-12">
         {hasSeries && (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
@@ -256,16 +283,13 @@ function PersonRow({
                 type="monotone"
                 dataKey="pct"
                 stroke="hsl(var(--primary))"
-                strokeWidth={1.5}
+                strokeWidth={1.75}
                 dot={false}
                 isAnimationActive={false}
               />
             </LineChart>
           </ResponsiveContainer>
         )}
-      </div>
-      <div className="text-right text-sm font-semibold tabular-nums text-foreground">
-        {fmtPct(headline)}
       </div>
     </div>
   );
