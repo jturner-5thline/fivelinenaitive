@@ -22,6 +22,7 @@ import {
   type StageSplitTrendBucket,
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
+import { useTotalRevenueOpportunity } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { PnlFourChartsSection } from '@/components/metrics/finserv-charts/PnlFourChartsSection';
@@ -1527,6 +1528,7 @@ export function ConsolidatedDebtPipelineDashboard({
 }) {
   const m = useConsolidatedDebtPipelineMetrics(selectedQuarter as QuarterOption);
   const quarterlyFunnel = useQuarterlyTtmFunnel();
+  const totalRevenueOpportunity = useTotalRevenueOpportunity();
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   // When true, each bucket in the chart shows the trailing-12-month rollup
   // ending at that bucket's period end, instead of the bucket's own period.
@@ -2056,6 +2058,26 @@ export function ConsolidatedDebtPipelineDashboard({
     description: 'Supplementary trailing-12-month conversion rates',
     cards: otherMetricsCards,
   };
+
+  // Total Revenue Opportunity: sum of `total_fee` across current Active
+  // Pipeline deals in stages Final Credit Items → In Due Diligence.
+  otherMetricsSection.cards = [
+    ...otherMetricsSection.cards,
+    {
+      id: 'total-revenue-opportunity',
+      title: 'Total Revenue Opportunity',
+      icon: DollarSign,
+      value: formatCurrency(totalRevenueOpportunity.dollarVolume),
+      isLoading: totalRevenueOpportunity.isLoading,
+      deals: totalRevenueOpportunity.deals,
+      color: 'hsl(var(--chart-2))',
+      drilldownTitle: 'Total Revenue Opportunity',
+      drilldownPeriodNote:
+        'Sum of Total Fee across Active Pipeline deals currently in Final Credit Items → In Due Diligence.',
+      drilldownMetricType: 'dollars' as const,
+      drilldownValueFormatter: formatCurrency,
+    },
+  ];
 
   return (
     <div className="space-y-6">
