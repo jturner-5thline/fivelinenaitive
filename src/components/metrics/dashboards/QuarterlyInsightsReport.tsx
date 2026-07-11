@@ -691,6 +691,29 @@ export function useQuarterlyReportState(
       setIsDirty(false);
       setUnsavedChangesWarning(null);
       sonnerToast.success('Report saved');
+
+      // Immutable version history: every successful save (manual OR
+      // debounced autosave) writes a full snapshot to qir_report_versions
+      // so any prior state of a JT/JM/SW report can be restored later.
+      // Non-blocking — a failed history insert must never fail the save.
+      try {
+        const displayName = ((user?.user_metadata as any)?.display_name
+          || (user?.user_metadata as any)?.full_name
+          || user?.email
+          || null) as string | null;
+        void supabase.from('qir_report_versions' as any).insert({
+          company_id: company.id,
+          report_key: configKey,
+          period_key: `${payload.period}:${payload.period === 'monthly' ? payload.month : payload.quarter}`,
+          content: next as any,
+          source: overrideState ? 'reset' : 'save',
+          saved_by: user?.id ?? null,
+          saved_by_name: displayName,
+        });
+      } catch (histErr) {
+        console.warn('[QIR] Failed to write version history:', histErr);
+      }
+
       return true;
     } catch (err) {
       console.error('[QIR] Error saving report config:', err);
