@@ -542,13 +542,6 @@ export function VelocityDrilldownDialog({
                 <div className="flex items-center gap-1.5">
                   <span
                     className="inline-block h-[2px] w-4 rounded"
-                    style={{ background: 'hsl(var(--muted-foreground))' }}
-                  />
-                  <span>Deals closed</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="inline-block h-[2px] w-4 rounded"
                     style={{ background: tile.color }}
                   />
                   <span>Avg time ({unit})</span>
@@ -621,16 +614,6 @@ export function VelocityDrilldownDialog({
                       </div>
                     );
                   }}
-                />
-                <Line
-                  yAxisId="deals"
-                  type="monotone"
-                  dataKey="deals"
-                  stroke="hsl(var(--muted-foreground))"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 3"
-                  dot={{ r: 2, fill: 'hsl(var(--muted-foreground))' }}
-                  activeDot={{ r: 4 }}
                 />
                 <Line
                   yAxisId="time"
