@@ -3320,6 +3320,11 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
   unsavedChangesWarning?: string | null;
 }) {
   const rk = reportKey || 'naitive.quarterlyReport.adhoc';
+  const { company: hdrCompany } = useCompany();
+  const handleRestoreVersion = useCallback((content: any) => {
+    if (!content || typeof content !== 'object') return;
+    set(() => ({ ...content } as ReportState));
+  }, [set]);
   // Collapse Goals / Initiatives for JM, JT, SW reports covering June 2026+
   // (monthly) or Q2 2026+ (quarterly). Users can still expand to view.
   const shouldCollapseGoalsInitiatives = useMemo(() => {
