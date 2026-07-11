@@ -5,7 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStageTransitMetrics } from '@/hooks/useStageTransitMetrics';
 import {
-  ResponsiveContainer, AreaChart, Area, ComposedChart, Bar, Line,
+  ResponsiveContainer, AreaChart, Area, ComposedChart, Line,
   CartesianGrid, XAxis, YAxis, Tooltip, LabelList,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
