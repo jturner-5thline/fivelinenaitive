@@ -101,6 +101,10 @@ interface MetricCardConfig {
   drilldownValueFormatter?: (value: number) => string;
   /** Bar/total color override. Defaults to card color. */
   drilldownChartColor?: string;
+  /** If true, drilldown renders a stacked bar chart per deal showing
+   *  retainer / milestone / closing fee segments (uses fee_breakdown fields
+   *  on the StageEntryDeal rows). */
+  drilldownStackedFees?: boolean;
   /** Optional numerator/denominator breakdown for conversion-rate widgets. */
   conversionBreakdown?: ConversionBreakdown;
   /** Short label for the denominator stage that anchors this card's
@@ -594,7 +598,7 @@ function DrilldownBarChart({
 function DrilldownModal({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange, signedAnchorLabel,
+  signedMode, onSignedModeChange, signedAnchorLabel, stackedFees,
 }: {
   open: boolean;
   onClose: () => void;
@@ -609,6 +613,7 @@ function DrilldownModal({
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
   signedAnchorLabel?: string;
+  stackedFees?: boolean;
 }) {
   return (
     <DrilldownModalInner
@@ -625,7 +630,139 @@ function DrilldownModal({
       signedMode={signedMode}
       onSignedModeChange={onSignedModeChange}
       signedAnchorLabel={signedAnchorLabel}
+      stackedFees={stackedFees}
     />
+  );
+}
+
+const FEE_SEGMENTS = [
+  { key: 'retainer_fee' as const, label: 'Retainer', color: 'hsl(160, 65%, 50%)' },
+  { key: 'milestone_fee' as const, label: 'Milestone', color: 'hsl(280, 65%, 60%)' },
+  { key: 'closing_fee' as const, label: 'Closing / Success', color: 'hsl(35, 85%, 55%)' },
+];
+
+function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
+  const rows = useMemo(() => {
+    return deals
+      .map(d => {
+        const retainer = Number(d.retainer_fee) || 0;
+        const milestone = Number(d.milestone_fee) || 0;
+        const closing = Number(d.closing_fee) || 0;
+        const total = retainer + milestone + closing;
+        return {
+          deal_id: d.deal_id,
+          company: d.company,
+          retainer_fee: retainer,
+          milestone_fee: milestone,
+          closing_fee: closing,
+          total,
+        };
+      })
+      .filter(r => r.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [deals]);
+
+  const totals = useMemo(() => {
+    return rows.reduce(
+      (acc, r) => {
+        acc.retainer += r.retainer_fee;
+        acc.milestone += r.milestone_fee;
+        acc.closing += r.closing_fee;
+        acc.total += r.total;
+        return acc;
+      },
+      { retainer: 0, milestone: 0, closing: 0, total: 0 },
+    );
+  }, [rows]);
+
+  const height = Math.max(220, Math.min(560, rows.length * 26 + 40));
+
+  return (
+    <div className="rounded-lg border border-border/40 bg-muted/10 p-3 space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Fee mix by deal
+        </div>
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          {FEE_SEGMENTS.map(s => {
+            const v =
+              s.key === 'retainer_fee' ? totals.retainer
+              : s.key === 'milestone_fee' ? totals.milestone
+              : totals.closing;
+            return (
+              <span key={s.key} className="inline-flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-sm" style={{ background: s.color }} />
+                <span>{s.label}</span>
+                <span className="font-mono text-foreground/80">{formatCurrency(v)}</span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} horizontal={false} />
+            <XAxis
+              type="number"
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={{ stroke: 'hsl(var(--border))' }}
+              tickLine={false}
+              tickFormatter={(v: number) => formatCurrency(v)}
+            />
+            <YAxis
+              type="category"
+              dataKey="company"
+              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              axisLine={false}
+              tickLine={false}
+              width={140}
+              interval={0}
+            />
+            <Tooltip
+              cursor={{ fill: 'hsl(var(--accent) / 0.08)' }}
+              content={({ active, payload, label }) => {
+                if (!active || !payload || !payload.length) return null;
+                const row = payload[0].payload as typeof rows[number];
+                return (
+                  <div
+                    style={{
+                      backgroundColor: 'hsl(var(--popover) / 0.96)',
+                      border: '1px solid hsl(0 0% 100% / 0.14)',
+                      borderRadius: 8,
+                      padding: '8px 10px',
+                      fontSize: 12,
+                      color: 'hsl(0 0% 100%)',
+                      boxShadow: 'var(--shadow-xl)',
+                      backdropFilter: 'blur(16px)',
+                      minWidth: 200,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{label}</div>
+                    {FEE_SEGMENTS.map(s => (
+                      <div key={s.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, opacity: 0.9 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ height: 8, width: 8, borderRadius: 2, background: s.color, display: 'inline-block' }} />
+                          {s.label}
+                        </span>
+                        <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row[s.key])}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 4, paddingTop: 4, borderTop: '1px solid hsl(0 0% 100% / 0.12)', fontWeight: 600 }}>
+                      <span>Total</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace' }}>{formatCurrency(row.total)}</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            {FEE_SEGMENTS.map(s => (
+              <Bar key={s.key} dataKey={s.key} stackId="fees" fill={s.color} isAnimationActive={false} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }
 
@@ -740,7 +877,7 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
 function DrilldownModalInner({
   open, onClose, title, deals, periodNote, selectedQuarter,
   metricType = 'dollars', valueFormatter, chartColor, conversionBreakdown,
-  signedMode, onSignedModeChange, signedAnchorLabel,
+  signedMode, onSignedModeChange, signedAnchorLabel, stackedFees,
 }: {
   open: boolean;
   onClose: () => void;
@@ -755,6 +892,7 @@ function DrilldownModalInner({
   signedMode?: 'off' | 'ttm' | 'lifetime';
   onSignedModeChange?: (v: 'off' | 'ttm' | 'lifetime') => void;
   signedAnchorLabel?: string;
+  stackedFees?: boolean;
 }) {
   const [granularity, setGranularity] = useState<TrendChartMode>('monthly');
   const [selectedBucketKey, setSelectedBucketKey] = useState<string | null>(null);
@@ -766,8 +904,9 @@ function DrilldownModalInner({
     }
   }, [open, title]);
 
+  const showStackedFeesChart = !conversionBreakdown && !!stackedFees && deals.length > 0;
   const showChart =
-    !conversionBreakdown && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
+    !conversionBreakdown && !showStackedFeesChart && metricType !== 'none' && !!selectedQuarter && deals.length > 0;
   const chartMetricType = (metricType === 'none' ? 'count' : metricType) as 'count' | 'dollars' | 'average';
   const formatter = valueFormatter ?? (chartMetricType === 'count' ? (v: number) => `${Math.round(v)}` : formatCurrency);
   const color = chartColor ?? 'hsl(var(--chart-3))';
@@ -861,6 +1000,10 @@ function DrilldownModalInner({
           </span>
         </div>
       )}
+
+        {showStackedFeesChart && (
+          <StackedFeesChart deals={deals} />
+        )}
 
         {showChart && (
           <div className="rounded-lg border border-border/40 bg-muted/10 p-3">
@@ -1553,6 +1696,7 @@ export function ConsolidatedDebtPipelineDashboard({
     valueFormatter?: (v: number) => string;
     chartColor?: string;
     conversionBreakdown?: ConversionBreakdown;
+    stackedFees?: boolean;
     /** When set, the modal re-derives the breakdown from the live card by id
      *  so the FCI-only toggle inside the modal updates counts instantly. */
     conversionCardId?: string;
@@ -2076,6 +2220,7 @@ export function ConsolidatedDebtPipelineDashboard({
         'Sum of Total Fee across Active Pipeline deals currently in Final Credit Items → In Due Diligence.',
       drilldownMetricType: 'dollars' as const,
       drilldownValueFormatter: formatCurrency,
+      drilldownStackedFees: true,
     },
   ];
 
@@ -2402,6 +2547,7 @@ export function ConsolidatedDebtPipelineDashboard({
                   chartColor: card.drilldownChartColor ?? card.color,
                   conversionBreakdown: card.conversionBreakdown,
                   conversionCardId: card.conversionBreakdown ? card.id : undefined,
+                  stackedFees: card.drilldownStackedFees,
                 })}
               />
             ))}
@@ -2449,6 +2595,7 @@ export function ConsolidatedDebtPipelineDashboard({
             valueFormatter={drilldown?.valueFormatter}
             chartColor={drilldown?.chartColor}
             conversionBreakdown={liveBreakdown}
+            stackedFees={drilldown?.stackedFees}
             signedMode={undefined}
             onSignedModeChange={undefined}
             signedAnchorLabel={(() => {

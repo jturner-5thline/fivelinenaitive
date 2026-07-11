@@ -126,6 +126,10 @@ export interface StageEntryDeal {
   to_stage?: string | null;
   /** Recurring revenue contribution for this deal (FinServ widgets). */
   mrr?: number;
+  /** Optional fee breakdown (Total Revenue Opportunity drilldown). */
+  retainer_fee?: number;
+  milestone_fee?: number;
+  closing_fee?: number;
 }
 
 interface StageMetricResult {
@@ -1464,7 +1468,7 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('deals')
-        .select('id, company, value, total_fee, success_fee_percent, manager, stage, pipeline_id, created_at, status')
+        .select('id, company, value, total_fee, success_fee_percent, retainer_fee, milestone_fee, manager, stage, pipeline_id, created_at, status')
         .eq('pipeline_id', ACTIVE_PIPELINE_ID)
         .in('stage', stageFilterValues);
       if (error) throw error;
@@ -1497,6 +1501,11 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
               const pct = pctRaw > 1 ? pctRaw / 100 : pctRaw;
               return v * pct;
             })();
+        const retainerRaw = Number(d.retainer_fee);
+        const retainer = Number.isFinite(retainerRaw) && retainerRaw > 0 ? retainerRaw : 0;
+        const milestoneRaw = Number(d.milestone_fee);
+        const milestone = Number.isFinite(milestoneRaw) && milestoneRaw > 0 ? milestoneRaw : 0;
+        const closing = Math.max(0, totalFee - milestone);
         return {
           deal_id: d.id,
           company: d.company ?? '—',
@@ -1505,6 +1514,9 @@ export function useTotalRevenueOpportunity(): StageMetricResult {
           current_stage: d.stage,
           entered_at: d.created_at,
           pipeline_id: d.pipeline_id ?? '',
+          retainer_fee: retainer,
+          milestone_fee: milestone,
+          closing_fee: closing,
         } as StageEntryDeal;
       });
 
