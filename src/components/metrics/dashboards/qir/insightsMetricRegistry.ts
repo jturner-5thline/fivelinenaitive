@@ -225,6 +225,33 @@ export function buildInsightsMetricOptions(
     metricSourceId: m.id,
   }));
 
+  // 3b. Debt Advisory KPI tiles — mirror the Sales section KPI cards on the
+  //     Debt Advisory Metrics dashboard. Each tile is period-aware and
+  //     resolves to a live scalar via `useInsightsLiveMetricValue`.
+  const debtAdvisory: InsightsMetricOption[] = [
+    { id: 'da-deals-on-board-count',      label: 'Deals on the Board',        description: 'Deals added to the Active Pipeline this period', format: 'number' as MetricFormatHint },
+    { id: 'da-deals-on-board-dollars',    label: 'Dollars on the Board',      description: 'Dollar volume of deals added to the Active Pipeline', format: 'currency' as MetricFormatHint },
+    { id: 'da-proposals-issued-count',    label: 'Proposals Issued',          description: 'Deals that entered Proposal Issued', format: 'number' as MetricFormatHint },
+    { id: 'da-proposals-issued-dollars',  label: 'Dollars Proposed',          description: 'Dollar volume of deals that entered Proposal Issued', format: 'currency' as MetricFormatHint },
+    { id: 'da-debt-deals-signed-count',   label: 'Debt Deals Signed',         description: 'Deals that entered Signed', format: 'number' as MetricFormatHint },
+    { id: 'da-debt-deals-signed-dollars', label: 'Dollars Signed',            description: 'Dollar volume of deals that entered Signed', format: 'currency' as MetricFormatHint },
+    { id: 'da-terms-issued-count',        label: 'Terms Issued',              description: 'Deals that entered Terms Issued', format: 'number' as MetricFormatHint },
+    { id: 'da-terms-issued-dollars',      label: 'Terms Issued $',            description: 'Dollar volume of deals that entered Terms Issued', format: 'currency' as MetricFormatHint },
+    { id: 'da-terms-signed-count',        label: 'Terms Signed',              description: 'Deals that entered In Due Diligence', format: 'number' as MetricFormatHint },
+    { id: 'da-terms-signed-dollars',      label: 'Terms Signed $',            description: 'Dollar volume of deals that entered In Due Diligence', format: 'currency' as MetricFormatHint },
+    { id: 'da-deals-closed-count',        label: 'Deals Closed',              description: 'Deals that entered Closed (Funded / Invoiced)', format: 'number' as MetricFormatHint },
+    { id: 'da-deals-closed-dollars',      label: 'Dollars Funded',            description: 'Dollar volume of deals that entered Closed (Funded / Invoiced)', format: 'currency' as MetricFormatHint },
+  ].map(m => ({
+    id: `metric:${m.id}`,
+    kind: 'metric' as const,
+    label: m.label,
+    description: m.description,
+    source: 'Debt Advisory',
+    format: m.format,
+    supportsDrilldown: false,
+    metricSourceId: m.id,
+  }));
+
   // 4. Workspace-defined custom metrics (always scalar).
   const custom: InsightsMetricOption[] = customMetrics.map(cm => ({
     id: `custom:${cm.id}`,
@@ -250,6 +277,7 @@ export function buildInsightsMetricOptions(
     'Revenue & Customers',
     'Controller Dashboard',
     'FinServ Financial Metrics',
+    'Debt Advisory',
     'Sales Team Board',
     'Sales & BD ROI',
     'Consolidated Debt Pipeline Board',
@@ -258,7 +286,7 @@ export function buildInsightsMetricOptions(
     'Brand Awareness',
     'Custom Metrics',
   ];
-  const all = [...templates, ...metricSources, ...brandAwareness, ...custom]
+  const all = [...templates, ...metricSources, ...brandAwareness, ...debtAdvisory, ...custom]
     .filter(o => o.source !== 'HubSpot Dashboard');
   const grouped = new Map<string, InsightsMetricOption[]>();
   for (const opt of all) {
