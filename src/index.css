@@ -158,23 +158,24 @@
 
     /* Muted */
     --muted: 225 22% 70%;
-    --muted-foreground: 215 30% 98%;
+    /* Secondary/label text — mid-light gray for clear hierarchy below primary */
+    --muted-foreground: 215 15% 68%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
     --accent-foreground: 0 0% 100%;
 
     /* Status — financial colors, NOT teal */
-    --success: 142 71% 45%;
+    --success: 142 78% 50%;
     --success-foreground: 230 33% 8%;
-    --warning: 38 92% 50%;
+    --warning: 38 96% 56%;
     --warning-foreground: 230 33% 8%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 82% 58%;
     --destructive-foreground: 0 0% 95%;
 
     /* Borders — clearly visible delineation between sections */
-    --border: 224 32% 88%;
-    --input: 224 32% 88%;
+    --border: 224 28% 92%;
+    --input: 224 28% 92%;
     --ring: 213 90% 70%;
 
     /* Sidebar */
