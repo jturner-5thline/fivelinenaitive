@@ -765,6 +765,11 @@ function formatKPI(value: string, format: KPIFormat): string {
       minimumFractionDigits: 0,
     }).format(Math.trunc(n));
   }
+  if (format === 'currencyK') {
+    // Abbreviated USD in thousands: $XX.XXK (negatives render as -$XX.XXK).
+    const sign = n < 0 ? '-' : '';
+    return `${sign}$${(Math.abs(n) / 1000).toFixed(2)}K`;
+  }
   if (format === 'percent') return `${n.toFixed(1)}%`;
   return n.toLocaleString();
 }
