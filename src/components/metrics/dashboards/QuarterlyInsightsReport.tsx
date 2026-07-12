@@ -32,6 +32,8 @@ import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
   deriveReportPeriod,
+  getMonthlyBreakdownPeriods,
+  type LiveMetricPeriod,
   useInsightsLiveMetricValue,
 } from './qir/useInsightsLiveMetricValue';
 import {
@@ -824,6 +826,9 @@ function LiveMetricKpiCard({
     [reportState.period, reportState.quarter, reportState.month],
   );
   const resolution = useInsightsLiveMetricValue(cfg.metricSourceId ?? null, period);
+  const isAvgRevenuePerClient = cfg.metricSourceId === 'finserv-avg-revenue-per-client';
+  const monthlyPeriods = isAvgRevenuePerClient ? getMonthlyBreakdownPeriods(period) : null;
+  const showMonthlyValues = isAvgRevenuePerClient && !!monthlyPeriods?.length;
 
   const liveActual =
     resolution.status === 'ready' && resolution.value !== undefined
@@ -832,7 +837,7 @@ function LiveMetricKpiCard({
   // Force whole-dollar currency for Avg. Revenue / Client (e.g. $4,417)
   // regardless of the format persisted on the KPI.
   const effectiveFormat: KPIFormat =
-    cfg.metricSourceId === 'finserv-avg-revenue-per-client' ? 'currency' : kpi.format;
+    isAvgRevenuePerClient ? 'currency' : kpi.format;
   const displayValue =
     resolution.status === 'ready' && liveActual !== ''
       ? formatKPI(liveActual, effectiveFormat)
@@ -911,14 +916,27 @@ function LiveMetricKpiCard({
         color: TEXT_LABEL, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{kpi.label}</div>
 
-      <div style={{
-        fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums',
-        lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
-      }}>{displayValue}</div>
+      {showMonthlyValues ? (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${monthlyPeriods!.length}, minmax(0, 1fr))`, gap: 5, width: '100%' }}>
+          {monthlyPeriods!.map(monthPeriod => (
+            <LiveMetricMonthlyValue
+              key={monthPeriod.start}
+              metricSourceId={cfg.metricSourceId!}
+              period={monthPeriod}
+              format={effectiveFormat}
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          fontSize: 24, fontWeight: 700, color: TEXT_PRIMARY, fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%',
+        }}>{displayValue}</div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
         <span style={{ fontSize: 10, color: TEXT_MUTED, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-          Target {formatKPI(kpi.target, kpi.format)}
+          Target {formatKPI(kpi.target, effectiveFormat)}
         </span>
         <Pill tone={tone}>{statusLabel}</Pill>
         {resolution.status === 'ready' && resolution.changeAbsolute !== undefined && (
@@ -993,6 +1011,50 @@ function LiveMetricKpiCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LiveMetricMonthlyValue({
+  metricSourceId,
+  period,
+  format,
+}: {
+  metricSourceId: string;
+  period: LiveMetricPeriod;
+  format: KPIFormat;
+}) {
+  const resolution = useInsightsLiveMetricValue(metricSourceId, period);
+  const value = resolution.status === 'ready' && resolution.value !== undefined
+    ? formatKPI(String(resolution.value), format)
+    : resolution.status === 'loading'
+      ? '…'
+      : '—';
+
+  return (
+    <div style={{ minWidth: 0, padding: '5px 4px', borderRadius: 6, background: 'rgba(255,255,255,0.03)' }}>
+      <div style={{
+        fontSize: 8,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '.06em',
+        color: TEXT_LABEL,
+        marginBottom: 3,
+      }}>
+        {period.label.split(' ')[0]}
+      </div>
+      <div style={{
+        fontSize: 13,
+        fontWeight: 700,
+        color: TEXT_PRIMARY,
+        fontVariantNumeric: 'tabular-nums',
+        lineHeight: 1.1,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {value}
+      </div>
     </div>
   );
 }
