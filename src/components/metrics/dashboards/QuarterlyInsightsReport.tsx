@@ -1117,7 +1117,9 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
    *  Persists the metric source id alongside the KPI so future renderers
    *  can swap in live values without losing the user's selection. */
   const addMetricKPI = (opt: InsightsMetricOption) => {
-    const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+    let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+    // Avg. Revenue / Client — abbreviate as $XX.XXK per product spec.
+    if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
     setList(list => [...list, {
       id: uid(),
       label: opt.label,
@@ -1520,7 +1522,8 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
             });
           }}
           onPickMetric={(opt) => {
-            const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
             const reportPeriod = deriveReportPeriod(s);
             insertKpiNode({
               id: uid(),
