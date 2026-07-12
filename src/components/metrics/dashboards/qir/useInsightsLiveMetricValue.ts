@@ -37,6 +37,7 @@ import { useHubSpotMetrics } from '@/hooks/useHubSpotMetrics';
 import {
   FINSERV_PIPELINE_ID,
   ACTIVE_CLIENT_STAGE,
+  applyActiveClientOverride,
   useFinServTotalRevenue,
 } from '@/hooks/useFinServFinancialMetrics';
 import { useCompany } from '@/hooks/useCompany';
@@ -342,7 +343,7 @@ export function useInsightsLiveMetricValue(
           if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
           if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
         }
-        return { totalClients, totalMrr };
+        return { totalClients: applyActiveClientOverride(new Date(), totalClients), totalMrr };
       }
 
       // Period-aware: reconstruct stage at period end via deal_stage_history.
@@ -383,7 +384,7 @@ export function useInsightsLiveMetricValue(
         if (stage === ACTIVE_CLIENT_STAGE) totalClients += 1;
         if (!TERMINAL.has(stage)) totalMrr += Number(d.mrr ?? 0);
       }
-      return { totalClients, totalMrr };
+      return { totalClients: applyActiveClientOverride(effective, totalClients), totalMrr };
     },
   });
 
