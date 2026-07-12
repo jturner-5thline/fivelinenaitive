@@ -125,6 +125,7 @@ export const METRIC_WIDGET_DATA_SOURCES = [
   { id: 'finserv-active-client-count', label: 'FinServ: Active Client Count', type: 'stat' },
   { id: 'finserv-total-mrr', label: 'FinServ: Total MRR', type: 'stat' },
   { id: 'finserv-utilization', label: 'FinServ: Utilization %', type: 'stat' },
+  { id: 'finserv-avg-revenue-per-client', label: 'FinServ: Avg. Revenue / Client', type: 'stat' },
 ] as const;
 
 export type MetricDataSource = typeof METRIC_WIDGET_DATA_SOURCES[number]['id'];
