@@ -122,6 +122,19 @@ const DASHBOARD_BY_METRIC_ID: Record<string, string> = {
   'ba-linkedin-interactions': 'Brand Awareness',
   'ba-ai-search-readiness-score': 'Brand Awareness',
   'ba-market-awareness-score': 'Brand Awareness',
+  // Debt Advisory — Sales KPI tiles from the Debt Advisory Metrics board
+  'da-deals-on-board-count': 'Debt Advisory',
+  'da-deals-on-board-dollars': 'Debt Advisory',
+  'da-proposals-issued-count': 'Debt Advisory',
+  'da-proposals-issued-dollars': 'Debt Advisory',
+  'da-debt-deals-signed-count': 'Debt Advisory',
+  'da-debt-deals-signed-dollars': 'Debt Advisory',
+  'da-terms-issued-count': 'Debt Advisory',
+  'da-terms-issued-dollars': 'Debt Advisory',
+  'da-terms-signed-count': 'Debt Advisory',
+  'da-terms-signed-dollars': 'Debt Advisory',
+  'da-deals-closed-count': 'Debt Advisory',
+  'da-deals-closed-dollars': 'Debt Advisory',
 };
 
 function sourceForDataSourceId(id: string): string {
