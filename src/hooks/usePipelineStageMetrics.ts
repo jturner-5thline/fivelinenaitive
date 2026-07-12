@@ -1195,6 +1195,17 @@ export interface ConsolidatedDebtPipelineMetrics {
     fundedInvoiced: StageMetricResult;
     isLoading: boolean;
   };
+  /** Prior-period (same-length window immediately preceding the selected
+   *  quarter) stage-entry metrics for the top-row Sales KPIs. Used to render
+   *  count and $ deltas vs prior on each Sales card. */
+  priors: {
+    ndaNeedsList: StageMetricResult;
+    proposalsIssued: StageMetricResult;
+    finalCreditItems: StageMetricResult;
+    termsIssued: StageMetricResult;
+    inDueDiligence: StageMetricResult;
+    fundedInvoicedOnly: StageMetricResult;
+  };
   /** Sets of deal_ids that have EVER entered each conversion-relevant stage
    *  on the Active Pipeline (any time, not restricted to TTM). Used by the
    *  denominator-anchored conversion toggle so each card can filter its
