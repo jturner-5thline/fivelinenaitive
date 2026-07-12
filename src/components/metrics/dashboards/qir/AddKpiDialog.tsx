@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { Sparkles, Plus, Search, Gauge, BarChart3, Check, Settings } from 'lucide-react';
+import { Sparkles, Plus, Search, Gauge, BarChart3, Check, Settings, CalendarRange } from 'lucide-react';
 import { type KpiTemplateId } from './kpiTemplates';
 import { BrandAwarenessDataEditor } from './BrandAwarenessDataEditor';
 import {
@@ -13,7 +13,7 @@ import {
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { type LiveMetricPeriod, useInsightsLiveMetricValue } from './useInsightsLiveMetricValue';
+import { type LiveMetricPeriod, useInsightsLiveMetricValue, getMonthlyBreakdownPeriods } from './useInsightsLiveMetricValue';
 
 /**
  * Canonical set of metric source ids that have a live resolver wired up
@@ -328,6 +328,10 @@ function WidgetTile({
   const isChart = !!option.derivedFromChart;
   const TypeIcon = isTemplate ? Sparkles : isChart ? BarChart3 : Gauge;
   const typeLabel = isTemplate ? 'Template' : isChart ? 'Chart → value' : 'KPI';
+  const [showMonthly, setShowMonthly] = useState(false);
+  const monthly = getMonthlyBreakdownPeriods(reportPeriod ?? null);
+  const canToggleMonthly = !isTemplate && !isCustom && !!option.metricSourceId && !!monthly;
+  const renderMonthly = showMonthly && canToggleMonthly;
 
   // Pull a real live value from the canonical resolver. Templates and
   // custom metrics don't have an Insights metric source id, so they
@@ -389,16 +393,48 @@ function WidgetTile({
         <Check className="h-3 w-3" strokeWidth={3} />
       </div>
 
+      {canToggleMonthly && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setShowMonthly(v => !v); }}
+          aria-label={renderMonthly ? 'Show total' : 'Show monthly breakdown'}
+          title={renderMonthly ? 'Show total' : 'Show monthly breakdown'}
+          className={cn(
+            'absolute top-2 left-2 z-10 h-5 w-5 rounded-md border flex items-center justify-center transition',
+            renderMonthly
+              ? 'border-primary bg-primary/20 text-primary'
+              : 'border-border/70 bg-background/80 text-muted-foreground hover:text-foreground hover:border-primary/60',
+          )}
+        >
+          <CalendarRange className="h-3 w-3" />
+        </button>
+      )}
+
       {/* Widget-style preview */}
       <div className="p-3.5">
         <div className="h-[88px] rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex flex-col justify-center">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground truncate">
             {option.label}
           </div>
-          <div className="mt-1 flex items-baseline gap-1.5 min-h-[28px]">
-            {valueDisplay}
+          {renderMonthly ? (
+            <div className="mt-1 flex items-stretch gap-1.5 min-h-[28px]">
+              {monthly!.map(m => (
+                <MonthlyMiniValue
+                  key={m.start}
+                  metricSourceId={option.metricSourceId!}
+                  period={m}
+                  format={option.format}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-1 flex items-baseline gap-1.5 min-h-[28px]">
+              {valueDisplay}
+            </div>
+          )}
+          <div className="text-[9px] text-muted-foreground/70 mt-0.5 truncate">
+            {renderMonthly ? 'Monthly breakdown' : captionDisplay}
           </div>
-          <div className="text-[9px] text-muted-foreground/70 mt-0.5 truncate">{captionDisplay}</div>
         </div>
       </div>
 
@@ -418,6 +454,27 @@ function WidgetTile({
         </div>
       </div>
     </button>
+  );
+}
+
+function MonthlyMiniValue({
+  metricSourceId, period, format,
+}: { metricSourceId: string; period: LiveMetricPeriod; format: InsightsMetricOption['format'] }) {
+  const live = useInsightsLiveMetricValue(metricSourceId, period);
+  const short = period.label.split(' ')[0];
+  let text: React.ReactNode;
+  if (live.status === 'loading' || live.value === undefined) {
+    text = <span className="text-[10px] text-muted-foreground animate-pulse">…</span>;
+  } else if (!live.supported) {
+    text = <span className="text-[10px] text-muted-foreground">—</span>;
+  } else {
+    text = <span className="text-[11px] font-bold tabular-nums">{formatLiveValue(live.value, format)}</span>;
+  }
+  return (
+    <div className="flex-1 min-w-0 text-center rounded bg-background/40 px-1 py-0.5">
+      <div className="text-[8px] uppercase tracking-wide text-muted-foreground truncate">{short}</div>
+      <div className="truncate">{text}</div>
+    </div>
   );
 }
 
