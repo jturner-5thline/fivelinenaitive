@@ -258,9 +258,35 @@ function MetricKPICard({
                 </span>
               );
             })()}
+            {!config.isLoading && config.delta && (() => {
+              const { diff, formatDiff, pct, priorLabel } = config.delta;
+              const neutral = diff === 0;
+              const improved = diff > 0;
+              const arrow = neutral ? '–' : improved ? '▲' : '▼';
+              const toneClass = neutral
+                ? 'text-muted-foreground'
+                : improved
+                  ? 'text-emerald-400'
+                  : 'text-rose-400';
+              const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
+              const pctText = pct == null
+                ? '—'
+                : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+              return (
+                <span
+                  className={cn('inline-flex items-baseline gap-1 text-[13px] font-mono tabular-nums', toneClass)}
+                  title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
+                >
+                  <span>{arrow}</span>
+                  <span className="font-semibold">{signedDiff}</span>
+                  <span className="opacity-80">({pctText})</span>
+                </span>
+              );
+            })()}
           </div>
           {config.secondary && (
             <div className="mt-1 pt-1 border-t border-border/40">
+              <div className="flex items-baseline gap-2 flex-wrap">
               {config.secondary.isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               ) : (
@@ -284,43 +310,19 @@ function MetricKPICard({
                 const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
                 const pctText = pct == null ? '—' : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
                 return (
-                  <div
-                    className={cn('mt-0.5 flex items-baseline gap-1.5 text-[13px] font-mono tabular-nums', toneClass)}
+                  <span
+                    className={cn('inline-flex items-baseline gap-1 text-[13px] font-mono tabular-nums', toneClass)}
                     title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
                   >
                     <span>{arrow}</span>
                     <span className="font-semibold">{signedDiff}</span>
                     <span className="opacity-80">({pctText})</span>
-                  </div>
+                  </span>
                 );
               })()}
+              </div>
             </div>
           )}
-          {!config.isLoading && config.delta && (() => {
-            const { diff, formatDiff, pct, priorLabel } = config.delta;
-            const neutral = diff === 0;
-            const improved = diff > 0;
-            const arrow = neutral ? '–' : improved ? '▲' : '▼';
-            const toneClass = neutral
-              ? 'text-muted-foreground'
-              : improved
-                ? 'text-emerald-400'
-                : 'text-rose-400';
-            const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
-            const pctText = pct == null
-              ? '—'
-              : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
-            return (
-              <div
-                className={cn('mt-1 flex items-baseline gap-1.5 text-[16px] font-mono tabular-nums', toneClass)}
-                title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
-              >
-                <span>{arrow}</span>
-                <span className="font-semibold">{signedDiff}</span>
-                <span className="opacity-80">({pctText})</span>
-              </div>
-            );
-          })()}
         </div>
       </CardContent>
     </Card>
