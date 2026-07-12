@@ -273,6 +273,27 @@ function MetricKPICard({
                   {config.secondary.value}
                 </button>
               )}
+              {!config.secondary.isLoading && config.secondary.delta && (() => {
+                const { diff, formatDiff, pct, priorLabel } = config.secondary.delta;
+                const neutral = diff === 0;
+                const improved = diff > 0;
+                const arrow = neutral ? '–' : improved ? '▲' : '▼';
+                const toneClass = neutral
+                  ? 'text-muted-foreground'
+                  : improved ? 'text-emerald-400' : 'text-rose-400';
+                const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
+                const pctText = pct == null ? '—' : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+                return (
+                  <div
+                    className={cn('mt-0.5 flex items-baseline gap-1.5 text-[13px] font-mono tabular-nums', toneClass)}
+                    title={priorLabel ? `vs ${priorLabel}` : 'vs prior period'}
+                  >
+                    <span>{arrow}</span>
+                    <span className="font-semibold">{signedDiff}</span>
+                    <span className="opacity-80">({pctText})</span>
+                  </div>
+                );
+              })()}
             </div>
           )}
           {!config.isLoading && config.delta && (() => {
