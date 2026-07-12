@@ -976,6 +976,7 @@ function LiveMetricKpiCard({
           <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Format</label>
           <select value={kpi.format} onChange={e => onPatch({ format: e.target.value as KPIFormat })} style={selectStyle}>
             <option value="currency">$ Currency</option>
+            <option value="currencyK">$ Currency (K)</option>
             <option value="percent">% Percent</option>
             <option value="number"># Whole number</option>
           </select>
