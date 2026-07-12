@@ -82,6 +82,28 @@ export function getMonthlyBreakdownPeriods(
   return months;
 }
 
+/**
+ * Returns the immediately-preceding period of equal length. Used for
+ * "change over prior period" comparisons in KPI tiles.
+ */
+export function getPriorPeriod(
+  period: LiveMetricPeriod | null | undefined,
+): LiveMetricPeriod | null {
+  if (!period) return null;
+  const s = new Date(period.start + 'T00:00:00');
+  const e = new Date(period.end + 'T00:00:00');
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) return null;
+  const lengthMs = e.getTime() - s.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const priorEnd = new Date(s.getTime() - dayMs);
+  const priorStart = new Date(priorEnd.getTime() - lengthMs);
+  return {
+    start: format(priorStart, 'yyyy-MM-dd'),
+    end: format(priorEnd, 'yyyy-MM-dd'),
+    label: `Prior · ${format(priorStart, 'MMM d')}–${format(priorEnd, 'MMM d, yyyy')}`,
+  };
+}
+
 /** Derive a {start,end,label} period from a report's quarter/month state. */
 export function deriveReportPeriod(
   s: Pick<ReportState, 'period' | 'quarter' | 'month'>,
