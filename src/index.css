@@ -135,26 +135,27 @@
 
     /* Surface 1: page background — Linear/Vercel-style airy dark navy */
     --background: 226 24% 50%;
-    --foreground: 0 0% 100%;
+    /* Primary text — near-white (not pure) for eye-comfortable brightness */
+    --foreground: 0 0% 96%;
 
     /* Surface 2: card glass layer — clearly elevated above page.
        Brightened one step to increase perceived contrast against dark
        page bg without lightening the global background. */
-    --card: 225 26% 68%;
-    --card-foreground: 0 0% 100%;
+    --card: 225 26% 71%;
+    --card-foreground: 0 0% 96%;
 
     /* Surface 3: elevated (popover / deal details popup) — a further
        step brighter than --card so overlays visibly float above cards. */
-    --popover: 224 24% 73%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 224 24% 76%;
+    --popover-foreground: 0 0% 96%;
 
     /* Primary: Logo blue accent #7EB8F7 */
     --primary: 213 90% 70%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 225 22% 74%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 225 22% 77%;
+    --secondary-foreground: 0 0% 96%;
 
     /* Muted */
     --muted: 225 22% 70%;
@@ -163,7 +164,7 @@
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 0 0% 96%;
 
     /* Status — financial colors, NOT teal */
     --success: 142 78% 50%;
