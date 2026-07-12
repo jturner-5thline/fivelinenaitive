@@ -2006,6 +2006,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--primary))',
           drilldownTitle: 'Deals on the Board — added to Active Pipeline',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.ndaNeedsList, m.priors.ndaNeedsList, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.ndaNeedsList.dollarVolume),
             isLoading: m.ndaNeedsList.isLoading,
@@ -2013,6 +2014,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--chart-2))',
             drilldownTitle: 'Dollars on the Board — added to Active Pipeline',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.ndaNeedsList, m.priors.ndaNeedsList, 'dollarVolume', formatCurrency),
           },
         },
         {
@@ -2025,6 +2027,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Proposals Issued — entered Proposal Issued',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.proposalsIssued, m.priors.proposalsIssued, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.proposalsIssued.dollarVolume),
             isLoading: m.proposalsIssued.isLoading,
@@ -2032,6 +2035,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--chart-4))',
             drilldownTitle: 'Dollars Proposed — entered Proposal Issued',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.proposalsIssued, m.priors.proposalsIssued, 'dollarVolume', formatCurrency),
           },
         },
         {
@@ -2044,6 +2048,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-5))',
           drilldownTitle: 'Debt Deals Signed — entered Signed',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.finalCreditItems, m.priors.finalCreditItems, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.finalCreditItems.dollarVolume),
             isLoading: m.finalCreditItems.isLoading,
@@ -2051,6 +2056,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--success))',
             drilldownTitle: 'Dollars Signed — entered Signed',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.finalCreditItems, m.priors.finalCreditItems, 'dollarVolume', formatCurrency),
           },
         },
         {
@@ -2063,6 +2069,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-1))',
           drilldownTitle: 'Terms Issued — entered Terms Issued',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.termsIssued, m.priors.termsIssued, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.termsIssued.dollarVolume),
             isLoading: m.termsIssued.isLoading,
@@ -2070,6 +2077,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--chart-2))',
             drilldownTitle: 'Terms Issued $ — entered Terms Issued',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.termsIssued, m.priors.termsIssued, 'dollarVolume', formatCurrency),
           },
         },
         {
@@ -2082,6 +2090,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Terms Signed — entered In Due Diligence',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.inDueDiligence, m.priors.inDueDiligence, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.inDueDiligence.dollarVolume),
             isLoading: m.inDueDiligence.isLoading,
@@ -2089,6 +2098,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--chart-4))',
             drilldownTitle: 'Terms Signed $ — entered In Due Diligence',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.inDueDiligence, m.priors.inDueDiligence, 'dollarVolume', formatCurrency),
           },
         },
         {
@@ -2101,6 +2111,7 @@ export function ConsolidatedDebtPipelineDashboard({
           color: 'hsl(var(--chart-3))',
           drilldownTitle: 'Deals Closed — entered Closed',
           drilldownMetricType: 'count',
+          delta: buildStageDelta(m.fundedInvoicedOnly, m.priors.fundedInvoicedOnly, 'count', formatCountDiff),
           secondary: {
             value: formatCurrency(m.fundedInvoicedOnly.dollarVolume),
             isLoading: m.fundedInvoicedOnly.isLoading,
@@ -2108,6 +2119,7 @@ export function ConsolidatedDebtPipelineDashboard({
             color: 'hsl(var(--success))',
             drilldownTitle: 'Dollars Funded — entered Closed',
             drilldownMetricType: 'dollars',
+            delta: buildStageDelta(m.fundedInvoicedOnly, m.priors.fundedInvoicedOnly, 'dollarVolume', formatCurrency),
           },
         },
       ],
