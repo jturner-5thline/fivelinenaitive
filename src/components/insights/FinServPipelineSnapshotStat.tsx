@@ -10,6 +10,7 @@ import {
 } from "@/hooks/useFinServFinancialMetrics";
 import { getTimePeriodRange, getTimePeriodLabel } from "@/lib/timePeriodUtils";
 import type { TimePeriod } from "@/contexts/MetricsWidgetsContext";
+import { useInsightsTimeframeOptional } from "@/contexts/InsightsTimeframeContext";
 
 /**
  * Period-aware FinServ pipeline snapshot — mirrors the "Total Clients" and
@@ -34,8 +35,16 @@ const TERMINAL_STAGES = new Set(["fs-churned", "fs-closed-lost", "fs-in-developm
 function useFinServPipelineSnapshot(timePeriod?: TimePeriod) {
   const { user } = useAuth();
   const { company } = useCompany();
-  const range = getTimePeriodRange(timePeriod);
-  const endIso = range?.end ? range.end.toISOString() : null;
+  // Global Insights timeframe is authoritative — if present, it OVERRIDES the
+  // legacy per-widget `timePeriod`. This makes the header's Reporting Period
+  // (e.g. "Q2 2026") actually move this widget.
+  const insights = useInsightsTimeframeOptional();
+  const legacyRange = getTimePeriodRange(timePeriod);
+  const endIso = insights?.timeframe?.end
+    ? new Date(insights.timeframe.end + "T23:59:59").toISOString()
+    : legacyRange?.end
+      ? legacyRange.end.toISOString()
+      : null;
 
   return useQuery({
     queryKey: [
@@ -140,7 +149,8 @@ export function FinServActiveClientCountStat({
   timePeriod?: TimePeriod;
 }) {
   const { data, isLoading } = useFinServPipelineSnapshot(timePeriod);
-  const periodLabel = getTimePeriodLabel(timePeriod);
+  const insights = useInsightsTimeframeOptional();
+  const periodLabel = insights?.timeframe?.label ?? getTimePeriodLabel(timePeriod);
   return (
     <StatWidgetContent
       title={title}
@@ -166,7 +176,8 @@ export function FinServTotalMrrStat({
   timePeriod?: TimePeriod;
 }) {
   const { data, isLoading } = useFinServPipelineSnapshot(timePeriod);
-  const periodLabel = getTimePeriodLabel(timePeriod);
+  const insights = useInsightsTimeframeOptional();
+  const periodLabel = insights?.timeframe?.label ?? getTimePeriodLabel(timePeriod);
   return (
     <StatWidgetContent
       title={title}
