@@ -1456,6 +1456,8 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
   /** Insert a KPI as an inline `kpiEmbed` node at the current caret. */
   const insertKpiNode = React.useCallback((attrs: {
     id: string; label: string; format: KPIFormat; actual: string; target: string;
+    metricSourceId?: string | null; sourceSurface?: string | null;
+    periodStart?: string | null; periodEnd?: string | null; periodLabel?: string | null;
   }) => {
     const ed = editorRef.current;
     if (!ed) return;
@@ -1513,12 +1515,18 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
           }}
           onPickMetric={(opt) => {
             const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            const reportPeriod = deriveReportPeriod(s);
             insertKpiNode({
               id: uid(),
               label: opt.label,
               format: fmt,
               actual: '0',
-              target: '0',
+              target: '',
+              metricSourceId: opt.metricSourceId ?? null,
+              sourceSurface: opt.source,
+              periodStart: reportPeriod?.start ?? null,
+              periodEnd: reportPeriod?.end ?? null,
+              periodLabel: reportPeriod?.label ?? null,
             });
           }}
         />
