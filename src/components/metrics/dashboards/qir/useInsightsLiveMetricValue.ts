@@ -420,6 +420,75 @@ export function useInsightsLiveMetricValue(
     },
   });
 
+  // ---- Debt Advisory (Active Pipeline stage-entry tiles) ----
+  const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
+  const DA_STAGE_MAP: Record<string, string[]> = {
+    'da-deals-on-board-count':      [], // handled separately (pipeline-added, not stage-enter)
+    'da-deals-on-board-dollars':    [],
+    'da-proposals-issued-count':    ['proposal-issued'],
+    'da-proposals-issued-dollars':  ['proposal-issued'],
+    'da-debt-deals-signed-count':   ['final-credit-items'],
+    'da-debt-deals-signed-dollars': ['final-credit-items'],
+    'da-terms-issued-count':        ['terms-issued'],
+    'da-terms-issued-dollars':      ['terms-issued'],
+    'da-terms-signed-count':        ['in-due-diligence'],
+    'da-terms-signed-dollars':      ['in-due-diligence'],
+    'da-deals-closed-count':        ['funded-invoiced'],
+    'da-deals-closed-dollars':      ['funded-invoiced'],
+  };
+  const isDebtAdvisory = !!metricSourceId && metricSourceId.startsWith('da-');
+  const isDaBoard = metricSourceId === 'da-deals-on-board-count' || metricSourceId === 'da-deals-on-board-dollars';
+  const daStages = metricSourceId ? (DA_STAGE_MAP[metricSourceId] ?? []) : [];
+  const debtAdvisoryStage = useQuery({
+    enabled: isDebtAdvisory && !isDaBoard && !!period && daStages.length > 0,
+    queryKey: ['insights-live-debt-advisory-stage', metricSourceId, period?.start ?? null, period?.end ?? null],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id, changed_at, deals!inner (company, value, pipeline_id)')
+        .eq('event_type', 'stage_enter')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .in('to_stage', daStages)
+        .gte('changed_at', period!.start)
+        .lte('changed_at', period!.end + 'T23:59:59.999Z')
+        .order('changed_at', { ascending: true });
+      if (error) throw error;
+      const seen = new Map<string, { value: number; company: string }>();
+      for (const row of (data ?? []) as any[]) {
+        if (seen.has(row.deal_id)) continue;
+        const deal = row.deals;
+        if (!deal || deal.pipeline_id !== ACTIVE_PIPELINE_ID) continue;
+        if (isExcludedDealName(deal.company)) continue;
+        seen.set(row.deal_id, { value: Number(deal.value) || 0, company: deal.company ?? '—' });
+      }
+      const arr = Array.from(seen.values());
+      return {
+        count: arr.length,
+        dollarVolume: arr.reduce((s, d) => s + d.value, 0),
+      };
+    },
+  });
+  const debtAdvisoryBoard = useQuery({
+    enabled: isDebtAdvisory && isDaBoard && !!period,
+    queryKey: ['insights-live-debt-advisory-board', period?.start ?? null, period?.end ?? null],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, company, value, pipeline_id, created_at')
+        .eq('pipeline_id', ACTIVE_PIPELINE_ID)
+        .gte('created_at', period!.start)
+        .lte('created_at', period!.end + 'T23:59:59.999Z');
+      if (error) throw error;
+      const rows = (data ?? []).filter((d: any) => !isExcludedDealName(d.company));
+      return {
+        count: rows.length,
+        dollarVolume: rows.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0),
+      };
+    },
+  });
+
   return useMemo<LiveMetricResolution>(() => {
     if (!metricSourceId) return { supported: false, status: 'unmapped' };
 
@@ -590,6 +659,26 @@ export function useInsightsLiveMetricValue(
       return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
     }
 
+    // ---- Debt Advisory (Active Pipeline stage-entry tiles) ----
+    if (metricSourceId.startsWith('da-')) {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'Debt Advisory' };
+      }
+      const wantsDollars = metricSourceId.endsWith('-dollars');
+      if (isDaBoard) {
+        if (debtAdvisoryBoard.isLoading || !debtAdvisoryBoard.data) {
+          return { supported: true, status: 'loading', sourceSurface: 'Debt Advisory' };
+        }
+        const v = wantsDollars ? debtAdvisoryBoard.data.dollarVolume : debtAdvisoryBoard.data.count;
+        return { supported: true, status: 'ready', value: v, sourceSurface: 'Debt Advisory' };
+      }
+      if (debtAdvisoryStage.isLoading || !debtAdvisoryStage.data) {
+        return { supported: true, status: 'loading', sourceSurface: 'Debt Advisory' };
+      }
+      const v = wantsDollars ? debtAdvisoryStage.data.dollarVolume : debtAdvisoryStage.data.count;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'Debt Advisory' };
+    }
+
     // ---- Cross-source metrics (combine deal + QB) ----
     if (metricSourceId === 'xs-revenue-per-deal') {
       if (qb.isLoading || hs.isLoading || !qb.data || !hs.data) {
@@ -635,5 +724,10 @@ export function useInsightsLiveMetricValue(
     perHourHours.data,
     brandAwareness.isLoading,
     brandAwareness.data,
+    debtAdvisoryStage.isLoading,
+    debtAdvisoryStage.data,
+    debtAdvisoryBoard.isLoading,
+    debtAdvisoryBoard.data,
+    isDaBoard,
   ]);
 }
