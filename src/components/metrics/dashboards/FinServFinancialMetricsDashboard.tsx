@@ -1330,7 +1330,7 @@ function FinServFinancialMetricsDashboardInner() {
       </div>
 
       {/* ── Row 1: Total Revenue ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <FinServSnapshotCard
           label="Total Clients"
           value={pipelineSnapshot.data?.totalClients ?? 0}
@@ -1343,6 +1343,17 @@ function FinServFinancialMetricsDashboardInner() {
           format="currency"
           subtitle="Sum of MRR across active FinServ pipeline deals"
           isLoading={pipelineSnapshot.isLoading}
+        />
+        <FinServSnapshotCard
+          label="Avg. Revenue / Client"
+          value={
+            (pipelineSnapshot.data?.totalClients ?? 0) > 0
+              ? (totalRev.total ?? 0) / (pipelineSnapshot.data!.totalClients as number)
+              : 0
+          }
+          format="currency"
+          subtitle={`${periodBadge} revenue ÷ active clients`}
+          isLoading={pipelineSnapshot.isLoading || totalRev.isLoading}
         />
         <FinServSnapshotCard
           label="Current Pipeline"
