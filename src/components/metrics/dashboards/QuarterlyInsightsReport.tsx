@@ -305,7 +305,7 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-export type KPIFormat = 'currency' | 'percent' | 'number';
+export type KPIFormat = 'currency' | 'currencyK' | 'percent' | 'number';
 export interface KPI {
   id: string;
   label: string;
@@ -765,6 +765,11 @@ function formatKPI(value: string, format: KPIFormat): string {
       minimumFractionDigits: 0,
     }).format(Math.trunc(n));
   }
+  if (format === 'currencyK') {
+    // Abbreviated USD in thousands: $XX.XXK (negatives render as -$XX.XXK).
+    const sign = n < 0 ? '-' : '';
+    return `${sign}$${(Math.abs(n) / 1000).toFixed(2)}K`;
+  }
   if (format === 'percent') return `${n.toFixed(1)}%`;
   return n.toLocaleString();
 }
@@ -824,9 +829,13 @@ function LiveMetricKpiCard({
     resolution.status === 'ready' && resolution.value !== undefined
       ? String(resolution.value)
       : '';
+  // Force $XX.XXK abbreviation for Avg. Revenue / Client regardless of the
+  // format persisted on the KPI (older widgets were seeded as 'currency').
+  const effectiveFormat: KPIFormat =
+    cfg.metricSourceId === 'finserv-avg-revenue-per-client' ? 'currencyK' : kpi.format;
   const displayValue =
     resolution.status === 'ready' && liveActual !== ''
-      ? formatKPI(liveActual, kpi.format)
+      ? formatKPI(liveActual, effectiveFormat)
       : resolution.status === 'loading'
         ? '…'
         : '—';
@@ -971,6 +980,7 @@ function LiveMetricKpiCard({
           <label style={{ fontSize: 9, color: TEXT_LABEL, textTransform: 'uppercase', letterSpacing: '.08em' }}>Format</label>
           <select value={kpi.format} onChange={e => onPatch({ format: e.target.value as KPIFormat })} style={selectStyle}>
             <option value="currency">$ Currency</option>
+            <option value="currencyK">$ Currency (K)</option>
             <option value="percent">% Percent</option>
             <option value="number"># Whole number</option>
           </select>
@@ -1111,7 +1121,9 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
    *  Persists the metric source id alongside the KPI so future renderers
    *  can swap in live values without losing the user's selection. */
   const addMetricKPI = (opt: InsightsMetricOption) => {
-    const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+    let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+    // Avg. Revenue / Client — abbreviate as $XX.XXK per product spec.
+    if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
     setList(list => [...list, {
       id: uid(),
       label: opt.label,
@@ -1514,7 +1526,8 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
             });
           }}
           onPickMetric={(opt) => {
-            const fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
+            if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
             const reportPeriod = deriveReportPeriod(s);
             insertKpiNode({
               id: uid(),

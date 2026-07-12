@@ -582,7 +582,11 @@ export function useInsightsLiveMetricValue(
         return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
       }
       const clients = finserv.data.totalClients ?? 0;
-      const v = clients > 0 ? (finservRev.total ?? 0) / clients : 0;
+      // Report the AVERAGE of each month's (revenue / clients), not the
+      // sum across the period. Equivalent to (totalRev / months) / clients.
+      const months = Math.max(1, perHourMonthKeys.length);
+      const monthlyAvgRev = (finservRev.total ?? 0) / months;
+      const v = clients > 0 ? monthlyAvgRev / clients : 0;
       return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
     }
 
