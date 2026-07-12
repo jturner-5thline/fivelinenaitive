@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { DollarSign, TrendingUp, Building2, Loader2, Inbox, RotateCcw, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton as RowSkeleton } from '@/components/ui/skeleton';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
   ComposedChart, Line,
@@ -873,6 +874,9 @@ export function RevenueQuarterlySection({ selectedQuarter }: { selectedQuarter: 
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="revenue-overview" />
+      </div>
       {/* Header */}
       <div>
         <h2 className="text-lg font-semibold text-foreground">Revenue Overview</h2>
