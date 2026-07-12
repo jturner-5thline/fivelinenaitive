@@ -48,6 +48,13 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'finserv-utilization',
   // FinServ Financial Metrics (avg revenue / client)
   'finserv-avg-revenue-per-client',
+  // Debt Advisory (period-aware stage-entry tiles)
+  'da-deals-on-board-count', 'da-deals-on-board-dollars',
+  'da-proposals-issued-count', 'da-proposals-issued-dollars',
+  'da-debt-deals-signed-count', 'da-debt-deals-signed-dollars',
+  'da-terms-issued-count', 'da-terms-issued-dollars',
+  'da-terms-signed-count', 'da-terms-signed-dollars',
+  'da-deals-closed-count', 'da-deals-closed-dollars',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
