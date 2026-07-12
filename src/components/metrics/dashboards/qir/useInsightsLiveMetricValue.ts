@@ -52,6 +52,36 @@ export interface LiveMetricPeriod {
   label: string;
 }
 
+/**
+ * Split a period into per-month sub-periods (used by the "By month"
+ * toggle on KPI widgets when a quarter or multi-month range is
+ * selected). Returns null when the range spans fewer than 2 months.
+ */
+export function getMonthlyBreakdownPeriods(
+  period: LiveMetricPeriod | null | undefined,
+): LiveMetricPeriod[] | null {
+  if (!period) return null;
+  const s = new Date(period.start + 'T00:00:00');
+  const e = new Date(period.end + 'T00:00:00');
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime()) || e < s) return null;
+  const months: LiveMetricPeriod[] = [];
+  let cursor = new Date(s.getFullYear(), s.getMonth(), 1);
+  while (cursor <= e) {
+    const mStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+    const mEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const clampedStart = mStart < s ? s : mStart;
+    const clampedEnd = mEnd > e ? e : mEnd;
+    months.push({
+      start: format(clampedStart, 'yyyy-MM-dd'),
+      end: format(clampedEnd, 'yyyy-MM-dd'),
+      label: format(mStart, 'MMM yyyy'),
+    });
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+  if (months.length < 2) return null;
+  return months;
+}
+
 /** Derive a {start,end,label} period from a report's quarter/month state. */
 export function deriveReportPeriod(
   s: Pick<ReportState, 'period' | 'quarter' | 'month'>,
