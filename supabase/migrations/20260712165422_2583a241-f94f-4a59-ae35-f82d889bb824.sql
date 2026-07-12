@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS insights_metric_targets_company_metric_period_uidx ON public.insights_metric_targets (company_id, metric_key, period_month) NULLS NOT DISTINCT;
