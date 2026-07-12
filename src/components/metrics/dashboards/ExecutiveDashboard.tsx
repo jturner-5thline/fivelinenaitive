@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { startOfWeek, endOfWeek, addWeeks, format as fmtDateFn, isSameWeek } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Line, ComposedChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { GlassCard, GlassCardHeader, GlassCardBody, GLASS_TOKENS } from '@/components/metrics/GlassCard';
@@ -552,6 +553,9 @@ export function ExecutiveDashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="executive" />
+      </div>
       {/* Week stepper — drives the time-bound metrics on this page */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
