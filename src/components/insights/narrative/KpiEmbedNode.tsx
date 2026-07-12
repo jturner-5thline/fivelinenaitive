@@ -85,9 +85,11 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
   const periodStart = (node.attrs.periodStart as string | null) || '';
   const periodEnd = (node.attrs.periodEnd as string | null) || '';
   const periodLabel = (node.attrs.periodLabel as string | null) || '';
-  // Default this widget to the per-month breakdown (April/May/June etc.).
-  const showMonthly = node.attrs.showMonthlyBreakdown === undefined || node.attrs.showMonthlyBreakdown === null
-    ? metricSourceId === 'finserv-avg-revenue-per-client'
+  // Avg. Revenue / Client must always display the per-month values
+  // (April/May/June etc.), including legacy embeds that parsed the missing
+  // monthly flag as false before this node handled null correctly.
+  const showMonthly = metricSourceId === 'finserv-avg-revenue-per-client'
+    ? true
     : !!node.attrs.showMonthlyBreakdown;
   const timeframe = useInsightsTimeframeOptional();
   const period: LiveMetricPeriod | null = periodStart && periodEnd
