@@ -12,6 +12,7 @@ import {
 } from '@/lib/qboClientName';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Area, LabelList,
@@ -242,6 +243,9 @@ export function QuickBooksFinancialDashboard({
   return (
     <>
     <div className="space-y-6">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="quickbooks-financial" />
+      </div>
       {/* Stat Cards */}
       {periodBadge && (
         <div className="flex items-center gap-2">

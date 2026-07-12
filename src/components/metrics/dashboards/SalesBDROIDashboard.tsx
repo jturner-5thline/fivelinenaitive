@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useMetricsData } from '@/hooks/useMetricsData';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}MM`;
@@ -138,6 +139,9 @@ export function SalesBDROIDashboard() {
   return (
     <>
     <div className="space-y-6">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="sales-bd-roi" />
+      </div>
       {/* Header Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Current Month & Quarter */}

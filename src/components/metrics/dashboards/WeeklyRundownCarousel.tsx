@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, ReactNode, TouchEvent } from 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { WeeklyRundownReadOnlyCashflow } from './WeeklyRundownReadOnlyCashflow';
 import { WeeklyRundownOpsProjectsPage } from './WeeklyRundownOpsProjectsPage';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 interface WeeklyRundownCarouselProps {
   /** The existing Weekly Rundown (ManagementSnapshotDashboard) content rendered as Page 1. */
@@ -105,6 +106,9 @@ export function WeeklyRundownCarousel({ page1 }: WeeklyRundownCarouselProps) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 20 }}>
+        <DashboardPlansGear dashboardKey="weekly-rundown" />
+      </div>
       {/* Floating side-edge nav controls (overlay, vertically centered) */}
       <button
         onClick={() => goTo(-1)}

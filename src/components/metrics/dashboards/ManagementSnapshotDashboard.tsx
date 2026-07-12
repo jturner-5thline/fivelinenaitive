@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Lock, Pencil, ChevronDown, Loader2, Trash2, TrendingUp, X } from 'lucide-react';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import { ResponsiveContainer, ComposedChart, BarChart, LineChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, Cell, ReferenceLine, LabelList } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { Button } from '@/components/ui/button';
@@ -836,6 +837,9 @@ export function ManagementSnapshotDashboard({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="management-snapshot" />
+      </div>
       <div className="min-w-0">
         <DraggableGridLayout
             layout={gridLayout}

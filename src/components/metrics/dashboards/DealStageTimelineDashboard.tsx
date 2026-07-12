@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 function formatTimeValue(value: number): string {
   // These values appear to be in milliseconds from the PDF
@@ -65,6 +66,9 @@ export function DealStageTimelineDashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end -mb-2">
+        <DashboardPlansGear dashboardKey="deal-stage-timeline" />
+      </div>
       {/* Grid of time-in-stage cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {stageData.map((item) => (

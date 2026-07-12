@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import type { Deal } from '@/types/deal';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 // ------------------------------------------------------------------
 // Deal drilldown open context — lets any nested drilldown table row
@@ -2400,6 +2401,7 @@ export function ConsolidatedDebtPipelineDashboard({
       <OpenDealContext.Provider value={setOpenDealId}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div />
+        <DashboardPlansGear dashboardKey="consolidated-debt-pipeline" />
         <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'cards' | 'table')}>
           <TabsList className="bg-muted/40 border border-border/40">
             <TabsTrigger value="cards" className="gap-1.5">
