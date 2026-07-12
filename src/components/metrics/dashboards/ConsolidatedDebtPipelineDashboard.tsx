@@ -268,10 +268,11 @@ function MetricKPICard({
                 : improved
                   ? 'text-emerald-400'
                   : 'text-rose-400';
-              const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
+              const sign = neutral ? '' : improved ? '+' : '−';
+              const signedDiff = `${sign}${formatDiff(Math.abs(diff))}`;
               const pctText = pct == null
                 ? '—'
-                : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+                : `${sign}${Math.abs(pct).toFixed(1)}%`;
               return (
                 <span
                   className={cn('inline-flex items-baseline gap-1 text-[13px] font-mono tabular-nums', toneClass)}
@@ -306,8 +307,9 @@ function MetricKPICard({
                 const toneClass = neutral
                   ? 'text-muted-foreground'
                   : improved ? 'text-emerald-400' : 'text-rose-400';
-                const signedDiff = `${improved ? '+' : ''}${formatDiff(diff)}`;
-                const pctText = pct == null ? '—' : `${improved ? '+' : ''}${pct.toFixed(1)}%`;
+                const sign = neutral ? '' : improved ? '+' : '−';
+                const signedDiff = `${sign}${formatDiff(Math.abs(diff))}`;
+                const pctText = pct == null ? '—' : `${sign}${Math.abs(pct).toFixed(1)}%`;
                 return (
                   <span
                     className={cn('inline-flex items-baseline gap-1 text-[13px] font-mono tabular-nums', toneClass)}
