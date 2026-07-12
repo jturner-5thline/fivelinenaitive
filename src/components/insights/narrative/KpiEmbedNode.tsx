@@ -1,10 +1,11 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
-import { X as XIcon } from 'lucide-react';
+import { X as XIcon, CalendarRange } from 'lucide-react';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import {
   type LiveMetricPeriod,
   useInsightsLiveMetricValue,
+  getMonthlyBreakdownPeriods,
 } from '@/components/metrics/dashboards/qir/useInsightsLiveMetricValue';
 
 /**
@@ -77,6 +78,7 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
   const periodStart = (node.attrs.periodStart as string | null) || '';
   const periodEnd = (node.attrs.periodEnd as string | null) || '';
   const periodLabel = (node.attrs.periodLabel as string | null) || '';
+  const showMonthly = !!node.attrs.showMonthlyBreakdown;
   const timeframe = useInsightsTimeframeOptional();
   const period: LiveMetricPeriod | null = periodStart && periodEnd
     ? { start: periodStart, end: periodEnd, label: periodLabel || `${periodStart} – ${periodEnd}` }
@@ -84,6 +86,9 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
       ? { start: timeframe.timeframe.start, end: timeframe.timeframe.end, label: timeframe.timeframe.label }
       : null;
   const canEdit = editor.isEditable;
+  const monthly = getMonthlyBreakdownPeriods(period);
+  const canToggleMonthly = !!metricSourceId && !!monthly;
+  const renderMonthly = showMonthly && canToggleMonthly;
   return (
     <NodeViewWrapper
       as="div"
@@ -96,8 +101,8 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
         justifyContent: 'center',
         textAlign: 'center',
         gap: 4,
-        minWidth: 140,
-        maxWidth: 200,
+        minWidth: renderMonthly ? 220 : 140,
+        maxWidth: renderMonthly ? 320 : 200,
         padding: '12px 14px',
         margin: '6px 6px 6px 0',
         borderRadius: 10,
@@ -123,19 +128,65 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
           <XIcon size={11} />
         </button>
       )}
+      {canToggleMonthly && (
+        <button
+          type="button"
+          aria-label={renderMonthly ? 'Show total' : 'Show monthly breakdown'}
+          title={renderMonthly ? 'Show total' : 'Show monthly breakdown'}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (typeof (editor as any).chain === 'function') {
+              (editor as any).chain().focus().updateAttributes('kpiEmbed', { showMonthlyBreakdown: !showMonthly }).run();
+            }
+          }}
+          style={{
+            position: 'absolute', top: 4, left: 4,
+            background: renderMonthly ? 'rgba(120,170,255,0.18)' : 'transparent',
+            border: 'none', borderRadius: 4,
+            color: renderMonthly ? '#cfe2ff' : 'rgba(160,200,255,0.55)',
+            cursor: 'pointer', padding: 2, display: 'inline-flex',
+          }}
+        >
+          <CalendarRange size={11} />
+        </button>
+      )}
       <div style={{
         fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em',
         color: 'rgba(160,200,255,0.65)', maxWidth: '100%',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{label}</div>
-      <div style={{
-        fontSize: 22, fontWeight: 700, color: '#f4f8ff',
-        fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
-      }}>
-        <KpiEmbedValue actual={actual} format={format} metricSourceId={metricSourceId} period={period} />
-      </div>
-      {target && (
+      {renderMonthly ? (
+        <div style={{ display: 'flex', gap: 6, marginTop: 2, width: '100%', justifyContent: 'center' }}>
+          {monthly!.map(m => (
+            <div key={m.start} style={{
+              flex: 1, minWidth: 0, textAlign: 'center',
+              padding: '4px 4px', borderRadius: 6,
+              background: 'rgba(255,255,255,0.03)',
+            }}>
+              <div style={{
+                fontSize: 8, fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: '.06em', color: 'rgba(160,200,255,0.6)',
+              }}>{m.label.split(' ')[0]}</div>
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: '#f4f8ff',
+                fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                <KpiEmbedValue actual={actual} format={format} metricSourceId={metricSourceId} period={m} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          fontSize: 22, fontWeight: 700, color: '#f4f8ff',
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+        }}>
+          <KpiEmbedValue actual={actual} format={format} metricSourceId={metricSourceId} period={period} />
+        </div>
+      )}
+      {target && !renderMonthly && (
         <div style={{ fontSize: 10, color: 'rgba(160,200,255,0.55)', fontVariantNumeric: 'tabular-nums' }}>
           Target {formatValue(target, format)}
         </div>
@@ -182,6 +233,11 @@ export const KpiEmbedNode = Node.create({
         default: null,
         parseHTML: element => element.getAttribute('data-period-label'),
         renderHTML: attributes => attributes.periodLabel ? { 'data-period-label': attributes.periodLabel } : {},
+      },
+      showMonthlyBreakdown: {
+        default: false,
+        parseHTML: element => element.getAttribute('data-show-monthly') === 'true',
+        renderHTML: attributes => attributes.showMonthlyBreakdown ? { 'data-show-monthly': 'true' } : {},
       },
     };
   },
