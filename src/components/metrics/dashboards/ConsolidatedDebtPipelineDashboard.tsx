@@ -163,6 +163,13 @@ interface MetricCardConfig {
     drilldownMetricType?: 'count' | 'dollars' | 'average' | 'none';
     drilldownValueFormatter?: (value: number) => string;
     drilldownChartColor?: string;
+    /** Same as `delta` on the primary but rendered under the secondary value. */
+    delta?: {
+      diff: number;
+      formatDiff: (value: number) => string;
+      pct: number | null;
+      priorLabel?: string;
+    };
   };
   /** Period-over-period delta shown below the primary value ($ change and %
    *  change vs the equal-length prior window). */
