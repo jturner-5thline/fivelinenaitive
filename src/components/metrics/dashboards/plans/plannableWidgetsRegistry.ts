@@ -59,6 +59,7 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'utilization', label: 'Utilization %', format: 'percent' },
       { key: 'cashflow', label: 'Cashflow', format: 'currency' },
       { key: 'revenue-per-hour', label: 'Revenue / Hour', format: 'currency' },
+      { key: 'avg-rev-per-client', label: 'Avg Revenue / Client', format: 'currency' },
     ],
   },
   'consolidated-debt-pipeline': {
