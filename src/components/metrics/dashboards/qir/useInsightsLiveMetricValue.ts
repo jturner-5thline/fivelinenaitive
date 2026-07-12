@@ -174,7 +174,8 @@ export function useInsightsLiveMetricValue(
   // denominator (manual `revenue_per_hour_hours` inputs).
   const perHourEnabled =
     metricSourceId === 'finserv-revenue-per-hour' ||
-    metricSourceId === 'finserv-profit-per-hour';
+    metricSourceId === 'finserv-profit-per-hour' ||
+    metricSourceId === 'finserv-avg-revenue-per-client';
   const perHourPeriod = useMemo(
     () => perHourEnabled && period
       ? { start_date: period.start, end_date: period.end, label: period.label }
@@ -341,7 +342,8 @@ export function useInsightsLiveMetricValue(
   // `finserv-active-client-count` (same query, different reducer).
   const finservEnabled =
     metricSourceId === 'finserv-total-mrr' ||
-    metricSourceId === 'finserv-active-client-count';
+    metricSourceId === 'finserv-active-client-count' ||
+    metricSourceId === 'finserv-avg-revenue-per-client';
   const finserv = useQuery({
     enabled: finservEnabled,
     queryKey: [
