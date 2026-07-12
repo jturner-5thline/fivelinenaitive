@@ -305,7 +305,7 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-export type KPIFormat = 'currency' | 'percent' | 'number';
+export type KPIFormat = 'currency' | 'currencyK' | 'percent' | 'number';
 export interface KPI {
   id: string;
   label: string;
