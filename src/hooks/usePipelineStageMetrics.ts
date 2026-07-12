@@ -1280,7 +1280,9 @@ export function useConsolidatedDebtPipelineMetrics(
   const ndaNeedsList = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, quarter);
   const ndaNeedsListPrior = usePipelineDealsInPeriod(ACTIVE_PIPELINE_ID, priorQuarter);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const proposalsIssuedPrior = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const finalCreditItemsPrior = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
   // entries within the Active Pipeline, per product spec.
   const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
@@ -1289,12 +1291,15 @@ export function useConsolidatedDebtPipelineMetrics(
   // Funded / Invoiced only — Closed Won is excluded per product spec. Trend
   // charts below continue to include Closed Won via CLOSED_STAGES.
   const fundedInvoicedOnly = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedOnlyPrior = useStageEntryMetric(FUNDED_INVOICED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, todayAnchor, ACTIVE_PIPELINE_ID);
   const ndaNeedsListTrend = useStageEntryTrendSeries(NDA_NEEDS_LIST_STAGE, todayAnchor, ACTIVE_PIPELINE_ID);
   const finalCreditItemsTrend = useStageEntryTrendSeries(FINAL_CREDIT_ITEMS_STAGE, todayAnchor, ACTIVE_PIPELINE_ID);
   const closedSplitTrend = useStageEntrySplitTrendSeries(todayAnchor, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const termsIssuedPrior = useStageEntryMetric(TERMS_ISSUED_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
+  const inDueDiligencePrior = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, priorQuarter, ACTIVE_PIPELINE_ID);
 
   const finalCreditItemsRolling6 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
