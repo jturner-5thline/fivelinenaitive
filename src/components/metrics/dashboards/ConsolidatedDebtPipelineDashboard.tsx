@@ -294,7 +294,6 @@ function MetricKPICard({
                   type="button"
                   onClick={onSecondaryClick}
                   className="drilldown-value text-[1.3125rem] leading-tight font-semibold font-mono tabular-nums text-foreground hover:text-foreground transition-colors"
-                  style={config.secondary.color ? { color: config.secondary.color } : undefined}
                 >
                   {config.secondary.value}
                 </button>
