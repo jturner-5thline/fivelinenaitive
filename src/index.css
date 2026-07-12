@@ -632,11 +632,15 @@
    */
   .glass-module {
     position: relative;
-    background: rgba(160, 190, 225, 0.90) !important;
-    border: 1px solid rgba(220, 238, 255, 0.78) !important;
+    /* Lifted one luminance step above the page gradient for a subtle
+       elevation cue, with a thin crisp neutral border and inset top-edge
+       highlight so tiles read as luminous without brightening the page. */
+    background: rgba(172, 200, 232, 0.92) !important;
+    border: 1px solid rgba(230, 244, 255, 0.88) !important;
     border-radius: 12px !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
     overflow: hidden;
   }
   .glass-module::before {
