@@ -124,13 +124,15 @@ export function DashboardPlansDialog({ open, onOpenChange, dashboardKey }: Props
     setSaving(true);
     try {
       const upserts: any[] = [];
-      const deletes: { metric_key: string; period_month: string }[] = [];
+      const deleteKeys = new Set<string>();
+      const deletePeriods = new Set<string>();
       for (const w of reg.widgets) {
         const mk = buildPlanMetricKey(dashboardKey, w.key);
         for (const p of periods) {
           const raw = values[`${mk}|${p.key}`] ?? '';
           if (raw.trim() === '') {
-            deletes.push({ metric_key: mk, period_month: p.key });
+            deleteKeys.add(mk);
+            deletePeriods.add(p.key);
             continue;
           }
           const num = parseInput(raw);
@@ -147,21 +149,49 @@ export function DashboardPlansDialog({ open, onOpenChange, dashboardKey }: Props
           });
         }
       }
-      if (upserts.length > 0) {
-        const { error } = await supabase
-          .from('insights_metric_targets' as any)
-          .upsert(upserts, { onConflict: 'company_id,metric_key,period_month' });
-        if (error) throw error;
+      // Fire upsert + a single bulk delete in parallel.
+      const allMetricKeys = reg.widgets.map((w) => buildPlanMetricKey(dashboardKey, w.key));
+      const allPeriodKeys = periods.map((p) => p.key);
+      const upsertPromise = upserts.length > 0
+        ? supabase
+            .from('insights_metric_targets' as any)
+            .upsert(upserts, { onConflict: 'company_id,metric_key,period_month' })
+        : Promise.resolve({ error: null } as any);
+      // Delete only rows in scope that were cleared. Use a single bulk delete
+      // that removes every in-scope (metric, period) pair NOT present in the
+      // upsert set — this avoids N round-trips.
+      const keepPairs = new Set(upserts.map((u) => `${u.metric_key}|${u.period_month}`));
+      // Build the delete: bounded to this dashboard's metrics + shown periods,
+      // then filter out kept pairs via a NOT-IN on a composite key isn't
+      // supported by PostgREST directly, so we delete the full scope and rely
+      // on upsert running first to preserve retained rows. To keep them, we
+      // instead only delete when there's nothing to upsert OR delete the diff
+      // set explicitly with .in on metric_key AND period_month for cleared cells.
+      const clearedByMetric: Record<string, string[]> = {};
+      for (const mk of allMetricKeys) {
+        for (const pk of allPeriodKeys) {
+          if (!keepPairs.has(`${mk}|${pk}`)) {
+            (clearedByMetric[mk] ||= []).push(pk);
+          }
+        }
       }
-      for (const d of deletes) {
-        let del = supabase
-          .from('insights_metric_targets' as any)
-          .delete()
-          .eq('metric_key', d.metric_key)
-          .eq('period_month', d.period_month);
-        del = company?.id ? del.eq('company_id', company.id) : del.is('company_id', null);
-        await del;
-      }
+      // Group cleared periods and issue one delete per metric_key that has any
+      // cleared periods. Still O(widgets) at worst, but each call deletes many
+      // rows in a single roundtrip instead of one row per call.
+      const deletePromises = Object.entries(clearedByMetric)
+        .filter(([, pks]) => pks.length > 0)
+        .map(([mk, pks]) => {
+          let del = supabase
+            .from('insights_metric_targets' as any)
+            .delete()
+            .eq('metric_key', mk)
+            .in('period_month', pks);
+          del = company?.id ? del.eq('company_id', company.id) : del.is('company_id', null);
+          return del;
+        });
+      const results = await Promise.all([upsertPromise, ...deletePromises]);
+      const firstErr = results.find((r: any) => r?.error)?.error;
+      if (firstErr) throw firstErr;
       queryClient.invalidateQueries({ queryKey: ['insights-metric-targets'] });
       toast.success('Plans saved');
       onOpenChange(false);
