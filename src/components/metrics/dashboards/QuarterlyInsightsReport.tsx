@@ -829,9 +829,13 @@ function LiveMetricKpiCard({
     resolution.status === 'ready' && resolution.value !== undefined
       ? String(resolution.value)
       : '';
+  // Force $XX.XXK abbreviation for Avg. Revenue / Client regardless of the
+  // format persisted on the KPI (older widgets were seeded as 'currency').
+  const effectiveFormat: KPIFormat =
+    cfg.metricSourceId === 'finserv-avg-revenue-per-client' ? 'currencyK' : kpi.format;
   const displayValue =
     resolution.status === 'ready' && liveActual !== ''
-      ? formatKPI(liveActual, kpi.format)
+      ? formatKPI(liveActual, effectiveFormat)
       : resolution.status === 'loading'
         ? '…'
         : '—';
