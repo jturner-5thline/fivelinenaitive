@@ -31,6 +31,7 @@ import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/components/insights/ChartDrilldown';
 import { buildBuckets } from '@/lib/insightsTimeRange';
 import { UtilizationWidget } from '@/components/metrics/finserv-charts/UtilizationWidget';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -1322,6 +1323,7 @@ function FinServFinancialMetricsDashboardInner() {
     <>
     <div className="space-y-6">
       <div className="flex items-center gap-3 flex-wrap">
+        <DashboardPlansGear dashboardKey="finserv-financial-metrics" className="ml-auto" />
         {(totalRev.isLoading || profits.isLoading) && (
           <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
         )}
