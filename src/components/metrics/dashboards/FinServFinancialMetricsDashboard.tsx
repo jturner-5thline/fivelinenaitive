@@ -21,7 +21,7 @@ import {
   useFinServCashflow,
   useFinServActiveClients,
 } from '@/hooks/useFinServFinancialMetrics';
-import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE } from '@/hooks/useFinServFinancialMetrics';
+import { FINSERV_PIPELINE_ID, ACTIVE_CLIENT_STAGE, applyActiveClientOverride } from '@/hooks/useFinServFinancialMetrics';
 import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
@@ -1169,7 +1169,7 @@ function FinServFinancialMetricsDashboardInner() {
 
   // ── FinServ pipeline snapshot: Total Clients / Total MRR / Current Pipeline ──
   const pipelineSnapshot = useQuery({
-    queryKey: ['finserv-pipeline-snapshot', FINSERV_PIPELINE_ID],
+    queryKey: ['finserv-pipeline-snapshot', FINSERV_PIPELINE_ID, range.resolved.end],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('deals')
@@ -1191,7 +1191,13 @@ function FinServFinancialMetricsDashboardInner() {
         if (CURRENT_PIPELINE_STAGES.has(stage)) currentPipeline += 1;
         if (!TERMINAL.has(stage)) totalMrr += Number(r.mrr ?? 0);
       }
-      return { totalClients, totalMrr, currentPipeline };
+      // Apply Active Client override for the selected period end (falls back to today).
+      const endStr = range.resolved.end;
+      const effective = endStr ? new Date(endStr + 'T23:59:59') : new Date();
+      const today = new Date();
+      const effClamped = effective > today ? today : effective;
+      const overriddenClients = applyActiveClientOverride(effClamped, totalClients);
+      return { totalClients: overriddenClients, totalMrr, currentPipeline };
     },
     staleTime: 60_000,
   });
