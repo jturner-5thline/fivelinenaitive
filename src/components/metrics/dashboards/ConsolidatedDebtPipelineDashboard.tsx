@@ -1923,6 +1923,24 @@ export function ConsolidatedDebtPipelineDashboard({
     const pct = metric.previousValue !== 0 ? (diff / metric.previousValue) * 100 : null;
     return { diff, formatDiff, pct, priorLabel };
   };
+  /** Signed delta of a StageMetric field (`count` or `dollarVolume`) vs its
+   *  prior-period counterpart. Returns undefined while either side is loading
+   *  so the card renders without a delta row until data is ready. */
+  const buildStageDelta = (
+    current: { count: number; dollarVolume: number; isLoading: boolean },
+    prior: { count: number; dollarVolume: number; isLoading: boolean } | undefined,
+    field: 'count' | 'dollarVolume',
+    formatDiff: (value: number) => string,
+    priorLabel = 'prior period',
+  ) => {
+    if (!prior || current.isLoading || prior.isLoading) return undefined;
+    const cur = current[field] ?? 0;
+    const prev = prior[field] ?? 0;
+    const diff = cur - prev;
+    const pct = prev !== 0 ? (diff / Math.abs(prev)) * 100 : null;
+    return { diff, formatDiff, pct, priorLabel };
+  };
+  const formatCountDiff = (v: number) => `${Math.round(v)}`;
   const formatHourlyRate = (value: number) => {
     const sign = value < 0 ? '-' : '';
     return `${sign}$${Math.round(Math.abs(value)).toLocaleString()}/hr`;
