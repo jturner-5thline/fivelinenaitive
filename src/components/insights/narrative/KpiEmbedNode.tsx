@@ -1,6 +1,11 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { X as XIcon } from 'lucide-react';
+import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import {
+  type LiveMetricPeriod,
+  useInsightsLiveMetricValue,
+} from '@/components/metrics/dashboards/qir/useInsightsLiveMetricValue';
 
 /**
  * Tiptap block node that renders a KPI/widget inline inside the narrative
@@ -20,11 +25,55 @@ function formatValue(raw: string, format: string): string {
   return n.toLocaleString();
 }
 
+function KpiEmbedValue({
+  actual,
+  format,
+  metricSourceId,
+  period,
+}: {
+  actual: string;
+  format: string;
+  metricSourceId?: string;
+  period: LiveMetricPeriod | null;
+}) {
+  if (!metricSourceId) return <>{formatValue(actual, format)}</>;
+  return <LiveKpiEmbedValue metricSourceId={metricSourceId} fallbackActual={actual} format={format} period={period} />;
+}
+
+function LiveKpiEmbedValue({
+  metricSourceId,
+  fallbackActual,
+  format,
+  period,
+}: {
+  metricSourceId: string;
+  fallbackActual: string;
+  format: string;
+  period: LiveMetricPeriod | null;
+}) {
+  const resolution = useInsightsLiveMetricValue(metricSourceId, period);
+  if (resolution.status === 'loading') return <>…</>;
+  if (resolution.status === 'ready' && resolution.value !== undefined) {
+    return <>{formatValue(String(resolution.value), format)}</>;
+  }
+  return <>{formatValue(fallbackActual, format)}</>;
+}
+
 function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
   const label = (node.attrs.label as string) || 'KPI';
   const format = (node.attrs.format as string) || 'number';
   const actual = String(node.attrs.actual ?? '0');
   const target = String(node.attrs.target ?? '');
+  const metricSourceId = (node.attrs.metricSourceId as string | null) || undefined;
+  const periodStart = (node.attrs.periodStart as string | null) || '';
+  const periodEnd = (node.attrs.periodEnd as string | null) || '';
+  const periodLabel = (node.attrs.periodLabel as string | null) || '';
+  const timeframe = useInsightsTimeframeOptional();
+  const period: LiveMetricPeriod | null = periodStart && periodEnd
+    ? { start: periodStart, end: periodEnd, label: periodLabel || `${periodStart} – ${periodEnd}` }
+    : timeframe?.timeframe
+      ? { start: timeframe.timeframe.start, end: timeframe.timeframe.end, label: timeframe.timeframe.label }
+      : null;
   const canEdit = editor.isEditable;
   return (
     <NodeViewWrapper
@@ -74,7 +123,9 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
         fontSize: 22, fontWeight: 700, color: '#f4f8ff',
         fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
-      }}>{formatValue(actual, format)}</div>
+      }}>
+        <KpiEmbedValue actual={actual} format={format} metricSourceId={metricSourceId} period={period} />
+      </div>
       {target && (
         <div style={{ fontSize: 10, color: 'rgba(160,200,255,0.55)', fontVariantNumeric: 'tabular-nums' }}>
           Target {formatValue(target, format)}
@@ -98,6 +149,31 @@ export const KpiEmbedNode = Node.create({
       format: { default: 'number' },
       actual: { default: '0' },
       target: { default: '' },
+      metricSourceId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-metric-source-id'),
+        renderHTML: attributes => attributes.metricSourceId ? { 'data-metric-source-id': attributes.metricSourceId } : {},
+      },
+      sourceSurface: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-source-surface'),
+        renderHTML: attributes => attributes.sourceSurface ? { 'data-source-surface': attributes.sourceSurface } : {},
+      },
+      periodStart: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-period-start'),
+        renderHTML: attributes => attributes.periodStart ? { 'data-period-start': attributes.periodStart } : {},
+      },
+      periodEnd: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-period-end'),
+        renderHTML: attributes => attributes.periodEnd ? { 'data-period-end': attributes.periodEnd } : {},
+      },
+      periodLabel: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-period-label'),
+        renderHTML: attributes => attributes.periodLabel ? { 'data-period-label': attributes.periodLabel } : {},
+      },
     };
   },
 
@@ -120,4 +196,9 @@ export interface KpiEmbedAttrs {
   format: string;
   actual: string;
   target: string;
+  metricSourceId?: string | null;
+  sourceSurface?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  periodLabel?: string | null;
 }
