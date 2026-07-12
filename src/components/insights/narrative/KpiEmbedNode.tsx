@@ -70,8 +70,10 @@ function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
   const label = (node.attrs.label as string) || 'KPI';
   const format = (node.attrs.format as string) || 'number';
   const actual = String(node.attrs.actual ?? '0');
-  const target = String(node.attrs.target ?? '');
   const metricSourceId = (node.attrs.metricSourceId as string | null) || inferMetricSourceId(label);
+  const target = metricSourceId && String(node.attrs.target ?? '') === '0'
+    ? ''
+    : String(node.attrs.target ?? '');
   const periodStart = (node.attrs.periodStart as string | null) || '';
   const periodEnd = (node.attrs.periodEnd as string | null) || '';
   const periodLabel = (node.attrs.periodLabel as string | null) || '';
