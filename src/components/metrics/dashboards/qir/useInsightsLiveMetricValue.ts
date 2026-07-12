@@ -573,6 +573,19 @@ export function useInsightsLiveMetricValue(
       return { supported: true, status: 'ready', value: utilization.data ?? 0, sourceSurface: 'FinServ Financial Metrics' };
     }
 
+    // ---- FinServ Financial Metrics (Avg. Revenue / Client) ----
+    if (metricSourceId === 'finserv-avg-revenue-per-client') {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      if (finservRev.isLoading || finserv.isLoading || !finserv.data) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      const clients = finserv.data.totalClients ?? 0;
+      const v = clients > 0 ? (finservRev.total ?? 0) / clients : 0;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
     // ---- Cross-source metrics (combine deal + QB) ----
     if (metricSourceId === 'xs-revenue-per-deal') {
       if (qb.isLoading || hs.isLoading || !qb.data || !hs.data) {
