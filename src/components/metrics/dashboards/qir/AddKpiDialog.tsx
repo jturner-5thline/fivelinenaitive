@@ -46,6 +46,8 @@ const SUPPORTED_LIVE_METRIC_IDS = new Set<string>([
   'finserv-revenue-per-hour', 'finserv-profit-per-hour',
   // FinServ Financial Metrics (utilization)
   'finserv-utilization',
+  // FinServ Financial Metrics (avg revenue / client)
+  'finserv-avg-revenue-per-client',
 ]);
 
 const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
@@ -53,6 +55,7 @@ const ALWAYS_KEPT_METRIC_IDS = new Set<string>([
   'finserv-profit-per-hour',
   'finserv-active-client-count',
   'finserv-total-mrr',
+  'finserv-avg-revenue-per-client',
   // Brand Awareness placeholder tiles — no live resolver yet.
   'ba-website-users',
   'ba-seo-clicks',
