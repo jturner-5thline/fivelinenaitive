@@ -245,7 +245,7 @@ export const KpiEmbedNode = Node.create({
         renderHTML: attributes => attributes.periodLabel ? { 'data-period-label': attributes.periodLabel } : {},
       },
       showMonthlyBreakdown: {
-        default: false,
+        default: null,
         parseHTML: element => element.getAttribute('data-show-monthly') === 'true',
         renderHTML: attributes => attributes.showMonthlyBreakdown ? { 'data-show-monthly': 'true' } : {},
       },
