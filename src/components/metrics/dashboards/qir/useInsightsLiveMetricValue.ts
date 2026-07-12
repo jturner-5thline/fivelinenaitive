@@ -174,7 +174,8 @@ export function useInsightsLiveMetricValue(
   // denominator (manual `revenue_per_hour_hours` inputs).
   const perHourEnabled =
     metricSourceId === 'finserv-revenue-per-hour' ||
-    metricSourceId === 'finserv-profit-per-hour';
+    metricSourceId === 'finserv-profit-per-hour' ||
+    metricSourceId === 'finserv-avg-revenue-per-client';
   const perHourPeriod = useMemo(
     () => perHourEnabled && period
       ? { start_date: period.start, end_date: period.end, label: period.label }
@@ -341,7 +342,8 @@ export function useInsightsLiveMetricValue(
   // `finserv-active-client-count` (same query, different reducer).
   const finservEnabled =
     metricSourceId === 'finserv-total-mrr' ||
-    metricSourceId === 'finserv-active-client-count';
+    metricSourceId === 'finserv-active-client-count' ||
+    metricSourceId === 'finserv-avg-revenue-per-client';
   const finserv = useQuery({
     enabled: finservEnabled,
     queryKey: [
@@ -569,6 +571,19 @@ export function useInsightsLiveMetricValue(
         return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
       }
       return { supported: true, status: 'ready', value: utilization.data ?? 0, sourceSurface: 'FinServ Financial Metrics' };
+    }
+
+    // ---- FinServ Financial Metrics (Avg. Revenue / Client) ----
+    if (metricSourceId === 'finserv-avg-revenue-per-client') {
+      if (!period) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      if (finservRev.isLoading || finserv.isLoading || !finserv.data) {
+        return { supported: true, status: 'loading', sourceSurface: 'FinServ Financial Metrics' };
+      }
+      const clients = finserv.data.totalClients ?? 0;
+      const v = clients > 0 ? (finservRev.total ?? 0) / clients : 0;
+      return { supported: true, status: 'ready', value: v, sourceSurface: 'FinServ Financial Metrics' };
     }
 
     // ---- Cross-source metrics (combine deal + QB) ----
