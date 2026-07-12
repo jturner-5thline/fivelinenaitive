@@ -22,6 +22,11 @@ function formatValue(raw: string, format: string): string {
     if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
     return `$${n.toLocaleString()}`;
   }
+  if (format === 'currencyPlain') {
+    // Whole-dollar USD, no abbreviation (e.g. $4,417).
+    const sign = n < 0 ? '-' : '';
+    return `${sign}$${Math.round(Math.abs(n)).toLocaleString()}`;
+  }
   if (format === 'percent') return `${n}%`;
   return n.toLocaleString();
 }
@@ -69,16 +74,21 @@ function LiveKpiEmbedValue({
 
 function KpiEmbedView({ node, deleteNode, editor }: NodeViewProps) {
   const label = (node.attrs.label as string) || 'KPI';
-  const format = (node.attrs.format as string) || 'number';
+  const rawFormat = (node.attrs.format as string) || 'number';
   const actual = String(node.attrs.actual ?? '0');
   const metricSourceId = (node.attrs.metricSourceId as string | null) || inferMetricSourceId(label);
+  // Avg. Revenue / Client — render whole-dollar currency (no K/MM abbrev).
+  const format = metricSourceId === 'finserv-avg-revenue-per-client' ? 'currencyPlain' : rawFormat;
   const target = metricSourceId && String(node.attrs.target ?? '') === '0'
     ? ''
     : String(node.attrs.target ?? '');
   const periodStart = (node.attrs.periodStart as string | null) || '';
   const periodEnd = (node.attrs.periodEnd as string | null) || '';
   const periodLabel = (node.attrs.periodLabel as string | null) || '';
-  const showMonthly = !!node.attrs.showMonthlyBreakdown;
+  // Default this widget to the per-month breakdown (April/May/June etc.).
+  const showMonthly = node.attrs.showMonthlyBreakdown === undefined || node.attrs.showMonthlyBreakdown === null
+    ? metricSourceId === 'finserv-avg-revenue-per-client'
+    : !!node.attrs.showMonthlyBreakdown;
   const timeframe = useInsightsTimeframeOptional();
   const period: LiveMetricPeriod | null = periodStart && periodEnd
     ? { start: periodStart, end: periodEnd, label: periodLabel || `${periodStart} – ${periodEnd}` }
@@ -235,7 +245,7 @@ export const KpiEmbedNode = Node.create({
         renderHTML: attributes => attributes.periodLabel ? { 'data-period-label': attributes.periodLabel } : {},
       },
       showMonthlyBreakdown: {
-        default: false,
+        default: null,
         parseHTML: element => element.getAttribute('data-show-monthly') === 'true',
         renderHTML: attributes => attributes.showMonthlyBreakdown ? { 'data-show-monthly': 'true' } : {},
       },

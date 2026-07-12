@@ -829,10 +829,10 @@ function LiveMetricKpiCard({
     resolution.status === 'ready' && resolution.value !== undefined
       ? String(resolution.value)
       : '';
-  // Force $XX.XXK abbreviation for Avg. Revenue / Client regardless of the
-  // format persisted on the KPI (older widgets were seeded as 'currency').
+  // Force whole-dollar currency for Avg. Revenue / Client (e.g. $4,417)
+  // regardless of the format persisted on the KPI.
   const effectiveFormat: KPIFormat =
-    cfg.metricSourceId === 'finserv-avg-revenue-per-client' ? 'currencyK' : kpi.format;
+    cfg.metricSourceId === 'finserv-avg-revenue-per-client' ? 'currency' : kpi.format;
   const displayValue =
     resolution.status === 'ready' && liveActual !== ''
       ? formatKPI(liveActual, effectiveFormat)
@@ -1122,8 +1122,7 @@ function ReportKpisSection({ s, set, reportLabel, sliceKey = 'kpis', title = 'KP
    *  can swap in live values without losing the user's selection. */
   const addMetricKPI = (opt: InsightsMetricOption) => {
     let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
-    // Avg. Revenue / Client — abbreviate as $XX.XXK per product spec.
-    if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
+    if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currency';
     setList(list => [...list, {
       id: uid(),
       label: opt.label,
@@ -1527,7 +1526,7 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
           }}
           onPickMetric={(opt) => {
             let fmt: KPIFormat = opt.format === 'percentage' ? 'percent' : opt.format;
-            if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currencyK';
+            if (opt.metricSourceId === 'finserv-avg-revenue-per-client') fmt = 'currency';
             const reportPeriod = deriveReportPeriod(s);
             insertKpiNode({
               id: uid(),
