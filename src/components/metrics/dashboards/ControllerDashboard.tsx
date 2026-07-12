@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -340,6 +341,7 @@ function ControllerDashboardInner() {
     <div className="space-y-6">
       {/* Timeframe is controlled by the global Insights header selector. */}
       <div className="flex items-center gap-3 flex-wrap">
+        <DashboardPlansGear dashboardKey="controller" />
         <div className="flex items-center gap-2 ml-auto">
           <Switch
             id="controller-data-labels"
