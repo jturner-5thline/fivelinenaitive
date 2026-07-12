@@ -1434,6 +1434,14 @@ export function useConsolidatedDebtPipelineMetrics(
         inDueDiligenceRolling12.isLoading ||
         fundedInvoicedOnlyRolling12.isLoading,
     },
+    priors: {
+      ndaNeedsList: ndaNeedsListPrior,
+      proposalsIssued: proposalsIssuedPrior,
+      finalCreditItems: finalCreditItemsPrior,
+      termsIssued: termsIssuedPrior,
+      inDueDiligence: inDueDiligencePrior,
+      fundedInvoicedOnly: fundedInvoicedOnlyPrior,
+    },
     lifetimeStageDealIds: {
       proposalIssued: lifetimeStages.data?.proposalIssued ?? emptySet,
       finalCreditItems: lifetimeStages.data?.finalCreditItems ?? emptySet,
