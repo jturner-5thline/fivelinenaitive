@@ -42,6 +42,7 @@ import { ensureFinServPnlSnapshots } from '@/hooks/useFinServFinancialMetrics';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 import { QBO_ENTITIES } from '@/config/qboEntities';
 import { formatUSD } from '@/lib/formatters/currency';
+import { DashboardPlansGear } from './plans/DashboardPlansGear';
 
 const setChartDefaults = () => {
   ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
@@ -3195,6 +3196,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div className="flex items-center justify-end">
+        <DashboardPlansGear dashboardKey="management-review" />
+      </div>
       {isEditMode && isLayoutEditor && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
