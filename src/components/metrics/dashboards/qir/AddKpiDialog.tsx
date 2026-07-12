@@ -13,7 +13,9 @@ import {
 import { useCustomMetrics } from '@/hooks/useCustomMetrics';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { type LiveMetricPeriod, useInsightsLiveMetricValue, getMonthlyBreakdownPeriods } from './useInsightsLiveMetricValue';
+import { type LiveMetricPeriod, useInsightsLiveMetricValue, getMonthlyBreakdownPeriods, getPriorPeriod } from './useInsightsLiveMetricValue';
+import { useInsightsTargets } from '@/hooks/useInsightsTargets';
+import { TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
 
 /**
  * Canonical set of metric source ids that have a live resolver wired up
@@ -348,6 +350,24 @@ function WidgetTile({
   // skip the lookup and render an explicit "no live preview" state
   // instead of fabricating a number.
   const live = useInsightsLiveMetricValue(option.metricSourceId ?? null, reportPeriod ?? null);
+  const priorPeriod = useMemo(() => getPriorPeriod(reportPeriod ?? null), [reportPeriod?.start, reportPeriod?.end]);
+  const priorLive = useInsightsLiveMetricValue(option.metricSourceId ?? null, priorPeriod);
+  const targetsQuery = useInsightsTargets();
+  const planTarget = useMemo(() => {
+    if (!option.metricSourceId) return null;
+    const rows = targetsQuery.data ?? [];
+    // Prefer a target scoped to a month within the report period; otherwise use the most recent unscoped one.
+    const withinPeriod = reportPeriod
+      ? rows.filter(r => r.metric_key === option.metricSourceId && r.period_month
+          && r.period_month >= reportPeriod.start && r.period_month <= reportPeriod.end)
+      : [];
+    if (withinPeriod.length > 0) {
+      const sum = withinPeriod.reduce((s, r) => s + Number(r.target_value || 0), 0);
+      return sum;
+    }
+    const unscoped = rows.find(r => r.metric_key === option.metricSourceId && !r.period_month);
+    return unscoped ? Number(unscoped.target_value || 0) : null;
+  }, [targetsQuery.data, option.metricSourceId, reportPeriod?.start, reportPeriod?.end]);
 
   let valueDisplay: React.ReactNode;
   let captionDisplay: string;
@@ -378,6 +398,17 @@ function WidgetTile({
     );
     captionDisplay = live.sourceSurface ? `Live · ${live.sourceSurface}` : 'Live value';
   }
+
+  const showComparisons = !isTemplate && !isCustom && live.status === 'ready' && live.value !== undefined && !renderMonthly;
+  const currentValue = live.value ?? 0;
+  const priorValue = priorLive.status === 'ready' ? priorLive.value : undefined;
+  const priorDelta = priorValue !== undefined ? currentValue - priorValue : undefined;
+  const priorPct = priorValue !== undefined && priorValue !== 0
+    ? ((currentValue - priorValue) / Math.abs(priorValue)) * 100
+    : undefined;
+  const planDelta = planTarget != null && planTarget !== 0
+    ? ((currentValue - planTarget) / Math.abs(planTarget)) * 100
+    : null;
 
   return (
     <button
@@ -457,6 +488,19 @@ function WidgetTile({
         {option.description && (
           <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">{option.description}</p>
         )}
+        {showComparisons && (
+          <div className="flex items-center gap-1 flex-wrap pt-0.5">
+            <PlanChip planTarget={planTarget} planDelta={planDelta} format={option.format} />
+            <PriorChip
+              priorValue={priorValue}
+              priorPct={priorPct}
+              priorDelta={priorDelta}
+              format={option.format}
+              loading={priorLive.status === 'loading'}
+              supported={priorLive.supported}
+            />
+          </div>
+        )}
         <div className="flex items-center gap-1 flex-wrap pt-0.5">
           <Pill tone={isTemplate ? 'primary' : 'muted'}>{typeLabel}</Pill>
           <Pill tone="muted">{option.source}</Pill>
@@ -464,6 +508,77 @@ function WidgetTile({
         </div>
       </div>
     </button>
+  );
+}
+
+function PlanChip({
+  planTarget, planDelta, format,
+}: { planTarget: number | null; planDelta: number | null; format: InsightsMetricOption['format'] }) {
+  if (planTarget == null) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+        <Target className="h-2.5 w-2.5" /> No plan set
+      </span>
+    );
+  }
+  const beat = planDelta != null && planDelta >= 0;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+        beat ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400',
+      )}
+      title={`Plan: ${formatLiveValue(planTarget, format)}`}
+    >
+      <Target className="h-2.5 w-2.5" />
+      {planDelta != null ? `${planDelta >= 0 ? '+' : ''}${planDelta.toFixed(1)}% vs plan` : 'vs plan'}
+    </span>
+  );
+}
+
+function PriorChip({
+  priorValue, priorPct, priorDelta, format, loading, supported,
+}: {
+  priorValue: number | undefined;
+  priorPct: number | undefined;
+  priorDelta: number | undefined;
+  format: InsightsMetricOption['format'];
+  loading: boolean;
+  supported: boolean;
+}) {
+  if (!supported) return null;
+  if (loading) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70 animate-pulse">
+        vs prior…
+      </span>
+    );
+  }
+  if (priorValue === undefined || priorDelta === undefined) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+        <Minus className="h-2.5 w-2.5" /> No prior
+      </span>
+    );
+  }
+  const isFlat = priorDelta === 0;
+  const isUp = priorDelta > 0;
+  const Icon = isFlat ? Minus : isUp ? TrendingUp : TrendingDown;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+        isFlat ? 'bg-muted text-muted-foreground'
+          : isUp ? 'bg-emerald-500/15 text-emerald-400'
+          : 'bg-red-500/15 text-red-400',
+      )}
+      title={`Prior: ${formatLiveValue(priorValue, format)}`}
+    >
+      <Icon className="h-2.5 w-2.5" />
+      {priorPct != null
+        ? `${priorPct >= 0 ? '+' : ''}${priorPct.toFixed(1)}% vs prior`
+        : 'vs prior'}
+    </span>
   );
 }
 
