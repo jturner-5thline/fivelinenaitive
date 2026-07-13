@@ -1069,6 +1069,51 @@ function DrilldownModalInner({
   const total = deals.reduce((s, d) => s + d.value, 0);
   const selectedBucket = selectedBucketKey ? buckets.find((b) => b.key === selectedBucketKey) ?? null : null;
 
+  // For conversion-rate drilldowns: identify denominator deals that never
+  // advanced to the numerator stage, then check the deals table to see which
+  // of them are STILL active (not closed-won / closed-lost / on-hold / etc).
+  // We surface an alternative conversion rate that excludes those "still in
+  // process" deals from the denominator so genuinely in-flight deals aren't
+  // treated as drop-offs.
+  const dropoutIds = useMemo(() => {
+    if (!conversionBreakdown) return [] as string[];
+    const numSet = new Set(conversionBreakdown.numeratorDeals.map(n => n.deal_id));
+    return conversionBreakdown.denominatorDeals
+      .filter(d => !numSet.has(d.deal_id))
+      .map(d => d.deal_id);
+  }, [conversionBreakdown]);
+
+  const dropoutKey = useMemo(() => [...dropoutIds].sort().join(','), [dropoutIds]);
+  const { data: stillActiveDropoutIds } = useQuery({
+    queryKey: ['conversion-dropout-still-active', dropoutKey],
+    enabled: open && dropoutIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, stage, status')
+        .in('id', dropoutIds);
+      if (error) throw error;
+      return (data ?? [])
+        .filter(d => isActiveDeal(d as { stage: string; status: string }))
+        .map(d => d.id as string);
+    },
+  });
+
+  const adjustedConversion = useMemo(() => {
+    if (!conversionBreakdown) return null;
+    const stillActive = stillActiveDropoutIds?.length ?? 0;
+    if (stillActive <= 0) return null;
+    const denomAdj = conversionBreakdown.denominatorCount - stillActive;
+    if (denomAdj <= 0) return null;
+    const pct = (conversionBreakdown.numeratorCount / denomAdj) * 100;
+    return { stillActive, denomAdj, pct, text: `${pct.toFixed(1)}%` };
+  }, [conversionBreakdown, stillActiveDropoutIds]);
+  const stillActiveIdSet = useMemo(
+    () => new Set(stillActiveDropoutIds ?? []),
+    [stillActiveDropoutIds],
+  );
+
   const context: DrilldownContext = {
     sourceId: `debt-advisory:${title}`,
     sourceLabel: title,
