@@ -30,6 +30,8 @@ interface Props {
   /** Compact variant for tight spaces on the deal page. */
   density?: 'comfortable' | 'compact';
   className?: string;
+  /** When true, hide the per-lender status date line (used in Status Reports). */
+  hideDates?: boolean;
 }
 
 const META: Record<BucketKey, { label: string; color: Accent }> = {
@@ -45,6 +47,7 @@ export function LenderPipelineSnapshot({
   onUpdateLender,
   density = 'comfortable',
   className,
+  hideDates = false,
 }: Props) {
   const buckets = useMemo(
     () => bucketLenders(lenders, configuredStages),
@@ -96,7 +99,7 @@ export function LenderPipelineSnapshot({
                 ) : (
                   list.map((l) => {
                     const sd = getPrimaryStatusDate(l);
-                    const shortDate = formatShortDate(sd.iso);
+                    const shortDate = hideDates ? '' : formatShortDate(sd.iso);
                     return (
                       <div key={l.id} className="m-0 leading-snug">
                         <p className="m-0 text-[13px] font-semibold text-white break-words">
