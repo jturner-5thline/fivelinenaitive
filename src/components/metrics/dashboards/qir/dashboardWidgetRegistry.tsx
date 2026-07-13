@@ -97,7 +97,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'FinServ Financial Metrics',
     description: 'Snapshot of active FinServ clients with sparkline trend.',
     defaultWidth: 'half',
-    render: () => <Wrap><FinServActiveClientCountStat /></Wrap>,
+    render: () => <Wrap><FinServActiveClientCountStat title="Active Client Count" color="#22c55e" /></Wrap>,
   },
   {
     id: 'finserv-total-mrr-card',
@@ -105,7 +105,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'FinServ Financial Metrics',
     description: 'Recurring monthly revenue across active FinServ clients.',
     defaultWidth: 'half',
-    render: () => <Wrap><FinServTotalMrrStat /></Wrap>,
+    render: () => <Wrap><FinServTotalMrrStat title="Total MRR" color="#3b82f6" /></Wrap>,
   },
   {
     id: 'finserv-revenue-per-hour-card',
@@ -113,7 +113,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'FinServ Financial Metrics',
     description: 'Trailing revenue per included deal hour.',
     defaultWidth: 'half',
-    render: () => <Wrap><FinServPerHourStat mode="revenue" /></Wrap>,
+    render: () => <Wrap><FinServPerHourStat title="Revenue per Hour" color="#38bdf8" mode="revenue" /></Wrap>,
   },
   {
     id: 'finserv-profit-per-hour-card',
@@ -121,7 +121,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'FinServ Financial Metrics',
     description: 'Trailing profit per included deal hour.',
     defaultWidth: 'half',
-    render: () => <Wrap><FinServPerHourStat mode="profit" /></Wrap>,
+    render: () => <Wrap><FinServPerHourStat title="Profit per Hour" color="#a855f7" mode="profit" /></Wrap>,
   },
   {
     id: 'finserv-client-count-mom',
