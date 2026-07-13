@@ -812,6 +812,21 @@ function PnlFourChartsSectionInner({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {autoGranularity !== 'yearly' && (
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {(['monthly', 'quarterly'] as const).map((g) => {
+                const active = granularity === g;
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGranOverride(g)}
+                    className={'px-2.5 py-1 text-xs font-medium transition-colors ' + (active ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                  >{g === 'monthly' ? 'Monthly' : 'Quarterly'}</button>
+                );
+              })}
+            </div>
+          )}
           {isSingleMonth && (
             <div className="inline-flex rounded-md border border-border overflow-hidden">
               <button
