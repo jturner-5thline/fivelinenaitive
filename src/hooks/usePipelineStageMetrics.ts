@@ -1148,7 +1148,18 @@ function usePipelineAddedMetric(
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return rows ?? [];
+      // Apply historical value reconstruction: rewrite each deal's `value`
+      // to what it was at the row's `created_at`, so widgets fed by this
+      // hook reflect the deal size at pipeline entry rather than the
+      // latest edit.
+      const shaped = (rows ?? []).map((d: any) => ({
+        deal_id: d.id,
+        changed_at: d.created_at,
+        deals: { value: d.value },
+        __src: d,
+      }));
+      await applyHistoricalValuesToRows(shaped);
+      return shaped.map((r) => ({ ...r.__src, value: r.deals.value }));
     },
     enabled: !!user,
   });
@@ -1202,7 +1213,14 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return rows ?? [];
+      const shaped = (rows ?? []).map((d: any) => ({
+        deal_id: d.id,
+        changed_at: d.created_at,
+        deals: { value: d.value },
+        __src: d,
+      }));
+      await applyHistoricalValuesToRows(shaped);
+      return shaped.map((r) => ({ ...r.__src, value: r.deals.value }));
     },
     enabled: !!user,
   });
