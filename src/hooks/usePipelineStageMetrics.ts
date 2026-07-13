@@ -965,7 +965,13 @@ function useStageEntryMetric(
       if ((rows?.length ?? 0) === 0) {
         console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineId, startDate, endDate });
       }
-      return rows ?? [];
+      const synthetic = await fetchClosedDealsAsSyntheticRows(
+        pipelineId,
+        targetStages,
+        `${startDate}T00:00:00.000Z`,
+        `${endDate}T23:59:59.999Z`,
+      );
+      return [...(rows ?? []), ...synthetic];
     },
     enabled: !!user,
   });
