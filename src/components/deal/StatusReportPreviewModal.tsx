@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download } from 'lucide-react';
 import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
-import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
+import { bucketLenders, extractPassDetails, isExcludedFromClientReport } from '@/lib/lenderStatusBuckets';
 import { sendClaudeMessage } from '@/services/claude';
 import { rewritePassedFeedback } from '@/lib/rewritePassFeedback';
 import { toast } from '@/hooks/use-toast';
@@ -50,6 +50,7 @@ function buildInitialContent(
   const bullets = stripped.split(/\n+/).map((s) => s.trim()).filter(Boolean);
 
   const lenderRows = (deal.lenders || [])
+    .filter((l) => !isExcludedFromClientReport(l as any, configuredStages))
     .filter((l) => (l.trackingStatus || '').toLowerCase() !== 'passed')
     .map((lender) => ({
       name: lender.name,
