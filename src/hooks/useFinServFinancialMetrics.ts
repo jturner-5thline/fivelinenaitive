@@ -245,6 +245,7 @@ export async function ensureFinServPnlSnapshots(companyId: string, periods: Snap
   const now = Date.now();
   const STALE_MS = 6 * 60 * 60 * 1000;
   const RECENT_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+  const missingBeforeRefresh = requested.filter((period) => !foundMap.has(periodKey(period)));
   const needsRefresh = requested.filter((period) => {
     const row = foundMap.get(periodKey(period));
     if (!row) return true; // missing
@@ -256,8 +257,17 @@ export async function ensureFinServPnlSnapshots(companyId: string, periods: Snap
   });
 
   if (needsRefresh.length > 0) {
-    await syncFinServPnlSnapshots(companyId, needsRefresh, realmId);
-    rows = await fetchFinServPnlSnapshots(companyId, requested, realmId);
+    let refreshSucceeded = false;
+    try {
+      await syncFinServPnlSnapshots(companyId, needsRefresh, realmId);
+      refreshSucceeded = true;
+    } catch (refreshError) {
+      if (missingBeforeRefresh.length > 0) throw refreshError;
+      console.warn('[qbo.pnl.fetch] refresh failed; using cached snapshots', refreshError);
+    }
+    if (refreshSucceeded) {
+      rows = await fetchFinServPnlSnapshots(companyId, requested, realmId);
+    }
   }
 
   const refreshed = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
