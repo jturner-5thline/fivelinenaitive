@@ -269,7 +269,9 @@ export function StatusReportPreviewModal({
     if (aiTriedForDeal === deal.id) return;
     setAiTriedForDeal(deal.id);
 
-    const lenders = deal.lenders || [];
+    const lenders = (deal.lenders || []).filter(
+      (l) => !isExcludedFromClientReport(l as any, configuredStages),
+    );
     const lenderSummary = lenders
       .map((l) => {
         const note = (l.notes || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
