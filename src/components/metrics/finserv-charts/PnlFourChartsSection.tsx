@@ -575,6 +575,12 @@ function PnlFourChartsSectionInner({
   const [showPast3, setShowPast3] = useState(false);
   const useTrailing3 = isSingleMonth && showPast3;
 
+  // Section-level TTM toggle. When on, every bar in this section becomes a
+  // trailing-12-month rollup ending at that period, and the headline totals
+  // become the TTM as of `effective.end`. Yearly granularity is unchanged
+  // (each bar is already a 12-month total).
+  const [ttmOn, setTtmOn] = useState(false);
+
   // Effective timeframe: expand back 2 months when trailing-3 is on.
   const effective = useMemo(() => {
     if (!useTrailing3) {
@@ -600,11 +606,26 @@ function PnlFourChartsSectionInner({
     return 'monthly';
   }, [effective.start, effective.end]);
 
+  // TTM window sizing per granularity.
+  const ttmWindow = granularity === 'monthly' ? 12 : granularity === 'quarterly' ? 4 : 1;
+  const extraBuckets = ttmOn ? ttmWindow - 1 : 0;
+
+  // When TTM is on, we widen the fetch window back by (ttmWindow - 1)
+  // buckets so each visible bar has a full trailing-12-month lookback.
+  const extendedStart = useMemo(() => {
+    if (!ttmOn || extraBuckets === 0) return effective.start;
+    const s = new Date(effective.start + 'T00:00:00');
+    if (granularity === 'monthly') s.setMonth(s.getMonth() - extraBuckets);
+    else if (granularity === 'quarterly') s.setMonth(s.getMonth() - 3 * extraBuckets);
+    else s.setFullYear(s.getFullYear() - extraBuckets);
+    return s.toISOString().slice(0, 10);
+  }, [ttmOn, extraBuckets, effective.start, granularity]);
+
   const selectedPeriod = useMemo(() => ({
-    start_date: effective.start,
+    start_date: extendedStart,
     end_date: effective.end,
     label: effective.label,
-  }), [effective.start, effective.end, effective.label]);
+  }), [extendedStart, effective.end, effective.label]);
 
   // Previous-period comparison. Aligns to whole months when the current
   // timeframe is month-boundary aligned (e.g. Feb 2026 → Jan 2026, Q2 → Q1,
@@ -640,9 +661,77 @@ function PnlFourChartsSectionInner({
     return { start_date: toISO(ps), end_date: toISO(pe), label };
   }, [effective.start, effective.end]);
 
-  const totalRev = useFinServTotalRevenue(selectedPeriod, granularity, realmId);
-  const profits = useFinServQuarterlyProfits(selectedPeriod, granularity, realmId);
-  const cashflow = useFinServCashflow(selectedPeriod, granularity, realmId);
+  const totalRevRaw = useFinServTotalRevenue(selectedPeriod, granularity, realmId);
+  const profitsRaw = useFinServQuarterlyProfits(selectedPeriod, granularity, realmId);
+  const cashflowRaw = useFinServCashflow(selectedPeriod, granularity, realmId);
+
+  // Rolling-sum helper: for each index i, returns sum of values in
+  // [i-window+1 .. i] (clamped at 0). Passes through unchanged when
+  // window === 1.
+  const rollingSum = (arr: number[], w: number): number[] => {
+    if (w <= 1) return arr.slice();
+    return arr.map((_, i) => {
+      const start = Math.max(0, i - w + 1);
+      let s = 0;
+      for (let j = start; j <= i; j++) s += Number(arr[j]) || 0;
+      return s;
+    });
+  };
+
+  const totalRev = useMemo(() => {
+    if (!ttmOn) return totalRevRaw;
+    const monthsAll = totalRevRaw.months;
+    const rolled = rollingSum(monthsAll.map((m) => m.amount), ttmWindow)
+      .map((v, i) => ({ ...monthsAll[i], amount: v }));
+    const months = rolled.slice(extraBuckets);
+    // Headline aggregates: TTM as of effective.end, derived from the last
+    // ttmWindow raw buckets of the profits series (which carries revenue,
+    // gross profit and operating profit per bucket).
+    const tail = profitsRaw.quarters.slice(-ttmWindow);
+    const revenue = tail.reduce((s, q) => s + (Number(q.revenue) || 0), 0);
+    const grossProfit = tail.reduce((s, q) => s + (Number(q.grossProfit) || 0), 0);
+    const operatingProfit = tail.reduce((s, q) => s + (Number(q.operatingProfit) || 0), 0);
+    const operatingExpenses = tail.reduce((s, q) => s + (Number(q.opex) || 0), 0);
+    return {
+      ...totalRevRaw,
+      months,
+      total: revenue || months[months.length - 1]?.amount || 0,
+      grossProfit,
+      operatingExpenses,
+      operatingProfit,
+      grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : null,
+      operatingMargin: revenue > 0 ? (operatingProfit / revenue) * 100 : null,
+    };
+  }, [ttmOn, totalRevRaw, profitsRaw.quarters, ttmWindow, extraBuckets]);
+
+  const profits = useMemo(() => {
+    if (!ttmOn) return profitsRaw;
+    const qAll = profitsRaw.quarters;
+    const rev = rollingSum(qAll.map((q) => q.revenue), ttmWindow);
+    const cogs = rollingSum(qAll.map((q) => q.cogs), ttmWindow);
+    const gp = rollingSum(qAll.map((q) => q.grossProfit), ttmWindow);
+    const opex = rollingSum(qAll.map((q) => q.opex), ttmWindow);
+    const op = rollingSum(qAll.map((q) => q.operatingProfit), ttmWindow);
+    const quarters = qAll.map((q, i) => ({
+      ...q,
+      revenue: rev[i],
+      cogs: cogs[i],
+      grossProfit: gp[i],
+      opex: opex[i],
+      operatingProfit: op[i],
+      grossMargin: rev[i] > 0 ? (gp[i] / rev[i]) * 100 : 0,
+      operatingMargin: rev[i] > 0 ? (op[i] / rev[i]) * 100 : 0,
+    })).slice(extraBuckets);
+    return { ...profitsRaw, quarters };
+  }, [ttmOn, profitsRaw, ttmWindow, extraBuckets]);
+
+  const cashflow = useMemo(() => {
+    if (!ttmOn) return cashflowRaw;
+    const pAll = cashflowRaw.points;
+    const rolled = rollingSum(pAll.map((p) => Number(p.value) || 0), ttmWindow)
+      .map((v, i) => ({ ...pAll[i], value: v }));
+    return { ...cashflowRaw, points: rolled.slice(extraBuckets) };
+  }, [ttmOn, cashflowRaw, ttmWindow, extraBuckets]);
 
   // Previous period only needs the aggregate totals — request monthly
   // granularity so buildBuckets always returns valid buckets even when
@@ -655,7 +744,7 @@ function PnlFourChartsSectionInner({
   );
 
   const granularityLabel = granularity === 'monthly' ? 'Monthly' : granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
-  const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
+  const periodBadge = `${granularityLabel} · ${effective.label}${ttmOn ? ' · TTM' : ''}`;
   const prevLabel = prevPeriod.label;
 
   const { open: openDrill } = useDrilldown();
@@ -707,18 +796,18 @@ function PnlFourChartsSectionInner({
 
   return (
     <div className="space-y-4">
-      {(sectionTitle || sectionSubtitle || isSingleMonth) && (
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            {sectionTitle && (
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{sectionTitle}</h3>
-            )}
-            {sectionSubtitle && (
-              <p className="text-xs text-muted-foreground mt-0.5">{sectionSubtitle}</p>
-            )}
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          {sectionTitle && (
+            <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">{sectionTitle}</h3>
+          )}
+          {sectionSubtitle && (
+            <p className="text-xs text-muted-foreground mt-0.5">{sectionSubtitle}</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
           {isSingleMonth && (
-            <div className="inline-flex rounded-md border border-border overflow-hidden shrink-0">
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowPast3(false)}
@@ -731,8 +820,29 @@ function PnlFourChartsSectionInner({
               >Past 3 months</button>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => setTtmOn((v) => !v)}
+            aria-pressed={ttmOn}
+            title={ttmOn
+              ? 'TTM on — each bar is the trailing-12-month rollup ending at that period'
+              : 'Toggle TTM — show each bar as the trailing-12-month rollup'}
+            className={
+              'inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium transition-colors ' +
+              (ttmOn ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground')
+            }
+          >
+            <span
+              className={
+                'h-1.5 w-1.5 rounded-full ' +
+                (ttmOn ? 'bg-primary-foreground shadow-[0_0_6px_hsl(var(--primary-foreground)/0.9)]' : 'bg-muted-foreground/50')
+              }
+            />
+            TTM
+            {ttmOn && <span className="text-[10px] font-medium opacity-80">ON</span>}
+          </button>
         </div>
-      )}
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TotalRevenueCard
