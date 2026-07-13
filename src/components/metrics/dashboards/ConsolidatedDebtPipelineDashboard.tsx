@@ -908,8 +908,8 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
   );
 }
 
-function ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
-  return _ConversionDealsTable({ heading, deals, accent, dropoutIds });
+function ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string>; stillActiveIds?: Set<string> }) {
+  return _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds });
 }
 
 function SignedModeToggle({
@@ -948,9 +948,10 @@ function SignedModeToggle({
   );
 }
 
-function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
+function _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string>; stillActiveIds?: Set<string> }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   const dropoutCount = dropoutIds ? deals.filter(d => dropoutIds.has(d.deal_id)).length : 0;
+  const stillActiveCount = stillActiveIds ? deals.filter(d => stillActiveIds.has(d.deal_id)).length : 0;
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
@@ -960,6 +961,11 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
           {dropoutIds && dropoutCount > 0 && (
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
               {dropoutCount} dropped off
+            </span>
+          )}
+          {stillActiveIds && stillActiveCount > 0 && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
+              {stillActiveCount} still in process
             </span>
           )}
         </div>
