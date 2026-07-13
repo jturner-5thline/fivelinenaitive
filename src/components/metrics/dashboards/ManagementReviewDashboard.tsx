@@ -2214,20 +2214,26 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     enabled: !!company?.id && pnlSnapshotPeriods.length > 0,
     staleTime: 60_000,
     queryFn: async (): Promise<PnlSnapshotForKeyStats[]> => {
-      const perEntity = await Promise.all(
-        QBO_ENTITIES.map(async (entity) => {
-          const rows = await ensureFinServPnlSnapshots(company!.id, pnlSnapshotPeriods, entity.realmId);
-          return rows.map((row) => ({
-            realm_id: entity.realmId,
-            period_start: row.period_start,
-            period_end: row.period_end,
-            income_total: row.income_total,
-            operating_expenses: row.operating_expenses,
-            net_operating_income: row.net_operating_income,
-          }));
-        }),
+      const startDates = pnlSnapshotPeriods.map(p => p.start_date).sort();
+      const endDates = pnlSnapshotPeriods.map(p => p.end_date).sort();
+      const requestedKeys = new Set(pnlSnapshotPeriods.map(p => `${p.start_date}_${p.end_date}`));
+      const realmIds = QBO_ENTITIES.map(entity => entity.realmId);
+      const { data, error } = await supabase
+        .from('qbo_pnl_snapshots')
+        .select('realm_id, period_start, period_end, income_total, operating_expenses, net_operating_income')
+        .eq('company_id', company!.id)
+        .eq('accounting_method', 'Accrual')
+        .in('realm_id', realmIds)
+        .gte('period_start', startDates[0])
+        .lte('period_start', startDates[startDates.length - 1])
+        .gte('period_end', endDates[0])
+        .lte('period_end', endDates[endDates.length - 1]);
+
+      if (error) throw error;
+
+      return ((data ?? []) as PnlSnapshotForKeyStats[]).filter(row =>
+        requestedKeys.has(`${row.period_start}_${row.period_end}`),
       );
-      return perEntity.flat();
     },
   });
 
