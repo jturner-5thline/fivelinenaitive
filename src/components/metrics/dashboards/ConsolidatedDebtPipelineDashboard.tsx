@@ -1141,8 +1141,27 @@ function DrilldownModalInner({
                     </TooltipContent>
                   </UITooltip>
                 </TooltipProvider>
-                <div className="text-2xl font-bold text-foreground mt-0.5">
-                  {conversionBreakdown.percentText}
+                <div className="mt-0.5 flex items-baseline gap-3 flex-wrap">
+                  <div className="text-2xl font-bold text-foreground">
+                    {conversionBreakdown.percentText}
+                  </div>
+                  {adjustedConversion && (
+                    <TooltipProvider delayDuration={100}>
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-baseline gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 cursor-help">
+                            <span className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">Excl. in-process</span>
+                            <span className="text-lg font-bold text-primary tabular-nums">{adjustedConversion.text}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-[11px] leading-relaxed">
+                          Excludes {adjustedConversion.stillActive} deal{adjustedConversion.stillActive !== 1 ? 's' : ''} still active in the pipeline
+                          (not Closed Won / Closed Lost / On Hold) from the denominator.
+                          Adjusted = {conversionBreakdown.numeratorCount} / {adjustedConversion.denomAdj}.
+                        </TooltipContent>
+                      </UITooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
             </div>
