@@ -755,7 +755,25 @@ function PnlFourChartsSectionInner({
 
   const granularityLabel = granularity === 'monthly' ? 'Monthly' : granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${effective.label}${ttmOn ? ' · TTM' : ''}`;
-  const prevLabel = prevPeriod.label;
+  // When TTM is on, the comparison must be TTM-vs-TTM (previous bar in the
+  // rolled series), not TTM-vs-single-period. Otherwise the headline delta
+  // contradicts the visible bars.
+  const ttmPrevBar = ttmOn ? profits.quarters[profits.quarters.length - 2] ?? null : null;
+  const ttmPrevRevBar = ttmOn ? totalRev.months[totalRev.months.length - 2] ?? null : null;
+  const ttmPrevCashBar = ttmOn ? cashflow.points[cashflow.points.length - 2] ?? null : null;
+  const prevRevTotal = ttmOn ? Number(ttmPrevBar?.revenue ?? ttmPrevRevBar?.amount ?? 0) : prevTotalRev.total;
+  const prevGrossProfit = ttmOn ? Number(ttmPrevBar?.grossProfit ?? 0) : prevTotalRev.grossProfit;
+  const prevGrossMargin = ttmOn
+    ? (ttmPrevBar && Number(ttmPrevBar.revenue) > 0 ? (Number(ttmPrevBar.grossProfit) / Number(ttmPrevBar.revenue)) * 100 : null)
+    : prevTotalRev.grossMargin;
+  const prevOperatingProfit = ttmOn ? Number(ttmPrevBar?.operatingProfit ?? 0) : prevTotalRev.operatingProfit;
+  const prevOperatingMargin = ttmOn
+    ? (ttmPrevBar && Number(ttmPrevBar.revenue) > 0 ? (Number(ttmPrevBar.operatingProfit) / Number(ttmPrevBar.revenue)) * 100 : null)
+    : prevTotalRev.operatingMargin;
+  const prevCashflowTotalEffective = ttmOn ? Number(ttmPrevCashBar?.value ?? 0) : prevCashflowTotal;
+  const prevLabel = ttmOn
+    ? `prev ${granularity === 'monthly' ? 'month' : granularity === 'quarterly' ? 'quarter' : 'year'} TTM`
+    : prevPeriod.label;
 
   const { open: openDrill } = useDrilldown();
   const bucketIndex = useMemo(() => {
@@ -873,7 +891,7 @@ function PnlFourChartsSectionInner({
         <TotalRevenueCard
           periodBadge={periodBadge}
           totalRev={totalRev}
-          prev={{ total: prevTotalRev.total }}
+          prev={{ total: prevRevTotal }}
           prevLabel={prevLabel}
           onBarClick={(d) => openPnl('revenue', 'Total Revenue', d)}
         />
@@ -881,7 +899,7 @@ function PnlFourChartsSectionInner({
           periodBadge={periodBadge}
           totalRev={totalRev}
           profits={profits}
-          prev={{ grossProfit: prevTotalRev.grossProfit, grossMargin: prevTotalRev.grossMargin }}
+          prev={{ grossProfit: prevGrossProfit, grossMargin: prevGrossMargin }}
           prevLabel={prevLabel}
           onBarClick={(d, mode) => openPnl(mode === '$' ? 'gross_profit' : 'gross_margin', mode === '$' ? 'Gross Profit' : 'Gross Margin %', d)}
         />
@@ -893,7 +911,7 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             totalRev={totalRev}
             profits={profits}
-            prev={{ operatingProfit: prevTotalRev.operatingProfit, operatingMargin: prevTotalRev.operatingMargin }}
+            prev={{ operatingProfit: prevOperatingProfit, operatingMargin: prevOperatingMargin }}
             prevLabel={prevLabel}
             onBarClick={(d, mode) => openPnl(mode === '$' ? 'operating_profit' : 'operating_margin', mode === '$' ? 'Operating Profit' : 'Operating Margin %', d)}
           />
@@ -901,7 +919,7 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             cashflow={cashflow}
             title={cashflowTitle}
-            prev={{ total: prevCashflowTotal }}
+            prev={{ total: prevCashflowTotalEffective }}
             prevLabel={prevLabel}
             onBarClick={(d) => openCashflow(d)}
           />
@@ -912,7 +930,7 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             totalRev={totalRev}
             profits={profits}
-            prev={{ operatingProfit: prevTotalRev.operatingProfit, operatingMargin: prevTotalRev.operatingMargin }}
+            prev={{ operatingProfit: prevOperatingProfit, operatingMargin: prevOperatingMargin }}
             prevLabel={prevLabel}
             onBarClick={(d, mode) => openPnl(mode === '$' ? 'operating_profit' : 'operating_margin', mode === '$' ? 'Operating Profit' : 'Operating Margin %', d)}
           />
@@ -920,7 +938,7 @@ function PnlFourChartsSectionInner({
             periodBadge={periodBadge}
             cashflow={cashflow}
             title={cashflowTitle}
-            prev={{ total: prevCashflowTotal }}
+            prev={{ total: prevCashflowTotalEffective }}
             prevLabel={prevLabel}
             onBarClick={(d) => openCashflow(d)}
           />
