@@ -7,6 +7,33 @@ import {
   usePlanVisibility,
   type TogglePlanKey,
 } from './planScenarios';
+import { useConsolidatedOperatingProfit } from '@/hooks/useConsolidatedOperatingProfit';
+import { QBO_REALM_DEBT } from '@/config/qboEntities';
+
+// Format a dollar amount to the same "$226K / $1.21MM" convention used by
+// the surrounding hardcoded plan cells so live actuals visually match.
+function fmtCompactUsd(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—';
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(2)}MM`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}K`;
+  return `${sign}$${Math.round(abs)}`;
+}
+
+function actualsRowFromQuarters(
+  q: { q1: number; q2: number; q3: number; q4: number; total: number },
+  isYtd = false,
+): { vals: string[]; negCells: boolean[] } {
+  const quarters = isYtd
+    ? [q.q1, q.q1 + q.q2, q.q1 + q.q2 + q.q3, q.q1 + q.q2 + q.q3 + q.q4]
+    : [q.q1, q.q2, q.q3, q.q4];
+  const total = q.total;
+  return {
+    vals: [...quarters.map(fmtCompactUsd), fmtCompactUsd(total)],
+    negCells: quarters.map((v) => v < 0),
+  };
+}
 
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
@@ -83,6 +110,17 @@ function MetricGridShort({ title, headers, rows }: { title: string; headers: str
 
 export function KeyMetricsPage({ isEditMode = false }: { isEditMode?: boolean } = {}) {
   const { visible, toggle } = usePlanVisibility();
+  // Live Actuals for the Operating Profit tiles — pulled from QuickBooks
+  // snapshots and summed across every connected entity (Consolidated view).
+  const YEAR = new Date().getFullYear();
+  const consolidatedOp = useConsolidatedOperatingProfit(YEAR);
+  const debtOp = useConsolidatedOperatingProfit(YEAR, {
+    realmIds: [QBO_REALM_DEBT],
+  });
+  const consolidatedActuals = actualsRowFromQuarters(consolidatedOp);
+  const consolidatedYtdActuals = actualsRowFromQuarters(consolidatedOp, true);
+  const debtActuals = actualsRowFromQuarters(debtOp);
+
   const planVisible = (plan: string) => {
     if (plan === 'Actuals') return true;
     if (plan === 'Reach' || plan === 'Operating' || plan === 'Conservative') {
@@ -106,7 +144,7 @@ export function KeyMetricsPage({ isEditMode = false }: { isEditMode?: boolean } 
       mkRow('Reach', PLAN_COLORS.Reach, ['$749K','$114K','$130K','$221K','$1.21MM']),
       mkRow('Operating', PLAN_COLORS.Operating, ['$226K','$174K','$186K','$224K','$0.81MM']),
       mkRow('Conservative', PLAN_COLORS.Conservative, ['-$38K','$20K','$362K','$445K','$0.79MM'], undefined, [true]),
-      mkRow('Actuals', PLAN_COLORS.Actuals, ['$268K','$243K','$278K','$329K','$1.12MM']),
+      mkRow('Actuals', PLAN_COLORS.Actuals, consolidatedActuals.vals, undefined, consolidatedActuals.negCells),
     ])} /> },
     { id: 'services-revenue', render: () => <MetricGrid title="Services Revenue" rows={filterRows([
       mkRow('Reach', PLAN_COLORS.Reach, ['$1.2MM','$0.8MM','$0.8MM','$1.0MM','$3.8MM']),
@@ -130,7 +168,7 @@ export function KeyMetricsPage({ isEditMode = false }: { isEditMode?: boolean } 
       mkRow('Reach', PLAN_COLORS.Reach, ['$0.9MM','$0.4MM','$0.4MM','$0.5MM','$2.1MM']),
       mkRow('Operating', PLAN_COLORS.Operating, ['$0.4MM','$0.4MM','$0.4MM','$0.5MM','$1.7MM']),
       mkRow('Conservative', PLAN_COLORS.Conservative, ['$0.1MM','$0.2MM','$0.5MM','$0.6MM','$1.4MM']),
-      mkRow('Actuals', PLAN_COLORS.Actuals, ['$0K','$0K','$0K','$0K','$0.00MM']),
+      mkRow('Actuals', PLAN_COLORS.Actuals, debtActuals.vals, undefined, debtActuals.negCells),
     ])} /> },
     { id: 'ytd-revenue', render: () => <MetricGrid title="YTD Revenue" rows={filterRows([
       mkRow('Reach', PLAN_COLORS.Reach, ['$1.2MM','$1.9MM','$2.7MM','$3.8MM','$3.8MM']),
@@ -142,7 +180,7 @@ export function KeyMetricsPage({ isEditMode = false }: { isEditMode?: boolean } 
       mkRow('Reach', PLAN_COLORS.Reach, ['$0.7MM','$0.9MM','$1.0MM','$1.2MM','$1.2MM']),
       mkRow('Operating', PLAN_COLORS.Operating, ['$226K','$399K','$585K','$809K','$809K']),
       mkRow('Conservative', PLAN_COLORS.Conservative, ['-$38K','-$18K','$344K','$789K','$789K'], undefined, [true, true]),
-      mkRow('Actuals', PLAN_COLORS.Actuals, ['-$41K','-$161K','-$106K','$447K','$447K'], undefined, [true, true, true]),
+      mkRow('Actuals', PLAN_COLORS.Actuals, consolidatedYtdActuals.vals, undefined, consolidatedYtdActuals.negCells),
     ])} /> },
     { id: 'dollars-funded-ytd', render: () => <MetricGridShort title="Dollars Funded YTD" headers={['Plan','Q1','Q2','Q3','Q4','Total']} rows={filterRows([
       mkRow('Reach', PLAN_COLORS.Reach, ['$60MM','$190MM','$253MM','$321MM','$321MM']),
