@@ -1095,7 +1095,7 @@ function DrilldownModalInner({
         .in('id', dropoutIds);
       if (error) throw error;
       return (data ?? [])
-        .filter(d => isActiveDeal(d as { stage: string; status: string }))
+        .filter(d => isActiveDeal(d as unknown as Parameters<typeof isActiveDeal>[0]))
         .map(d => d.id as string);
     },
   });
