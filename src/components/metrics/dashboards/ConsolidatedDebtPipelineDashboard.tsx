@@ -1256,9 +1256,13 @@ function DrilldownModalInner({
               accent="hsl(var(--chart-4))"
               dropoutIds={new Set(
                 conversionBreakdown.denominatorDeals
-                  .filter(d => !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id))
+                  .filter(d =>
+                    !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id) &&
+                    !stillActiveIdSet.has(d.deal_id),
+                  )
                   .map(d => d.deal_id),
               )}
+              stillActiveIds={stillActiveIdSet}
             />
             <ConversionDealsTable
               heading={conversionBreakdown.numeratorLabel}
