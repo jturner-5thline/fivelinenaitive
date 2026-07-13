@@ -594,7 +594,7 @@ function PnlFourChartsSectionInner({
     return { start: toISO(ns), end: timeframe.end, label };
   }, [useTrailing3, timeframe.start, timeframe.end, timeframe.label]);
 
-  const granularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
+  const autoGranularity: 'monthly' | 'quarterly' | 'yearly' = useMemo(() => {
     const s = new Date(effective.start);
     const e = new Date(effective.end);
     const months = Math.max(
@@ -605,6 +605,12 @@ function PnlFourChartsSectionInner({
     if (months > 18) return 'quarterly';
     return 'monthly';
   }, [effective.start, effective.end]);
+
+  // User can override the auto-derived granularity between Monthly and
+  // Quarterly (Yearly stays auto for very long ranges).
+  const [granOverride, setGranOverride] = useState<'monthly' | 'quarterly' | null>(null);
+  const granularity: 'monthly' | 'quarterly' | 'yearly' =
+    autoGranularity === 'yearly' ? 'yearly' : (granOverride ?? autoGranularity);
 
   // TTM window sizing per granularity.
   const ttmWindow = granularity === 'monthly' ? 12 : granularity === 'quarterly' ? 4 : 1;
@@ -806,6 +812,21 @@ function PnlFourChartsSectionInner({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {autoGranularity !== 'yearly' && (
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              {(['monthly', 'quarterly'] as const).map((g) => {
+                const active = granularity === g;
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGranOverride(g)}
+                    className={'px-2.5 py-1 text-xs font-medium transition-colors ' + (active ? 'bg-primary/20 text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                  >{g === 'monthly' ? 'Monthly' : 'Quarterly'}</button>
+                );
+              })}
+            </div>
+          )}
           {isSingleMonth && (
             <div className="inline-flex rounded-md border border-border overflow-hidden">
               <button
