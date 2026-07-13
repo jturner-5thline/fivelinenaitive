@@ -1603,6 +1603,15 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving, reportLabel 
               periodLabel: reportPeriod?.label ?? null,
             });
           }}
+          onPickDashboardWidget={(widgetId) => {
+            const ed = editorRef.current;
+            if (!ed) return;
+            ed.chain().focus().insertContent({
+              type: 'dashboardWidgetEmbed',
+              attrs: { widgetId, width: 'full' },
+            }).run();
+            scheduleSave();
+          }}
         />
       </div>
     </Card>

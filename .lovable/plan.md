@@ -1,57 +1,59 @@
 ## Goal
-Move the true "agents" and every email-extraction function off `google/gemini-*` on the Lovable AI Gateway and onto `claude-sonnet-4-5-20250929` via the Anthropic Messages API (same pattern the Deal Admin Agent already uses).
+Extend the Add Widgets pop-up so users can embed dashboard widgets **exactly as they appear** on their source dashboard (chart, table, or KPI card), in addition to the existing single-value KPI tiles.
 
-`ANTHROPIC_API_KEY` is already configured — no new secrets needed.
+## User-visible behavior
 
-## Functions to migrate (13)
+1. Add a **mode toggle** at the top of the Add Widgets dialog:
+   - **KPI Tiles** (current behavior — single-value KPIs, templates, custom metrics)
+   - **Dashboard Widgets** (new — pick charts/tables/cards rendered as-is)
+2. In Dashboard Widgets mode, tiles are grouped by source dashboard, with a live thumbnail preview and a "Live · <dashboard name>" caption. Selection + "Add Selected" flow is identical.
+3. Added widgets render in the report as **half-width by default**, and are resizable (small / half / full-width) via the existing widget edit controls. The embedded chart re-sizes to its container.
+4. Narrative editor can also insert a dashboard-widget block inline (same picker).
 
-**Agents (autonomous decisions / write to queues)**
-1. `dashboard-chat` — main conversational agent (multiple call sites)
-2. `james-top-priority` — daily prioritization agent
-3. `field-suggestion-engine` — writes to `contact_field_suggestions` approval queue (uses tool calling)
-4. `vdr-suggestions` — VDR action proposals
-5. `email-unified-action` — routes email actions (uses tool calling)
-6. `claap-suggest-matches` — meeting↔deal routing decisions
+## Technical design
 
-**Email extraction**
-7. `analyze-emails` — email classification + signal extraction
-8. `detect-email-followups` — followup detection (uses tool calling)
-9. `email-thread-summarizer` — thread summary (uses `response_format: json_object`)
-10. `parse-email-scheduling-proposals` — extracts proposed slots (uses `response_format: json_object`)
-11. `email-ai-search` — semantic email search
-12. `polish-email-draft` — polishes draft emails
-13. `lender-followup-draft` — drafts lender follow-ups
+### 1. New embeddable-widget registry
+`src/components/metrics/dashboards/qir/dashboardWidgetRegistry.ts`
+- Enumerates embeddable widgets as `{ id, label, dashboard, description, defaultWidth: 'half'|'full', render: (ctx) => ReactNode }`.
+- `ctx` = `{ reportPeriod, entityFilter? }` so widgets pick up the report's timeframe.
+- Curated first pass across the four dashboards the user picked; each entry re-uses the **existing chart/card component** from that dashboard (extracted into a small wrapper if it's currently inline):
+  - **Debt Advisory Metrics** – stage funnel chart, 6 stage-entry stat cards, deal-size distribution.
+  - **FinServ Financial Metrics** – Revenue/hour trendline, Profit/hour trendline, MRR chart, Active-client trend, Utilization gauge, Avg revenue/client bar.
+  - **QuickBooks Revenue Reporting** – Revenue stacked bar (Debt vs FinServ), Revenue by entity donut.
+  - **All metrics dashboards** – over time, expanded by adding entries here (registry is the single extension point).
+- Widgets that don't yet have an extracted, embeddable component fall back to a "Coming soon" tile in the picker.
 
-## Not migrating (staying on Gemini)
-Pure extractors/summarizers/drafters that aren't email-related: `ai-news-summary`, `generate-activity-summary`, `lender-summary`, `claap-analyze-meeting`, `claap-extract-action-items`, `extract-lender-fit`, `extract-deal-fit`, `branded-doc-style-extract`, `naitive-task-parse`, `financial-ai`, `semantic-lender-match`, `ai-settings-tool`, `gamma-ai-prompt`. Perplexity calls (`sonar-pro`) inside `dashboard-chat` stay on Perplexity.
+### 2. Add Widgets dialog — mode toggle
+`AddKpiDialog.tsx`
+- New prop `onPickDashboardWidget?: (id: string) => void`.
+- Segmented control at the top of the header: KPI Tiles | Dashboard Widgets.
+- Widget-mode gallery reuses the existing grouped grid + selection/footer, but renders a `DashboardWidgetPreviewTile` that mounts the widget's `render()` inside a scaled-down preview box.
+- Search + source chips filter the widget registry when in widget mode.
 
-## Shared helper
-Create `supabase/functions/_shared/claudeChat.ts` exporting:
-- `callClaude({ system, messages, tools?, toolChoice?, maxTokens?, temperature? })` — POSTs to `https://api.anthropic.com/v1/messages` and returns `{ text, toolUse, stopReason, usage }`.
-- Handles OpenAI-shape → Anthropic-shape conversion for `tools` (`{name, description, input_schema}`) and `tool_choice` (`{type:"tool", name}`).
-- Handles Anthropic response shape: text lives in `content[]` blocks of type `text`; tool calls in blocks of type `tool_use`.
-- Surfaces `429` and `529` as retryable, everything else terminal.
-- No streaming — all 13 targets are one-shot.
+### 3. Report state — new "dashboard-widget" item type
+`QuarterlyInsightsReport.tsx`
+- Extend the KPI-grid model with an optional `kind: 'kpi' | 'dashboardWidget'` and `dashboardWidgetId?: string` field (kept backward-compatible; default is `'kpi'`).
+- New `addDashboardWidget(widgetId)` that appends a grid item with size = the widget's `defaultWidth`.
+- When rendering the KPI grid: if `kind === 'dashboardWidget'`, look up the registry entry and render its component inside a resizable `SortableMetricWidget`-style card. Edit affordance = resize + remove (no label/actual/target inputs).
 
-## Per-function changes
-For each of the 13 functions:
-1. Replace the `fetch(https://ai.gateway.lovable.dev/v1/chat/completions, ...)` block with `callClaude(...)`.
-2. Remove `response_format: json_object` — instead instruct in the system prompt "return only valid JSON" (already the case in most). Existing JSON-cleaning code (`replace(/^```json/…)`) stays as belt-and-suspenders.
-3. For the 3 tool-calling functions (`detect-email-followups`, `field-suggestion-engine`, `email-unified-action`, plus tool paths inside `dashboard-chat`): read the tool_use block from Claude's response instead of `choices[0].message.tool_calls[0].function.arguments`.
-4. Keep temperature values as-is; Claude accepts the same 0–1 range.
+### 4. Narrative editor — new inline node
+`src/components/insights/narrative/DashboardWidgetEmbedNode.tsx`
+- TipTap node `dashboardWidgetEmbed` with attrs `{ widgetId, periodStart, periodEnd, periodLabel }`.
+- Renders the registry component in a bordered block; read-only in preview, deletable in edit.
+- Registered in `InsightsNarrativeEditor`.
 
-## Not touched
-- `dealAdminAgentIntelligence.ts` — already on Claude.
-- `widget-builder-chat`, `branded-doc-generate`, `claude-ai`, `claude-dashboard-chat` — already on Claude.
-- All non-migrating functions listed above stay on Gemini.
+### 5. Resize model
+- Reuse existing `MetricWidgetSize` widths (`small` / `medium` / `large` / `full`) mapped to grid col-spans; expose a small size-picker on the widget's edit affordance.
 
-## Verification
-After the swap, run one of each shape end-to-end via `supabase--curl_edge_functions`:
-- A plain-text call (`polish-email-draft`)
-- A JSON-mode call (`analyze-emails`)
-- A tool-calling call (`field-suggestion-engine`)
+## Out of scope for this pass
+- Cross-report drill-downs from the embedded widget (widgets retain their intrinsic drill-downs where they already exist).
+- Embedding heavy multi-tab dashboards (Executive, Weekly Rundown carousels) — those don't have a single canonical "widget" surface.
+- Custom axis/filter overrides on the embedded widget (uses report timeframe only).
 
-Confirm each returns a well-formed response and the AI Gateway logs (or absence thereof) show the traffic moved off Gemini.
-
-## Cost & latency note
-Claude Sonnet 4.5 is meaningfully more expensive and slower per token than `gemini-2.5-flash*`. Expect ~5–10× cost and ~2× latency on these paths. Worth it for the agent paths; you flagged that this is the tradeoff you want for email extraction too.
+## Files touched
+- `src/components/metrics/dashboards/qir/dashboardWidgetRegistry.ts` **(new)**
+- `src/components/metrics/dashboards/qir/AddKpiDialog.tsx` (mode toggle + widget gallery)
+- `src/components/metrics/dashboards/QuarterlyInsightsReport.tsx` (state + rendering)
+- `src/components/insights/narrative/DashboardWidgetEmbedNode.tsx` **(new)**
+- `src/components/insights/narrative/InsightsNarrativeEditor.tsx` (register node)
+- Small extraction wrappers for a handful of dashboard charts so they're mountable outside their host dashboard.

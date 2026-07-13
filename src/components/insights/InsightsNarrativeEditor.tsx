@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { MessageSquarePlus } from 'lucide-react';
 import type { Editor } from '@tiptap/core';
 import { KpiEmbedNode } from '@/components/insights/narrative/KpiEmbedNode';
+import { DashboardWidgetEmbedNode } from '@/components/insights/narrative/DashboardWidgetEmbedNode';
 import {
   computeSelectionBubblePosition,
   getSelectionAnchorRect,
@@ -203,6 +204,7 @@ export function InsightsNarrativeEditor({
       Image.configure({ inline: false, allowBase64: false, HTMLAttributes: { class: 'insights-narrative-image' } }),
       Placeholder.configure({ placeholder: 'Write the executive summary…' }),
       KpiEmbedNode,
+      DashboardWidgetEmbedNode,
     ],
     content: initialHTMLRef.current,
     onUpdate: ({ editor: ed }) => {
