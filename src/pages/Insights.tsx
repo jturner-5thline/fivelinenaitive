@@ -1442,9 +1442,15 @@ function MetricsInner() {
     initialDashboardRef.current = getInitialInsightsDashboard(location.search);
   }
   const [selectedDashboard, setSelectedDashboard] = useState(initialDashboardRef.current);
+  // Ref updated below once allowedDashboardIds is computed, so selectDashboard
+  // (declared before the memo for hook-ordering reasons) can enforce the
+  // per-user allowlist without depending on it directly.
+  const allowedDashboardIdsRef = useRef<Set<string> | null>(null);
   const selectDashboard = useCallback((id: string) => {
-    persistInsightsDashboard(id);
-    setSelectedDashboard(id);
+    const allowed = allowedDashboardIdsRef.current;
+    const nextId = allowed && !allowed.has(id) ? (Array.from(allowed)[0] ?? id) : id;
+    persistInsightsDashboard(nextId);
+    setSelectedDashboard(nextId);
   }, []);
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -1462,6 +1468,9 @@ function MetricsInner() {
     const list = email ? RESTRICTED_DASHBOARDS[email] : undefined;
     return list ? new Set(list) : null;
   }, [authUser?.email]);
+  // Keep the ref in sync so selectDashboard can enforce restrictions
+  // for deep-link driven calls that happen outside the dropdown.
+  allowedDashboardIdsRef.current = allowedDashboardIds;
   const isInsightsLayoutEditor = authUser?.email?.toLowerCase() === 'jturner@5thline.co';
   const visibleDashboardOptions = useMemo(
     () => allowedDashboardIds
