@@ -176,7 +176,17 @@ function valueAsOf(
   if (!events || events.length === 0) return currentValue;
   let v = currentValue;
   for (let i = events.length - 1; i >= 0; i--) {
-    if (events[i].ts > asOfIso) v = events[i].oldValue;
+    if (events[i].ts > asOfIso) {
+      // Treat "0 → X" events as initial data entry, not a real drop from
+      // zero. Rolling back would produce a misleading $0 for periods
+      // BEFORE the value was first recorded (e.g. OpConnect entered "In
+      // Due Diligence" in 2025 while the system still had value=0; the
+      // real amount ($10MM) was backfilled in Feb 2026 as 0 → 10MM).
+      // Skip the rollback so the earliest positive value wins.
+      if (!(Number(events[i].oldValue) === 0 && Number(events[i].newValue) > 0)) {
+        v = events[i].oldValue;
+      }
+    }
   }
   return v;
 }
@@ -1138,7 +1148,18 @@ function usePipelineAddedMetric(
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return rows ?? [];
+      // Apply historical value reconstruction: rewrite each deal's `value`
+      // to what it was at the row's `created_at`, so widgets fed by this
+      // hook reflect the deal size at pipeline entry rather than the
+      // latest edit.
+      const shaped = (rows ?? []).map((d: any) => ({
+        deal_id: d.id,
+        changed_at: d.created_at,
+        deals: { value: d.value },
+        __src: d,
+      }));
+      await applyHistoricalValuesToRows(shaped);
+      return shaped.map((r) => ({ ...r.__src, value: r.deals.value }));
     },
     enabled: !!user,
   });
@@ -1192,7 +1213,14 @@ function usePipelineDealsInPeriod(pipelineId: string, quarter: QuarterOption): S
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return rows ?? [];
+      const shaped = (rows ?? []).map((d: any) => ({
+        deal_id: d.id,
+        changed_at: d.created_at,
+        deals: { value: d.value },
+        __src: d,
+      }));
+      await applyHistoricalValuesToRows(shaped);
+      return shaped.map((r) => ({ ...r.__src, value: r.deals.value }));
     },
     enabled: !!user,
   });
