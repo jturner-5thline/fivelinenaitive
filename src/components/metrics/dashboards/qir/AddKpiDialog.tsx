@@ -717,3 +717,64 @@ function Pill({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 
     </span>
   );
 }
+
+function DashboardWidgetTile({
+  entry, selected, onToggle,
+}: { entry: DashboardWidgetEntry; selected: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className={cn(
+        'group relative text-left rounded-xl border bg-card/40 hover:bg-card/60 transition overflow-hidden',
+        selected
+          ? 'border-primary ring-2 ring-primary/40 bg-primary/5'
+          : 'border-border/60 hover:border-primary/40',
+      )}
+    >
+      <div
+        className={cn(
+          'absolute top-2 right-2 z-10 h-5 w-5 rounded-md border flex items-center justify-center transition',
+          selected
+            ? 'border-primary bg-primary text-primary-foreground'
+            : 'border-border/70 bg-background/80 text-transparent group-hover:border-primary/60',
+        )}
+      >
+        <Check className="h-3 w-3" strokeWidth={3} />
+      </div>
+      <div className="p-3.5">
+        <div
+          className="rounded-lg bg-muted/20 border border-border/40 overflow-hidden"
+          style={{ height: 160 }}
+        >
+          <div
+            style={{
+              transform: 'scale(0.55)',
+              transformOrigin: 'top left',
+              width: 'calc(100%/0.55)',
+              height: 'calc(100%/0.55)',
+              pointerEvents: 'none',
+            }}
+          >
+            {entry.render()}
+          </div>
+        </div>
+      </div>
+      <div className="px-3.5 pb-3 -mt-1 space-y-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <BarChart3 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="text-sm font-semibold truncate">{entry.label}</span>
+        </div>
+        {entry.description && (
+          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">{entry.description}</p>
+        )}
+        <div className="flex items-center gap-1 flex-wrap pt-0.5">
+          <Pill tone="primary">Full widget</Pill>
+          <Pill tone="muted">{entry.dashboard}</Pill>
+          <Pill tone="muted">{entry.defaultWidth === 'full' ? 'Full width' : 'Half width'}</Pill>
+        </div>
+      </div>
+    </button>
+  );
+}
