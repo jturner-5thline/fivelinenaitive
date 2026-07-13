@@ -176,7 +176,17 @@ function valueAsOf(
   if (!events || events.length === 0) return currentValue;
   let v = currentValue;
   for (let i = events.length - 1; i >= 0; i--) {
-    if (events[i].ts > asOfIso) v = events[i].oldValue;
+    if (events[i].ts > asOfIso) {
+      // Treat "0 → X" events as initial data entry, not a real drop from
+      // zero. Rolling back would produce a misleading $0 for periods
+      // BEFORE the value was first recorded (e.g. OpConnect entered "In
+      // Due Diligence" in 2025 while the system still had value=0; the
+      // real amount ($10MM) was backfilled in Feb 2026 as 0 → 10MM).
+      // Skip the rollback so the earliest positive value wins.
+      if (!(Number(events[i].oldValue) === 0 && Number(events[i].newValue) > 0)) {
+        v = events[i].oldValue;
+      }
+    }
   }
   return v;
 }
