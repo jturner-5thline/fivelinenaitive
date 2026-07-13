@@ -52,6 +52,75 @@ const STAGE_LABEL_LOOKUP: Map<string, string> = (() => {
 
 const ACTIVE_PIPELINE_ID = 'b78ad452-b489-4c89-8a91-789347c05f79';
 
+/**
+ * Closed-stage slugs that represent a funded/closed deal in the Active
+ * Pipeline. When any of these are targeted, we augment the stage-history
+ * query with a fallback pulled from `deals.closing_date` — many historical
+ * closed deals were imported without a matching `stage_enter` history row
+ * (or with one written under the wrong pipeline_id), so relying on
+ * deal_stage_history alone under-reports Dollars Funded / Deals Closed.
+ */
+const CLOSED_STAGE_SLUGS = new Set(['funded-invoiced', 'closed-won']);
+const CLOSED_STAGE_LABEL_FOR_SLUG: Record<string, string> = {
+  'funded-invoiced': 'Funded/Invoiced',
+  'closed-won': 'Closed Won',
+};
+
+/**
+ * Fetch deals in `pipelineId` whose current stage is a closed slug in
+ * `targetStages` and whose `closing_date` falls between `startIso` and
+ * `endIso`. Returns synthetic rows shaped like `deal_stage_history` rows so
+ * they can be merged into the existing aggregation pipeline. The real
+ * stage-history rows always win the per-deal dedupe (append synthetic rows
+ * AFTER real ones at the call site).
+ */
+async function fetchClosedDealsAsSyntheticRows(
+  pipelineId: string | undefined,
+  targetStages: string[],
+  startIso: string,
+  endIso: string,
+): Promise<Array<Record<string, any>>> {
+  if (!pipelineId) return [];
+  const closedTargets = targetStages.filter((s) => CLOSED_STAGE_SLUGS.has(s));
+  if (closedTargets.length === 0) return [];
+
+  const startDate = startIso.slice(0, 10);
+  const endDate = endIso.slice(0, 10);
+
+  const { data, error } = await supabase
+    .from('deals')
+    .select('id, company, value, manager, stage, pipeline_id, status, mrr, closing_date')
+    .eq('pipeline_id', pipelineId)
+    .in('stage', closedTargets)
+    .gte('closing_date', startDate)
+    .lte('closing_date', endDate)
+    .order('closing_date', { ascending: true });
+
+  if (error) {
+    console.warn('[stage-entry closed-fallback] query failed', error);
+    return [];
+  }
+
+  return (data ?? []).map((d: any) => ({
+    deal_id: d.id,
+    // Anchor at midday UTC so bucket boundaries (00:00Z) treat the row as
+    // belonging to the correct calendar day.
+    changed_at: `${d.closing_date}T12:00:00.000Z`,
+    to_stage: CLOSED_STAGE_LABEL_FOR_SLUG[d.stage] ?? d.stage,
+    to_stage_id: null,
+    from_stage_id: null,
+    deals: {
+      company: d.company,
+      value: d.value,
+      manager: d.manager,
+      stage: d.stage,
+      pipeline_id: d.pipeline_id,
+      status: d.status,
+      mrr: d.mrr,
+    },
+  }));
+}
+
 function isActivePipelineFundedOnlyMetric(slugs: string[], pipelineId?: string): boolean {
   return pipelineId === ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === 'funded-invoiced';
 }
