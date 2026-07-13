@@ -787,10 +787,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                     <tr key={i} className="border-t border-slate-700/50">
                       <td className="px-3 py-2 text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">{p.name}</td>
                       <td
-                        className="px-3 py-2 text-slate-300"
+                        className="px-3 py-2 text-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-400/50 rounded-sm cursor-text"
                         style={{
                           fontStyle:
                             aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal',
+                        }}
+                        contentEditable
+                        suppressContentEditableWarning
+                        spellCheck
+                        title="Click to edit key feedback"
+                        onBlur={(e) => {
+                          const next = (e.currentTarget.textContent || '').trim();
+                          setAiPassFeedback((prev) => ({ ...prev, [p.name]: next }));
                         }}
                       >
                         {p.name in aiPassFeedback
