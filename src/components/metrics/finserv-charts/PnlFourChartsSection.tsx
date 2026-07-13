@@ -614,18 +614,22 @@ function PnlFourChartsSectionInner({
 
   // TTM window sizing per granularity.
   const ttmWindow = granularity === 'monthly' ? 12 : granularity === 'quarterly' ? 4 : 1;
-  const extraBuckets = ttmOn ? ttmWindow - 1 : 0;
 
-  // When TTM is on, we widen the fetch window back by (ttmWindow - 1)
-  // buckets so each visible bar has a full trailing-12-month lookback.
+  // When TTM is on we show `ttmWindow` visible bars (each a full trailing
+  // rollup ending at that period) ending at effective.end. That requires
+  // fetching 2*ttmWindow - 1 buckets so every visible bar has a complete
+  // lookback.
   const extendedStart = useMemo(() => {
-    if (!ttmOn || extraBuckets === 0) return effective.start;
-    const s = new Date(effective.start + 'T00:00:00');
-    if (granularity === 'monthly') s.setMonth(s.getMonth() - extraBuckets);
-    else if (granularity === 'quarterly') s.setMonth(s.getMonth() - 3 * extraBuckets);
-    else s.setFullYear(s.getFullYear() - extraBuckets);
+    if (!ttmOn) return effective.start;
+    const totalBack = 2 * ttmWindow - 1;
+    const e = new Date(effective.end + 'T00:00:00');
+    const s = new Date(e);
+    if (granularity === 'monthly') s.setMonth(e.getMonth() - (totalBack - 1));
+    else if (granularity === 'quarterly') s.setMonth(e.getMonth() - 3 * (totalBack - 1));
+    else s.setFullYear(e.getFullYear() - (totalBack - 1));
+    s.setDate(1);
     return s.toISOString().slice(0, 10);
-  }, [ttmOn, extraBuckets, effective.start, granularity]);
+  }, [ttmOn, ttmWindow, effective.end, granularity]);
 
   const selectedPeriod = useMemo(() => ({
     start_date: extendedStart,
@@ -689,7 +693,7 @@ function PnlFourChartsSectionInner({
     const monthsAll = totalRevRaw.months;
     const rolled = rollingSum(monthsAll.map((m) => m.amount), ttmWindow)
       .map((v, i) => ({ ...monthsAll[i], amount: v }));
-    const months = rolled.slice(extraBuckets);
+    const months = rolled.slice(-ttmWindow);
     // Headline aggregates: TTM as of effective.end, derived from the last
     // ttmWindow raw buckets of the profits series (which carries revenue,
     // gross profit and operating profit per bucket).
@@ -708,7 +712,7 @@ function PnlFourChartsSectionInner({
       grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : null,
       operatingMargin: revenue > 0 ? (operatingProfit / revenue) * 100 : null,
     };
-  }, [ttmOn, totalRevRaw, profitsRaw.quarters, ttmWindow, extraBuckets]);
+  }, [ttmOn, totalRevRaw, profitsRaw.quarters, ttmWindow]);
 
   const profits = useMemo(() => {
     if (!ttmOn) return profitsRaw;
@@ -727,17 +731,17 @@ function PnlFourChartsSectionInner({
       operatingProfit: op[i],
       grossMargin: rev[i] > 0 ? (gp[i] / rev[i]) * 100 : 0,
       operatingMargin: rev[i] > 0 ? (op[i] / rev[i]) * 100 : 0,
-    })).slice(extraBuckets);
+    })).slice(-ttmWindow);
     return { ...profitsRaw, quarters };
-  }, [ttmOn, profitsRaw, ttmWindow, extraBuckets]);
+  }, [ttmOn, profitsRaw, ttmWindow]);
 
   const cashflow = useMemo(() => {
     if (!ttmOn) return cashflowRaw;
     const pAll = cashflowRaw.points;
     const rolled = rollingSum(pAll.map((p) => Number(p.value) || 0), ttmWindow)
       .map((v, i) => ({ ...pAll[i], value: v }));
-    return { ...cashflowRaw, points: rolled.slice(extraBuckets) };
-  }, [ttmOn, cashflowRaw, ttmWindow, extraBuckets]);
+    return { ...cashflowRaw, points: rolled.slice(-ttmWindow) };
+  }, [ttmOn, cashflowRaw, ttmWindow]);
 
   // Previous period only needs the aggregate totals — request monthly
   // granularity so buildBuckets always returns valid buckets even when
