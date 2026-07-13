@@ -121,6 +121,94 @@ async function fetchClosedDealsAsSyntheticRows(
   }));
 }
 
+/**
+ * Fetch `value_updated` activity_log events for the given deals so we can
+ * reconstruct each deal's `value` AS OF an earlier stage-entry timestamp.
+ * Users often revise the deal value after it advances a stage (e.g. Censys
+ * entered Final Credit Items at $10MM, then was later dropped to $3.8MM) —
+ * the metric should reflect the value at time of stage entry, not the
+ * latest edit.
+ */
+async function fetchValueUpdatedEvents(
+  dealIds: string[],
+  sinceIso: string,
+): Promise<Map<string, Array<{ ts: string; oldValue: number; newValue: number }>>> {
+  const map = new Map<string, Array<{ ts: string; oldValue: number; newValue: number }>>();
+  if (dealIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .select('deal_id, created_at, metadata')
+    .eq('activity_type', 'value_updated')
+    .in('deal_id', dealIds)
+    .gte('created_at', sinceIso)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.warn('[stage-entry value-history] query failed', error);
+    return map;
+  }
+
+  for (const row of data ?? []) {
+    const m = (row.metadata ?? {}) as Record<string, unknown>;
+    const oldV = Number(m.oldValue);
+    const newV = Number(m.newValue);
+    if (!Number.isFinite(oldV) || !Number.isFinite(newV)) continue;
+    const arr = map.get(row.deal_id as string) ?? [];
+    arr.push({ ts: row.created_at as string, oldValue: oldV, newValue: newV });
+    map.set(row.deal_id as string, arr);
+  }
+
+  return map;
+}
+
+/**
+ * Given a deal's current value and its ordered value_updated events, return
+ * the value it had at `asOfIso`. Any event AFTER asOfIso is rolled back
+ * (walking latest → earliest) so the returned number matches what was
+ * shown when the stage-entry event was recorded.
+ */
+function valueAsOf(
+  currentValue: number,
+  events: Array<{ ts: string; oldValue: number; newValue: number }> | undefined,
+  asOfIso: string,
+): number {
+  if (!events || events.length === 0) return currentValue;
+  let v = currentValue;
+  for (let i = events.length - 1; i >= 0; i--) {
+    if (events[i].ts > asOfIso) v = events[i].oldValue;
+  }
+  return v;
+}
+
+/**
+ * Mutate each row's inner `deals.value` in place so that it reflects the
+ * deal's value at the row's `changed_at` timestamp. Downstream aggregators
+ * read `deal.value` directly, so this is the smallest safe change.
+ */
+async function applyHistoricalValuesToRows(
+  rows: Array<Record<string, any>>,
+): Promise<void> {
+  if (rows.length === 0) return;
+  const dealIds = Array.from(new Set(rows.map((r) => r.deal_id).filter(Boolean)));
+  // Only need events that happened after the earliest entry we're looking at.
+  const earliest = rows.reduce<string>(
+    (acc, r) => (!acc || (r.changed_at && r.changed_at < acc) ? r.changed_at : acc),
+    '',
+  );
+  if (!earliest) return;
+  const events = await fetchValueUpdatedEvents(dealIds, earliest);
+  for (const row of rows) {
+    const deal = row.deals as Record<string, any> | null;
+    if (!deal) continue;
+    const current = Number(deal.value) || 0;
+    const historical = valueAsOf(current, events.get(row.deal_id), row.changed_at);
+    if (historical !== current) {
+      deal.value = historical;
+    }
+  }
+}
+
 function isActivePipelineFundedOnlyMetric(slugs: string[], pipelineId?: string): boolean {
   return pipelineId === ACTIVE_PIPELINE_ID && slugs.length === 1 && slugs[0] === 'funded-invoiced';
 }
@@ -623,7 +711,9 @@ function useStageEntryTrendSeries(
         `${queryStart}T00:00:00.000Z`,
         `${queryEnd}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user && !!queryStart && !!queryEnd,
     staleTime: 30_000,
@@ -756,7 +846,9 @@ function useStageEntrySplitTrendSeries(
         `${queryStart}T00:00:00.000Z`,
         `${queryEnd}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user && !!queryStart && !!queryEnd,
     staleTime: 30_000,
@@ -971,7 +1063,9 @@ function useStageEntryMetric(
         `${startDate}T00:00:00.000Z`,
         `${endDate}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user,
   });
