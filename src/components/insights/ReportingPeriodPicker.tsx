@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -65,6 +65,12 @@ export function ReportingPeriodPicker() {
   const view: ReportingView = reportingPeriod?.view ?? 'month';
   const options = view === 'month' ? monthTokens : quarterTokens;
   const activeToken = reportingPeriod?.period ?? options[0]?.token ?? '';
+
+  useEffect(() => {
+    if (!reportingPeriod && activeToken) {
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod(view, activeToken));
+    }
+  }, [activeToken, reportingPeriod, setReportingPeriod, view]);
 
   const handleViewChange = (next: ReportingView) => {
     if (next === view) return;

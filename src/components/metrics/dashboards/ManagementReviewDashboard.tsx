@@ -1908,6 +1908,15 @@ const KPI_SUMMARY_ROWS: { id: string; registryId: string }[] = [
 const KEY_STATS_DEBT_REALM_ID = '193514877331929';
 const KEY_STATS_FINSERV_REALM_ID = '9341451968897660';
 
+type PnlSnapshotForKeyStats = {
+  realm_id: string;
+  period_start: string;
+  period_end: string;
+  income_total: number | null;
+  operating_expenses: number | null;
+  net_operating_income: number | null;
+};
+
 const INSIGHTS_DEFAULT_LAYOUT: GridLayoutItem[] = [
   // One-time fallback only. If a shared backend row exists, useGridLayout
   // never re-applies these values after hydration.
@@ -1942,15 +1951,15 @@ const normalizeInsightsLayoutForSave = (items: GridLayoutItem[]): GridLayoutItem
 // Plain-language descriptions for hover tooltips on Key Stats labels.
 const KPI_DESCRIPTIONS: Record<string, string> = {
   'total-revenue-curr': 'Total revenue booked for the current reporting period across all QuickBooks entities.',
-  'operating-profit-curr': 'Revenue minus operating expenses for the current reporting period across all QuickBooks entities.',
+  'operating-profit-curr': 'Net Operating Income from the Accrual P&L for the current reporting period, consolidated across all QuickBooks entities.',
   'outstanding-ar': 'Sum of all open QuickBooks invoice balances as of today, across every entity.',
   'active-pipeline-value': 'Total value of active debt-advisory deals currently in flight in the Debt Pipeline.',
   'ttm-revenue': 'Trailing 12 months of revenue ending on the current reporting period end date.',
   'ytd-revenue': 'Year-to-date revenue for the current calendar year across all QuickBooks entities.',
   'debt-solutions-revenue': 'Revenue for the current period from the QuickBooks Debt Advisory entity.',
-  'debt-solutions-profit': 'Revenue minus expenses for the current period, QuickBooks Debt Advisory entity.',
+  'debt-solutions-profit': 'Net Operating Income from the Accrual P&L for the current period, QuickBooks Debt Advisory entity.',
   'finserv-revenue': 'Revenue for the current period from the QuickBooks FinServ entity.',
-  'finserv-profit': 'Revenue minus expenses for the current period, QuickBooks FinServ entity.',
+  'finserv-profit': 'Net Operating Income from the Accrual P&L for the current period, QuickBooks FinServ entity.',
   'liq-operating': 'Bank balance — Operating account. Not yet wired to a live data source.',
   'liq-mt': 'Bank balance — M&T account. Not yet wired to a live data source.',
   'liq-tax-reserves': 'Balance of tax reserves. Not yet wired to a live data source.',
@@ -1972,6 +1981,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const { reportingPeriod, timeframe } = useInsightsTimeframe();
   const { activePipelineId } = usePipelineContext();
   const { user } = useAuth();
+  const { company } = useCompany();
   const isLayoutEditor = (user?.email ?? '').toLowerCase() === 'jturner@5thline.co';
   const INSIGHTS_LAYOUT_DASHBOARD_ID = 'insights-management-review-v20';
   const [refreshing, setRefreshing] = useState(false);
@@ -2081,6 +2091,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         queryClient.invalidateQueries({ queryKey: ['qb-quickbooks_expenses'] }),
         queryClient.invalidateQueries({ queryKey: ['qb-quickbooks_bills'] }),
         queryClient.invalidateQueries({ queryKey: ['qb-quickbooks_accounts'] }),
+        queryClient.invalidateQueries({ queryKey: ['management-review-qbo-pnl-snapshots'] }),
         queryClient.invalidateQueries({ queryKey: ['metrics-deals'] }),
         metrics.refetch(),
       ]);
@@ -2173,10 +2184,83 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     [qbPayments, periodRange],
   );
 
+  const pnlSnapshotPeriods = useMemo(() => {
+    const byKey = new Map<string, { start_date: string; end_date: string }>();
+    const addRange = (range: DateRange) => {
+      const period = {
+        start_date: format(range.start, 'yyyy-MM-dd'),
+        end_date: format(range.end, 'yyyy-MM-dd'),
+      };
+      byKey.set(`${period.start_date}_${period.end_date}`, period);
+    };
+
+    addRange(periodRange);
+    addRange(previousRange);
+    buildTrailingMonthBuckets(periodRange.end, 12).forEach(addRange);
+    for (let i = 7; i >= 0; i--) {
+      const quarterStart = startOfQuarter(subQuarters(periodRange.end, i));
+      addRange({ start: startOfDay(quarterStart), end: endOfDay(endOfQuarter(quarterStart)) });
+    }
+
+    return Array.from(byKey.values()).sort((a, b) => a.start_date.localeCompare(b.start_date));
+  }, [periodRange, previousRange]);
+
+  const pnlSnapshots = useQuery({
+    queryKey: [
+      'management-review-qbo-pnl-snapshots',
+      company?.id,
+      pnlSnapshotPeriods.map(p => `${p.start_date}_${p.end_date}`).join('|'),
+    ],
+    enabled: !!company?.id && pnlSnapshotPeriods.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<PnlSnapshotForKeyStats[]> => {
+      const startDates = pnlSnapshotPeriods.map(p => p.start_date).sort();
+      const endDates = pnlSnapshotPeriods.map(p => p.end_date).sort();
+      const requestedKeys = new Set(pnlSnapshotPeriods.map(p => `${p.start_date}_${p.end_date}`));
+      const realmIds = QBO_ENTITIES.map(entity => entity.realmId);
+      const { data, error } = await supabase
+        .from('qbo_pnl_snapshots')
+        .select('realm_id, period_start, period_end, income_total, operating_expenses, net_operating_income')
+        .eq('company_id', company!.id)
+        .eq('accounting_method', 'Accrual')
+        .in('realm_id', realmIds)
+        .gte('period_start', startDates[0])
+        .lte('period_start', startDates[startDates.length - 1])
+        .gte('period_end', endDates[0])
+        .lte('period_end', endDates[endDates.length - 1]);
+
+      if (error) throw error;
+
+      return ((data ?? []) as PnlSnapshotForKeyStats[]).filter(row =>
+        requestedKeys.has(`${row.period_start}_${row.period_end}`),
+      );
+    },
+  });
+
+  const pnlByRangeRealm = useMemo(() => {
+    const map = new Map<string, PnlSnapshotForKeyStats>();
+    for (const row of pnlSnapshots.data ?? []) {
+      map.set(`${row.realm_id}_${row.period_start}_${row.period_end}`, row);
+    }
+    return map;
+  }, [pnlSnapshots.data]);
+
+  const getPnlSnapshotTotal = (range: DateRange, realmId?: string): number | null => {
+    if (pnlSnapshots.isLoading || pnlSnapshots.isError) return null;
+    const start = format(range.start, 'yyyy-MM-dd');
+    const end = format(range.end, 'yyyy-MM-dd');
+    const realms = realmId ? [realmId] : QBO_ENTITIES.map((entity) => entity.realmId);
+    return realms.reduce((sum, rid) => {
+      const row = pnlByRangeRealm.get(`${rid}_${start}_${end}`);
+      return sum + Number(row?.net_operating_income ?? 0);
+    }, 0);
+  };
+
   const totalRevCurr = qbConnected ? periodRevenue : null;
   const totalRevPrev = qbConnected ? previousRevenue : null;
-  const opProfitCurr = qbConnected ? periodRevenue - periodExpenses : null;
-  const opProfitPrev = qbConnected ? previousRevenue - previousExpenses : null;
+  const pnlConnected = !pnlSnapshots.isError && !!company?.id;
+  const opProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange) : null;
+  const opProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange) : null;
 
   // Per-entity (Debt Solutions vs FinServ) revenue & profit for the active
   // selected period and the matching prior comparison window. Sourced from the
@@ -2196,21 +2280,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   const debtRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
   const debtRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
-  const debtExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_DEBT_REALM_ID) : null;
-  const debtExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_DEBT_REALM_ID) : null;
-  const debtProfitCurr =
-    debtRevCurr !== null && debtExpCurr !== null ? debtRevCurr - debtExpCurr : null;
-  const debtProfitPrev =
-    debtRevPrev !== null && debtExpPrev !== null ? debtRevPrev - debtExpPrev : null;
+  const debtProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_DEBT_REALM_ID) : null;
+  const debtProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_DEBT_REALM_ID) : null;
 
   const finservRevCurr = qbConnected ? sumByRealm(qbInvoices, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const finservRevPrev = qbConnected ? sumByRealm(qbInvoices, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
-  const finservExpCurr = qbConnected ? sumByRealm(qbExpenses, periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
-  const finservExpPrev = qbConnected ? sumByRealm(qbExpenses, previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
-  const finservProfitCurr =
-    finservRevCurr !== null && finservExpCurr !== null ? finservRevCurr - finservExpCurr : null;
-  const finservProfitPrev =
-    finservRevPrev !== null && finservExpPrev !== null ? finservRevPrev - finservExpPrev : null;
+  const finservProfitCurr = pnlConnected ? getPnlSnapshotTotal(periodRange, KEY_STATS_FINSERV_REALM_ID) : null;
+  const finservProfitPrev = pnlConnected ? getPnlSnapshotTotal(previousRange, KEY_STATS_FINSERV_REALM_ID) : null;
   const ytdRevenue = qbConnected ? ytdSeries.reduce((sum, row) => sum + row.revenue, 0) : null;
   const ttmSeries = useMemo(() => {
     const buckets = buildMonthBuckets(ttmRange.start, ttmRange.end);
@@ -3011,7 +3087,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     {
       id: 'operating-profit-curr',
       l: 'Operating Profit',
-      live: qbConnected,
+      live: pnlConnected && !pnlSnapshots.isLoading,
       v: fmtUSD(opProfitCurr),
       sub: (() => {
         const d = fmtDelta(opProfitCurr, opProfitPrev, comparisonBasis);
@@ -3076,7 +3152,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     {
       id: 'debt-solutions-profit',
       l: 'Debt Solutions Profit',
-      live: qbConnected,
+      live: pnlConnected && !pnlSnapshots.isLoading,
       v: fmtUSD(debtProfitCurr),
       sub: (() => {
         const d = fmtDelta(debtProfitCurr, debtProfitPrev, comparisonBasis);
@@ -3096,7 +3172,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     {
       id: 'finserv-profit',
       l: 'FinServ Profit',
-      live: qbConnected,
+      live: pnlConnected && !pnlSnapshots.isLoading,
       v: fmtUSD(finservProfitCurr),
       sub: (() => {
         const d = fmtDelta(finservProfitCurr, finservProfitPrev, comparisonBasis);
@@ -3122,10 +3198,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     },
     {
       widget: 'Operating Profit',
-      dataSource: 'quickbooks_invoices + quickbooks_expenses',
-      queryParams: `txn_date in ${formatRangeLabel(periodRange)}; compare ${formatRangeLabel(previousRange)}`,
+      dataSource: 'qbo_pnl_snapshots.net_operating_income',
+      queryParams: `Accrual P&L period ${formatRangeLabel(periodRange)}; compare ${formatRangeLabel(previousRange)}; all entities consolidated`,
       reportingPeriod: periodLabel,
-      state: qbConnected ? 'live-query-cached-recomputed' : 'truthful-empty',
+      state: pnlConnected ? 'live-pnl-snapshot-consolidated' : 'truthful-empty',
       recomputesOnPeriodChange: true,
     },
     {
@@ -3186,7 +3262,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       state: 'live-nonfinancial',
       recomputesOnPeriodChange: true,
     },
-  ]), [chartMode, isCurrentReportingPeriod, periodLabel, periodRange, previousRange, qbConnected, ytdRange, ttmRange]);
+  ]), [chartMode, isCurrentReportingPeriod, periodLabel, periodRange, previousRange, qbConnected, pnlConnected, ytdRange, ttmRange]);
 
   useEffect(() => {
     console.groupCollapsed(`[Insights period audit] ${periodLabel}`);
@@ -3287,13 +3363,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                   } },
                 ];
                 const profitEntities = [
-                  { id: 'debt', label: 'Debt Advisory', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID) - sumExpenses(r, KEY_STATS_DEBT_REALM_ID) },
-                  { id: 'finserv', label: 'FinServ', compute: (r: DateRange) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID) - sumExpenses(r, KEY_STATS_FINSERV_REALM_ID) },
+                  { id: 'debt', label: 'Debt Advisory', compute: (r: DateRange) => getPnlSnapshotTotal(r, KEY_STATS_DEBT_REALM_ID) ?? 0 },
+                  { id: 'finserv', label: 'FinServ', compute: (r: DateRange) => getPnlSnapshotTotal(r, KEY_STATS_FINSERV_REALM_ID) ?? 0 },
                   { id: 'other', label: 'Other entities', compute: (r: DateRange) => {
-                    const totalRev = sumInvoices(r), totalExp = sumExpenses(r);
-                    const dRev = sumInvoices(r, KEY_STATS_DEBT_REALM_ID), dExp = sumExpenses(r, KEY_STATS_DEBT_REALM_ID);
-                    const fRev = sumInvoices(r, KEY_STATS_FINSERV_REALM_ID), fExp = sumExpenses(r, KEY_STATS_FINSERV_REALM_ID);
-                    return (totalRev - dRev - fRev) - (totalExp - dExp - fExp);
+                    const total = getPnlSnapshotTotal(r) ?? 0;
+                    const debt = getPnlSnapshotTotal(r, KEY_STATS_DEBT_REALM_ID) ?? 0;
+                    const fs = getPnlSnapshotTotal(r, KEY_STATS_FINSERV_REALM_ID) ?? 0;
+                    return total - debt - fs;
                   } },
                 ];
 
@@ -3339,12 +3415,12 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 }
                 if (reg === 'operating-profit-curr') {
                   return openStat({
-                    compute: (r) => sumInvoices(r) - sumExpenses(r),
+                    compute: (r) => getPnlSnapshotTotal(r) ?? 0,
                     anchorEnd: periodRange.end,
                     currentRange: periodRange,
                     priorRange: previousRange,
                     entities: profitEntities,
-                    filters: [{ label: 'Source', value: 'QuickBooks invoices − expenses · all entities' }],
+                    filters: [{ label: 'Source', value: 'QuickBooks Accrual P&L · Net Operating Income · all entities' }],
                   });
                 }
                 if (reg === 'debt-solutions-revenue') {
@@ -3358,11 +3434,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 }
                 if (reg === 'debt-solutions-profit') {
                   return openStat({
-                    compute: (r) => sumInvoices(r, KEY_STATS_DEBT_REALM_ID) - sumExpenses(r, KEY_STATS_DEBT_REALM_ID),
+                    compute: (r) => getPnlSnapshotTotal(r, KEY_STATS_DEBT_REALM_ID) ?? 0,
                     anchorEnd: periodRange.end,
                     currentRange: periodRange,
                     priorRange: previousRange,
-                    filters: [{ label: 'Entity', value: 'QuickBooks · Debt Advisory' }],
+                    filters: [{ label: 'Entity', value: 'QuickBooks Accrual P&L · Debt Advisory' }],
                   });
                 }
                 if (reg === 'finserv-revenue') {
@@ -3376,11 +3452,11 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 }
                 if (reg === 'finserv-profit') {
                   return openStat({
-                    compute: (r) => sumInvoices(r, KEY_STATS_FINSERV_REALM_ID) - sumExpenses(r, KEY_STATS_FINSERV_REALM_ID),
+                    compute: (r) => getPnlSnapshotTotal(r, KEY_STATS_FINSERV_REALM_ID) ?? 0,
                     anchorEnd: periodRange.end,
                     currentRange: periodRange,
                     priorRange: previousRange,
-                    filters: [{ label: 'Entity', value: 'QuickBooks · FinServ' }],
+                    filters: [{ label: 'Entity', value: 'QuickBooks Accrual P&L · FinServ' }],
                   });
                 }
                 if (reg === 'ttm-revenue') {
