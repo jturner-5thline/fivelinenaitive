@@ -614,7 +614,16 @@ function useStageEntryTrendSeries(
       if ((rows?.length ?? 0) === 0) {
         console.warn('[stage-entry-trend] 0 rows', { targetStages, pipelineId, queryStart, queryEnd });
       }
-      return rows ?? [];
+      // Fallback: synthesize rows for closed deals with a `closing_date`
+      // but no matching stage_enter history event on this pipeline. Real
+      // history rows are returned first and win the per-deal dedupe.
+      const synthetic = await fetchClosedDealsAsSyntheticRows(
+        pipelineId,
+        targetStages,
+        `${queryStart}T00:00:00.000Z`,
+        `${queryEnd}T23:59:59.999Z`,
+      );
+      return [...(rows ?? []), ...synthetic];
     },
     enabled: !!user && !!queryStart && !!queryEnd,
     staleTime: 30_000,
