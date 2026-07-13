@@ -63,9 +63,6 @@ const FinServTotalMrrStat = lazy(() =>
 const FinServFinancialMetricsDashboard = lazy(() =>
   import('@/components/metrics/dashboards/FinServFinancialMetricsDashboard').then(m => ({ default: m.FinServFinancialMetricsDashboard })),
 );
-const RevenueOverviewDashboard = lazy(() =>
-  import('@/components/metrics/dashboards/RevenueOverviewDashboard'),
-);
 const QuickBooksFinancialDashboard = lazy(() =>
   import('@/components/metrics/dashboards/QuickBooksFinancialDashboard').then(m => ({ default: m.QuickBooksFinancialDashboard })),
 );
@@ -111,12 +108,6 @@ const ExecDealsByStatusWidget = lazy(() =>
 const RevenueQuarterlySection = lazy(() =>
   import('@/components/metrics/dashboards/RevenueOverviewDashboard').then(m => ({ default: m.RevenueQuarterlySection })),
 );
-const StackedDebtRevenueChart = lazy(() =>
-  import('@/components/metrics/dashboards/RevenueOverviewDashboard').then(m => ({ default: m.StackedDebtRevenueChart })),
-);
-const StackedGenericRevenueChart = lazy(() =>
-  import('@/components/metrics/dashboards/RevenueOverviewDashboard').then(m => ({ default: m.StackedGenericRevenueChart })),
-);
 const DebtRevenueWidget = lazy(() =>
   import('@/components/metrics/dashboards/RevenueOverviewDashboard').then(m => ({ default: m.DebtRevenueWidget })),
 );
@@ -124,9 +115,6 @@ const FinServRevenueWidget = lazy(() =>
   import('@/components/metrics/dashboards/RevenueOverviewDashboard').then(m => ({ default: m.FinServRevenueWidget })),
 );
 
-const SignedBarChart = lazy(() =>
-  import('@/components/metrics/dashboards/SignedDealsAndARSection').then(m => ({ default: m.SignedBarChart })),
-);
 const OutstandingARPieChart = lazy(() =>
   import('@/components/metrics/dashboards/SignedDealsAndARSection').then(m => ({ default: m.OutstandingARPieChart })),
 );
@@ -299,22 +287,6 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     render: () => <Wrap><YTDIncomeBreakdownByEntityCard /></Wrap>,
   },
   {
-    id: 'qb-stacked-debt-revenue',
-    label: 'Debt Revenue — Stacked by Month',
-    dashboard: 'QuickBooks Revenue Reporting',
-    description: 'Monthly stacked debt-side revenue by entity.',
-    defaultWidth: 'full',
-    render: () => <Wrap><StackedDebtRevenueChart selectedQuarter={getCurrentQuarter()} /></Wrap>,
-  },
-  {
-    id: 'qb-stacked-generic-revenue',
-    label: 'FinServ Revenue — Stacked by Month',
-    dashboard: 'QuickBooks Revenue Reporting',
-    description: 'Monthly stacked FinServ revenue by entity.',
-    defaultWidth: 'full',
-    render: () => <Wrap><StackedGenericRevenueChart selectedQuarter={getCurrentQuarter()} /></Wrap>,
-  },
-  {
     id: 'qb-revenue-quarterly-section',
     label: 'Quarterly Revenue Section',
     dashboard: 'QuickBooks Revenue Reporting',
@@ -356,14 +328,6 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
   },
 
   // ── Pipeline & Signed Deals ─────────────────────────────────────────────
-  {
-    id: 'signed-bar-chart',
-    label: 'Deals Signed — Bar Chart',
-    dashboard: 'Signed Deals & AR',
-    description: 'Monthly signed-deal volume.',
-    defaultWidth: 'full',
-    render: () => <Wrap><SignedBarChart selectedQuarter={getCurrentQuarter()} /></Wrap>,
-  },
   {
     id: 'outstanding-ar-pie',
     label: 'Outstanding AR — Pie',
@@ -489,14 +453,6 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     description: 'The complete FinServ Financial Metrics dashboard.',
     defaultWidth: 'full',
     render: () => <Wrap><FinServFinancialMetricsDashboard /></Wrap>,
-  },
-  {
-    id: 'revenue-overview-full',
-    label: 'Revenue Overview (Full)',
-    dashboard: 'QuickBooks Revenue Reporting',
-    description: 'The complete Revenue Overview dashboard.',
-    defaultWidth: 'full',
-    render: () => <Wrap><RevenueOverviewDashboard /></Wrap>,
   },
   {
     id: 'quickbooks-financial-full',
