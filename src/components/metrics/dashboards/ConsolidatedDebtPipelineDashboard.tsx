@@ -1,4 +1,7 @@
 import { Fragment, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { isActiveDeal } from '@/lib/deals';
 import { Card, CardContent } from '@/components/ui/card';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -905,8 +908,8 @@ function StackedFeesChart({ deals }: { deals: StageEntryDeal[] }) {
   );
 }
 
-function ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
-  return _ConversionDealsTable({ heading, deals, accent, dropoutIds });
+function ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string>; stillActiveIds?: Set<string> }) {
+  return _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds });
 }
 
 function SignedModeToggle({
@@ -945,9 +948,10 @@ function SignedModeToggle({
   );
 }
 
-function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string> }) {
+function _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActiveIds }: { heading: string; deals: StageEntryDeal[]; accent: string; dropoutIds?: Set<string>; stillActiveIds?: Set<string> }) {
   const total = deals.reduce((s, d) => s + d.value, 0);
   const dropoutCount = dropoutIds ? deals.filter(d => dropoutIds.has(d.deal_id)).length : 0;
+  const stillActiveCount = stillActiveIds ? deals.filter(d => stillActiveIds.has(d.deal_id)).length : 0;
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
@@ -957,6 +961,11 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds }: { heading
           {dropoutIds && dropoutCount > 0 && (
             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/30">
               {dropoutCount} dropped off
+            </span>
+          )}
+          {stillActiveIds && stillActiveCount > 0 && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
+              {stillActiveCount} still in process
             </span>
           )}
         </div>
@@ -1066,6 +1075,51 @@ function DrilldownModalInner({
   const total = deals.reduce((s, d) => s + d.value, 0);
   const selectedBucket = selectedBucketKey ? buckets.find((b) => b.key === selectedBucketKey) ?? null : null;
 
+  // For conversion-rate drilldowns: identify denominator deals that never
+  // advanced to the numerator stage, then check the deals table to see which
+  // of them are STILL active (not closed-won / closed-lost / on-hold / etc).
+  // We surface an alternative conversion rate that excludes those "still in
+  // process" deals from the denominator so genuinely in-flight deals aren't
+  // treated as drop-offs.
+  const dropoutIds = useMemo(() => {
+    if (!conversionBreakdown) return [] as string[];
+    const numSet = new Set(conversionBreakdown.numeratorDeals.map(n => n.deal_id));
+    return conversionBreakdown.denominatorDeals
+      .filter(d => !numSet.has(d.deal_id))
+      .map(d => d.deal_id);
+  }, [conversionBreakdown]);
+
+  const dropoutKey = useMemo(() => [...dropoutIds].sort().join(','), [dropoutIds]);
+  const { data: stillActiveDropoutIds } = useQuery({
+    queryKey: ['conversion-dropout-still-active', dropoutKey],
+    enabled: open && dropoutIds.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, stage, status')
+        .in('id', dropoutIds);
+      if (error) throw error;
+      return (data ?? [])
+        .filter(d => isActiveDeal(d as unknown as Parameters<typeof isActiveDeal>[0]))
+        .map(d => d.id as string);
+    },
+  });
+
+  const adjustedConversion = useMemo(() => {
+    if (!conversionBreakdown) return null;
+    const stillActive = stillActiveDropoutIds?.length ?? 0;
+    if (stillActive <= 0) return null;
+    const denomAdj = conversionBreakdown.denominatorCount - stillActive;
+    if (denomAdj <= 0) return null;
+    const pct = (conversionBreakdown.numeratorCount / denomAdj) * 100;
+    return { stillActive, denomAdj, pct, text: `${pct.toFixed(1)}%` };
+  }, [conversionBreakdown, stillActiveDropoutIds]);
+  const stillActiveIdSet = useMemo(
+    () => new Set(stillActiveDropoutIds ?? []),
+    [stillActiveDropoutIds],
+  );
+
   const context: DrilldownContext = {
     sourceId: `debt-advisory:${title}`,
     sourceLabel: title,
@@ -1093,8 +1147,27 @@ function DrilldownModalInner({
                     </TooltipContent>
                   </UITooltip>
                 </TooltipProvider>
-                <div className="text-2xl font-bold text-foreground mt-0.5">
-                  {conversionBreakdown.percentText}
+                <div className="mt-0.5 flex items-baseline gap-3 flex-wrap">
+                  <div className="text-2xl font-bold text-foreground">
+                    {conversionBreakdown.percentText}
+                  </div>
+                  {adjustedConversion && (
+                    <TooltipProvider delayDuration={100}>
+                      <UITooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-baseline gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 cursor-help">
+                            <span className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">Excl. in-process</span>
+                            <span className="text-lg font-bold text-primary tabular-nums">{adjustedConversion.text}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-xs text-[11px] leading-relaxed">
+                          Excludes {adjustedConversion.stillActive} deal{adjustedConversion.stillActive !== 1 ? 's' : ''} still active in the pipeline
+                          (not Closed Won / Closed Lost / On Hold) from the denominator.
+                          Adjusted = {conversionBreakdown.numeratorCount} / {adjustedConversion.denomAdj}.
+                        </TooltipContent>
+                      </UITooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
               </div>
             </div>
@@ -1189,9 +1262,13 @@ function DrilldownModalInner({
               accent="hsl(var(--chart-4))"
               dropoutIds={new Set(
                 conversionBreakdown.denominatorDeals
-                  .filter(d => !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id))
+                  .filter(d =>
+                    !conversionBreakdown.numeratorDeals.some(n => n.deal_id === d.deal_id) &&
+                    !stillActiveIdSet.has(d.deal_id),
+                  )
                   .map(d => d.deal_id),
               )}
+              stillActiveIds={stillActiveIdSet}
             />
             <ConversionDealsTable
               heading={conversionBreakdown.numeratorLabel}
