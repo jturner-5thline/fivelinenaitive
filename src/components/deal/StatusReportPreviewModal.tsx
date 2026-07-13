@@ -733,6 +733,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
               configuredStages={configuredStages}
               onUpdateLender={onUpdateLender}
               className="mt-2"
+              hideDates
             />
           </div>
         )}
