@@ -316,7 +316,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'QuickBooks Revenue Reporting',
     description: 'Multi-quarter revenue trendline.',
     defaultWidth: 'full',
-    render: () => <Wrap><RevenueHistoricalTrend /></Wrap>,
+    render: () => <Wrap><RevenueHistoricalTrend variant="debt" color="#38bdf8" /></Wrap>,
   },
   {
     id: 'qb-profit-historical-trend',
@@ -324,7 +324,7 @@ export const DASHBOARD_WIDGETS: DashboardWidgetEntry[] = [
     dashboard: 'QuickBooks Revenue Reporting',
     description: 'Multi-quarter profit trendline.',
     defaultWidth: 'full',
-    render: () => <Wrap><ProfitHistoricalTrend /></Wrap>,
+    render: () => <Wrap><ProfitHistoricalTrend entityName="5th Line Capital Advisors" color="#22c55e" /></Wrap>,
   },
 
   // ── Pipeline & Signed Deals ─────────────────────────────────────────────
