@@ -16,6 +16,8 @@ import { cn } from '@/lib/utils';
 import { type LiveMetricPeriod, useInsightsLiveMetricValue, getMonthlyBreakdownPeriods, getPriorPeriod } from './useInsightsLiveMetricValue';
 import { useInsightsTargets } from '@/hooks/useInsightsTargets';
 import { TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
+import { DASHBOARD_WIDGETS, groupDashboardWidgets, type DashboardWidgetEntry } from './dashboardWidgetRegistry';
+import { LayoutDashboard } from 'lucide-react';
 
 /**
  * Canonical set of metric source ids that have a live resolver wired up
@@ -92,6 +94,8 @@ interface Props {
   onPickCustom: () => void;
   /** Insert a KPI seeded from a generic Insights metric source. */
   onPickMetric?: (option: InsightsMetricOption) => void;
+  /** Insert a full dashboard widget by registry id. */
+  onPickDashboardWidget?: (widgetId: string) => void;
 }
 
 /**
@@ -100,11 +104,13 @@ interface Props {
  * (KPI tile, mini chart, template). Supports multi-select and a single
  * "Add Selected Widgets" action. Search + source filter preserved.
  */
-export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPickCustom, onPickMetric }: Props) {
+export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPickCustom, onPickMetric, onPickDashboardWidget }: Props) {
   const [query, setQuery] = useState('');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [baEditorOpen, setBaEditorOpen] = useState(false);
+  const [mode, setMode] = useState<'kpi' | 'widget'>('kpi');
+  const [selectedWidgetIds, setSelectedWidgetIds] = useState<string[]>([]);
   const { metrics: customMetrics } = useCustomMetrics();
   const groups = useMemo(
     () => buildInsightsMetricOptions(customMetrics ?? []),
@@ -163,7 +169,48 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
     onClose();
   };
 
-  useEffect(() => { if (open) { setQuery(''); setActiveSource(null); setSelectedIds([]); } }, [open]);
+  useEffect(() => {
+    if (open) {
+      setQuery(''); setActiveSource(null); setSelectedIds([]);
+      setSelectedWidgetIds([]); setMode('kpi');
+    }
+  }, [open]);
+
+  // ── Dashboard Widgets mode ───────────────────────────────────────────
+  const widgetGroups = useMemo(() => groupDashboardWidgets(), []);
+  const filteredWidgetGroups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return widgetGroups
+      .map(g => ({
+        dashboard: g.dashboard,
+        widgets: g.widgets.filter(w => {
+          if (activeSource && g.dashboard !== activeSource) return false;
+          if (!q) return true;
+          return w.label.toLowerCase().includes(q)
+            || (w.description ?? '').toLowerCase().includes(q)
+            || w.dashboard.toLowerCase().includes(q);
+        }),
+      }))
+      .filter(g => g.widgets.length > 0);
+  }, [widgetGroups, query, activeSource]);
+  const widgetChipGroups = useMemo(
+    () => widgetGroups.map(g => ({ source: g.dashboard, count: g.widgets.length })),
+    [widgetGroups],
+  );
+  const totalWidgetCount = filteredWidgetGroups.reduce((s, g) => s + g.widgets.length, 0);
+
+  const toggleSelectWidget = (id: string) => {
+    setSelectedWidgetIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleAddSelectedWidgets = () => {
+    if (!onPickDashboardWidget) { onClose(); return; }
+    selectedWidgetIds.forEach(id => onPickDashboardWidget(id));
+    onClose();
+  };
+
+  const isWidgetMode = mode === 'widget';
+  const activeSelectedCount = isWidgetMode ? selectedWidgetIds.length : selectedIds.length;
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
@@ -190,6 +237,30 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
             </div>
           </div>
 
+          {/* Mode toggle */}
+          <div className="mt-3 inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/20 p-1 self-start">
+            <button
+              type="button"
+              onClick={() => { setMode('kpi'); setQuery(''); setActiveSource(null); }}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition',
+                mode === 'kpi' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Gauge className="h-3.5 w-3.5" /> KPI Tiles
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode('widget'); setQuery(''); setActiveSource(null); }}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition',
+                mode === 'widget' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard Widgets
+            </button>
+          </div>
+
           <div className="mt-4 flex flex-col gap-3">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -197,13 +268,13 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
                 autoFocus
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search widgets, metrics, dashboards…"
+                placeholder={isWidgetMode ? 'Search dashboard widgets…' : 'Search widgets, metrics, dashboards…'}
                 className="w-full rounded-md border border-border/60 bg-muted/20 pl-9 pr-3 py-2 text-sm outline-none focus:border-primary/50"
               />
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <SourceChip active={activeSource === null} onClick={() => setActiveSource(null)}>All sources</SourceChip>
-              {chipGroups.map(g => (
+              {(isWidgetMode ? widgetChipGroups : chipGroups).map(g => (
                 <SourceChip
                   key={g.source}
                   active={activeSource === g.source}
@@ -213,7 +284,7 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
                 </SourceChip>
               ))}
               <div className="ml-auto text-[11px] uppercase tracking-wide text-muted-foreground/70">
-                {totalCount} widget{totalCount === 1 ? '' : 's'}
+                {(isWidgetMode ? totalWidgetCount : totalCount)} widget{(isWidgetMode ? totalWidgetCount : totalCount) === 1 ? '' : 's'}
               </div>
             </div>
           </div>
@@ -221,7 +292,38 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
 
         {/* Scrollable widget gallery */}
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
-          {filtered.length === 0 ? (
+          {isWidgetMode ? (
+            filteredWidgetGroups.length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-20">
+                No dashboard widgets match “{query}”.
+              </div>
+            ) : (
+              <div className="space-y-7">
+                {!onPickDashboardWidget && (
+                  <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    Dashboard widgets can be inserted inline in the Narrative editor. Open the Narrative section and use its “Insert widget” action.
+                  </div>
+                )}
+                {filteredWidgetGroups.map(group => (
+                  <div key={group.dashboard}>
+                    <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+                      {group.dashboard}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {group.widgets.map(w => (
+                        <DashboardWidgetTile
+                          key={w.id}
+                          entry={w}
+                          selected={selectedWidgetIds.includes(w.id)}
+                          onToggle={() => toggleSelectWidget(w.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : filtered.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-20">
               No widgets match “{query}”.
             </div>
@@ -267,25 +369,25 @@ export function AddKpiDialog({ open, onClose, reportPeriod, onPickTemplate, onPi
         {/* Persistent action footer */}
         <div className="shrink-0 border-t border-border/60 bg-card/50 px-6 py-3 flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            {selectedIds.length > 0
-              ? <><span className="text-foreground font-semibold">{selectedIds.length}</span> selected</>
+            {activeSelectedCount > 0
+              ? <><span className="text-foreground font-semibold">{activeSelectedCount}</span> selected</>
               : 'Select one or more widgets to add'}
           </div>
           <div className="flex items-center gap-2">
-            {selectedIds.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+            {activeSelectedCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => isWidgetMode ? setSelectedWidgetIds([]) : setSelectedIds([])}>
                 Clear
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button
               size="sm"
-              disabled={selectedIds.length === 0}
-              onClick={handleAddSelected}
+              disabled={activeSelectedCount === 0 || (isWidgetMode && !onPickDashboardWidget)}
+              onClick={isWidgetMode ? handleAddSelectedWidgets : handleAddSelected}
               className="gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add {selectedIds.length > 0 ? `${selectedIds.length} ` : ''}Selected Widget{selectedIds.length === 1 ? '' : 's'}
+              Add {activeSelectedCount > 0 ? `${activeSelectedCount} ` : ''}Selected Widget{activeSelectedCount === 1 ? '' : 's'}
             </Button>
           </div>
         </div>
