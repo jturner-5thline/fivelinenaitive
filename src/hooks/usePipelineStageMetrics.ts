@@ -711,7 +711,9 @@ function useStageEntryTrendSeries(
         `${queryStart}T00:00:00.000Z`,
         `${queryEnd}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user && !!queryStart && !!queryEnd,
     staleTime: 30_000,
@@ -844,7 +846,9 @@ function useStageEntrySplitTrendSeries(
         `${queryStart}T00:00:00.000Z`,
         `${queryEnd}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user && !!queryStart && !!queryEnd,
     staleTime: 30_000,
@@ -1059,7 +1063,9 @@ function useStageEntryMetric(
         `${startDate}T00:00:00.000Z`,
         `${endDate}T23:59:59.999Z`,
       );
-      return [...(rows ?? []), ...synthetic];
+      const merged = [...(rows ?? []), ...synthetic];
+      await applyHistoricalValuesToRows(merged);
+      return merged;
     },
     enabled: !!user,
   });
