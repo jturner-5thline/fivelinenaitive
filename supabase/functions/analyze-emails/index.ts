@@ -277,7 +277,7 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
         // Match against per-deal lender contacts…
         const { data: lenderContacts } = await serviceClient
           .from("lender_contacts")
-          .select("email, deal_lender_id, deal_lenders!inner(deal_id)")
+          .select("email, lender_id, deal_lenders:lender_id!inner(deal_id)")
           .in("deal_lenders.deal_id", dealIds);
         for (const row of (lenderContacts || []) as any[]) {
           const em = String(row?.email || "").toLowerCase();
