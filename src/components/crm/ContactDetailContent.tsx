@@ -24,7 +24,7 @@ import { Label } from '@/components/ui/label';
 import {
   useContact, useUpdateContact, useContactActivities, useCreateContactActivity,
   useContactDeals, useDeleteContact, useUpdateContactActivity, useDeleteContactActivity,
-  LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
+  useContactAuditLog, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
 } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
