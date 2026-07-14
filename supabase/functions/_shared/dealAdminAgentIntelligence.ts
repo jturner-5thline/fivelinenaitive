@@ -3350,7 +3350,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // quote explicit pause language. Silence/no-response is "unresponsive",
       // never "on-hold". Runs before gating so the rewritten value flows
       // through every downstream check.
-      const holdNormalized = normalizeHoldVsUnresponsive(kickoffFiltered.kept);
+      const holdNormalized = normalizeHoldVsUnresponsive(staleNotes.kept);
       if (holdNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
