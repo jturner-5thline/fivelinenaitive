@@ -1196,6 +1196,65 @@ function filterUnconfiguredMilestones(
 }
 
 /**
+ * Drop add_status_note candidates whose supporting evidence is older than
+ * 7 calendar days. Status notes exist to capture RECENT activity — the
+ * queue should not surface historical backfill from weeks-old meetings or
+ * emails. When no evidence can be dated (or the referenced items aren't
+ * in the bundle), drop the candidate as unverifiable.
+ */
+function filterStaleStatusNotes(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const hasNote = candidates.some((c) => c.action_type === "add_status_note");
+  if (!hasNote) return { kept: candidates, dropped: 0 };
+
+  const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - WINDOW_MS;
+
+  // Build an id → best-known-date lookup across every bundle collection
+  // an evidence_reference could point at.
+  const dateById = new Map<string, number>();
+  const pushDate = (id: unknown, ...dates: unknown[]) => {
+    if (!id || typeof id !== "string") return;
+    let best = dateById.get(id) ?? 0;
+    for (const d of dates) {
+      if (!d) continue;
+      const ts = new Date(String(d)).getTime();
+      if (Number.isFinite(ts) && ts > best) best = ts;
+    }
+    if (best > 0) dateById.set(id, best);
+  };
+  for (const e of bundle.emails ?? []) pushDate((e as any)?.id, (e as any)?.received_at, (e as any)?.sent_at, (e as any)?.date);
+  for (const t of bundle.email_threads ?? []) pushDate((t as any)?.id, (t as any)?.last_message_at, (t as any)?.updated_at);
+  for (const c of bundle.calendar_items ?? []) pushDate((c as any)?.id, (c as any)?.end_time, (c as any)?.start_time, (c as any)?.date);
+  for (const r of bundle.claap_recordings ?? []) pushDate((r as any)?.id, (r as any)?.ended_at, (r as any)?.started_at, (r as any)?.linked_at);
+  for (const a of bundle.activity ?? []) pushDate((a as any)?.id, (a as any)?.created_at, (a as any)?.updated_at);
+  for (const n of bundle.status_notes ?? []) pushDate((n as any)?.id, (n as any)?.created_at);
+  for (const s of bundle.stage_history ?? []) pushDate((s as any)?.id, (s as any)?.changed_at, (s as any)?.created_at);
+  for (const m of bundle.milestones ?? []) pushDate((m as any)?.id, (m as any)?.completed_at, (m as any)?.updated_at);
+  for (const f of bundle.funding_sources ?? []) pushDate((f as any)?.id, (f as any)?.last_contact_at, (f as any)?.updated_at);
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "add_status_note") return true;
+    const refs = Array.isArray(c.evidence_references) ? c.evidence_references : [];
+    let newest = 0;
+    for (const ev of refs) {
+      const id = (ev as any)?.ref_id;
+      const ts = id ? dateById.get(String(id)) : undefined;
+      if (ts && ts > newest) newest = ts;
+    }
+    if (newest === 0 || newest < cutoff) {
+      dropped += 1;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
  * Hard guardrail for Kick-Off milestone completion.
  *
  * The Deal Admin Agent may ONLY propose completing (or creating) a
