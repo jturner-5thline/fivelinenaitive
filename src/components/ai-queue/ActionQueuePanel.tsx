@@ -2066,6 +2066,7 @@ function BundleDetailPane({
 }) {
   const dealId = (item as any).deal_id as string | undefined;
   const [batchBusy, setBatchBusy] = useState<'a' | 'r' | null>(null);
+  const [confirmRejectAllOpen, setConfirmRejectAllOpen] = useState(false);
   const isEmailBundle = children[0]?.action_type === 'draft_email';
   const kindLabel = isEmailBundle ? 'drafts' : 'updates';
   const introCopy = isEmailBundle
@@ -2080,8 +2081,6 @@ function BundleDetailPane({
     setBatchBusy(null);
   };
   const rejectAll = async () => {
-    const ok = window.confirm(`Reject all ${children.length} lender ${kindLabel}? This cannot be undone.`);
-    if (!ok) return;
     setBatchBusy('r');
     for (const c of children) {
       try { await onRejectChild(c.id); } catch (e) { console.error('[bundle rejectAll]', e); }
@@ -2119,7 +2118,7 @@ function BundleDetailPane({
               <button
                 type="button"
                 disabled={batchBusy !== null}
-                onClick={rejectAll}
+                onClick={() => setConfirmRejectAllOpen(true)}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/30 disabled:opacity-60"
                 style={FONT_BODY}
               >
