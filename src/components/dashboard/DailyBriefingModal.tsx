@@ -10,6 +10,9 @@ import { AgendaIntel } from './AgendaIntel';
 import { MoffittDealRundown } from './MoffittDealRundown';
 import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
 import { EndOfDayTab } from './EndOfDayTab';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +22,7 @@ import {
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
   Check, Clock, ArrowUpRight, Sunset, EyeOff, LayoutDashboard,
-  Settings, Sunrise, GripVertical,
+  Settings, Sunrise, GripVertical, Inbox,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -1988,6 +1991,7 @@ const ALL_TABS = [
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
   { value: 'end_of_day', label: 'End of Day', icon: Sunset },
+  { value: 'queue', label: 'Approval Queue', icon: Inbox },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
@@ -2029,6 +2033,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   );
   const canSeeOperationalFull = !!currentUser?.email && OPERATIONAL_FULL_ALLOWLIST.has(currentUser.email.toLowerCase());
   const eodOutstandingCount = useEndOfDayOutstandingCount();
+  const { enabled: queueEnabled } = useApprovalQueueAccess();
+  const { data: queueItems = [] } = useAiActionQueue();
   const TABS = useMemo(
     () =>
       ALL_TABS.map(t => {
@@ -2041,12 +2047,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
+        if (t.value === 'queue' && !queueEnabled) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull],
+    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull, queueEnabled],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
@@ -2324,7 +2331,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'end_of_day' ? (
+              {activeTab === 'pipeline' || activeTab === 'end_of_day' || activeTab === 'queue' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
@@ -2363,6 +2370,12 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           targetAssigneeName={targetAssigneeName}
                           targetUserId={targetUserId}
                           briefingType={briefingType}
+                        />
+                      )}
+                      {contentReady && activeTab === 'queue' && (
+                        <ActionQueuePanel
+                          items={queueItems}
+                          onClose={() => onOpenChange(false)}
                         />
                       )}
                     </div>
