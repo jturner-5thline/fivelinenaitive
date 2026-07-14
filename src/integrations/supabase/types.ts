@@ -5597,6 +5597,47 @@ export type Database = {
           },
         ]
       }
+      contact_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          contact_id: string
+          created_at: string
+          field: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          contact_id: string
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          contact_id?: string
+          created_at?: string
+          field?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_audit_log_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_company_associations: {
         Row: {
           association_type: string | null
