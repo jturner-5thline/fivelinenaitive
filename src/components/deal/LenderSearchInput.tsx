@@ -56,7 +56,9 @@ export function LenderSearchInput({
     }
 
     matches.sort((a, b) => {
-      if (a.isExisting !== b.isExisting) return a.isExisting ? 1 : -1;
+      // Prioritize funding sources ALREADY attached to this deal so the user
+      // sees what's already here before being offered new adds.
+      if (a.isExisting !== b.isExisting) return a.isExisting ? -1 : 1;
       if (a.score !== b.score) return a.score - b.score;
 
       const aLower = a.name.toLowerCase();
@@ -77,6 +79,15 @@ export function LenderSearchInput({
     return matches.slice(0, limit).map(m => ({ name: m.name, isExisting: m.isExisting }));
   }, [lenderNames, existingLenderNamesSet, searchQuery]);
 
+  const existingMatches = useMemo(
+    () => filteredLenderNames.filter(m => m.isExisting),
+    [filteredLenderNames],
+  );
+  const addableMatches = useMemo(
+    () => filteredLenderNames.filter(m => !m.isExisting),
+    [filteredLenderNames],
+  );
+
   const isLenderAlreadyAdded = useCallback((name: string) => {
     return existingLenderNamesSet.has(name.trim());
   }, [existingLenderNamesSet]);
@@ -90,8 +101,10 @@ export function LenderSearchInput({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
-      if (filteredLenderNames.length > 0 && !filteredLenderNames[0].isExisting) {
-        handleAddLender(filteredLenderNames[0].name);
+      // Enter adds the top addable (non-existing) match. If the only matches
+      // are already attached to the deal, do nothing — the user is browsing.
+      if (addableMatches.length > 0) {
+        handleAddLender(addableMatches[0].name);
       }
       // Free-text creation is intentionally disabled: a funding source must
       // exist in the tenant's Funding Sources database before it can be
@@ -100,7 +113,7 @@ export function LenderSearchInput({
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  }, [searchQuery, filteredLenderNames, handleAddLender]);
+  }, [searchQuery, addableMatches, handleAddLender]);
 
   const isDuplicateQuery = useMemo(() => {
     return searchQuery.trim() && isLenderAlreadyAdded(searchQuery.trim());
@@ -155,17 +168,6 @@ export function LenderSearchInput({
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {filteredLenderNames.length > 0 && (
-          <div className="px-3 py-1.5 text-xs text-muted-foreground border-b border-border bg-muted/30">
-            {filteredLenderNames.length} match{filteredLenderNames.length !== 1 ? 'es' : ''} for "{searchQuery.trim()}"
-            {isLoadingLenders && (
-              <span className="ml-1 inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                loading more…
-              </span>
-            )}
-          </div>
-        )}
         {noResults && (
           <div className="px-3 py-4 text-sm text-muted-foreground text-center">
             {isLoadingLenders ? (
@@ -187,21 +189,40 @@ export function LenderSearchInput({
             )}
           </div>
         )}
-        {filteredLenderNames.map((item, idx) => (
+        {existingMatches.length > 0 && (
+          <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground border-b border-border bg-muted/30">
+            In this deal ({existingMatches.length})
+          </div>
+        )}
+        {existingMatches.map((item, idx) => (
           <button
-            key={`${item.name}-${idx}`}
-            className={`w-full text-left px-3 py-2 text-sm cursor-pointer flex items-center justify-between ${
-              item.isExisting 
-                ? 'opacity-60 cursor-default' 
-                : 'hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => !item.isExisting && handleAddLender(item.name)}
-            disabled={item.isExisting}
+            key={`existing-${item.name}-${idx}`}
+            className="w-full text-left px-3 py-2 text-sm cursor-default opacity-70 flex items-center justify-between"
+            disabled
           >
             <span>{highlightMatch(item.name)}</span>
-            {item.isExisting && (
-              <span className="text-xs text-muted-foreground italic ml-2 shrink-0">Added</span>
+            <span className="text-xs text-muted-foreground italic ml-2 shrink-0">Added</span>
+          </button>
+        ))}
+        {addableMatches.length > 0 && (
+          <div className="px-3 py-1.5 text-[11px] uppercase tracking-wide text-muted-foreground border-b border-t border-border bg-muted/30 flex items-center justify-between">
+            <span>Add to deal ({addableMatches.length})</span>
+            {isLoadingLenders && (
+              <span className="inline-flex items-center gap-1 normal-case">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                loading more…
+              </span>
             )}
+          </div>
+        )}
+        {addableMatches.map((item, idx) => (
+          <button
+            key={`add-${item.name}-${idx}`}
+            className="w-full text-left px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
+            onClick={() => handleAddLender(item.name)}
+          >
+            <span>{highlightMatch(item.name)}</span>
+            <span className="text-[11px] text-muted-foreground ml-2 shrink-0">Click to add</span>
           </button>
         ))}
         {isDuplicateQuery && (
