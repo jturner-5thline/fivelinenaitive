@@ -4647,6 +4647,7 @@ export default function DealDetail() {
                              existingLenderNames={existingLenderNames}
                              onAddLender={addLender}
                              isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
+                             onQueryChange={setLenderSearchQuery}
                            />
                          </div>
                          <div className="shrink-0">
