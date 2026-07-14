@@ -76,7 +76,7 @@ export function AIAssistOverlay({ open, onClose, title, children, hideClose }: O
   return createPortal(
     <div
       className={cn(
-        'pointer-events-auto absolute inset-0 flex-col rounded-xl border border-border bg-card shadow-xl overflow-hidden',
+        'popup-shell-surface pointer-events-auto absolute inset-0 flex-col rounded-xl shadow-xl overflow-hidden',
         open ? 'flex' : 'hidden',
       )}
       role="dialog"
