@@ -68,6 +68,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const { data: contactDeals = [] } = useContactDeals(contactId);
   const deleteContact = useDeleteContact();
   const teamMembers = useTeamMembers();
+  const { data: auditLog = [] } = useContactAuditLog(contactId);
   const [newNote, setNewNote] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
   const [logDialog, setLogDialog] = useState<{ type: 'call' | 'meeting' } | null>(null);
