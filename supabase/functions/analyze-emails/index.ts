@@ -257,14 +257,66 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
       const questionSignals = new Set([
         "question_asked", "questions_asked", "info_request", "diligence_question",
       ]);
-      const lenderCategories = new Set(["lender_communication", "due_diligence"]);
+      const lenderCategories = new Set(["lender_communication", "due_diligence", "terms_discussion"]);
+
+      // Pre-resolve which senders are known funding-source contacts on their
+      // matched deals — sender-is-a-lender is a strong enough signal to
+      // trigger a Q&A draft even if the classifier didn't tag it as such.
+      const candidatePairs = parsed
+        .map((r) => {
+          const src = emails.find(e => e.cache_id === r.cache_id);
+          return { r, src };
+        })
+        .filter(({ r, src }) => !!r.deal_match?.deal_id && !!src);
+      const dealIds = [...new Set(candidatePairs.map(p => p.r.deal_match!.deal_id))];
+      const fromEmailsLc = [...new Set(
+        candidatePairs.map(p => (p.src!.from_email || "").toLowerCase()).filter(Boolean),
+      )];
+      const senderIsLenderKey = new Set<string>(); // `${dealId}::${email}`
+      if (dealIds.length && fromEmailsLc.length) {
+        // Match against per-deal lender contacts…
+        const { data: lenderContacts } = await serviceClient
+          .from("lender_contacts")
+          .select("email, deal_lender_id, deal_lenders!inner(deal_id)")
+          .in("deal_lenders.deal_id", dealIds);
+        for (const row of (lenderContacts || []) as any[]) {
+          const em = String(row?.email || "").toLowerCase();
+          const dId = row?.deal_lenders?.deal_id;
+          if (em && dId) senderIsLenderKey.add(`${dId}::${em}`);
+        }
+        // …and per-deal deal_lenders.notes containing the sender's domain
+        // (fallback when a specific contact row isn't captured).
+        const { data: dealLendersRows } = await serviceClient
+          .from("deal_lenders")
+          .select("deal_id, notes")
+          .in("deal_id", dealIds);
+        const notesByDeal = new Map<string, string>();
+        for (const row of (dealLendersRows || []) as any[]) {
+          const cur = notesByDeal.get(row.deal_id) || "";
+          notesByDeal.set(row.deal_id, `${cur}\n${row.notes || ""}`);
+        }
+        for (const p of candidatePairs) {
+          const em = (p.src!.from_email || "").toLowerCase();
+          const at = em.lastIndexOf("@");
+          const dom = at === -1 ? "" : em.slice(at + 1);
+          if (!dom) continue;
+          const notes = (notesByDeal.get(p.r.deal_match!.deal_id) || "").toLowerCase();
+          if (notes.includes(dom)) senderIsLenderKey.add(`${p.r.deal_match!.deal_id}::${em}`);
+        }
+      }
+
       const draftCandidates = parsed.filter((r) => {
         if (!r.deal_match?.deal_id) return false;
-        if (!lenderCategories.has((r.category || "").toLowerCase())) return false;
         const src = emails.find(e => e.cache_id === r.cache_id);
-        const bodyHasQuestion = /\?/.test(src?.body_text || src?.snippet || "");
+        if (!src) return false;
+        const bodyHasQuestion = /\?/.test(src.body_text || src.snippet || "");
+        if (!bodyHasQuestion) return false; // hard requirement — must contain a question
+        const catMatch = lenderCategories.has((r.category || "").toLowerCase());
         const signalMatch = (r.signals || []).some(s => questionSignals.has(String(s).toLowerCase()));
-        return bodyHasQuestion || signalMatch;
+        const senderMatch = senderIsLenderKey.has(
+          `${r.deal_match.deal_id}::${(src.from_email || "").toLowerCase()}`,
+        );
+        return catMatch || signalMatch || senderMatch;
       });
 
       if (draftCandidates.length > 0) {

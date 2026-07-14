@@ -385,7 +385,7 @@ Deno.serve(async (req) => {
     } : null,
   ].filter(Boolean);
 
-  const title = `Draft Response to ${email.from_name || email.from_email} — ${deal.company}`;
+  const title = `Respond to Lender Q&A: ${email.from_name || email.from_email} — ${deal.company}`;
   const description = `${email.from_name || email.from_email} asked ${answered.length + unanswered.length || "several"} question(s) about ${deal.company}. Drafted a reply using the deal write-up${(notesRes.data || []).length ? ", deal-space notes" : ""}${(transcriptsRes.data || []).length ? ", and call transcripts" : ""}. Review before sending.`;
   const rationaleParts = [
     `Inbound email from a funding-source contact (${email.from_email}) contained questions about ${deal.company}.`,
