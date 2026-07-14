@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AdvancedFilterBuilder } from '@/components/filters/AdvancedFilterBuilder';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CONTACT_CORE_FIELDS } from '@/lib/filterFieldDefinitions';
 import type { FilterRule, MatchMode } from '@/lib/filterTypes';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -209,13 +210,29 @@ export default function Contacts() {
                   onSearchChange={handleSearchChange}
                   isFetching={isSearchPending}
                   toolbarExtras={
-                    <AdvancedFilterBuilder
-                      availableFields={CONTACT_CORE_FIELDS}
-                      filters={advancedFilters}
-                      onFiltersChange={handleFiltersChange}
-                      matchMode={matchMode}
-                      onMatchModeChange={setMatchMode}
-                    />
+                    <div className="flex items-center gap-2">
+                      <Select value={quickFilter} onValueChange={handleQuickFilterChange}>
+                        <SelectTrigger className="h-9 w-[170px]">
+                          <SelectValue placeholder="Quick filter" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All contacts</SelectItem>
+                          <SelectItem value="no_email">Missing email</SelectItem>
+                          <SelectItem value="no_company">Missing company</SelectItem>
+                          <SelectItem value="new_leads">New leads</SelectItem>
+                          <SelectItem value="meeting_scheduled">Meeting scheduled</SelectItem>
+                          <SelectItem value="high_score">High score (70+)</SelectItem>
+                          <SelectItem value="no_activity_7d">No activity 7d+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <AdvancedFilterBuilder
+                        availableFields={CONTACT_CORE_FIELDS}
+                        filters={advancedFilters}
+                        onFiltersChange={handleFiltersChange}
+                        matchMode={matchMode}
+                        onMatchModeChange={setMatchMode}
+                      />
+                    </div>
                   }
                 />
               </div>

@@ -55,6 +55,12 @@ export async function exportContactsToXlsx(params: ExportParams): Promise<number
           query = query.or(`last_activity_date.is.null,last_activity_date.lt.${sevenDaysAgo}`);
           break;
         }
+        case 'no_email':
+          query = query.or('email.is.null,email.eq.');
+          break;
+        case 'no_company':
+          query = query.is('crm_company_id', null);
+          break;
       }
     }
     if (advancedFilters.length > 0) {
