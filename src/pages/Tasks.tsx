@@ -1146,7 +1146,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           or the Claap routing badge. Tabs may shrink/scroll before they
           ever reach into this reserved gutter.
         */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap pr-14">
+        <div className="flex items-center px-6 pt-5 pb-3 min-w-0 gap-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <div className="min-w-0 flex-1">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
@@ -1176,75 +1176,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               })()}
             </p>
           </div>
-          <div className="shrink-0 flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-[12px]"
-              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
-              onClick={() => setShowSimilarTasks(true)}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Find similar</span>
-            </Button>
-            {undoStack.canUndo && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-[12px]"
-                title="Undo last action (⌘Z)"
-                onClick={() => {
-                  const action = undoStack.pop();
-                  if (action) {
-                    Promise.resolve(action.undo()).then(() => toast.success(`Undone: ${action.label}`));
-                  }
-                }}
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Undo</span>
-              </Button>
-            )}
-            <HintTooltip
-              hint="Click here to create a new task."
-              visible={isHintVisible('tasks-add')}
-              onDismiss={() => dismissHint('tasks-add')}
-              side="bottom"
-            >
-              <Button
-                type="button"
-                variant="liquid-glass"
-                size="sm"
-                className="gap-2"
-                onClick={(e) => {
-                  quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
-                  setShowQuickCreate(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Task</span>
-              </Button>
-            </HintTooltip>
-          </div>
-        </div>
-
-        {/*
-          Two-column body — mirrors the Deal Rundown popup structure:
-          left 65% = full task list (tabs, filters, presets, grouped
-          sections); right 35% = inline detail panel for the selected
-          task. The right panel always renders so a clean empty state
-          shows when nothing is selected, instead of collapsing.
-        */}
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col w-[65%] min-w-0 h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-        {/*
-          Unified header rail: tab navigation (ending with Meeting Tasks) flows
-          directly into the task controls. The rail uses flex-wrap (not
-          horizontal scroll) so controls reflow on narrow widths instead of
-          disappearing behind a scroll affordance.
-        */}
-        <div className="flex items-center gap-2 px-6 py-2.5 border-y flex-nowrap overflow-x-auto pr-4" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.012)' }}>
+          <div className="flex items-center gap-2 flex-1 min-w-0 flex-nowrap overflow-x-auto" style={{}}>
           {/* Primary navigation tabs — List / Board */}
           <div
             className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
@@ -1544,6 +1476,68 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           )}
 
         </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-[12px]"
+              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
+              onClick={() => setShowSimilarTasks(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Find similar</span>
+            </Button>
+            {undoStack.canUndo && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-[12px]"
+                title="Undo last action (⌘Z)"
+                onClick={() => {
+                  const action = undoStack.pop();
+                  if (action) {
+                    Promise.resolve(action.undo()).then(() => toast.success(`Undone: ${action.label}`));
+                  }
+                }}
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Undo</span>
+              </Button>
+            )}
+            <HintTooltip
+              hint="Click here to create a new task."
+              visible={isHintVisible('tasks-add')}
+              onDismiss={() => dismissHint('tasks-add')}
+              side="bottom"
+            >
+              <Button
+                type="button"
+                variant="liquid-glass"
+                size="sm"
+                className="gap-2"
+                onClick={(e) => {
+                  quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
+                  setShowQuickCreate(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Task</span>
+              </Button>
+            </HintTooltip>
+          </div>
+        </div>
+
+        {/*
+          Two-column body — mirrors the Deal Rundown popup structure:
+          left 65% = full task list (tabs, filters, presets, grouped
+          sections); right 35% = inline detail panel for the selected
+          task. The right panel always renders so a clean empty state
+          shows when nothing is selected, instead of collapsing.
+        */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col w-[65%] min-w-0 h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
 
         {/* Search row — full-width, just below the toolbar (per redesign spec) */}
         <div className="px-6 pt-2 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
