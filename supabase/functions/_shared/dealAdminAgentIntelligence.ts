@@ -1883,6 +1883,86 @@ function dedupeAndMerge(
   return { kept: Array.from(byTarget.values()), merged, filtered };
 }
 
+/**
+ * Deterministic "Update Tasks" prompt.
+ *
+ * When a deal in the active pipeline has zero outstanding tasks AND the most
+ * recent task on the deal (any status) was last touched more than 12 hours
+ * ago — or the deal has never had any tasks and was itself last updated
+ * more than 12 hours ago — return a synthetic `create_followup_task`
+ * candidate that asks the user to add tasks (titles, assignees, due dates)
+ * for the deal. Returns null when the deal already has outstanding tasks
+ * or the 12-hour gap hasn't elapsed yet.
+ *
+ * The card is deduplicated against existing pending queue rows via the
+ * standard queueSemanticKey (`${deal_id}::create_followup_task::task::`),
+ * so re-runs won't stack multiple "Update Tasks" cards on the same deal.
+ */
+async function maybeBuildUpdateTasksCandidate(
+  supabase: SupabaseClient,
+  deal: { id: string; company?: string | null; updated_at?: string | null },
+  bundle: DealSignalBundle,
+): Promise<CandidateItem | null> {
+  if ((bundle.open_tasks?.length ?? 0) > 0) return null;
+
+  // Find the most recent activity on ANY task for this deal (including
+  // completed/archived). If none exist, fall back to the deal's own
+  // updated_at so brand-new deals get a "12 hours after creation" grace
+  // window before the prompt fires.
+  const { data: lastTaskRow } = await supabase
+    .from("tasks")
+    .select("updated_at")
+    .eq("deal_id", deal.id)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const lastTaskAt = (lastTaskRow ?? [])[0]?.updated_at as string | null | undefined;
+  const referenceAt = lastTaskAt ?? deal.updated_at ?? null;
+  if (!referenceAt) return null;
+  const referenceMs = new Date(referenceAt).getTime();
+  if (!Number.isFinite(referenceMs)) return null;
+  const twelveHoursMs = 12 * 60 * 60 * 1000;
+  if (Date.now() - referenceMs < twelveHoursMs) return null;
+
+  const dealName = deal.company || bundle.deal_name || "this deal";
+  const description =
+    `This deal has no outstanding tasks and hasn't had any task activity in the last 12 hours. ` +
+    `Add task(s) for the next steps — include titles, assignees, and due dates so the deal keeps moving.`;
+
+  return {
+    action_type: "create_followup_task",
+    item_title: "Update Tasks",
+    linked_entity_label: dealName,
+    target_object_type: "task",
+    target_object_id: null,
+    target_field_paths: [],
+    current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
+    proposed_values: {
+      _synthetic: "update_tasks",
+      title: "Update Tasks",
+      description,
+    },
+    rationale_summary:
+      "Deal in the active pipeline has no outstanding tasks and no task activity in the last 12 hours. Prompt the user to add tasks so this deal doesn't stall.",
+    evidence_summary: lastTaskAt
+      ? `Most recent task activity on this deal was ${lastTaskAt}; no tasks are currently open.`
+      : "This deal has never had any tasks and has been idle for more than 12 hours.",
+    evidence_references: [
+      {
+        kind: "task",
+        label: lastTaskAt ? "Last task activity on deal" : "Deal has no tasks",
+        snippet: lastTaskAt
+          ? `Last task activity: ${lastTaskAt} (>12h ago)`
+          : `Deal last updated: ${deal.updated_at ?? "unknown"} (>12h ago)`,
+      },
+    ],
+    confidence_score: 0.95,
+    risk_level: "low",
+    bulk_eligible: false,
+    requires_send_ui: false,
+    priority: "normal",
+  };
+}
+
 function normalizeQueueTargetType(actionType: string, targetType?: string | null): string {
   const fallback = TARGET_TYPE_BY_ACTION[actionType as AdminActionType] ?? "";
   const raw = String(targetType ?? fallback).trim().toLowerCase();
@@ -3251,6 +3331,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     result.evaluated_deals++;
     try {
       const bundle = await gatherSignalsForDeal(supabase, d, companyId);
+      // Deterministic "Update Tasks" prompt: if this active-pipeline deal has
+      // no outstanding tasks AND the most recent task on the deal was last
+      // updated (or the deal itself was updated) more than 12 hours ago,
+      // enqueue a single approval-queue prompt asking the user to add
+      // tasks (titles, assignees, due dates) for the deal. This does NOT
+      // create the tasks itself — the approver adds them manually.
+      const updateTasksCandidate = await maybeBuildUpdateTasksCandidate(supabase, d, bundle);
       // Skip deals with effectively no signal — avoids burning credits.
       const sigCount =
         bundle.activity.length +
@@ -3262,14 +3349,19 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.email_threads.length +
         bundle.referral_sources.length;
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
-      if (sigCount === 0) continue;
+      if (sigCount === 0 && !updateTasksCandidate) continue;
 
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
       const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
-      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle);
+      const modelCandidates = sigCount > 0
+        ? normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle)
+        : [];
+      const rawAll = updateTasksCandidate
+        ? [...modelCandidates, updateTasksCandidate]
+        : modelCandidates;
       // Drop lender-scoped proposals (draft_email / update_funding_source)
       // whose target_object_id couldn't be resolved to a real deal_lender on
       // this deal. The LLM occasionally emits the deal id or a hallucinated
@@ -3386,11 +3478,20 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // Suppress ALL create_followup_task proposals — we don't surface
       // "create a task" approval cards. Concrete next-steps flow through
       // other action types (update_deal_stage, update_funding_source,
-      // draft_email, add_status_note, etc.).
+      // draft_email, add_status_note, etc.). The one exception is the
+      // deterministic "Update Tasks" prompt injected above for deals in
+      // the active pipeline that have gone 12+ hours with no outstanding
+      // tasks — that card asks the user to add tasks manually.
+      const isUpdateTasksPrompt = (c: CandidateItem) => {
+        const pv = (c.proposed_values ?? {}) as Record<string, any>;
+        return c.action_type === "create_followup_task" && pv._synthetic === "update_tasks";
+      };
       const isTaskCandidate = (c: CandidateItem) =>
-        c.action_type === "create_followup_task" ||
-        (typeof c.target_object_type === "string" &&
-          c.target_object_type.toLowerCase() === "task");
+        !isUpdateTasksPrompt(c) && (
+          c.action_type === "create_followup_task" ||
+          (typeof c.target_object_type === "string" &&
+            c.target_object_type.toLowerCase() === "task")
+        );
       const taskDroppedCount = lenderEmailGated.kept.filter(isTaskCandidate).length;
       const taskFiltered = lenderEmailGated.kept.filter((c) => !isTaskCandidate(c));
       if (taskDroppedCount > 0) {
