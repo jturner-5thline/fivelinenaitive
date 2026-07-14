@@ -553,6 +553,64 @@ async function gatherSignalsForDeal(
     var nameCalendarEvents: any[] = [];
   }
 
+  // ----- Unlinked TERMS emails (subject/body/attachment mentions deal name)
+  // Scan inbox emails that are NOT yet linked to this deal but clearly deliver
+  // a term sheet / IOI / LOI / proposal for the deal (per the deal name). This
+  // powers the TERMS_ISSUED_RULES trigger even when the email thread hasn't
+  // been classified/matched to the deal yet.
+  const unlinkedTermsEmails: any[] = [];
+  if (dealNameRaw && nameToken.length >= 3) {
+    const escapedNameSql = dealNameRaw.replace(/[%_]/g, (m) => `\\${m}`);
+    const nameLike = `%${escapedNameSql}%`;
+    const userScope = activatedUserIds && activatedUserIds.size > 0
+      ? Array.from(activatedUserIds)
+      : null;
+    let q = supabase
+      .from("email_cache")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, to_emails, attachments, received_at")
+      .gte("received_at", since)
+      .or(`subject.ilike.${nameLike},body_text.ilike.${nameLike},snippet.ilike.${nameLike}`)
+      .order("received_at", { ascending: false })
+      .limit(40);
+    if (userScope) q = q.in("user_id", userScope);
+    const { data: cand } = await q;
+    const TERMS_RE = /(term\s*sheet|termsheet|\bIOI\b|indication\s+of\s+interest|\bLOI\b|letter\s+of\s+intent|proposal|preliminary\s+terms|issued\s+terms|pricing\s+terms)/i;
+    const ATT_RE = /(term[\s_-]*sheet|\bIOI\b|indication|\bLOI\b|letter[\s_-]*of[\s_-]*intent|proposal|pricing|preliminary\s+terms)/i;
+    for (const m of (cand ?? []) as any[]) {
+      const subj = String(m.subject ?? "");
+      const body = String(m.body_text ?? m.snippet ?? "");
+      const attNames: string[] = Array.isArray(m.attachments)
+        ? m.attachments
+            .map((a: any) => (typeof a?.filename === "string" ? a.filename : ""))
+            .filter(Boolean)
+        : [];
+      const bodyOrSubjectHasTerms = TERMS_RE.test(subj) || TERMS_RE.test(body);
+      const attachmentHasTerms = attNames.some((n) => ATT_RE.test(n));
+      if (!bodyOrSubjectHasTerms && !attachmentHasTerms) continue;
+      unlinkedTermsEmails.push({
+        source: "email_cache_unlinked_terms_match",
+        gmail_message_id: m.gmail_message_id,
+        thread_id: m.thread_id,
+        subject: subj,
+        snippet: typeof m.snippet === "string" ? m.snippet.slice(0, 300) : null,
+        body_excerpt: body ? body.slice(0, 2000) : null,
+        from_email: m.from_email,
+        from_name: m.from_name,
+        to_emails: m.to_emails,
+        received_at: m.received_at,
+        attachments: attNames,
+        matched_deal_name: dealNameRaw,
+        match_reasons: {
+          name_in_subject: subj.toLowerCase().includes(dealNameRaw.toLowerCase()),
+          name_in_body: body.toLowerCase().includes(dealNameRaw.toLowerCase()),
+          terms_language_in_email: bodyOrSubjectHasTerms,
+          terms_attachment_filename: attachmentHasTerms,
+        },
+      });
+      if (unlinkedTermsEmails.length >= 8) break;
+    }
+  }
+
   return {
     deal_id: deal.id,
     deal_name: deal.company ?? "Untitled Deal",
@@ -586,6 +644,7 @@ async function gatherSignalsForDeal(
     open_tasks: tasks.data ?? [],
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
+    unlinked_terms_emails: unlinkedTermsEmails,
     referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
     configured_milestone_titles: await gatherConfiguredMilestoneTitles(supabase, companyId),
   };
