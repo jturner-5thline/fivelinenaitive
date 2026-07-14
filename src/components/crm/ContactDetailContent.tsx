@@ -253,10 +253,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onClick={() => handleLogActivity('call')}>
+                  <DropdownMenuItem onClick={() => openLogDialog('call')}>
                     <Phone className="h-3.5 w-3.5 mr-2" /> Log call
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLogActivity('meeting')}>
+                  <DropdownMenuItem onClick={() => openLogDialog('meeting')}>
                     <Calendar className="h-3.5 w-3.5 mr-2" /> Log meeting
                   </DropdownMenuItem>
                 </DropdownMenuContent>
