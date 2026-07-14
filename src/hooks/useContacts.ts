@@ -408,6 +408,35 @@ export function useContactDeals(contactId: string | undefined) {
   });
 }
 
+export interface ContactAuditLogEntry {
+  id: string;
+  contact_id: string;
+  actor_user_id: string | null;
+  action: 'created' | 'updated' | 'deleted';
+  field: string | null;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+}
+
+export function useContactAuditLog(contactId: string | undefined) {
+  return useQuery({
+    queryKey: ['contact-audit-log', contactId],
+    enabled: !!contactId,
+    queryFn: async (): Promise<ContactAuditLogEntry[]> => {
+      if (!contactId) return [];
+      const { data, error } = await (supabase as any)
+        .from('contact_audit_log')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data || []) as ContactAuditLogEntry[];
+    },
+  });
+}
+
 export const LIFECYCLE_STAGES = [
   { value: 'subscriber', label: 'Subscriber' },
   { value: 'lead', label: 'Lead' },
