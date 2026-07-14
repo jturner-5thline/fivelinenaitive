@@ -800,6 +800,14 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                 </Suspense>
               </TabsContent>
             )}
+            {queueEnabled && (
+              <TabsContent
+                value="queue"
+                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
+              >
+                <ActionQueuePanel items={queueItems} onClose={() => setActiveTab('dashboard')} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       {editingPlan && (
