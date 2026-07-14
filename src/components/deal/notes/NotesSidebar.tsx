@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { NOTE_TEMPLATES } from './NoteTemplates';
 import { TemplatePickerDialog, ManageTemplatesDialog, SaveAsTemplateDialog } from './NoteTemplateDialogs';
+import { MeetingsSection } from './MeetingsSection';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -24,10 +25,11 @@ interface NotesSidebarProps {
   onUpload: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
   commentCounts?: Record<string, number>;
+  dealId?: string;
 }
 
 export function NotesSidebar({
-  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef, commentCounts = {},
+  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef, commentCounts = {}, dealId,
 }: NotesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
