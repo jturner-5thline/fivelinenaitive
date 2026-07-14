@@ -155,7 +155,7 @@ export function LenderSearchInput({
       <PopoverTrigger asChild>
         <div className="relative w-full min-w-0">
           <Input
-            placeholder="Type 2+ chars to search lenders..."
+            placeholder="Type to Search..."
             value={searchQuery}
             onChange={(e) => {
               const next = e.target.value;
