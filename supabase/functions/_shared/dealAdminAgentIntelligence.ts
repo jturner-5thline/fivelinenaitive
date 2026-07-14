@@ -1174,10 +1174,6 @@ function isValidCandidate(c: CandidateItem, minConf: number): boolean {
 function filterUnconfiguredMilestones(
   candidates: CandidateItem[],
   bundle: DealSignalBundle,
-): { kept: CandidateItem[]; dropped: number };
-function filterUnconfiguredMilestones(
-  candidates: CandidateItem[],
-  bundle: DealSignalBundle,
 ): { kept: CandidateItem[]; dropped: number } {
   const hasCreate = candidates.some((c) => c.action_type === "create_milestone");
   if (!hasCreate) return { kept: candidates, dropped: 0 };
