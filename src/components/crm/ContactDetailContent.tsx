@@ -15,6 +15,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   useContact, useUpdateContact, useContactActivities, useCreateContactActivity,
   useContactDeals, useDeleteContact, useUpdateContactActivity, useDeleteContactActivity,
   LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
@@ -795,6 +799,7 @@ function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<string>(note.body || '');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const updateActivity = useUpdateContactActivity();
   const deleteActivity = useDeleteContactActivity();
   const hasBody = !!note.body;
@@ -809,8 +814,10 @@ function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
   };
 
   const handleDelete = () => {
-    if (!confirm('Delete this note?')) return;
-    deleteActivity.mutate({ id: note.id, contact_id: note.contact_id });
+    deleteActivity.mutate(
+      { id: note.id, contact_id: note.contact_id },
+      { onSuccess: () => setConfirmDelete(false) },
+    );
   };
 
   return (
@@ -834,7 +841,7 @@ function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setDraft(note.body || ''); setEditing(true); setOpen(true); }} title="Edit">
                   <Pencil className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={handleDelete} title="Delete" disabled={deleteActivity.isPending}>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)} title="Delete" disabled={deleteActivity.isPending}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -867,6 +874,26 @@ function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
           <p className="text-[10px] text-muted-foreground mt-1">{ownerName}</p>
         </div>
       </div>
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove the note from this contact. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteActivity.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              disabled={deleteActivity.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteActivity.isPending ? 'Deleting…' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }
