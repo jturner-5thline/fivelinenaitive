@@ -1056,6 +1056,7 @@ function DealGroupCard({
   onRejectAll: () => Promise<unknown> | void;
 }) {
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const count = group.items.length;
   const lowCount = useMemo(
     () => group.items.filter((i) => riskOf(i) === 'low').length,
@@ -1106,15 +1107,7 @@ function DealGroupCard({
             <button
               type="button"
               disabled={busy !== null}
-              onClick={async () => {
-                const confirmed = window.confirm(
-                  `Reject all ${count} pending action${count === 1 ? '' : 's'} for ${group.dealName}? This cannot be undone.`,
-                );
-                if (!confirmed) return;
-                setBusy('r');
-                await onRejectAll();
-                setBusy(null);
-              }}
+              onClick={() => setConfirmRejectOpen(true)}
               className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-[#f58aa0]/25 text-[#f58aa0] hover:bg-[#f58aa0]/10 disabled:opacity-40"
               style={FONT_BODY}
             >
@@ -1132,6 +1125,31 @@ function DealGroupCard({
               />
             ))}
           </ul>
+          <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject all pending actions?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reject {count} pending action{count === 1 ? '' : 's'} for{' '}
+                  <span className="font-medium text-foreground">{group.dealName}</span>. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setConfirmRejectOpen(false);
+                    setBusy('r');
+                    await onRejectAll();
+                    setBusy(null);
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Reject all
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </li>
