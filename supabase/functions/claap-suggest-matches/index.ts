@@ -110,11 +110,10 @@ serve(async (req) => {
         .from("ai_action_queue")
         .select("payload")
         .eq("action_type", "claap_recording_review")
-        .in("status", ["pending", "approved"])
-        .in("payload->>claap_meeting_id", meetingIdList);
+        .in("status", ["pending", "approved"]);
       (existing || []).forEach((r: any) => {
         const mid = r?.payload?.claap_meeting_id;
-        if (mid) existingQueueMeetingIds.add(mid);
+        if (mid && meetingIdList.includes(mid)) existingQueueMeetingIds.add(mid);
       });
     }
 
