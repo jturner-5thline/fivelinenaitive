@@ -2824,6 +2824,43 @@ async function reconcileStalePendingApprovals(
         toResolve.push(p.id);
       }
     }
+
+    // Terminal-lender reconciliation: independent of concentration, any pending
+    // draft_email whose target lender has since moved to a terminal state
+    // (passed / not_a_fit / declined / withdrawn / dead / lost / rejected /
+    // closed / unresponsive / on-hold / paused) is moot — dismiss it. Catches
+    // the common case where the manager marked the lender "passed" after the
+    // nudge was queued but before it was actioned.
+    const TERMINAL_LENDER_RE_REC =
+      /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      const targetState = stateById.get(p.target_object_id as string);
+      if (!targetState) continue;
+      if (TERMINAL_LENDER_RE_REC.test(targetState)) {
+        toResolve.push(p.id);
+      }
+    }
+
+    // Placeholder-recipient safety net: any pending draft_email whose only
+    // recipient(s) sit on an `@example.com` / `@example.org` domain (or an
+    // obviously synthetic address like `*-contact@…`) is un-sendable — the
+    // funding source has no real contact on file. Dismiss so the queue isn't
+    // polluted with drafts pointing at seed/placeholder addresses.
+    const PLACEHOLDER_DOMAIN_RE = /@(example\.(com|org|net)|test\.local|localhost|invalid)$/i;
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      const nv: any = (p as any).new_values || {};
+      const rawTo = nv?.to;
+      const toArr: string[] = Array.isArray(rawTo)
+        ? rawTo.map((v: any) => String(v || "").toLowerCase()).filter(Boolean)
+        : typeof rawTo === "string"
+          ? rawTo.split(/[,;\s]+/).map((v) => v.toLowerCase()).filter(Boolean)
+          : [];
+      if (toArr.length === 0) continue;
+      const allPlaceholder = toArr.every((addr) => PLACEHOLDER_DOMAIN_RE.test(addr));
+      if (allPlaceholder) toResolve.push(p.id);
+    }
   }
 
   if (toResolve.length === 0) return 0;
