@@ -67,6 +67,7 @@ import {
   useDismissManyAiActions,
 } from '@/hooks/useAiActionQueue';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { ClaapRecordingBundleCard } from './ClaapRecordingBundleCard';
 import { CreateDealApprovalCard } from './CreateDealApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -140,13 +141,14 @@ function NaitiveMark({ size = 22 }: { size?: number }) {
   );
 }
 
-const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle', { label: string; icon: typeof CheckSquare }>> = {
+const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle' | 'claap_recording_review_bundle', { label: string; icon: typeof CheckSquare }>> = {
   create_task: { label: 'Task', icon: CheckSquare },
   update_lender_status: { label: 'Funding source', icon: Building2 },
   save_to_data_room: { label: 'Data room', icon: Save },
   log_note: { label: 'Note', icon: FileText },
   deal_update: { label: 'Deal', icon: Briefcase },
   claap_recording_review: { label: 'Claap recording', icon: Video },
+  claap_recording_review_bundle: { label: 'Claap recordings', icon: Video },
   claap_action_items: { label: 'Meeting actions', icon: ListChecks },
   update_deal_stage: { label: 'Stage', icon: Briefcase },
   update_deal_status: { label: 'Status', icon: Briefcase },
@@ -560,6 +562,20 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
             rationale: `${fsUpdates.length} funding source / lender updates pending on this deal.`,
           },
         );
+      }
+
+      // Collapse 2+ Claap recording match suggestions on the same deal into
+      // a single "Link Recordings..." bundle. The detail pane renders a
+      // multi-select picker so the user links a subset in one go.
+      const claapMatches = g.items.filter((it) => it.action_type === 'claap_recording_review');
+      if (claapMatches.length >= 2) {
+        bundleItems((it) => it.action_type === 'claap_recording_review', {
+          idKey: 'claap-recordings',
+          actionType: 'claap_recording_review_bundle',
+          title: 'Link Recordings...',
+          description: `${claapMatches.length} recordings to link`,
+          rationale: `${claapMatches.length} Claap recordings suggested for this deal.`,
+        });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
@@ -1432,6 +1448,18 @@ function DetailPane({
         <ClaapApprovalCard item={item} />
       </div>
     );
+  }
+
+  // Bundled Claap recording matches → multi-select linker.
+  if ((item.action_type as string) === 'claap_recording_review_bundle') {
+    const bundle = (item as any).__bundle as QueuedAiAction[] | undefined;
+    if (bundle && bundle.length > 0) {
+      return (
+        <div className="flex-1 min-h-0 overflow-y-auto p-3">
+          <ClaapRecordingBundleCard items={bundle} />
+        </div>
+      );
+    }
   }
 
   // Post-sales-call "Create new deal" items get a dedicated card that
