@@ -70,6 +70,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const teamMembers = useTeamMembers();
   const [newNote, setNewNote] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
+  const [logDialog, setLogDialog] = useState<{ type: 'call' | 'meeting' } | null>(null);
+  const [logSubject, setLogSubject] = useState('');
+  const [logBody, setLogBody] = useState('');
+  const [logWhen, setLogWhen] = useState<string>(''); // datetime-local string
 
   const [showLinkCompany, setShowLinkCompany] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
