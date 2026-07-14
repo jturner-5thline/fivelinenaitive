@@ -20,7 +20,6 @@ interface Props {
 const TARGET_FIELDS: { value: string; label: string; required?: boolean }[] = [
   { value: 'name', label: 'Company Name', required: true },
   { value: 'domain', label: 'Domain' },
-  { value: 'website_url', label: 'Website' },
   { value: 'industry', label: 'Industry' },
   { value: 'segment', label: 'Segment' },
   { value: 'employee_range', label: 'Employee Range' },
@@ -60,7 +59,7 @@ function autoMap(headers: string[]): Record<string, string> {
       // Common aliases
       const aliases: Record<string, string> = {
         company: 'name', companyname: 'name', accountname: 'name', account: 'name', organization: 'name', org: 'name',
-        website: 'website_url', url: 'website_url', site: 'website_url',
+        website: 'domain', url: 'domain', site: 'domain',
         city: 'hq_city', country: 'hq_country', email: 'main_contact_email', emailaddress: 'main_contact_email',
         linkedin: 'linkedin_url', employees: 'employee_count', headcount: 'employee_count', size: 'employee_range',
         type: 'company_type', stage: 'lifecycle_stage',
