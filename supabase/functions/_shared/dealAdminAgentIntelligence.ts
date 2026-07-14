@@ -1483,6 +1483,11 @@ function filterLenderDraftEmails(
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
+    // Q&A response drafts stay in the queue even if the lender is terminal
+    // or the deal has diligence concentration — the sender still asked a
+    // specific question and we may still want to answer it.
+    const srcKind = String((c as any)?.source?.kind || "").toLowerCase();
+    if (srcKind === "lender_question_response") return true;
     const targetType = (c.target_object_type ?? "").toString().toLowerCase();
     const tid = c.target_object_id ? String(c.target_object_id) : "";
     const fs = tid ? fsById.get(tid) : null;
