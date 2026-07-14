@@ -161,12 +161,9 @@ export function LenderSearchInput({
               const next = e.target.value;
               setSearchQuery(next);
               onQueryChange?.(next);
-              // Keep the dropdown closed while typing — the list below
-              // filters live. The dropdown only opens when the user
-              // explicitly requests it (Enter to add top match, or
-              // future affordance).
-              setIsOpen(false);
+              setIsOpen(true);
             }}
+            onFocus={() => setIsOpen(true)}
             onKeyDown={handleKeyDown}
             className="h-8 text-sm"
           />
@@ -176,7 +173,7 @@ export function LenderSearchInput({
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-60 overflow-auto" 
+        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-[112px] overflow-auto"
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
