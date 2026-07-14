@@ -13,6 +13,9 @@ import { EndOfDayTab } from './EndOfDayTab';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
+import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
+import { useTaskNotifications } from '@/hooks/useTaskNotifications';
+import { consolidatedAiQueueCount } from '@/lib/consolidatedAiQueueCount';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -2035,6 +2038,12 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   const eodOutstandingCount = useEndOfDayOutstandingCount();
   const { enabled: queueEnabled } = useApprovalQueueAccess();
   const { data: queueItems = [] } = useAiActionQueue();
+  const { data: dealAccessRequests = [] } = useDealAccessRequests();
+  const queueBadgeCount = queueEnabled
+    ? consolidatedAiQueueCount(queueItems) + (dealAccessRequests?.length || 0)
+    : 0;
+  const { overdueCount: tasksOverdueCount, dueTodayCount: tasksDueTodayCount } = useTaskNotifications();
+  const tasksBadgeCount = tasksOverdueCount + tasksDueTodayCount;
   const TABS = useMemo(
     () =>
       ALL_TABS.map(t => {
@@ -2181,7 +2190,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
               >
                 {TABS.map(tab => {
                   const Icon = tab.icon;
-                  const badgeCount = tab.value === 'end_of_day' ? eodOutstandingCount : 0;
+                  const badgeCount =
+                    tab.value === 'end_of_day'
+                      ? eodOutstandingCount
+                      : tab.value === 'queue'
+                        ? queueBadgeCount
+                        : tab.value === 'operational'
+                          ? tasksBadgeCount
+                          : 0;
                   return (
                     <Tooltip key={tab.value}>
                       <TooltipTrigger asChild>
