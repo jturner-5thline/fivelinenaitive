@@ -9,6 +9,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -1046,6 +1056,7 @@ function DealGroupCard({
   onRejectAll: () => Promise<unknown> | void;
 }) {
   const [busy, setBusy] = useState<'a' | 'r' | null>(null);
+  const [confirmRejectOpen, setConfirmRejectOpen] = useState(false);
   const count = group.items.length;
   const lowCount = useMemo(
     () => group.items.filter((i) => riskOf(i) === 'low').length,
@@ -1096,15 +1107,7 @@ function DealGroupCard({
             <button
               type="button"
               disabled={busy !== null}
-              onClick={async () => {
-                const confirmed = window.confirm(
-                  `Reject all ${count} pending action${count === 1 ? '' : 's'} for ${group.dealName}? This cannot be undone.`,
-                );
-                if (!confirmed) return;
-                setBusy('r');
-                await onRejectAll();
-                setBusy(null);
-              }}
+              onClick={() => setConfirmRejectOpen(true)}
               className="inline-flex items-center gap-1 h-6 px-2 rounded-md text-[10.5px] border border-[#f58aa0]/25 text-[#f58aa0] hover:bg-[#f58aa0]/10 disabled:opacity-40"
               style={FONT_BODY}
             >
@@ -1122,6 +1125,31 @@ function DealGroupCard({
               />
             ))}
           </ul>
+          <AlertDialog open={confirmRejectOpen} onOpenChange={setConfirmRejectOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject all pending actions?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will reject {count} pending action{count === 1 ? '' : 's'} for{' '}
+                  <span className="font-medium text-foreground">{group.dealName}</span>. This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setConfirmRejectOpen(false);
+                    setBusy('r');
+                    await onRejectAll();
+                    setBusy(null);
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Reject all
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </li>
@@ -2038,6 +2066,7 @@ function BundleDetailPane({
 }) {
   const dealId = (item as any).deal_id as string | undefined;
   const [batchBusy, setBatchBusy] = useState<'a' | 'r' | null>(null);
+  const [confirmRejectAllOpen, setConfirmRejectAllOpen] = useState(false);
   const isEmailBundle = children[0]?.action_type === 'draft_email';
   const kindLabel = isEmailBundle ? 'drafts' : 'updates';
   const introCopy = isEmailBundle
@@ -2052,8 +2081,6 @@ function BundleDetailPane({
     setBatchBusy(null);
   };
   const rejectAll = async () => {
-    const ok = window.confirm(`Reject all ${children.length} lender ${kindLabel}? This cannot be undone.`);
-    if (!ok) return;
     setBatchBusy('r');
     for (const c of children) {
       try { await onRejectChild(c.id); } catch (e) { console.error('[bundle rejectAll]', e); }
@@ -2091,7 +2118,7 @@ function BundleDetailPane({
               <button
                 type="button"
                 disabled={batchBusy !== null}
-                onClick={rejectAll}
+                onClick={() => setConfirmRejectAllOpen(true)}
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[12px] text-[#f58aa0] hover:bg-[#f58aa0]/10 border border-[#f58aa0]/30 disabled:opacity-60"
                 style={FONT_BODY}
               >
@@ -2122,6 +2149,28 @@ function BundleDetailPane({
           />
         </div>
       </div>
+      <AlertDialog open={confirmRejectAllOpen} onOpenChange={setConfirmRejectAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject all {kindLabel}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reject {children.length} lender {kindLabel}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmRejectAllOpen(false);
+                await rejectAll();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
