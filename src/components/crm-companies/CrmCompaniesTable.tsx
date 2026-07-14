@@ -357,8 +357,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
           label="Missing Data"
           className="h-9"
           options={[
-            { value: 'no_contacts', label: 'No contacts' },
-            { value: 'no_domain', label: 'No domain' },
+            { value: 'no_contacts', label: `No contacts (${missingDataCounts.no_contacts})` },
+            { value: 'no_domain', label: `No domain (${missingDataCounts.no_domain})` },
           ]}
           selected={missingDataFilter}
           onChange={setMissingDataFilter}
