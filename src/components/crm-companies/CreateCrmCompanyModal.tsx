@@ -30,7 +30,6 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     hq_city: '',
     hq_country: '',
     segment: '',
-    website_url: '',
     linkedin_url: '',
     phone: '',
     main_contact_email: '',
@@ -62,7 +61,7 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
           name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
           lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
           year_founded: '', financing_status: '', created_at: '',
-          segment: '', website_url: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
+          segment: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
           address: '', hq_address: '', notes: '', owner_user_id: '',
         });
       },
@@ -160,10 +159,6 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
           <div className="space-y-1.5">
             <Label htmlFor="hq_country" className="text-xs">Country</Label>
             <Input id="hq_country" value={form.hq_country} onChange={(e) => setForm(p => ({ ...p, hq_country: e.target.value }))} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="website_url" className="text-xs">Website</Label>
-            <Input id="website_url" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="linkedin_url" className="text-xs">LinkedIn</Label>

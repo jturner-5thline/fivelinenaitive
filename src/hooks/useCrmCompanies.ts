@@ -40,7 +40,6 @@ export interface CrmCompany {
   renewal_date: string | null;
   key_products: string[];
   description: string | null;
-  website_url: string | null;
   linkedin_url: string | null;
   twitter_url: string | null;
   phone: string | null;
@@ -92,7 +91,7 @@ export const CRM_COMPANY_LIFECYCLES = [
 // `address`, `hq_address`) and rarely-rendered URL fields are intentionally
 // excluded — they're fetched on demand from the company detail page so the
 // initial list payload stays small and scrolling fetches stay fast.
-const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date, owner_user_id, website_url, linkedin_url, phone';
+const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date, owner_user_id, linkedin_url, phone';
 
 export interface CrmCompaniesListParams {
   page?: number;

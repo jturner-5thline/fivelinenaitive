@@ -42,7 +42,6 @@ export const COMPANY_CORE_FIELDS: FilterField[] = [
   { name: 'renewal_date', label: 'Renewal Date', type: 'date', category: 'Dates' },
   { name: 'synced_with_hubspot', label: 'Synced with HubSpot', type: 'boolean', category: 'System' },
   { name: 'owner_user_id', label: 'Owner', type: 'text', category: 'Status' },
-  { name: 'website_url', label: 'Website', type: 'text', category: 'Company Info' },
   { name: 'linkedin_url', label: 'LinkedIn', type: 'text', category: 'Company Info' },
   { name: 'phone', label: 'Phone', type: 'text', category: 'Company Info' },
   { name: 'address', label: 'Address', type: 'text', category: 'Location' },
