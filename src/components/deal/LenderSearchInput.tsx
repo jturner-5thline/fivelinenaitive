@@ -8,6 +8,12 @@ interface LenderSearchInputProps {
   existingLenderNames: string[];
   onAddLender: (name: string) => void;
   isLoadingLenders?: boolean;
+  /**
+   * Fires whenever the search query changes. Consumers use this to also
+   * filter the visible funding-source list in the deal so typing narrows
+   * both the dropdown AND the list of already-attached sources below.
+   */
+  onQueryChange?: (query: string) => void;
 }
 
 export function LenderSearchInput({ 
@@ -15,6 +21,7 @@ export function LenderSearchInput({
   existingLenderNames, 
   onAddLender,
   isLoadingLenders = false,
+  onQueryChange,
 }: LenderSearchInputProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -96,8 +103,9 @@ export function LenderSearchInput({
     if (isLenderAlreadyAdded(name)) return;
     onAddLender(name);
     setSearchQuery('');
+    onQueryChange?.('');
     setIsOpen(false);
-  }, [onAddLender, isLenderAlreadyAdded]);
+  }, [onAddLender, isLenderAlreadyAdded, onQueryChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
@@ -150,7 +158,9 @@ export function LenderSearchInput({
             placeholder="Type 2+ chars to search lenders..."
             value={searchQuery}
             onChange={(e) => {
-              setSearchQuery(e.target.value);
+              const next = e.target.value;
+              setSearchQuery(next);
+              onQueryChange?.(next);
               setIsOpen(true);
             }}
             onFocus={() => setIsOpen(true)}

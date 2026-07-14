@@ -1534,12 +1534,23 @@ export default function DealDetail() {
     if (Array.isArray(savedViewPrefs?.lenderStageFilters)) return new Set(savedViewPrefs.lenderStageFilters as string[]);
     return new Set<string>();
   });
-  
-  // Apply individual stage filters to sorted lenders
+  // Live text filter driven by the funding-source search input in the
+  // Funding Sources card header. Typing narrows the visible list to
+  // matching sources already attached to the deal.
+  const [lenderSearchQuery, setLenderSearchQuery] = useState('');
+
+  // Apply individual stage filters + typed search to sorted lenders
   const filteredSortedLenders = useMemo(() => {
-    if (lenderStageFilters.size === 0) return sortedLenders;
-    return sortedLenders.filter(l => lenderStageFilters.has(l.stage));
-  }, [sortedLenders, lenderStageFilters]);
+    let out = sortedLenders;
+    if (lenderStageFilters.size > 0) {
+      out = out.filter(l => lenderStageFilters.has(l.stage));
+    }
+    const q = lenderSearchQuery.trim().toLowerCase();
+    if (q.length > 0) {
+      out = out.filter(l => (l.name || '').toLowerCase().includes(q));
+    }
+    return out;
+  }, [sortedLenders, lenderStageFilters, lenderSearchQuery]);
 
   const [attachmentFilter, setAttachmentFilter] = useState<'all' | 'materials' | 'financials' | 'agreements' | 'other'>(
     savedViewPrefs?.attachmentFilter ?? 'all'
@@ -4636,6 +4647,7 @@ export default function DealDetail() {
                              existingLenderNames={existingLenderNames}
                              onAddLender={addLender}
                              isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
+                             onQueryChange={setLenderSearchQuery}
                            />
                          </div>
                          <div className="shrink-0">
