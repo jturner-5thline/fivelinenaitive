@@ -580,6 +580,11 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 No attachments linked to this contact.
               </p>
             </Section>
+
+            {/* History / Audit trail */}
+            <Section id="history" title="History" icon={ActivityIcon}>
+              <ContactAuditTrail entries={auditLog} teamMembers={teamMembers} />
+            </Section>
           </section>
         </div>
       </div>
