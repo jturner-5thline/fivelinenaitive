@@ -1479,14 +1479,14 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           <div className="shrink-0 flex items-center gap-2 ml-auto">
             <Button
               type="button"
-              variant="outline"
+              variant={similarMode ? 'default' : 'outline'}
               size="sm"
               className="h-8 gap-1.5 text-[12px]"
-              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
-              onClick={() => setShowSimilarTasks(true)}
+              title="Filter list to potentially similar tasks (fuzzy title + shared deal/contact/company)"
+              onClick={() => setSimilarMode(v => !v)}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Find similar</span>
+              <span className="hidden sm:inline">{similarMode ? 'Exit similar' : 'Find similar'}</span>
             </Button>
             {undoStack.canUndo && (
               <Button
@@ -1746,12 +1746,6 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         </AlertDialog>
 
         {/* Quick-create task dialog */}
-        <SimilarTasksDialog
-          open={showSimilarTasks}
-          onOpenChange={setShowSimilarTasks}
-          tasks={filtered}
-          onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
-        />
         <QuickCreateTaskDialog
           open={showQuickCreate}
           onClose={() => {
