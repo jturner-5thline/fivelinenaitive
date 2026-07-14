@@ -2331,7 +2331,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                 </button>
               )}
 
-              {activeTab === 'pipeline' || activeTab === 'end_of_day' ? (
+              {activeTab === 'pipeline' || activeTab === 'end_of_day' || activeTab === 'queue' ? (
                 // Pipeline and End of Day tabs manage their own master/detail
                 // scrolling (left list + right pane). Wrapping them in the
                 // outer ScrollArea collapses the inner scroll regions, so we
@@ -2370,6 +2370,12 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
                           targetAssigneeName={targetAssigneeName}
                           targetUserId={targetUserId}
                           briefingType={briefingType}
+                        />
+                      )}
+                      {contentReady && activeTab === 'queue' && (
+                        <ActionQueuePanel
+                          items={queueItems}
+                          onClose={() => onOpenChange(false)}
                         />
                       )}
                     </div>
