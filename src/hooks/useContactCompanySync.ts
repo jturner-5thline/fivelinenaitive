@@ -120,7 +120,7 @@ export interface MatchSuggestion {
   decision: string
   reason: string | null
   created_at: string
-  proposed_company?: { id: string; name: string; website_url: string | null } | null
+  proposed_company?: { id: string; name: string; domain: string | null } | null
 }
 
 export function useContactSuggestions(contactId: string | null | undefined) {
@@ -131,7 +131,7 @@ export function useContactSuggestions(contactId: string | null | undefined) {
       const { data, error } = await (supabase as any)
         .from('contact_company_match_audit')
         .select(
-          'id, contact_id, proposed_company_id, normalized_contact_domain, normalized_company_domain, decision, reason, created_at, proposed_company:crm_companies!proposed_company_id(id, name, website_url)',
+          'id, contact_id, proposed_company_id, normalized_contact_domain, normalized_company_domain, decision, reason, created_at, proposed_company:crm_companies!proposed_company_id(id, name, domain)',
         )
         .eq('contact_id', contactId)
         .in('decision', ['suggested', 'auto_matched'])
