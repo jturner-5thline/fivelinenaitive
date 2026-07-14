@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
         .from("admin_agent_selected_actions")
         .select("deal_id, field, lender_id, status")
         .eq("company_id", companyId)
-        .in("status", ["pending", "queued"])
+        .in("status", ["pending", "queued", "dismissed", "rejected"])
         .gte("created_at", weekStart);
       const dedupeKey = (d: string | null, f: string, l: string | null) =>
         `${d ?? ""}::${f}::${l ?? ""}`;
