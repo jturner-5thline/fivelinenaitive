@@ -26,7 +26,7 @@ const TaskReportingView = lazy(() =>
 );
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
-import { SimilarTasksDialog } from '@/components/tasks/SimilarTasksDialog';
+import { findSimilarTaskGroups } from '@/lib/taskSimilarity';
 const TaskFocusMode = lazy(() =>
   import('@/components/tasks/TaskFocusMode').then(m => ({ default: m.TaskFocusMode }))
 );
