@@ -1483,6 +1483,11 @@ function filterLenderDraftEmails(
   let dropped = 0;
   const kept = candidates.filter((c) => {
     if (c.action_type !== "draft_email") return true;
+    // Q&A response drafts stay in the queue even if the lender is terminal
+    // or the deal has diligence concentration — the sender still asked a
+    // specific question and we may still want to answer it.
+    const srcKind = String((c as any)?.source?.kind || "").toLowerCase();
+    if (srcKind === "lender_question_response") return true;
     const targetType = (c.target_object_type ?? "").toString().toLowerCase();
     const tid = c.target_object_id ? String(c.target_object_id) : "";
     const fs = tid ? fsById.get(tid) : null;
@@ -2305,7 +2310,7 @@ async function reconcileStalePendingApprovals(
 
   const { data: pending, error } = await supabase
     .from("ai_action_queue")
-    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source")
+    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source, new_values")
     .eq("status", "pending")
     .filter("source->>origin", "eq", "deal_admin_agent")
     .filter("source->>company_id", "eq", companyId)
@@ -2823,6 +2828,46 @@ async function reconcileStalePendingApprovals(
       if (!ACTIVE_DILIGENCE_RE.test(targetState)) {
         toResolve.push(p.id);
       }
+    }
+
+    // Terminal-lender reconciliation: dismiss pending OUTBOUND NUDGE drafts
+    // whose target lender has since moved to a terminal state
+    // (passed / not_a_fit / declined / withdrawn / dead / lost / rejected /
+    // closed / unresponsive / on-hold / paused). We deliberately exclude
+    // Q&A response drafts (source.kind === 'lender_question_response') —
+    // even a "passed" lender may have asked a specific question that still
+    // deserves an answer. Nudges become moot; Q&A does not.
+    const TERMINAL_LENDER_RE_REC =
+      /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      const targetState = stateById.get(p.target_object_id as string);
+      if (!targetState) continue;
+      const srcKind = String((p as any)?.source?.kind || "").toLowerCase();
+      if (srcKind === "lender_question_response") continue; // Q&A replies still valid
+      if (TERMINAL_LENDER_RE_REC.test(targetState)) {
+        toResolve.push(p.id);
+      }
+    }
+
+    // Placeholder-recipient safety net: any pending draft_email whose only
+    // recipient(s) sit on an `@example.com` / `@example.org` domain (or an
+    // obviously synthetic address like `*-contact@…`) is un-sendable — the
+    // funding source has no real contact on file. Dismiss so the queue isn't
+    // polluted with drafts pointing at seed/placeholder addresses.
+    const PLACEHOLDER_DOMAIN_RE = /@(example\.(com|org|net)|test\.local|localhost|invalid)$/i;
+    for (const p of lenderEmailPending) {
+      if (toResolve.includes(p.id)) continue;
+      const nv: any = (p as any).new_values || {};
+      const rawTo = nv?.to;
+      const toArr: string[] = Array.isArray(rawTo)
+        ? rawTo.map((v: any) => String(v || "").toLowerCase()).filter(Boolean)
+        : typeof rawTo === "string"
+          ? rawTo.split(/[,;\s]+/).map((v) => v.toLowerCase()).filter(Boolean)
+          : [];
+      if (toArr.length === 0) continue;
+      const allPlaceholder = toArr.every((addr) => PLACEHOLDER_DOMAIN_RE.test(addr));
+      if (allPlaceholder) toResolve.push(p.id);
     }
   }
 
