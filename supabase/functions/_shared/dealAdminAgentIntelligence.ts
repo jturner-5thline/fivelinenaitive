@@ -1883,6 +1883,86 @@ function dedupeAndMerge(
   return { kept: Array.from(byTarget.values()), merged, filtered };
 }
 
+/**
+ * Deterministic "Update Tasks" prompt.
+ *
+ * When a deal in the active pipeline has zero outstanding tasks AND the most
+ * recent task on the deal (any status) was last touched more than 12 hours
+ * ago — or the deal has never had any tasks and was itself last updated
+ * more than 12 hours ago — return a synthetic `create_followup_task`
+ * candidate that asks the user to add tasks (titles, assignees, due dates)
+ * for the deal. Returns null when the deal already has outstanding tasks
+ * or the 12-hour gap hasn't elapsed yet.
+ *
+ * The card is deduplicated against existing pending queue rows via the
+ * standard queueSemanticKey (`${deal_id}::create_followup_task::task::`),
+ * so re-runs won't stack multiple "Update Tasks" cards on the same deal.
+ */
+async function maybeBuildUpdateTasksCandidate(
+  supabase: SupabaseClient,
+  deal: { id: string; company?: string | null; updated_at?: string | null },
+  bundle: DealSignalBundle,
+): Promise<CandidateItem | null> {
+  if ((bundle.open_tasks?.length ?? 0) > 0) return null;
+
+  // Find the most recent activity on ANY task for this deal (including
+  // completed/archived). If none exist, fall back to the deal's own
+  // updated_at so brand-new deals get a "12 hours after creation" grace
+  // window before the prompt fires.
+  const { data: lastTaskRow } = await supabase
+    .from("tasks")
+    .select("updated_at")
+    .eq("deal_id", deal.id)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  const lastTaskAt = (lastTaskRow ?? [])[0]?.updated_at as string | null | undefined;
+  const referenceAt = lastTaskAt ?? deal.updated_at ?? null;
+  if (!referenceAt) return null;
+  const referenceMs = new Date(referenceAt).getTime();
+  if (!Number.isFinite(referenceMs)) return null;
+  const twelveHoursMs = 12 * 60 * 60 * 1000;
+  if (Date.now() - referenceMs < twelveHoursMs) return null;
+
+  const dealName = deal.company || bundle.deal_name || "this deal";
+  const description =
+    `This deal has no outstanding tasks and hasn't had any task activity in the last 12 hours. ` +
+    `Add task(s) for the next steps — include titles, assignees, and due dates so the deal keeps moving.`;
+
+  return {
+    action_type: "create_followup_task",
+    item_title: "Update Tasks",
+    linked_entity_label: dealName,
+    target_object_type: "task",
+    target_object_id: null,
+    target_field_paths: [],
+    current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
+    proposed_values: {
+      _synthetic: "update_tasks",
+      title: "Update Tasks",
+      description,
+    },
+    rationale_summary:
+      "Deal in the active pipeline has no outstanding tasks and no task activity in the last 12 hours. Prompt the user to add tasks so this deal doesn't stall.",
+    evidence_summary: lastTaskAt
+      ? `Most recent task activity on this deal was ${lastTaskAt}; no tasks are currently open.`
+      : "This deal has never had any tasks and has been idle for more than 12 hours.",
+    evidence_references: [
+      {
+        kind: "task",
+        label: lastTaskAt ? "Last task activity on deal" : "Deal has no tasks",
+        snippet: lastTaskAt
+          ? `Last task activity: ${lastTaskAt} (>12h ago)`
+          : `Deal last updated: ${deal.updated_at ?? "unknown"} (>12h ago)`,
+      },
+    ],
+    confidence_score: 0.95,
+    risk_level: "low",
+    bulk_eligible: false,
+    requires_send_ui: false,
+    priority: "normal",
+  };
+}
+
 function normalizeQueueTargetType(actionType: string, targetType?: string | null): string {
   const fallback = TARGET_TYPE_BY_ACTION[actionType as AdminActionType] ?? "";
   const raw = String(targetType ?? fallback).trim().toLowerCase();
