@@ -131,7 +131,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
         (c.domain || '').toLowerCase().includes(q) ||
         (c.industry || '').toLowerCase().includes(q) ||
         (c.phone || '').toLowerCase().includes(q) ||
-        (c.website_url || '').toLowerCase().includes(q) ||
         (c.linkedin_url || '').toLowerCase().includes(q)
       );
     }
@@ -449,7 +448,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 <TableHead><ColHeader field="industry">Industry</ColHeader></TableHead>
                 <TableHead><ColHeader field="company_type">Type</ColHeader></TableHead>
                 <TableHead><ColHeader field="owner_user_id">Owner</ColHeader></TableHead>
-                <TableHead><ColHeader field="website_url" sortable={false}>Website</ColHeader></TableHead>
                 <TableHead><ColHeader field="linkedin_url" sortable={false}>LinkedIn</ColHeader></TableHead>
                 <TableHead><ColHeader field="phone">Phone</ColHeader></TableHead>
                 <TableHead><ColHeader field="lifecycle_stage">Stage</ColHeader></TableHead>
@@ -485,7 +483,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>
-                <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.website_url} label="Visit" /></TableCell>
                 <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>
                 <TableCell>
