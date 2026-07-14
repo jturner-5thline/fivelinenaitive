@@ -30,7 +30,6 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     hq_city: '',
     hq_country: '',
     segment: '',
-    website_url: '',
     linkedin_url: '',
     phone: '',
     main_contact_email: '',
