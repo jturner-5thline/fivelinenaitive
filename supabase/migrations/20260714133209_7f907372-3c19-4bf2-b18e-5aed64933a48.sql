@@ -1,0 +1,1 @@
+UPDATE public.company_members SET can_see_insights = true WHERE user_id = '772fb61a-c0c4-4123-8778-c89b4c112396' AND company_id = '44556c46-9127-4b12-b14e-d6fee784afcf';
