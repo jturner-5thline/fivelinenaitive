@@ -11,7 +11,7 @@ interface ExportParams {
 }
 
 const EXPORT_COLUMNS =
-  'id, name, created_at, domain, hq_city, hq_country, industry, employee_count, employee_range, website_url, description, custom_fields';
+  'id, name, created_at, domain, hq_city, hq_country, industry, employee_count, employee_range, description, custom_fields';
 
 function fmtDate(v: any): string {
   if (!v) return '';
@@ -83,7 +83,6 @@ export async function exportCrmCompaniesToXlsx(params: ExportParams): Promise<nu
     { header: 'Number of Employees', key: 'employee_count', width: 18 },
     { header: 'Year Founded', key: 'founded_year', width: 14 },
     { header: 'Company Financing Status', key: 'financing_status', width: 22 },
-    { header: 'Company URL', key: 'website_url', width: 36 },
     { header: 'Employee range', key: 'employee_range', width: 18 },
     { header: 'Description', key: 'description', width: 60 },
   ];
@@ -101,7 +100,6 @@ export async function exportCrmCompaniesToXlsx(params: ExportParams): Promise<nu
       employee_count: c.employee_count ?? '',
       founded_year: cf.founded_year ?? '',
       financing_status: cf.financing_status ?? cf.hs_financing_status ?? '',
-      website_url: c.website_url || '',
       employee_range: c.employee_range || '',
       description: c.description || '',
     });
