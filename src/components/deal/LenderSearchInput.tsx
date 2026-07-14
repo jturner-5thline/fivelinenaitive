@@ -173,7 +173,7 @@ export function LenderSearchInput({
         </div>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-60 overflow-auto" 
+        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-[112px] overflow-auto"
         align="start"
         sideOffset={4}
         onOpenAutoFocus={(e) => e.preventDefault()}
