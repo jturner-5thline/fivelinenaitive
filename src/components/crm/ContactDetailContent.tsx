@@ -16,7 +16,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   useContact, useUpdateContact, useContactActivities, useCreateContactActivity,
-  useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
+  useContactDeals, useDeleteContact, useUpdateContactActivity, useDeleteContactActivity,
+  LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
 } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
