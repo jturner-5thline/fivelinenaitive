@@ -1752,6 +1752,12 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         </AlertDialog>
 
         {/* Quick-create task dialog */}
+        <SimilarTasksDialog
+          open={showSimilarTasks}
+          onOpenChange={setShowSimilarTasks}
+          tasks={filtered}
+          onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
+        />
         <QuickCreateTaskDialog
           open={showQuickCreate}
           onClose={() => {
