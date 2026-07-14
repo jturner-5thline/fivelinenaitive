@@ -1,7 +1,10 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase, Inbox } from 'lucide-react';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useApprovalQueueAccess } from '@/hooks/useApprovalQueueAccess';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Chart, registerables } from 'chart.js';
@@ -71,7 +74,9 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
   const { user } = useAuth();
   const canSeePerformance =
     user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance'>(initialTab);
+  const { enabled: queueEnabled } = useApprovalQueueAccess();
+  const { data: queueItems = [] } = useAiActionQueue();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance' | 'queue'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
@@ -437,7 +442,7 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance')}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance' | 'queue')}
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="px-5 pt-2 pb-1 shrink-0">
@@ -454,6 +459,12 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                   <TabsTrigger value="performance" className="gap-1.5">
                     <Briefcase className="h-3.5 w-3.5" />
                     Performance
+                  </TabsTrigger>
+                )}
+                {queueEnabled && (
+                  <TabsTrigger value="queue" className="gap-1.5">
+                    <Inbox className="h-3.5 w-3.5" />
+                    Approval Queue
                   </TabsTrigger>
                 )}
               </TabsList>
@@ -787,6 +798,14 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                     <NikiPerformanceTab />
                   </div>
                 </Suspense>
+              </TabsContent>
+            )}
+            {queueEnabled && (
+              <TabsContent
+                value="queue"
+                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-hidden data-[state=inactive]:hidden bg-transparent flex flex-col"
+              >
+                <ActionQueuePanel items={queueItems} onClose={() => setActiveTab('dashboard')} />
               </TabsContent>
             )}
           </Tabs>
