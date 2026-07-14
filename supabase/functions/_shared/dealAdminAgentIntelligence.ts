@@ -2091,6 +2091,54 @@ async function collapseDuplicatePendingApprovals(
 /*  Queue insert                                                       */
 /* ------------------------------------------------------------------ */
 
+// Per-deal collapse: the Approval Queue must never show more than ONE
+// pending "Add Status Note" item per deal. Status notes always describe
+// the latest activity/status on a deal — older status-note drafts are
+// stale the moment a newer one lands. Keep the most recently created
+// pending add_status_note per deal and dismiss the rest.
+async function collapseStatusNotePerDeal(
+  supabase: SupabaseClient,
+  companyId: string,
+): Promise<number> {
+  const { data: pending, error } = await supabase
+    .from("ai_action_queue")
+    .select("id, deal_id, created_at")
+    .eq("status", "pending")
+    .eq("action_type", "add_status_note")
+    .filter("source->>origin", "eq", "deal_admin_agent")
+    .filter("source->>company_id", "eq", companyId)
+    .limit(1000);
+  if (error || !pending || pending.length === 0) return 0;
+
+  const byDeal = new Map<string, any[]>();
+  for (const row of pending as any[]) {
+    if (!row.deal_id) continue;
+    const arr = byDeal.get(row.deal_id) ?? [];
+    arr.push(row);
+    byDeal.set(row.deal_id, arr);
+  }
+
+  let collapsed = 0;
+  for (const rows of byDeal.values()) {
+    if (rows.length < 2) continue;
+    const sorted = [...rows].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
+    const [, ...older] = sorted;
+    const { error: dupErr } = await supabase
+      .from("ai_action_queue")
+      .update({
+        status: "dismissed",
+        dismissed_at: new Date().toISOString(),
+        rejection_reason: "auto_resolved_superseded_by_newer_status_note",
+      })
+      .in("id", older.map((r) => r.id))
+      .eq("status", "pending");
+    if (!dupErr) collapsed += older.length;
+  }
+  return collapsed;
+}
+
 function computePriority(c: CandidateItem, dealFlagged: boolean): "urgent" | "high" | "normal" | "low" {
   if (dealFlagged && c.risk_level === "high") return "urgent";
   if (c.action_type === "escalate") return "urgent";
@@ -2938,6 +2986,11 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (collapsed > 0) {
       result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsed;
       console.log(`[deal-admin-agent] collapsed ${collapsed} duplicate pending approval items for company=${companyId}`);
+    }
+    const collapsedNotes = await collapseStatusNotePerDeal(supabase, companyId);
+    if (collapsedNotes > 0) {
+      result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsedNotes;
+      console.log(`[deal-admin-agent] collapsed ${collapsedNotes} superseded pending status-note items for company=${companyId}`);
     }
     const resolved = await reconcileStalePendingApprovals(supabase, companyId);
     result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + resolved;
