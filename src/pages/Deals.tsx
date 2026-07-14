@@ -421,6 +421,27 @@ export default function Dashboard() {
     return !!(arr && arr.length > 0);
   }, [dealTasksMap]);
 
+  // Split open tasks into past-due vs current (non-overdue) so we can drive
+  // the "Only past-due (no current)" tasks filter.
+  const dealTaskBreakdown = useCallback((dealId: string) => {
+    const arr = dealTasksMap?.get(dealId) || [];
+    const now = Date.now();
+    let pastDue = 0;
+    let current = 0;
+    for (const t of arr) {
+      if (t.dueDate) {
+        const due = new Date(t.dueDate).getTime();
+        if (!Number.isNaN(due) && due < now) {
+          pastDue++;
+          continue;
+        }
+      }
+      // No due date OR due today/future → treat as a "current" task.
+      current++;
+    }
+    return { pastDue, current, total: arr.length };
+  }, [dealTasksMap]);
+
   // Stale deals are now auto-flagged (see useAutoStaleFlags). We no longer
   // render a standalone "stale" toolbar filter — the standard Flag filter
   // surfaces them alongside manually flagged deals.
@@ -466,13 +487,17 @@ export default function Dashboard() {
     const taskMode = filters.tasksFilter ?? 'all';
     if (taskMode !== 'all') {
       result = result.filter(deal => {
+        if (taskMode === 'overdue_only') {
+          const { pastDue, current } = dealTaskBreakdown(deal.id);
+          return pastDue > 0 && current === 0;
+        }
         const has = dealHasTasks(deal.id);
         return taskMode === 'has' ? has : !has;
       });
     }
 
     return result;
-  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks]);
+  }, [pipelineFilteredDeals, filters.hasNotificationsOnly, filters.notificationsFilter, filters.tasksFilter, dealNotificationCount, dealHasTasks, dealTaskBreakdown]);
 
   // Duplicate detection
   const { clusters: duplicateClusters, suppressCluster } = useDealDuplicates(deals, showDuplicates);
