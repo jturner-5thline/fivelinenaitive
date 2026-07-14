@@ -16,7 +16,8 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   useContact, useUpdateContact, useContactActivities, useCreateContactActivity,
-  useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
+  useContactDeals, useDeleteContact, useUpdateContactActivity, useDeleteContactActivity,
+  LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
 } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
@@ -779,7 +780,7 @@ function NotesList({ notes, ownerName }: { notes: any[]; ownerName: string }) {
   return (
     <>
       <ul className="space-y-1">
-        {visible.map((n) => <ActivityRow key={n.id} activity={n} ownerName={ownerName} />)}
+        {visible.map((n) => <NoteRow key={n.id} note={n} ownerName={ownerName} />)}
       </ul>
       {notes.length > 5 && (
         <button onClick={() => setShowAll(s => !s)} className="text-xs text-primary hover:underline mt-2">
@@ -787,5 +788,85 @@ function NotesList({ notes, ownerName }: { notes: any[]; ownerName: string }) {
         </button>
       )}
     </>
+  );
+}
+
+function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<string>(note.body || '');
+  const updateActivity = useUpdateContactActivity();
+  const deleteActivity = useDeleteContactActivity();
+  const hasBody = !!note.body;
+
+  const handleSave = () => {
+    const next = draft.trim();
+    if (!next) return;
+    updateActivity.mutate(
+      { id: note.id, contact_id: note.contact_id, body: next },
+      { onSuccess: () => { setEditing(false); setOpen(true); } },
+    );
+  };
+
+  const handleDelete = () => {
+    if (!confirm('Delete this note?')) return;
+    deleteActivity.mutate({ id: note.id, contact_id: note.contact_id });
+  };
+
+  return (
+    <li className="border-b border-border/40 last:border-0">
+      <div className="w-full flex items-start gap-3 py-2 group">
+        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1 flex-shrink-0" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => !editing && hasBody && setOpen(o => !o)}
+              className="text-sm font-medium truncate text-left flex-1 min-w-0"
+            >
+              {note.subject || 'Note'}
+            </button>
+            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+              {format(new Date(note.occurred_at), 'MMM d · h:mm a')}
+            </span>
+            {!editing && (
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setDraft(note.body || ''); setEditing(true); setOpen(true); }} title="Edit">
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={handleDelete} title="Delete" disabled={deleteActivity.isPending}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
+          {editing ? (
+            <div className="mt-1 space-y-2">
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={3}
+                className="text-sm"
+                autoFocus
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={updateActivity.isPending || !draft.trim()}>
+                  Save
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditing(false); setDraft(note.body || ''); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {hasBody && !open && <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{note.body}</p>}
+              {hasBody && open && <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap">{note.body}</p>}
+            </>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-1">{ownerName}</p>
+        </div>
+      </div>
+    </li>
   );
 }

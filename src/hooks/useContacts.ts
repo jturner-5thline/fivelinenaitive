@@ -358,6 +358,40 @@ export function useCreateContactActivity() {
   });
 }
 
+export function useUpdateContactActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; contact_id: string; subject?: string | null; body?: string | null }) => {
+      const { id, contact_id, ...updates } = vars;
+      const { data, error } = await supabase
+        .from('contact_activities')
+        .update(updates as any)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['contact-activities', vars.contact_id] });
+    },
+  });
+}
+
+export function useDeleteContactActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; contact_id: string }) => {
+      const { error } = await supabase.from('contact_activities').delete().eq('id', vars.id);
+      if (error) throw error;
+      return vars.id;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['contact-activities', vars.contact_id] });
+    },
+  });
+}
+
 export function useContactDeals(contactId: string | undefined) {
   return useQuery({
     queryKey: ['contact-deals', contactId],
