@@ -2223,6 +2223,20 @@ function buildCandidateRows(
         "lender";
       title = `Update ${lenderName}`;
     }
+    // Normalize lender outbound draft titles: the queue surfaces these as
+    // "Follow up …" items, never "Nudge …". Rewrite any variant the LLM
+    // produced (Nudge / Draft Nudge / Gentle Nudge / Ping / Re-ping).
+    if (c.action_type === "draft_email" && typeof title === "string" && title) {
+      let t = title;
+      t = t.replace(/\bDraft\s+Nudge\s+Email\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bDraft\s+Nudge\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bGentle\s+Nudge\b/gi, "Follow up");
+      t = t.replace(/\bNudge\s+Email\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bRe-?ping\b/gi, "Follow up");
+      t = t.replace(/\bNudge\b/gi, "Follow up");
+      t = t.replace(/\s{2,}/g, " ").trim();
+      title = t;
+    }
     // Append the primary proposed change so titles clearly convey intent
     // (e.g. `Update Flow Capital to "Unresponsive"` instead of a generic
     // `Update Flow Capital`).
