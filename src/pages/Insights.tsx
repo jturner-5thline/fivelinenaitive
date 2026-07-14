@@ -1479,6 +1479,15 @@ function MetricsInner() {
       : DASHBOARD_OPTIONS,
     [allowedDashboardIds]
   );
+  // Hard block: if the persisted / deep-link / default selection isn't in the
+  // user's allowlist, treat it as the first allowed dashboard immediately —
+  // don't wait for the correcting useEffect below, otherwise the restricted
+  // dashboard renders for a frame and the user can see (and interact with) it.
+  const effectiveSelectedDashboard = useMemo(() => {
+    if (!allowedDashboardIds) return selectedDashboard;
+    if (allowedDashboardIds.has(selectedDashboard)) return selectedDashboard;
+    return visibleDashboardOptions[0]?.id ?? selectedDashboard;
+  }, [allowedDashboardIds, selectedDashboard, visibleDashboardOptions]);
   useEffect(() => {
     if (allowedDashboardIds && !allowedDashboardIds.has(selectedDashboard)) {
       const first = visibleDashboardOptions[0]?.id;
