@@ -829,7 +829,16 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                         await approveAll(low);
                       }}
                       onRejectAll={async () => {
-                        await dismissMany(g.items.map((i) => i.id));
+                        const ids: string[] = [];
+                        for (const i of g.items) {
+                          const children = (i as any).__bundle as QueuedAiAction[] | undefined;
+                          if (children && children.length) {
+                            for (const c of children) ids.push(c.id);
+                          } else if (typeof i.id === 'string' && !i.id.startsWith('bundle:')) {
+                            ids.push(i.id);
+                          }
+                        }
+                        await dismissMany(ids);
                       }}
                     />
                   ))}
