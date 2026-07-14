@@ -1146,8 +1146,8 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           or the Claap routing badge. Tabs may shrink/scroll before they
           ever reach into this reserved gutter.
         */}
-        <div className="flex items-center px-6 pt-5 pb-3 min-w-0 gap-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-          <div className="min-w-0 flex-1">
+        <div className="flex items-center px-6 pt-5 pb-3 min-w-0 gap-3 flex-wrap border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <div className="min-w-0 shrink-0">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
@@ -1176,7 +1176,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               })()}
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-1 min-w-0 flex-nowrap overflow-x-auto" style={{}}>
+          <div className="flex items-center gap-2 flex-nowrap shrink-0">
           {/* Primary navigation tabs — List / Board */}
           <div
             className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
@@ -1476,7 +1476,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           )}
 
         </div>
-          <div className="shrink-0 flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2 ml-auto">
             <Button
               type="button"
               variant="outline"
