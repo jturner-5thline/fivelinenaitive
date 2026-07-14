@@ -148,10 +148,36 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     updateContact.mutate({ id: contact.id, [field]: value } as any);
   };
 
-  const handleLogActivity = (type: string) => {
-    const subjects: Record<string, string> = { call: 'Call logged', meeting: 'Meeting logged', email: 'Email sent' };
-    createActivity.mutate({ contact_id: contact.id, activity_type: type, subject: subjects[type] || type });
-    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} logged`);
+  const openLogDialog = (type: 'call' | 'meeting') => {
+    const now = new Date();
+    // Format for <input type="datetime-local"> in local time
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    setLogWhen(local);
+    setLogSubject(type === 'call' ? 'Call' : 'Meeting');
+    setLogBody('');
+    setLogDialog({ type });
+  };
+
+  const submitLogActivity = () => {
+    if (!contact || !logDialog) return;
+    const occurredAt = logWhen ? new Date(logWhen) : new Date();
+    createActivity.mutate(
+      {
+        contact_id: contact.id,
+        activity_type: logDialog.type,
+        subject: logSubject.trim() || (logDialog.type === 'call' ? 'Call' : 'Meeting'),
+        body: logBody.trim() || undefined,
+        occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
+      },
+      {
+        onSuccess: () => {
+          toast.success(`${logDialog.type === 'call' ? 'Call' : 'Meeting'} logged`);
+          setLogDialog(null);
+        },
+        onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
+      },
+    );
   };
 
   const handleAddNote = () => {
