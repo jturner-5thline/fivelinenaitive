@@ -562,6 +562,20 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           },
         );
       }
+
+      // Collapse 2+ Claap recording match suggestions on the same deal into
+      // a single "Link Recordings..." bundle. The detail pane renders a
+      // multi-select picker so the user links a subset in one go.
+      const claapMatches = g.items.filter((it) => it.action_type === 'claap_recording_review');
+      if (claapMatches.length >= 2) {
+        bundleItems((it) => it.action_type === 'claap_recording_review', {
+          idKey: 'claap-recordings',
+          actionType: 'claap_recording_review_bundle',
+          title: 'Link Recordings...',
+          description: `${claapMatches.length} recordings to link`,
+          rationale: `${claapMatches.length} Claap recordings suggested for this deal.`,
+        });
+      }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
   }, [filtered]);
