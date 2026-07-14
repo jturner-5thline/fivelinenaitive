@@ -275,14 +275,34 @@ Do not include markdown formatting or code blocks. Return raw JSON only.`;
       const senderIsLenderKey = new Set<string>(); // `${dealId}::${email}`
       if (dealIds.length && fromEmailsLc.length) {
         // Match against per-deal lender contacts…
-        const { data: lenderContacts } = await serviceClient
-          .from("lender_contacts")
-          .select("email, lender_id, deal_lenders:lender_id!inner(deal_id)")
-          .in("deal_lenders.deal_id", dealIds);
-        for (const row of (lenderContacts || []) as any[]) {
-          const em = String(row?.email || "").toLowerCase();
-          const dId = row?.deal_lenders?.deal_id;
-          if (em && dId) senderIsLenderKey.add(`${dId}::${em}`);
+        // lender_contacts.lender_id -> master_lenders.id
+        // deal_lenders.master_lender_id -> master_lenders.id
+        // Bridge through master_lender_id so we can map a lender-contact email
+        // to every deal that has that master lender attached.
+        const { data: dlRows } = await serviceClient
+          .from("deal_lenders")
+          .select("deal_id, master_lender_id")
+          .in("deal_id", dealIds)
+          .not("master_lender_id", "is", null);
+        const masterIds = [...new Set((dlRows || []).map((r: any) => r.master_lender_id))];
+        let contactByMaster = new Map<string, string[]>();
+        if (masterIds.length) {
+          const { data: lenderContacts } = await serviceClient
+            .from("lender_contacts")
+            .select("email, lender_id")
+            .in("lender_id", masterIds)
+            .not("email", "is", null);
+          for (const row of (lenderContacts || []) as any[]) {
+            const em = String(row?.email || "").toLowerCase();
+            if (!em) continue;
+            const arr = contactByMaster.get(row.lender_id) || [];
+            arr.push(em);
+            contactByMaster.set(row.lender_id, arr);
+          }
+        }
+        for (const row of (dlRows || []) as any[]) {
+          const emails = contactByMaster.get(row.master_lender_id) || [];
+          for (const em of emails) senderIsLenderKey.add(`${row.deal_id}::${em}`);
         }
         // …and per-deal deal_lenders.notes containing the sender's domain
         // (fallback when a specific contact row isn't captured).
