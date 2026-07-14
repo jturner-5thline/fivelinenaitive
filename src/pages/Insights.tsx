@@ -1462,6 +1462,7 @@ function MetricsInner() {
   const RESTRICTED_DASHBOARDS: Record<string, readonly string[]> = {
     'ppina@5thline.co': ['sales-dashboard-v2', 'consolidated-debt-pipeline'],
     'nheikali@5thline.co': ['sales-dashboard-v2', 'consolidated-debt-pipeline'],
+    'ffustinoni@5thline.co': ['sales-dashboard-v2', 'sales-bd-roi', 'consolidated-debt-pipeline'],
   };
   const allowedDashboardIds = useMemo(() => {
     const email = authUser?.email?.toLowerCase();
