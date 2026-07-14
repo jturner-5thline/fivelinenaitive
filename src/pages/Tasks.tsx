@@ -26,6 +26,7 @@ const TaskReportingView = lazy(() =>
 );
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
+import { SimilarTasksDialog } from '@/components/tasks/SimilarTasksDialog';
 const TaskFocusMode = lazy(() =>
   import('@/components/tasks/TaskFocusMode').then(m => ({ default: m.TaskFocusMode }))
 );
@@ -65,7 +66,7 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
   Link2, Pin, PinOff, Repeat, ChevronDown,
-  Columns3, Undo2,
+  Columns3, Undo2, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
