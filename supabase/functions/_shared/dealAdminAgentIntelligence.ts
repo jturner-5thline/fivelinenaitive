@@ -822,6 +822,11 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
+const LENDER_FOLLOWUP_TITLE_RULE = `
+
+LENDER DRAFT EMAIL TITLE — HARD RULE
+- item_title for any lender draft_email MUST begin with "Follow up" (e.g. "Follow up with {Lender} on {Deal}"). NEVER use "Nudge", "Draft Nudge", "Gentle Nudge", "Ping", or "Re-ping" in the item_title. The approval queue surfaces these strictly as "Follow up …" items.`;
+
 const LENDER_TARGET_ID_RULES = `
 
 FUNDING SOURCE TARGET ID — HARD RULES (apply to every deal, no exceptions)
