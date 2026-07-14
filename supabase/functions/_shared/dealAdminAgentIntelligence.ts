@@ -822,6 +822,11 @@ LENDER FOLLOW-UP RULES (use funding_sources[].business_days_since_last_contact)
 - All lender draft_email items: proposed_values must include { to (array of email strings), subject, body }. Keep body under 120 words.
 - Do not nudge the same lender more than once per scan — pick the strongest rule and emit one draft.`;
 
+const LENDER_FOLLOWUP_TITLE_RULE = `
+
+LENDER DRAFT EMAIL TITLE — HARD RULE
+- item_title for any lender draft_email MUST begin with "Follow up" (e.g. "Follow up with {Lender} on {Deal}"). NEVER use "Nudge", "Draft Nudge", "Gentle Nudge", "Ping", or "Re-ping" in the item_title. The approval queue surfaces these strictly as "Follow up …" items.`;
+
 const LENDER_TARGET_ID_RULES = `
 
 FUNDING SOURCE TARGET ID — HARD RULES (apply to every deal, no exceptions)
@@ -845,7 +850,7 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 - Pick at most ONE rule per referral source per scan — emit one draft email per (deal, referral_source). If multiple rules fire, pick the most recent meaningful event and reference all triggers in rationale_summary.
 - Silence rule: if no rule fires for any referral source, emit nothing for referral sources. Do NOT propose generic "say hi" emails.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + REFERRAL_RULES;
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
@@ -2217,6 +2222,20 @@ function buildCandidateRows(
         (c.current_values as any)?.lender_name ||
         "lender";
       title = `Update ${lenderName}`;
+    }
+    // Normalize lender outbound draft titles: the queue surfaces these as
+    // "Follow up …" items, never "Nudge …". Rewrite any variant the LLM
+    // produced (Nudge / Draft Nudge / Gentle Nudge / Ping / Re-ping).
+    if (c.action_type === "draft_email" && typeof title === "string" && title) {
+      let t = title;
+      t = t.replace(/\bDraft\s+Nudge\s+Email\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bDraft\s+Nudge\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bGentle\s+Nudge\b/gi, "Follow up");
+      t = t.replace(/\bNudge\s+Email\s+to\b/gi, "Follow up with");
+      t = t.replace(/\bRe-?ping\b/gi, "Follow up");
+      t = t.replace(/\bNudge\b/gi, "Follow up");
+      t = t.replace(/\s{2,}/g, " ").trim();
+      title = t;
     }
     // Append the primary proposed change so titles clearly convey intent
     // (e.g. `Update Flow Capital to "Unresponsive"` instead of a generic
