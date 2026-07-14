@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,62 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
 import { syncTaskAfterCreate } from '@/lib/asana/syncTaskAfterCreate';
+import { formatUSD } from '@/lib/formatters/currency';
+
+/**
+ * Fetches pipeline/stage/amount metadata for a set of suggested deal ids so
+ * the picker can show "Pipeline · Stage · Amount" next to each deal name.
+ */
+function useDealSuggestionMeta(dealIds: string[]) {
+  const key = useMemo(() => [...dealIds].sort().join(','), [dealIds]);
+  return useQuery({
+    queryKey: ['claap-approval-deal-meta', key],
+    enabled: dealIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: deals } = await supabase
+        .from('deals')
+        .select('id, value, stage, pipeline_id')
+        .in('id', dealIds);
+      const pipelineIds = Array.from(new Set((deals || []).map((d: any) => d.pipeline_id).filter(Boolean))) as string[];
+      let pipelineById: Record<string, { name: string; stages: any }> = {};
+      if (pipelineIds.length > 0) {
+        const { data: pipes } = await supabase
+          .from('deal_pipelines')
+          .select('id, name, stages')
+          .in('id', pipelineIds);
+        pipelineById = Object.fromEntries((pipes || []).map((p: any) => [p.id, { name: p.name, stages: p.stages }]));
+      }
+      const meta: Record<string, { pipeline: string | null; stage: string | null; amount: number | null }> = {};
+      for (const d of deals || []) {
+        const pipe = d.pipeline_id ? pipelineById[d.pipeline_id] : null;
+        const stageRow = Array.isArray(pipe?.stages)
+          ? (pipe!.stages as any[]).find((s) => s?.id === d.stage)
+          : null;
+        meta[d.id] = {
+          pipeline: pipe?.name ?? null,
+          stage: stageRow?.label ?? (d.stage as string | null) ?? null,
+          amount: typeof d.value === 'number' ? d.value : null,
+        };
+      }
+      return meta;
+    },
+  });
+}
+
+function DealMetaChips({ meta }: { meta: { pipeline: string | null; stage: string | null; amount: number | null } | undefined }) {
+  if (!meta) return null;
+  const parts: string[] = [];
+  if (meta.pipeline) parts.push(meta.pipeline);
+  if (meta.stage) parts.push(meta.stage);
+  if (meta.amount != null) parts.push(formatUSD(meta.amount));
+  if (parts.length === 0) return null;
+  return (
+    <span className="text-[10px] text-muted-foreground truncate">
+      {parts.join(' · ')}
+    </span>
+  );
+}
 
 interface Props {
   item: QueuedAiAction;
@@ -84,6 +141,8 @@ function MatchingCard({
   const deals: DealSuggestion[] = payload?.suggestions?.deals || [];
   const preselected = deals.find(d => d.pre_selected)?.id || deals[0]?.id || null;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(preselected);
+  const dealIds = useMemo(() => deals.map(d => d.id).filter(Boolean), [deals]);
+  const { data: dealMeta } = useDealSuggestionMeta(dealIds);
   const attendees: Array<{ name: string; email: string; is_internal: boolean }> = payload.attendees || [];
   const confidenceLabel: string = payload.confidence_label || 'low';
   const why: string = payload.why || '';
@@ -214,7 +273,10 @@ function MatchingCard({
                   onChange={() => setSelectedDealId(d.id)}
                   className="accent-fuchsia-500"
                 />
-                <span className="flex-1 truncate">{d.name || 'Untitled deal'}</span>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="truncate">{d.name || 'Untitled deal'}</span>
+                  <DealMetaChips meta={dealMeta?.[d.id]} />
+                </div>
                 {d.pre_selected && <Badge variant="outline" className="text-[9px]">AI pick</Badge>}
               </label>
             ))}
