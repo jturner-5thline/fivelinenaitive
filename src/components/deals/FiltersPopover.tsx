@@ -28,6 +28,13 @@ import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealSourcedViaOptions } from '@/hooks/useDealSourcedViaOptions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 
 export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'dealOwner' | 'lender' | 'referredBy' | 'sourcedVia';
@@ -136,6 +143,7 @@ export function FiltersPopover({
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
+      tasksFilter: 'all',
     });
   };
 
@@ -274,6 +282,33 @@ export function FiltersPopover({
               </div>
             );
           })}
+
+          <Separator className="my-3" />
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              Tasks
+            </label>
+            <Select
+              value={filters.tasksFilter ?? 'all'}
+              onValueChange={(v) =>
+                onFilterChange({
+                  tasksFilter: v as FilterType['tasksFilter'],
+                })
+              }
+            >
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All deals</SelectItem>
+                <SelectItem value="has">Has open tasks</SelectItem>
+                <SelectItem value="none">No open tasks</SelectItem>
+                <SelectItem value="overdue_only">
+                  Only past-due (no current tasks)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
