@@ -112,6 +112,14 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
     },
   });
 
+  const missingDataCounts = useMemo(() => {
+    const noDomain = companies.filter(c => !((c.domain || '').trim())).length;
+    const noContacts = companyIdsWithContacts
+      ? companies.filter(c => !companyIdsWithContacts.has(c.id)).length
+      : 0;
+    return { no_domain: noDomain, no_contacts: noContacts };
+  }, [companies, companyIdsWithContacts]);
+
   const deferredCompanies = useDeferredValue(companies);
 
   const filtered = useMemo(() => {
@@ -349,8 +357,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
           label="Missing Data"
           className="h-9"
           options={[
-            { value: 'no_contacts', label: 'No contacts' },
-            { value: 'no_domain', label: 'No domain' },
+            { value: 'no_contacts', label: `No contacts (${missingDataCounts.no_contacts})` },
+            { value: 'no_domain', label: `No domain (${missingDataCounts.no_domain})` },
           ]}
           selected={missingDataFilter}
           onChange={setMissingDataFilter}
