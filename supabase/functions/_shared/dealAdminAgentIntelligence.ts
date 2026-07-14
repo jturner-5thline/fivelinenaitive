@@ -142,6 +142,7 @@ const SUPPORTED_ACTION_TYPES = [
   "draft_email",
   "escalate",
   "reassign_deal",
+  "save_to_data_room",
 ] as const;
 type AdminActionType = typeof SUPPORTED_ACTION_TYPES[number];
 
@@ -158,6 +159,7 @@ const RISK_BY_TYPE: Record<AdminActionType, "low" | "medium" | "high"> = {
   draft_email: "medium",
   escalate: "high",
   reassign_deal: "high",
+  save_to_data_room: "low",
 };
 
 const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
@@ -173,6 +175,7 @@ const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
   draft_email: "email",
   escalate: "deal",
   reassign_deal: "deal",
+  save_to_data_room: "deal",
 };
 
 interface DealSignalBundle {
@@ -874,14 +877,24 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
          proposed_values = { stage: "terms-issued", stage_label: "Terms Issued" } (resolve to the pipeline_stage_id present in configured_pipeline_stages when available).
          rationale: "At least one lender ({Lender}) has issued terms on {Deal} — advancing the deal stage to Terms Issued."
          evidence_references MUST cite the inbound email.
-    4) create_followup_task — the "upload to data room" step (used because the queue has no direct upload action yet).
-         proposed_values.title = "Upload {Lender} {Term Sheet|IOI|LOI} to {Deal} data room"
-         proposed_values.description = "Attach the file(s) from {Lender}'s email dated {ISO date}: <filename(s)>. Save under the Term Sheets / Lender Correspondence folder in the deal's data room."
-         proposed_values.due_date = today + 1 business day; assignee = deal manager.
-         evidence_references MUST cite the inbound email (which carries the attachment metadata).
+    4) save_to_data_room — first-class upload proposal (one per attachment).
+         target_object_type = "deal", target_object_id = deal_id.
+         item_title = "Save {filename} to {Deal} data room"
+         proposed_values = {
+           attachment_name: "<exact filename from email metadata>",
+           category: "agreements",   // term sheets / IOIs / LOIs live under agreements
+           source: "email_attachment",
+           source_email_id: "<gmail message id>",
+           source_thread_id: "<gmail thread id, if present>",
+           source_subject: "<email subject>",
+           source_sender: "<lender sender email>",
+           content_type: "<mime type from attachment metadata, if present>",
+         }
+         rationale: "{Lender} attached {filename} ({Term Sheet|IOI|LOI}) — saving to the {Deal} data room under Agreements."
+         evidence_references MUST cite the inbound email (kind="email"). If multiple attachments qualify, emit ONE save_to_data_room per attachment (they dedupe by (deal_id, source_email_id, attachment_name)).
 - DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
 - STAGE PRECEDENCE: if the lender is already at stage/substage "terms_issued", "in_diligence", "closed", "funded", or any terminal state, SKIP update_funding_source (nothing to move) but STILL emit add_status_note + upload-followup if a fresh terms email / attachment arrived that isn't already captured.
-- ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata. Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to upload).
+- ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata. Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
 - MULTI-LENDER: if two different lenders both send terms in the same scan (e.g. Chris @ Five Crowns AND Brian @ LAGO on Gabb Wireless), emit one full bundle per lender. update_deal_stage collapses to a SINGLE proposal for the deal — do not emit it twice.
 - Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
 
