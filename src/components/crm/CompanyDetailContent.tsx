@@ -175,7 +175,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     { key: 'annual_revenue', label: 'Annual revenue' },
     { key: 'employee_count', label: 'Employee count' },
     { key: 'hq_country', label: 'HQ country' },
-    { key: 'website_url', label: 'Website' },
+    { key: 'domain', label: 'Domain' },
     { key: 'owner_user_id', label: 'Owner' },
   ];
   const missingFields = missingChecks.filter(c => !(company as any)[c.key]);
@@ -313,7 +313,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               <EditableField label="Phone" type="tel" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
               <EditableField label="Email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
               <EditableField label="Domain" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
-              <EditableField label="Website" type="url" asLink value={company.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
               <EditableField label="LinkedIn" type="url" asLink value={company.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
               <EditableField label="HQ City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
               <EditableField label="HQ Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
@@ -383,7 +382,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   <KV label="Segment" value={company.segment} />
                   <KV label="Employees" value={company.employee_count?.toLocaleString() || company.employee_range} />
                   <KV label="HQ" value={[company.hq_city, company.hq_country].filter(Boolean).join(', ')} />
-                  <KV label="Website" value={company.website_url} link />
                   <KV label="Domain" value={company.domain} />
                   <KV label="Phone" value={company.phone} />
                   <KV label="Primary email" value={company.main_contact_email} />
