@@ -5620,6 +5620,20 @@ export default function DealDetail() {
                   </Suspense>
                 </TabsContent>
 
+                <TabsContent value="recordings" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`recordings-${tabDirection}`}>
+                  <Card className="w-full max-w-full overflow-hidden p-4" style={{ minHeight: 'calc(100vh - 190px)' }}>
+                    <div className="mb-3">
+                      <h3 className="text-sm font-semibold flex items-center gap-2">
+                        <Video className="h-4 w-4" /> Claap Recordings
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Search all your Claap recordings and link them to this deal.
+                      </p>
+                    </div>
+                    <ClaapRecordingsPanel dealId={id!} />
+                  </Card>
+                </TabsContent>
+
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                     <DealCrmSearch
