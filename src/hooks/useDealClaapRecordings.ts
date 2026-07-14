@@ -48,6 +48,42 @@ export function useDealClaapRecordings(dealId: string) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      // Build a note that surfaces this recording in the Deal Space "Notes" section.
+      const startedAt = recording.createdAt ? new Date(recording.createdAt) : null;
+      const durationMin = recording.durationSeconds ? Math.round(recording.durationSeconds / 60) : null;
+      const noteTitle = `🎥 ${recording.title || 'Claap Recording'}`;
+      const metaLines: string[] = [];
+      if (startedAt && !isNaN(startedAt.getTime())) {
+        metaLines.push(`<p><strong>Recorded:</strong> ${startedAt.toLocaleString()}</p>`);
+      }
+      if (durationMin != null) {
+        metaLines.push(`<p><strong>Duration:</strong> ${durationMin} min</p>`);
+      }
+      if (recording.recorder?.name || recording.recorder?.email) {
+        metaLines.push(`<p><strong>Recorded by:</strong> ${recording.recorder.name || recording.recorder.email}</p>`);
+      }
+      if (recording.url) {
+        metaLines.push(`<p><a href="${recording.url}" target="_blank" rel="noreferrer">▶ Watch in Claap</a></p>`);
+      }
+      const noteContent = `<p><em>Claap recording linked to this deal.</em></p>${metaLines.join('')}<p><br/></p>`;
+
+      let linkedNoteId: string | null = null;
+      const { data: noteRow, error: noteErr } = await supabase
+        .from('deal_space_notes')
+        .insert({
+          deal_id: dealId,
+          user_id: user?.id,
+          title: noteTitle,
+          content: noteContent,
+        })
+        .select('id')
+        .single();
+      if (noteErr) {
+        console.warn('Could not create linked note for recording:', noteErr);
+      } else {
+        linkedNoteId = noteRow?.id ?? null;
+      }
+
       const { error } = await supabase
         .from('deal_claap_recordings')
         .insert({
@@ -60,13 +96,14 @@ export function useDealClaapRecordings(dealId: string) {
           recorder_name: recording.recorder?.name,
           recorder_email: recording.recorder?.email,
           linked_by: user?.id,
+          notes: linkedNoteId,
         });
 
       if (error) throw error;
 
       toast({
         title: 'Recording linked',
-        description: `"${recording.title || 'Recording'}" has been linked to this deal.`,
+        description: `"${recording.title || 'Recording'}" is now in Deal Space → Notes.`,
       });
 
       fetchLinkedRecordings();
@@ -87,6 +124,14 @@ export function useDealClaapRecordings(dealId: string) {
 
   const unlinkRecording = useCallback(async (recordingId: string) => {
     try {
+      // Find the linked note id (stored in the `notes` column) so we can remove it too.
+      const { data: existing } = await supabase
+        .from('deal_claap_recordings')
+        .select('notes')
+        .eq('deal_id', dealId)
+        .eq('recording_id', recordingId)
+        .maybeSingle();
+
       const { error } = await supabase
         .from('deal_claap_recordings')
         .delete()
@@ -94,6 +139,12 @@ export function useDealClaapRecordings(dealId: string) {
         .eq('recording_id', recordingId);
 
       if (error) throw error;
+
+      if (existing?.notes) {
+        // Best-effort: remove the auto-created note. Silently ignore if the user
+        // has edited/renamed it away or lacks permission.
+        await supabase.from('deal_space_notes').delete().eq('id', existing.notes);
+      }
 
       toast({
         title: 'Recording unlinked',
