@@ -343,7 +343,7 @@ export function useCreateContactActivity() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (activity: { contact_id: string; activity_type: string; subject?: string; body?: string; deal_id?: string }) => {
+    mutationFn: async (activity: { contact_id: string; activity_type: string; subject?: string; body?: string; deal_id?: string; occurred_at?: string }) => {
       const { data, error } = await supabase
         .from('contact_activities')
         .insert({ ...activity, logged_by: user?.id } as any)
