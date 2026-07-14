@@ -3398,11 +3398,20 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       // Suppress ALL create_followup_task proposals — we don't surface
       // "create a task" approval cards. Concrete next-steps flow through
       // other action types (update_deal_stage, update_funding_source,
-      // draft_email, add_status_note, etc.).
+      // draft_email, add_status_note, etc.). The one exception is the
+      // deterministic "Update Tasks" prompt injected above for deals in
+      // the active pipeline that have gone 12+ hours with no outstanding
+      // tasks — that card asks the user to add tasks manually.
+      const isUpdateTasksPrompt = (c: CandidateItem) => {
+        const pv = (c.proposed_values ?? {}) as Record<string, any>;
+        return c.action_type === "create_followup_task" && pv._synthetic === "update_tasks";
+      };
       const isTaskCandidate = (c: CandidateItem) =>
-        c.action_type === "create_followup_task" ||
-        (typeof c.target_object_type === "string" &&
-          c.target_object_type.toLowerCase() === "task");
+        !isUpdateTasksPrompt(c) && (
+          c.action_type === "create_followup_task" ||
+          (typeof c.target_object_type === "string" &&
+            c.target_object_type.toLowerCase() === "task")
+        );
       const taskDroppedCount = lenderEmailGated.kept.filter(isTaskCandidate).length;
       const taskFiltered = lenderEmailGated.kept.filter((c) => !isTaskCandidate(c));
       if (taskDroppedCount > 0) {
