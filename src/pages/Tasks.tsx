@@ -698,6 +698,27 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
     ? DEFAULT_TASK_COLUMNS
     : visibleTaskColumns;
 
+  // Similar-tasks view: cluster the currently-filtered list into fuzzy
+  // duplicate groups, then reorder so group members render adjacently.
+  // Tasks that don't cluster with any peer are hidden while the mode is on.
+  const similarGroups = useMemo(
+    () => (similarMode ? findSimilarTaskGroups(filtered) : []),
+    [similarMode, filtered],
+  );
+  const similarOrdered = useMemo(() => {
+    if (!similarMode) return filtered;
+    const byId = new Map(filtered.map(t => [t.id, t]));
+    const out: typeof filtered = [];
+    for (const g of similarGroups) {
+      for (const id of g.taskIds) {
+        const t = byId.get(id);
+        if (t) out.push(t);
+      }
+    }
+    return out;
+  }, [similarMode, similarGroups, filtered]);
+  const listTasks = similarMode ? similarOrdered : filtered;
+
   // Auto-select the first visible task so the right-pane detail panel is
   // always populated with a row from the current list, not a stale hidden task.
   useEffect(() => {
