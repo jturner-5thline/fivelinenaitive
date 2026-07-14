@@ -1614,8 +1614,13 @@ function MetricsInner() {
     });
   };
 
-  const isCustomDashboard = selectedDashboard.startsWith('custom-');
-  const activeCustomDashboard = customDashboards.find(d => d.id === selectedDashboard);
+  // For restricted users, custom dashboards are never accessible — the
+  // effective selection is forced back into the allowlist above, so we key
+  // custom-dashboard detection off the guarded value too.
+  const isCustomDashboard = !allowedDashboardIds && selectedDashboard.startsWith('custom-');
+  const activeCustomDashboard = allowedDashboardIds
+    ? undefined
+    : customDashboards.find(d => d.id === selectedDashboard);
 
   // ── Global dashboard timeframe (drives every widget on Weekly Rundown) ──
   const { selectedQuarter: dashboardSelectedQuarter, timeframe: insightsTimeframe, reportingPeriod } = useInsightsTimeframe();
