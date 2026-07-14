@@ -142,6 +142,7 @@ const SUPPORTED_ACTION_TYPES = [
   "draft_email",
   "escalate",
   "reassign_deal",
+  "save_to_data_room",
 ] as const;
 type AdminActionType = typeof SUPPORTED_ACTION_TYPES[number];
 
@@ -158,6 +159,7 @@ const RISK_BY_TYPE: Record<AdminActionType, "low" | "medium" | "high"> = {
   draft_email: "medium",
   escalate: "high",
   reassign_deal: "high",
+  save_to_data_room: "low",
 };
 
 const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
@@ -173,6 +175,7 @@ const TARGET_TYPE_BY_ACTION: Record<AdminActionType, string> = {
   draft_email: "email",
   escalate: "deal",
   reassign_deal: "deal",
+  save_to_data_room: "deal",
 };
 
 interface DealSignalBundle {
