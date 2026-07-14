@@ -395,6 +395,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
+  const [showSimilarTasks, setShowSimilarTasks] = useState(false);
 
   // Visible task list columns — default = priority + status only (clean
   // triage view). Saved per-user so customizations persist.
