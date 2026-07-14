@@ -2149,6 +2149,28 @@ function BundleDetailPane({
           />
         </div>
       </div>
+      <AlertDialog open={confirmRejectAllOpen} onOpenChange={setConfirmRejectAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject all {kindLabel}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reject {children.length} lender {kindLabel}. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmRejectAllOpen(false);
+                await rejectAll();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject all
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
