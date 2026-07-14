@@ -2987,6 +2987,11 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsed;
       console.log(`[deal-admin-agent] collapsed ${collapsed} duplicate pending approval items for company=${companyId}`);
     }
+    const collapsedNotes = await collapseStatusNotePerDeal(supabase, companyId);
+    if (collapsedNotes > 0) {
+      result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + collapsedNotes;
+      console.log(`[deal-admin-agent] collapsed ${collapsedNotes} superseded pending status-note items for company=${companyId}`);
+    }
     const resolved = await reconcileStalePendingApprovals(supabase, companyId);
     result.auto_resolved_pending = (result.auto_resolved_pending ?? 0) + resolved;
     if (resolved > 0) {
