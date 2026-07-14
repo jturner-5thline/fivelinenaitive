@@ -272,6 +272,7 @@ async function gatherSignalsForDeal(
   supabase: SupabaseClient,
   deal: any,
   companyId: string,
+  activatedUserIds?: Set<string>,
 ): Promise<DealSignalBundle> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
