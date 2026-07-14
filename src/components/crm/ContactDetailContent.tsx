@@ -983,3 +983,76 @@ function NoteRow({ note, ownerName }: { note: any; ownerName: string }) {
     </li>
   );
 }
+
+function formatFieldLabel(field: string | null): string {
+  if (!field) return '';
+  return field
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function truncate(value: string | null, max = 120): string {
+  if (!value) return '—';
+  return value.length > max ? value.slice(0, max) + '…' : value;
+}
+
+function ContactAuditTrail({
+  entries,
+  teamMembers,
+}: {
+  entries: Array<{ id: string; action: string; field: string | null; old_value: string | null; new_value: string | null; actor_user_id: string | null; created_at: string }>;
+  teamMembers: Array<{ id: string; display_name: string }>;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const nameFor = (uid: string | null) => (uid ? (teamMembers.find(m => m.id === uid)?.display_name || 'Unknown') : 'System');
+
+  if (!entries.length) {
+    return <p className="text-sm text-muted-foreground py-6 text-center">No history yet</p>;
+  }
+
+  const visible = showAll ? entries : entries.slice(0, 15);
+
+  return (
+    <div>
+      <ul className="space-y-1">
+        {visible.map((e) => {
+          const actor = nameFor(e.actor_user_id);
+          const when = format(new Date(e.created_at), 'MMM d, yyyy · h:mm a');
+          const label = formatFieldLabel(e.field);
+          return (
+            <li key={e.id} className="border-b border-border/40 last:border-0 py-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  {e.action === 'created' && (
+                    <p className="text-sm"><span className="font-medium">{actor}</span> created this contact</p>
+                  )}
+                  {e.action === 'deleted' && (
+                    <p className="text-sm"><span className="font-medium">{actor}</span> deleted this contact</p>
+                  )}
+                  {e.action === 'updated' && (
+                    <>
+                      <p className="text-sm">
+                        <span className="font-medium">{actor}</span> changed <span className="font-medium">{label}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        <span className="line-through text-muted-foreground/70">{truncate(e.old_value)}</span>
+                        <span className="mx-1.5">→</span>
+                        <span className="text-foreground/80">{truncate(e.new_value)}</span>
+                      </p>
+                    </>
+                  )}
+                </div>
+                <span className="text-[10px] text-muted-foreground flex-shrink-0 whitespace-nowrap">{when}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {entries.length > 15 && (
+        <button onClick={() => setShowAll(s => !s)} className="text-xs text-primary hover:underline mt-2">
+          {showAll ? 'Show less' : `Show ${entries.length - 15} more entries`}
+        </button>
+      )}
+    </div>
+  );
+}
