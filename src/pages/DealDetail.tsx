@@ -5620,20 +5620,6 @@ export default function DealDetail() {
                   </Suspense>
                 </TabsContent>
 
-                <TabsContent value="recordings" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`recordings-${tabDirection}`}>
-                  <Card className="w-full max-w-full overflow-hidden p-4" style={{ minHeight: 'calc(100vh - 190px)' }}>
-                    <div className="mb-3">
-                      <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <Video className="h-4 w-4" /> Claap Recordings
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Search all your Claap recordings and link them to this deal.
-                      </p>
-                    </div>
-                    <ClaapRecordingsPanel dealId={id!} />
-                  </Card>
-                </TabsContent>
-
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                     <DealCrmSearch
@@ -5768,20 +5754,6 @@ export default function DealDetail() {
                       >
                         <Mail className="h-3.5 w-3.5" />
                         Communications
-                      </TabsTrigger>
-                      )}
-                      {!isProjectsDeal && (
-                      <TabsTrigger
-                        value="recordings"
-                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
-                      >
-                        <Video className="h-3.5 w-3.5" />
-                        Recordings
-                        {claapLinkedRecordings.length > 0 && (
-                          <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
-                            {claapLinkedRecordings.length}
-                          </Badge>
-                        )}
                       </TabsTrigger>
                       )}
                     </TabsList>
