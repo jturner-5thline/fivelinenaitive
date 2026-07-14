@@ -2033,6 +2033,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
   );
   const canSeeOperationalFull = !!currentUser?.email && OPERATIONAL_FULL_ALLOWLIST.has(currentUser.email.toLowerCase());
   const eodOutstandingCount = useEndOfDayOutstandingCount();
+  const { enabled: queueEnabled } = useApprovalQueueAccess();
+  const { data: queueItems = [] } = useAiActionQueue();
   const TABS = useMemo(
     () =>
       ALL_TABS.map(t => {
@@ -2045,12 +2047,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Dashboard', ta
         if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
         if (t.value === 'dashboard' && !isFifthLine) return false;
         if (t.value === 'financial' && !canSeeFinancial) return false;
+        if (t.value === 'queue' && !queueEnabled) return false;
         // Agenda, Catch Up & News, and Email are now hosted exclusively
         // inside the Daily Rundown tab — hide them from the left sidebar.
         if (t.value === 'agenda' || t.value === 'catchup' || t.value === 'email') return false;
         return true;
       }),
-    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull],
+    [excludeTabs, canSeeEndOfDay, isFifthLine, canSeeFinancial, canSeeOperationalFull, queueEnabled],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
