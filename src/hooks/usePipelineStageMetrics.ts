@@ -1437,18 +1437,25 @@ export interface ConsolidatedDebtPipelineMetrics {
 export function useConsolidatedDebtPipelineMetrics(
   quarter: QuarterOption,
 ): ConsolidatedDebtPipelineMetrics {
-  // Rolling windows anchor on TODAY (current month-end), independent of the
-  // selectedQuarter. This ensures the Closed Trend, Average Deal Closed, and
-  // Average Revenue per Deal Closed always include the most recent activity
-  // (e.g. the May 2026 bulk Closed Won moves) even when the user is viewing a
-  // prior quarter.
+  // Rolling windows anchor on the END of the selected period (capped at today
+  // so we never project into the future). This means a Q2 2026 selection
+  // yields a TTM window ending Jun 30, 2026 — matching the user's mental model
+  // that "TTM as of Q2" ends at the close of Q2, not today.
   const todayAnchor = useMemo(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const last = new Date(y, d.getMonth() + 1, 0).getDate();
+    const today = new Date();
+    const todayMonthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    let anchor = todayMonthEnd;
+    if (quarter?.endDate) {
+      const qEnd = new Date(quarter.endDate + 'T00:00:00');
+      if (!Number.isNaN(qEnd.getTime()) && qEnd < todayMonthEnd) {
+        anchor = qEnd;
+      }
+    }
+    const y = anchor.getFullYear();
+    const m = String(anchor.getMonth() + 1).padStart(2, '0');
+    const last = new Date(y, anchor.getMonth() + 1, 0).getDate();
     return `${y}-${m}-${String(last).padStart(2, '0')}`;
-  }, []);
+  }, [quarter?.endDate]);
   const sixMonthPeriod = useMemo(
     () => buildRollingMonthsPeriod(todayAnchor, 6),
     [todayAnchor],
