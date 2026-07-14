@@ -153,6 +153,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
           onUpload={() => fileInputRef.current?.click()}
           fileInputRef={fileInputRef}
           commentCounts={commentCounts}
+          dealId={dealId}
         />
 
         {/* Main editor */}
