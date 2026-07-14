@@ -26,7 +26,7 @@ const TaskReportingView = lazy(() =>
 );
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
-import { SimilarTasksDialog } from '@/components/tasks/SimilarTasksDialog';
+import { findSimilarTaskGroups } from '@/lib/taskSimilarity';
 const TaskFocusMode = lazy(() =>
   import('@/components/tasks/TaskFocusMode').then(m => ({ default: m.TaskFocusMode }))
 );
@@ -395,7 +395,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
-  const [showSimilarTasks, setShowSimilarTasks] = useState(false);
+  const [similarMode, setSimilarMode] = useState(false);
 
   // Visible task list columns — default = priority + status only (clean
   // triage view). Saved per-user so customizations persist.
@@ -697,6 +697,27 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const effectiveVisibleTaskColumns = overlayMode
     ? DEFAULT_TASK_COLUMNS
     : visibleTaskColumns;
+
+  // Similar-tasks view: cluster the currently-filtered list into fuzzy
+  // duplicate groups, then reorder so group members render adjacently.
+  // Tasks that don't cluster with any peer are hidden while the mode is on.
+  const similarGroups = useMemo(
+    () => (similarMode ? findSimilarTaskGroups(filtered) : []),
+    [similarMode, filtered],
+  );
+  const similarOrdered = useMemo(() => {
+    if (!similarMode) return filtered;
+    const byId = new Map(filtered.map(t => [t.id, t]));
+    const out: typeof filtered = [];
+    for (const g of similarGroups) {
+      for (const id of g.taskIds) {
+        const t = byId.get(id);
+        if (t) out.push(t);
+      }
+    }
+    return out;
+  }, [similarMode, similarGroups, filtered]);
+  const listTasks = similarMode ? similarOrdered : filtered;
 
   // Auto-select the first visible task so the right-pane detail panel is
   // always populated with a row from the current list, not a stale hidden task.
@@ -1479,14 +1500,14 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
           <div className="shrink-0 flex items-center gap-2 ml-auto">
             <Button
               type="button"
-              variant="outline"
+              variant={similarMode ? 'default' : 'outline'}
               size="sm"
               className="h-8 gap-1.5 text-[12px]"
-              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
-              onClick={() => setShowSimilarTasks(true)}
+              title="Filter list to potentially similar tasks (fuzzy title + shared deal/contact/company)"
+              onClick={() => setSimilarMode(v => !v)}
             >
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Find similar</span>
+              <span className="hidden sm:inline">{similarMode ? 'Exit similar' : 'Find similar'}</span>
             </Button>
             {undoStack.canUndo && (
               <Button
@@ -1601,10 +1622,30 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               </button>
             </div>
           )}
-          <div className="overflow-auto h-full">
+           <div className="overflow-auto h-full">
+            {similarMode && (
+              <div
+                className="flex items-center justify-between gap-3 px-6 py-2 border-b text-[12px]"
+                style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.02)', color: '#c8cfdd' }}
+              >
+                <span>
+                  <Sparkles className="inline h-3 w-3 mr-1.5 -mt-0.5" />
+                  {similarOrdered.length > 0
+                    ? <>Showing {similarOrdered.length} potentially similar tasks in {similarGroups.length} group{similarGroups.length === 1 ? '' : 's'}.</>
+                    : <>No potentially similar tasks in the current view.</>}
+                </span>
+                <button
+                  onClick={() => setSimilarMode(false)}
+                  className="text-[11px] underline-offset-2 hover:underline"
+                  style={{ color: '#94a3b8' }}
+                >
+                  Exit
+                </button>
+              </div>
+            )}
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
-                tasks={filtered}
+                tasks={listTasks}
                 statusGroups={statusGroups}
                 isLoading={isLoading}
                 isCreating={isCreating}
@@ -1630,7 +1671,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             )}
             {viewMode === 'board' && (
               <TaskBoardView
-                tasks={filtered}
+                tasks={listTasks}
                 statusGroups={allBoardColumns}
                 onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                 onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
@@ -1644,7 +1685,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             {viewMode === 'calendar' && (
               <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading calendar…</div>}>
                 <TaskCalendarView
-                  tasks={filtered}
+                  tasks={listTasks}
                   onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                   onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                   selectedTaskId={selectedTaskId}
@@ -1746,12 +1787,6 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         </AlertDialog>
 
         {/* Quick-create task dialog */}
-        <SimilarTasksDialog
-          open={showSimilarTasks}
-          onOpenChange={setShowSimilarTasks}
-          tasks={filtered}
-          onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
-        />
         <QuickCreateTaskDialog
           open={showQuickCreate}
           onClose={() => {
