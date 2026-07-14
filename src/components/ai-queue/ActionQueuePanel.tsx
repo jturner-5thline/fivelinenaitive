@@ -481,7 +481,16 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
   const groups = useMemo<DealGroup[]>(() => {
     const map = new Map<string, DealGroup>();
     filtered.forEach((it, idx) => {
-      const key = it.deal_id || '__unassigned__';
+      // Group by normalized deal name so duplicate deal records that share the
+      // same company name (e.g. multiple "Gabb Wireless" deal rows) collapse
+      // into a single accordion. Fall back to deal_id when no name exists,
+      // then to the "unassigned" bucket.
+      const nameKey = (it.deal_name || '').trim().toLowerCase();
+      const key = nameKey
+        ? `name:${nameKey}`
+        : it.deal_id
+          ? `id:${it.deal_id}`
+          : '__unassigned__';
       let g = map.get(key);
       if (!g) {
         g = {
