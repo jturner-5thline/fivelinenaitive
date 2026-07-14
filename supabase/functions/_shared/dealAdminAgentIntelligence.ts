@@ -2305,7 +2305,7 @@ async function reconcileStalePendingApprovals(
 
   const { data: pending, error } = await supabase
     .from("ai_action_queue")
-    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source")
+    .select("id, action_type, target_object_type, target_object_id, deal_id, created_at, source, new_values")
     .eq("status", "pending")
     .filter("source->>origin", "eq", "deal_admin_agent")
     .filter("source->>company_id", "eq", companyId)
