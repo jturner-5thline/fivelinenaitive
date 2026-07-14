@@ -85,6 +85,7 @@ export function DealFilters({
     filters.staleOnly,
     filters.flaggedOnly,
     filters.hasNotificationsOnly,
+    (filters.tasksFilter ?? 'all') !== 'all',
   ].filter(Boolean).length;
 
   const clearFilters = () => {
@@ -101,6 +102,7 @@ export function DealFilters({
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
+      tasksFilter: 'all',
     });
   };
 
