@@ -103,8 +103,9 @@ export function LenderSearchInput({
     if (isLenderAlreadyAdded(name)) return;
     onAddLender(name);
     setSearchQuery('');
+    onQueryChange?.('');
     setIsOpen(false);
-  }, [onAddLender, isLenderAlreadyAdded]);
+  }, [onAddLender, isLenderAlreadyAdded, onQueryChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
