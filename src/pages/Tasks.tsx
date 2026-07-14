@@ -26,6 +26,7 @@ const TaskReportingView = lazy(() =>
 );
 import { TaskBulkActionBar } from '@/components/tasks/TaskBulkActionBar';
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
+import { SimilarTasksDialog } from '@/components/tasks/SimilarTasksDialog';
 const TaskFocusMode = lazy(() =>
   import('@/components/tasks/TaskFocusMode').then(m => ({ default: m.TaskFocusMode }))
 );
@@ -65,7 +66,7 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
   Link2, Pin, PinOff, Repeat, ChevronDown,
-  Columns3, Undo2,
+  Columns3, Undo2, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
@@ -394,6 +395,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
   const quickCreateTriggerRef = useRef<HTMLElement | null>(null);
+  const [showSimilarTasks, setShowSimilarTasks] = useState(false);
 
   // Visible task list columns — default = priority + status only (clean
   // triage view). Saved per-user so customizations persist.
@@ -1175,6 +1177,17 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-[12px]"
+              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
+              onClick={() => setShowSimilarTasks(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Find similar</span>
+            </Button>
             {undoStack.canUndo && (
               <Button
                 type="button"
@@ -1739,6 +1752,12 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
         </AlertDialog>
 
         {/* Quick-create task dialog */}
+        <SimilarTasksDialog
+          open={showSimilarTasks}
+          onOpenChange={setShowSimilarTasks}
+          tasks={filtered}
+          onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
+        />
         <QuickCreateTaskDialog
           open={showQuickCreate}
           onClose={() => {
