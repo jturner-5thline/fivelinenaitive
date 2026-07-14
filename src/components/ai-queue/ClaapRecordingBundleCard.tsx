@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import type { QueuedAiAction } from '@/hooks/useAiActionQueue';
+import { formatUSD } from '@/lib/formatters/currency';
 
 interface Props {
   items: QueuedAiAction[];
@@ -38,6 +40,43 @@ export function ClaapRecordingBundleCard({ items, onDone }: Props) {
 
   const dealId = items[0]?.deal_id || null;
   const dealName = items[0]?.deal_name || 'this deal';
+
+  const { data: dealMeta } = useQuery({
+    queryKey: ['claap-bundle-deal-meta', dealId],
+    enabled: !!dealId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: deal } = await supabase
+        .from('deals')
+        .select('id, value, stage, pipeline_id')
+        .eq('id', dealId!)
+        .maybeSingle();
+      if (!deal) return null;
+      let pipelineName: string | null = null;
+      let stageLabel: string | null = (deal.stage as string | null) ?? null;
+      if (deal.pipeline_id) {
+        const { data: pipe } = await supabase
+          .from('deal_pipelines')
+          .select('name, stages')
+          .eq('id', deal.pipeline_id)
+          .maybeSingle();
+        pipelineName = pipe?.name ?? null;
+        if (Array.isArray(pipe?.stages)) {
+          const s = (pipe!.stages as any[]).find((x) => x?.id === deal.stage);
+          if (s?.label) stageLabel = s.label;
+        }
+      }
+      return {
+        pipeline: pipelineName,
+        stage: stageLabel,
+        amount: typeof deal.value === 'number' ? deal.value : null,
+      };
+    },
+  });
+  const dealMetaParts: string[] = [];
+  if (dealMeta?.pipeline) dealMetaParts.push(dealMeta.pipeline);
+  if (dealMeta?.stage) dealMetaParts.push(dealMeta.stage);
+  if (dealMeta?.amount != null) dealMetaParts.push(formatUSD(dealMeta.amount));
 
   const rows = useMemo(() => items.map((it) => {
     const p = (it.payload || {}) as Record<string, any>;
@@ -143,7 +182,11 @@ export function ClaapRecordingBundleCard({ items, onDone }: Props) {
           <p className="text-sm font-medium">Link Recordings...</p>
           <p className="text-[11px] text-muted-foreground">
             {rows.length} Claap recording{rows.length !== 1 ? 's' : ''} suggested for{' '}
-            <span className="text-foreground">{dealName}</span>. Select which ones to link.
+            <span className="text-foreground">{dealName}</span>
+            {dealMetaParts.length > 0 && (
+              <span className="text-muted-foreground"> ({dealMetaParts.join(' · ')})</span>
+            )}
+            . Select which ones to link.
           </p>
         </div>
         <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={toggleAll} disabled={busy}>
