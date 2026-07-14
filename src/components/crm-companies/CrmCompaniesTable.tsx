@@ -475,7 +475,21 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
                     <span className="font-medium text-sm">{co.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{co.domain || '—'}</TableCell>
+                <TableCell className="text-sm" onClick={e => e.stopPropagation()}>
+                  {co.domain ? (
+                    <a
+                      href={co.domain.startsWith('http') ? co.domain : `https://${co.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={co.domain}
+                      className="text-primary hover:underline"
+                    >
+                      {co.domain}
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {co.industry ? (
                     <span title={co.industry} className="block max-w-[160px] truncate">{co.industry}</span>
