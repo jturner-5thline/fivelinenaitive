@@ -1,5 +1,8 @@
 import { useState, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { TableVirtuoso } from 'react-virtuoso';
@@ -17,6 +20,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
+import { MultiSelectFilter } from '@/components/deals/MultiSelectFilter';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useTriStateSort } from '@/hooks/useTriStateSort';
@@ -52,6 +56,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   const [companyTypeFilter, setCompanyTypeFilter] = useState('all');
   const [ownerFilter, setOwnerFilter] = useState('all');
   const [industryFilter, setIndustryFilter] = useState('all');
+  const [missingDataFilter, setMissingDataFilter] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { sortField, sortDir, handleSort } = useTriStateSort({
     field: 'created_at',
@@ -89,6 +94,24 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
     [companies]
   );
 
+  // Fetch the set of CRM company IDs that have at least one linked contact
+  // for this org. Powers the "No contacts" Missing Data filter.
+  const { company } = useCompany();
+  const { data: companyIdsWithContacts } = useQuery({
+    queryKey: ['crm-companies-with-contacts', company?.id],
+    enabled: !!company?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('crm_company_id')
+        .eq('org_company_id', company!.id)
+        .not('crm_company_id', 'is', null);
+      if (error) throw error;
+      return new Set((data ?? []).map((r: any) => r.crm_company_id as string));
+    },
+  });
+
   const deferredCompanies = useDeferredValue(companies);
 
   const filtered = useMemo(() => {
@@ -113,6 +136,19 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
       );
     }
     if (industryFilter !== 'all') result = result.filter(c => c.industry === industryFilter);
+
+    if (missingDataFilter.length > 0) {
+      result = result.filter(c => {
+        if (missingDataFilter.includes('no_contacts')) {
+          if (companyIdsWithContacts && companyIdsWithContacts.has(c.id)) return false;
+        }
+        if (missingDataFilter.includes('no_domain')) {
+          const d = (c.domain || '').trim();
+          if (d) return false;
+        }
+        return true;
+      });
+    }
 
     // Per-column header filters
     for (const [field, f] of Object.entries(columnFilters)) {
@@ -139,7 +175,7 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
       });
     }
     return result;
-  }, [deferredCompanies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir, columnFilters]);
+  }, [deferredCompanies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, missingDataFilter, companyIdsWithContacts, sortField, sortDir, columnFilters]);
 
   const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
   const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
@@ -309,6 +345,16 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
             {industryOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
           </SelectContent>
         </Select>
+        <MultiSelectFilter
+          label="Missing Data"
+          className="h-9"
+          options={[
+            { value: 'no_contacts', label: 'No contacts' },
+            { value: 'no_domain', label: 'No domain' },
+          ]}
+          selected={missingDataFilter}
+          onChange={setMissingDataFilter}
+        />
         {selectedIds.size > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
