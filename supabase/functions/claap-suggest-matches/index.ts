@@ -31,7 +31,7 @@ serve(async (req) => {
     const limit = Math.min(Number(batch_size) || (all_unmatched ? 500 : 30), 500);
     let meetingQuery = supabase
       .from("claap_meetings")
-      .select("id, title, organizer_email, started_at, duration_seconds, transcript, match_candidates, match_status, manually_locked, company_id")
+      .select("id, claap_id, title, organizer_email, started_at, duration_seconds, transcript, match_candidates, match_status, manually_locked, company_id, recording_url")
       .eq("company_id", company_id)
       .eq("manually_locked", false);
 
@@ -51,6 +51,70 @@ serve(async (req) => {
     if (!meetings?.length) {
       return new Response(JSON.stringify({ ok: true, processed: 0, suggestions: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── Approval Queue integration ────────────────────────────────────────────
+    // If the Deal Admin Agent is enabled for this company, every meeting with a
+    // high-signal deal suggestion (score ≥ 40, matches deal name in title OR an
+    // external attendee domain matching the deal/company) is also enqueued as a
+    // "Link Recording" card in the Approval Queue so the user can one-click
+    // link it to a deal (which surfaces it in the Deal Space → Notes section).
+    let agentEnabled = false;
+    try {
+      const { data: agentRow } = await supabase
+        .from("admin_agent_settings")
+        .select("enabled")
+        .eq("company_id", company_id)
+        .maybeSingle();
+      agentEnabled = (agentRow as any)?.enabled === true;
+    } catch (_e) { /* non-fatal */ }
+
+    // Resolve a fallback assignee for approval-queue rows (prefer an owner/admin,
+    // fall back to any company member). Only needed when we actually enqueue.
+    let fallbackAssigneeId: string | null = null;
+    if (agentEnabled) {
+      const { data: members } = await supabase
+        .from("company_members")
+        .select("user_id, role")
+        .eq("company_id", company_id);
+      const rank: Record<string, number> = { owner: 0, admin: 1, member: 2 };
+      const sorted = (members || []).slice().sort(
+        (a: any, b: any) => (rank[a.role] ?? 9) - (rank[b.role] ?? 9),
+      );
+      fallbackAssigneeId = sorted[0]?.user_id || null;
+    }
+
+    // Pre-load organizer_email → user_id so we can attribute the queue card to
+    // the recording's organizer when they are a member of this workspace.
+    const organizerEmails = Array.from(new Set(
+      (meetings || []).map((m: any) => (m.organizer_email || "").toLowerCase()).filter(Boolean),
+    ));
+    const organizerUserByEmail: Record<string, string> = {};
+    if (agentEnabled && organizerEmails.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("user_id, email")
+        .in("email", organizerEmails);
+      (profs || []).forEach((p: any) => {
+        if (p.email) organizerUserByEmail[p.email.toLowerCase()] = p.user_id;
+      });
+    }
+
+    // Dedupe: skip enqueue if this meeting already has a pending/approved queue
+    // card. We match on payload->>claap_meeting_id for the recording-review type.
+    const meetingIdList = meetings.map((m: any) => m.id);
+    const existingQueueMeetingIds = new Set<string>();
+    if (agentEnabled && meetingIdList.length > 0) {
+      const { data: existing } = await supabase
+        .from("ai_action_queue")
+        .select("payload")
+        .eq("action_type", "claap_recording_review")
+        .in("status", ["pending", "approved"])
+        .in("payload->>claap_meeting_id", meetingIdList);
+      (existing || []).forEach((r: any) => {
+        const mid = r?.payload?.claap_meeting_id;
+        if (mid) existingQueueMeetingIds.add(mid);
       });
     }
 
@@ -605,6 +669,75 @@ serve(async (req) => {
             .eq("id", meeting.id);
         } else {
           console.error("Insert suggestions failed", insertErr);
+        }
+
+        // ── Enqueue "Link Recording" approval-queue card ─────────────────
+        // Only for meetings whose top suggestion points at an actual deal
+        // (not a lender-only or company-only match) with medium+ confidence.
+        try {
+          if (
+            agentEnabled &&
+            !existingQueueMeetingIds.has(meeting.id) &&
+            topSuggestions[0]?.deal_id &&
+            topSuggestions[0].score >= 40
+          ) {
+            const orgEmail = (meeting.organizer_email || "").toLowerCase();
+            const assignee = organizerUserByEmail[orgEmail] || fallbackAssigneeId;
+            if (assignee) {
+              const dealSuggestions = topSuggestions
+                .filter((s: any) => s.deal_id)
+                .map((s: any, i: number) => {
+                  const deal = (deals || []).find((d: any) => d.id === s.deal_id);
+                  return {
+                    id: s.deal_id,
+                    name: deal?.company || s.label || null,
+                    company_id: null,
+                    pre_selected: i === 0,
+                  };
+                });
+              const meetingParts = participantMap[meeting.id] || [];
+              const topDeal = dealSuggestions[0];
+              const confidenceLabel =
+                topSuggestions[0].score >= 75 ? "high" :
+                topSuggestions[0].score >= 40 ? "medium" : "low";
+              const queuePayload = {
+                claap_meeting_id: meeting.id,
+                claap_id: meeting.claap_id,
+                recording_title: meeting.title || null,
+                recording_url: meeting.recording_url || null,
+                recorded_at: meeting.started_at || null,
+                duration_seconds: meeting.duration_seconds || null,
+                attendees: meetingParts.map((p: any) => ({
+                  name: p.name, email: p.email, is_internal: !!p.is_internal,
+                })),
+                suggestions: {
+                  deals: dealSuggestions,
+                  company_id: null,
+                  company_name: null,
+                  contact_ids: [],
+                },
+                confidence: topSuggestions[0].score,
+                confidence_label: confidenceLabel,
+                why: (topSuggestions[0].reasons || []).slice(0, 3).join(" · "),
+                ambiguous: dealSuggestions.length > 1,
+                stage: "matching" as const,
+              };
+
+              await supabase.from("ai_action_queue").insert({
+                user_id: assignee,
+                deal_id: topDeal.id,
+                deal_name: topDeal.name,
+                action_type: "claap_recording_review",
+                title: `Link recording: ${meeting.title || "Untitled recording"}`,
+                description: `Suggest linking to ${topDeal.name || "deal"}${confidenceLabel === "high" ? " (high confidence)" : ""}.`,
+                payload: queuePayload,
+                source: { provider: "claap", origin: "claap-suggest-matches" },
+              });
+              existingQueueMeetingIds.add(meeting.id);
+            }
+          }
+        } catch (queueErr) {
+          console.error("Enqueue approval-queue link-recording card failed:", queueErr);
         }
       }
     }
