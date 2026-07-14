@@ -38,8 +38,16 @@ export interface DealFilters {
   staleOnly: boolean;
   flaggedOnly: boolean;
   hasNotificationsOnly: boolean;
-  /** 3-state segmented control: 'all' (no filter), 'has' (only deals with open tasks), 'none' (only deals with zero open tasks). */
-  tasksFilter: 'all' | 'has' | 'none';
+  /**
+   * Tasks filter:
+   *  - 'all'          → no filter
+   *  - 'has'          → only deals with any open tasks
+   *  - 'none'         → only deals with zero open tasks
+   *  - 'overdue_only' → only deals whose open tasks are ALL past due
+   *                     (i.e. no current non-overdue tasks AND at least
+   *                     one past-due task).
+   */
+  tasksFilter: 'all' | 'has' | 'none' | 'overdue_only';
   /** 3-state segmented control: 'all' (no filter), 'has' (only deals with active notifications), 'none' (only deals with no notifications). */
   notificationsFilter: 'all' | 'has' | 'none';
   /** Per-column header filters (added for in-table filter popovers). */
