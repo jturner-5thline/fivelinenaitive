@@ -373,7 +373,7 @@ function Row({
         clickable && 'cursor-pointer hover:bg-primary/5 transition-colors',
       )}
     >
-      <p className="text-[12px] uppercase tracking-wide text-muted-foreground font-medium leading-tight truncate min-w-0">
+      <p className="text-[12px] uppercase tracking-wide text-white font-medium leading-tight truncate min-w-0">
         {label}
       </p>
       {placeholder ? (
