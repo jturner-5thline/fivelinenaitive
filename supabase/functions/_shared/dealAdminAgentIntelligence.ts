@@ -3251,6 +3251,13 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     result.evaluated_deals++;
     try {
       const bundle = await gatherSignalsForDeal(supabase, d, companyId);
+      // Deterministic "Update Tasks" prompt: if this active-pipeline deal has
+      // no outstanding tasks AND the most recent task on the deal was last
+      // updated (or the deal itself was updated) more than 12 hours ago,
+      // enqueue a single approval-queue prompt asking the user to add
+      // tasks (titles, assignees, due dates) for the deal. This does NOT
+      // create the tasks itself — the approver adds them manually.
+      const updateTasksCandidate = await maybeBuildUpdateTasksCandidate(supabase, d, bundle);
       // Skip deals with effectively no signal — avoids burning credits.
       const sigCount =
         bundle.activity.length +
@@ -3262,14 +3269,19 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.email_threads.length +
         bundle.referral_sources.length;
       console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
-      if (sigCount === 0) continue;
+      if (sigCount === 0 && !updateTasksCandidate) continue;
 
       const fingerprint = bundle.current.deal_owner_user_id
         ? fingerprintByUser.get(bundle.current.deal_owner_user_id) ?? null
         : null;
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
       const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
-      const rawAll = normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle);
+      const modelCandidates = sigCount > 0
+        ? normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle)
+        : [];
+      const rawAll = updateTasksCandidate
+        ? [...modelCandidates, updateTasksCandidate]
+        : modelCandidates;
       // Drop lender-scoped proposals (draft_email / update_funding_source)
       // whose target_object_id couldn't be resolved to a real deal_lender on
       // this deal. The LLM occasionally emits the deal id or a hallucinated
