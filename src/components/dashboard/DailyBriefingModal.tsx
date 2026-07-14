@@ -1991,6 +1991,7 @@ const ALL_TABS = [
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
   { value: 'end_of_day', label: 'End of Day', icon: Sunset },
+  { value: 'queue', label: 'Approval Queue', icon: Inbox },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
