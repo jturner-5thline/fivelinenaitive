@@ -757,6 +757,11 @@ EMAIL SIGNAL → ACTION MAPPING (apply rigorously)
 - Blocker / delay ("won't be ready until tomorrow", "pushing to next week") → add_status_note AND, if the blocker is on a specific lender, update_funding_source with the new ETA in notes.
 - Implicit next step from the deal manager ("let me check and get back to you", "I'll circle back") → create_followup_task on the deal manager.
 
+STATUS NOTE RECENCY GATE — apply strictly
+- Status notes exist to capture RECENT activity. NEVER propose an add_status_note whose underlying event (call, email, milestone, lender movement) is more than 7 CALENDAR DAYS old relative to "now" in the bundle. If the newest supporting evidence is older than 7 days, emit NOTHING — do not backfill historical activity into the queue.
+- The 7-day window applies to the DATE OF THE EVENT itself (calendar event start/end, claap recording started_at, email sent_at, milestone completed_at, funding_source last_contact_at), not to when you noticed it. A meeting from 3+ weeks ago is stale even if no note was ever written — leave it alone.
+- If multiple signals describe the same event, use the most recent one to check recency; if all are >7 days old, drop the proposal.
+
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
     (a) PASS / DECLINE on this deal — lender says they are "passing", "going to pass", "we'll pass", "it's a pass", "have to pass", "going to have to take a pass", "decline", or any clear variation. Propose stage="passed" AND populate proposed_values.pass_reason with the lender's actual stated reason quoted/paraphrased from the email thread (e.g. "leverage too high", "outside credit box", "industry concentration"). If no reason is given, set pass_reason="No reason provided" — do NOT invent one.
@@ -1183,6 +1188,65 @@ function filterUnconfiguredMilestones(
     );
     if (!title || !allowed.has(title) || existing.has(title)) {
       dropped++;
+      return false;
+    }
+    return true;
+  });
+  return { kept, dropped };
+}
+
+/**
+ * Drop add_status_note candidates whose supporting evidence is older than
+ * 7 calendar days. Status notes exist to capture RECENT activity — the
+ * queue should not surface historical backfill from weeks-old meetings or
+ * emails. When no evidence can be dated (or the referenced items aren't
+ * in the bundle), drop the candidate as unverifiable.
+ */
+function filterStaleStatusNotes(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): { kept: CandidateItem[]; dropped: number } {
+  const hasNote = candidates.some((c) => c.action_type === "add_status_note");
+  if (!hasNote) return { kept: candidates, dropped: 0 };
+
+  const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - WINDOW_MS;
+
+  // Build an id → best-known-date lookup across every bundle collection
+  // an evidence_reference could point at.
+  const dateById = new Map<string, number>();
+  const pushDate = (id: unknown, ...dates: unknown[]) => {
+    if (!id || typeof id !== "string") return;
+    let best = dateById.get(id) ?? 0;
+    for (const d of dates) {
+      if (!d) continue;
+      const ts = new Date(String(d)).getTime();
+      if (Number.isFinite(ts) && ts > best) best = ts;
+    }
+    if (best > 0) dateById.set(id, best);
+  };
+  for (const e of bundle.emails ?? []) pushDate((e as any)?.id, (e as any)?.received_at, (e as any)?.sent_at, (e as any)?.date);
+  for (const t of bundle.email_threads ?? []) pushDate((t as any)?.id, (t as any)?.last_message_at, (t as any)?.updated_at);
+  for (const c of bundle.calendar_items ?? []) pushDate((c as any)?.id, (c as any)?.end_time, (c as any)?.start_time, (c as any)?.date);
+  for (const r of bundle.claap_recordings ?? []) pushDate((r as any)?.id, (r as any)?.ended_at, (r as any)?.started_at, (r as any)?.linked_at);
+  for (const a of bundle.activity ?? []) pushDate((a as any)?.id, (a as any)?.created_at, (a as any)?.updated_at);
+  for (const n of bundle.status_notes ?? []) pushDate((n as any)?.id, (n as any)?.created_at);
+  for (const s of bundle.stage_history ?? []) pushDate((s as any)?.id, (s as any)?.changed_at, (s as any)?.created_at);
+  for (const m of bundle.milestones ?? []) pushDate((m as any)?.id, (m as any)?.completed_at, (m as any)?.updated_at);
+  for (const f of bundle.funding_sources ?? []) pushDate((f as any)?.id, (f as any)?.last_contact_at, (f as any)?.updated_at);
+
+  let dropped = 0;
+  const kept = candidates.filter((c) => {
+    if (c.action_type !== "add_status_note") return true;
+    const refs = Array.isArray(c.evidence_references) ? c.evidence_references : [];
+    let newest = 0;
+    for (const ev of refs) {
+      const id = (ev as any)?.ref_id;
+      const ts = id ? dateById.get(String(id)) : undefined;
+      if (ts && ts > newest) newest = ts;
+    }
+    if (newest === 0 || newest < cutoff) {
+      dropped += 1;
       return false;
     }
     return true;
@@ -3271,12 +3335,22 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (kickoffFiltered.kept.length === 0) continue;
 
+      // Drop status-note proposals whose newest supporting evidence is
+      // older than 7 days. Status notes are for RECENT activity only —
+      // no historical backfill from weeks-old meetings/emails.
+      const staleNotes = filterStaleStatusNotes(kickoffFiltered.kept, bundle);
+      if (staleNotes.dropped > 0) {
+        result.candidates_filtered += staleNotes.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${staleNotes.dropped} add_status_note proposal(s) for deal=${d.id} — evidence older than 7 days (or undatable)`);
+      }
+      if (staleNotes.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
       // never "on-hold". Runs before gating so the rewritten value flows
       // through every downstream check.
-      const holdNormalized = normalizeHoldVsUnresponsive(kickoffFiltered.kept);
+      const holdNormalized = normalizeHoldVsUnresponsive(staleNotes.kept);
       if (holdNormalized.rewritten > 0) {
         console.log(`[deal-admin-agent] REWROTE ${holdNormalized.rewritten} update_funding_source proposal(s) for deal=${d.id} — on-hold→unresponsive (no explicit pause language)`);
       }
