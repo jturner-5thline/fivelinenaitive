@@ -140,13 +140,14 @@ function NaitiveMark({ size = 22 }: { size?: number }) {
   );
 }
 
-const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle', { label: string; icon: typeof CheckSquare }>> = {
+const TYPE_META: Partial<Record<AiActionType | 'draft_email_bundle' | 'update_funding_source_bundle' | 'claap_recording_review_bundle', { label: string; icon: typeof CheckSquare }>> = {
   create_task: { label: 'Task', icon: CheckSquare },
   update_lender_status: { label: 'Funding source', icon: Building2 },
   save_to_data_room: { label: 'Data room', icon: Save },
   log_note: { label: 'Note', icon: FileText },
   deal_update: { label: 'Deal', icon: Briefcase },
   claap_recording_review: { label: 'Claap recording', icon: Video },
+  claap_recording_review_bundle: { label: 'Claap recordings', icon: Video },
   claap_action_items: { label: 'Meeting actions', icon: ListChecks },
   update_deal_stage: { label: 'Stage', icon: Briefcase },
   update_deal_status: { label: 'Status', icon: Briefcase },
