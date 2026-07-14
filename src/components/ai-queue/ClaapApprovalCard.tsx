@@ -141,6 +141,8 @@ function MatchingCard({
   const deals: DealSuggestion[] = payload?.suggestions?.deals || [];
   const preselected = deals.find(d => d.pre_selected)?.id || deals[0]?.id || null;
   const [selectedDealId, setSelectedDealId] = useState<string | null>(preselected);
+  const dealIds = useMemo(() => deals.map(d => d.id).filter(Boolean), [deals]);
+  const { data: dealMeta } = useDealSuggestionMeta(dealIds);
   const attendees: Array<{ name: string; email: string; is_internal: boolean }> = payload.attendees || [];
   const confidenceLabel: string = payload.confidence_label || 'low';
   const why: string = payload.why || '';
@@ -271,7 +273,10 @@ function MatchingCard({
                   onChange={() => setSelectedDealId(d.id)}
                   className="accent-fuchsia-500"
                 />
-                <span className="flex-1 truncate">{d.name || 'Untitled deal'}</span>
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <span className="truncate">{d.name || 'Untitled deal'}</span>
+                  <DealMetaChips meta={dealMeta?.[d.id]} />
+                </div>
                 {d.pre_selected && <Badge variant="outline" className="text-[9px]">AI pick</Badge>}
               </label>
             ))}
