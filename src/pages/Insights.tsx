@@ -2489,11 +2489,11 @@ function MetricsInner() {
                 <InsightsTimeframePicker />
               )}
 
-              {selectedDashboard === 'management-review' && (
+              {effectiveSelectedDashboard === 'management-review' && (
                 <ReportingPeriodPicker />
               )}
 
-              {selectedDashboard === 'management-review' && (
+              {effectiveSelectedDashboard === 'management-review' && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2512,7 +2512,7 @@ function MetricsInner() {
                 </UITooltip>
               )}
 
-              {selectedDashboard === 'management-review' && (
+              {effectiveSelectedDashboard === 'management-review' && (
                 <UITooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -2532,7 +2532,7 @@ function MetricsInner() {
                 </UITooltip>
               )}
 
-              {selectedDashboard === 'management-review' && (
+              {effectiveSelectedDashboard === 'management-review' && (
                 <DropdownMenu>
                   <UITooltip>
                     <TooltipTrigger asChild>
@@ -2630,7 +2630,7 @@ function MetricsInner() {
               {/* Slot for dashboard-specific header actions (e.g. QIR Comments notepad). */}
               <div id="qir-header-actions-slot" className="flex items-center gap-2" />
 
-              {isEditMode && canEditMetrics && selectedDashboard === 'management-snapshot' && (
+              {isEditMode && canEditMetrics && effectiveSelectedDashboard === 'management-snapshot' && (
                 <>
                   <Button size="sm" onClick={handleAdd}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -2678,7 +2678,7 @@ function MetricsInner() {
           </StickyDashboardHeader>
 
           {/* Insights Assistant slide-over (Insights Dashboard only) */}
-          {selectedDashboard === 'management-review' && (
+          {effectiveSelectedDashboard === 'management-review' && (
             <InsightsAssistantSheet
               open={assistantOpen}
               onOpenChange={setAssistantOpen}
@@ -2687,7 +2687,7 @@ function MetricsInner() {
           )}
 
           {/* On-demand Cover preview (Insights Dashboard only) */}
-          {selectedDashboard === 'management-review' && (
+          {effectiveSelectedDashboard === 'management-review' && (
             <CoverPreviewDialog
               open={coverPreviewOpen}
               onOpenChange={setCoverPreviewOpen}
@@ -2696,7 +2696,7 @@ function MetricsInner() {
 
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
-            {selectedDashboard === 'management-snapshot' && (
+            {effectiveSelectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
                 page1={
                   <div className="space-y-8">
@@ -2778,8 +2778,8 @@ function MetricsInner() {
                 }
               />
             )}
-            {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
-            {selectedDashboard === 'revenue-customers' && (
+            {effectiveSelectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
+            {effectiveSelectedDashboard === 'revenue-customers' && (
               <div>
                 <RevenueCustomersDashboard />
                 <div className="mt-4">
@@ -2787,13 +2787,13 @@ function MetricsInner() {
                 </div>
               </div>
             )}
-            {selectedDashboard === 'sales-dashboard-v2' && <SalesDashboardV2 />}
-            {selectedDashboard === 'consolidated-debt-pipeline' && (
+            {effectiveSelectedDashboard === 'sales-dashboard-v2' && <SalesDashboardV2 />}
+            {effectiveSelectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}
-            {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
-            {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
-            {selectedDashboard === 'management-review' && (
+            {effectiveSelectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
+            {effectiveSelectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
+            {effectiveSelectedDashboard === 'management-review' && (
               <ManagementReviewCarousel
                 isEditMode={isEditMode}
                 onExitEditMode={() => setIsEditMode(false)}
