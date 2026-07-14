@@ -15,6 +15,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   useContact, useUpdateContact, useContactActivities, useCreateContactActivity,
   useContactDeals, useDeleteContact, useUpdateContactActivity, useDeleteContactActivity,
   LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES,
