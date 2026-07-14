@@ -198,6 +198,7 @@ interface DealSignalBundle {
   open_tasks: any[];
   claap_recordings: any[];
   email_threads: any[];
+  unlinked_terms_emails?: any[];
   referral_sources: any[];
   configured_milestone_titles: string[];
 }
@@ -272,6 +273,7 @@ async function gatherSignalsForDeal(
   supabase: SupabaseClient,
   deal: any,
   companyId: string,
+  activatedUserIds?: Set<string>,
 ): Promise<DealSignalBundle> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
@@ -552,6 +554,64 @@ async function gatherSignalsForDeal(
     var nameCalendarEvents: any[] = [];
   }
 
+  // ----- Unlinked TERMS emails (subject/body/attachment mentions deal name)
+  // Scan inbox emails that are NOT yet linked to this deal but clearly deliver
+  // a term sheet / IOI / LOI / proposal for the deal (per the deal name). This
+  // powers the TERMS_ISSUED_RULES trigger even when the email thread hasn't
+  // been classified/matched to the deal yet.
+  const unlinkedTermsEmails: any[] = [];
+  if (dealNameRaw && nameToken.length >= 3) {
+    const escapedNameSql = dealNameRaw.replace(/[%_]/g, (m) => `\\${m}`);
+    const nameLike = `%${escapedNameSql}%`;
+    const userScope = activatedUserIds && activatedUserIds.size > 0
+      ? Array.from(activatedUserIds)
+      : null;
+    let q = supabase
+      .from("email_cache")
+      .select("gmail_message_id, thread_id, subject, snippet, body_text, from_email, from_name, to_emails, attachments, received_at")
+      .gte("received_at", since)
+      .or(`subject.ilike.${nameLike},body_text.ilike.${nameLike},snippet.ilike.${nameLike}`)
+      .order("received_at", { ascending: false })
+      .limit(40);
+    if (userScope) q = q.in("user_id", userScope);
+    const { data: cand } = await q;
+    const TERMS_RE = /(term\s*sheet|termsheet|\bIOI\b|indication\s+of\s+interest|\bLOI\b|letter\s+of\s+intent|proposal|preliminary\s+terms|issued\s+terms|pricing\s+terms)/i;
+    const ATT_RE = /(term[\s_-]*sheet|\bIOI\b|indication|\bLOI\b|letter[\s_-]*of[\s_-]*intent|proposal|pricing|preliminary\s+terms)/i;
+    for (const m of (cand ?? []) as any[]) {
+      const subj = String(m.subject ?? "");
+      const body = String(m.body_text ?? m.snippet ?? "");
+      const attNames: string[] = Array.isArray(m.attachments)
+        ? m.attachments
+            .map((a: any) => (typeof a?.filename === "string" ? a.filename : ""))
+            .filter(Boolean)
+        : [];
+      const bodyOrSubjectHasTerms = TERMS_RE.test(subj) || TERMS_RE.test(body);
+      const attachmentHasTerms = attNames.some((n) => ATT_RE.test(n));
+      if (!bodyOrSubjectHasTerms && !attachmentHasTerms) continue;
+      unlinkedTermsEmails.push({
+        source: "email_cache_unlinked_terms_match",
+        gmail_message_id: m.gmail_message_id,
+        thread_id: m.thread_id,
+        subject: subj,
+        snippet: typeof m.snippet === "string" ? m.snippet.slice(0, 300) : null,
+        body_excerpt: body ? body.slice(0, 2000) : null,
+        from_email: m.from_email,
+        from_name: m.from_name,
+        to_emails: m.to_emails,
+        received_at: m.received_at,
+        attachments: attNames,
+        matched_deal_name: dealNameRaw,
+        match_reasons: {
+          name_in_subject: subj.toLowerCase().includes(dealNameRaw.toLowerCase()),
+          name_in_body: body.toLowerCase().includes(dealNameRaw.toLowerCase()),
+          terms_language_in_email: bodyOrSubjectHasTerms,
+          terms_attachment_filename: attachmentHasTerms,
+        },
+      });
+      if (unlinkedTermsEmails.length >= 8) break;
+    }
+  }
+
   return {
     deal_id: deal.id,
     deal_name: deal.company ?? "Untitled Deal",
@@ -585,6 +645,7 @@ async function gatherSignalsForDeal(
     open_tasks: tasks.data ?? [],
     claap_recordings: enrichedClaap,
     email_threads: enrichedThreads,
+    unlinked_terms_emails: unlinkedTermsEmails,
     referral_sources: await gatherReferralSourcesForDeal(supabase, deal, since, today),
     configured_milestone_titles: await gatherConfiguredMilestoneTitles(supabase, companyId),
   };
@@ -861,7 +922,11 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 const TERMS_ISSUED_RULES = `
 
 TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lender contact sends terms)
-- TRIGGER: an inbound email from ANY funding_source contact on the deal (matched by sender email/domain to funding_sources[].contacts or lender domain — no allowlist, no specific lender names) whose body or subject clearly references a term sheet, IOI (indication of interest), LOI (letter of intent), proposal, or issued/revised pricing terms for THIS deal — OR the email carries an attachment whose filename matches /(term[\\s_-]*sheet|\\bIOI\\b|indication|\\bLOI\\b|letter[\\s_-]*of[\\s_-]*intent|proposal|pricing|preliminary\\s+terms)/i. Deal attribution: the email subject, body, or attachment filename references the deal / company name, OR the email is already linked to this deal in the bundle. The rule applies universally to every funding source on every deal.
+- TRIGGER SOURCES (either counts as an eligible email; no allowlist, no specific lender names):
+    a) An inbound email already linked/matched to this deal (present in emails[] or email_threads[]) whose body or subject clearly references a term sheet, IOI (indication of interest), LOI (letter of intent), proposal, or issued/revised pricing terms — OR carries an attachment whose filename matches /(term[\\s_-]*sheet|\\bIOI\\b|indication|\\bLOI\\b|letter[\\s_-]*of[\\s_-]*intent|proposal|pricing|preliminary\\s+terms)/i.
+    b) An UNLINKED inbox email surfaced in unlinked_terms_emails[]. These are inbox messages the classifier hasn't yet linked to a deal, but whose subject/body/attachment references the deal name AND contains the terms language above. Treat these as first-class triggers — the deal is inferred from unlinked_terms_emails[].matched_deal_name (== bundle.deal_name). You do NOT need the email to be pre-attached to the deal.
+- SENDER ATTRIBUTION: identify the funding source by matching unlinked_terms_emails[].from_email (or emails[].from) to funding_sources[].contacts.email or the domain of funding_sources[].contacts.email. If no funding source on the deal matches the sender, still emit steps 2–4 (status note + stage advance + data-room save) but SKIP step 1 (update_funding_source) — do not invent a funding_sources[].id. Never guess a lender; only tie steps 1 to a real funding_sources[] row.
+- The rule applies universally to every funding source on every deal.
 - When the trigger fires, emit ALL FOUR of the following proposals as a single bundle for the (deal, funding_source):
     1) update_funding_source
          target_object_type = "deal_lender", target_object_id = funding_sources[].id for that lender.
@@ -894,7 +959,7 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
          evidence_references MUST cite the inbound email (kind="email"). If multiple attachments qualify, emit ONE save_to_data_room per attachment (they dedupe by (deal_id, source_email_id, attachment_name)).
 - DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
 - STAGE PRECEDENCE: if the lender is already at stage/substage "terms_issued", "in_diligence", "closed", "funded", or any terminal state, SKIP update_funding_source (nothing to move) but STILL emit add_status_note + upload-followup if a fresh terms email / attachment arrived that isn't already captured.
-- ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata. Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
+- ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata (emails[].attachments or unlinked_terms_emails[].attachments). Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
 - MULTI-LENDER: if two or more different funding sources send terms on the same deal in the same scan, emit one full bundle per lender. update_deal_stage collapses to a SINGLE proposal for the deal — do not emit it twice.
 - Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
 
@@ -971,6 +1036,20 @@ function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null):
         body_excerpt: trim(m.body_text, 1200),
         received_at: m.received_at,
       })),
+    })),
+    unlinked_terms_emails: (bundle.unlinked_terms_emails ?? []).map((m: any) => ({
+      gmail_message_id: m.gmail_message_id,
+      thread_id: m.thread_id,
+      subject: m.subject,
+      from: m.from_name ? `${m.from_name} <${m.from_email}>` : m.from_email,
+      from_email: m.from_email,
+      to_emails: m.to_emails,
+      received_at: m.received_at,
+      snippet: trim(m.snippet, 320),
+      body_excerpt: trim(m.body_excerpt, 2000),
+      attachments: m.attachments ?? [],
+      matched_deal_name: m.matched_deal_name,
+      match_reasons: m.match_reasons,
     })),
     referral_sources: (bundle.referral_sources ?? []).map((r: any) => ({
       id: r.id,
@@ -3373,7 +3452,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (totalInserted >= maxQueueRows) break;
     result.evaluated_deals++;
     try {
-      const bundle = await gatherSignalsForDeal(supabase, d, companyId);
+      const bundle = await gatherSignalsForDeal(supabase, d, companyId, opts.activatedUserIds);
       // Deterministic "Update Tasks" prompt: if this active-pipeline deal has
       // no outstanding tasks AND the most recent task on the deal was last
       // updated (or the deal itself was updated) more than 12 hours ago,
@@ -3390,8 +3469,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.calendar_items.length +
         bundle.claap_recordings.length +
         bundle.email_threads.length +
+        (bundle.unlinked_terms_emails?.length ?? 0) +
         bundle.referral_sources.length;
-      console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
+      console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length} unlinked_terms=${bundle.unlinked_terms_emails?.length ?? 0}`);
       if (sigCount === 0 && !updateTasksCandidate) continue;
 
       const fingerprint = bundle.current.deal_owner_user_id
