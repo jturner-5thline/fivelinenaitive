@@ -198,6 +198,7 @@ interface DealSignalBundle {
   open_tasks: any[];
   claap_recordings: any[];
   email_threads: any[];
+  unlinked_terms_emails?: any[];
   referral_sources: any[];
   configured_milestone_titles: string[];
 }
