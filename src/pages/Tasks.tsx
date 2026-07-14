@@ -1622,10 +1622,30 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
               </button>
             </div>
           )}
-          <div className="overflow-auto h-full">
+           <div className="overflow-auto h-full">
+            {similarMode && (
+              <div
+                className="flex items-center justify-between gap-3 px-6 py-2 border-b text-[12px]"
+                style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.02)', color: '#c8cfdd' }}
+              >
+                <span>
+                  <Sparkles className="inline h-3 w-3 mr-1.5 -mt-0.5" />
+                  {similarOrdered.length > 0
+                    ? <>Showing {similarOrdered.length} potentially similar tasks in {similarGroups.length} group{similarGroups.length === 1 ? '' : 's'}.</>
+                    : <>No potentially similar tasks in the current view.</>}
+                </span>
+                <button
+                  onClick={() => setSimilarMode(false)}
+                  className="text-[11px] underline-offset-2 hover:underline"
+                  style={{ color: '#94a3b8' }}
+                >
+                  Exit
+                </button>
+              </div>
+            )}
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
-                tasks={filtered}
+                tasks={listTasks}
                 statusGroups={statusGroups}
                 isLoading={isLoading}
                 isCreating={isCreating}
@@ -1651,7 +1671,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             )}
             {viewMode === 'board' && (
               <TaskBoardView
-                tasks={filtered}
+                tasks={listTasks}
                 statusGroups={allBoardColumns}
                 onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                 onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
@@ -1665,7 +1685,7 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             {viewMode === 'calendar' && (
               <Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading calendar…</div>}>
                 <TaskCalendarView
-                  tasks={filtered}
+                  tasks={listTasks}
                   onSelectTask={(id) => { setDetailDismissed(false); setSelectedTaskId(id); }}
                   onUpdateTask={(id, updates) => updateTaskWithUndo(id, updates)}
                   selectedTaskId={selectedTaskId}
