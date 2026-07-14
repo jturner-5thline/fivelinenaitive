@@ -67,6 +67,7 @@ import {
   useDismissManyAiActions,
 } from '@/hooks/useAiActionQueue';
 import { ClaapApprovalCard } from './ClaapApprovalCard';
+import { ClaapRecordingBundleCard } from './ClaapRecordingBundleCard';
 import { CreateDealApprovalCard } from './CreateDealApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -1447,6 +1448,18 @@ function DetailPane({
         <ClaapApprovalCard item={item} />
       </div>
     );
+  }
+
+  // Bundled Claap recording matches → multi-select linker.
+  if ((item.action_type as string) === 'claap_recording_review_bundle') {
+    const bundle = (item as any).__bundle as QueuedAiAction[] | undefined;
+    if (bundle && bundle.length > 0) {
+      return (
+        <div className="flex-1 min-h-0 overflow-y-auto p-3">
+          <ClaapRecordingBundleCard items={bundle} />
+        </div>
+      );
+    }
   }
 
   // Post-sales-call "Create new deal" items get a dedicated card that
