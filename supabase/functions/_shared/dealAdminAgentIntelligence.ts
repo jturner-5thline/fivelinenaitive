@@ -2825,18 +2825,21 @@ async function reconcileStalePendingApprovals(
       }
     }
 
-    // Terminal-lender reconciliation: independent of concentration, any pending
-    // draft_email whose target lender has since moved to a terminal state
+    // Terminal-lender reconciliation: dismiss pending OUTBOUND NUDGE drafts
+    // whose target lender has since moved to a terminal state
     // (passed / not_a_fit / declined / withdrawn / dead / lost / rejected /
-    // closed / unresponsive / on-hold / paused) is moot — dismiss it. Catches
-    // the common case where the manager marked the lender "passed" after the
-    // nudge was queued but before it was actioned.
+    // closed / unresponsive / on-hold / paused). We deliberately exclude
+    // Q&A response drafts (source.kind === 'lender_question_response') —
+    // even a "passed" lender may have asked a specific question that still
+    // deserves an answer. Nudges become moot; Q&A does not.
     const TERMINAL_LENDER_RE_REC =
       /(not[_\s-]?a[_\s-]?fit|notafit|not_fit|\bpass(?:ed|ing)?\b|declin|withdraw|dead|\blost\b|reject|kill|no[\s_-]*go|closed|unresponsive|on[_\s-]?hold|paus(?:e|ed|ing)?)/i;
     for (const p of lenderEmailPending) {
       if (toResolve.includes(p.id)) continue;
       const targetState = stateById.get(p.target_object_id as string);
       if (!targetState) continue;
+      const srcKind = String((p as any)?.source?.kind || "").toLowerCase();
+      if (srcKind === "lender_question_response") continue; // Q&A replies still valid
       if (TERMINAL_LENDER_RE_REC.test(targetState)) {
         toResolve.push(p.id);
       }
