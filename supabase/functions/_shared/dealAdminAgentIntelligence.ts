@@ -3374,7 +3374,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     if (totalInserted >= maxQueueRows) break;
     result.evaluated_deals++;
     try {
-      const bundle = await gatherSignalsForDeal(supabase, d, companyId);
+      const bundle = await gatherSignalsForDeal(supabase, d, companyId, opts.activatedUserIds);
       // Deterministic "Update Tasks" prompt: if this active-pipeline deal has
       // no outstanding tasks AND the most recent task on the deal was last
       // updated (or the deal itself was updated) more than 12 hours ago,
