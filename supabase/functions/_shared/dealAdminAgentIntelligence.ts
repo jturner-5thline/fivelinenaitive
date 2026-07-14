@@ -3469,8 +3469,9 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
         bundle.calendar_items.length +
         bundle.claap_recordings.length +
         bundle.email_threads.length +
+        (bundle.unlinked_terms_emails?.length ?? 0) +
         bundle.referral_sources.length;
-      console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length}`);
+      console.log(`[deal-admin-agent] deal=${d.id} ${d.company} signals act=${bundle.activity.length} em=${bundle.emails.length} thr=${bundle.email_threads.length} cal=${bundle.calendar_items.length} claap=${bundle.claap_recordings.length} notes=${bundle.status_notes.length} hist=${bundle.stage_history.length} unlinked_terms=${bundle.unlinked_terms_emails?.length ?? 0}`);
       if (sigCount === 0 && !updateTasksCandidate) continue;
 
       const fingerprint = bundle.current.deal_owner_user_id
