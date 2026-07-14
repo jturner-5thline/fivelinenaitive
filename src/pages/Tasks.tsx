@@ -1177,6 +1177,17 @@ export default function Tasks({ overlayMode = false }: TasksProps = {}) {
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-[12px]"
+              title="Find potentially similar tasks (fuzzy title + shared deal/contact/company)"
+              onClick={() => setShowSimilarTasks(true)}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Find similar</span>
+            </Button>
             {undoStack.canUndo && (
               <Button
                 type="button"
