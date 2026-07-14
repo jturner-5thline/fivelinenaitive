@@ -3335,6 +3335,16 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       }
       if (kickoffFiltered.kept.length === 0) continue;
 
+      // Drop status-note proposals whose newest supporting evidence is
+      // older than 7 days. Status notes are for RECENT activity only —
+      // no historical backfill from weeks-old meetings/emails.
+      const staleNotes = filterStaleStatusNotes(kickoffFiltered.kept, bundle);
+      if (staleNotes.dropped > 0) {
+        result.candidates_filtered += staleNotes.dropped;
+        console.log(`[deal-admin-agent] DROPPED ${staleNotes.dropped} add_status_note proposal(s) for deal=${d.id} — evidence older than 7 days (or undatable)`);
+      }
+      if (staleNotes.kept.length === 0) continue;
+
       // Deterministic guardrail: rewrite any update_funding_source proposal
       // moving a lender to on-hold/pause when the evidence doesn't actually
       // quote explicit pause language. Silence/no-response is "unresponsive",
