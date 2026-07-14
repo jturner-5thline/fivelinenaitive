@@ -855,7 +855,37 @@ REFERRAL SOURCE UPDATE RULES (use referral_sources[])
 - Pick at most ONE rule per referral source per scan — emit one draft email per (deal, referral_source). If multiple rules fire, pick the most recent meaningful event and reference all triggers in rationale_summary.
 - Silence rule: if no rule fires for any referral source, emit nothing for referral sources. Do NOT propose generic "say hi" emails.`;
 
-const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES;
+const TERMS_ISSUED_RULES = `
+
+TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lender contact sends terms)
+- TRIGGER: an inbound email from a funding_source contact (matched by sender email/domain to funding_sources[].contacts or lender domain) whose body or subject clearly references a term sheet, IOI (indication of interest), LOI (letter of intent), proposal, or issued/revised pricing terms for THIS deal — OR the email carries an attachment whose filename matches /(term[\\s_-]*sheet|\\bIOI\\b|indication|\\bLOI\\b|letter[\\s_-]*of[\\s_-]*intent|proposal|pricing|preliminary\\s+terms)/i. Deal attribution: the email subject, body, or attachment filename references the deal / company name (e.g. "Gabb", "Gabb Wireless"), OR the email is already linked to this deal in the bundle.
+- When the trigger fires, emit ALL FOUR of the following proposals as a single bundle for the (deal, funding_source):
+    1) update_funding_source
+         target_object_type = "deal_lender", target_object_id = funding_sources[].id for that lender.
+         proposed_values = { stage: "terms_issued", tracking_status: "terms_issued", notes: "<verbatim body of the lender's email, trimmed to 1200 chars>" }.
+         rationale: "{Lender} sent over {Term Sheet|IOI|LOI|proposal} for {Deal} — moving to Terms Issued and capturing their email body as the funding-source note."
+         evidence_references MUST cite the inbound email (kind="email").
+    2) add_status_note
+         target_object_type = "deal", target_object_id = deal_id.
+         proposed_values.note = "{Lender} issued {Term Sheet|IOI|LOI|proposal} on {ISO date}. Key points: <2-4 bullets paraphrasing pricing / structure / conditions from the email>. Attachment: <filename> (pending upload to data room)."
+         evidence_references MUST cite the same inbound email.
+    3) update_deal_stage
+         Only emit when the deal's current stage is BEFORE "Terms Issued" in the pipeline (e.g. Sourcing, Qualified, In Review, Lenders in Review). If the deal is already at Terms Issued or later (In Diligence, Closed/Funded), SKIP this step.
+         proposed_values = { stage: "terms-issued", stage_label: "Terms Issued" } (resolve to the pipeline_stage_id present in configured_pipeline_stages when available).
+         rationale: "At least one lender ({Lender}) has issued terms on {Deal} — advancing the deal stage to Terms Issued."
+         evidence_references MUST cite the inbound email.
+    4) create_followup_task — the "upload to data room" step (used because the queue has no direct upload action yet).
+         proposed_values.title = "Upload {Lender} {Term Sheet|IOI|LOI} to {Deal} data room"
+         proposed_values.description = "Attach the file(s) from {Lender}'s email dated {ISO date}: <filename(s)>. Save under the Term Sheets / Lender Correspondence folder in the deal's data room."
+         proposed_values.due_date = today + 1 business day; assignee = deal manager.
+         evidence_references MUST cite the inbound email (which carries the attachment metadata).
+- DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
+- STAGE PRECEDENCE: if the lender is already at stage/substage "terms_issued", "in_diligence", "closed", "funded", or any terminal state, SKIP update_funding_source (nothing to move) but STILL emit add_status_note + upload-followup if a fresh terms email / attachment arrived that isn't already captured.
+- ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata. Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to upload).
+- MULTI-LENDER: if two different lenders both send terms in the same scan (e.g. Chris @ Five Crowns AND Brian @ LAGO on Gabb Wireless), emit one full bundle per lender. update_deal_stage collapses to a SINGLE proposal for the deal — do not emit it twice.
+- Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
+
+const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES;
 
 function buildUserPrompt(bundle: DealSignalBundle, fingerprint?: string | null): string {
   // Trim large fields to keep prompt compact.
