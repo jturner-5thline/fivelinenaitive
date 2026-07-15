@@ -65,7 +65,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const { data: contact, isLoading } = useContact(contactId);
   const updateContact = useUpdateContact();
   const { data: activities = [] } = useContactActivities(contactId);
-  const createActivity = useCreateContactActivity();
+  const createActivity = useCreateContactActivity({ updateCache: true, returnInserted: true });
   const { data: contactDeals = [] } = useContactDeals(contactId);
   const deleteContact = useDeleteContact();
   const teamMembers = useTeamMembers();
@@ -707,7 +707,7 @@ function LogActivityDialog({
   contactName: string;
   onOpenChange: (open: boolean) => void;
 }) {
-  const createActivity = useCreateContactActivity();
+  const createActivity = useCreateContactActivity({ updateCache: false, returnInserted: false });
   const [lastType, setLastType] = useState<'call' | 'meeting'>('call');
   const [logSubject, setLogSubject] = useState('');
   const [logBody, setLogBody] = useState('');
@@ -733,13 +733,14 @@ function LogActivityDialog({
       occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
     };
 
+    toast.info(`Logging ${type === 'call' ? 'call' : 'meeting'}…`);
     onOpenChange(false);
     window.setTimeout(() => {
       createActivity.mutate(payload, {
         onSuccess: () => toast.success(`${type === 'call' ? 'Call' : 'Meeting'} logged`),
         onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
       });
-    }, 120);
+    }, 300);
   };
 
   return (

@@ -344,21 +344,26 @@ export function useContactActivities(contactId: string | undefined) {
   });
 }
 
-export function useCreateContactActivity() {
+export function useCreateContactActivity(options: { updateCache?: boolean; returnInserted?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { updateCache = true, returnInserted = true } = options;
 
   return useMutation({
     mutationFn: async (activity: { contact_id: string; activity_type: string; subject?: string; body?: string; deal_id?: string; occurred_at?: string }) => {
-      const { data, error } = await supabase
+      const query = supabase
         .from('contact_activities')
-        .insert({ ...activity, logged_by: user?.id } as any)
-        .select()
-        .single();
+        .insert({ ...activity, logged_by: user?.id } as any);
+
+      const { data, error } = returnInserted
+        ? await query.select().single()
+        : await query;
+
       if (error) throw error;
       return data;
     },
     onSuccess: (data, vars) => {
+      if (!updateCache || !data) return;
       queryClient.setQueryData(['contact-activities', vars.contact_id], (old: any[] | undefined) => {
         const current = old || [];
         const next = [data, ...current.filter((item) => item.id !== data.id)];
