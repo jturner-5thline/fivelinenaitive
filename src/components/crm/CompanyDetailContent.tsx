@@ -90,6 +90,50 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const [showLinkDeal, setShowLinkDeal] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const autoNameAttemptedRef = useRef<string | null>(null);
+
+  // Auto-resolve the real company name from the website when the current name
+  // looks like a placeholder derived from the domain (e.g. "Cchgd" for cchgd.com).
+  useEffect(() => {
+    if (!company?.id || !company.domain || !company.name) return;
+    if (autoNameAttemptedRef.current === company.id) return;
+
+    const cleanDomain = company.domain
+      .toLowerCase()
+      .replace(/^(https?:\/\/)?(www\.)?/, '')
+      .replace(/\/.*$/, '')
+      .trim();
+    if (!cleanDomain) return;
+    const domainStem = cleanDomain.split('.')[0];
+    const nameLower = company.name.trim().toLowerCase();
+    const looksLikePlaceholder =
+      nameLower === domainStem ||
+      nameLower === cleanDomain ||
+      nameLower.replace(/[^a-z0-9]/g, '') === domainStem.replace(/[^a-z0-9]/g, '');
+    if (!looksLikePlaceholder) return;
+
+    autoNameAttemptedRef.current = company.id;
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('scrape-company-info', {
+          body: { url: cleanDomain },
+        });
+        if (error) return;
+        const resolved = (data as any)?.data?.companyName;
+        if (!resolved || typeof resolved !== 'string') return;
+        const trimmed = resolved.trim();
+        if (!trimmed || trimmed.toLowerCase() === nameLower) return;
+        update.mutate(
+          { id: company.id, name: trimmed } as any,
+          {
+            onSuccess: () => toast.success(`Company name updated to "${trimmed}"`),
+          }
+        );
+      } catch {
+        // Silent — leave the placeholder name in place.
+      }
+    })();
+  }, [company?.id, company?.domain, company?.name, update]);
 
   if (isLoading) {
     return (
