@@ -281,10 +281,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8} className="w-44">
-                  <DropdownMenuItem onClick={() => setShowLinkCompany(true)}>
+                  <DropdownMenuItem onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
                     <Building2 className="h-3.5 w-3.5 mr-2" /> Link company
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowLinkDeal(true)}>
+                  <DropdownMenuItem onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
                     <Briefcase className="h-3.5 w-3.5 mr-2" /> Link deal
                   </DropdownMenuItem>
                 </DropdownMenuContent>
