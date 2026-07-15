@@ -678,6 +678,37 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           });
         }}
       />
+
+      <AlertDialog open={!!deleteNoteId} onOpenChange={(o) => !o && setDeleteNoteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This note will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteActivity.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteActivity.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteNoteId) return;
+                deleteActivity.mutate(
+                  { id: deleteNoteId, crm_company_id: company.id },
+                  {
+                    onSuccess: () => { setDeleteNoteId(null); toast.success('Note deleted'); },
+                    onError: (err: any) => toast.error(err?.message || 'Failed to delete note'),
+                  }
+                );
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
