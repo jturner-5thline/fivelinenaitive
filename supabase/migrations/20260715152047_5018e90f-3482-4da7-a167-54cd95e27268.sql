@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_companies ADD COLUMN IF NOT EXISTS website_url text;
