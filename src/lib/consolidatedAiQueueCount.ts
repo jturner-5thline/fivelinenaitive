@@ -31,7 +31,7 @@ export function consolidatedAiQueueCount(items: readonly any[] | null | undefine
     }
     let count = arr.length;
     for (const n of termsByKey.values()) {
-      if (n >= 2) count -= n - 1;
+      if (n >= 1) count -= n - 1;
     }
     if (drafts.length >= 2) count -= drafts.length - 1;
     if (fsUpdates.length >= 2) count -= fsUpdates.length - 1;
