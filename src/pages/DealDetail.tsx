@@ -223,26 +223,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-// Excel-style bottom-docked tab trigger. Inactive tabs sit recessed in the
-// dark rail; the active tab rises out of the rail with the modal body's
-// background so it visually merges with the content plane above, and shows
-// a thin primary accent line near its bottom edge (mirroring Excel's green
-// underline on the selected sheet tab).
-const EXCEL_TAB_TRIGGER_CLASS =
-  "relative whitespace-nowrap flex-shrink-0 px-3.5 h-8 text-[12.5px] leading-none font-medium " +
-  "rounded-none rounded-t-[5px] border border-transparent border-b-0 " +
-  "bg-transparent text-white/55 shadow-none " +
-  "hover:text-white/90 hover:bg-white/[0.05] " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 focus-visible:ring-offset-0 " +
-  "transition-colors duration-150 " +
-  "data-[state=active]:text-foreground data-[state=active]:font-semibold " +
-  "data-[state=active]:bg-background data-[state=active]:border-border/70 " +
-  "data-[state=active]:h-9 data-[state=active]:-mt-1 data-[state=active]:-mb-px " +
-  "data-[state=active]:shadow-[0_-1px_0_0_hsl(var(--background)),0_-2px_6px_-2px_rgba(0,0,0,0.35)] " +
-  "data-[state=active]:before:content-[''] data-[state=active]:before:absolute " +
-  "data-[state=active]:before:inset-x-2 data-[state=active]:before:bottom-1 " +
-  "data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full " +
-  "data-[state=active]:before:bg-[hsl(var(--primary))]";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -5693,21 +5673,13 @@ export default function DealDetail() {
                     side="top"
                   >
                     <TabsList
-                      className={cn(
-                        // Excel-style bottom rail: recessed dark strip that
-                        // sits UNDER the modal content. Active tab (styled
-                        // below) rises out of the rail and merges into the
-                        // content plane above.
-                        "pointer-events-auto inline-flex h-9 items-end justify-start p-0 gap-0.5 max-w-full overflow-x-visible overflow-y-visible scrollbar-none rounded-none",
-                        "bg-gradient-to-b from-slate-900/90 to-slate-950/95 backdrop-blur-xl",
-                        "border-t border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
-                      )}
+                      className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-b from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10"
                       style={{ scrollbarWidth: 'none' }}
                     >
                       {hasDealSpaceAccess && !isSimplifiedDeal && !isProjectsDeal && (
                         <TabsTrigger
                           value="deal-space"
-                          className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Deal Space
@@ -5715,14 +5687,14 @@ export default function DealDetail() {
                       )}
                       <TabsTrigger
                         value="deal-info"
-                        className={EXCEL_TAB_TRIGGER_CLASS}
+                        className="relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                       >
                         Deal Info
                       </TabsTrigger>
                       {!isSimplifiedDeal && !isProjectsDeal && (
                         <TabsTrigger
                           value="lenders"
-                          className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                         >
                           Funding Sources
                           {deal.lenders && deal.lenders.length > 0 && (
@@ -5735,7 +5707,7 @@ export default function DealDetail() {
                       {!isSimplifiedDeal && hasDealManagementAccess && !isProjectsDeal && (
                         <TabsTrigger
                           value="deal-management"
-                          className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                         >
                           Management
                           {infoRequestActionCount > 0 && (
@@ -5748,7 +5720,7 @@ export default function DealDetail() {
                       {!isSimplifiedDeal && !isProjectsDeal && (
                         <TabsTrigger
                           value="deal-writeup"
-                          className={EXCEL_TAB_TRIGGER_CLASS}
+                          className="relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                         >
                           Write Up
                         </TabsTrigger>
@@ -5756,7 +5728,7 @@ export default function DealDetail() {
                       {(!isSimplifiedDeal || isFinServDeal) && (
                         <TabsTrigger
                           value="data-room"
-                          className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                          className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                         >
                           Data Room
                           {attachments.length > 0 && (
@@ -5769,7 +5741,7 @@ export default function DealDetail() {
                       {!isProjectsDeal && (
                       <TabsTrigger
                         value="activity-log"
-                        className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                       >
                         <History className="h-3.5 w-3.5" />
                         Activity
@@ -5778,7 +5750,7 @@ export default function DealDetail() {
                       {!isProjectsDeal && (
                       <TabsTrigger
                         value="communications"
-                        className={cn("gap-1.5", EXCEL_TAB_TRIGGER_CLASS)}
+                        className="gap-1.5 relative whitespace-nowrap flex-shrink-0 px-4 h-8 text-[13px] leading-none rounded-sm font-medium text-white/80 border-0 bg-white/[0.04] shadow-none hover:text-white hover:bg-white/10 transition-all duration-150 data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:h-10 data-[state=active]:-mt-2 data-[state=active]:rounded-t-sm data-[state=active]:rounded-b-none data-[state=active]:border data-[state=active]:border-b-0 data-[state=active]:border-white/15 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-700 data-[state=active]:via-slate-800 data-[state=active]:to-slate-900 data-[state=active]:shadow-[0_-8px_18px_-8px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18)] data-[state=active]:before:content-[''] data-[state=active]:before:absolute data-[state=active]:before:inset-x-2 data-[state=active]:before:top-0 data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full data-[state=active]:before:bg-[hsl(var(--primary))] data-[state=active]:after:content-[''] data-[state=active]:after:absolute data-[state=active]:after:inset-x-0 data-[state=active]:after:-bottom-1 data-[state=active]:after:h-1 data-[state=active]:after:bg-gradient-to-b data-[state=active]:after:from-slate-900 data-[state=active]:after:to-transparent"
                       >
                         <Mail className="h-3.5 w-3.5" />
                         Communications
