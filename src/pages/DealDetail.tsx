@@ -6596,33 +6596,6 @@ export default function DealDetail() {
         onUpdateItem={updateOutstandingItem}
       />
 
-      {/* Add Funding Source slide-out panel */}
-      <AddLenderSlideOver
-        open={isAddLenderSlideOverOpen}
-        onOpenChange={setIsAddLenderSlideOverOpen}
-        dealName={deal?.name || 'this deal'}
-        criteria={{
-          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-          dealValue: deal?.value || undefined,
-          capitalAsk: dealWriteUpData.capitalAsk || undefined,
-          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
-          geo: dealWriteUpData.location || undefined,
-          cashBurnOk: savedMatchingCriteria.cashBurnOk,
-          sponsorship: savedMatchingCriteria.sponsorship,
-        }}
-        existingLenderNames={existingLenderNames}
-        configuredStages={configuredStages}
-        defaultStageId={preferences.defaultLenderStage}
-        onAddLender={addLenderWithStage}
-        dealId={id}
-        aiCriteriaOverride={{
-          dealValue: deal?.value || undefined,
-          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
-          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-          geo: dealWriteUpData.location || undefined,
-        }}
-      />
-
       {/* Lenders Kanban Dialog */}
       <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
         <DialogContent
