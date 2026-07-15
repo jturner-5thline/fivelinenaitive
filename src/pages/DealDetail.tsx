@@ -223,6 +223,26 @@ import {
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Excel-style bottom-docked tab trigger. Inactive tabs sit recessed in the
+// dark rail; the active tab rises out of the rail with the modal body's
+// background so it visually merges with the content plane above, and shows
+// a thin primary accent line near its bottom edge (mirroring Excel's green
+// underline on the selected sheet tab).
+const EXCEL_TAB_TRIGGER_CLASS =
+  "relative whitespace-nowrap flex-shrink-0 px-3.5 h-8 text-[12.5px] leading-none font-medium " +
+  "rounded-none rounded-t-[5px] border border-transparent border-b-0 " +
+  "bg-transparent text-white/55 shadow-none " +
+  "hover:text-white/90 hover:bg-white/[0.05] " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))]/60 focus-visible:ring-offset-0 " +
+  "transition-colors duration-150 " +
+  "data-[state=active]:text-foreground data-[state=active]:font-semibold " +
+  "data-[state=active]:bg-background data-[state=active]:border-border/70 " +
+  "data-[state=active]:h-9 data-[state=active]:-mt-1 data-[state=active]:-mb-px " +
+  "data-[state=active]:shadow-[0_-1px_0_0_hsl(var(--background)),0_-2px_6px_-2px_rgba(0,0,0,0.35)] " +
+  "data-[state=active]:before:content-[''] data-[state=active]:before:absolute " +
+  "data-[state=active]:before:inset-x-2 data-[state=active]:before:bottom-1 " +
+  "data-[state=active]:before:h-[2px] data-[state=active]:before:rounded-full " +
+  "data-[state=active]:before:bg-[hsl(var(--primary))]";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
