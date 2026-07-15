@@ -1055,7 +1055,6 @@ function QueueRow({
   const risk = riskOf(item);
   const dot = RISK[risk].hex;
   const bundleChildren = (item as any).__bundle as QueuedAiAction[] | undefined;
-  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <li>
@@ -1113,28 +1112,6 @@ function QueueRow({
               {item.deal_name || 'Unassigned'}
             </p>
           </div>
-          {bundleChildren && bundleChildren.length > 0 && (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(e) => {
-                e.stopPropagation();
-                setPreviewOpen(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setPreviewOpen(true);
-                }
-              }}
-              className="inline-flex items-center justify-center h-6 w-6 rounded-md border border-white/[0.18] text-[#ecedf4]/70 hover:text-[#5ecdf5] hover:border-[#5ecdf5]/40 hover:bg-white/[0.06] shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5]"
-              aria-label="Preview sub-actions"
-              title="Preview sub-actions"
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </span>
-          )}
           <span
             className="text-[10px] text-[#ecedf4]/45 shrink-0 tabular-nums"
             style={FONT_MONO}
@@ -1143,19 +1120,6 @@ function QueueRow({
           </span>
         </div>
       </button>
-      {bundleChildren && bundleChildren.length > 0 && (
-        <BundlePreviewDrawer
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          bundleTitle={item.title}
-          dealName={item.deal_name}
-          children={bundleChildren}
-          onOpenDetail={() => {
-            setPreviewOpen(false);
-            onSelect();
-          }}
-        />
-      )}
     </li>
   );
 }
