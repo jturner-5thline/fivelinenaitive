@@ -2583,6 +2583,12 @@ function describeChangeSuffix(c: CandidateItem): string {
   const pv: Record<string, any> = (c.proposed_values as any) ?? {};
   const cv: Record<string, any> = (c.current_values as any) ?? {};
 
+  // The synthetic "no tasks on deal" prompt uses its own title
+  // (`${Deal} Has no Tasks`) and asks the user to fill in the task
+  // fields — don't append a `to "..."` suffix from the placeholder
+  // values we pre-seed for the details form.
+  if (pv._synthetic === "update_tasks") return "";
+
   // Priority order per action_type: which field carries the "main" intent.
   const priorityByAction: Record<string, string[]> = {
     update_funding_source: ["stage", "status", "priority", "next_step"],
