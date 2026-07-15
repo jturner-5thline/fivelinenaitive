@@ -556,7 +556,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         termsGroups.get(bk)!.push(it);
       }
       for (const [bk, picks] of termsGroups.entries()) {
-        if (picks.length < 2) continue;
+        if (picks.length < 1) continue;
         // Pull a lender label from any child (linked_entity_label is set on
         // update_funding_source; fall back to parsing the bundle key).
         const lenderLabel =
@@ -569,14 +569,23 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         if (kinds.has('save_to_data_room' as AiActionType)) parts.push('Save PDF');
         if (kinds.has('update_funding_source' as AiActionType)) parts.push('Update funding source');
         if (kinds.has('add_status_note' as AiActionType)) parts.push('Add status note');
-        if (kinds.has('update_deal_stage' as AiActionType)) parts.push('Advance deal stage');
-        bundleItems((it) => picks.includes(it), {
-          idKey: `terms-issued:${bk}`,
-          actionType: 'terms_issued_bundle',
+        // Always render bundled — a per-lender Terms Issued card even with a
+        // single sub-item, so the reviewer sees the semantic "Lender — Term
+        // Sheet / IOI" grouping consistently. Inline the collapse (bundleItems
+        // enforces >=2).
+        const rest = g.items.filter((it) => !picks.includes(it));
+        const bundle: QueuedAiAction = {
+          ...picks[0],
+          id: `bundle:terms-issued:${bk}:${g.key}`,
+          action_type: 'terms_issued_bundle' as unknown as AiActionType,
           title: `${lenderLabel} — Term Sheet / IOI`,
-          description: parts.join(' · ') || `${picks.length} lender actions`,
-          rationale: `${lenderLabel} sent terms — ${picks.length} related actions bundled for review.`,
-        });
+          description: parts.join(' · ') || `${picks.length} lender action${picks.length === 1 ? '' : 's'}`,
+          rationale: `${lenderLabel} sent terms — ${picks.length} related action${picks.length === 1 ? '' : 's'} for review.`,
+          old_values: {},
+          new_values: {},
+        } as QueuedAiAction;
+        (bundle as any).__bundle = picks;
+        g.items = [bundle, ...rest];
       }
 
       const drafts = g.items.filter((it) => it.action_type === 'draft_email');
