@@ -635,7 +635,18 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         const dealNameLc = (g.dealName || '').trim().toLowerCase();
         const isDealName = (s: string) => !!s && s.trim().toLowerCase() === dealNameLc;
         let lenderLabel = '';
+        // 0 — authoritative: resolve the funding_source_id encoded in the
+        //     bundle_key to the lender's display name via deal_lenders →
+        //     master_lenders. This is the only reliable source when the
+        //     surviving sub-items don't carry the lender name (e.g. a
+        //     save_to_data_room whose linked_entity_label is the DEAL).
+        const fsIdFromKey = bk.split(':')[2] || '';
+        const nameFromMap = fsIdFromKey ? fundingSourceNameMap?.get(fsIdFromKey) : undefined;
+        if (nameFromMap && !isDealName(nameFromMap)) {
+          lenderLabel = nameFromMap;
+        }
         // 1 & 2 — any pick with a label containing " on "
+        if (!lenderLabel)
         for (const p of picks) {
           const raw = (p as any).payload?.linked_entity_label as string | undefined;
           if (raw && /\s+on\s+/i.test(raw)) {
