@@ -320,11 +320,6 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={() => handleLogActivity('call')}><Phone className="h-3.5 w-3.5 mr-2" /> Log call</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLogActivity('meeting')}><Calendar className="h-3.5 w-3.5 mr-2" /> Log meeting</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleLogActivity('email')}><Mail className="h-3.5 w-3.5 mr-2" /> Log email</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowCreateTask(true)}><CheckSquare className="h-3.5 w-3.5 mr-2" /> Create task</DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowDelete(true)} className="text-destructive focus:text-destructive">
                     <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete company
                   </DropdownMenuItem>
