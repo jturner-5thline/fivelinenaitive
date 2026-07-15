@@ -2113,7 +2113,7 @@ async function maybeBuildUpdateTasksCandidate(
 
   return {
     action_type: "create_followup_task",
-    item_title: `${dealName} Has no Tasks`,
+    item_title: `${dealName} Needs Tasks`,
     linked_entity_label: dealName,
     target_object_type: "task",
     target_object_id: null,
@@ -2121,9 +2121,18 @@ async function maybeBuildUpdateTasksCandidate(
     current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
     proposed_values: {
       _synthetic: "update_tasks",
-      title: `Next step for ${dealName}`,
-      assigned_to: ownerId,
-      due_date: defaultDue,
+      // Seed the details panel with a single blank task row so the
+      // reviewer sees the task-creation UI immediately. They can add
+      // more rows (title / due date / assignee) before approving —
+      // approval creates all of them against the deal at once.
+      tasks: [
+        {
+          title: "",
+          assigned_to: ownerId,
+          due_date: defaultDue,
+          description: "",
+        },
+      ],
       description,
     },
     rationale_summary:
@@ -2663,7 +2672,7 @@ function describeChangeSuffix(c: CandidateItem): string {
   const cv: Record<string, any> = (c.current_values as any) ?? {};
 
   // The synthetic "no tasks on deal" prompt uses its own title
-  // (`${Deal} Has no Tasks`) and asks the user to fill in the task
+  // (`${Deal} Needs Tasks`) and asks the user to fill in the task
   // fields — don't append a `to "..."` suffix from the placeholder
   // values we pre-seed for the details form.
   if (pv._synthetic === "update_tasks") return "";
@@ -3628,8 +3637,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     }
   }
 
-  // 2) Existing dedupe keys — anything currently pending/approved in the queue
-  //    for this company we shouldn't re-propose.
+  // 2) Existing dedupe keys — anything currently pending, approved, OR
+  //    dismissed/rejected in the queue for this company we shouldn't
+  //    re-propose. Rejecting a card is a decision the reviewer already
+  //    made; a fresh sweep must not resurface it.
   const dealIdsArr = dealList.map((d: any) => d.id);
   const existingKeys = new Set<string>();
   if (dealIdsArr.length > 0) {
@@ -3637,7 +3648,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       .from("ai_action_queue")
       .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
       .in("deal_id", dealIdsArr)
-      .in("status", ["pending", "approved"]);
+      .in("status", ["pending", "approved", "dismissed"]);
     for (const e of existing ?? []) {
       const key = queueSemanticKey(e as any);
       existingKeys.add(key);
