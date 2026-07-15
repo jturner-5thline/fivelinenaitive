@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, X, Pencil, ExternalLink } from 'lucide-react';
+import { Check, X, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -114,11 +114,10 @@ export function EditableField({
           href={href}
           target={type === 'url' ? '_blank' : undefined}
           rel={type === 'url' ? 'noopener noreferrer' : undefined}
-          className="text-primary text-xs flex items-center gap-1 hover:underline break-all"
+          className="text-primary text-sm hover:underline truncate block"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="truncate">{text}</span>
-          {type === 'url' && <ExternalLink className="h-3 w-3 flex-shrink-0" />}
+          {text}
         </a>
       );
     }
