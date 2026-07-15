@@ -569,7 +569,6 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         if (kinds.has('save_to_data_room' as AiActionType)) parts.push('Save PDF');
         if (kinds.has('update_funding_source' as AiActionType)) parts.push('Update funding source');
         if (kinds.has('add_status_note' as AiActionType)) parts.push('Add status note');
-        if (kinds.has('update_deal_stage' as AiActionType)) parts.push('Advance deal stage');
         bundleItems((it) => picks.includes(it), {
           idKey: `terms-issued:${bk}`,
           actionType: 'terms_issued_bundle',
