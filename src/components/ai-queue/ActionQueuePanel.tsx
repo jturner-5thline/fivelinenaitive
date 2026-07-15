@@ -2182,6 +2182,36 @@ function DetailPane({
             </div>
           )}
 
+          {isUpdateTasksPrompt && (
+            <div>
+              <p
+                className="text-[16px] font-semibold tracking-tight text-[#f7f8fc] mb-3"
+                style={FONT_BODY}
+              >
+                Create task
+              </p>
+              <TaskListEditor
+                dealName={item.deal_name || 'this deal'}
+                initialTasks={
+                  Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
+                    ? (newValues as any).tasks.map((t: any) => ({
+                        title: String(t?.title ?? ''),
+                        due_date: t?.due_date ?? null,
+                        assigned_to: t?.assigned_to ?? null,
+                      }))
+                    : ([
+                        {
+                          title: '',
+                          due_date: (newValues as any)?.due_date ?? null,
+                          assigned_to: (newValues as any)?.assigned_to ?? null,
+                        },
+                      ] as EditorTask[])
+                }
+                onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
+              />
+            </div>
+          )}
+
           {/* Status note editor for funding source updates. Persisted into
            *  deal_lenders.notes via the executor's `merged.notes` handling. */}
           {editMode && isFundingSource && (
