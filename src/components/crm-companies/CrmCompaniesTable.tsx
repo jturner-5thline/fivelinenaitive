@@ -95,16 +95,26 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   );
 
   // Fetch the set of CRM company IDs that have at least one linked contact
-  // for this org. Powers the "No contacts" Missing Data filter.
+  // for this org. Powers the "No contacts" Missing Data filter and its count.
+  // Runs in the background with a localStorage-cached fallback so opening the
+  // filter menu is always instant — the count is shown from cache first and
+  // then refreshed silently.
   const { company } = useCompany();
-  // Only fetch the (potentially large) set of company IDs with linked contacts
-  // when the "No contacts" filter is actually active. Loading it eagerly to
-  // show a count in the dropdown made the filter menu slow to open.
-  const needsContactsSet = missingDataFilter.includes('no_contacts');
-  const { data: companyIdsWithContacts } = useQuery({
+  const cacheKey = company?.id ? `crm-missing-data-cache:${company.id}` : null;
+  const cachedIds = useMemo<string[] | null>(() => {
+    if (!cacheKey) return null;
+    try {
+      const raw = localStorage.getItem(cacheKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch { return null; }
+  }, [cacheKey]);
+  const { data: companyIdsWithContacts, isFetching: isFetchingContactsSet } = useQuery({
     queryKey: ['crm-companies-with-contacts', company?.id],
-    enabled: !!company?.id && needsContactsSet,
-    staleTime: 60_000,
+    enabled: !!company?.id,
+    staleTime: 5 * 60_000,
+    initialData: cachedIds ? new Set(cachedIds) : undefined,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('contacts')
@@ -112,9 +122,24 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
         .eq('org_company_id', company!.id)
         .not('crm_company_id', 'is', null);
       if (error) throw error;
-      return new Set((data ?? []).map((r: any) => r.crm_company_id as string));
+      const ids = (data ?? []).map((r: any) => r.crm_company_id as string);
+      if (cacheKey) {
+        try { localStorage.setItem(cacheKey, JSON.stringify(Array.from(new Set(ids)))); } catch {}
+      }
+      return new Set(ids);
     },
   });
+
+  const missingDataCounts = useMemo(() => {
+    const noDomain = companies.filter(c => !((c.domain || '').trim())).length;
+    const noContacts = companyIdsWithContacts
+      ? companies.filter(c => !companyIdsWithContacts.has(c.id)).length
+      : null;
+    return { no_domain: noDomain, no_contacts: noContacts };
+  }, [companies, companyIdsWithContacts]);
+  const contactsCountLabel = missingDataCounts.no_contacts === null
+    ? (isFetchingContactsSet ? '…' : '—')
+    : String(missingDataCounts.no_contacts);
 
   const deferredCompanies = useDeferredValue(companies);
 
