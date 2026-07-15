@@ -383,6 +383,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </div>
                 </div>
 
+                <div className="relative group/domain">
                 <EditableField
                   label="Domain"
                   type="url"
@@ -408,6 +409,29 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     );
                   }}
                 />
+                {normalizeDomain(contact.website_url) && (
+                  <button
+                    type="button"
+                    aria-label="Copy domain"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const d = normalizeDomain(contact.website_url);
+                      if (!d) return;
+                      try {
+                        await navigator.clipboard.writeText(d);
+                        setDomainCopied(true);
+                        toast.success('Domain copied');
+                        setTimeout(() => setDomainCopied(false), 1500);
+                      } catch {
+                        toast.error('Failed to copy');
+                      }
+                    }}
+                    className="absolute top-0 right-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover/domain:opacity-100 transition-opacity"
+                  >
+                    {domainCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                )}
+                </div>
 
                 <LabeledSelect label="Lifecycle Stage" value={contact.lifecycle_stage} onChange={v => handleQuickUpdate('lifecycle_stage', v)} options={LIFECYCLE_STAGES} />
                 <LabeledSelect label="Status" value={contact.status} onChange={v => handleQuickUpdate('status', v)} options={CONTACT_STATUSES} />
