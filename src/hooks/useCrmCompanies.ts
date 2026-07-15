@@ -401,6 +401,42 @@ export function useCreateCrmCompanyActivity() {
   });
 }
 
+export function useUpdateCrmCompanyActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; crm_company_id: string; body?: string; subject?: string }) => {
+      const { id, crm_company_id, ...updates } = vars;
+      const { data, error } = await supabase
+        .from('crm_company_activities')
+        .update(updates as any)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['crm-company-activities', vars.crm_company_id] });
+    },
+  });
+}
+
+export function useDeleteCrmCompanyActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { id: string; crm_company_id: string }) => {
+      const { error } = await supabase
+        .from('crm_company_activities')
+        .delete()
+        .eq('id', vars.id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['crm-company-activities', vars.crm_company_id] });
+    },
+  });
+}
+
 // Get contacts linked to a CRM company
 export function useCrmCompanyContacts(companyId: string | undefined) {
   return useQuery({
