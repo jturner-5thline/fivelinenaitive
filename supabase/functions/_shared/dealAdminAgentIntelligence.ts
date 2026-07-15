@@ -2175,7 +2175,39 @@ function queueSemanticKey(row: {
     return `${row.deal_id ?? ""}::funding_source_attention::deal_lender::${lenderTargetId}`;
   }
   const group = semanticActionGroup(actionType, targetType, row.target_object_id ?? null);
+  // For add_status_note, notes on the same deal are NOT interchangeable —
+  // a terms-issued note about Lender A must not collide with a call-summary
+  // note about a Claap sync, or with a terms-issued note about Lender B.
+  // Salt the key with the primary evidence ref id so distinct sources
+  // (different emails, different meetings, different lenders) each get
+  // their own slot in the queue.
+  if (actionType === "add_status_note") {
+    const salt = extractStatusNoteTopicSalt(row);
+    return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}::${salt}`;
+  }
   return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
+}
+
+function extractStatusNoteTopicSalt(row: {
+  payload?: unknown;
+  evidence?: unknown;
+}): string {
+  // Prefer the first evidence reference's id — evidence points at the concrete
+  // source event (email, claap, meeting) that motivated the note. Different
+  // sources ⇒ different slots.
+  const evList = evidenceArray(row);
+  for (const ev of evList) {
+    const id = (ev as any)?.ref_id ?? (ev as any)?.id;
+    if (typeof id === "string" && id.trim().length > 0) return id.trim();
+  }
+  // Fall back to the first few words of the note body from payload.proposed_values.
+  const payload = asObject(row.payload);
+  const pv = asObject(payload.proposed_values);
+  const note = typeof pv.note === "string" ? pv.note : (typeof pv.notes === "string" ? pv.notes : "");
+  if (note) {
+    return note.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").slice(0, 6).join("-");
+  }
+  return "";
 }
 
 function normalizeComparableText(v: unknown): string {
