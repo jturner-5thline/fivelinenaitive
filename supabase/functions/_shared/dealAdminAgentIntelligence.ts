@@ -456,6 +456,27 @@ async function gatherSignalsForDeal(
   // Hydrate claap recordings with transcript / summary / action items from
   // claap_transcripts (deal-linked) and claap_recordings (org-linked).
   const claapRows: any[] = claap.data ?? [];
+  // Hydrate deal_claap_recordings with the underlying claap_recordings row so
+  // we know the ACTUAL meeting date (started_at) — deal_claap_recordings.linked_at
+  // reflects only when the user attached the recording to the deal, not when the
+  // meeting happened. Without this, an old June meeting linked yesterday looks
+  // like fresh activity and the LLM invents a "captured on <today>" ghost note.
+  const linkedRecIds = claapRows
+    .map((r) => r.recording_id)
+    .filter((v: any) => typeof v === "string" && v.length > 0);
+  let linkedRecById = new Map<string, any>();
+  if (linkedRecIds.length > 0) {
+    const { data: linkedRecRows } = await supabase
+      .from("claap_recordings")
+      .select("id, title, summary, action_items, key_takeaways, started_at, ended_at, organizer_email, participants, recording_url, transcript_available")
+      .in("id", linkedRecIds);
+    linkedRecById = new Map<string, any>((linkedRecRows ?? []).map((r: any) => [r.id, r]));
+  }
+  // Only surface a linked recording if its underlying meeting occurred within
+  // the status-note recency window (7 days). Anything older is stale and must
+  // not seed a new "Add <deal> <> <call> status note" queue item.
+  const RECENCY_MS = 7 * 24 * 60 * 60 * 1000;
+  const recencyCutoff = Date.now() - RECENCY_MS;
   const { data: cTrans } = await supabase
     .from("claap_transcripts")
     .select("id, claap_meeting_id, transcript_text, summary, participants, recorded_at, call_type")
@@ -473,16 +494,37 @@ async function gatherSignalsForDeal(
     meetingById = new Map<string, any>((cRec ?? []).map((r: any) => [r.id, r]));
   }
   const enrichedClaap = [
-    ...claapRows.map((r) => ({
-      source: "deal_claap_recordings",
-      id: r.id,
-      title: r.recording_title,
-      url: r.recording_url,
-      recorder: r.recorder_name ?? r.recorder_email,
-      duration_seconds: r.duration_seconds,
-      linked_at: r.linked_at,
-      notes: r.notes,
-    })),
+    ...claapRows
+      .map((r) => {
+        const rec = r.recording_id ? linkedRecById.get(r.recording_id) : null;
+        const startedAt = rec?.started_at ?? null;
+        const startedMs = startedAt ? Date.parse(startedAt) : NaN;
+        // Drop stale meetings (>7 days old) OR entries we can't date at all.
+        // Both categories were the source of ghost "Add <deal> <> <call> status
+        // note" items — the LLM would invent a recent date because the bundle
+        // gave it a title with no anchor.
+        if (!Number.isFinite(startedMs) || startedMs < recencyCutoff) return null;
+        return {
+          source: "deal_claap_recordings",
+          id: r.id,
+          recording_id: r.recording_id,
+          title: rec?.title ?? r.recording_title,
+          url: r.recording_url ?? rec?.recording_url,
+          recorder: r.recorder_name ?? r.recorder_email,
+          duration_seconds: r.duration_seconds,
+          linked_at: r.linked_at,
+          notes: r.notes,
+          recorded_at: startedAt,
+          ended_at: rec?.ended_at ?? null,
+          organizer_email: rec?.organizer_email ?? null,
+          participants: rec?.participants ?? null,
+          summary: rec?.summary ?? null,
+          action_items: rec?.action_items ?? null,
+          key_takeaways: rec?.key_takeaways ?? null,
+          transcript_available: rec?.transcript_available ?? null,
+        };
+      })
+      .filter((v): v is any => v !== null),
     ...(cTrans ?? []).map((t: any) => {
       const m = meetingById.get(t.claap_meeting_id);
       return {
@@ -825,6 +867,8 @@ STATUS NOTE RECENCY GATE — apply strictly
 - Status notes exist to capture RECENT activity. NEVER propose an add_status_note whose underlying event (call, email, milestone, lender movement) is more than 7 CALENDAR DAYS old relative to "now" in the bundle. If the newest supporting evidence is older than 7 days, emit NOTHING — do not backfill historical activity into the queue.
 - The 7-day window applies to the DATE OF THE EVENT itself (calendar event start/end, claap recording started_at, email sent_at, milestone completed_at, funding_source last_contact_at), not to when you noticed it. A meeting from 3+ weeks ago is stale even if no note was ever written — leave it alone.
 - If multiple signals describe the same event, use the most recent one to check recency; if all are >7 days old, drop the proposal.
+- NEVER PROPOSE PLACEHOLDER / GHOST STATUS NOTES. If a claap recording (or any other signal) has no summary, no transcript_excerpt, no action_items, and no key_takeaways — i.e. you have nothing but a title and a date — DO NOT emit an add_status_note. A note that says "call happened, details to follow", "full details to be added once transcript/summary is available", "captured on <date>", or any similar placeholder is FORBIDDEN. Wait until the recording is hydrated with real content, then emit ONE note grounded in that content.
+- The mere existence of a deal_claap_recordings link (a user attaching a call to a deal) is NOT itself a new event — the meeting date is what counts. If the underlying meeting is >7 days old, treat it as stale even though the link is fresh.
 
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
