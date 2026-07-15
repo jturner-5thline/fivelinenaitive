@@ -278,9 +278,10 @@ export function useCrmCompaniesInfinite(params: CrmCompaniesInfiniteParams = {})
     },
     getNextPageParam: (last) => (last.hasMore ? last.nextOffset : undefined),
     enabled: !!company?.id,
-    staleTime: 24 * 60 * 60_000,
-    gcTime: 24 * 60 * 60_000,
-    refetchOnMount: false,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
 }
