@@ -384,9 +384,9 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
                 <EditableField
                   label="Domain"
-                  type="text"
+                  type="url"
                   asLink
-                  value={normalizeDomain(contact.website_url) || ''}
+                  value={normalizeDomain(contact.website_url) ? `https://${normalizeDomain(contact.website_url)}` : ''}
                   onSave={(v) => {
                     const normalized = normalizeDomain(v == null ? '' : String(v)) || null;
                     updateContact.mutate(
