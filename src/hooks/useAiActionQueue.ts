@@ -774,6 +774,7 @@ export function useApproveAiAction() {
         // upload every sibling save_to_data_room attachment to Internal ▸
         // Terms. These live on separate queue rows but semantically are one
         // action from the reviewer's perspective.
+        let termsBundleToastShown = false;
         if (item.action_type === 'add_status_note' && item.deal_id) {
           const nv =
             (item.new_values as any) ||
@@ -790,9 +791,30 @@ export function useApproveAiAction() {
                 userId: user.id,
               });
               invalidateQueueAll(qc);
-              if (side.savedCount > 0) {
-                toast.success(`Saved ${side.savedCount} attachment${side.savedCount === 1 ? '' : 's'} to Internal ▸ Terms`);
-              }
+              // Explicit confirmation toast — spell out what actually
+              // happened to the funding source AND to the term-sheet PDF
+              // so the reviewer doesn't have to open the deal to verify.
+              const lender = side.lenderName || 'Funding source';
+              const lenderLine = side.lenderUpdateOk
+                ? side.lenderStageAdvanced
+                  ? `${lender} → Terms Issued (note saved)`
+                  : side.lenderStageAlreadyAtOrPast
+                    ? `${lender} note saved (stage already at/past Terms Issued)`
+                    : `${lender} note saved`
+                : `${lender} update failed`;
+              const savedLine =
+                side.savedAttachments.length > 0
+                  ? `Uploaded to Internal ▸ Terms: ${side.savedAttachments.join(', ')}`
+                  : side.failedAttachments.length > 0
+                    ? `Failed to upload: ${side.failedAttachments.join(', ')}`
+                    : 'No term sheet PDF found to upload';
+              const anyFailure =
+                !side.lenderUpdateOk || side.failedAttachments.length > 0;
+              const toastFn = anyFailure ? toast.warning : toast.success;
+              toastFn('Term Sheet Items approved', {
+                description: `${lenderLine}\n${savedLine}`,
+              });
+              termsBundleToastShown = true;
               for (const err of side.errors) {
                 console.warn('[terms-issued side-effect]', err);
               }
@@ -802,10 +824,12 @@ export function useApproveAiAction() {
           }
         }
         const msg = (data as any)?.result_message as string | undefined;
-        if (data.decision === 'email_staged') {
-          toast.success(msg || 'Draft staged for send', { description: item.title });
-        } else {
-          toast.success(msg || 'Approved & applied', { description: item.title });
+        if (!termsBundleToastShown) {
+          if (data.decision === 'email_staged') {
+            toast.success(msg || 'Draft staged for send', { description: item.title });
+          } else {
+            toast.success(msg || 'Approved & applied', { description: item.title });
+          }
         }
         invalidateAllTaskCaches(qc);
         return { ok: true };
