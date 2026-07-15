@@ -706,7 +706,7 @@ function LogActivityDialog({
   contactName: string;
   onOpenChange: (open: boolean) => void;
 }) {
-  const createActivity = useCreateContactActivity({ updateCache: false, returnInserted: false });
+  const createActivity = useCreateContactActivity();
   const [lastType, setLastType] = useState<'call' | 'meeting'>('call');
   const [logSubject, setLogSubject] = useState('');
   const [logBody, setLogBody] = useState('');
@@ -721,6 +721,27 @@ function LogActivityDialog({
     setLogBody('');
   }, [type]);
 
+  // Safety-net for a known Radix Dialog + Menu/Select interaction where
+  // scroll-lock leaks `pointer-events: none` onto <body>, freezing the page
+  // after the log dialog closes. Restore it once the dialog is closed.
+  useEffect(() => {
+    if (type) return;
+    const clear = () => {
+      if (document.body.style.pointerEvents === 'none') {
+        document.body.style.pointerEvents = '';
+      }
+    };
+    // Poll for ~1.5s to cover Radix's close animation, which can re-apply
+    // the scroll lock mid-teardown when a mutation re-renders the parent.
+    const iv = window.setInterval(clear, 100);
+    const stop = window.setTimeout(() => window.clearInterval(iv), 1500);
+    return () => {
+      window.clearInterval(iv);
+      window.clearTimeout(stop);
+      clear();
+    };
+  }, [type]);
+
   const submitLogActivity = () => {
     if (!type) return;
     const occurredAt = logWhen ? new Date(logWhen) : new Date();
@@ -731,15 +752,15 @@ function LogActivityDialog({
       body: logBody.trim() || undefined,
       occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
     };
-
-    toast.info(`Logging ${type === 'call' ? 'call' : 'meeting'}…`);
+    const label = type === 'call' ? 'Call' : 'Meeting';
+    // Close the dialog synchronously so Radix's scroll-lock cleanup runs in
+    // the same tick as the click, before the mutation's render churn. Then
+    // fire the mutation.
     onOpenChange(false);
-    window.setTimeout(() => {
-      createActivity.mutate(payload, {
-        onSuccess: () => toast.success(`${type === 'call' ? 'Call' : 'Meeting'} logged`),
-        onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
-      });
-    }, 300);
+    createActivity.mutate(payload, {
+      onSuccess: () => toast.success(`${label} logged`),
+      onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
+    });
   };
 
   return (
