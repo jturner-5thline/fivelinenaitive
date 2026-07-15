@@ -13,6 +13,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   useCrmCompanyAttachments,
   CRM_COMPANY_ATTACHMENT_CATEGORIES,
   type CrmCompanyAttachmentCategory,
@@ -58,6 +62,8 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [replaceTarget, setReplaceTarget] = useState<CrmCompanyAttachment | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CrmCompanyAttachment | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const enriched = useMemo(
     () => attachments.map(a => ({ ...a, status: deriveStatus(a) })),
@@ -94,6 +100,17 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
 
   const preview = (a: CrmCompanyAttachment) => {
     if (a.url) window.open(a.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await remove(deleteTarget);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
   };
 
   return (
@@ -237,11 +254,21 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
                             <DropdownMenuItem onClick={() => { setReplaceTarget(a); replaceRef.current?.click(); }}>
                               <Replace className="h-3.5 w-3.5 mr-2" /> Replace
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => remove(a)} className="text-destructive focus:text-destructive">
+                            <DropdownMenuItem onClick={() => setDeleteTarget(a)} className="text-destructive focus:text-destructive">
                               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 ml-1 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleteTarget(a)}
+                          title="Delete attachment"
+                          aria-label="Delete attachment"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -251,6 +278,27 @@ export function CompanyAttachmentsTable({ crmCompanyId, companyName }: Props) {
           </div>
         )}
       </CardContent>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete attachment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove <span className="font-medium">{deleteTarget?.name}</span> from this company. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
