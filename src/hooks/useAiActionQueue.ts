@@ -662,92 +662,13 @@ async function executeQueuedAction(
         if (!attachmentName || !sourceEmailId) {
           return { ok: false, error: 'save_to_data_room: missing attachment_name or source_email_id' };
         }
-
-        // 1. Look up the deal's company_id (required for vdr_documents row).
-        const { data: deal, error: dealErr } = await supabase
-          .from('deals')
-          .select('company_id')
-          .eq('id', item.deal_id)
-          .maybeSingle();
-        if (dealErr || !deal?.company_id) {
-          return { ok: false, error: `save_to_data_room: deal lookup failed (${dealErr?.message || 'no company_id'})` };
-        }
-
-        // 2. Locate the attachment metadata cached alongside the email so we
-        //    can resolve its provider attachment id.
-        const { data: cached, error: cacheErr } = await supabase
-          .from('email_cache')
-          .select('attachments')
-          .eq('gmail_message_id', sourceEmailId)
-          .limit(1)
-          .maybeSingle();
-        if (cacheErr) {
-          return { ok: false, error: `save_to_data_room: email lookup failed (${cacheErr.message})` };
-        }
-        const atts: any[] = Array.isArray((cached as any)?.attachments) ? (cached as any).attachments : [];
-        const match = atts.find((a) => a?.filename === attachmentName)
-          || atts.find((a) => (a?.filename || '').toLowerCase() === attachmentName.toLowerCase())
-          || (atts.length === 1 ? atts[0] : null);
-        if (!match?.id) {
-          return { ok: false, error: `save_to_data_room: attachment "${attachmentName}" not found on email` };
-        }
-
-        // 3. Fetch the attachment binary from the provider (base64).
-        const { data: attData, error: attErr } = await supabase.functions.invoke('gmail-messages', {
-          body: { action: 'get_attachment', message_id: sourceEmailId, attachment_id: match.id },
+        const res = await saveEmailAttachmentToTerms({
+          dealId: item.deal_id,
+          attachmentName,
+          sourceEmailId,
+          userId,
         });
-        if (attErr || !attData?.data) {
-          return { ok: false, error: `save_to_data_room: attachment download failed (${attErr?.message || 'no data'})` };
-        }
-        const base64: string = attData.data;
-        const contentType: string = attData.content_type || match.content_type || 'application/octet-stream';
-        // Decode base64 → Uint8Array → Blob for storage upload.
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        const blob = new Blob([bytes], { type: contentType.split(';')[0].trim() });
-
-        // 4. Upload into the Terms folder in the vdr-files bucket.
-        const folderPath = '/Terms/';
-        const storagePath = `${item.deal_id}${folderPath}${attachmentName}`;
-        const { error: upErr } = await supabase.storage
-          .from('vdr-files')
-          .upload(storagePath, blob, { upsert: true, contentType: contentType.split(';')[0].trim() });
-        if (upErr) {
-          return { ok: false, error: `save_to_data_room: storage upload failed (${upErr.message})` };
-        }
-
-        // 5. Insert the vdr_documents row. Internal-only Terms folder → never
-        //    shared to the external Data Room.
-        const { data: inserted, error: insErr } = await (supabase as any)
-          .from('vdr_documents')
-          .insert({
-            deal_id: item.deal_id,
-            company_id: deal.company_id,
-            filename: attachmentName,
-            file_path: storagePath,
-            file_size: bytes.length,
-            file_type: contentType.split(';')[0].trim() || attachmentName.split('.').pop() || null,
-            folder_path: folderPath,
-            is_folder: false,
-            source: 'dataroom',
-            uploaded_by: userId,
-            ingestion_status: 'pending',
-            shared_to_dataroom: false,
-          })
-          .select('id')
-          .single();
-        if (insErr) {
-          return { ok: false, error: `save_to_data_room: vdr_documents insert failed (${insErr.message})` };
-        }
-
-        // 6. Fire-and-forget AI classification so the file gets processed
-        //    like any other Data Room upload.
-        if (inserted?.id) {
-          supabase.functions
-            .invoke('classify-file', { body: { document_id: inserted.id } })
-            .catch((e) => console.warn('[save_to_data_room] classify-file invoke failed:', e));
-        }
+        if (!res.ok) return { ok: false, error: `save_to_data_room: ${res.error}` };
         break;
       }
       case 'deal_update': {
