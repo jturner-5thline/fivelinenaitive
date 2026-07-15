@@ -1095,7 +1095,13 @@ export function VdrThreeColumnWorkspace({
           <ContextMenuItem onClick={() => onPreview(doc)}>Preview</ContextMenuItem>
           <ContextMenuItem onClick={() => handleDownload(doc)}>Download</ContextMenuItem>
           {column === 'internal' ? (
-            <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
+            isInternalOnlyDoc(doc) ? (
+              <ContextMenuItem disabled title="Terms stays Internal — can't be shared to Data Room.">
+                Copy to Data Room
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
+            )
           ) : (
             <ContextMenuItem onClick={() => removeFromDataroom([doc.id])}>Remove from Data Room</ContextMenuItem>
           )}
