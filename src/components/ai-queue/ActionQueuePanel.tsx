@@ -478,6 +478,63 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     });
   }, [scopedItems, query]);
 
+  // Collect funding_source_ids referenced by any terms_issued:{deal}:{fs}
+  // bundle_key in the currently filtered items, then resolve them to lender
+  // display names so the Terms Issued bundle card can title itself
+  // "{Lender} Term Sheet Items" even when the only surviving sub-item is a
+  // save_to_data_room proposal (whose linked_entity_label points at the DEAL,
+  // not the lender).
+  const termsBundleFundingSourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of filtered) {
+      const nv =
+        (it as any).new_values ||
+        (it as any).payload?.on_approve_execution_payload?.new_values ||
+        {};
+      const bk = typeof nv.bundle_key === 'string' ? nv.bundle_key : '';
+      if (!bk.startsWith('terms_issued:')) continue;
+      const fsId = bk.split(':')[2];
+      if (fsId) ids.add(fsId);
+    }
+    return Array.from(ids).sort();
+  }, [filtered]);
+
+  const { data: fundingSourceNameMap } = useQuery({
+    queryKey: ['terms-bundle-funding-source-names', termsBundleFundingSourceIds],
+    enabled: termsBundleFundingSourceIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: lenders } = await (supabase as any)
+        .from('deal_lenders')
+        .select('id, master_lender_id')
+        .in('id', termsBundleFundingSourceIds);
+      const masterIds = Array.from(
+        new Set(
+          (lenders ?? [])
+            .map((l: any) => l?.master_lender_id)
+            .filter((v: any): v is string => typeof v === 'string' && v.length > 0),
+        ),
+      );
+      let nameByMasterId = new Map<string, string>();
+      if (masterIds.length > 0) {
+        const { data: masters } = await (supabase as any)
+          .from('master_lenders')
+          .select('id, name')
+          .in('id', masterIds);
+        for (const m of masters ?? []) {
+          if (m?.id && typeof m.name === 'string') nameByMasterId.set(m.id, m.name);
+        }
+      }
+      const out = new Map<string, string>();
+      for (const l of lenders ?? []) {
+        if (!l?.id) continue;
+        const name = l.master_lender_id ? nameByMasterId.get(l.master_lender_id) : undefined;
+        if (name) out.set(l.id, name);
+      }
+      return out;
+    },
+  });
+
   // Group filtered items by deal_id (preserving original order within group).
   type DealGroup = {
     key: string;
