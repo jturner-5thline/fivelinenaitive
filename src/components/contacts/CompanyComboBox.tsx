@@ -3,6 +3,7 @@ import { Search, Plus, Building2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useCrmCompanies, useCreateCrmCompany } from '@/hooks/useCrmCompanies';
+import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -47,10 +48,27 @@ export function CompanyComboBox({ value, onChange, email }: CompanyComboBoxProps
       onChange(match.id);
       setDomainSuggested(true);
     } else {
-      // Pre-fill search with domain name (without TLD) as a suggestion
-      const domainName = domain.split('.')[0];
-      setSearch(domainName);
+      // Pre-fill with domain stem immediately so the field never looks empty,
+      // then ask the backend to resolve the real company name from the website.
+      const domainStem = domain.split('.')[0];
+      setSearch(domainStem);
       setDomainSuggested(true);
+      (async () => {
+        try {
+          const { data, error } = await supabase.functions.invoke('scrape-company-info', {
+            body: { url: domain },
+          });
+          if (error) return;
+          const resolved = (data as any)?.data?.companyName;
+          if (!resolved || typeof resolved !== 'string') return;
+          const trimmed = resolved.trim();
+          if (!trimmed) return;
+          // Only overwrite if the user hasn't typed anything different yet.
+          setSearch(prev => (prev === domainStem || prev === '' ? trimmed : prev));
+        } catch {
+          // Silent — domain stem stays as the fallback suggestion.
+        }
+      })();
     }
   }, [email, companies, value, domainSuggested, onChange]);
 
