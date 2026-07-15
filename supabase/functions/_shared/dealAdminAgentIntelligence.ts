@@ -3686,7 +3686,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
       const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
       const modelCandidates = sigCount > 0
-        ? normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle)
+        ? stampTermsIssuedBundleKeys(
+            normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle),
+            bundle,
+          )
         : [];
       const rawAll = updateTasksCandidate
         ? [...modelCandidates, updateTasksCandidate]
