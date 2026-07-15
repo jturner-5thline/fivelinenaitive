@@ -751,7 +751,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
-  }, [filtered]);
+  }, [filtered, fundingSourceNameMap]);
 
   const [expandedDealKey, setExpandedDealKey] = useState<string | null>(null);
   // Tracks whether the user intentionally collapsed the open group, so the
