@@ -988,12 +988,17 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActive
             <tbody>
               {deals.map((d) => {
                 const dropped = dropoutIds?.has(d.deal_id) ?? false;
+                const stillActive = !dropped && (stillActiveIds?.has(d.deal_id) ?? false);
                 return (
                   <tr
                     key={d.deal_id}
                     className={cn(
                       'border-b last:border-0',
-                      dropped ? 'bg-destructive/10 hover:bg-destructive/15' : 'hover:bg-muted/20',
+                      dropped
+                        ? 'bg-destructive/10 hover:bg-destructive/15'
+                        : stillActive
+                          ? 'bg-primary/10 hover:bg-primary/15'
+                          : 'hover:bg-muted/20',
                     )}
                   >
                     <td className="px-3 py-1.5 font-medium">
@@ -1004,7 +1009,22 @@ function _ConversionDealsTable({ heading, deals, accent, dropoutIds, stillActive
                             aria-label="Did not advance"
                           />
                         )}
-                        <DealLink dealId={d.deal_id} className={dropped ? 'text-destructive-foreground' : undefined}>
+                        {stillActive && (
+                          <span
+                            className="h-1.5 w-1.5 rounded-full bg-primary"
+                            aria-label="Still in process"
+                          />
+                        )}
+                        <DealLink
+                          dealId={d.deal_id}
+                          className={
+                            dropped
+                              ? 'text-destructive-foreground'
+                              : stillActive
+                                ? 'text-primary'
+                                : undefined
+                          }
+                        >
                           {d.company}
                         </DealLink>
                       </div>
