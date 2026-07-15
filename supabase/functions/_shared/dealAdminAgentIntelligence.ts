@@ -1371,12 +1371,11 @@ function filterStaleStatusNotes(
     const refs = Array.isArray(c.evidence_references) ? c.evidence_references : [];
     let newest = 0;
     for (const ev of refs) {
-      const id = (ev as any)?.ref_id;
+      const id = (ev as any)?.ref_id ?? (ev as any)?.id;
       const ts = id ? dateById.get(String(id)) : undefined;
       if (ts && ts > newest) newest = ts;
     }
     if (newest === 0 || newest < cutoff) {
-      console.log(`[deal-admin-agent] stale-note debug title=${JSON.stringify(c.item_title)} refs=${JSON.stringify(refs).slice(0,600)}`);
       dropped += 1;
       return false;
     }
