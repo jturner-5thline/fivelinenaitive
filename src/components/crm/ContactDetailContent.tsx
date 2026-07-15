@@ -46,7 +46,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { extractEmailDomain, normalizeDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 import { format, isToday, isThisWeek } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ContactDetailContentProps {
