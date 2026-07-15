@@ -585,7 +585,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
           ...picks[0],
           id: `bundle:terms-issued:${bk}:${g.key}`,
           action_type: 'terms_issued_bundle' as unknown as AiActionType,
-          title: `${lenderLabel} — Term Sheet / IOI`,
+          title: `${lenderLabel} Term Sheet Items`,
           description: parts.join(' · ') || `${picks.length} lender action${picks.length === 1 ? '' : 's'}`,
           rationale: `${lenderLabel} sent terms — ${picks.length} related action${picks.length === 1 ? '' : 's'} for review.`,
           old_values: {},
