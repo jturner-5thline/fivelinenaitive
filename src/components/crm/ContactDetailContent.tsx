@@ -254,7 +254,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-70" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuContent align="end" sideOffset={8} className="w-44">
                   <DropdownMenuItem onClick={() => openLogDialog('call')}>
                     <Phone className="h-3.5 w-3.5 mr-2" /> Log call
                   </DropdownMenuItem>
@@ -269,7 +269,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     <Link2 className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuContent align="end" sideOffset={8} className="w-44">
                   <DropdownMenuItem onClick={() => setShowLinkCompany(true)}>
                     <Building2 className="h-3.5 w-3.5 mr-2" /> Link company
                   </DropdownMenuItem>
@@ -284,7 +284,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuContent align="end" sideOffset={8} className="w-44">
                   <DropdownMenuItem onClick={() => {
                     document.getElementById('history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}>
