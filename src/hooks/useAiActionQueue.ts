@@ -100,33 +100,63 @@ async function applyTermsIssuedBundleSideEffects(params: {
   dealId: string;
   bundleKey: string; // "terms_issued:{deal_id}:{funding_source_id}"
   userId: string;
-}): Promise<{ savedCount: number; errors: string[] }> {
+}): Promise<{
+  savedCount: number;
+  errors: string[];
+  lenderName: string | null;
+  lenderStageAdvanced: boolean;
+  lenderStageAlreadyAtOrPast: boolean;
+  lenderUpdateOk: boolean;
+  savedAttachments: string[];
+  failedAttachments: string[];
+}> {
   const errors: string[] = [];
   const parts = params.bundleKey.split(':');
   const fsId = parts[2];
+  let lenderName: string | null = null;
+  let lenderStageAdvanced = false;
+  let lenderStageAlreadyAtOrPast = false;
+  let lenderUpdateOk = false;
+  const savedAttachments: string[] = [];
+  const failedAttachments: string[] = [];
   // 1) Advance the funding source unless it's already at/past Terms Issued.
   if (fsId) {
     try {
       const { data: dl } = await (supabase as any)
         .from('deal_lenders')
-        .select('stage')
+        .select('stage, name, master_lender_id')
         .eq('id', fsId)
         .maybeSingle();
       const currentStage = String(dl?.stage || '').toLowerCase();
-      const isAtOrPastTerms = ['terms-issued', 'terms_issued', 'in-diligence', 'in_diligence', 'closed', 'funded'].includes(currentStage);
+      lenderStageAlreadyAtOrPast = ['terms-issued', 'terms_issued', 'in-diligence', 'in_diligence', 'closed', 'funded'].includes(currentStage);
+      lenderName = (dl as any)?.name ?? null;
+      if (!lenderName && (dl as any)?.master_lender_id) {
+        const { data: master } = await (supabase as any)
+          .from('master_lenders')
+          .select('name')
+          .eq('id', (dl as any).master_lender_id)
+          .maybeSingle();
+        lenderName = (master as any)?.name ?? null;
+      }
       const upd: Record<string, unknown> = {
         notes: params.note,
         last_status_change_at: new Date().toISOString(),
       };
-      if (!isAtOrPastTerms) {
+      if (!lenderStageAlreadyAtOrPast) {
         upd.stage = 'terms-issued';
         upd.tracking_status = 'active';
+        lenderStageAdvanced = true;
       }
       const { error: dlErr } = await (supabase as any)
         .from('deal_lenders')
         .update(upd)
         .eq('id', fsId);
-      if (dlErr) errors.push(`funding source update failed (${dlErr.message})`);
+      if (dlErr) {
+        errors.push(`funding source update failed (${dlErr.message})`);
+        lenderStageAdvanced = false;
+      } else {
+        lenderUpdateOk = true;
+      }
     } catch (e: any) {
       errors.push(`funding source update threw (${e?.message || 'unknown'})`);
     }
@@ -158,6 +188,7 @@ async function applyTermsIssuedBundleSideEffects(params: {
       const now = new Date().toISOString();
       if (res.ok) {
         savedCount += 1;
+        savedAttachments.push(attachmentName);
         await supabase
           .from('ai_action_queue')
           .update({
@@ -169,6 +200,7 @@ async function applyTermsIssuedBundleSideEffects(params: {
           .eq('id', row.id);
       } else {
         errors.push(`save "${attachmentName}": ${res.error}`);
+        failedAttachments.push(attachmentName);
         await supabase
           .from('ai_action_queue')
           .update({ status: 'failed', execution_error: res.error })
@@ -178,7 +210,16 @@ async function applyTermsIssuedBundleSideEffects(params: {
   } catch (e: any) {
     errors.push(`sibling scan failed (${e?.message || 'unknown'})`);
   }
-  return { savedCount, errors };
+  return {
+    savedCount,
+    errors,
+    lenderName,
+    lenderStageAdvanced,
+    lenderStageAlreadyAtOrPast,
+    lenderUpdateOk,
+    savedAttachments,
+    failedAttachments,
+  };
 }
 
 /**
@@ -733,6 +774,7 @@ export function useApproveAiAction() {
         // upload every sibling save_to_data_room attachment to Internal ▸
         // Terms. These live on separate queue rows but semantically are one
         // action from the reviewer's perspective.
+        let termsBundleToastShown = false;
         if (item.action_type === 'add_status_note' && item.deal_id) {
           const nv =
             (item.new_values as any) ||
@@ -749,9 +791,30 @@ export function useApproveAiAction() {
                 userId: user.id,
               });
               invalidateQueueAll(qc);
-              if (side.savedCount > 0) {
-                toast.success(`Saved ${side.savedCount} attachment${side.savedCount === 1 ? '' : 's'} to Internal ▸ Terms`);
-              }
+              // Explicit confirmation toast — spell out what actually
+              // happened to the funding source AND to the term-sheet PDF
+              // so the reviewer doesn't have to open the deal to verify.
+              const lender = side.lenderName || 'Funding source';
+              const lenderLine = side.lenderUpdateOk
+                ? side.lenderStageAdvanced
+                  ? `${lender} → Terms Issued (note saved)`
+                  : side.lenderStageAlreadyAtOrPast
+                    ? `${lender} note saved (stage already at/past Terms Issued)`
+                    : `${lender} note saved`
+                : `${lender} update failed`;
+              const savedLine =
+                side.savedAttachments.length > 0
+                  ? `Uploaded to Internal ▸ Terms: ${side.savedAttachments.join(', ')}`
+                  : side.failedAttachments.length > 0
+                    ? `Failed to upload: ${side.failedAttachments.join(', ')}`
+                    : 'No term sheet PDF found to upload';
+              const anyFailure =
+                !side.lenderUpdateOk || side.failedAttachments.length > 0;
+              const toastFn = anyFailure ? toast.warning : toast.success;
+              toastFn('Term Sheet Items approved', {
+                description: `${lenderLine}\n${savedLine}`,
+              });
+              termsBundleToastShown = true;
               for (const err of side.errors) {
                 console.warn('[terms-issued side-effect]', err);
               }
@@ -761,10 +824,12 @@ export function useApproveAiAction() {
           }
         }
         const msg = (data as any)?.result_message as string | undefined;
-        if (data.decision === 'email_staged') {
-          toast.success(msg || 'Draft staged for send', { description: item.title });
-        } else {
-          toast.success(msg || 'Approved & applied', { description: item.title });
+        if (!termsBundleToastShown) {
+          if (data.decision === 'email_staged') {
+            toast.success(msg || 'Draft staged for send', { description: item.title });
+          } else {
+            toast.success(msg || 'Approved & applied', { description: item.title });
+          }
         }
         invalidateAllTaskCaches(qc);
         return { ok: true };
