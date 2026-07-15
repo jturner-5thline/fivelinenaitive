@@ -1806,8 +1806,11 @@ function DetailPane({
   const oldValues = (item.old_values || {}) as Record<string, any>;
   const newValues = (item.new_values || {}) as Record<string, any>;
   const isEmailDraft = item.action_type === 'draft_email';
+  const isUpdateTasksPrompt =
+    item.action_type === 'create_followup_task' &&
+    (newValues as any)?._synthetic === 'update_tasks';
   const fieldKeys = (() => {
-    if (isEmailDraft) return [] as string[];
+    if (isEmailDraft || isUpdateTasksPrompt) return [] as string[];
     const norm = (v: any) =>
       v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = Array.from(
