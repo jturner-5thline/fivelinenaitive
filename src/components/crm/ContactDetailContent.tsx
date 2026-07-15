@@ -41,6 +41,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
+import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
