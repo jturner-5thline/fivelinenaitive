@@ -185,6 +185,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);
                     const isCompleted = isTaskCompleted(task);
+                    const isOverdue = !isCompleted && !!task.due_date && new Date(task.due_date) < new Date();
                     return (
                       <div
                         key={task.id}
@@ -194,7 +195,11 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                         onKeyDown={(e) => { if (e.key === 'Enter') handleOpenTask(task.id); }}
                         className={cn(
                           "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors cursor-pointer",
-                          isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                          isCompleted
+                            ? "border-border/50 opacity-60 hover:opacity-100"
+                            : isOverdue
+                              ? "border-destructive hover:bg-muted/30"
+                              : "border-border hover:bg-muted/30"
                         )}
                       >
                         <div onClick={(e) => e.stopPropagation()}>
@@ -216,7 +221,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                               </div>
                             )}
                             {task.due_date && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <div className={cn("flex items-center gap-1 text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>
                                 <CalendarIcon className="h-3 w-3" />
                                 {format(new Date(task.due_date), 'MMM d, yyyy')}
                               </div>
