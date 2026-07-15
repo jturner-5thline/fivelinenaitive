@@ -83,6 +83,22 @@ const DRAG_CATEGORY_MIME = 'application/x-vdr-category';
 // DRAG_CATEGORY_MIME (which moves files), so reorder drops are unambiguous.
 const DRAG_FOLDER_REORDER_MIME = 'application/x-vdr-folder-reorder';
 
+// Folders that live ONLY in the Internal column and can NEVER be shared to
+// the external Data Room. Files inside these folders are always suppressed
+// from Data Room views and every share code-path filters them out.
+const INTERNAL_ONLY_CATEGORY_NAMES = ['Terms'] as const;
+const INTERNAL_ONLY_CATEGORY_SET = new Set<string>(INTERNAL_ONLY_CATEGORY_NAMES);
+
+/** True when a document's Internal folder is one of the internal-only folders. */
+function isInternalOnlyDoc(doc: VdrDocument | undefined | null): boolean {
+  if (!doc) return false;
+  const fp = (doc.folder_path || '').replace(/^\/+|\/+$/g, '');
+  if (!fp) return false;
+  if (INTERNAL_ONLY_CATEGORY_SET.has(fp)) return true;
+  const top = fp.split('/')[0];
+  return INTERNAL_ONLY_CATEGORY_SET.has(top);
+}
+
 export function VdrThreeColumnWorkspace({
   dealId, documents, documentsLoading, onPreview, vdrDocs,
   canPushToFlex, isPushingToFlex, onPushToFlex, companyId, mappingRefreshKey,
@@ -226,7 +242,9 @@ export function VdrThreeColumnWorkspace({
   );
   // Data Room lists files that have been explicitly shared to the external workspace.
   const dataroomDocs = useMemo(
-    () => documents.filter(d => !d.is_folder && d.shared_to_dataroom),
+    // Belt-and-suspenders: even if a file in an internal-only folder somehow
+    // has shared_to_dataroom=true (legacy data), keep it out of the Data Room.
+    () => documents.filter(d => !d.is_folder && d.shared_to_dataroom && !isInternalOnlyDoc(d)),
     [documents]
   );
 
@@ -243,13 +261,20 @@ export function VdrThreeColumnWorkspace({
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
 
   // ── Category grouping ────────────────────────────────────
-  // Build the ordered list of category names from settings (source of truth)
-  const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
+  // Build the ordered list of category names from settings (source of truth).
+  // Strip any accidental overlap with internal-only categories so they're only
+  // sourced from INTERNAL_ONLY_CATEGORY_NAMES below.
+  const categoryNames = useMemo(
+    () => categories.map(c => c.name).filter(n => !INTERNAL_ONLY_CATEGORY_SET.has(n)),
+    [categories],
+  );
   const customFolderNames = useMemo(() => customFolders.map(f => f.name), [customFolders]);
   // Per-column ordered names (user preference applied on top of the natural
   // settings/custom-folder order). Internal vs Data Room order independently.
   const internalCategoryNames = useMemo(
-    () => internalFolderPrefs.applyOrder(categoryNames),
+    // Internal-only categories (e.g. "Terms") are appended so they show as
+    // real folder headers in the Internal column but never in Data Room.
+    () => internalFolderPrefs.applyOrder([...categoryNames, ...INTERNAL_ONLY_CATEGORY_NAMES]),
     [internalFolderPrefs, categoryNames],
   );
   const dataroomCategoryNames = useMemo(
@@ -260,10 +285,11 @@ export function VdrThreeColumnWorkspace({
     () => dataroomFolderPrefs.applyOrder(customFolderNames),
     [dataroomFolderPrefs, customFolderNames],
   );
-  // Categories shown in BOTH columns. Custom folders are per-deal so they are
-  // appended to the default company taxonomy.
+  // All known folder names for docCategory() bucketing. Internal-only
+  // categories are included so their files render under the correct header in
+  // the Internal column instead of falling into Uncategorized.
   const categoryNameSet = useMemo(
-    () => new Set([...categoryNames, ...customFolderNames]),
+    () => new Set([...categoryNames, ...customFolderNames, ...INTERNAL_ONLY_CATEGORY_NAMES]),
     [categoryNames, customFolderNames],
   );
   const customFolderNameSet = useMemo(() => new Set(customFolderNames), [customFolderNames]);
@@ -360,6 +386,15 @@ export function VdrThreeColumnWorkspace({
   // Internal and additionally appears in the Data Room column.
   const copyToDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
+    // Strip internal-only files (e.g. Terms) — they must never leave Internal.
+    const blocked = ids.filter(id => isInternalOnlyDoc(documents.find(x => x.id === id)));
+    ids = ids.filter(id => !blocked.includes(id));
+    if (blocked.length) {
+      toast.error(
+        `${blocked.length} file${blocked.length === 1 ? '' : 's'} in Terms can't be shared — Terms stays Internal.`,
+      );
+    }
+    if (!ids.length) { setInternalSelected(new Set()); return; }
     // Snapshot prior share/folder state for undo.
     const snapshot = ids.map(id => {
       const d = documents.find(x => x.id === id);
@@ -494,6 +529,14 @@ export function VdrThreeColumnWorkspace({
   const shareToDataroomFolder = useCallback(
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
+      const blocked = ids.filter(id => isInternalOnlyDoc(documents.find(x => x.id === id)));
+      ids = ids.filter(id => !blocked.includes(id));
+      if (blocked.length) {
+        toast.error(
+          `${blocked.length} file${blocked.length === 1 ? '' : 's'} in Terms can't be shared — Terms stays Internal.`,
+        );
+      }
+      if (!ids.length) { setInternalSelected(new Set()); return; }
       const newPath = folderName ? `/${folderName}/` : '/';
       const snapshot = ids.map(id => {
         const d = documents.find(x => x.id === id);
@@ -1052,7 +1095,13 @@ export function VdrThreeColumnWorkspace({
           <ContextMenuItem onClick={() => onPreview(doc)}>Preview</ContextMenuItem>
           <ContextMenuItem onClick={() => handleDownload(doc)}>Download</ContextMenuItem>
           {column === 'internal' ? (
-            <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
+            isInternalOnlyDoc(doc) ? (
+              <ContextMenuItem disabled title="Terms stays Internal — can't be shared to Data Room.">
+                Copy to Data Room
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={() => copyToDataroom([doc.id])}>Copy to Data Room</ContextMenuItem>
+            )
           ) : (
             <ContextMenuItem onClick={() => removeFromDataroom([doc.id])}>Remove from Data Room</ContextMenuItem>
           )}
