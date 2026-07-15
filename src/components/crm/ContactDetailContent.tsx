@@ -85,9 +85,13 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
   const crmCompanyId = (contact as any)?.crm_company_id;
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
+  // Defer loading of large lists until the user actually needs them
+  // (opens a link modal, or edits the domain field which triggers a match).
+  const [needCompanies, setNeedCompanies] = useState(false);
+  const [needDeals, setNeedDeals] = useState(false);
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000, enabled: needCompanies });
   const companies = companiesResult?.data ?? [];
-  const { data: deals = [] } = useAllDeals();
+  const { data: deals = [] } = useAllDeals(needDeals);
   const linkToCompany = useLinkContactToCompany();
   const unlinkFromCompany = useUnlinkContactFromCompany();
   const linkToDeal = useLinkContactToDeal();
@@ -196,8 +200,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     evangelist: 'bg-pink-500/10 text-pink-500',
   };
 
-  const companyOptions: EntityOption[] = companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined }));
-  const dealOptions: EntityOption[] = deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` }));
+  const companyOptions: EntityOption[] = useMemo(
+    () => companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined })),
+    [companies],
+  );
+  const dealOptions: EntityOption[] = useMemo(
+    () => deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` })),
+    [deals],
+  );
 
   const owner = teamMembers.find(m => m.id === contact.owner_user_id);
   const ownerName = owner?.display_name || 'Unassigned';
