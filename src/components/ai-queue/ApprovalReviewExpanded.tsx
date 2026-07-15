@@ -17,6 +17,7 @@ import {
   targetSummary,
   toSingleSentence,
 } from './approvalCopy';
+import { TaskListEditor, type EditorTask } from './TaskListEditor';
 
 /**
  * Decision-first expanded review for an Approval Queue item.
@@ -47,7 +48,11 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
   const target = useMemo(() => targetSummary(item), [item]);
   const oldValues = item.old_values || {};
   const newValues = item.new_values || {};
+  const isUpdateTasksPrompt =
+    item.action_type === 'create_followup_task' &&
+    (newValues as any)?._synthetic === 'update_tasks';
   const fieldKeys = useMemo(() => {
+    if (isUpdateTasksPrompt) return [] as string[];
     const norm = (v: any) =>
       v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = new Set<string>([
@@ -61,7 +66,7 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
       if (!proposed) return false;
       return proposed !== norm((oldValues as any)[k]);
     });
-  }, [oldValues, newValues]);
+  }, [oldValues, newValues, isUpdateTasksPrompt]);
 
   const editedCount = Object.keys(edits).length;
 
@@ -89,6 +94,26 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
 
   const isDraftEmail = item.action_type === 'draft_email';
   const evidence = Array.isArray(item.evidence) ? item.evidence : [];
+
+  const initialTasks: EditorTask[] = useMemo(() => {
+    if (!isUpdateTasksPrompt) return [];
+    const seeded = Array.isArray((newValues as any)?.tasks)
+      ? (newValues as any).tasks
+      : [];
+    if (seeded.length > 0) {
+      return seeded.map((t: any) => ({
+        title: String(t?.title ?? ''),
+        due_date: t?.due_date ?? null,
+        assigned_to: t?.assigned_to ?? null,
+        description: t?.description ?? null,
+      }));
+    }
+    return [{
+      title: '',
+      due_date: (newValues as any)?.due_date ?? null,
+      assigned_to: (newValues as any)?.assigned_to ?? null,
+    }];
+  }, [isUpdateTasksPrompt, newValues]);
 
   return (
     <div className="mt-2 space-y-3 rounded-md border border-white/10 bg-background/60 p-3 text-[12px]">
