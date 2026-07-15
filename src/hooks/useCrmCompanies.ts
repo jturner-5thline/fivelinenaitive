@@ -102,6 +102,7 @@ export interface CrmCompaniesListParams {
   quickFilter?: string;
   advancedFilters?: FilterRule[];
   matchMode?: MatchMode;
+  enabled?: boolean;
 }
 
 export interface PaginatedResult<T> {
@@ -114,7 +115,7 @@ export interface PaginatedResult<T> {
 
 export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
   const { company } = useCompany();
-  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all' } = params;
+  const { page = 0, pageSize = 50, search, lifecycleStage, status, quickFilter, advancedFilters = [], matchMode = 'all', enabled = true } = params;
 
   return useQuery<PaginatedResult<CrmCompany>>({
     queryKey: ['crm-companies', company?.id, page, pageSize, search, lifecycleStage, status, quickFilter, advancedFilters, matchMode],
@@ -193,7 +194,7 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
         totalPages: Math.ceil(totalCount / pageSize),
       };
     },
-    enabled: !!company?.id,
+    enabled: !!company?.id && enabled,
     placeholderData: (prev) => prev,
   });
 }
