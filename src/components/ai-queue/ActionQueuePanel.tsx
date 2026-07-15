@@ -478,6 +478,63 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
     });
   }, [scopedItems, query]);
 
+  // Collect funding_source_ids referenced by any terms_issued:{deal}:{fs}
+  // bundle_key in the currently filtered items, then resolve them to lender
+  // display names so the Terms Issued bundle card can title itself
+  // "{Lender} Term Sheet Items" even when the only surviving sub-item is a
+  // save_to_data_room proposal (whose linked_entity_label points at the DEAL,
+  // not the lender).
+  const termsBundleFundingSourceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const it of filtered) {
+      const nv =
+        (it as any).new_values ||
+        (it as any).payload?.on_approve_execution_payload?.new_values ||
+        {};
+      const bk = typeof nv.bundle_key === 'string' ? nv.bundle_key : '';
+      if (!bk.startsWith('terms_issued:')) continue;
+      const fsId = bk.split(':')[2];
+      if (fsId) ids.add(fsId);
+    }
+    return Array.from(ids).sort();
+  }, [filtered]);
+
+  const { data: fundingSourceNameMap } = useQuery({
+    queryKey: ['terms-bundle-funding-source-names', termsBundleFundingSourceIds],
+    enabled: termsBundleFundingSourceIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: lenders } = await (supabase as any)
+        .from('deal_lenders')
+        .select('id, master_lender_id')
+        .in('id', termsBundleFundingSourceIds);
+      const masterIds = Array.from(
+        new Set(
+          (lenders ?? [])
+            .map((l: any) => l?.master_lender_id)
+            .filter((v: any): v is string => typeof v === 'string' && v.length > 0),
+        ),
+      );
+      let nameByMasterId = new Map<string, string>();
+      if (masterIds.length > 0) {
+        const { data: masters } = await (supabase as any)
+          .from('master_lenders')
+          .select('id, name')
+          .in('id', masterIds);
+        for (const m of masters ?? []) {
+          if (m?.id && typeof m.name === 'string') nameByMasterId.set(m.id, m.name);
+        }
+      }
+      const out = new Map<string, string>();
+      for (const l of lenders ?? []) {
+        if (!l?.id) continue;
+        const name = l.master_lender_id ? nameByMasterId.get(l.master_lender_id) : undefined;
+        if (name) out.set(l.id, name);
+      }
+      return out;
+    },
+  });
+
   // Group filtered items by deal_id (preserving original order within group).
   type DealGroup = {
     key: string;
@@ -578,7 +635,18 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
         const dealNameLc = (g.dealName || '').trim().toLowerCase();
         const isDealName = (s: string) => !!s && s.trim().toLowerCase() === dealNameLc;
         let lenderLabel = '';
+        // 0 — authoritative: resolve the funding_source_id encoded in the
+        //     bundle_key to the lender's display name via deal_lenders →
+        //     master_lenders. This is the only reliable source when the
+        //     surviving sub-items don't carry the lender name (e.g. a
+        //     save_to_data_room whose linked_entity_label is the DEAL).
+        const fsIdFromKey = bk.split(':')[2] || '';
+        const nameFromMap = fsIdFromKey ? fundingSourceNameMap?.get(fsIdFromKey) : undefined;
+        if (nameFromMap && !isDealName(nameFromMap)) {
+          lenderLabel = nameFromMap;
+        }
         // 1 & 2 — any pick with a label containing " on "
+        if (!lenderLabel)
         for (const p of picks) {
           const raw = (p as any).payload?.linked_entity_label as string | undefined;
           if (raw && /\s+on\s+/i.test(raw)) {
@@ -683,7 +751,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       }
     }
     return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
-  }, [filtered]);
+  }, [filtered, fundingSourceNameMap]);
 
   const [expandedDealKey, setExpandedDealKey] = useState<string | null>(null);
   // Tracks whether the user intentionally collapsed the open group, so the
