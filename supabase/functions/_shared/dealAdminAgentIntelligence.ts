@@ -2113,7 +2113,7 @@ async function maybeBuildUpdateTasksCandidate(
 
   return {
     action_type: "create_followup_task",
-    item_title: `${dealName} Has no Tasks`,
+    item_title: `${dealName} Needs Tasks`,
     linked_entity_label: dealName,
     target_object_type: "task",
     target_object_id: null,
@@ -2121,9 +2121,18 @@ async function maybeBuildUpdateTasksCandidate(
     current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
     proposed_values: {
       _synthetic: "update_tasks",
-      title: `Next step for ${dealName}`,
-      assigned_to: ownerId,
-      due_date: defaultDue,
+      // Seed the details panel with a single blank task row so the
+      // reviewer sees the task-creation UI immediately. They can add
+      // more rows (title / due date / assignee) before approving —
+      // approval creates all of them against the deal at once.
+      tasks: [
+        {
+          title: "",
+          assigned_to: ownerId,
+          due_date: defaultDue,
+          description: "",
+        },
+      ],
       description,
     },
     rationale_summary:
