@@ -6,6 +6,182 @@ import { toast } from 'sonner';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
 /**
+ * Uploads an email attachment described by a save_to_data_room proposal
+ * (`new_values`) into the deal's Data Room under the internal-only
+ * "Terms" folder. Exposed as a helper so the same logic can be triggered
+ * from a save_to_data_room approval AND from an add_status_note approval
+ * that belongs to the same Terms Issued bundle (so a single "approve"
+ * on the bundle's note also saves the attachment even when the sibling
+ * save proposal was previously dismissed or has since failed).
+ */
+async function saveEmailAttachmentToTerms(params: {
+  dealId: string;
+  attachmentName: string;
+  sourceEmailId: string;
+  userId: string;
+}): Promise<{ ok: boolean; error?: string; documentId?: string }> {
+  const { dealId, attachmentName, sourceEmailId, userId } = params;
+  const { data: deal, error: dealErr } = await supabase
+    .from('deals')
+    .select('company_id')
+    .eq('id', dealId)
+    .maybeSingle();
+  if (dealErr || !deal?.company_id) {
+    return { ok: false, error: `deal lookup failed (${dealErr?.message || 'no company_id'})` };
+  }
+  const { data: cached, error: cacheErr } = await supabase
+    .from('email_cache')
+    .select('attachments')
+    .eq('gmail_message_id', sourceEmailId)
+    .limit(1)
+    .maybeSingle();
+  if (cacheErr) return { ok: false, error: `email lookup failed (${cacheErr.message})` };
+  const atts: any[] = Array.isArray((cached as any)?.attachments) ? (cached as any).attachments : [];
+  const match = atts.find((a) => a?.filename === attachmentName)
+    || atts.find((a) => (a?.filename || '').toLowerCase() === attachmentName.toLowerCase())
+    || (atts.length === 1 ? atts[0] : null);
+  if (!match?.id) return { ok: false, error: `attachment "${attachmentName}" not found on email` };
+  const { data: attData, error: attErr } = await supabase.functions.invoke('gmail-messages', {
+    body: { action: 'get_attachment', message_id: sourceEmailId, attachment_id: match.id },
+  });
+  if (attErr || !attData?.data) {
+    return { ok: false, error: `attachment download failed (${attErr?.message || 'no data'})` };
+  }
+  const base64: string = attData.data;
+  const contentType: string = attData.content_type || match.content_type || 'application/octet-stream';
+  const cleanType = contentType.split(';')[0].trim() || 'application/octet-stream';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: cleanType });
+  const folderPath = '/Terms/';
+  const storagePath = `${dealId}${folderPath}${attachmentName}`;
+  const { error: upErr } = await supabase.storage
+    .from('vdr-files')
+    .upload(storagePath, blob, { upsert: true, contentType: cleanType });
+  if (upErr) return { ok: false, error: `storage upload failed (${upErr.message})` };
+  const { data: inserted, error: insErr } = await (supabase as any)
+    .from('vdr_documents')
+    .insert({
+      deal_id: dealId,
+      company_id: (deal as any).company_id,
+      filename: attachmentName,
+      file_path: storagePath,
+      file_size: bytes.length,
+      file_type: cleanType || attachmentName.split('.').pop() || null,
+      folder_path: folderPath,
+      is_folder: false,
+      source: 'dataroom',
+      uploaded_by: userId,
+      ingestion_status: 'pending',
+      shared_to_dataroom: false,
+    })
+    .select('id')
+    .single();
+  if (insErr) return { ok: false, error: `vdr_documents insert failed (${insErr.message})` };
+  if (inserted?.id) {
+    supabase.functions
+      .invoke('classify-file', { body: { document_id: inserted.id } })
+      .catch((e) => console.warn('[saveEmailAttachmentToTerms] classify-file invoke failed:', e));
+  }
+  return { ok: true, documentId: inserted?.id };
+}
+
+/**
+ * After a Terms Issued bundle's add_status_note is approved, apply the two
+ * remaining side-effects the reviewer expects from the bundle even though
+ * they live on separate queue rows: advance the referenced funding source
+ * (deal_lenders row encoded in the bundle_key) to the "Terms Issued" stage
+ * with the note as its lender-notes, and upload every sibling
+ * save_to_data_room attachment to the deal's internal Terms folder.
+ */
+async function applyTermsIssuedBundleSideEffects(params: {
+  note: string;
+  dealId: string;
+  bundleKey: string; // "terms_issued:{deal_id}:{funding_source_id}"
+  userId: string;
+}): Promise<{ savedCount: number; errors: string[] }> {
+  const errors: string[] = [];
+  const parts = params.bundleKey.split(':');
+  const fsId = parts[2];
+  // 1) Advance the funding source unless it's already at/past Terms Issued.
+  if (fsId) {
+    try {
+      const { data: dl } = await (supabase as any)
+        .from('deal_lenders')
+        .select('stage')
+        .eq('id', fsId)
+        .maybeSingle();
+      const currentStage = String(dl?.stage || '').toLowerCase();
+      const isAtOrPastTerms = ['terms-issued', 'terms_issued', 'in-diligence', 'in_diligence', 'closed', 'funded'].includes(currentStage);
+      const upd: Record<string, unknown> = {
+        notes: params.note,
+        last_status_change_at: new Date().toISOString(),
+      };
+      if (!isAtOrPastTerms) {
+        upd.stage = 'terms-issued';
+        upd.tracking_status = 'active';
+      }
+      const { error: dlErr } = await (supabase as any)
+        .from('deal_lenders')
+        .update(upd)
+        .eq('id', fsId);
+      if (dlErr) errors.push(`funding source update failed (${dlErr.message})`);
+    } catch (e: any) {
+      errors.push(`funding source update threw (${e?.message || 'unknown'})`);
+    }
+  }
+  // 2) Save every sibling save_to_data_room attachment sharing this bundle_key.
+  //    Include pending / failed / dismissed rows: they were part of the same
+  //    bundle the reviewer just approved, so their attachments belong in the
+  //    Terms folder even if the row itself was previously auto-dismissed.
+  let savedCount = 0;
+  try {
+    const { data: siblings } = await (supabase as any)
+      .from('ai_action_queue')
+      .select('id, status, new_values')
+      .eq('action_type', 'save_to_data_room')
+      .eq('deal_id', params.dealId)
+      .filter('new_values->>bundle_key', 'eq', params.bundleKey);
+    for (const row of siblings ?? []) {
+      if (row.status === 'approved') continue;
+      const nv = (row.new_values || {}) as any;
+      const attachmentName: string | undefined = nv.attachment_name;
+      const sourceEmailId: string | undefined = nv.source_email_id;
+      if (!attachmentName || !sourceEmailId) continue;
+      const res = await saveEmailAttachmentToTerms({
+        dealId: params.dealId,
+        attachmentName,
+        sourceEmailId,
+        userId: params.userId,
+      });
+      const now = new Date().toISOString();
+      if (res.ok) {
+        savedCount += 1;
+        await supabase
+          .from('ai_action_queue')
+          .update({
+            status: 'approved',
+            approved_at: now,
+            executed_at: now,
+            execution_error: null,
+          })
+          .eq('id', row.id);
+      } else {
+        errors.push(`save "${attachmentName}": ${res.error}`);
+        await supabase
+          .from('ai_action_queue')
+          .update({ status: 'failed', execution_error: res.error })
+          .eq('id', row.id);
+      }
+    }
+  } catch (e: any) {
+    errors.push(`sibling scan failed (${e?.message || 'unknown'})`);
+  }
+  return { savedCount, errors };
+}
+
+/**
  * AI Approval Queue — deferred AI suggestions awaiting user approval.
  *
  * Items live in `ai_action_queue` and expire after 48h. The user can
