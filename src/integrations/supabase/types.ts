@@ -7645,6 +7645,7 @@ export type Database = {
           total_contract_value: number | null
           twitter_url: string | null
           updated_at: string
+          website_url: string | null
           year_founded: number | null
         }
         Insert: {
@@ -7704,6 +7705,7 @@ export type Database = {
           total_contract_value?: number | null
           twitter_url?: string | null
           updated_at?: string
+          website_url?: string | null
           year_founded?: number | null
         }
         Update: {
@@ -7763,6 +7765,7 @@ export type Database = {
           total_contract_value?: number | null
           twitter_url?: string | null
           updated_at?: string
+          website_url?: string | null
           year_founded?: number | null
         }
         Relationships: [
