@@ -867,6 +867,8 @@ STATUS NOTE RECENCY GATE — apply strictly
 - Status notes exist to capture RECENT activity. NEVER propose an add_status_note whose underlying event (call, email, milestone, lender movement) is more than 7 CALENDAR DAYS old relative to "now" in the bundle. If the newest supporting evidence is older than 7 days, emit NOTHING — do not backfill historical activity into the queue.
 - The 7-day window applies to the DATE OF THE EVENT itself (calendar event start/end, claap recording started_at, email sent_at, milestone completed_at, funding_source last_contact_at), not to when you noticed it. A meeting from 3+ weeks ago is stale even if no note was ever written — leave it alone.
 - If multiple signals describe the same event, use the most recent one to check recency; if all are >7 days old, drop the proposal.
+- NEVER PROPOSE PLACEHOLDER / GHOST STATUS NOTES. If a claap recording (or any other signal) has no summary, no transcript_excerpt, no action_items, and no key_takeaways — i.e. you have nothing but a title and a date — DO NOT emit an add_status_note. A note that says "call happened, details to follow", "full details to be added once transcript/summary is available", "captured on <date>", or any similar placeholder is FORBIDDEN. Wait until the recording is hydrated with real content, then emit ONE note grounded in that content.
+- The mere existence of a deal_claap_recordings link (a user attaching a call to a deal) is NOT itself a new event — the meeting date is what counts. If the underlying meeting is >7 days old, treat it as stale even though the link is fresh.
 
 FUNDING SOURCE (LENDER) UPDATE GATE — apply strictly
 - ONLY propose update_funding_source when the lender's situation clearly maps to ONE of:
