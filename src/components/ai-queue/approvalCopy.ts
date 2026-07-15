@@ -54,8 +54,12 @@ export function buildOutcomeSentence(item: QueuedAiAction): string {
     case 'update_milestone':
       return `Update milestone on ${target}.`;
     case 'create_followup_task':
-    case 'create_task':
+    case 'create_task': {
+      if ((nv as any)?._synthetic === 'update_tasks') {
+        return `Add tasks for ${target}.`;
+      }
       return `Create follow-up task on ${target}.`;
+    }
     case 'update_contact':
       return `Update contact record.`;
     case 'update_company':
