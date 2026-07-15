@@ -23,6 +23,7 @@ import {
   useCrmCompany, useUpdateCrmCompany, useCrmCompanyActivities,
   useCreateCrmCompanyActivity, useCrmCompanyContacts, useCrmSubsidiaries,
   useDeleteCrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES,
+  useUpdateCrmCompanyActivity, useDeleteCrmCompanyActivity,
 } from '@/hooks/useCrmCompanies';
 import {
   useCrmCompanyDeals, useLinkContactToCompany, useUnlinkContactFromCompany,
@@ -57,6 +58,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const update = useUpdateCrmCompany();
   const { data: activities = [] } = useCrmCompanyActivities(companyId);
   const createActivity = useCreateCrmCompanyActivity();
+  const updateActivity = useUpdateCrmCompanyActivity();
+  const deleteActivity = useDeleteCrmCompanyActivity();
   const { data: contacts = [] } = useCrmCompanyContacts(companyId);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
@@ -72,6 +75,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { attachments } = useCrmCompanyAttachments(companyId);
 
   const [newNote, setNewNote] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteBody, setEditingNoteBody] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all');
   const [showLinkContact, setShowLinkContact] = useState(false);
