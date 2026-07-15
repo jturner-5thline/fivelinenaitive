@@ -93,7 +93,6 @@ const LendersKanban = lazy(loadLendersKanban);
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
-import { AddLenderSlideOver } from '@/components/deal/AddLenderSlideOver';
 import { DealDataUpdateBanner } from '@/components/deal/DealDataUpdateBanner';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
