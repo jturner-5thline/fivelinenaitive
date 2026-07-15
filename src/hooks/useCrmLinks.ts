@@ -144,7 +144,7 @@ export function useCrmCompanyDeals(companyId: string | undefined) {
 }
 
 // Get all deals (for search modals)
-export function useAllDeals() {
+export function useAllDeals(enabled: boolean = true) {
   return useQuery({
     queryKey: ['all-deals-for-link'],
     queryFn: async () => {
@@ -156,6 +156,7 @@ export function useAllDeals() {
       if (error) throw error;
       return data || [];
     },
+    enabled,
   });
 }
 
