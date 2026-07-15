@@ -41,6 +41,7 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { ContactFieldSuggestions } from '@/components/contacts/ContactFieldSuggestions';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
+import { ContactAttachmentsTable } from '@/components/crm/ContactAttachmentsTable';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
@@ -613,9 +614,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
             {/* Attachments */}
             <Section id="attachments" title="Attachments" icon={Paperclip}>
-              <p className="text-sm text-muted-foreground py-6 text-center">
-                No attachments linked to this contact.
-              </p>
+              <ContactAttachmentsTable contactId={contact.id} contactName={contact.full_name || undefined} />
             </Section>
 
             {/* History / Audit trail */}
