@@ -2294,10 +2294,16 @@ function extractDataRoomSalt(row: {
   const pv = Object.keys(topLevelPv).length > 0
     ? topLevelPv
     : (Object.keys(execNv).length > 0 ? execNv : asObject(payload.proposed_values));
-  const emailId = typeof pv.source_email_id === "string" ? pv.source_email_id : "";
+  // Dedupe on attachment filename only. Using source_email_id here breaks
+  // when the same inbound message is cached under multiple gmail_message_id
+  // rows (e.g. the message appears on both the sender's and recipient's
+  // mailbox sync, or Nylas re-ingests the thread) — each cache row has a
+  // different id but points at the same PDF, so keying by email id lets
+  // duplicate "Save X to data room" cards slip through. The filename
+  // scoped to the deal (via row.deal_id, already in the outer key) is the
+  // stable identity of the attachment we care about.
   const name = typeof pv.attachment_name === "string" ? pv.attachment_name : "";
-  const key = `${emailId}|${name}`.toLowerCase().replace(/[^a-z0-9|]+/g, "-");
-  return key === "|" ? "" : key;
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
 function normalizeComparableText(v: unknown): string {
