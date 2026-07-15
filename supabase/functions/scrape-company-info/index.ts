@@ -123,6 +123,19 @@ Only include fields you can confidently extract. Skip fields where information i
       );
     }
 
+    // Firecrawl can return HTTP 200 with a body-level failure (e.g. DNS errors).
+    if (scrapeData && scrapeData.success === false) {
+      console.error('Firecrawl body-level failure:', scrapeData);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: scrapeData.error || 'Scrape failed',
+          code: scrapeData.code,
+        }),
+        { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log('Scrape response:', JSON.stringify(scrapeData, null, 2));
 
     // Extract company info from the extract response
