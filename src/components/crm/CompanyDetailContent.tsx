@@ -16,6 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -77,6 +81,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const [newNote, setNewNote] = useState('');
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteBody, setEditingNoteBody] = useState('');
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all');
   const [showLinkContact, setShowLinkContact] = useState(false);
@@ -482,14 +487,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                                 variant="ghost"
                                 className="h-6 w-6 text-destructive hover:text-destructive"
                                 onClick={() => {
-                                  if (!confirm('Delete this note?')) return;
-                                  deleteActivity.mutate(
-                                    { id: a.id, crm_company_id: company.id },
-                                    {
-                                      onSuccess: () => toast.success('Note deleted'),
-                                      onError: (err: any) => toast.error(err?.message || 'Failed to delete note'),
-                                    }
-                                  );
+                                  setDeleteNoteId(a.id);
                                 }}
                                 aria-label="Delete note"
                               >
@@ -680,6 +678,37 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
           });
         }}
       />
+
+      <AlertDialog open={!!deleteNoteId} onOpenChange={(o) => !o && setDeleteNoteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This note will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteActivity.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteActivity.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteNoteId) return;
+                deleteActivity.mutate(
+                  { id: deleteNoteId, crm_company_id: company.id },
+                  {
+                    onSuccess: () => { setDeleteNoteId(null); toast.success('Note deleted'); },
+                    onError: (err: any) => toast.error(err?.message || 'Failed to delete note'),
+                  }
+                );
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
