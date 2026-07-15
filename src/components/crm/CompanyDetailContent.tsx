@@ -28,6 +28,7 @@ import {
   useCreateCrmCompanyActivity, useCrmCompanyContacts, useCrmSubsidiaries,
   useDeleteCrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES,
   useUpdateCrmCompanyActivity, useDeleteCrmCompanyActivity,
+  useCrmCompanyContactActivities,
 } from '@/hooks/useCrmCompanies';
 import {
   useCrmCompanyDeals, useLinkContactToCompany, useUnlinkContactFromCompany,
@@ -66,6 +67,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const updateActivity = useUpdateCrmCompanyActivity();
   const deleteActivity = useDeleteCrmCompanyActivity();
   const { data: contacts = [] } = useCrmCompanyContacts(companyId);
+  const contactIds = contacts.map((c: any) => c.id);
+  const { data: contactActivities = [] } = useCrmCompanyContactActivities(contactIds);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
   const deleteCompany = useDeleteCrmCompany();
@@ -177,9 +180,28 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     toast.success('Note added');
   };
 
+  // Merge company-level activities with call/meeting touchpoints logged on
+  // linked contacts (from the Contacts page). Prefix the subject with the
+  // contact name so the source is obvious in the timeline.
+  const contactNameById = new Map<string, string>(
+    contacts.map((c: any) => [
+      c.id,
+      c.full_name || `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.email || 'Contact',
+    ]),
+  );
+  const contactSourced = (contactActivities as any[]).map((a) => ({
+    ...a,
+    _source: 'contact' as const,
+    subject: `${contactNameById.get(a.contact_id) ?? 'Contact'} · ${a.subject || (a.activity_type === 'call' ? 'Call logged' : 'Meeting logged')}`,
+  }));
+  const mergedActivities = [...(activities as any[]), ...contactSourced].sort((a, b) => {
+    const ta = new Date(a.occurred_at).getTime();
+    const tb = new Date(b.occurred_at).getTime();
+    return tb - ta;
+  });
   const filteredActivities = activityFilter === 'all'
-    ? activities
-    : activities.filter((a: any) => a.activity_type === activityFilter);
+    ? mergedActivities
+    : mergedActivities.filter((a: any) => a.activity_type === activityFilter);
 
   const formatCurrency = (v: number | null | undefined) =>
     v != null ? `$${Number(v).toLocaleString()}` : '—';
@@ -212,7 +234,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     }));
 
   const owner = teamMembers.find(m => m.id === company.owner_user_id);
-  const lastActivity = activities[0];
+  const lastActivity = mergedActivities[0];
   const lifecycleLabel = CRM_COMPANY_LIFECYCLES.find(l => l.value === company.lifecycle_stage)?.label;
   const statusLabel = CRM_COMPANY_STATUSES.find(s => s.value === company.status)?.label;
   const typeLabel = CRM_COMPANY_TYPES.find(t => t.value === company.company_type)?.label;

@@ -455,6 +455,28 @@ export function useCrmCompanyContacts(companyId: string | undefined) {
   });
 }
 
+// Get call/meeting activities logged against contacts linked to a company.
+// Used to surface contact-level touchpoints in the company Activity timeline.
+export function useCrmCompanyContactActivities(contactIds: string[] | undefined) {
+  const ids = (contactIds ?? []).filter(Boolean);
+  const key = [...ids].sort().join(',');
+  return useQuery({
+    queryKey: ['crm-company-contact-activities', key],
+    queryFn: async () => {
+      if (ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from('contact_activities')
+        .select('id, contact_id, activity_type, subject, body, occurred_at')
+        .in('contact_id', ids)
+        .in('activity_type', ['call', 'meeting'])
+        .order('occurred_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: ids.length > 0,
+  });
+}
+
 // Get subsidiaries
 export function useCrmSubsidiaries(parentId: string | undefined) {
   return useQuery({
