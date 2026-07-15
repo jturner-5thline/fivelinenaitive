@@ -960,7 +960,8 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
 - DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
 - STAGE PRECEDENCE: if the lender is already at stage/substage "terms_issued", "in_diligence", "closed", "funded", or any terminal state, SKIP update_funding_source (nothing to move) but STILL emit add_status_note + upload-followup if a fresh terms email / attachment arrived that isn't already captured.
 - ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata (emails[].attachments or unlinked_terms_emails[].attachments). Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
-- MULTI-LENDER: if two or more different funding sources send terms on the same deal in the same scan, emit one full bundle per lender. update_deal_stage collapses to a SINGLE proposal for the deal — do not emit it twice.
+- MULTI-LENDER (STRICT — DO NOT CONSOLIDATE): if two or more different funding sources send terms on the same deal in the same scan, you MUST emit a SEPARATE step 1 (update_funding_source) AND a SEPARATE step 2 (add_status_note) for EACH lender. Do NOT merge multiple lenders into one status note or one funding-source update. Only step 3 (update_deal_stage) collapses to a SINGLE proposal for the deal, and step 4 (save_to_data_room) is emitted once per attachment. Concretely, if Lender A and Lender B both send terms: emit update_funding_source(A) + add_status_note("A issued …") + update_funding_source(B) + add_status_note("B issued …") + ONE update_deal_stage + one save_to_data_room per attachment. A single status note that lists both lenders together is a violation of this rule.
+- IOI / BODY-ONLY TERMS ARE FIRST-CLASS: an inbound email whose subject or body clearly delivers an IOI / LOI / term sheet / proposal counts as a full trigger EVEN WHEN there is no attachment. Do not skip steps 1 and 2 for a lender just because they emailed the terms in-body instead of attaching a document — you MUST still emit update_funding_source + add_status_note for that lender. Step 4 (save_to_data_room) is the only step that is optional when no attachment exists.
 - Never propose Terms Issued from a scheduling email, intro pleasantry, materials request, generic pricing question, or a lender merely SAYING they will send terms later. The email must actually deliver the terms (attachment or terms language quoted in-body).`;
 
 const SYSTEM_PROMPT_FULL = SYSTEM_PROMPT + LENDER_TARGET_ID_RULES + LENDER_FOLLOWUP_TITLE_RULE + REFERRAL_RULES + TERMS_ISSUED_RULES;
@@ -1356,6 +1357,13 @@ function filterStaleStatusNotes(
   for (const s of bundle.stage_history ?? []) pushDate((s as any)?.id, (s as any)?.changed_at, (s as any)?.created_at);
   for (const m of bundle.milestones ?? []) pushDate((m as any)?.id, (m as any)?.completed_at, (m as any)?.updated_at);
   for (const f of bundle.funding_sources ?? []) pushDate((f as any)?.id, (f as any)?.last_contact_at, (f as any)?.updated_at);
+  for (const u of bundle.unlinked_terms_emails ?? []) {
+    // Unlinked terms emails are the trigger for TERMS_ISSUED bundle status
+    // notes. Register both the gmail_message_id and thread_id so evidence
+    // references pointing at either resolve to the email's received_at date.
+    pushDate((u as any)?.gmail_message_id, (u as any)?.received_at);
+    pushDate((u as any)?.thread_id, (u as any)?.received_at);
+  }
 
   let dropped = 0;
   const kept = candidates.filter((c) => {
@@ -1363,7 +1371,7 @@ function filterStaleStatusNotes(
     const refs = Array.isArray(c.evidence_references) ? c.evidence_references : [];
     let newest = 0;
     for (const ev of refs) {
-      const id = (ev as any)?.ref_id;
+      const id = (ev as any)?.ref_id ?? (ev as any)?.id;
       const ts = id ? dateById.get(String(id)) : undefined;
       if (ts && ts > newest) newest = ts;
     }
@@ -2167,7 +2175,39 @@ function queueSemanticKey(row: {
     return `${row.deal_id ?? ""}::funding_source_attention::deal_lender::${lenderTargetId}`;
   }
   const group = semanticActionGroup(actionType, targetType, row.target_object_id ?? null);
+  // For add_status_note, notes on the same deal are NOT interchangeable —
+  // a terms-issued note about Lender A must not collide with a call-summary
+  // note about a Claap sync, or with a terms-issued note about Lender B.
+  // Salt the key with the primary evidence ref id so distinct sources
+  // (different emails, different meetings, different lenders) each get
+  // their own slot in the queue.
+  if (actionType === "add_status_note") {
+    const salt = extractStatusNoteTopicSalt(row);
+    return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}::${salt}`;
+  }
   return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
+}
+
+function extractStatusNoteTopicSalt(row: {
+  payload?: unknown;
+  evidence?: unknown;
+}): string {
+  // Prefer the first evidence reference's id — evidence points at the concrete
+  // source event (email, claap, meeting) that motivated the note. Different
+  // sources ⇒ different slots.
+  const evList = evidenceArray(row);
+  for (const ev of evList) {
+    const id = (ev as any)?.ref_id ?? (ev as any)?.id;
+    if (typeof id === "string" && id.trim().length > 0) return id.trim();
+  }
+  // Fall back to the first few words of the note body from payload.proposed_values.
+  const payload = asObject(row.payload);
+  const pv = asObject(payload.proposed_values);
+  const note = typeof pv.note === "string" ? pv.note : (typeof pv.notes === "string" ? pv.notes : "");
+  if (note) {
+    return note.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").slice(0, 6).join("-");
+  }
+  return "";
 }
 
 function normalizeComparableText(v: unknown): string {
