@@ -364,7 +364,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                       {crmCompany.name}
                     </button>
                   ) : (
-                    <button onClick={() => setShowLinkCompany(true)} className="text-xs text-muted-foreground hover:text-primary">
+                    <button onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }} className="text-xs text-muted-foreground hover:text-primary">
                       Link a company
                     </button>
                   )}
@@ -476,7 +476,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Company</p>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkCompany(true)}>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> {crmCompany ? 'Change' : 'Link'}
                   </Button>
                 </div>
@@ -506,7 +506,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Deals ({contactDeals.length})</p>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkDeal(true)}>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> Link
                   </Button>
                 </div>
@@ -709,7 +709,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact'}
         email={contact.email}
         currentCrmCompanyId={crmCompanyId}
-        onLinkRequested={() => setShowLinkCompany(true)}
+        onLinkRequested={() => { setNeedCompanies(true); setShowLinkCompany(true); }}
       />
 
       <Dialog open={!!logDialog} onOpenChange={(o) => !o && setLogDialog(null)}>
