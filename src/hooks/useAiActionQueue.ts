@@ -7,84 +7,33 @@ import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
 /**
  * Uploads an email attachment described by a save_to_data_room proposal
- * (`new_values`) into the deal's Data Room under the internal-only
- * "Terms" folder. Exposed as a helper so the same logic can be triggered
- * from a save_to_data_room approval AND from an add_status_note approval
- * that belongs to the same Terms Issued bundle (so a single "approve"
- * on the bundle's note also saves the attachment even when the sibling
- * save proposal was previously dismissed or has since failed).
+ * into the deal's Data Room under the internal-only "Terms" folder.
+ *
+ * All heavy lifting (email_cache read, Nylas download, storage upload,
+ * vdr_documents insert) happens inside the `save-terms-attachment` edge
+ * function with the service role, because the email may have been synced
+ * by a different teammate whose RLS-protected email_cache row the current
+ * reviewer cannot read from the browser.
  */
 async function saveEmailAttachmentToTerms(params: {
   dealId: string;
   attachmentName: string;
   sourceEmailId: string;
-  userId: string;
+  userId: string; // caller (for parity with old signature; edge fn re-derives)
 }): Promise<{ ok: boolean; error?: string; documentId?: string }> {
-  const { dealId, attachmentName, sourceEmailId, userId } = params;
-  const { data: deal, error: dealErr } = await supabase
-    .from('deals')
-    .select('company_id')
-    .eq('id', dealId)
-    .maybeSingle();
-  if (dealErr || !deal?.company_id) {
-    return { ok: false, error: `deal lookup failed (${dealErr?.message || 'no company_id'})` };
-  }
-  const { data: cached, error: cacheErr } = await supabase
-    .from('email_cache')
-    .select('attachments')
-    .eq('gmail_message_id', sourceEmailId)
-    .limit(1)
-    .maybeSingle();
-  if (cacheErr) return { ok: false, error: `email lookup failed (${cacheErr.message})` };
-  const atts: any[] = Array.isArray((cached as any)?.attachments) ? (cached as any).attachments : [];
-  const match = atts.find((a) => a?.filename === attachmentName)
-    || atts.find((a) => (a?.filename || '').toLowerCase() === attachmentName.toLowerCase())
-    || (atts.length === 1 ? atts[0] : null);
-  if (!match?.id) return { ok: false, error: `attachment "${attachmentName}" not found on email` };
-  const { data: attData, error: attErr } = await supabase.functions.invoke('gmail-messages', {
-    body: { action: 'get_attachment', message_id: sourceEmailId, attachment_id: match.id },
+  const { data, error } = await supabase.functions.invoke('save-terms-attachment', {
+    body: {
+      deal_id: params.dealId,
+      attachment_name: params.attachmentName,
+      source_email_id: params.sourceEmailId,
+    },
   });
-  if (attErr || !attData?.data) {
-    return { ok: false, error: `attachment download failed (${attErr?.message || 'no data'})` };
+  if (error) {
+    const detail = (data as any)?.error || error.message || 'invoke failed';
+    return { ok: false, error: detail };
   }
-  const base64: string = attData.data;
-  const contentType: string = attData.content_type || match.content_type || 'application/octet-stream';
-  const cleanType = contentType.split(';')[0].trim() || 'application/octet-stream';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const blob = new Blob([bytes], { type: cleanType });
-  const folderPath = '/Terms/';
-  const storagePath = `${dealId}${folderPath}${attachmentName}`;
-  const { error: upErr } = await supabase.storage
-    .from('vdr-files')
-    .upload(storagePath, blob, { upsert: true, contentType: cleanType });
-  if (upErr) return { ok: false, error: `storage upload failed (${upErr.message})` };
-  const { data: inserted, error: insErr } = await (supabase as any)
-    .from('vdr_documents')
-    .insert({
-      deal_id: dealId,
-      company_id: (deal as any).company_id,
-      filename: attachmentName,
-      file_path: storagePath,
-      file_size: bytes.length,
-      file_type: cleanType || attachmentName.split('.').pop() || null,
-      folder_path: folderPath,
-      is_folder: false,
-      source: 'dataroom',
-      uploaded_by: userId,
-      ingestion_status: 'pending',
-      shared_to_dataroom: false,
-    })
-    .select('id')
-    .single();
-  if (insErr) return { ok: false, error: `vdr_documents insert failed (${insErr.message})` };
-  if (inserted?.id) {
-    supabase.functions
-      .invoke('classify-file', { body: { document_id: inserted.id } })
-      .catch((e) => console.warn('[saveEmailAttachmentToTerms] classify-file invoke failed:', e));
-  }
-  return { ok: true, documentId: inserted?.id };
+  if (!data?.ok) return { ok: false, error: (data as any)?.error || 'unknown error' };
+  return { ok: true, documentId: (data as any)?.document_id };
 }
 
 /**
