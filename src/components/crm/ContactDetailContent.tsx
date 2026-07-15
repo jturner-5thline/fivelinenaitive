@@ -708,12 +708,15 @@ function LogActivityDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const createActivity = useCreateContactActivity();
+  const [lastType, setLastType] = useState<'call' | 'meeting'>('call');
   const [logSubject, setLogSubject] = useState('');
   const [logBody, setLogBody] = useState('');
   const [logWhen, setLogWhen] = useState<string>('');
+  const activeType = type ?? lastType;
 
   useEffect(() => {
     if (!type) return;
+    setLastType(type);
     setLogWhen(toLocalDateTimeInputValue(new Date()));
     setLogSubject(type === 'call' ? 'Call' : 'Meeting');
     setLogBody('');
@@ -743,9 +746,9 @@ function LogActivityDialog({
     <Dialog open={!!type} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Log {type === 'call' ? 'call' : 'meeting'}</DialogTitle>
+          <DialogTitle>Log {activeType === 'call' ? 'call' : 'meeting'}</DialogTitle>
           <DialogDescription>
-            Record a {type === 'call' ? 'call' : 'meeting'} with {contactName}. Adjust the date/time and add notes as needed.
+            Record a {activeType === 'call' ? 'call' : 'meeting'} with {contactName}. Adjust the date/time and add notes as needed.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
@@ -755,7 +758,7 @@ function LogActivityDialog({
               id="log-subject"
               value={logSubject}
               onChange={(e) => setLogSubject(e.target.value)}
-              placeholder={type === 'call' ? 'e.g. Discovery call' : 'e.g. Kickoff meeting'}
+              placeholder={activeType === 'call' ? 'e.g. Discovery call' : 'e.g. Kickoff meeting'}
             />
           </div>
           <div className="space-y-1.5">
@@ -781,7 +784,7 @@ function LogActivityDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={createActivity.isPending}>Cancel</Button>
           <Button onClick={submitLogActivity} disabled={createActivity.isPending}>
-            {createActivity.isPending ? 'Logging…' : `Log ${type === 'call' ? 'call' : 'meeting'}`}
+            {createActivity.isPending ? 'Logging…' : `Log ${activeType === 'call' ? 'call' : 'meeting'}`}
           </Button>
         </DialogFooter>
       </DialogContent>
