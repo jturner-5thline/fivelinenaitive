@@ -5673,7 +5673,15 @@ export default function DealDetail() {
                     side="top"
                   >
                     <TabsList
-                      className="pointer-events-auto inline-flex h-auto items-center justify-start rounded-sm bg-gradient-to-b from-slate-800/95 to-slate-950 backdrop-blur-xl p-0 gap-0 border border-white/10 border-l-0 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.75),inset_0_1px_0_0_rgba(255,255,255,0.07)] max-w-full overflow-x-visible overflow-y-visible scrollbar-none [&>button+button]:border-l [&>button+button]:border-white/10"
+                      className={cn(
+                        // Excel-style bottom rail: recessed dark strip that
+                        // sits UNDER the modal content. Active tab (styled
+                        // below) rises out of the rail and merges into the
+                        // content plane above.
+                        "pointer-events-auto inline-flex h-9 items-end justify-start p-0 gap-0.5 max-w-full overflow-x-visible overflow-y-visible scrollbar-none rounded-none",
+                        "bg-gradient-to-b from-slate-900/90 to-slate-950/95 backdrop-blur-xl",
+                        "border-t border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
+                      )}
                       style={{ scrollbarWidth: 'none' }}
                     >
                       {hasDealSpaceAccess && !isSimplifiedDeal && !isProjectsDeal && (
