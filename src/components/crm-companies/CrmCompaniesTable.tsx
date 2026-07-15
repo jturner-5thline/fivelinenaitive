@@ -97,9 +97,13 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
   // Fetch the set of CRM company IDs that have at least one linked contact
   // for this org. Powers the "No contacts" Missing Data filter.
   const { company } = useCompany();
+  // Only fetch the (potentially large) set of company IDs with linked contacts
+  // when the "No contacts" filter is actually active. Loading it eagerly to
+  // show a count in the dropdown made the filter menu slow to open.
+  const needsContactsSet = missingDataFilter.includes('no_contacts');
   const { data: companyIdsWithContacts } = useQuery({
     queryKey: ['crm-companies-with-contacts', company?.id],
-    enabled: !!company?.id,
+    enabled: !!company?.id && needsContactsSet,
     staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -111,14 +115,6 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
       return new Set((data ?? []).map((r: any) => r.crm_company_id as string));
     },
   });
-
-  const missingDataCounts = useMemo(() => {
-    const noDomain = companies.filter(c => !((c.domain || '').trim())).length;
-    const noContacts = companyIdsWithContacts
-      ? companies.filter(c => !companyIdsWithContacts.has(c.id)).length
-      : 0;
-    return { no_domain: noDomain, no_contacts: noContacts };
-  }, [companies, companyIdsWithContacts]);
 
   const deferredCompanies = useDeferredValue(companies);
 
@@ -356,8 +352,8 @@ export function CrmCompaniesTable({ companies, onBulkAction, leadingFilterSlot }
           label="Missing Data"
           className="h-9"
           options={[
-            { value: 'no_contacts', label: `No contacts (${missingDataCounts.no_contacts})` },
-            { value: 'no_domain', label: `No domain (${missingDataCounts.no_domain})` },
+            { value: 'no_contacts', label: 'No contacts' },
+            { value: 'no_domain', label: 'No domain' },
           ]}
           selected={missingDataFilter}
           onChange={setMissingDataFilter}
