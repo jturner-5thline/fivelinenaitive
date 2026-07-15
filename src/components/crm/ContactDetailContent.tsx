@@ -285,6 +285,12 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={() => {
+                    document.getElementById('history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}>
+                    <ActivityIcon className="h-3.5 w-3.5 mr-2" /> View audit trail
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setShowDelete(true)} className="text-destructive focus:text-destructive">
                     <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete contact
                   </DropdownMenuItem>
