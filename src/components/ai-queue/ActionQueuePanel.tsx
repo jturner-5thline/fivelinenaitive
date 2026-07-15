@@ -83,6 +83,13 @@ import {
 } from './approvalCopy';
 import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
   useDeclineDealAccessRequest,
@@ -1047,6 +1054,8 @@ function QueueRow({
   const Icon = meta?.icon ?? CheckSquare;
   const risk = riskOf(item);
   const dot = RISK[risk].hex;
+  const bundleChildren = (item as any).__bundle as QueuedAiAction[] | undefined;
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <li>
@@ -1087,6 +1096,15 @@ function QueueRow({
               >
                 {item.title}
               </p>
+              {bundleChildren && bundleChildren.length > 0 && (
+                <span
+                  className="ml-1 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full text-[9.5px] font-semibold bg-white/[0.08] border border-white/[0.18] text-[#ecedf4]/80 shrink-0"
+                  style={FONT_MONO}
+                  title={`${bundleChildren.length} sub-actions`}
+                >
+                  {bundleChildren.length}
+                </span>
+              )}
             </div>
             <p
               className="text-[10.5px] text-[#ecedf4]/55 truncate mt-0.5"
@@ -1095,6 +1113,28 @@ function QueueRow({
               {item.deal_name || 'Unassigned'}
             </p>
           </div>
+          {bundleChildren && bundleChildren.length > 0 && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPreviewOpen(true);
+                }
+              }}
+              className="inline-flex items-center justify-center h-6 w-6 rounded-md border border-white/[0.18] text-[#ecedf4]/70 hover:text-[#5ecdf5] hover:border-[#5ecdf5]/40 hover:bg-white/[0.06] shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5ecdf5]"
+              aria-label="Preview sub-actions"
+              title="Preview sub-actions"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </span>
+          )}
           <span
             className="text-[10px] text-[#ecedf4]/45 shrink-0 tabular-nums"
             style={FONT_MONO}
@@ -1103,7 +1143,147 @@ function QueueRow({
           </span>
         </div>
       </button>
+      {bundleChildren && bundleChildren.length > 0 && (
+        <BundlePreviewDrawer
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          bundleTitle={item.title}
+          dealName={item.deal_name}
+          children={bundleChildren}
+          onOpenDetail={() => {
+            setPreviewOpen(false);
+            onSelect();
+          }}
+        />
+      )}
     </li>
+  );
+}
+
+/* Bundle preview drawer — a lightweight side sheet that lists every
+ * sub-action inside a bundled queue card (e.g. a Terms Issued lender
+ * bundle: Save PDF, Update funding source, Add status note) so the
+ * reviewer can scan what will happen before clicking into the full
+ * detail pane to approve. Read-only summary; the primary CTA hands off
+ * to the existing detail pane for edits and approvals.
+ */
+function BundlePreviewDrawer({
+  open,
+  onOpenChange,
+  bundleTitle,
+  dealName,
+  children,
+  onOpenDetail,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  bundleTitle: string;
+  dealName: string | null;
+  children: QueuedAiAction[];
+  onOpenDetail: () => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="right"
+        className="w-[min(480px,95vw)] sm:max-w-[480px] p-0 bg-[#06060a] border-l border-white/[0.12] text-[#ecedf4] flex flex-col"
+      >
+        <SheetHeader className="px-4 pt-4 pb-3 border-b border-white/[0.10] space-y-1.5 text-left">
+          <SheetTitle className="text-[15px] font-semibold text-[#f7f8fc]" style={FONT_DISPLAY}>
+            {bundleTitle}
+          </SheetTitle>
+          <SheetDescription className="text-[11.5px] text-[#ecedf4]/60" style={FONT_BODY}>
+            {dealName ? `${dealName} · ` : ''}
+            {children.length} sub-action{children.length === 1 ? '' : 's'} to review
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+          {children.map((c, idx) => {
+            const cMeta = TYPE_META[c.action_type];
+            const CIcon = cMeta?.icon ?? CheckSquare;
+            const nv = (c.new_values || {}) as Record<string, any>;
+            const summaryEntries = Object.entries(nv)
+              .filter(([k]) => k !== 'bundle_key' && k !== '_synthetic')
+              .slice(0, 5);
+            return (
+              <div
+                key={c.id}
+                className="rounded-[11px] border border-white/[0.14] bg-white/[0.03] px-3 py-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-white/[0.05] border border-white/[0.18] shrink-0">
+                    <CIcon className="h-3 w-3 text-[#ecedf4]/75" />
+                  </span>
+                  <p
+                    className="text-[11.5px] uppercase tracking-wide text-[#ecedf4]/55"
+                    style={FONT_MONO}
+                  >
+                    Step {idx + 1} · {cMeta?.label ?? c.action_type}
+                  </p>
+                </div>
+                <p
+                  className="mt-1.5 text-[13px] text-[#f0f1f6] leading-snug"
+                  style={FONT_BODY}
+                  title={c.title}
+                >
+                  {c.title}
+                </p>
+                {c.description && (
+                  <p
+                    className="mt-1 text-[11.5px] text-[#ecedf4]/60 leading-snug line-clamp-3"
+                    style={FONT_BODY}
+                  >
+                    {c.description}
+                  </p>
+                )}
+                {summaryEntries.length > 0 && (
+                  <div className="mt-2 grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
+                    {summaryEntries.map(([k, v]) => (
+                      <div key={k} className="contents">
+                        <span
+                          className="text-[10px] uppercase tracking-wide text-[#ecedf4]/45"
+                          style={FONT_MONO}
+                        >
+                          {k}
+                        </span>
+                        <span
+                          className="text-[11.5px] text-[#ecedf4]/85 break-words line-clamp-2"
+                          style={FONT_BODY}
+                        >
+                          {typeof v === 'string'
+                            ? v
+                            : v == null
+                              ? '—'
+                              : JSON.stringify(v)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="border-t border-white/[0.10] p-3 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="inline-flex items-center h-7 px-3 rounded-md text-[11.5px] border border-white/[0.18] text-[#ecedf4]/75 hover:bg-white/[0.05]"
+            style={FONT_BODY}
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={onOpenDetail}
+            className="inline-flex items-center h-7 px-3 rounded-md text-[11.5px] bg-[#5ecdf5]/15 border border-[#5ecdf5]/40 text-[#5ecdf5] hover:bg-[#5ecdf5]/25"
+            style={FONT_BODY}
+          >
+            Open to approve
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
