@@ -4630,15 +4630,6 @@ export default function DealDetail() {
                  <Card className="flex flex-col min-h-0">
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
-                         <Button
-                           type="button"
-                           variant="liquid-glass"
-                           size="sm"
-                           className="h-8 px-2.5 shrink-0"
-                           onClick={() => setIsAddLenderSlideOverOpen(true)}
-                         >
-                           + Add
-                         </Button>
                          <div className="flex-1 min-w-[160px] max-w-[260px]">
                            <LenderSearchInput
                              lenderNames={lenderNames}
