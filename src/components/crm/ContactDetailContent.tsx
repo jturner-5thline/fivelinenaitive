@@ -43,7 +43,7 @@ import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
-import { extractEmailDomain } from '@/lib/extractEmailDomain';
+import { extractEmailDomain, normalizeDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 import { format, isToday, isThisWeek } from 'date-fns';
 import { Loader2 } from 'lucide-react';
