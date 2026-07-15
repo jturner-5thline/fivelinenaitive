@@ -2102,9 +2102,17 @@ async function maybeBuildUpdateTasksCandidate(
     `This deal has no outstanding tasks and hasn't had any task activity in the last 12 hours. ` +
     `Add task(s) for the next steps — include titles, assignees, and due dates so the deal keeps moving.`;
 
+  // Prefill sensible defaults so the details panel renders editable
+  // fields for title / assignee / due date. Reviewer edits the values
+  // in-line before approving, at which point a task is created.
+  const ownerId = bundle.current?.deal_owner_user_id ?? null;
+  const defaultDue = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
   return {
     action_type: "create_followup_task",
-    item_title: "Update Tasks",
+    item_title: `${dealName} Has no Tasks`,
     linked_entity_label: dealName,
     target_object_type: "task",
     target_object_id: null,
@@ -2112,7 +2120,9 @@ async function maybeBuildUpdateTasksCandidate(
     current_values: { open_tasks: 0, last_task_activity_at: lastTaskAt ?? null },
     proposed_values: {
       _synthetic: "update_tasks",
-      title: "Update Tasks",
+      title: `Next step for ${dealName}`,
+      assigned_to: ownerId,
+      due_date: defaultDue,
       description,
     },
     rationale_summary:
