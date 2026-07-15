@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, Sun, Sunrise, CalendarDays } from 'lucide-react';
+import { addDays, format, isSameDay, nextMonday } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 export interface EditorTask {
@@ -21,22 +25,30 @@ interface Props {
 }
 
 /**
- * Inline multi-row task creator used by the "[Deal] Needs Tasks" approval
- * queue card. Reviewer fills in title / due date / assignee for one or
- * more tasks; approving the card creates all rows against the deal in a
- * single write via the approval-queue-execute edge function.
+ * Inline single-task creator used by the "[Deal] Needs Tasks" approval
+ * queue card. Mirrors the simple Create-Task field used elsewhere in the
+ * app (deal detail popup / rundown): title + quick date chips + assignee.
+ * Emits a one-element `tasks` array so the approval-queue-execute edge
+ * function's batch handler stays compatible.
  */
 export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
   const members = useTeamMembers();
-  const [tasks, setTasks] = useState<EditorTask[]>(() =>
-    initialTasks.length > 0
-      ? initialTasks
-      : [{ title: '', due_date: null, assigned_to: null }],
+  const seed = initialTasks[0] ?? { title: '', due_date: null, assigned_to: null };
+  const [title, setTitle] = useState<string>(seed.title ?? '');
+  const [dueDate, setDueDate] = useState<Date | undefined>(
+    seed.due_date ? new Date(seed.due_date + 'T00:00:00') : undefined,
   );
+  const [assignedTo, setAssignedTo] = useState<string | null>(seed.assigned_to ?? null);
 
   useEffect(() => {
-    onChange(tasks);
-  }, [tasks, onChange]);
+    onChange([
+      {
+        title: title.trim(),
+        due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
+        assigned_to: assignedTo,
+      },
+    ]);
+  }, [title, dueDate, assignedTo, onChange]);
 
   const memberOptions = useMemo(
     () =>
@@ -47,86 +59,76 @@ export function TaskListEditor({ dealName, initialTasks, onChange }: Props) {
     [members],
   );
 
-  const update = (i: number, patch: Partial<EditorTask>) => {
-    setTasks((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
-  };
-  const addRow = () =>
-    setTasks((prev) => [...prev, { title: '', due_date: null, assigned_to: null }]);
-  const removeRow = (i: number) =>
-    setTasks((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== i)));
+  const datePresets = [
+    { id: 'today', label: 'Today', icon: <Sun className="h-3 w-3" />, value: new Date() },
+    { id: 'tomorrow', label: 'Tomorrow', icon: <Sunrise className="h-3 w-3" />, value: addDays(new Date(), 1) },
+    { id: 'monday', label: 'Next Mon', icon: <CalendarDays className="h-3 w-3" />, value: nextMonday(new Date()) },
+    { id: 'week', label: '+1 week', icon: <CalendarDays className="h-3 w-3" />, value: addDays(new Date(), 7) },
+  ];
+  const dateMatches = (preset: Date) => !!dueDate && isSameDay(dueDate, preset);
 
   return (
-    <div className="rounded border border-white/10 bg-background/40 p-2 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Tasks to create on {dealName}
-        </p>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="h-6 px-2 text-[11px]"
-          onClick={addRow}
-        >
-          <Plus className="h-3 w-3 mr-1" /> Add task
-        </Button>
-      </div>
-      <div className="space-y-1.5">
-        <div className="grid grid-cols-[1fr_120px_150px_28px] gap-1.5 text-[10px] text-muted-foreground px-0.5">
-          <div>Title</div>
-          <div>Due date</div>
-          <div>Assignee</div>
-          <div />
-        </div>
-        {tasks.map((t, i) => (
-          <div
-            key={i}
-            className="grid grid-cols-[1fr_120px_150px_28px] gap-1.5 items-center"
+    <div className="rounded border border-white/10 bg-background/40 p-2.5 space-y-2">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        Create task on {dealName}
+      </p>
+      <Input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Task title…"
+        className="h-8 text-[12px] px-2"
+      />
+      <div className="flex flex-wrap items-center gap-1.5">
+        {datePresets.map((p) => (
+          <Button
+            key={p.id}
+            type="button"
+            size="sm"
+            variant={dateMatches(p.value) ? 'default' : 'outline'}
+            className="h-6 px-2 text-[10px] gap-1"
+            onClick={() => setDueDate(dateMatches(p.value) ? undefined : p.value)}
           >
-            <Input
-              value={t.title}
-              onChange={(e) => update(i, { title: e.target.value })}
-              placeholder="Task title…"
-              className="h-7 text-[11px] px-2"
-            />
-            <Input
-              type="date"
-              value={t.due_date ?? ''}
-              onChange={(e) => update(i, { due_date: e.target.value || null })}
-              className="h-7 text-[11px] px-2"
-            />
-            <Select
-              value={t.assigned_to ?? ''}
-              onValueChange={(v) => update(i, { assigned_to: v || null })}
-            >
-              <SelectTrigger className="h-7 text-[11px] px-2">
-                <SelectValue placeholder="Assignee" />
-              </SelectTrigger>
-              <SelectContent>
-                {memberOptions.map((m) => (
-                  <SelectItem key={m.id} value={m.id} className="text-[11px]">
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {p.icon}
+            {p.label}
+          </Button>
+        ))}
+        <Popover>
+          <PopoverTrigger asChild>
             <Button
               type="button"
-              size="icon"
-              variant="ghost"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => removeRow(i)}
-              disabled={tasks.length <= 1}
-              title="Remove task"
+              size="sm"
+              variant="outline"
+              className={cn(
+                'h-6 px-2 text-[10px] gap-1',
+                dueDate && !datePresets.some((p) => dateMatches(p.value)) && 'border-primary/50 text-primary',
+              )}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <CalendarIcon className="h-3 w-3" />
+              {dueDate ? format(dueDate, 'MMM d') : 'Pick date'}
             </Button>
-          </div>
-        ))}
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
+          </PopoverContent>
+        </Popover>
       </div>
+      <Select
+        value={assignedTo ?? ''}
+        onValueChange={(v) => setAssignedTo(v || null)}
+      >
+        <SelectTrigger className="h-8 text-[12px] px-2">
+          <SelectValue placeholder="Assignee" />
+        </SelectTrigger>
+        <SelectContent>
+          {memberOptions.map((m) => (
+            <SelectItem key={m.id} value={m.id} className="text-[12px]">
+              {m.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <p className="text-[10px] text-muted-foreground italic">
-        Approve to create {tasks.filter((t) => t.title.trim()).length || 0} task
-        {tasks.filter((t) => t.title.trim()).length === 1 ? '' : 's'} on this deal.
+        Approve to create this task on the deal.
       </p>
     </div>
   );
