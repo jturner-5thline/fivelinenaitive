@@ -151,8 +151,17 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   dealLenders,
   aiSearchSlot,
 }: LenderDirectoryDialogProps) {
-  const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
+  // Push search to the server via ilike so we're not limited to the
+  // rows that happen to have streamed into the client-side cache yet.
+  // A short min-length keeps single-letter queries out of the paged
+  // fetch path (which would swap the full directory for 100 matches).
+  const trimmedSearch = search.trim();
+  const serverSearch = trimmedSearch.length >= 2 ? trimmedSearch : '';
+  const { lenders: masterLenders, loading, updateLender } = useMasterLenders({
+    searchQuery: serverSearch,
+    pageSize: 500,
+  });
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [tierFilter, setTierFilter] = useState<string>('all');
   const [groupByTier, setGroupByTier] = useState(true);
