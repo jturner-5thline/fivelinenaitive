@@ -93,7 +93,6 @@ const LendersKanban = lazy(loadLendersKanban);
 import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
-import { AddLenderSlideOver } from '@/components/deal/AddLenderSlideOver';
 import { DealDataUpdateBanner } from '@/components/deal/DealDataUpdateBanner';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
@@ -1195,7 +1194,6 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
-  const [isAddLenderSlideOverOpen, setIsAddLenderSlideOverOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
 
@@ -4632,15 +4630,6 @@ export default function DealDetail() {
                  <Card className="flex flex-col min-h-0">
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
-                         <Button
-                           type="button"
-                           variant="liquid-glass"
-                           size="sm"
-                           className="h-8 px-2.5 shrink-0"
-                           onClick={() => setIsAddLenderSlideOverOpen(true)}
-                         >
-                           + Add
-                         </Button>
                          <div className="flex-1 min-w-[160px] max-w-[260px]">
                            <LenderSearchInput
                              lenderNames={lenderNames}
@@ -6595,33 +6584,6 @@ export default function DealDetail() {
         ) : []}
         lenderName={requestedItemsDrawerLender || ''}
         onUpdateItem={updateOutstandingItem}
-      />
-
-      {/* Add Funding Source slide-out panel */}
-      <AddLenderSlideOver
-        open={isAddLenderSlideOverOpen}
-        onOpenChange={setIsAddLenderSlideOverOpen}
-        dealName={deal?.name || 'this deal'}
-        criteria={{
-          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-          dealValue: deal?.value || undefined,
-          capitalAsk: dealWriteUpData.capitalAsk || undefined,
-          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
-          geo: dealWriteUpData.location || undefined,
-          cashBurnOk: savedMatchingCriteria.cashBurnOk,
-          sponsorship: savedMatchingCriteria.sponsorship,
-        }}
-        existingLenderNames={existingLenderNames}
-        configuredStages={configuredStages}
-        defaultStageId={preferences.defaultLenderStage}
-        onAddLender={addLenderWithStage}
-        dealId={id}
-        aiCriteriaOverride={{
-          dealValue: deal?.value || undefined,
-          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
-          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-          geo: dealWriteUpData.location || undefined,
-        }}
       />
 
       {/* Lenders Kanban Dialog */}

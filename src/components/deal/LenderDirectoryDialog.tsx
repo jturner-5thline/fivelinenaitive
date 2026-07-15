@@ -62,8 +62,9 @@ export function LenderDirectoryDialog(props: LenderDirectoryDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="icon" className="h-8 w-8">
-          <BookOpen className="h-3.5 w-3.5" />
+        <Button variant="liquid-glass" size="sm" className="h-8 px-2.5 shrink-0 gap-1">
+          <Plus className="h-3.5 w-3.5" />
+          Add
         </Button>
       </DialogTrigger>
       {open && <LenderDirectoryContent {...props} />}
