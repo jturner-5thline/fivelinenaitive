@@ -1357,6 +1357,13 @@ function filterStaleStatusNotes(
   for (const s of bundle.stage_history ?? []) pushDate((s as any)?.id, (s as any)?.changed_at, (s as any)?.created_at);
   for (const m of bundle.milestones ?? []) pushDate((m as any)?.id, (m as any)?.completed_at, (m as any)?.updated_at);
   for (const f of bundle.funding_sources ?? []) pushDate((f as any)?.id, (f as any)?.last_contact_at, (f as any)?.updated_at);
+  for (const u of bundle.unlinked_terms_emails ?? []) {
+    // Unlinked terms emails are the trigger for TERMS_ISSUED bundle status
+    // notes. Register both the gmail_message_id and thread_id so evidence
+    // references pointing at either resolve to the email's received_at date.
+    pushDate((u as any)?.gmail_message_id, (u as any)?.received_at);
+    pushDate((u as any)?.thread_id, (u as any)?.received_at);
+  }
 
   let dropped = 0;
   const kept = candidates.filter((c) => {
