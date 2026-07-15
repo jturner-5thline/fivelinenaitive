@@ -3637,8 +3637,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
     }
   }
 
-  // 2) Existing dedupe keys — anything currently pending/approved in the queue
-  //    for this company we shouldn't re-propose.
+  // 2) Existing dedupe keys — anything currently pending, approved, OR
+  //    dismissed/rejected in the queue for this company we shouldn't
+  //    re-propose. Rejecting a card is a decision the reviewer already
+  //    made; a fresh sweep must not resurface it.
   const dealIdsArr = dealList.map((d: any) => d.id);
   const existingKeys = new Set<string>();
   if (dealIdsArr.length > 0) {
@@ -3646,7 +3648,7 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       .from("ai_action_queue")
       .select("action_type, target_object_type, target_object_id, deal_id, status, payload, source, evidence")
       .in("deal_id", dealIdsArr)
-      .in("status", ["pending", "approved"]);
+      .in("status", ["pending", "approved", "dismissed"]);
     for (const e of existing ?? []) {
       const key = queueSemanticKey(e as any);
       existingKeys.add(key);
