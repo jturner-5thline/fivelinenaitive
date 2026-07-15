@@ -2375,6 +2375,69 @@ function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSign
 const PRIORITY_RANK: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
 const RISK_RANK: Record<string, number> = { low: 0, medium: 1, high: 2 };
 
+/**
+ * Stamp `proposed_values.bundle_key = "terms_issued:{deal_id}:{lender_id}"` on
+ * every candidate that belongs to the same Terms Issued bundle for a given
+ * (deal, funding_source). The Approval Queue UI groups items sharing this key
+ * into a single lender card. Safety net for when the model omits the key.
+ */
+function stampTermsIssuedBundleKeys(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): CandidateItem[] {
+  const dealId = bundle.deal_id ? String(bundle.deal_id) : "";
+  if (!dealId) return candidates;
+
+  const emailRefToLender = new Map<string, string>();
+  for (const c of candidates) {
+    if (c.action_type !== "update_funding_source") continue;
+    const lenderId = c.target_object_id ? String(c.target_object_id) : "";
+    if (!lenderId || lenderId === dealId) continue;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const stageTxt = `${pv.stage ?? ""} ${pv.tracking_status ?? ""}`.toLowerCase();
+    if (!/terms|issued/.test(stageTxt)) continue;
+    for (const ev of (c.evidence_references ?? []) as any[]) {
+      const kind = String(ev?.kind ?? "").toLowerCase();
+      const refId = ev?.ref_id ?? ev?.id;
+      if ((kind === "email" || kind === "email_thread") && typeof refId === "string" && refId) {
+        if (!emailRefToLender.has(refId)) emailRefToLender.set(refId, lenderId);
+      }
+    }
+  }
+
+  return candidates.map((c) => {
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    if (pv.bundle_key) return c;
+
+    if (c.action_type === "update_funding_source") {
+      const lenderId = c.target_object_id ? String(c.target_object_id) : "";
+      const stageTxt = `${pv.stage ?? ""} ${pv.tracking_status ?? ""}`.toLowerCase();
+      if (lenderId && lenderId !== dealId && /terms|issued/.test(stageTxt)) {
+        return { ...c, proposed_values: { ...pv, bundle_key: `terms_issued:${dealId}:${lenderId}` } };
+      }
+      return c;
+    }
+
+    if (
+      c.action_type === "add_status_note" ||
+      c.action_type === "save_to_data_room" ||
+      c.action_type === "update_deal_stage"
+    ) {
+      for (const ev of (c.evidence_references ?? []) as any[]) {
+        const refId = ev?.ref_id ?? ev?.id;
+        if (typeof refId === "string" && emailRefToLender.has(refId)) {
+          const lenderId = emailRefToLender.get(refId)!;
+          return {
+            ...c,
+            proposed_values: { ...pv, bundle_key: `terms_issued:${dealId}:${lenderId}` },
+          };
+        }
+      }
+    }
+    return c;
+  });
+}
+
 function maxRankedValue<T extends string>(a: T | null | undefined, b: T | null | undefined, ranks: Record<string, number>, fallback: T): T {
   const av = a ?? fallback;
   const bv = b ?? fallback;
