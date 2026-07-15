@@ -382,7 +382,31 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </div>
                 </div>
 
-                <EditableField label="Website" type="url" asLink value={contact.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
+                <EditableField
+                  label="Domain"
+                  type="text"
+                  asLink
+                  value={normalizeDomain(contact.website_url) || ''}
+                  onSave={(v) => {
+                    const normalized = normalizeDomain(v) || null;
+                    updateContact.mutate(
+                      { id: contact.id, website_url: normalized } as any,
+                      {
+                        onSuccess: () => {
+                          if (!normalized || crmCompanyId) return;
+                          const match = companies.find(c => {
+                            const cd = normalizeDomain(c.domain);
+                            const extras = (c.additional_domains || []).map((d: string) => normalizeDomain(d));
+                            return cd === normalized || extras.includes(normalized);
+                          });
+                          if (match) {
+                            linkToCompany.mutate({ contactId: contact.id, companyId: match.id });
+                          }
+                        },
+                      },
+                    );
+                  }}
+                />
 
                 <LabeledSelect label="Lifecycle Stage" value={contact.lifecycle_stage} onChange={v => handleQuickUpdate('lifecycle_stage', v)} options={LIFECYCLE_STAGES} />
                 <LabeledSelect label="Status" value={contact.status} onChange={v => handleQuickUpdate('status', v)} options={CONTACT_STATUSES} />
