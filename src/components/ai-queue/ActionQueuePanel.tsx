@@ -542,6 +542,43 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       // Collapse 2+ email drafts on the same deal into a single synthetic
       // bundle. Nudge-heavy bundles keep the "Follow up with Lenders" label;
       // otherwise use a generic "Email drafts" label.
+      // Terms Issued lender bundle — collapse ALL items sharing the same
+      // `new_values.bundle_key` starting with "terms_issued:" into a single
+      // per-lender card. This groups the (save PDF + update funding source +
+      // add status note + advance stage) proposals emitted by the Deal Admin
+      // Agent's Terms Issued rule for one lender on one deal.
+      const termsGroups = new Map<string, QueuedAiAction[]>();
+      for (const it of g.items) {
+        const nv = (it as any).new_values || (it as any).payload?.on_approve_execution_payload?.new_values || {};
+        const bk = typeof nv.bundle_key === 'string' ? nv.bundle_key : '';
+        if (!bk.startsWith('terms_issued:')) continue;
+        if (!termsGroups.has(bk)) termsGroups.set(bk, []);
+        termsGroups.get(bk)!.push(it);
+      }
+      for (const [bk, picks] of termsGroups.entries()) {
+        if (picks.length < 2) continue;
+        // Pull a lender label from any child (linked_entity_label is set on
+        // update_funding_source; fall back to parsing the bundle key).
+        const lenderLabel =
+          (picks.find((p: any) => p.action_type === 'update_funding_source') as any)?.payload
+            ?.linked_entity_label ||
+          (picks[0] as any).payload?.linked_entity_label ||
+          'Lender';
+        const kinds = new Set(picks.map((p) => p.action_type));
+        const parts: string[] = [];
+        if (kinds.has('save_to_data_room' as AiActionType)) parts.push('Save PDF');
+        if (kinds.has('update_funding_source' as AiActionType)) parts.push('Update funding source');
+        if (kinds.has('add_status_note' as AiActionType)) parts.push('Add status note');
+        if (kinds.has('update_deal_stage' as AiActionType)) parts.push('Advance deal stage');
+        bundleItems((it) => picks.includes(it), {
+          idKey: `terms-issued:${bk}`,
+          actionType: 'terms_issued_bundle',
+          title: `${lenderLabel} — Term Sheet / IOI`,
+          description: parts.join(' · ') || `${picks.length} lender actions`,
+          rationale: `${lenderLabel} sent terms — ${picks.length} related actions bundled for review.`,
+        });
+      }
+
       const drafts = g.items.filter((it) => it.action_type === 'draft_email');
       if (drafts.length >= 2) {
         const nudgeCount = drafts.filter((it) => /nudge/i.test(it.title || '')).length;
