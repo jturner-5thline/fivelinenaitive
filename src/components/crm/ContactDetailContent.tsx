@@ -30,6 +30,7 @@ import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
   useLinkContactToDeal, useUnlinkContactFromDeal, useAllDeals,
@@ -85,9 +86,13 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
 
   const crmCompanyId = (contact as any)?.crm_company_id;
   const { data: crmCompany } = useContactCrmCompany(crmCompanyId);
-  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000 });
+  // Defer loading of large lists until the user actually needs them
+  // (opens a link modal, or edits the domain field which triggers a match).
+  const [needCompanies, setNeedCompanies] = useState(false);
+  const [needDeals, setNeedDeals] = useState(false);
+  const { data: companiesResult } = useCrmCompanies({ pageSize: 1000, enabled: needCompanies });
   const companies = companiesResult?.data ?? [];
-  const { data: deals = [] } = useAllDeals();
+  const { data: deals = [] } = useAllDeals(needDeals);
   const linkToCompany = useLinkContactToCompany();
   const unlinkFromCompany = useUnlinkContactFromCompany();
   const linkToDeal = useLinkContactToDeal();
@@ -196,8 +201,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     evangelist: 'bg-pink-500/10 text-pink-500',
   };
 
-  const companyOptions: EntityOption[] = companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined }));
-  const dealOptions: EntityOption[] = deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` }));
+  const companyOptions: EntityOption[] = useMemo(
+    () => companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined })),
+    [companies],
+  );
+  const dealOptions: EntityOption[] = useMemo(
+    () => deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` })),
+    [deals],
+  );
 
   const owner = teamMembers.find(m => m.id === contact.owner_user_id);
   const ownerName = owner?.display_name || 'Unassigned';
@@ -270,10 +281,10 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" sideOffset={8} className="w-44">
-                  <DropdownMenuItem onClick={() => setShowLinkCompany(true)}>
+                  <DropdownMenuItem onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
                     <Building2 className="h-3.5 w-3.5 mr-2" /> Link company
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowLinkDeal(true)}>
+                  <DropdownMenuItem onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
                     <Briefcase className="h-3.5 w-3.5 mr-2" /> Link deal
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -353,7 +364,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                       {crmCompany.name}
                     </button>
                   ) : (
-                    <button onClick={() => setShowLinkCompany(true)} className="text-xs text-muted-foreground hover:text-primary">
+                    <button onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }} className="text-xs text-muted-foreground hover:text-primary">
                       Link a company
                     </button>
                   )}
@@ -400,13 +411,15 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     updateContact.mutate(
                       { id: contact.id, website_url: normalized } as any,
                       {
-                        onSuccess: () => {
+                        onSuccess: async () => {
                           if (!normalized || crmCompanyId) return;
-                          const match = companies.find(c => {
-                            const cd = normalizeDomain(c.domain);
-                            const extras = (c.additional_domains || []).map((d: string) => normalizeDomain(d));
-                            return cd === normalized || extras.includes(normalized);
-                          });
+                          // Targeted lookup — avoid loading the entire companies list.
+                          const { data: matches } = await supabase
+                            .from('crm_companies')
+                            .select('id, domain, additional_domains')
+                            .or(`domain.eq.${normalized},additional_domains.cs.{${normalized}}`)
+                            .limit(1);
+                          const match = matches?.[0];
                           if (match) {
                             linkToCompany.mutate({ contactId: contact.id, companyId: match.id });
                           }
@@ -463,7 +476,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Company</p>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkCompany(true)}>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedCompanies(true); setShowLinkCompany(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> {crmCompany ? 'Change' : 'Link'}
                   </Button>
                 </div>
@@ -493,7 +506,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Deals ({contactDeals.length})</p>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setShowLinkDeal(true)}>
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => { setNeedDeals(true); setShowLinkDeal(true); }}>
                     <Plus className="h-3 w-3 mr-0.5" /> Link
                   </Button>
                 </div>
@@ -696,7 +709,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         contactName={contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'this contact'}
         email={contact.email}
         currentCrmCompanyId={crmCompanyId}
-        onLinkRequested={() => setShowLinkCompany(true)}
+        onLinkRequested={() => { setNeedCompanies(true); setShowLinkCompany(true); }}
       />
 
       <Dialog open={!!logDialog} onOpenChange={(o) => !o && setLogDialog(null)}>
