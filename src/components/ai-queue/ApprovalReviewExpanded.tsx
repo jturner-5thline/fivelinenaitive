@@ -149,8 +149,17 @@ export function ApprovalReviewExpanded({ item, onDone }: Props) {
         </div>
       </div>
 
+      {/* Task-list creator for the synthetic "Needs Tasks" prompt */}
+      {isUpdateTasksPrompt && (
+        <TaskListEditor
+          dealName={item.deal_name || 'this deal'}
+          initialTasks={initialTasks}
+          onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
+        />
+      )}
+
       {/* Old → New diff */}
-      {fieldKeys.length > 0 && (
+      {!isUpdateTasksPrompt && fieldKeys.length > 0 && (
         <div className="rounded border border-white/10">
           <div className="grid grid-cols-[110px_1fr_1fr] gap-0 text-[11px]">
             <div className="px-2 py-1 bg-white/[0.03] font-medium text-muted-foreground border-b border-white/10">Field</div>
