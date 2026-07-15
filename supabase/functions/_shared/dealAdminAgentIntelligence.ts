@@ -2251,10 +2251,17 @@ function extractStatusNoteTopicSalt(row: {
     const id = (ev as any)?.ref_id ?? (ev as any)?.id;
     if (typeof id === "string" && id.trim().length > 0) return id.trim();
   }
-  // Fall back to the first few words of the note body from payload.proposed_values.
+  // Fall back to the first few words of the note body. Candidate items store
+  // this at top-level `proposed_values`; persisted queue rows nest it inside
+  // `payload.on_approve_execution_payload.new_values` (or legacy
+  // `payload.proposed_values`). Check all three so the salt is stable across
+  // "candidate coming from the model" and "row already in the queue".
   const payload = asObject(row.payload);
+  const execNv = asObject(asObject(payload.on_approve_execution_payload).new_values);
   const topLevelPv = asObject((row as any).proposed_values);
-  const pv = Object.keys(topLevelPv).length > 0 ? topLevelPv : asObject(payload.proposed_values);
+  const pv = Object.keys(topLevelPv).length > 0
+    ? topLevelPv
+    : (Object.keys(execNv).length > 0 ? execNv : asObject(payload.proposed_values));
   const note = typeof pv.note === "string" ? pv.note : (typeof pv.notes === "string" ? pv.notes : "");
   if (note) {
     return note.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").slice(0, 6).join("-");
@@ -2266,9 +2273,17 @@ function extractDataRoomSalt(row: {
   payload?: unknown;
   proposed_values?: unknown;
 }): string {
+  // Candidate items use top-level `proposed_values`. Persisted queue rows
+  // nest the same fields inside `payload.on_approve_execution_payload.new_values`
+  // (Cf. how save_to_data_room mutations get executed). Read all three so the
+  // salt matches across candidate ⇄ existing-row comparisons — otherwise
+  // repeated runs of the agent stack duplicate "Save X to data room" cards.
   const payload = asObject(row.payload);
+  const execNv = asObject(asObject(payload.on_approve_execution_payload).new_values);
   const topLevelPv = asObject((row as any).proposed_values);
-  const pv = Object.keys(topLevelPv).length > 0 ? topLevelPv : asObject(payload.proposed_values);
+  const pv = Object.keys(topLevelPv).length > 0
+    ? topLevelPv
+    : (Object.keys(execNv).length > 0 ? execNv : asObject(payload.proposed_values));
   const emailId = typeof pv.source_email_id === "string" ? pv.source_email_id : "";
   const name = typeof pv.attachment_name === "string" ? pv.attachment_name : "";
   const key = `${emailId}|${name}`.toLowerCase().replace(/[^a-z0-9|]+/g, "-");
