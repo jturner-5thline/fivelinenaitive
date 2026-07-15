@@ -70,6 +70,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const teamMembers = useTeamMembers();
   const { data: auditLog = [] } = useContactAuditLog(contactId);
   const [newNote, setNewNote] = useState('');
+  const [domainCopied, setDomainCopied] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all');
   const [logDialog, setLogDialog] = useState<{ type: 'call' | 'meeting' } | null>(null);
   const [logSubject, setLogSubject] = useState('');
