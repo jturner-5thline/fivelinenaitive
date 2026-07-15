@@ -83,6 +83,13 @@ import {
 } from './approvalCopy';
 import { formatEditableDate, isDateFieldName, isIsoDateLike, parseEditableDateToIso } from './editableDate';
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
   useDeclineDealAccessRequest,
