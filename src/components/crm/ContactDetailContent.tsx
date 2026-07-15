@@ -134,6 +134,15 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     return { today, thisWeek, earlier };
   }, [filteredActivities]);
 
+  const companyOptions: EntityOption[] = useMemo(
+    () => companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined })),
+    [companies],
+  );
+  const dealOptions: EntityOption[] = useMemo(
+    () => deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` })),
+    [deals],
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -200,15 +209,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
     opportunity: 'bg-amber-500/10 text-amber-500', customer: 'bg-green-500/10 text-green-500',
     evangelist: 'bg-pink-500/10 text-pink-500',
   };
-
-  const companyOptions: EntityOption[] = useMemo(
-    () => companies.map(c => ({ id: c.id, label: c.name, sublabel: c.domain || c.industry || undefined })),
-    [companies],
-  );
-  const dealOptions: EntityOption[] = useMemo(
-    () => deals.map(d => ({ id: d.id, label: d.company, sublabel: `${d.stage} · $${Number(d.value || 0).toLocaleString()}` })),
-    [deals],
-  );
 
   const owner = teamMembers.find(m => m.id === contact.owner_user_id);
   const ownerName = owner?.display_name || 'Unassigned';
