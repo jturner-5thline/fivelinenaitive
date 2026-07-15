@@ -429,17 +429,38 @@ Deno.serve(async (req) => {
         const p = { ...payload, ...merged } as any;
         const { data: membership } = await admin
           .from('company_members').select('company_id').eq('user_id', userId).limit(1).maybeSingle();
-        const safePriority = p.priority === 'urgent' ? 'urgent' : null;
-        const { error } = await admin.from('tasks').insert({
-          title: p.title || item.title,
-          description: p.description ?? item.description ?? null,
-          due_date: p.due_date ?? null,
-          priority: safePriority,
-          deal_id: item.deal_id,
-          assigned_to: p.assigned_to ?? userId,
-          assigned_by: userId,
-          company_id: membership?.company_id ?? null,
-        } as any);
+        // The synthetic "Needs Tasks" prompt sends an array of tasks the
+        // reviewer filled in (title / due_date / assigned_to per row).
+        // For all other create_followup_task cards, fall back to the
+        // legacy single-task insert.
+        const taskList: any[] = Array.isArray(p.tasks)
+          ? p.tasks.filter((t: any) => t && typeof t.title === 'string' && t.title.trim().length > 0)
+          : [];
+        const rows = taskList.length > 0
+          ? taskList.map((t: any) => ({
+              title: String(t.title).trim(),
+              description: t.description ?? null,
+              due_date: t.due_date || null,
+              priority: t.priority === 'urgent' ? 'urgent' : null,
+              deal_id: item.deal_id,
+              assigned_to: t.assigned_to || userId,
+              assigned_by: userId,
+              company_id: membership?.company_id ?? null,
+            }))
+          : [{
+              title: p.title || item.title,
+              description: p.description ?? item.description ?? null,
+              due_date: p.due_date ?? null,
+              priority: p.priority === 'urgent' ? 'urgent' : null,
+              deal_id: item.deal_id,
+              assigned_to: p.assigned_to ?? userId,
+              assigned_by: userId,
+              company_id: membership?.company_id ?? null,
+            }];
+        if (rows.length === 0 || !rows[0].title) {
+          return recordFailure('At least one task with a title is required');
+        }
+        const { error } = await admin.from('tasks').insert(rows as any);
         if (error) return recordFailure(error.message);
         break;
       }
