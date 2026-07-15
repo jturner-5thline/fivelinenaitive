@@ -7932,6 +7932,53 @@ export type Database = {
           },
         ]
       }
+      crm_contact_attachments: {
+        Row: {
+          category: string
+          contact_id: string
+          content_type: string | null
+          created_at: string
+          file_path: string
+          id: string
+          name: string
+          size_bytes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          contact_id: string
+          content_type?: string | null
+          created_at?: string
+          file_path: string
+          id?: string
+          name: string
+          size_bytes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          contact_id?: string
+          content_type?: string | null
+          created_at?: string
+          file_path?: string
+          id?: string
+          name?: string
+          size_bytes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_contact_attachments_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_metrics: {
         Row: {
           company_id: string | null
