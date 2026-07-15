@@ -2547,6 +2547,20 @@ function BundleChildCard({
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5">
+          {child.action_type !== 'draft_email' && (
+            <button
+              type="button"
+              onClick={() => setEditMode((v) => !v)}
+              className="inline-flex items-center gap-1 h-7 px-2 rounded text-[11.5px] text-[#ecedf4]/75 hover:text-[#ecedf4] hover:bg-white/[0.05] transition-colors"
+              style={FONT_BODY}
+              title={editMode ? 'Done editing' : 'Edit fields'}
+            >
+              <Pencil className="h-3 w-3" /> {editMode ? 'Done' : 'Edit'}
+              {editedCount > 0 && (
+                <span className="ml-1 text-[10px] text-[#f3c969]">{editedCount}</span>
+              )}
+            </button>
+          )}
           <button
             type="button"
             disabled={busy !== null}
@@ -2587,39 +2601,193 @@ function BundleChildCard({
           setEdits={setEdits}
         />
       ) : (
-        <BundleFieldDiff child={child} />
+        <BundleFieldEditor
+          child={child}
+          editMode={editMode}
+          edits={edits}
+          setEdits={setEdits}
+        />
       )}
     </div>
   );
 }
 
-function BundleFieldDiff({ child }: { child: QueuedAiAction }) {
+/**
+ * Editable per-child field editor used inside bundle cards. When `editMode`
+ * is on, each changed field renders as an inline Input/Textarea/Select so
+ * the reviewer can adjust the proposed stage, milestone, funding-source
+ * status, or free-form status note independently before approving the
+ * individual sub-action. Edits flow up via `setEdits` and are committed on
+ * the per-child Approve button (which sends `editedValues`).
+ */
+function BundleFieldEditor({
+  child,
+  editMode,
+  edits,
+  setEdits,
+}: {
+  child: QueuedAiAction;
+  editMode: boolean;
+  edits: Record<string, any>;
+  setEdits: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+}) {
   const oldValues = (child.old_values || {}) as Record<string, any>;
   const newValues = (child.new_values || {}) as Record<string, any>;
+  const { pipelines } = usePipelineContext();
+  const { stages: lenderStagesConfigured } = useLenderStages();
+  const lookups = useMemo(() => {
+    const stages: Record<string, string> = {};
+    const pipelinesMap: Record<string, string> = {};
+    for (const p of pipelines ?? []) {
+      pipelinesMap[p.id] = p.name;
+      for (const s of p.stages ?? []) stages[s.id] = s.label;
+    }
+    return {
+      stages,
+      pipelines: pipelinesMap,
+      lenderStages: (lenderStagesConfigured ?? []).map((s) => ({ id: s.id, label: s.label })),
+    };
+  }, [pipelines, lenderStagesConfigured]);
+
   const norm = (v: any) =>
     v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
-  const keys = Array.from(new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]))
-    .filter((k) => {
-      const p = norm(newValues[k]);
-      return p && p !== norm(oldValues[k]);
-    });
-  if (keys.length === 0) {
+
+  const changedKeys = Array.from(
+    new Set<string>([...Object.keys(oldValues), ...Object.keys(newValues)]),
+  ).filter((k) => {
+    if (k === 'bundle_key' || k === '_synthetic') return false;
+    const p = norm(newValues[k]);
+    return p && p !== norm(oldValues[k]);
+  });
+
+  // Always expose a status-note field for the funding-source / stage /
+  // milestone sub-actions so the reviewer can add or refine the note
+  // independently, even if the agent didn't originally propose one.
+  const NOTE_KEYS = ['notes', 'status_notes', 'note'];
+  const hasNoteKey = changedKeys.some((k) => NOTE_KEYS.includes(k));
+  const supportsNote =
+    child.action_type === 'update_funding_source' ||
+    child.action_type === 'add_status_note' ||
+    child.action_type === 'update_deal_stage' ||
+    (child.action_type as string) === 'update_deal_milestone' ||
+    child.target_object_type === 'deal_lender' ||
+    child.target_object_type === 'funding_source';
+  const noteKey = hasNoteKey
+    ? (changedKeys.find((k) => NOTE_KEYS.includes(k)) as string)
+    : child.action_type === 'add_status_note'
+      ? 'note'
+      : 'notes';
+  const shouldAppendNoteField = editMode && supportsNote && !hasNoteKey;
+  const displayKeys = shouldAppendNoteField ? [...changedKeys, noteKey] : changedKeys;
+
+  if (displayKeys.length === 0) {
     return (
       <p className="text-[12px] text-[#ecedf4]/55" style={FONT_BODY}>
         {child.rationale || child.description || 'No field changes proposed.'}
       </p>
     );
   }
+
   return (
-    <div className="space-y-1.5">
-      {keys.map((k) => (
-        <div key={k} className="text-[12px]" style={FONT_BODY}>
-          <span className="text-[#ecedf4]/50 uppercase tracking-wide text-[10px] mr-2">{k.replace(/_/g, ' ')}</span>
-          <span className="text-[#ecedf4]/60 line-through mr-1.5">{norm(oldValues[k]) || '—'}</span>
-          <span className="text-[#ecedf4]/40 mr-1.5">→</span>
-          <span className="text-[#f7f8fc] font-medium">{norm(newValues[k])}</span>
-        </div>
-      ))}
+    <div className="space-y-2">
+      {displayKeys.map((k) => {
+        const oldV = oldValues[k];
+        const proposedRaw = edits[k] ?? newValues[k];
+        const isEditableDateField =
+          isDateFieldName(k) || isIsoDateLike(proposedRaw) || isIsoDateLike(oldV);
+        const proposedEditValue = isEditableDateField
+          ? formatEditableDate(proposedRaw)
+          : proposedRaw == null
+            ? ''
+            : String(proposedRaw);
+        const oldDisplay = formatFieldValue(k, oldV, lookups);
+        const proposedDisplay = formatFieldValue(k, proposedRaw, lookups);
+        const fieldOptions = isEditableDateField ? null : getFieldOptions(k, child, lookups);
+        const isNote = NOTE_KEYS.includes(k);
+        const isLongText =
+          isNote ||
+          /\n/.test(String(proposedRaw ?? '')) ||
+          (proposedDisplay?.length ?? 0) + (oldDisplay?.length ?? 0) > 120;
+
+        return (
+          <div
+            key={k}
+            className="rounded-md border border-white/[0.16] bg-white/[0.02] px-2.5 py-2"
+          >
+            <p
+              className="text-[10px] font-medium uppercase tracking-wide text-[#ecedf4]/55 mb-1.5"
+              style={FONT_BODY}
+            >
+              {humanizeFieldKey(k)}
+            </p>
+
+            {editMode ? (
+              fieldOptions && fieldOptions.length > 0 ? (
+                <Select
+                  value={
+                    typeof proposedRaw === 'string' && proposedRaw ? proposedRaw : undefined
+                  }
+                  onValueChange={(value) => setEdits((p) => ({ ...p, [k]: value }))}
+                >
+                  <SelectTrigger
+                    className="h-8 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc]"
+                    style={FONT_BODY}
+                  >
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0f1420] border-white/[0.28] text-[#f7f8fc]">
+                    {fieldOptions.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-[12.5px] focus:bg-white/[0.08] focus:text-[#f7f8fc]"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : isLongText ? (
+                <Textarea
+                  rows={Math.min(8, Math.max(3, (proposedEditValue.match(/\n/g)?.length ?? 0) + 2))}
+                  value={proposedEditValue}
+                  placeholder={isNote ? 'Add or refine the status note…' : undefined}
+                  onChange={(e) => setEdits((p) => ({ ...p, [k]: e.target.value }))}
+                  className="text-[12.5px] leading-[1.5] px-2.5 py-1.5 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                  style={FONT_BODY}
+                />
+              ) : (
+                <Input
+                  type="text"
+                  value={proposedEditValue}
+                  placeholder={isEditableDateField ? 'MM-DD-YYYY' : undefined}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const nextValue = isEditableDateField
+                      ? parseEditableDateToIso(value, newValues[k] ?? oldV)
+                      : value;
+                    setEdits((p) => ({ ...p, [k]: nextValue ?? '' }));
+                  }}
+                  className="h-8 text-[12.5px] px-2 bg-white/[0.06] border-white/[0.28] text-[#f7f8fc] focus-visible:ring-1 focus-visible:ring-[#5ecdf5]/60"
+                  style={FONT_BODY}
+                />
+              )
+            ) : (
+              <div className="text-[12px]" style={FONT_BODY}>
+                {oldDisplay ? (
+                  <>
+                    <span className="text-[#ecedf4]/55 line-through mr-1.5">{oldDisplay}</span>
+                    <span className="text-[#ecedf4]/40 mr-1.5">→</span>
+                  </>
+                ) : null}
+                <span className="text-[#f7f8fc] font-medium whitespace-pre-wrap break-words">
+                  {proposedDisplay || <span className="text-[#ecedf4]/50">—</span>}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
