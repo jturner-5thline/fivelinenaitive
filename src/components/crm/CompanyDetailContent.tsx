@@ -487,14 +487,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                                 variant="ghost"
                                 className="h-6 w-6 text-destructive hover:text-destructive"
                                 onClick={() => {
-                                  if (!confirm('Delete this note?')) return;
-                                  deleteActivity.mutate(
-                                    { id: a.id, crm_company_id: company.id },
-                                    {
-                                      onSuccess: () => toast.success('Note deleted'),
-                                      onError: (err: any) => toast.error(err?.message || 'Failed to delete note'),
-                                    }
-                                  );
+                                  setDeleteNoteId(a.id);
                                 }}
                                 aria-label="Delete note"
                               >
