@@ -1376,6 +1376,7 @@ function filterStaleStatusNotes(
       if (ts && ts > newest) newest = ts;
     }
     if (newest === 0 || newest < cutoff) {
+      console.log(`[deal-admin-agent] stale-note debug title=${JSON.stringify(c.item_title)} refs=${JSON.stringify(refs).slice(0,600)}`);
       dropped += 1;
       return false;
     }
