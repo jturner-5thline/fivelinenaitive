@@ -388,7 +388,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                   asLink
                   value={normalizeDomain(contact.website_url) || ''}
                   onSave={(v) => {
-                    const normalized = normalizeDomain(v) || null;
+                    const normalized = normalizeDomain(v == null ? '' : String(v)) || null;
                     updateContact.mutate(
                       { id: contact.id, website_url: normalized } as any,
                       {
