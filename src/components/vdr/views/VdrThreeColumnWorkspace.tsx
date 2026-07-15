@@ -386,6 +386,15 @@ export function VdrThreeColumnWorkspace({
   // Internal and additionally appears in the Data Room column.
   const copyToDataroom = useCallback(async (ids: string[]) => {
     if (!ids.length) return;
+    // Strip internal-only files (e.g. Terms) — they must never leave Internal.
+    const blocked = ids.filter(id => isInternalOnlyDoc(documents.find(x => x.id === id)));
+    ids = ids.filter(id => !blocked.includes(id));
+    if (blocked.length) {
+      toast.error(
+        `${blocked.length} file${blocked.length === 1 ? '' : 's'} in Terms can't be shared — Terms stays Internal.`,
+      );
+    }
+    if (!ids.length) { setInternalSelected(new Set()); return; }
     // Snapshot prior share/folder state for undo.
     const snapshot = ids.map(id => {
       const d = documents.find(x => x.id === id);
@@ -520,6 +529,14 @@ export function VdrThreeColumnWorkspace({
   const shareToDataroomFolder = useCallback(
     async (ids: string[], folderName: string | null) => {
       if (!ids.length) return;
+      const blocked = ids.filter(id => isInternalOnlyDoc(documents.find(x => x.id === id)));
+      ids = ids.filter(id => !blocked.includes(id));
+      if (blocked.length) {
+        toast.error(
+          `${blocked.length} file${blocked.length === 1 ? '' : 's'} in Terms can't be shared — Terms stays Internal.`,
+        );
+      }
+      if (!ids.length) { setInternalSelected(new Set()); return; }
       const newPath = folderName ? `/${folderName}/` : '/';
       const snapshot = ids.map(id => {
         const d = documents.find(x => x.id === id);
