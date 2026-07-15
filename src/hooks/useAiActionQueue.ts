@@ -728,6 +728,38 @@ export function useApproveAiAction() {
           toast.error('Action failed', { description: data?.error || error?.message });
           return { ok: false, error: data?.error || error?.message };
         }
+        // Terms Issued bundle side-effects: when the reviewer approves the
+        // bundle's add_status_note, also advance the funding source AND
+        // upload every sibling save_to_data_room attachment to Internal ▸
+        // Terms. These live on separate queue rows but semantically are one
+        // action from the reviewer's perspective.
+        if (item.action_type === 'add_status_note' && item.deal_id) {
+          const nv =
+            (item.new_values as any) ||
+            (item.payload as any)?.on_approve_execution_payload?.new_values ||
+            {};
+          const bundleKey: string | undefined = nv.bundle_key;
+          const note: string | undefined = opts?.editedValues?.note ?? nv.note;
+          if (bundleKey && bundleKey.startsWith('terms_issued:') && note) {
+            try {
+              const side = await applyTermsIssuedBundleSideEffects({
+                note,
+                dealId: item.deal_id,
+                bundleKey,
+                userId: user.id,
+              });
+              invalidateQueueAll(qc);
+              if (side.savedCount > 0) {
+                toast.success(`Saved ${side.savedCount} attachment${side.savedCount === 1 ? '' : 's'} to Internal ▸ Terms`);
+              }
+              for (const err of side.errors) {
+                console.warn('[terms-issued side-effect]', err);
+              }
+            } catch (e) {
+              console.warn('[terms-issued side-effect] threw:', e);
+            }
+          }
+        }
         const msg = (data as any)?.result_message as string | undefined;
         if (data.decision === 'email_staged') {
           toast.success(msg || 'Draft staged for send', { description: item.title });
