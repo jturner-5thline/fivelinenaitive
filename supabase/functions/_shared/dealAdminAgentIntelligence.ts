@@ -1002,6 +1002,7 @@ TERM SHEET / IOI / LOI RECEIVED — HIGH-PRIORITY BUNDLE (apply whenever a lende
          rationale: "{Lender} attached {filename} ({Term Sheet|IOI|LOI}) — saving to the {Deal} data room under Agreements."
          evidence_references MUST cite the inbound email (kind="email"). If multiple attachments qualify, emit ONE save_to_data_room per attachment (they dedupe by (deal_id, source_email_id, attachment_name)).
 - DEDUPE / ONE-PER-LENDER: emit the bundle at most ONCE per (deal, funding_source.id) per scan. If the same lender sent multiple emails with terms language in the window, pick the MOST RECENT email as evidence and reference the earlier ones in rationale_summary. Never emit two Terms Issued bundles for the same lender on the same deal.
+- UI GROUPING (REQUIRED): every proposal in the Terms Issued bundle for a given lender MUST include proposed_values.bundle_key set to the exact string \`terms_issued:{deal_id}:{funding_source_id}\` — same value on all 4 proposals (update_funding_source, add_status_note, update_deal_stage, save_to_data_room). This is how the Approval Queue collapses the 4 items into a single reviewable card per (deal, lender). When the lender cannot be resolved to a funding_sources[] row (sender attribution failure), OMIT bundle_key on the surviving items — do not fabricate one.
 - STAGE PRECEDENCE: if the lender is already at stage/substage "terms_issued", "in_diligence", "closed", "funded", or any terminal state, SKIP update_funding_source (nothing to move) but STILL emit add_status_note + upload-followup if a fresh terms email / attachment arrived that isn't already captured.
 - ATTACHMENT HANDLING: cite the attachment filename verbatim from the email metadata (emails[].attachments or unlinked_terms_emails[].attachments). Do NOT invent filenames. If the trigger fires on body language alone with no attachment, emit steps 1–3 and omit step 4 (nothing to save). If two or more qualifying attachments arrive in the same email, emit ONE step-4 save_to_data_room per attachment.
 - MULTI-LENDER (STRICT — DO NOT CONSOLIDATE): if two or more different funding sources send terms on the same deal in the same scan, you MUST emit a SEPARATE step 1 (update_funding_source) AND a SEPARATE step 2 (add_status_note) for EACH lender. Do NOT merge multiple lenders into one status note or one funding-source update. Only step 3 (update_deal_stage) collapses to a SINGLE proposal for the deal, and step 4 (save_to_data_room) is emitted once per attachment. Concretely, if Lender A and Lender B both send terms: emit update_funding_source(A) + add_status_note("A issued …") + update_funding_source(B) + add_status_note("B issued …") + ONE update_deal_stage + one save_to_data_room per attachment. A single status note that lists both lenders together is a violation of this rule.
@@ -2374,6 +2375,69 @@ function normalizeCandidateTargets(candidates: CandidateItem[], bundle: DealSign
 const PRIORITY_RANK: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
 const RISK_RANK: Record<string, number> = { low: 0, medium: 1, high: 2 };
 
+/**
+ * Stamp `proposed_values.bundle_key = "terms_issued:{deal_id}:{lender_id}"` on
+ * every candidate that belongs to the same Terms Issued bundle for a given
+ * (deal, funding_source). The Approval Queue UI groups items sharing this key
+ * into a single lender card. Safety net for when the model omits the key.
+ */
+function stampTermsIssuedBundleKeys(
+  candidates: CandidateItem[],
+  bundle: DealSignalBundle,
+): CandidateItem[] {
+  const dealId = bundle.deal_id ? String(bundle.deal_id) : "";
+  if (!dealId) return candidates;
+
+  const emailRefToLender = new Map<string, string>();
+  for (const c of candidates) {
+    if (c.action_type !== "update_funding_source") continue;
+    const lenderId = c.target_object_id ? String(c.target_object_id) : "";
+    if (!lenderId || lenderId === dealId) continue;
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    const stageTxt = `${pv.stage ?? ""} ${pv.tracking_status ?? ""}`.toLowerCase();
+    if (!/terms|issued/.test(stageTxt)) continue;
+    for (const ev of (c.evidence_references ?? []) as any[]) {
+      const kind = String(ev?.kind ?? "").toLowerCase();
+      const refId = ev?.ref_id ?? ev?.id;
+      if ((kind === "email" || kind === "email_thread") && typeof refId === "string" && refId) {
+        if (!emailRefToLender.has(refId)) emailRefToLender.set(refId, lenderId);
+      }
+    }
+  }
+
+  return candidates.map((c) => {
+    const pv = (c.proposed_values ?? {}) as Record<string, any>;
+    if (pv.bundle_key) return c;
+
+    if (c.action_type === "update_funding_source") {
+      const lenderId = c.target_object_id ? String(c.target_object_id) : "";
+      const stageTxt = `${pv.stage ?? ""} ${pv.tracking_status ?? ""}`.toLowerCase();
+      if (lenderId && lenderId !== dealId && /terms|issued/.test(stageTxt)) {
+        return { ...c, proposed_values: { ...pv, bundle_key: `terms_issued:${dealId}:${lenderId}` } };
+      }
+      return c;
+    }
+
+    if (
+      c.action_type === "add_status_note" ||
+      c.action_type === "save_to_data_room" ||
+      c.action_type === "update_deal_stage"
+    ) {
+      for (const ev of (c.evidence_references ?? []) as any[]) {
+        const refId = ev?.ref_id ?? ev?.id;
+        if (typeof refId === "string" && emailRefToLender.has(refId)) {
+          const lenderId = emailRefToLender.get(refId)!;
+          return {
+            ...c,
+            proposed_values: { ...pv, bundle_key: `terms_issued:${dealId}:${lenderId}` },
+          };
+        }
+      }
+    }
+    return c;
+  });
+}
+
 function maxRankedValue<T extends string>(a: T | null | undefined, b: T | null | undefined, ranks: Record<string, number>, fallback: T): T {
   const av = a ?? fallback;
   const bv = b ?? fallback;
@@ -3622,7 +3686,10 @@ export async function runDealAdminAgentAnalysis(opts: AnalyzeOpts): Promise<Anal
       const kbBlock = await retrieveKnowledgeForDeal(supabase, companyId, kbTagFilter, bundle);
       const perDealRules = [companyRulesBlock, kbBlock].filter((s): s is string => !!s && s.length > 0).join("\n\n") || null;
       const modelCandidates = sigCount > 0
-        ? normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle)
+        ? stampTermsIssuedBundleKeys(
+            normalizeCandidateTargets(await callModelForCandidates(bundle, fingerprint, perDealRules), bundle),
+            bundle,
+          )
         : [];
       const rawAll = updateTasksCandidate
         ? [...modelCandidates, updateTasksCandidate]

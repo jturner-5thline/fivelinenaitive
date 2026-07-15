@@ -1,59 +1,41 @@
 ## Goal
-Extend the Add Widgets pop-up so users can embed dashboard widgets **exactly as they appear** on their source dashboard (chart, table, or KPI card), in addition to the existing single-value KPI tiles.
 
-## User-visible behavior
+Consolidate Term Sheet / IOI / LOI approval queue items into **one card per (deal, lender)**. The card's details pane exposes each sub-step (save PDF, move funding source to Terms Issued, add lender-specific status note, and — when applicable — advance the deal stage) so the user can review and approve them together.
 
-1. Add a **mode toggle** at the top of the Add Widgets dialog:
-   - **KPI Tiles** (current behavior — single-value KPIs, templates, custom metrics)
-   - **Dashboard Widgets** (new — pick charts/tables/cards rendered as-is)
-2. In Dashboard Widgets mode, tiles are grouped by source dashboard, with a live thumbnail preview and a "Live · <dashboard name>" caption. Selection + "Add Selected" flow is identical.
-3. Added widgets render in the report as **half-width by default**, and are resizable (small / half / full-width) via the existing widget edit controls. The embedded chart re-sizes to its container.
-4. Narrative editor can also insert a dashboard-widget block inline (same picker).
+## Approach
 
-## Technical design
+Rather than merging the underlying rows into a single database action, tag every item that the "Terms Issued bundle" rule emits with a shared `bundle_key`, then have the Approval Queue UI collapse items sharing that key into a single lender card with a multi-step detail panel — mirroring how `draft_email_bundle` and `update_funding_source_bundle` already work.
 
-### 1. New embeddable-widget registry
-`src/components/metrics/dashboards/qir/dashboardWidgetRegistry.ts`
-- Enumerates embeddable widgets as `{ id, label, dashboard, description, defaultWidth: 'half'|'full', render: (ctx) => ReactNode }`.
-- `ctx` = `{ reportPeriod, entityFilter? }` so widgets pick up the report's timeframe.
-- Curated first pass across the four dashboards the user picked; each entry re-uses the **existing chart/card component** from that dashboard (extracted into a small wrapper if it's currently inline):
-  - **Debt Advisory Metrics** – stage funnel chart, 6 stage-entry stat cards, deal-size distribution.
-  - **FinServ Financial Metrics** – Revenue/hour trendline, Profit/hour trendline, MRR chart, Active-client trend, Utilization gauge, Avg revenue/client bar.
-  - **QuickBooks Revenue Reporting** – Revenue stacked bar (Debt vs FinServ), Revenue by entity donut.
-  - **All metrics dashboards** – over time, expanded by adding entries here (registry is the single extension point).
-- Widgets that don't yet have an extracted, embeddable component fall back to a "Coming soon" tile in the picker.
+### 1. Deal Admin Agent protocol (`supabase/functions/_shared/dealAdminAgentIntelligence.ts`)
 
-### 2. Add Widgets dialog — mode toggle
-`AddKpiDialog.tsx`
-- New prop `onPickDashboardWidget?: (id: string) => void`.
-- Segmented control at the top of the header: KPI Tiles | Dashboard Widgets.
-- Widget-mode gallery reuses the existing grouped grid + selection/footer, but renders a `DashboardWidgetPreviewTile` that mounts the widget's `render()` inside a scaled-down preview box.
-- Search + source chips filter the widget registry when in widget mode.
+- Extend `TERMS_ISSUED_RULES` so every one of the 4 proposals for a lender's Terms Issued event carries the same `bundle_key` in `proposed_values`, formatted as `terms_issued:{deal_id}:{funding_source_id_or_sender_domain}`:
+  - `update_funding_source` → funding_source_id known.
+  - `add_status_note` / `update_deal_stage` / `save_to_data_room` → same key so the UI can group them even though their `target_object_id` is the deal.
+- Server-side safety net in `normalizeCandidateTargets`: when the model omits `bundle_key`, infer it for a candidate by scanning `evidence_references` for a shared email/thread id + matching lender contact, and stamp `bundle_key` before persistence.
+- Persist `bundle_key` in the `ai_action_queue` payload (the field flows through the existing `on_approve_execution_payload.new_values` slot; no schema migration).
 
-### 3. Report state — new "dashboard-widget" item type
-`QuarterlyInsightsReport.tsx`
-- Extend the KPI-grid model with an optional `kind: 'kpi' | 'dashboardWidget'` and `dashboardWidgetId?: string` field (kept backward-compatible; default is `'kpi'`).
-- New `addDashboardWidget(widgetId)` that appends a grid item with size = the widget's `defaultWidth`.
-- When rendering the KPI grid: if `kind === 'dashboardWidget'`, look up the registry entry and render its component inside a resizable `SortableMetricWidget`-style card. Edit affordance = resize + remove (no label/actual/target inputs).
+### 2. UI grouping (`src/components/ai-queue/ActionQueuePanel.tsx`)
 
-### 4. Narrative editor — new inline node
-`src/components/insights/narrative/DashboardWidgetEmbedNode.tsx`
-- TipTap node `dashboardWidgetEmbed` with attrs `{ widgetId, periodStart, periodEnd, periodLabel }`.
-- Renders the registry component in a bordered block; read-only in preview, deletable in edit.
-- Registered in `InsightsNarrativeEditor`.
+- Add a new bundler that runs **before** the existing draft / funding-source / claap bundlers:
+  - Collect items whose `payload.bundle_key` starts with `terms_issued:`.
+  - Group by that key; when 2+ items share it, emit one synthetic `terms_issued_bundle` card titled `"{Lender} — Term Sheet / IOI"` with the deal name and a description like `"Save PDF · Update funding source · Add status note"`.
+  - Attach the child items on `__bundle` so the existing detail-pane bundle renderer displays each sub-action with its own approve/reject.
+- Register `terms_issued_bundle` in `TYPE_META` (icon: `FileSignature` from `lucide-react`) and in `consolidatedAiQueueCount` so the badge count matches.
+- Detail pane: reuse the existing multi-item bundle renderer used by `update_funding_source_bundle` (each child keeps its own editable form) so no new UI surface is needed.
 
-### 5. Resize model
-- Reuse existing `MetricWidgetSize` widths (`small` / `medium` / `large` / `full`) mapped to grid col-spans; expose a small size-picker on the widget's edit affordance.
+### 3. Refresh sweep + cleanup
 
-## Out of scope for this pass
-- Cross-report drill-downs from the embedded widget (widgets retain their intrinsic drill-downs where they already exist).
-- Embedding heavy multi-tab dashboards (Executive, Weekly Rundown carousels) — those don't have a single canonical "widget" surface.
-- Custom axis/filter overrides on the embedded widget (uses report timeframe only).
+- After deploy, invoke `deal-admin-agent-auto-sweep` for the Gabb Wireless workspace (Cloud edge function) so a fresh pass emits the newly tagged items.
+- Dismiss the currently-pending, un-tagged Terms Issued items for Gabb Wireless via an `UPDATE` on `ai_action_queue` with `status='dismissed', rejection_reason='auto_resolved_pre_bundle_key'`, scoped to `deal_id = <gabb_id>` AND `action_type IN ('update_funding_source','add_status_note','save_to_data_room','update_deal_stage')` AND `status='pending'` AND `created_at < now() - interval '1 minute'` (so we don't wipe the fresh sweep's output).
 
-## Files touched
-- `src/components/metrics/dashboards/qir/dashboardWidgetRegistry.ts` **(new)**
-- `src/components/metrics/dashboards/qir/AddKpiDialog.tsx` (mode toggle + widget gallery)
-- `src/components/metrics/dashboards/QuarterlyInsightsReport.tsx` (state + rendering)
-- `src/components/insights/narrative/DashboardWidgetEmbedNode.tsx` **(new)**
-- `src/components/insights/narrative/InsightsNarrativeEditor.tsx` (register node)
-- Small extraction wrappers for a handful of dashboard charts so they're mountable outside their host dashboard.
+### Technical details
+
+- No schema migration required; `bundle_key` lives in the JSONB payload.
+- Dedupe: `queueSemanticKey` continues to key on `(deal, funding_source)` for the "funding_source_attention" group; the new `bundle_key` is purely for UI grouping and does not affect dedupe.
+- Backwards compat: items without `bundle_key` render exactly as today.
+- Redeploy `deal-admin-agent-analyze`, `deal-admin-agent-auto-sweep`, `deal-admin-agent-test-scan` so the new prompt/inference is live.
+
+### Out of scope
+
+- No changes to the actual "on approve" execution — approving the lender bundle still runs each child action independently. The user experience is what consolidates.
+- No changes to other bundlers (drafts, claap, generic fs updates).
