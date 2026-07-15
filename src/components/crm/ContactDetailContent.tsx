@@ -74,9 +74,6 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const [domainCopied, setDomainCopied] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all');
   const [logDialog, setLogDialog] = useState<{ type: 'call' | 'meeting' } | null>(null);
-  const [logSubject, setLogSubject] = useState('');
-  const [logBody, setLogBody] = useState('');
-  const [logWhen, setLogWhen] = useState<string>(''); // datetime-local string
 
   const [showLinkCompany, setShowLinkCompany] = useState(false);
   const [showLinkDeal, setShowLinkDeal] = useState(false);
@@ -165,38 +162,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   };
 
   const openLogDialog = (type: 'call' | 'meeting') => {
-    const now = new Date();
-    // Format for <input type="datetime-local"> in local time
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    setLogWhen(local);
-    setLogSubject(type === 'call' ? 'Call' : 'Meeting');
-    setLogBody('');
     setLogDialog({ type });
-  };
-
-  const submitLogActivity = () => {
-    if (!contact || !logDialog) return;
-    const occurredAt = logWhen ? new Date(logWhen) : new Date();
-    const type = logDialog.type;
-    const payload = {
-      contact_id: contact.id,
-      activity_type: type,
-      subject: logSubject.trim() || (type === 'call' ? 'Call' : 'Meeting'),
-      body: logBody.trim() || undefined,
-      occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
-    };
-    // Close the dialog immediately so the Radix exit animation and the heavy
-    // detail-page re-render triggered by the activities invalidation don't
-    // happen in the same frame (which felt like a freeze to users).
-    setLogDialog(null);
-    // Defer the mutation one frame so React can commit the modal close first.
-    requestAnimationFrame(() => {
-      createActivity.mutate(payload, {
-        onSuccess: () => toast.success(`${type === 'call' ? 'Call' : 'Meeting'} logged`),
-        onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
-      });
-    });
   };
 
   const handleAddNote = () => {
@@ -715,53 +681,111 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
         onLinkRequested={() => { setNeedCompanies(true); setShowLinkCompany(true); }}
       />
 
-      <Dialog open={!!logDialog} onOpenChange={(o) => !o && setLogDialog(null)}>
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Log {logDialog?.type === 'call' ? 'call' : 'meeting'}</DialogTitle>
-            <DialogDescription>
-              Record a {logDialog?.type === 'call' ? 'call' : 'meeting'} with {contact.full_name || 'this contact'}. Adjust the date/time and add notes as needed.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="log-subject" className="text-xs">Subject</Label>
-              <Input
-                id="log-subject"
-                value={logSubject}
-                onChange={(e) => setLogSubject(e.target.value)}
-                placeholder={logDialog?.type === 'call' ? 'e.g. Discovery call' : 'e.g. Kickoff meeting'}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="log-when" className="text-xs">When</Label>
-              <Input
-                id="log-when"
-                type="datetime-local"
-                value={logWhen}
-                onChange={(e) => setLogWhen(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="log-notes" className="text-xs">Notes</Label>
-              <Textarea
-                id="log-notes"
-                value={logBody}
-                onChange={(e) => setLogBody(e.target.value)}
-                placeholder="What was discussed, next steps, follow-ups…"
-                rows={5}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setLogDialog(null)} disabled={createActivity.isPending}>Cancel</Button>
-            <Button onClick={submitLogActivity} disabled={createActivity.isPending}>
-              {createActivity.isPending ? 'Logging…' : `Log ${logDialog?.type === 'call' ? 'call' : 'meeting'}`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <LogActivityDialog
+        type={logDialog?.type ?? null}
+        contactId={contact.id}
+        contactName={contact.full_name || 'this contact'}
+        onOpenChange={(open) => !open && setLogDialog(null)}
+      />
     </>
+  );
+}
+
+function toLocalDateTimeInputValue(date: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function LogActivityDialog({
+  type,
+  contactId,
+  contactName,
+  onOpenChange,
+}: {
+  type: 'call' | 'meeting' | null;
+  contactId: string;
+  contactName: string;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const createActivity = useCreateContactActivity();
+  const [logSubject, setLogSubject] = useState('');
+  const [logBody, setLogBody] = useState('');
+  const [logWhen, setLogWhen] = useState<string>('');
+
+  useEffect(() => {
+    if (!type) return;
+    setLogWhen(toLocalDateTimeInputValue(new Date()));
+    setLogSubject(type === 'call' ? 'Call' : 'Meeting');
+    setLogBody('');
+  }, [type]);
+
+  const submitLogActivity = () => {
+    if (!type) return;
+    const occurredAt = logWhen ? new Date(logWhen) : new Date();
+    const payload = {
+      contact_id: contactId,
+      activity_type: type,
+      subject: logSubject.trim() || (type === 'call' ? 'Call' : 'Meeting'),
+      body: logBody.trim() || undefined,
+      occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
+    };
+
+    onOpenChange(false);
+    window.setTimeout(() => {
+      createActivity.mutate(payload, {
+        onSuccess: () => toast.success(`${type === 'call' ? 'Call' : 'Meeting'} logged`),
+        onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
+      });
+    }, 120);
+  };
+
+  return (
+    <Dialog open={!!type} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>Log {type === 'call' ? 'call' : 'meeting'}</DialogTitle>
+          <DialogDescription>
+            Record a {type === 'call' ? 'call' : 'meeting'} with {contactName}. Adjust the date/time and add notes as needed.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="log-subject" className="text-xs">Subject</Label>
+            <Input
+              id="log-subject"
+              value={logSubject}
+              onChange={(e) => setLogSubject(e.target.value)}
+              placeholder={type === 'call' ? 'e.g. Discovery call' : 'e.g. Kickoff meeting'}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="log-when" className="text-xs">When</Label>
+            <Input
+              id="log-when"
+              type="datetime-local"
+              value={logWhen}
+              onChange={(e) => setLogWhen(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="log-notes" className="text-xs">Notes</Label>
+            <Textarea
+              id="log-notes"
+              value={logBody}
+              onChange={(e) => setLogBody(e.target.value)}
+              placeholder="What was discussed, next steps, follow-ups…"
+              rows={5}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={createActivity.isPending}>Cancel</Button>
+          <Button onClick={submitLogActivity} disabled={createActivity.isPending}>
+            {createActivity.isPending ? 'Logging…' : `Log ${type === 'call' ? 'call' : 'meeting'}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

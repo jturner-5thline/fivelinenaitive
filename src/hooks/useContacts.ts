@@ -358,8 +358,16 @@ export function useCreateContactActivity() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['contact-activities', vars.contact_id] });
+    onSuccess: (data, vars) => {
+      queryClient.setQueryData(['contact-activities', vars.contact_id], (old: any[] | undefined) => {
+        const current = old || [];
+        const next = [data, ...current.filter((item) => item.id !== data.id)];
+        return next.sort((a, b) => {
+          const aTime = new Date(a.occurred_at || a.created_at || 0).getTime();
+          const bTime = new Date(b.occurred_at || b.created_at || 0).getTime();
+          return bTime - aTime;
+        });
+      });
     },
   });
 }
