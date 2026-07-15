@@ -242,7 +242,9 @@ export function VdrThreeColumnWorkspace({
   );
   // Data Room lists files that have been explicitly shared to the external workspace.
   const dataroomDocs = useMemo(
-    () => documents.filter(d => !d.is_folder && d.shared_to_dataroom),
+    // Belt-and-suspenders: even if a file in an internal-only folder somehow
+    // has shared_to_dataroom=true (legacy data), keep it out of the Data Room.
+    () => documents.filter(d => !d.is_folder && d.shared_to_dataroom && !isInternalOnlyDoc(d)),
     [documents]
   );
 
@@ -259,13 +261,20 @@ export function VdrThreeColumnWorkspace({
   const visibleDataroom = useMemo(() => filterDocs(dataroomDocs), [filterDocs, dataroomDocs]);
 
   // ── Category grouping ────────────────────────────────────
-  // Build the ordered list of category names from settings (source of truth)
-  const categoryNames = useMemo(() => categories.map(c => c.name), [categories]);
+  // Build the ordered list of category names from settings (source of truth).
+  // Strip any accidental overlap with internal-only categories so they're only
+  // sourced from INTERNAL_ONLY_CATEGORY_NAMES below.
+  const categoryNames = useMemo(
+    () => categories.map(c => c.name).filter(n => !INTERNAL_ONLY_CATEGORY_SET.has(n)),
+    [categories],
+  );
   const customFolderNames = useMemo(() => customFolders.map(f => f.name), [customFolders]);
   // Per-column ordered names (user preference applied on top of the natural
   // settings/custom-folder order). Internal vs Data Room order independently.
   const internalCategoryNames = useMemo(
-    () => internalFolderPrefs.applyOrder(categoryNames),
+    // Internal-only categories (e.g. "Terms") are appended so they show as
+    // real folder headers in the Internal column but never in Data Room.
+    () => internalFolderPrefs.applyOrder([...categoryNames, ...INTERNAL_ONLY_CATEGORY_NAMES]),
     [internalFolderPrefs, categoryNames],
   );
   const dataroomCategoryNames = useMemo(
@@ -276,10 +285,11 @@ export function VdrThreeColumnWorkspace({
     () => dataroomFolderPrefs.applyOrder(customFolderNames),
     [dataroomFolderPrefs, customFolderNames],
   );
-  // Categories shown in BOTH columns. Custom folders are per-deal so they are
-  // appended to the default company taxonomy.
+  // All known folder names for docCategory() bucketing. Internal-only
+  // categories are included so their files render under the correct header in
+  // the Internal column instead of falling into Uncategorized.
   const categoryNameSet = useMemo(
-    () => new Set([...categoryNames, ...customFolderNames]),
+    () => new Set([...categoryNames, ...customFolderNames, ...INTERNAL_ONLY_CATEGORY_NAMES]),
     [categoryNames, customFolderNames],
   );
   const customFolderNameSet = useMemo(() => new Set(customFolderNames), [customFolderNames]);
