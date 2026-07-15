@@ -150,10 +150,25 @@ export function useVdrDocuments(dealId: string) {
         schema: 'public',
         table: 'vdr_documents',
         filter: `deal_id=eq.${dealId}`,
-      }, () => { fetchDocuments(); })
+      }, (payload: any) => {
+        fetchDocuments();
+        // Surface a lightweight notice to *other* reviewers when a term
+        // sheet PDF lands in Internal ▸ Terms via the approval-queue
+        // save-terms-attachment flow. Only fires on INSERTs from a
+        // different user so the uploader doesn't get a duplicate toast.
+        try {
+          if (payload?.eventType !== 'INSERT') return;
+          const row = payload.new || {};
+          if (row.is_folder) return;
+          if (user?.id && row.uploaded_by === user.id) return;
+          const folder = (row.folder_path || '').toLowerCase();
+          if (!folder.includes('terms')) return;
+          toast.info(`New term sheet added: ${row.filename}`);
+        } catch {}
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [dealId, fetchDocuments]);
+  }, [dealId, fetchDocuments, user?.id]);
 
   // Listen for explicit refresh nudges (e.g. from the AI approval queue
   // after it uploads a term-sheet PDF via the save-terms-attachment edge
