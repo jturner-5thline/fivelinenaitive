@@ -764,6 +764,17 @@ export function useApproveAiAction() {
                 description: `${lenderLine}\n${savedLine}`,
               });
               termsBundleToastShown = true;
+              // Nudge any open Data Room views for this deal to refetch
+              // immediately so the newly-uploaded term sheet PDF appears
+              // without requiring a manual reload. useVdrDocuments listens
+              // for this event.
+              if (side.savedAttachments.length > 0 && typeof window !== 'undefined') {
+                try {
+                  window.dispatchEvent(
+                    new CustomEvent('vdr:refresh', { detail: { dealId: item.deal_id } })
+                  );
+                } catch {}
+              }
               // Persistent audit log entry — captures exactly what happened
               // to the funding source and where each term-sheet PDF landed
               // in the Data Room so reviewers (and compliance) can trace the

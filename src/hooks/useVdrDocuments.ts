@@ -155,6 +155,22 @@ export function useVdrDocuments(dealId: string) {
     return () => { supabase.removeChannel(channel); };
   }, [dealId, fetchDocuments]);
 
+  // Listen for explicit refresh nudges (e.g. from the AI approval queue
+  // after it uploads a term-sheet PDF via the save-terms-attachment edge
+  // function). Realtime should cover this too, but this guarantees the
+  // Internal ▸ Terms folder reflects the new file immediately.
+  useEffect(() => {
+    if (!dealId) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { dealId?: string } | undefined;
+      if (!detail?.dealId || detail.dealId === dealId) {
+        fetchDocuments();
+      }
+    };
+    window.addEventListener('vdr:refresh', handler);
+    return () => window.removeEventListener('vdr:refresh', handler);
+  }, [dealId, fetchDocuments]);
+
   const triggerIngestion = useCallback(async (documentIds: string[]) => {
     if (!documentIds.length) return;
     try {
