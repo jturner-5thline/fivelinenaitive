@@ -815,6 +815,56 @@ export function useApproveAiAction() {
                 description: `${lenderLine}\n${savedLine}`,
               });
               termsBundleToastShown = true;
+              // Persistent audit log entry — captures exactly what happened
+              // to the funding source and where each term-sheet PDF landed
+              // in the Data Room so reviewers (and compliance) can trace the
+              // approval after the toast is dismissed.
+              try {
+                const lenderStageOutcome = side.lenderUpdateOk
+                  ? side.lenderStageAdvanced
+                    ? 'advanced to Terms Issued'
+                    : side.lenderStageAlreadyAtOrPast
+                      ? 'note saved (stage already at/past Terms Issued)'
+                      : 'note saved'
+                  : 'update failed';
+                const attachmentsSummary =
+                  side.savedAttachments.length > 0
+                    ? `Uploaded to Internal ▸ Terms: ${side.savedAttachments.join(', ')}`
+                    : side.failedAttachments.length > 0
+                      ? `Upload failed: ${side.failedAttachments.join(', ')}`
+                      : 'No term sheet PDF found to upload';
+                const auditDescription = `Terms Issued bundle approved — ${lender} ${lenderStageOutcome}. ${attachmentsSummary}.`;
+                await supabase.from('activity_logs').insert({
+                  deal_id: item.deal_id,
+                  activity_type: 'ai_terms_issued_approved',
+                  description: auditDescription,
+                  user_id: user.id,
+                  metadata: {
+                    action_id: item.id,
+                    bundle_key: bundleKey,
+                    lender_name: side.lenderName,
+                    funding_source_id: bundleKey.split(':')[2] || null,
+                    funding_source_update_ok: side.lenderUpdateOk,
+                    funding_source_stage_advanced: side.lenderStageAdvanced,
+                    funding_source_stage_already_at_or_past:
+                      side.lenderStageAlreadyAtOrPast,
+                    funding_source_new_stage: side.lenderStageAdvanced
+                      ? 'terms-issued'
+                      : null,
+                    funding_source_new_tracking_status: side.lenderStageAdvanced
+                      ? 'active'
+                      : null,
+                    note_saved: note,
+                    attachments_uploaded: side.savedAttachments,
+                    attachments_failed: side.failedAttachments,
+                    data_room_folder_path: '/Terms/',
+                    data_room_section: 'Internal',
+                    errors: side.errors,
+                  },
+                } as any);
+              } catch (e) {
+                console.warn('[terms-issued audit log] insert failed:', e);
+              }
               for (const err of side.errors) {
                 console.warn('[terms-issued side-effect]', err);
               }
