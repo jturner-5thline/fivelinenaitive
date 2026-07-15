@@ -23,6 +23,7 @@ import {
   useCrmCompany, useUpdateCrmCompany, useCrmCompanyActivities,
   useCreateCrmCompanyActivity, useCrmCompanyContacts, useCrmSubsidiaries,
   useDeleteCrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES,
+  useUpdateCrmCompanyActivity, useDeleteCrmCompanyActivity,
 } from '@/hooks/useCrmCompanies';
 import {
   useCrmCompanyDeals, useLinkContactToCompany, useUnlinkContactFromCompany,
@@ -57,6 +58,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const update = useUpdateCrmCompany();
   const { data: activities = [] } = useCrmCompanyActivities(companyId);
   const createActivity = useCreateCrmCompanyActivity();
+  const updateActivity = useUpdateCrmCompanyActivity();
+  const deleteActivity = useDeleteCrmCompanyActivity();
   const { data: contacts = [] } = useCrmCompanyContacts(companyId);
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
@@ -72,6 +75,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { attachments } = useCrmCompanyAttachments(companyId);
 
   const [newNote, setNewNote] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteBody, setEditingNoteBody] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [activityFilter, setActivityFilter] = useState('all');
   const [showLinkContact, setShowLinkContact] = useState(false);
@@ -413,10 +418,86 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                   <ul className="divide-y divide-border/40">
                     {noteActivities.slice(0, 3).map((a: any) => (
                       <li key={a.id} className="py-2">
-                        <p className="text-sm">{a.body || a.subject}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {format(new Date(a.occurred_at), 'MMM d, yyyy · h:mm a')}
-                        </p>
+                        {editingNoteId === a.id ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingNoteBody}
+                              onChange={e => setEditingNoteBody(e.target.value)}
+                              className="text-sm min-h-[60px]"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 text-xs"
+                                onClick={() => { setEditingNoteId(null); setEditingNoteBody(''); }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs"
+                                disabled={!editingNoteBody.trim() || updateActivity.isPending}
+                                onClick={() => {
+                                  updateActivity.mutate(
+                                    { id: a.id, crm_company_id: company.id, body: editingNoteBody },
+                                    {
+                                      onSuccess: () => {
+                                        setEditingNoteId(null);
+                                        setEditingNoteBody('');
+                                        toast.success('Note updated');
+                                      },
+                                      onError: (err: any) => toast.error(err?.message || 'Failed to update note'),
+                                    }
+                                  );
+                                }}
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="group flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm whitespace-pre-wrap break-words">{a.body || a.subject}</p>
+                              <p className="text-[10px] text-muted-foreground mt-1">
+                                {format(new Date(a.occurred_at), 'MMM d, yyyy · h:mm a')}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={() => {
+                                  setEditingNoteId(a.id);
+                                  setEditingNoteBody(a.body || a.subject || '');
+                                }}
+                                aria-label="Edit note"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  if (!confirm('Delete this note?')) return;
+                                  deleteActivity.mutate(
+                                    { id: a.id, crm_company_id: company.id },
+                                    {
+                                      onSuccess: () => toast.success('Note deleted'),
+                                      onError: (err: any) => toast.error(err?.message || 'Failed to delete note'),
+                                    }
+                                  );
+                                }}
+                                aria-label="Delete note"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>
