@@ -564,13 +564,54 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       }
       for (const [bk, picks] of termsGroups.entries()) {
         if (picks.length < 1) continue;
-        // Pull a lender label from any child (linked_entity_label is set on
-        // update_funding_source; fall back to parsing the bundle key).
-        const lenderLabel =
-          (picks.find((p: any) => p.action_type === 'update_funding_source') as any)?.payload
-            ?.linked_entity_label ||
-          (picks[0] as any).payload?.linked_entity_label ||
-          'Lender';
+        // Pull a lender label from any child. Priority:
+        //   1. update_funding_source pick's linked_entity_label ("Lender on Deal" → "Lender").
+        //   2. Any pick whose linked_entity_label contains " on " (strip the deal suffix).
+        //   3. Extract lender name from an add_status_note title
+        //      (e.g. "Add Status Note: Five Crowns Capital Issued Term Sheet ...").
+        //   4. Fall back to "Lender".
+        const stripOn = (s: string | undefined | null): string => {
+          if (!s) return '';
+          const m = s.split(/\s+on\s+/i);
+          return (m[0] || '').trim();
+        };
+        const dealNameLc = (g.dealName || '').trim().toLowerCase();
+        const isDealName = (s: string) => !!s && s.trim().toLowerCase() === dealNameLc;
+        let lenderLabel = '';
+        // 1 & 2 — any pick with a label containing " on "
+        for (const p of picks) {
+          const raw = (p as any).payload?.linked_entity_label as string | undefined;
+          if (raw && /\s+on\s+/i.test(raw)) {
+            const candidate = stripOn(raw);
+            if (candidate && !isDealName(candidate)) {
+              lenderLabel = candidate;
+              break;
+            }
+          }
+        }
+        // 3 — parse from an add_status_note title
+        if (!lenderLabel) {
+          const note = picks.find((p) => p.action_type === ('add_status_note' as AiActionType)) as any;
+          const title: string = note?.title || '';
+          // "Add Status Note: <Lender> Issued Term Sheet on ..." or
+          // "Add status note for <Lender> IOI on <Deal>"
+          const m1 = title.match(/^Add [Ss]tatus [Nn]ote:\s*(.+?)\s+(?:Issued|IOI|Term|Sent)/);
+          const m2 = title.match(/^Add [Ss]tatus [Nn]ote for\s+(.+?)\s+(?:Issued|IOI|Term|Sent)/);
+          const parsed = (m1?.[1] || m2?.[1] || '').trim();
+          if (parsed && !isDealName(parsed)) lenderLabel = parsed;
+        }
+        // 4 — last-resort fallback: any non-deal-name label
+        if (!lenderLabel) {
+          for (const p of picks) {
+            const raw = ((p as any).payload?.linked_entity_label as string | undefined) || '';
+            const candidate = stripOn(raw) || raw;
+            if (candidate && !isDealName(candidate)) {
+              lenderLabel = candidate;
+              break;
+            }
+          }
+        }
+        if (!lenderLabel) lenderLabel = 'Lender';
         const kinds = new Set(picks.map((p) => p.action_type));
         const parts: string[] = [];
         if (kinds.has('save_to_data_room' as AiActionType)) parts.push('Save PDF');
