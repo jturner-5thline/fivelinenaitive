@@ -178,22 +178,25 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const submitLogActivity = () => {
     if (!contact || !logDialog) return;
     const occurredAt = logWhen ? new Date(logWhen) : new Date();
-    createActivity.mutate(
-      {
-        contact_id: contact.id,
-        activity_type: logDialog.type,
-        subject: logSubject.trim() || (logDialog.type === 'call' ? 'Call' : 'Meeting'),
-        body: logBody.trim() || undefined,
-        occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
-      },
-      {
-        onSuccess: () => {
-          toast.success(`${logDialog.type === 'call' ? 'Call' : 'Meeting'} logged`);
-          setLogDialog(null);
-        },
+    const type = logDialog.type;
+    const payload = {
+      contact_id: contact.id,
+      activity_type: type,
+      subject: logSubject.trim() || (type === 'call' ? 'Call' : 'Meeting'),
+      body: logBody.trim() || undefined,
+      occurred_at: isNaN(occurredAt.getTime()) ? new Date().toISOString() : occurredAt.toISOString(),
+    };
+    // Close the dialog immediately so the Radix exit animation and the heavy
+    // detail-page re-render triggered by the activities invalidation don't
+    // happen in the same frame (which felt like a freeze to users).
+    setLogDialog(null);
+    // Defer the mutation one frame so React can commit the modal close first.
+    requestAnimationFrame(() => {
+      createActivity.mutate(payload, {
+        onSuccess: () => toast.success(`${type === 'call' ? 'Call' : 'Meeting'} logged`),
         onError: (err: any) => toast.error(err?.message || 'Failed to log activity'),
-      },
-    );
+      });
+    });
   };
 
   const handleAddNote = () => {
