@@ -234,7 +234,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
     }));
 
   const owner = teamMembers.find(m => m.id === company.owner_user_id);
-  const lastActivity = activities[0];
+  const lastActivity = mergedActivities[0];
   const lifecycleLabel = CRM_COMPANY_LIFECYCLES.find(l => l.value === company.lifecycle_stage)?.label;
   const statusLabel = CRM_COMPANY_STATUSES.find(s => s.value === company.status)?.label;
   const typeLabel = CRM_COMPANY_TYPES.find(t => t.value === company.company_type)?.label;
