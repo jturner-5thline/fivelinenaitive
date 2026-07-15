@@ -70,6 +70,7 @@ import { ClaapApprovalCard } from './ClaapApprovalCard';
 import { ClaapRecordingBundleCard } from './ClaapRecordingBundleCard';
 import { CreateDealApprovalCard } from './CreateDealApprovalCard';
 import { ApprovalReviewExpanded } from './ApprovalReviewExpanded';
+import { TaskListEditor, type EditorTask } from './TaskListEditor';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import {
   buildOutcomeSentence,
@@ -1805,8 +1806,11 @@ function DetailPane({
   const oldValues = (item.old_values || {}) as Record<string, any>;
   const newValues = (item.new_values || {}) as Record<string, any>;
   const isEmailDraft = item.action_type === 'draft_email';
+  const isUpdateTasksPrompt =
+    item.action_type === 'create_followup_task' &&
+    (newValues as any)?._synthetic === 'update_tasks';
   const fieldKeys = (() => {
-    if (isEmailDraft) return [] as string[];
+    if (isEmailDraft || isUpdateTasksPrompt) return [] as string[];
     const norm = (v: any) =>
       v == null || (typeof v === 'string' && v.trim() === '') ? '' : String(v).trim();
     const keys = Array.from(
@@ -2175,6 +2179,36 @@ function DetailPane({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {isUpdateTasksPrompt && (
+            <div>
+              <p
+                className="text-[16px] font-semibold tracking-tight text-[#f7f8fc] mb-3"
+                style={FONT_BODY}
+              >
+                Create task
+              </p>
+              <TaskListEditor
+                dealName={item.deal_name || 'this deal'}
+                initialTasks={
+                  Array.isArray((newValues as any)?.tasks) && (newValues as any).tasks.length > 0
+                    ? (newValues as any).tasks.map((t: any) => ({
+                        title: String(t?.title ?? ''),
+                        due_date: t?.due_date ?? null,
+                        assigned_to: t?.assigned_to ?? null,
+                      }))
+                    : ([
+                        {
+                          title: '',
+                          due_date: (newValues as any)?.due_date ?? null,
+                          assigned_to: (newValues as any)?.assigned_to ?? null,
+                        },
+                      ] as EditorTask[])
+                }
+                onChange={(tasks) => setEdits((p) => ({ ...p, tasks }))}
+              />
             </div>
           )}
 
