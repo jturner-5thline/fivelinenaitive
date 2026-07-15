@@ -30,6 +30,7 @@ import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { ContactTypeMultiSelect } from '@/components/contacts/ContactTypeMultiSelect';
 import { LastContactChip } from '@/components/contacts/LastContactChip';
 import { EditableField } from '@/components/crm/EditableField';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany,
   useLinkContactToDeal, useUnlinkContactFromDeal, useAllDeals,
@@ -410,13 +411,15 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     updateContact.mutate(
                       { id: contact.id, website_url: normalized } as any,
                       {
-                        onSuccess: () => {
+                        onSuccess: async () => {
                           if (!normalized || crmCompanyId) return;
-                          const match = companies.find(c => {
-                            const cd = normalizeDomain(c.domain);
-                            const extras = (c.additional_domains || []).map((d: string) => normalizeDomain(d));
-                            return cd === normalized || extras.includes(normalized);
-                          });
+                          // Targeted lookup — avoid loading the entire companies list.
+                          const { data: matches } = await supabase
+                            .from('crm_companies')
+                            .select('id, domain, additional_domains')
+                            .or(`domain.eq.${normalized},additional_domains.cs.{${normalized}}`)
+                            .limit(1);
+                          const match = matches?.[0];
                           if (match) {
                             linkToCompany.mutate({ contactId: contact.id, companyId: match.id });
                           }
