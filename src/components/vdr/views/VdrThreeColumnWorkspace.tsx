@@ -83,6 +83,22 @@ const DRAG_CATEGORY_MIME = 'application/x-vdr-category';
 // DRAG_CATEGORY_MIME (which moves files), so reorder drops are unambiguous.
 const DRAG_FOLDER_REORDER_MIME = 'application/x-vdr-folder-reorder';
 
+// Folders that live ONLY in the Internal column and can NEVER be shared to
+// the external Data Room. Files inside these folders are always suppressed
+// from Data Room views and every share code-path filters them out.
+const INTERNAL_ONLY_CATEGORY_NAMES = ['Terms'] as const;
+const INTERNAL_ONLY_CATEGORY_SET = new Set<string>(INTERNAL_ONLY_CATEGORY_NAMES);
+
+/** True when a document's Internal folder is one of the internal-only folders. */
+function isInternalOnlyDoc(doc: VdrDocument | undefined | null): boolean {
+  if (!doc) return false;
+  const fp = (doc.folder_path || '').replace(/^\/+|\/+$/g, '');
+  if (!fp) return false;
+  if (INTERNAL_ONLY_CATEGORY_SET.has(fp)) return true;
+  const top = fp.split('/')[0];
+  return INTERNAL_ONLY_CATEGORY_SET.has(top);
+}
+
 export function VdrThreeColumnWorkspace({
   dealId, documents, documentsLoading, onPreview, vdrDocs,
   canPushToFlex, isPushingToFlex, onPushToFlex, companyId, mappingRefreshKey,
