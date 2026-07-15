@@ -2420,8 +2420,7 @@ function stampTermsIssuedBundleKeys(
 
     if (
       c.action_type === "add_status_note" ||
-      c.action_type === "save_to_data_room" ||
-      c.action_type === "update_deal_stage"
+      c.action_type === "save_to_data_room"
     ) {
       for (const ev of (c.evidence_references ?? []) as any[]) {
         const refId = ev?.ref_id ?? ev?.id;
