@@ -271,7 +271,10 @@ function invalidateQueueAll(qc: ReturnType<typeof useQueryClient>) {
 /** Trailing-edge debounce window for realtime-driven refetches. Bursts of
  * row changes (bulk approve, multi-insert) are coalesced into a single
  * invalidation so we don't thrash the queue + count queries. */
-const REALTIME_DEBOUNCE_MS = 250;
+// Fire realtime queue invalidations immediately so edits, approvals, and
+// rejections propagate to every viewer with no perceptible delay. This
+// minimizes the window in which two teammates could act on the same item.
+const REALTIME_DEBOUNCE_MS = 0;
 
 function isStale(item: QueuedAiAction): boolean {
   return item.status === 'pending' && new Date(item.expires_at).getTime() < Date.now();
