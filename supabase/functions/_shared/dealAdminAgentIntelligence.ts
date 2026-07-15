@@ -2185,6 +2185,10 @@ function queueSemanticKey(row: {
     const salt = extractStatusNoteTopicSalt(row);
     return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}::${salt}`;
   }
+  if (actionType === "save_to_data_room") {
+    const salt = extractDataRoomSalt(row);
+    return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}::${salt}`;
+  }
   return `${row.deal_id ?? ""}::${group}::${targetType}::${row.target_object_id ?? ""}`;
 }
 
@@ -2196,18 +2200,35 @@ function extractStatusNoteTopicSalt(row: {
   // source event (email, claap, meeting) that motivated the note. Different
   // sources ⇒ different slots.
   const evList = evidenceArray(row);
-  for (const ev of evList) {
+  const refList = Array.isArray((row as any).evidence_references)
+    ? ((row as any).evidence_references as any[])
+    : [];
+  for (const ev of [...evList, ...refList]) {
     const id = (ev as any)?.ref_id ?? (ev as any)?.id;
     if (typeof id === "string" && id.trim().length > 0) return id.trim();
   }
   // Fall back to the first few words of the note body from payload.proposed_values.
   const payload = asObject(row.payload);
-  const pv = asObject(payload.proposed_values);
+  const topLevelPv = asObject((row as any).proposed_values);
+  const pv = Object.keys(topLevelPv).length > 0 ? topLevelPv : asObject(payload.proposed_values);
   const note = typeof pv.note === "string" ? pv.note : (typeof pv.notes === "string" ? pv.notes : "");
   if (note) {
     return note.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ").slice(0, 6).join("-");
   }
   return "";
+}
+
+function extractDataRoomSalt(row: {
+  payload?: unknown;
+  proposed_values?: unknown;
+}): string {
+  const payload = asObject(row.payload);
+  const topLevelPv = asObject((row as any).proposed_values);
+  const pv = Object.keys(topLevelPv).length > 0 ? topLevelPv : asObject(payload.proposed_values);
+  const emailId = typeof pv.source_email_id === "string" ? pv.source_email_id : "";
+  const name = typeof pv.attachment_name === "string" ? pv.attachment_name : "";
+  const key = `${emailId}|${name}`.toLowerCase().replace(/[^a-z0-9|]+/g, "-");
+  return key === "|" ? "" : key;
 }
 
 function normalizeComparableText(v: unknown): string {
