@@ -104,7 +104,7 @@ const COLUMNS = [
 
 type ColumnKey = typeof COLUMNS[number]['key'];
 
-const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 50; // +50 for row number
+const TOTAL_WIDTH = COLUMNS.reduce((sum, col) => sum + col.width, 0) + 84; // +84 for row number + quick-add
 
 function formatCellValue(lender: MasterLender, key: string): string {
   if (key === 'status' || key === 'action') return '';
@@ -520,7 +520,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 {/* Header Row - identical style to LenderSpreadsheetView */}
                 <div className="flex sticky top-0 z-10 bg-background/95 backdrop-blur-md border-b border-white/5">
                   {/* Row number header */}
-                  <div className="flex-shrink-0 w-[50px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
+                  <div className="flex-shrink-0 w-[84px] px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/60 bg-background/95 sticky left-0 z-20">
                     #
                   </div>
                   {COLUMNS.map((col) => (
@@ -529,7 +529,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                       className={cn(
                         'flex-shrink-0 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70 bg-background/95 flex items-center',
                         col.sortable && 'cursor-pointer hover:text-foreground select-none transition-colors',
-                        col.key === 'name' && 'sticky left-[50px] z-20 bg-background/95'
+                        col.key === 'name' && 'sticky left-[84px] z-20 bg-background/95'
                       )}
                       style={{ width: col.width }}
                       title={col.sortable ? `Click to sort by ${col.label}` : col.label}
@@ -582,9 +582,9 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                           isSelected && !lender.isOnDeal && 'bg-primary/[0.06]'
                         )}
                       >
-                        {/* Row number + checkbox */}
+                        {/* Row number + checkbox + quick add */}
                         <div className={cn(
-                          "flex-shrink-0 w-[50px] px-2 py-2 text-[11px] text-muted-foreground/50 tabular-nums sticky left-0 z-10 flex items-center justify-center transition-colors bg-background",
+                          "flex-shrink-0 w-[84px] px-2 py-2 text-[11px] text-muted-foreground/50 tabular-nums sticky left-0 z-10 flex items-center justify-center gap-1.5 transition-colors bg-background",
                           lender.isOnDeal && "bg-primary/[0.035]",
                           isSelected && !lender.isOnDeal && "bg-primary/[0.06]",
                           "group-hover:bg-muted/40"
@@ -592,11 +592,25 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                           {lender.isOnDeal ? (
                             <span>{index + 1}</span>
                           ) : (
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleLenderSelection(lender.name)}
-                              className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
-                            />
+                            <>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleLenderSelection(lender.name)}
+                                className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100 transition-opacity"
+                              />
+                              <button
+                                type="button"
+                                title={`Add ${lender.name} to deal`}
+                                aria-label={`Add ${lender.name} to deal`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onAddLender(lender.name);
+                                }}
+                                className="inline-flex items-center justify-center h-5 w-5 rounded-md border border-primary/20 bg-primary/5 text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 hover:border-primary/40 transition-all"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </>
                           )}
                         </div>
                         {COLUMNS.map((col) => {
@@ -658,7 +672,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                               <div
                                 key={col.key}
                                 className={cn(
-                                  "flex-shrink-0 px-2 py-2 text-[13px] text-foreground truncate cursor-pointer font-medium sticky left-[50px] z-10 bg-background group-hover:bg-muted/40 hover:text-primary transition-colors",
+                                  "flex-shrink-0 px-2 py-2 text-[13px] text-foreground truncate cursor-pointer font-medium sticky left-[84px] z-10 bg-background group-hover:bg-muted/40 hover:text-primary transition-colors",
                                   lender.isOnDeal && "bg-primary/[0.035] group-hover:bg-muted/40",
                                   isSelected && !lender.isOnDeal && "bg-primary/[0.06] group-hover:bg-muted/40"
                                 )}
