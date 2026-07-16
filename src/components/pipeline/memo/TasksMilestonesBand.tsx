@@ -200,6 +200,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
   // Standalone "+" button rendered as a sibling to the bottom-most
