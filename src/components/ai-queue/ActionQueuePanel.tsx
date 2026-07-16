@@ -1165,6 +1165,11 @@ function QueueRow({
   const risk = riskOf(item);
   const dot = RISK[risk].hex;
   const bundleChildren = (item as any).__bundle as QueuedAiAction[] | undefined;
+  const navigate = useNavigate();
+  const openDealDetails = (e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation();
+    if (item.deal_id) navigate(`/deals?deal=${item.deal_id}`);
+  };
 
   return (
     <li>
@@ -1199,9 +1204,21 @@ function QueueRow({
                 style={{ background: dot, boxShadow: `0 0 8px ${dot}66` }}
               />
               <p
-                className="text-[12.5px] text-[#ecedf4] truncate"
+                role={item.deal_id ? 'link' : undefined}
+                tabIndex={item.deal_id ? 0 : undefined}
+                onClick={item.deal_id ? openDealDetails : undefined}
+                onKeyDown={
+                  item.deal_id
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') openDealDetails(e);
+                      }
+                    : undefined
+                }
+                className={`text-[12.5px] text-[#ecedf4] truncate ${
+                  item.deal_id ? 'cursor-pointer hover:text-primary hover:underline underline-offset-4' : ''
+                }`}
                 style={FONT_BODY}
-                title={item.title}
+                title={item.deal_id ? `Open ${item.deal_name || 'deal'} details` : item.title}
               >
                 {item.title}
               </p>
