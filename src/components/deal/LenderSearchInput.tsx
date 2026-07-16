@@ -148,10 +148,7 @@ export function LenderSearchInput({
   const noResults = hasQuery && filteredLenderNames.length === 0 && !isDuplicateQuery;
 
   return (
-    <Popover open={isOpen && shouldShowDropdown} onOpenChange={(open) => {
-      if (!open) return;
-      setIsOpen(open);
-    }}>
+    <Popover open={isOpen && shouldShowDropdown} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <div className="relative w-full min-w-0">
           <Input
