@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
@@ -199,6 +200,7 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const navigate = useNavigate();
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
   // Standalone "+" button rendered as a sibling to the bottom-most
@@ -750,6 +752,11 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                       e.stopPropagation();
                       if (task.kind === 'task') {
                         setOpenTaskId(task.id);
+                      } else {
+                        // Outstanding items aren't backed by a task record —
+                        // open the deal details overlay so the user can act
+                        // on them from the canonical deal page.
+                        navigate(`/deals?deal=${deal.id}`);
                       }
                     }}
                     onDoubleClick={(e) => {
@@ -757,10 +764,13 @@ export function TasksMilestonesBand({ deal, tasks, milestones, rawDigest }: Task
                       if (task.kind === 'task') startTitleEdit(task);
                     }}
                     className={cn(
-                      'flex-1 min-w-0 text-xs text-foreground font-medium truncate',
-                      task.kind === 'task' && 'cursor-pointer hover:text-primary'
+                      'flex-1 min-w-0 text-xs text-foreground font-medium truncate cursor-pointer hover:text-primary hover:underline underline-offset-4',
                     )}
-                    title={task.kind === 'task' ? `${task.title} — click to open, double-click to rename` : task.title}
+                    title={
+                      task.kind === 'task'
+                        ? `${task.title} — click to open, double-click to rename`
+                        : `${task.title} — click to open deal details`
+                    }
                   >
                     {task.title}
                   </span>
