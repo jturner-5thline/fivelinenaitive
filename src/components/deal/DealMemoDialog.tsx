@@ -589,10 +589,16 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                 { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…', grow: 1 },
                 { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…', grow: 1 },
               ] as const).map((s) => (
-                <MemoSectionContextMenu key={s.key} section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)}>
+                <MemoSectionContextMenu
+                  key={s.key}
+                  section={s.key}
+                  sectionLabel={s.label}
+                  className="min-h-0 flex flex-col"
+                  style={{ flexGrow: s.grow, flexShrink: 1, flexBasis: 0 }}
+                  {...makeCommentHandlers(s.key)}
+                >
                   <div
-                    style={{ flexGrow: s.grow, flexShrink: 1, flexBasis: 0 }}
-                    className="min-h-0 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3"
+                    className="min-h-0 flex-1 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3"
                   >
                     <div className="flex items-center justify-between mb-2 shrink-0">
                       <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">{s.label}</span>
@@ -602,7 +608,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
                       onChange={(e) => handleChange(s.key, e.target.value)}
                       onBlur={handleFieldBlur}
                       placeholder={s.placeholder}
-                      className="flex-1 min-h-0 resize-none bg-transparent border-white/[0.06] focus-visible:ring-1 focus-visible:ring-[#9DA2F5]/40 text-[13px] text-[#ecedf4] placeholder:text-[#ecedf4]/35"
+                      className="flex-1 min-h-0 h-full resize-none bg-transparent border-white/[0.06] focus-visible:ring-1 focus-visible:ring-[#9DA2F5]/40 text-[13px] text-[#ecedf4] placeholder:text-[#ecedf4]/35"
                     />
                   </div>
                 </MemoSectionContextMenu>
