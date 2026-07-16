@@ -942,11 +942,24 @@ export default function Lenders() {
   const [isAddingToDeal, setIsAddingToDeal] = useState(false);
 
   const filteredDealsForPicker = useMemo(() => {
-    if (!dealSearchQuery.trim()) return deals.slice(0, 20);
-    const q = dealSearchQuery.toLowerCase();
-    return deals.filter(d => 
-      d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q)
-    ).slice(0, 20);
+    const base = !dealSearchQuery.trim()
+      ? deals
+      : deals.filter(d => {
+          const q = dealSearchQuery.toLowerCase();
+          return d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q);
+        });
+    // Flag duplicates so the picker can disambiguate identically-named deals
+    // (this is what caused the "added lenders don't show up" confusion — two
+    // Worthy deals rendered identically and the user picked the wrong one).
+    const companyCounts = new Map<string, number>();
+    base.forEach(d => {
+      const key = (d.company || d.name || '').toLowerCase();
+      companyCounts.set(key, (companyCounts.get(key) || 0) + 1);
+    });
+    return base.slice(0, 30).map(d => ({
+      deal: d,
+      isDuplicate: (companyCounts.get((d.company || d.name || '').toLowerCase()) || 0) > 1,
+    }));
   }, [deals, dealSearchQuery]);
 
   const handleAddSelectedToDeal = useCallback(async (dealId: string) => {
@@ -963,21 +976,33 @@ export default function Lenders() {
 
     let addedCount = 0;
     let skippedCount = 0;
+    let failedCount = 0;
 
     for (const name of selectedNames) {
       if (existingNames.has(name.toLowerCase())) {
         skippedCount++;
         continue;
       }
-      await addLenderToDeal(dealId, { name });
-      addedCount++;
+      const result = await addLenderToDeal(dealId, { name });
+      if (result) addedCount++;
+      else failedCount++;
     }
 
     const dealName = targetDeal?.company || targetDeal?.name || 'deal';
+    const descParts: string[] = [];
+    if (skippedCount > 0) descParts.push(`${skippedCount} already on the deal`);
+    if (failedCount > 0) descParts.push(`${failedCount} failed to add`);
     if (addedCount > 0) {
       toast({
         title: `Added ${addedCount} lender${addedCount !== 1 ? 's' : ''} to ${dealName}`,
-        description: skippedCount > 0 ? `${skippedCount} already on the deal.` : undefined,
+        description: descParts.length ? descParts.join(' · ') : undefined,
+        variant: failedCount > 0 ? 'destructive' : undefined,
+      });
+    } else if (failedCount > 0) {
+      toast({
+        title: 'Failed to add funding sources',
+        description: `${failedCount} could not be added to ${dealName}.`,
+        variant: 'destructive',
       });
     } else {
       toast({
@@ -1699,17 +1724,33 @@ export default function Lenders() {
                             {filteredDealsForPicker.length === 0 ? (
                               <p className="text-xs text-muted-foreground text-center py-4">No deals found</p>
                             ) : (
-                              filteredDealsForPicker.map(deal => (
-                                <button
-                                  key={deal.id}
-                                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex flex-col gap-0.5"
-                                  onClick={() => handleAddSelectedToDeal(deal.id)}
-                                  disabled={isAddingToDeal}
-                                >
-                                  <span className="font-medium truncate">{deal.company || deal.name}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{deal.name}</span>
-                                </button>
-                              ))
+                              filteredDealsForPicker.map(({ deal, isDuplicate }) => {
+                                const createdLabel = deal.createdAt
+                                  ? new Date(deal.createdAt).toLocaleDateString()
+                                  : null;
+                                return (
+                                  <button
+                                    key={deal.id}
+                                    className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex flex-col gap-0.5"
+                                    onClick={() => handleAddSelectedToDeal(deal.id)}
+                                    disabled={isAddingToDeal}
+                                  >
+                                    <span className="font-medium truncate flex items-center gap-1.5">
+                                      {deal.company || deal.name}
+                                      {isDuplicate && (
+                                        <span className="inline-flex items-center px-1 py-0 rounded-sm text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                                          Duplicate
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate">
+                                      {deal.name}
+                                      {isDuplicate && createdLabel && ` · created ${createdLabel}`}
+                                      {isDuplicate && ` · id ${deal.id.slice(0, 8)}`}
+                                    </span>
+                                  </button>
+                                );
+                              })
                             )}
                           </div>
                           {isAddingToDeal && (
