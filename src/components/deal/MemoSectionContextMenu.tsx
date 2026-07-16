@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import {
   ContextMenu,
@@ -23,6 +23,8 @@ interface MemoSectionContextMenuProps {
   onResolve: (commentId: string) => void;
   onUnresolve: (commentId: string) => void;
   onDelete: (commentId: string) => void;
+  className?: string;
+  style?: CSSProperties;
 }
 
 export function MemoSectionContextMenu({
@@ -37,11 +39,13 @@ export function MemoSectionContextMenu({
   onResolve,
   onUnresolve,
   onDelete,
+  className,
+  style,
 }: MemoSectionContextMenuProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className={className ? `relative ${className}` : 'relative'} style={style}>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {children}
