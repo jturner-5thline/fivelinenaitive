@@ -185,7 +185,14 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);
                     const isCompleted = isTaskCompleted(task);
-                    const isOverdue = !isCompleted && !!task.due_date && new Date(task.due_date) < new Date();
+                    // Parse date-only strings ("YYYY-MM-DD") as local midnight to
+                    // avoid the UTC→local shift that made Jul 15 render as Jul 14.
+                    const parseDueDate = (v: string) => {
+                      const s = String(v);
+                      return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s + 'T00:00:00') : new Date(s);
+                    };
+                    const dueDateObj = task.due_date ? parseDueDate(task.due_date) : null;
+                    const isOverdue = !isCompleted && !!dueDateObj && dueDateObj < new Date();
                     return (
                       <div
                         key={task.id}
@@ -220,10 +227,10 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                                 <span className="text-xs text-muted-foreground">{assignee.display_name}</span>
                               </div>
                             )}
-                            {task.due_date && (
+                            {task.due_date && dueDateObj && (
                               <div className={cn("flex items-center gap-1 text-xs", isOverdue ? "text-destructive" : "text-muted-foreground")}>
                                 <CalendarIcon className="h-3 w-3" />
-                                {format(new Date(task.due_date), 'MMM d, yyyy')}
+                                {format(dueDateObj, 'MMM d, yyyy')}
                               </div>
                             )}
                             {!isCompleted && task.status === 'in_progress' && (
