@@ -644,6 +644,18 @@ export function DealSpaceNoteEditor({
         <RibbonBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={Minus} label="Horizontal line" />
         <RibbonDivider />
         <NoteTOC editor={editor} />
+        <div className="flex-1" />
+        <div className="relative flex items-center">
+          <Search className="h-3 w-3 absolute left-2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={findText}
+            onChange={(e) => { setFindText(e.target.value); setShowFindReplace(true); }}
+            onFocus={() => setShowFindReplace(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleFind(); }}
+            placeholder="Search in doc…"
+            className="h-7 pl-7 pr-2 text-xs w-44"
+          />
+        </div>
       </div>
 
       {/* ═══ Find & Replace ═══ */}
