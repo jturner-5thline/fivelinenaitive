@@ -1724,17 +1724,33 @@ export default function Lenders() {
                             {filteredDealsForPicker.length === 0 ? (
                               <p className="text-xs text-muted-foreground text-center py-4">No deals found</p>
                             ) : (
-                              filteredDealsForPicker.map(deal => (
-                                <button
-                                  key={deal.id}
-                                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex flex-col gap-0.5"
-                                  onClick={() => handleAddSelectedToDeal(deal.id)}
-                                  disabled={isAddingToDeal}
-                                >
-                                  <span className="font-medium truncate">{deal.company || deal.name}</span>
-                                  <span className="text-xs text-muted-foreground truncate">{deal.name}</span>
-                                </button>
-                              ))
+                              filteredDealsForPicker.map(({ deal, isDuplicate }) => {
+                                const createdLabel = deal.createdAt
+                                  ? new Date(deal.createdAt).toLocaleDateString()
+                                  : null;
+                                return (
+                                  <button
+                                    key={deal.id}
+                                    className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors flex flex-col gap-0.5"
+                                    onClick={() => handleAddSelectedToDeal(deal.id)}
+                                    disabled={isAddingToDeal}
+                                  >
+                                    <span className="font-medium truncate flex items-center gap-1.5">
+                                      {deal.company || deal.name}
+                                      {isDuplicate && (
+                                        <span className="inline-flex items-center px-1 py-0 rounded-sm text-[9px] font-semibold uppercase tracking-wider bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                                          Duplicate
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground truncate">
+                                      {deal.name}
+                                      {isDuplicate && createdLabel && ` · created ${createdLabel}`}
+                                      {isDuplicate && ` · id ${deal.id.slice(0, 8)}`}
+                                    </span>
+                                  </button>
+                                );
+                              })
                             )}
                           </div>
                           {isAddingToDeal && (
