@@ -606,7 +606,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                                   e.stopPropagation();
                                   onAddLender(lender.name);
                                 }}
-                                className="inline-flex items-center justify-center h-5 w-5 rounded-md border border-primary/20 bg-primary/5 text-primary opacity-0 group-hover:opacity-100 hover:bg-primary/15 hover:border-primary/40 transition-all"
+                                className="inline-flex items-center justify-center h-5 w-5 rounded-md border border-primary/40 bg-primary/15 text-primary shadow-sm hover:bg-primary/25 hover:border-primary/60 transition-all"
                               >
                                 <Plus className="h-3 w-3" />
                               </button>
