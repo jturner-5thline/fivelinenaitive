@@ -148,12 +148,23 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal, onClose }: Me
     <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <h2
-            className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
-            title={deal.company || deal.name}
-          >
-            {deal.company || deal.name}
-          </h2>
+          {onOpenDeal ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
+              title={`Open details for ${deal.company || deal.name}`}
+              className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate text-left hover:text-primary hover:underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-sm"
+            >
+              <h2 className="truncate">{deal.company || deal.name}</h2>
+            </button>
+          ) : (
+            <h2
+              className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
+              title={deal.company || deal.name}
+            >
+              {deal.company || deal.name}
+            </h2>
+          )}
           {structureLabel && (
             <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
           )}
