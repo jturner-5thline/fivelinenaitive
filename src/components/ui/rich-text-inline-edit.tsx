@@ -157,7 +157,7 @@ export function RichTextInlineEdit({
   return (
     <div
       className={cn(
-        "group flex items-start gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors relative",
+        "group flex items-start gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors relative w-full min-w-0",
         displayClassName
       )}
       onClick={() => setIsEditing(true)}
@@ -166,7 +166,7 @@ export function RichTextInlineEdit({
         <span className="text-muted-foreground/50 italic">{placeholder}</span>
       ) : (
         <div 
-          className="prose prose-sm max-w-[600px] w-[600px] break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_.mention]:text-primary [&_.mention]:font-medium [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+          className="prose prose-sm w-full min-w-0 max-w-full flex-1 break-words whitespace-pre-wrap [overflow-wrap:anywhere] [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:whitespace-pre-wrap [&_.mention]:text-primary [&_.mention]:font-medium [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
           dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value, { ALLOWED_TAGS: ['p', 'strong', 'em', 'ul', 'ol', 'li', 'br', 'span'], ALLOWED_ATTR: ['class', 'data-type', 'data-id', 'data-label'] }) }}
         />
       )}
