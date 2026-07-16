@@ -157,11 +157,11 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
         />
 
         {/* Main editor */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {selectedNote ? (
             <HighlightCalendarMenu
               editableMode
-              className="flex-1 flex flex-col min-w-0"
+              className="flex-1 flex flex-col min-w-0 min-h-0"
               sourceCtx={{
                 module: 'deal_memo',
                 recordId: selectedNote.id,
