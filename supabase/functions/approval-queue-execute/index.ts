@@ -441,6 +441,12 @@ Deno.serve(async (req) => {
             : m.id;
         if (item.action_type === 'update_milestone' && targetId) {
           const { id: _omit, ...rest } = m;
+          // `status` on deal_milestones is constrained to on_track/at_risk/off_track.
+          // AI payloads sometimes send status:'completed' — the `completed` flag
+          // is the source of truth for that, so drop the invalid value.
+          if (rest.status && !['on_track', 'at_risk', 'off_track'].includes(String(rest.status))) {
+            delete rest.status;
+          }
           const { error } = await admin
             .from('deal_milestones')
             .update(rest)
