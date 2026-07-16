@@ -1382,21 +1382,17 @@ export function useDealsDatabase() {
       // team can triage them from a single bucket before they're actively
       // worked. Callers can still override by passing an explicit `stage`.
       const resolvedStage = lenderData.stage || 'on-deck';
-      const insertPayload: Record<string, unknown> = {
-        deal_id: dealId,
-        name: rawName || 'New Funding Source',
-        master_lender_id: masterLenderId,
-        stage: resolvedStage,
-        substage: lenderData.substage || null,
-        notes: lenderData.notes || null,
-      };
-      if (resolvedStage === 'on-deck') {
-        insertPayload.on_deck_at = new Date().toISOString();
-      }
-
       const { data, error } = await supabase
         .from('deal_lenders')
-        .insert(insertPayload)
+        .insert({
+          deal_id: dealId,
+          name: rawName || 'New Funding Source',
+          master_lender_id: masterLenderId,
+          stage: resolvedStage,
+          substage: lenderData.substage || null,
+          notes: lenderData.notes || null,
+          ...(resolvedStage === 'on-deck' ? { on_deck_at: new Date().toISOString() } : {}),
+        })
         .select()
         .single();
 
