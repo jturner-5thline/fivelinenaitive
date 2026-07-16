@@ -581,20 +581,20 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
             <Loader2 className="h-6 w-6 animate-spin text-[#ecedf4]/50" />
           </div>
         ) : (
-          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[45fr_55fr] gap-4 p-4 overflow-hidden">
+          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[45fr_55fr] gap-4 p-4 overflow-y-auto">
             {/* LEFT RAIL — three text fields */}
-            <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
+            <div className="flex flex-col gap-3 min-h-0">
               {([
-                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…', grow: 1.875 },
-                { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…', grow: 1 },
-                { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…', grow: 1 },
+                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…', grow: 1.875, minHeight: 360 },
+                { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…', grow: 1, minHeight: 200 },
+                { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…', grow: 1, minHeight: 200 },
               ] as const).map((s) => (
                 <MemoSectionContextMenu
                   key={s.key}
                   section={s.key}
                   sectionLabel={s.label}
                   className="min-h-0 flex flex-col"
-                  style={{ flexGrow: s.grow, flexShrink: 1, flexBasis: 0 }}
+                  style={{ flexGrow: s.grow, flexShrink: 1, flexBasis: 0, minHeight: s.minHeight }}
                   {...makeCommentHandlers(s.key)}
                 >
                   <div
@@ -616,7 +616,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
             </div>
 
             {/* RIGHT COLUMN — Highlights + Hurdles */}
-            <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
+            <div className="flex flex-col gap-3 min-h-0">
               {/* Highlights */}
               <MemoSectionContextMenu section="highlights" sectionLabel="Highlights" {...makeCommentHandlers('highlights')}>
                 <div className="flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3 min-h-0" style={{ flex: '1 1 0' }}>
