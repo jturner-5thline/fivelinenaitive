@@ -390,15 +390,10 @@ Deno.serve(async (req) => {
           .update({ notes: note })
           .eq('id', item.deal_id);
         if (updErr) return recordFailure(updErr.message);
-        // Also record the new note in history so the Status History tab
-        // shows exactly what was approved (matches manual entry, which
-        // captures each saved value into history).
-        const { error: newHistErr } = await admin.from('deal_status_notes').insert({
-          deal_id: item.deal_id,
-          note,
-          user_id: userId,
-        } as any);
-        if (newHistErr) return recordFailure(newHistErr.message);
+        // NOTE: we do NOT also insert the new note into `deal_status_notes`.
+        // Manual saves in DealDetail.tsx only archive the SUPERSEDED value —
+        // the current note lives in `deals.notes`. Mirroring that keeps the
+        // Status History tab consistent between manual and approved edits.
         break;
       }
       case 'update_funding_source':
