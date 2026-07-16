@@ -585,12 +585,15 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
             {/* LEFT RAIL — three text fields */}
             <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
               {([
-                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…' },
-                { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…' },
-                { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…' },
+                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…', grow: 2.5 },
+                { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…', grow: 1 },
+                { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…', grow: 1 },
               ] as const).map((s) => (
                 <MemoSectionContextMenu key={s.key} section={s.key} sectionLabel={s.label} {...makeCommentHandlers(s.key)}>
-                  <div className="flex-1 min-h-0 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3">
+                  <div
+                    style={{ flexGrow: s.grow, flexShrink: 1, flexBasis: 0 }}
+                    className="min-h-0 flex flex-col rounded-[14px] border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-white/[0.015] backdrop-blur-md p-3"
+                  >
                     <div className="flex items-center justify-between mb-2 shrink-0">
                       <span className="text-[11px] uppercase tracking-[0.14em] text-[#ecedf4]/65">{s.label}</span>
                     </div>
