@@ -432,9 +432,19 @@ Deno.serve(async (req) => {
       case 'update_milestone': {
         const m = { ...payload, ...merged } as any;
         if (!item.deal_id) return recordFailure('Missing deal');
-        if (item.action_type === 'update_milestone' && m.id) {
-          const { id, ...rest } = m;
-          const { error } = await admin.from('deal_milestones').update(rest).eq('id', id);
+        // Prefer the queue row's target_object_id for updates — the AI
+        // stores the existing milestone id there, not inside new_values.
+        const targetId =
+          item.action_type === 'update_milestone' &&
+          item.target_object_type === 'deal_milestone'
+            ? (item.target_object_id || m.id)
+            : m.id;
+        if (item.action_type === 'update_milestone' && targetId) {
+          const { id: _omit, ...rest } = m;
+          const { error } = await admin
+            .from('deal_milestones')
+            .update(rest)
+            .eq('id', targetId);
           if (error) return recordFailure(error.message);
         } else {
           const { error } = await admin.from('deal_milestones').insert({
