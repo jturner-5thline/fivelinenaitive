@@ -365,12 +365,35 @@ Deno.serve(async (req) => {
       case 'add_status_note': {
         const note = merged.note ?? payload.note ?? item.description;
         if (!item.deal_id || !note) return recordFailure('Missing deal or note');
-        const { error } = await admin.from('deal_status_notes').insert({
-          deal_id: item.deal_id,
-          note,
-          user_id: userId,
-        } as any);
-        if (error) return recordFailure(error.message);
+        // Mirror the client-side behavior in DealDetail.tsx: the visible
+        // "status notes" field on the deal is `deals.notes`; the
+        // `deal_status_notes` table is a HISTORY of previous values. To
+        // actually update what the user sees on the deal, archive the
+        // current `deals.notes` into history first, then overwrite
+        // `deals.notes` with the approved note.
+        const { data: currentDeal } = await admin
+          .from('deals')
+          .select('notes')
+          .eq('id', item.deal_id)
+          .maybeSingle();
+        const previous = (currentDeal?.notes ?? '').toString().trim();
+        if (previous && previous !== '<p></p>' && previous !== note) {
+          const { error: histErr } = await admin.from('deal_status_notes').insert({
+            deal_id: item.deal_id,
+            note: previous,
+            user_id: userId,
+          } as any);
+          if (histErr) return recordFailure(histErr.message);
+        }
+        const { error: updErr } = await admin
+          .from('deals')
+          .update({ notes: note })
+          .eq('id', item.deal_id);
+        if (updErr) return recordFailure(updErr.message);
+        // NOTE: we do NOT also insert the new note into `deal_status_notes`.
+        // Manual saves in DealDetail.tsx only archive the SUPERSEDED value —
+        // the current note lives in `deals.notes`. Mirroring that keeps the
+        // Status History tab consistent between manual and approved edits.
         break;
       }
       case 'update_funding_source':
