@@ -585,7 +585,7 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
             {/* LEFT RAIL — three text fields */}
             <div className="flex flex-col gap-3 min-h-0 overflow-hidden">
               {([
-                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…', grow: 2.5 },
+                { key: 'narrative', label: 'Narrative', placeholder: 'Describe the company, what they are looking for, and the proposed solution…', grow: 1.875 },
                 { key: 'lender_notes', label: 'Lender Notes', placeholder: 'Notes about specific lenders, their feedback, or strategy…', grow: 1 },
                 { key: 'other_notes', label: 'Notes & Recommendations', placeholder: 'Recommendations, observations, and additional notes…', grow: 1 },
               ] as const).map((s) => (
