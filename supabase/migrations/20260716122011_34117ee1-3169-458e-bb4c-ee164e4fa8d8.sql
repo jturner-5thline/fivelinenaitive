@@ -1,0 +1,2 @@
+DELETE FROM public.deal_milestones WHERE id='0384c36a-d6a5-4bd1-a565-0fb1f75812ec';
+UPDATE public.deal_milestones SET completed=true, completed_at='2026-07-15T22:56:43.425481+00:00' WHERE id='9b2ab748-1634-48a9-89d8-e79f42defaf9';
