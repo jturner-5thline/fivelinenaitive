@@ -4003,7 +4003,7 @@ export default function DealDetail() {
                                       value={deal.narrative || ''}
                                       onValueChange={(value) => updateDeal('narrative', value)}
                                       placeholder="Enter deal narrative..."
-                                      className="w-full min-h-[80px] resize-none"
+                                      className="w-full min-h-[180px] resize-y"
                                       debounceMs={800}
                                       showSaveIndicator
                                     />
