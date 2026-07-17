@@ -53,7 +53,7 @@ function base64ToBlob(b64: string, mime: string): Blob {
   return new Blob([bytes], { type: mime });
 }
 
-export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/' }: Props) {
+export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFolderPath = '/', internalFolders = [] }: Props) {
   const [mode, setMode] = useState<'browse' | 'url'>('browse');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,9 +63,20 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
+  // Per-row mapping: driveId -> internal folder name (target).
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  // Default target used when a row has no explicit mapping.
+  const [defaultTarget, setDefaultTarget] = useState<string>(() => {
+    const cleaned = (defaultFolderPath || '/').replace(/^\/+|\/+$/g, '');
+    return cleaned || (internalFolders[0] ?? '');
+  });
+
+  useEffect(() => {
+    if (!defaultTarget && internalFolders.length) setDefaultTarget(internalFolders[0]);
+  }, [internalFolders, defaultTarget]);
 
   const reset = () => {
-    setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
+    setUrl(''); setFiles([]); setSelected(new Set()); setSearch(''); setMapping({});
     setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
   };
 
