@@ -139,12 +139,15 @@ function SimpleFilters({
     [lenders]
   );
 
-  const geoOptions = useMemo(() => 
-    Array.from(new Set(lenders.map(l => l.geo).filter(Boolean)))
-      .sort()
-      .map(v => ({ value: v!, label: v! })),
-    [lenders]
-  );
+  const geoOptions = useMemo(() => {
+    const tags = lenders.flatMap(l =>
+      (l.geo || '')
+        .split(/[,/;|]| and | & /i)
+        .map(t => t.trim())
+        .filter(Boolean)
+    );
+    return dedupeByLowercase(tags).map(v => ({ value: v, label: v }));
+  }, [lenders]);
 
   const sponsorshipOptions = useMemo(() => 
     Array.from(new Set(lenders.map(l => l.sponsorship).filter(Boolean)))
@@ -550,11 +553,16 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       );
     }
 
-    // Geographies
+    // Geographies (match any selected tag against lender's geo string)
     if (safeFilters.geographies && safeFilters.geographies.length > 0) {
-      result = result.filter((lender) => 
-        safeFilters.geographies.includes(lender.geo || '')
-      );
+      const selected = safeFilters.geographies.map(g => g.toLowerCase());
+      result = result.filter((lender) => {
+        const tags = (lender.geo || '')
+          .split(/[,/;|]| and | & /i)
+          .map(t => t.trim().toLowerCase())
+          .filter(Boolean);
+        return tags.some(t => selected.includes(t));
+      });
     }
 
     // Sponsorship
