@@ -604,9 +604,14 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full">
+          <TabsList
+            aria-label="Dashboard filter"
+            className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full"
+          >
             <TabsTrigger
               value="all"
+              id="master-plan-tab-all"
+              aria-controls="master-plan-grid"
               className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
             >
               All
@@ -615,6 +620,8 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
               <TabsTrigger
                 key={k}
                 value={k}
+                id={`master-plan-tab-${k}`}
+                aria-controls="master-plan-grid"
                 className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
               >
                 {def.label}
@@ -623,12 +630,28 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
           </TabsList>
         </Tabs>
 
+        {/* Screen-reader announcement of the active tab change. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {`Showing ${activeTab === 'all' ? 'all dashboards' : PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`}
+        </div>
+
         {loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : (
-          <div className="max-h-[65vh] overflow-auto border border-border rounded-md">
+          <div
+            id="master-plan-grid"
+            role="tabpanel"
+            aria-labelledby={`master-plan-tab-${activeTab}`}
+            aria-label={
+              activeTab === 'all'
+                ? 'Plan values for all dashboards'
+                : `Plan values for ${PLANNABLE_DASHBOARDS[activeTab as PlannableDashboardKey]?.label ?? activeTab}`
+            }
+            tabIndex={0}
+            className="max-h-[65vh] overflow-auto border border-border rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
             <table className="w-full text-sm border-collapse">
               <thead className="sticky top-0 bg-card z-10">
                 <tr className="border-b border-border">
