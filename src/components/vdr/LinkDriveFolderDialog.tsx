@@ -81,7 +81,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
-    setLoading(true); setSelected(new Set()); setSearch('');
+    setLoading(true); setSelected(new Set()); setSearch(''); setMapping({});
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'browse', folderId },
@@ -118,7 +118,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const handleSearch = async () => {
     const q = search.trim();
     if (!q) { browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true); return; }
-    setSearching(true); setSelected(new Set());
+    setSearching(true); setSelected(new Set()); setMapping({});
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'search', query: q, folderId: ROOT_FOLDER_ID },
@@ -137,7 +137,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
   const handleListFromUrl = async () => {
     if (!url.trim()) return;
-    setLoading(true); setSelected(new Set());
+    setLoading(true); setSelected(new Set()); setMapping({});
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
         body: { action: 'list', folder: url.trim() },
