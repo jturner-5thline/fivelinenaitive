@@ -28,7 +28,12 @@ export type PlannableDashboardKey =
   | 'sales-team-board'
   | 'weekly-rundown'
   | 'deal-stage-timeline'
-  | 'revenue-overview';
+  | 'revenue-overview'
+  // Sidebar-aligned aliases so the Master Plan tabs exactly match the
+  // Insights dashboard selector ids (see DASHBOARD_OPTIONS in Insights.tsx).
+  | 'revenue-customers'
+  | 'controller-dashboard'
+  | 'sales-dashboard-v2';
 
 export const PLANNABLE_DASHBOARDS: Record<
   PlannableDashboardKey,
@@ -172,7 +177,58 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'one-time-revenue', label: 'One-Time Revenue', format: 'currency' },
     ],
   },
+  // ---------------------------------------------------------------------------
+  // Sidebar-aligned entries. Keys mirror DASHBOARD_OPTIONS ids in Insights.tsx
+  // so tabs in the Master Plan dialog match the visible dashboard selector.
+  // ---------------------------------------------------------------------------
+  'revenue-customers': {
+    label: 'Revenue & Customers',
+    widgets: [
+      { key: 'total-revenue', label: 'Total Revenue', format: 'currency' },
+      { key: 'debt-revenue', label: 'Debt Revenue', format: 'currency' },
+      { key: 'finserv-revenue', label: 'FinServ Revenue', format: 'currency' },
+      { key: 'recurring-revenue', label: 'Recurring Revenue', format: 'currency' },
+      { key: 'one-time-revenue', label: 'One-Time Revenue', format: 'currency' },
+    ],
+  },
+  'controller-dashboard': {
+    label: 'Controller Dashboard',
+    widgets: [
+      { key: 'cash-on-hand', label: 'Cash on Hand', format: 'currency' },
+      { key: 'operating-cash', label: 'Operating Cash', format: 'currency' },
+      { key: 'ap-outstanding', label: 'A/P Outstanding', format: 'currency' },
+      { key: 'ar-outstanding', label: 'A/R Outstanding', format: 'currency' },
+      { key: 'burn-rate', label: 'Burn Rate', format: 'currency' },
+    ],
+  },
+  'sales-dashboard-v2': {
+    label: 'Sales Dashboard',
+    widgets: [
+      { key: 'calls-made', label: 'Calls Made', format: 'number' },
+      { key: 'emails-sent', label: 'Emails Sent', format: 'number' },
+      { key: 'meetings-set', label: 'Meetings Set', format: 'number' },
+      { key: 'deals-created', label: 'Deals Created', format: 'number' },
+      { key: 'quota-attainment', label: 'Quota Attainment %', format: 'percent' },
+    ],
+  },
 };
+
+/**
+ * Ordered list of dashboards that appear as tabs in the Master Plan dialog.
+ * Matches the Insights sidebar exactly (DASHBOARD_OPTIONS in Insights.tsx).
+ * Other registry entries remain plannable via their own dashboard gear icons
+ * but are hidden from the Master Plan tab strip to prevent user confusion.
+ */
+export const MASTER_PLAN_TAB_ORDER: PlannableDashboardKey[] = [
+  'management-snapshot',       // Weekly Rundown
+  'management-review',         // Insights Dashboard
+  'revenue-customers',         // Revenue & Customers
+  'controller-dashboard',      // Controller Dashboard
+  'sales-dashboard-v2',        // Sales Dashboard
+  'sales-bd-roi',              // Sales & BD ROI
+  'consolidated-debt-pipeline',// Debt Advisory Metrics
+  'finserv-financial-metrics', // FinServ Financial Metrics
+];
 
 export function getPlannableWidgets(dashboardKey: PlannableDashboardKey) {
   return PLANNABLE_DASHBOARDS[dashboardKey];
