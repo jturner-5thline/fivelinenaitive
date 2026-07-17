@@ -35,6 +35,9 @@ import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByK
 import { useDealCustomFolders } from '@/hooks/useDealCustomFolders';
 import { useVdrFolderPreferences } from '@/hooks/useVdrFolderPreferences';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
+import { LinkDriveFolderDialog } from '../LinkDriveFolderDialog';
 
 interface Props {
   dealId: string;
