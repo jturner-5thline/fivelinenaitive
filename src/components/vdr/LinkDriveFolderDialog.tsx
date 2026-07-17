@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, FolderOpen, FileText, Folder, ChevronRight, Search, Home, ArrowLeft, Link2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,6 +28,8 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onImport: (file: File, folderPath: string) => Promise<void>;
   defaultFolderPath?: string;
+  /** Ordered list of Internal folder names available as mapping targets. */
+  internalFolders?: string[];
 }
 
 function extNameFromMime(name: string, mime: string): string {
