@@ -2482,7 +2482,7 @@ function MetricsInner() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-
+                <MasterPlanButton />
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-muted-foreground">
