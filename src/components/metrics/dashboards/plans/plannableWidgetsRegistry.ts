@@ -20,22 +20,16 @@ export type PlannableDashboardKey =
   | 'management-snapshot'
   | 'finserv-financial-metrics'
   | 'consolidated-debt-pipeline'
-  | 'executive'
-  | 'controller'
-  | 'quickbooks-financial'
   | 'sales-bd-roi'
-  | 'sales-team-board'
-  | 'management-review'
-  | 'weekly-rundown'
-  | 'deal-stage-timeline'
-  | 'revenue-overview';
+  | 'management-review';
 
 export const PLANNABLE_DASHBOARDS: Record<
   PlannableDashboardKey,
   { label: string; widgets: PlannableWidget[] }
 > = {
   'management-snapshot': {
-    label: 'Management Snapshot',
+    // Sidebar in Insights labels this dashboard "Weekly Rundown".
+    label: 'Weekly Rundown',
     widgets: [
       { key: 'total-revenue', label: 'Total Revenue', format: 'currency' },
       { key: 'debt-revenue', label: 'Debt Revenue', format: 'currency' },
@@ -63,7 +57,8 @@ export const PLANNABLE_DASHBOARDS: Record<
     ],
   },
   'consolidated-debt-pipeline': {
-    label: 'Consolidated Debt Pipeline',
+    // Sidebar in Insights labels this dashboard "Debt Advisory Metrics".
+    label: 'Debt Advisory Metrics',
     widgets: [
       { key: 'total-revenue-opportunity', label: 'Total Revenue Opportunity', format: 'currency' },
       { key: 'active-deals', label: 'Active Deals', format: 'number' },
@@ -77,39 +72,9 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'closed-won-fees', label: 'Closed-Won Fees', format: 'currency' },
     ],
   },
-  executive: {
-    label: 'Executive',
-    widgets: [
-      { key: 'deals-created', label: 'Deals Created', format: 'number' },
-      { key: 'deals-advanced', label: 'Deals Advanced', format: 'number' },
-      { key: 'deals-signed', label: 'Deals Signed', format: 'number' },
-      { key: 'deals-closed', label: 'Deals Closed', format: 'number' },
-      { key: 'meetings-held', label: 'Meetings Held', format: 'number' },
-      { key: 'emails-sent', label: 'Emails Sent', format: 'number' },
-    ],
-  },
-  controller: {
-    label: 'Controller',
-    widgets: [
-      { key: 'cash-on-hand', label: 'Cash on Hand', format: 'currency' },
-      { key: 'operating-cash', label: 'Operating Cash', format: 'currency' },
-      { key: 'ap-outstanding', label: 'A/P Outstanding', format: 'currency' },
-      { key: 'ar-outstanding', label: 'A/R Outstanding', format: 'currency' },
-      { key: 'burn-rate', label: 'Burn Rate', format: 'currency' },
-    ],
-  },
-  'quickbooks-financial': {
-    label: 'QuickBooks Financial',
-    widgets: [
-      { key: 'revenue', label: 'Revenue', format: 'currency' },
-      { key: 'cogs', label: 'COGS', format: 'currency' },
-      { key: 'gross-profit', label: 'Gross Profit', format: 'currency' },
-      { key: 'operating-expenses', label: 'Operating Expenses', format: 'currency' },
-      { key: 'net-income', label: 'Net Income', format: 'currency' },
-    ],
-  },
   'sales-bd-roi': {
-    label: 'Sales BD ROI',
+    // Sidebar in Insights labels this dashboard "Sales & BD ROI".
+    label: 'Sales & BD ROI',
     widgets: [
       { key: 'ttm-revenue', label: 'TTM Revenue', format: 'currency' },
       { key: 'ttm-cost', label: 'TTM Cost', format: 'currency' },
@@ -119,53 +84,15 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'meetings-booked', label: 'Meetings Booked', format: 'number' },
     ],
   },
-  'sales-team-board': {
-    label: 'Sales Team Board',
-    widgets: [
-      { key: 'calls-made', label: 'Calls Made', format: 'number' },
-      { key: 'emails-sent', label: 'Emails Sent', format: 'number' },
-      { key: 'meetings-set', label: 'Meetings Set', format: 'number' },
-      { key: 'deals-created', label: 'Deals Created', format: 'number' },
-      { key: 'quota-attainment', label: 'Quota Attainment %', format: 'percent' },
-    ],
-  },
   'management-review': {
-    label: 'Management Review',
+    // Sidebar in Insights labels this dashboard "Insights Dashboard".
+    label: 'Insights Dashboard',
     widgets: [
       { key: 'revenue', label: 'Revenue', format: 'currency' },
       { key: 'ebitda', label: 'EBITDA', format: 'currency' },
       { key: 'headcount', label: 'Headcount', format: 'number' },
       { key: 'new-clients', label: 'New Clients', format: 'number' },
       { key: 'churn-clients', label: 'Churned Clients', format: 'number' },
-    ],
-  },
-  'weekly-rundown': {
-    label: 'Weekly Rundown',
-    widgets: [
-      { key: 'deals-touched', label: 'Deals Touched', format: 'number' },
-      { key: 'new-deals', label: 'New Deals', format: 'number' },
-      { key: 'meetings-held', label: 'Meetings Held', format: 'number' },
-      { key: 'tasks-completed', label: 'Tasks Completed', format: 'number' },
-    ],
-  },
-  'deal-stage-timeline': {
-    label: 'Deal Stage Timeline',
-    widgets: [
-      { key: 'avg-days-nda', label: 'Avg Days: NDA', format: 'number' },
-      { key: 'avg-days-terms', label: 'Avg Days: Terms Issued', format: 'number' },
-      { key: 'avg-days-dd', label: 'Avg Days: Due Diligence', format: 'number' },
-      { key: 'avg-days-proposal', label: 'Avg Days: Proposal', format: 'number' },
-      { key: 'avg-days-close', label: 'Avg Days: Close', format: 'number' },
-    ],
-  },
-  'revenue-overview': {
-    label: 'Revenue Overview',
-    widgets: [
-      { key: 'total-revenue', label: 'Total Revenue', format: 'currency' },
-      { key: 'debt-revenue', label: 'Debt Revenue', format: 'currency' },
-      { key: 'finserv-revenue', label: 'FinServ Revenue', format: 'currency' },
-      { key: 'recurring-revenue', label: 'Recurring Revenue', format: 'currency' },
-      { key: 'one-time-revenue', label: 'One-Time Revenue', format: 'currency' },
     ],
   },
 };
