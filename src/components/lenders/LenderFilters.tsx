@@ -498,6 +498,9 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       const size = parseFloat(safeFilters.dealSize);
       if (!isNaN(size)) {
         result = result.filter((lender) => {
+          // Require at least one bound to be known — lenders with no deal
+          // size range on record shouldn't pass a size-specific filter.
+          if (lender.min_deal == null && lender.max_deal == null) return false;
           const minOk = lender.min_deal == null || lender.min_deal <= size;
           const maxOk = lender.max_deal == null || lender.max_deal >= size;
           return minOk && maxOk;
