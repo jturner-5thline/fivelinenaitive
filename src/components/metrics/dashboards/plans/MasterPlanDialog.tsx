@@ -258,8 +258,53 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     if (!open) {
       setHistory([]);
       setHistoryOpen(false);
+      setUndoStack([]);
     }
   }, [open]);
+
+  // Undo stack: snapshots of `values` captured just before each user edit.
+  // Cleared on successful save (each save = new baseline) and on close.
+  // Capped so long editing sessions don't grow unbounded.
+  const [undoStack, setUndoStack] = useState<Record<string, string>[]>([]);
+  const UNDO_CAP = 100;
+  // Wrapper around setValues that snapshots the pre-edit state so Undo can
+  // revert the most recent change. Skip snapshotting when the updater is a
+  // no-op (e.g. same value re-entered) to keep the stack useful.
+  function setValuesWithUndo(
+    updater: React.SetStateAction<Record<string, string>>,
+  ) {
+    setValues((v) => {
+      const next = typeof updater === 'function' ? (updater as (p: Record<string, string>) => Record<string, string>)(v) : updater;
+      // Only push if something actually changed.
+      let changed = false;
+      const keys = new Set([...Object.keys(v), ...Object.keys(next)]);
+      for (const k of keys) {
+        if ((v[k] ?? '') !== (next[k] ?? '')) { changed = true; break; }
+      }
+      if (changed) {
+        setUndoStack((s) => {
+          const snap = { ...v };
+          const nextStack = [...s, snap];
+          return nextStack.length > UNDO_CAP ? nextStack.slice(nextStack.length - UNDO_CAP) : nextStack;
+        });
+      }
+      return next;
+    });
+  }
+  function handleUndo() {
+    setUndoStack((s) => {
+      if (s.length === 0) return s;
+      const prev = s[s.length - 1];
+      setValues(prev);
+      // Cancel any pending autosave so the revert isn't immediately committed
+      // — user gets a chance to review before the next debounce cycle.
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+      }
+      return s.slice(0, -1);
+    });
+  }
   // Ref mirrors of state so the realtime handler always sees current values
   // without needing to be re-subscribed on every keystroke.
   const valuesRef = useRef(values);
