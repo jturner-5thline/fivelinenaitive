@@ -132,7 +132,7 @@ function RowBulkMenu({
             Clear row
           </Button>
         </div>
-      </PopoutContentClose />
+      </PopoverContent>
     </Popover>
   );
 }
