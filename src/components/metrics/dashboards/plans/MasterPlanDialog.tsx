@@ -793,6 +793,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                             const k = `${w.key}|${p.key}`;
                             const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
                             const err = cellErrors[k];
+                            const remoteHits = remoteUpdates[k] ?? 0;
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
@@ -811,11 +812,21 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   }`}
                                   placeholder="—"
                                   aria-invalid={!!err}
-                                  title={err ?? undefined}
+                                  title={
+                                    err ??
+                                    (remoteHits > 0
+                                      ? `Someone else updated this cell ${remoteHits} time${remoteHits === 1 ? '' : 's'} while you were editing. Your local edit will overwrite theirs on save.`
+                                      : undefined)
+                                  }
                                 />
                                 {err && (
                                   <div className="text-[10px] text-destructive mt-0.5 text-right leading-tight">
                                     {err}
+                                  </div>
+                                )}
+                                {!err && remoteHits > 0 && (
+                                  <div className="text-[10px] text-amber-500 mt-0.5 text-right leading-tight">
+                                    Remote update · conflict
                                   </div>
                                 )}
                               </td>
