@@ -44,6 +44,15 @@ export function useUpsertMetricTarget() {
       notes?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
+      // Guard: the `plan:` metric_key namespace is exclusively owned by the
+      // Master Plan / DashboardPlans grid (see plannableWidgetsRegistry.ts).
+      // Allowing generic writers to touch those rows silently overwrites
+      // dashboard plan values. Reject here so bugs surface loudly.
+      if (input.metricKey.startsWith('plan:')) {
+        throw new Error(
+          "The 'plan:' metric key namespace is reserved for the Master Plan editor. Open Master Plan (Insights → Master Plan) to edit these values.",
+        );
+      }
       const payload: any = {
         owner_user_id: user.id,
         company_id: company?.id ?? null,
