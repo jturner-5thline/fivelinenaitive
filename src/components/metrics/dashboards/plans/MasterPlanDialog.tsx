@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -188,6 +188,21 @@ function parseInput(raw: string): number | null {
   return n * mult;
 }
 
+/** Validate a single cell. Returns null if valid (or blank), or an error message. */
+function validateCell(raw: string, format: 'currency' | 'percent' | 'number' | undefined): string | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  const num = parseInput(trimmed);
+  if (num === null || !Number.isFinite(num as number)) {
+    return 'Not a valid number (try 1.2M, 500k, 42)';
+  }
+  if ((num as number) < 0) return 'Must be zero or positive';
+  if (format === 'percent' && ((num as number) > 100)) {
+    return 'Percent must be ≤ 100';
+  }
+  return null;
+}
+
 /**
  * Master Plan editor: every widget across every dashboard in a single
  * Excel-style monthly grid. Values persist in `insights_metric_targets`
@@ -208,8 +223,34 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [autosave, setAutosave] = useState(true);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const periods = useMemo(() => monthPeriodKeys(year), [year]);
+
+  // Build a fast lookup of widget format by key for validation.
+  const widgetFormatByKey = useMemo(() => {
+    const m = new Map<string, 'currency' | 'percent' | 'number' | undefined>();
+    for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
+      for (const w of def.widgets) m.set(w.key, w.format as any);
+    }
+    return m;
+  }, []);
+
+  // Per-cell validation errors. Recomputed only for cells the user has typed in.
+  const cellErrors = useMemo(() => {
+    const errs: Record<string, string> = {};
+    for (const [k, raw] of Object.entries(values)) {
+      const widgetKey = k.split('|')[0];
+      const fmt = widgetFormatByKey.get(widgetKey);
+      const err = validateCell(raw, fmt);
+      if (err) errs[k] = err;
+    }
+    return errs;
+  }, [values, widgetFormatByKey]);
+  const errorCount = Object.keys(cellErrors).length;
+  const hasErrors = errorCount > 0;
 
   // Map widgetKey -> list of dashboards where it appears. Widgets that share
   // the same key across multiple dashboards are treated as the SAME metric —
@@ -300,7 +341,15 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   }, [open, year, company?.id, periods]);
 
   async function handleSave() {
-    if (!user) { toast.error('Not signed in'); return; }
+    return handleSaveInternal({ silent: false });
+  }
+
+  async function handleSaveInternal({ silent }: { silent: boolean }) {
+    if (!user) { if (!silent) toast.error('Not signed in'); return; }
+    if (hasErrors) {
+      if (!silent) toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`);
+      return;
+    }
     setSaving(true);
     try {
       const upserts: any[] = [];
@@ -338,7 +387,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
         }
       }
       if (upserts.length === 0 && Object.keys(clearedByMetric).length === 0) {
-        toast.info('No changes to save');
+        if (!silent) toast.info('No changes to save');
         setSaving(false);
         return;
       }
@@ -363,15 +412,34 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
       if (firstErr) throw firstErr;
       queryClient.invalidateQueries({ queryKey: ['insights-metric-targets'] });
       const editedCells = upserts.length + Object.values(clearedByMetric).reduce((a, b) => a + b.length, 0);
-      toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
+      if (!silent) {
+        toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
+      }
       setInitialValues(values);
-      onOpenChange(false);
+      setLastSavedAt(new Date());
+      if (!silent) onOpenChange(false);
     } catch (e: any) {
-      toast.error('Save failed', { description: e?.message });
+      if (!silent) toast.error('Save failed', { description: e?.message });
+      else toast.error('Autosave failed', { description: e?.message });
     } finally {
       setSaving(false);
     }
   }
+
+  // Debounced autosave: 1.5s after the last edit, if there are dirty valid cells.
+  useEffect(() => {
+    if (!open || !autosave || loading || saving || hasErrors) return;
+    const dirty = Object.keys(values).some((k) => (values[k] ?? '') !== (initialValues[k] ?? ''));
+    if (!dirty) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      handleSaveInternal({ silent: true });
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, initialValues, autosave, open, loading, saving, hasErrors]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -400,7 +468,27 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
               className="h-8 pl-8"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autosave}
+                onChange={(e) => setAutosave(e.target.checked)}
+                className="h-3.5 w-3.5 accent-primary"
+              />
+              Autosave
+            </label>
+            {saving ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+              </span>
+            ) : lastSavedAt ? (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Check className="h-3 w-3 text-primary" />
+                Saved {lastSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            ) : null}
+            <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)} aria-label="Previous year">
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -408,8 +496,23 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
             <Button variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)} aria-label="Next year">
               <ChevronRight className="h-4 w-4" />
             </Button>
+            </div>
           </div>
         </div>
+
+        {hasErrors && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div>
+              <div className="font-medium">
+                {errorCount} invalid {errorCount === 1 ? 'cell' : 'cells'} — fix before saving
+              </div>
+              <div className="text-destructive/80 mt-0.5">
+                Autosave is paused. Cells are outlined in red with the exact issue below each row.
+              </div>
+            </div>
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
@@ -494,6 +597,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                           {periods.map((p) => {
                             const k = `${w.key}|${p.key}`;
                             const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
+                            const err = cellErrors[k];
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
@@ -503,9 +607,22 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                                   onChange={(e) =>
                                     setValues((v) => ({ ...v, [k]: e.target.value }))
                                   }
-                                  className={`h-8 text-right tabular-nums px-2 ${isDirty ? 'ring-1 ring-primary/60 bg-primary/5' : ''}`}
+                                  className={`h-8 text-right tabular-nums px-2 ${
+                                    err
+                                      ? 'ring-1 ring-destructive bg-destructive/5 border-destructive'
+                                      : isDirty
+                                        ? 'ring-1 ring-primary/60 bg-primary/5'
+                                        : ''
+                                  }`}
                                   placeholder="—"
+                                  aria-invalid={!!err}
+                                  title={err ?? undefined}
                                 />
+                                {err && (
+                                  <div className="text-[10px] text-destructive mt-0.5 text-right leading-tight">
+                                    {err}
+                                  </div>
+                                )}
                               </td>
                             );
                           })}
@@ -528,11 +645,11 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancel
+            Close
           </Button>
-          <Button onClick={handleSave} disabled={saving || loading}>
+          <Button onClick={handleSave} disabled={saving || loading || hasErrors}>
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save master plan
+            {hasErrors ? `Fix ${errorCount} error${errorCount === 1 ? '' : 's'} to save` : 'Save master plan'}
           </Button>
         </DialogFooter>
       </DialogContent>
