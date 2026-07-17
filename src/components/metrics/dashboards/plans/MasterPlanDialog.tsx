@@ -66,6 +66,10 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
   const [values, setValues] = useState<Record<string, string>>({});
+  // Snapshot of loaded values so we only persist cells the user actually
+  // edited — untouched blanks never trigger deletes, and untouched numbers
+  // never re-upsert. This prevents saves from clobbering unrelated fields.
+  const [initialValues, setInitialValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -145,7 +149,10 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
             next[shared] = String(row.target_value ?? '');
           }
         }
-        if (!cancelled) setValues(next);
+        if (!cancelled) {
+          setValues(next);
+          setInitialValues(next);
+        }
       } catch (e: any) {
         toast.error('Failed to load master plan', { description: e?.message });
       } finally {
@@ -161,11 +168,19 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
     try {
       const upserts: any[] = [];
       const clearedByMetric: Record<string, string[]> = {};
+      // Track shared widget keys we've already queued so linked dashboards
+      // don't produce duplicate upserts (they still all get written because
+      // we loop every dashboard's metric_key below — this just skips no-op
+      // work for unchanged cells).
       for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS)) {
         for (const w of def.widgets) {
           const mk = buildPlanMetricKey(dk as PlannableDashboardKey, w.key);
           for (const p of periods) {
-            const raw = values[`${w.key}|${p.key}`] ?? '';
+            const cellKey = `${w.key}|${p.key}`;
+            const raw = values[cellKey] ?? '';
+            const initial = initialValues[cellKey] ?? '';
+            // Skip cells the user didn't touch — protects unrelated fields.
+            if (raw === initial) continue;
             if (raw.trim() === '') {
               (clearedByMetric[mk] ||= []).push(p.key);
               continue;
@@ -184,6 +199,11 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
             });
           }
         }
+      }
+      if (upserts.length === 0 && Object.keys(clearedByMetric).length === 0) {
+        toast.info('No changes to save');
+        setSaving(false);
+        return;
       }
       const upsertPromise = upserts.length > 0
         ? supabase
@@ -205,7 +225,9 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
       const firstErr = results.find((r: any) => r?.error)?.error;
       if (firstErr) throw firstErr;
       queryClient.invalidateQueries({ queryKey: ['insights-metric-targets'] });
-      toast.success('Master plan saved');
+      const editedCells = upserts.length + Object.values(clearedByMetric).reduce((a, b) => a + b.length, 0);
+      toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
+      setInitialValues(values);
       onOpenChange(false);
     } catch (e: any) {
       toast.error('Save failed', { description: e?.message });
@@ -225,6 +247,9 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
             comparisons. Leave blank to clear. Shorthand supported:{' '}
             <span className="font-mono">1.2M</span>,{' '}
             <span className="font-mono">500k</span>.
+            <span className="block mt-1 text-xs">
+              Widgets marked <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[9px] uppercase tracking-wider">Linked</span> appear on multiple dashboards — a single edit syncs across every tab and saves to all linked dashboards at once. Untouched fields are never overwritten.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -296,6 +321,9 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                     {group.widgets.map((w) => {
                       const linked = sharedIndex.get(w.key);
                       const isShared = (linked?.dashboards.length ?? 0) > 1;
+                      const linkedLabels = isShared
+                        ? linked!.dashboards.map((d) => PLANNABLE_DASHBOARDS[d].label)
+                        : [];
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                           <td className="px-3 py-1.5 sticky left-0 bg-card">
@@ -304,9 +332,9 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                               {isShared && (
                                 <span
                                   className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary"
-                                  title={`Linked across: ${linked!.dashboards.map((d) => PLANNABLE_DASHBOARDS[d].label).join(', ')}`}
+                                  title={`Linked across: ${linkedLabels.join(', ')}. Editing here syncs to all of them.`}
                                 >
-                                  Linked
+                                  Linked · {linkedLabels.length}
                                 </span>
                               )}
                             </div>
@@ -314,9 +342,15 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                               {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
                               {w.hint ? ` · ${w.hint}` : ''}
                             </div>
+                            {isShared && (
+                              <div className="text-[10px] text-primary/80 mt-0.5">
+                                Syncs with: {linkedLabels.filter((l) => l !== group.label).join(', ')}
+                              </div>
+                            )}
                           </td>
                           {periods.map((p) => {
                             const k = `${w.key}|${p.key}`;
+                            const isDirty = (values[k] ?? '') !== (initialValues[k] ?? '');
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
@@ -326,7 +360,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                                   onChange={(e) =>
                                     setValues((v) => ({ ...v, [k]: e.target.value }))
                                   }
-                                  className="h-8 text-right tabular-nums px-2"
+                                  className={`h-8 text-right tabular-nums px-2 ${isDirty ? 'ring-1 ring-primary/60 bg-primary/5' : ''}`}
                                   placeholder="—"
                                 />
                               </td>
