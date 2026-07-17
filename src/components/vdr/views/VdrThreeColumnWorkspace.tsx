@@ -1352,6 +1352,7 @@ export function VdrThreeColumnWorkspace({
   }, [lastSharedAt]);
 
   return (
+    <>
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* ════════ COLUMN 1: CHECKLIST ════════ */}
       <ResizablePanel defaultSize={24} minSize={18} maxSize={35}>
