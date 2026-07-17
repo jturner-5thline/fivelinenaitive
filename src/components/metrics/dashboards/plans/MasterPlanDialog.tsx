@@ -328,7 +328,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // Build reverse lookup: plan metric_key -> widgetKey (widget lives in registry).
   const metricKeyToWidgetKey = useMemo(() => {
     const m = new Map<string, string>();
-    for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS)) {
+    for (const [dk, def] of VISIBLE_ENTRIES) {
       for (const w of def.widgets) {
         m.set(buildPlanMetricKey(dk as PlannableDashboardKey, w.key), w.key);
       }
@@ -395,7 +395,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // Build a fast lookup of widget format by key for validation.
   const widgetFormatByKey = useMemo(() => {
     const m = new Map<string, 'currency' | 'percent' | 'number' | undefined>();
-    for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
+    for (const def of VISIBLE_DEFS) {
       for (const w of def.widgets) m.set(w.key, w.format as any);
     }
     return m;
@@ -404,7 +404,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // widget key -> { label, dashboards: [labels] }, for history entry rendering.
   const widgetMetaByKey = useMemo(() => {
     const m = new Map<string, { label: string; dashboards: string[] }>();
-    for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
+    for (const def of VISIBLE_DEFS) {
       for (const w of def.widgets) {
         const cur = m.get(w.key);
         if (cur) { if (!cur.dashboards.includes(def.label)) cur.dashboards.push(def.label); }
@@ -510,7 +510,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   // grid displays them from a single shared entry in state.
   const sharedIndex = useMemo(() => {
     const idx = new Map<string, { dashboards: PlannableDashboardKey[]; label: string }>();
-    for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]) {
+    for (const [dk, def] of VISIBLE_ENTRIES) {
       for (const w of def.widgets) {
         const cur = idx.get(w.key);
         if (cur) cur.dashboards.push(dk);
@@ -522,7 +522,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
 
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const entries = (Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][])
+    const entries = VISIBLE_ENTRIES
       // When searching, always scan every dashboard so hits aren't hidden
       // by the active tab filter.
       .filter(([key]) => q !== '' || activeTab === 'all' || key === activeTab);
@@ -548,7 +548,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       setLoading(true);
       try {
         const metricKeys: string[] = [];
-        for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS)) {
+        for (const [dk, def] of VISIBLE_ENTRIES) {
           for (const w of def.widgets) {
             metricKeys.push(buildPlanMetricKey(dk as PlannableDashboardKey, w.key));
           }
@@ -631,7 +631,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       // don't produce duplicate upserts (they still all get written because
       // we loop every dashboard's metric_key below — this just skips no-op
       // work for unchanged cells).
-      for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS)) {
+      for (const [dk, def] of VISIBLE_ENTRIES) {
         for (const w of def.widgets) {
           const mk = buildPlanMetricKey(dk as PlannableDashboardKey, w.key);
           for (const p of periods) {
@@ -871,7 +871,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             >
               All
             </TabsTrigger>
-            {(Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]).map(([k, def]) => (
+            {VISIBLE_ENTRIES.map(([k, def]) => (
               <TabsTrigger
                 key={k}
                 value={k}
