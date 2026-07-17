@@ -238,7 +238,7 @@ function SimpleFilters({
           />
         </div>
         <div className="space-y-1">
-          <Label className={labelCls}>Sponsorship</Label>
+          <Label className={labelCls}>Sponsorship Required?</Label>
           <MultiSelectFilter
             label="Any"
             options={sponsorshipOptions}
@@ -379,7 +379,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     if (filters.loanTypes?.length) summaries.push({ key: 'loans', label: `Loans: ${filters.loanTypes.length > 2 ? `${filters.loanTypes.length} types` : filters.loanTypes.join(', ')}` });
     if (filters.industries?.length) summaries.push({ key: 'industries', label: `Industries: ${filters.industries.length > 2 ? `${filters.industries.length} selected` : filters.industries.join(', ')}` });
     if (filters.geographies?.length) summaries.push({ key: 'geo', label: `Geo: ${filters.geographies.length > 2 ? `${filters.geographies.length} selected` : filters.geographies.join(', ')}` });
-    if (filters.sponsorship) summaries.push({ key: 'sponsor', label: `Sponsorship: ${filters.sponsorship}` });
+    if (filters.sponsorship) summaries.push({ key: 'sponsor', label: `Sponsorship Required?: ${filters.sponsorship}` });
     if (filters.cashBurn) summaries.push({ key: 'cashBurn', label: `Cash Burn: ${filters.cashBurn}` });
     return summaries;
   }, [filters]);
