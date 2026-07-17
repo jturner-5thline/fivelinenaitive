@@ -1867,5 +1867,13 @@ export function VdrThreeColumnWorkspace({
         </DialogContent>
       </Dialog>
     </ResizablePanelGroup>
+    {canLinkDrive && (
+      <LinkDriveFolderDialog
+        open={driveDialogOpen}
+        onOpenChange={setDriveDialogOpen}
+        onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'internal')}
+      />
+    )}
+    </>
   );
 }
