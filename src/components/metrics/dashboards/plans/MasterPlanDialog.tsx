@@ -30,6 +30,8 @@ import {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Optional dashboard tab to select when the dialog opens. */
+  initialTab?: PlannableDashboardKey;
 }
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
@@ -209,7 +211,7 @@ function validateCell(raw: string, format: 'currency' | 'percent' | 'number' | u
  * under the same `plan:{dashboard}:{widget}` keys used by the per-dashboard
  * gear editor, so the two views stay in sync.
  */
-export function MasterPlanDialog({ open, onOpenChange }: Props) {
+export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const { user } = useAuth();
   const { company } = useCompany();
   const queryClient = useQueryClient();
@@ -223,9 +225,34 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
+  // Sync the active tab with the caller-provided initialTab whenever the
+  // dialog is (re)opened. Falls back to "all" if none supplied.
+  useEffect(() => {
+    if (open) setActiveTab(initialTab ?? 'all');
+  }, [open, initialTab]);
+  // Track cells another user/session updated while this dialog was open —
+  // shown as a subtle badge so the reviewer knows why a value changed.
+  const [remoteUpdates, setRemoteUpdates] = useState<Record<string, number>>({});
   const [autosave, setAutosave] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref mirrors of state so the realtime handler always sees current values
+  // without needing to be re-subscribed on every keystroke.
+  const valuesRef = useRef(values);
+  const initialValuesRef = useRef(initialValues);
+  useEffect(() => { valuesRef.current = values; }, [values]);
+  useEffect(() => { initialValuesRef.current = initialValues; }, [initialValues]);
+
+  // Build reverse lookup: plan metric_key -> widgetKey (widget lives in registry).
+  const metricKeyToWidgetKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS)) {
+      for (const w of def.widgets) {
+        m.set(buildPlanMetricKey(dk as PlannableDashboardKey, w.key), w.key);
+      }
+    }
+    return m;
+  }, []);
   // Ticker so the "Saved Xs ago" label refreshes without extra re-renders elsewhere.
   const [nowTick, setNowTick] = useState(0);
   useEffect(() => {
@@ -233,6 +260,53 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
     const id = setInterval(() => setNowTick((n) => n + 1), 15_000);
     return () => clearInterval(id);
   }, [open]);
+
+  // Realtime: react to concurrent writes on insights_metric_targets so this
+  // dialog stays fresh even if another user (or the per-dashboard gear editor)
+  // saves in parallel. Applies remote updates to cells the user hasn't touched;
+  // for cells the user IS editing, records a conflict marker but never
+  // overwrites their in-flight edit.
+  useEffect(() => {
+    if (!open) return;
+    const channel = supabase
+      .channel('master-plan-targets')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'insights_metric_targets' },
+        (payload: any) => {
+          const row = (payload.new ?? payload.old) as {
+            metric_key?: string;
+            period_month?: string | null;
+            target_value?: number | null;
+            company_id?: string | null;
+          } | undefined;
+          if (!row?.metric_key || !row.period_month) return;
+          if ((company?.id ?? null) !== (row.company_id ?? null)) return;
+          const widgetKey = metricKeyToWidgetKey.get(row.metric_key);
+          if (!widgetKey) return; // not a plan:* key managed by this dialog
+          const cellKey = `${widgetKey}|${row.period_month}`;
+          const local = valuesRef.current[cellKey] ?? '';
+          const initial = initialValuesRef.current[cellKey] ?? '';
+          const isDirtyLocally = local !== initial;
+          const remoteStr =
+            payload.eventType === 'DELETE' || row.target_value == null
+              ? ''
+              : String(row.target_value);
+          if (isDirtyLocally && local !== remoteStr) {
+            // User is editing this cell — don't overwrite. Flag conflict.
+            setRemoteUpdates((r) => ({ ...r, [cellKey]: (r[cellKey] ?? 0) + 1 }));
+            return;
+          }
+          // Safe to apply: sync both current and baseline so it's not "dirty".
+          setValues((v) => ({ ...v, [cellKey]: remoteStr }));
+          setInitialValues((v) => ({ ...v, [cellKey]: remoteStr }));
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, company?.id, metricKeyToWidgetKey]);
 
   const periods = useMemo(() => monthPeriodKeys(year), [year]);
 
