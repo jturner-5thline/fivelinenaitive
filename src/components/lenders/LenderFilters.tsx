@@ -22,6 +22,7 @@ import {
 // Legacy interface for backward compatibility
 export interface LenderFilters {
   searchQuery: string;
+  dealSize: string;
   minDealSize: string;
   maxDealSize: string;
   minRevenue: string;
@@ -39,6 +40,7 @@ export interface LenderFilters {
 
 const emptyFilters: LenderFilters = {
   searchQuery: '',
+  dealSize: '',
   minDealSize: '',
   maxDealSize: '',
   minRevenue: '',
