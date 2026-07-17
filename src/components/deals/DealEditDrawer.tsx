@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { ContactPickerField } from '@/components/contacts/ContactPickerField';
+import { ClientContactPreview } from './ClientContactPreview';
 
 interface DealEditDrawerProps {
   deal: Deal;
@@ -594,6 +595,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                       })
                     }
                     placeholder="Pick a contact from the database…"
+                  />
+                  <ClientContactPreview
+                    email={formData.contactEmail}
+                    name={formData.contact}
                   />
                 </div>
                 <div className="space-y-2">
