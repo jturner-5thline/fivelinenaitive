@@ -22,6 +22,7 @@ import {
 // Legacy interface for backward compatibility
 export interface LenderFilters {
   searchQuery: string;
+  dealSize: string;
   minDealSize: string;
   maxDealSize: string;
   minRevenue: string;
@@ -39,6 +40,7 @@ export interface LenderFilters {
 
 const emptyFilters: LenderFilters = {
   searchQuery: '',
+  dealSize: '',
   minDealSize: '',
   maxDealSize: '',
   minRevenue: '',
@@ -164,6 +166,17 @@ function SimpleFilters({
       {/* Compact responsive grid: 2 cols on narrow, 3 on md, 5 on xl */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-3">
         <div className="space-y-1">
+          <Label className={labelCls}>Deal Size ($)</Label>
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $5,000,000"
+            value={filters.dealSize ? `$${Number(filters.dealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, dealSize: e.target.value.replace(/[^0-9]/g, '') })}
+            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+          />
+        </div>
+        <div className="space-y-1">
           <Label className={labelCls}>Min Deal Size ($)</Label>
           <Input
             type="text"
@@ -276,6 +289,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
     } else {
       // Count simple filters
       if (filters.tiers?.length) count++;
+      if (filters.dealSize) count++;
       if (filters.minDealSize) count++;
       if (filters.maxDealSize) count++;
       if (filters.minRevenue) count++;
@@ -330,6 +344,7 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   const simpleFilterSummaries = useMemo(() => {
     const summaries: { key: string; label: string }[] = [];
     if (filters.tiers?.length) summaries.push({ key: 'tiers', label: `Tier: ${filters.tiers.join(', ')}` });
+    if (filters.dealSize) summaries.push({ key: 'dealSize', label: `Deal Size: $${Number(filters.dealSize).toLocaleString('en-US')}` });
     if (filters.minDealSize) summaries.push({ key: 'minDeal', label: `Min Deal: $${Number(filters.minDealSize).toLocaleString('en-US')}` });
     if (filters.maxDealSize) summaries.push({ key: 'maxDeal', label: `Max Deal: $${Number(filters.maxDealSize).toLocaleString('en-US')}` });
     if (filters.minRevenue) summaries.push({ key: 'minRev', label: `Min Revenue: $${Number(filters.minRevenue).toLocaleString('en-US')}` });
@@ -478,20 +493,38 @@ export function applyLenderFilters(lenders: MasterLender[], filters: LenderFilte
       );
     }
 
-    // Min deal size
-    if (safeFilters.minDealSize) {
-      const minDeal = parseFloat(safeFilters.minDealSize);
-      result = result.filter((lender) => 
-        lender.min_deal == null || lender.min_deal >= minDeal
-      );
+    // Deal Size: show lenders whose range covers this deal size
+    if (safeFilters.dealSize) {
+      const size = parseFloat(safeFilters.dealSize);
+      if (!isNaN(size)) {
+        result = result.filter((lender) => {
+          const minOk = lender.min_deal == null || lender.min_deal <= size;
+          const maxOk = lender.max_deal == null || lender.max_deal >= size;
+          return minOk && maxOk;
+        });
+      }
     }
 
-    // Max deal size
+    // Min Deal Size: show lenders whose minimum deal size is <= this value
+    // (i.e., they will consider deals at least this small)
+    if (safeFilters.minDealSize) {
+      const minDeal = parseFloat(safeFilters.minDealSize);
+      if (!isNaN(minDeal)) {
+        result = result.filter((lender) =>
+          lender.min_deal == null || lender.min_deal <= minDeal
+        );
+      }
+    }
+
+    // Max Deal Size: show lenders whose maximum deal size is >= this value
+    // (i.e., they can go at least this large)
     if (safeFilters.maxDealSize) {
       const maxDeal = parseFloat(safeFilters.maxDealSize);
-      result = result.filter((lender) => 
-        lender.max_deal == null || lender.max_deal <= maxDeal
-      );
+      if (!isNaN(maxDeal)) {
+        result = result.filter((lender) =>
+          lender.max_deal == null || lender.max_deal >= maxDeal
+        );
+      }
     }
 
     // Min revenue
