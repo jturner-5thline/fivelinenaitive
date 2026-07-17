@@ -149,12 +149,20 @@ function SimpleFilters({
     return dedupeByLowercase(tags).map(v => ({ value: v, label: v }));
   }, [lenders]);
 
-  const sponsorshipOptions = useMemo(() => 
-    Array.from(new Set(lenders.map(l => l.sponsorship).filter(Boolean)))
+  const sponsorshipOptions = useMemo(() => {
+    // Normalize legacy "Not Required" to "No" and drop it as an option
+    const normalize = (v: string) => (/^not\s*required$/i.test(v.trim()) ? 'No' : v.trim());
+    return Array.from(
+      new Set(
+        lenders
+          .map(l => l.sponsorship)
+          .filter(Boolean)
+          .map(v => normalize(v as string))
+      )
+    )
       .sort()
-      .map(v => ({ value: v!, label: v! })),
-    [lenders]
-  );
+      .map(v => ({ value: v, label: v }));
+  }, [lenders]);
 
   const cashBurnOptions = useMemo(() => {
     // Normalize any legacy "OK" variants to "Yes" and drop them as options
