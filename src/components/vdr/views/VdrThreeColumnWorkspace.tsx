@@ -35,6 +35,9 @@ import { useDealOutstandingItemsByKey } from '@/hooks/useDealOutstandingItemsByK
 import { useDealCustomFolders } from '@/hooks/useDealCustomFolders';
 import { useVdrFolderPreferences } from '@/hooks/useVdrFolderPreferences';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
+import { LinkDriveFolderDialog } from '../LinkDriveFolderDialog';
 
 interface Props {
   dealId: string;
@@ -105,6 +108,9 @@ export function VdrThreeColumnWorkspace({
 }: Props) {
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const canLinkDrive = canUse5thLineProprietaryActions(user);
+  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
   // Active category context — uploads and new files default to this
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Collapsed category sections (per column)
@@ -1346,6 +1352,7 @@ export function VdrThreeColumnWorkspace({
   }, [lastSharedAt]);
 
   return (
+    <>
     <ResizablePanelGroup direction="horizontal" className="h-full">
       {/* ════════ COLUMN 1: CHECKLIST ════════ */}
       <ResizablePanel defaultSize={24} minSize={18} maxSize={35}>
@@ -1422,6 +1429,18 @@ export function VdrThreeColumnWorkspace({
               </Badge>
             )}
             <div className="ml-auto flex items-center gap-1">
+              {canLinkDrive && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[10px] gap-1"
+                  onClick={() => setDriveDialogOpen(true)}
+                  title="Import files from a Google Drive folder into Internal"
+                >
+                  <FolderOpen className="h-3 w-3" />
+                  Link Drive Folder
+                </Button>
+              )}
               <Button
                 variant="ghost" size="icon" className="h-6 w-6"
                 onClick={() => internalFileInput.current?.click()}
@@ -1848,5 +1867,13 @@ export function VdrThreeColumnWorkspace({
         </DialogContent>
       </Dialog>
     </ResizablePanelGroup>
+    {canLinkDrive && (
+      <LinkDriveFolderDialog
+        open={driveDialogOpen}
+        onOpenChange={setDriveDialogOpen}
+        onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'internal')}
+      />
+    )}
+    </>
   );
 }
