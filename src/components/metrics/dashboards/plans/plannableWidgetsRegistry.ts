@@ -74,12 +74,13 @@ export const PLANNABLE_DASHBOARDS: Record<
     widgets: [
       { key: 'total-revenue-opportunity', label: 'Total Revenue Opportunity', format: 'currency' },
       { key: 'active-deals', label: 'Active Deals', format: 'number' },
+      { key: 'deals-on-board', label: 'Deals on Board', format: 'number' },
       { key: 'deals-signed', label: 'Deals Signed', format: 'number' },
       { key: 'deals-closed', label: 'Deals Closed', format: 'number' },
       { key: 'nda-sent', label: 'NDA Sent', format: 'number' },
       { key: 'terms-issued', label: 'Terms Issued', format: 'number' },
       { key: 'in-due-diligence', label: 'In Due Diligence', format: 'number' },
-      { key: 'proposal-issued', label: 'Proposal Issued', format: 'number' },
+      { key: 'proposals-issued', label: 'Proposals Issued', format: 'number' },
       { key: 'agreements-pending', label: 'Agreements Pending', format: 'number' },
       { key: 'closed-won-fees', label: 'Closed-Won Fees', format: 'currency' },
     ],
@@ -204,6 +205,8 @@ export const PLANNABLE_DASHBOARDS: Record<
   'sales-dashboard-v2': {
     label: 'Sales Dashboard',
     widgets: [
+      { key: 'deals-on-board', label: 'Deals on Board', format: 'number' },
+      { key: 'proposals-issued', label: 'Proposals Issued', format: 'number' },
       { key: 'calls-made', label: 'Calls Made', format: 'number' },
       { key: 'emails-sent', label: 'Emails Sent', format: 'number' },
       { key: 'meetings-set', label: 'Meetings Set', format: 'number' },
