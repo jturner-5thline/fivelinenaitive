@@ -249,7 +249,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             <FolderOpen className="h-4 w-4" /> Google Drive
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Browse the shared 5th Line Drive. Check any folder or file, map it to an Internal Data Room folder, then import.
+            Browse the shared 5th Line Drive. Check any folder (uploads all contents, recursively) or file, then import into the Default target.
           </DialogDescription>
         </DialogHeader>
 
