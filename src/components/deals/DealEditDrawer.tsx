@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
+import { ContactPickerField } from '@/components/contacts/ContactPickerField';
 
 interface DealEditDrawerProps {
   deal: Deal;
@@ -126,6 +127,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     sourcedVia: deal.sourcedVia || '',
     referralSource: deal.referralSource || '',
     contactEmail: deal.contactEmail || '',
+    contact: deal.contact || '',
     opportunityType: deal.opportunityType || '',
     feeType: deal.feeType || '',
     mrr: deal.mrr ?? null,
@@ -171,6 +173,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         sourcedVia: deal.sourcedVia || '',
         referralSource: deal.referralSource || '',
         contactEmail: deal.contactEmail || '',
+        contact: deal.contact || '',
         opportunityType: deal.opportunityType || '',
         feeType: deal.feeType || '',
         mrr: deal.mrr ?? null,
@@ -199,6 +202,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             sourcedVia: formData.sourcedVia || undefined,
             referralSource: formData.referralSource || undefined,
             contactEmail: formData.contactEmail || undefined,
+            contact: formData.contact || undefined,
             opportunityType: formData.opportunityType || undefined,
             feeType: formData.feeType || undefined,
             mrr: formData.mrr,
@@ -575,12 +579,21 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="contactEmail">Client Contact</Label>
-                  <Input
+                  <ContactPickerField
                     id="contactEmail"
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    placeholder="client@company.com"
+                    value={
+                      formData.contactEmail || formData.contact
+                        ? { name: formData.contact, email: formData.contactEmail }
+                        : null
+                    }
+                    onChange={(c) =>
+                      setFormData({
+                        ...formData,
+                        contact: c.name || '',
+                        contactEmail: c.email || '',
+                      })
+                    }
+                    placeholder="Pick a contact from the database…"
                   />
                 </div>
                 <div className="space-y-2">
