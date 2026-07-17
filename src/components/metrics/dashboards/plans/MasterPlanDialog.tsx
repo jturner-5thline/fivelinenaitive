@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -68,12 +69,31 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all');
 
   const periods = useMemo(() => monthPeriodKeys(year), [year]);
 
+  // Map widgetKey -> list of dashboards where it appears. Widgets that share
+  // the same key across multiple dashboards are treated as the SAME metric —
+  // editing one tab's value updates all linked dashboards on save, and the
+  // grid displays them from a single shared entry in state.
+  const sharedIndex = useMemo(() => {
+    const idx = new Map<string, { dashboards: PlannableDashboardKey[]; label: string; format: PlanWidgetFormatLoose; hint?: string }>();
+    for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]) {
+      for (const w of def.widgets) {
+        const cur = idx.get(w.key);
+        if (cur) cur.dashboards.push(dk);
+        else idx.set(w.key, { dashboards: [dk], label: w.label, format: w.format as PlanWidgetFormatLoose, hint: w.hint });
+      }
+    }
+    return idx;
+  }, []);
+
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][])
+    const entries = (Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][])
+      .filter(([key]) => activeTab === 'all' || key === activeTab);
+    return entries
       .map(([key, def]) => {
         const widgets = q
           ? def.widgets.filter(
@@ -85,7 +105,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
         return { key, label: def.label, widgets };
       })
       .filter((g) => g.widgets.length > 0);
-  }, [search]);
+  }, [search, activeTab]);
 
   useEffect(() => {
     if (!open) return;
@@ -117,7 +137,12 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
           const { data, error } = await q;
           if (error) throw error;
           for (const row of (data ?? []) as any[]) {
-            next[`${row.metric_key}|${row.period_month}`] = String(row.target_value ?? '');
+            // metric_key format: plan:{dashboard}:{widgetKey}
+            const parts = String(row.metric_key).split(':');
+            const widgetKey = parts.slice(2).join(':');
+            const shared = `${widgetKey}|${row.period_month}`;
+            // Last-write wins; shared widgets should already be synced.
+            next[shared] = String(row.target_value ?? '');
           }
         }
         if (!cancelled) setValues(next);
@@ -140,7 +165,7 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
         for (const w of def.widgets) {
           const mk = buildPlanMetricKey(dk as PlannableDashboardKey, w.key);
           for (const p of periods) {
-            const raw = values[`${mk}|${p.key}`] ?? '';
+            const raw = values[`${w.key}|${p.key}`] ?? '';
             if (raw.trim() === '') {
               (clearedByMetric[mk] ||= []).push(p.key);
               continue;
@@ -224,6 +249,17 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
           </div>
         </div>
 
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
+            <TabsTrigger value="all" className="data-[state=active]:bg-muted">All</TabsTrigger>
+            {(Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]).map(([k, def]) => (
+              <TabsTrigger key={k} value={k} className="data-[state=active]:bg-muted">
+                {def.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         {loading ? (
           <div className="py-10 flex items-center justify-center text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -258,18 +294,29 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                       </td>
                     </tr>
                     {group.widgets.map((w) => {
-                      const mk = buildPlanMetricKey(group.key, w.key);
+                      const linked = sharedIndex.get(w.key);
+                      const isShared = (linked?.dashboards.length ?? 0) > 1;
                       return (
                         <tr key={`${group.key}-${w.key}`} className="border-b border-border/50 last:border-0 hover:bg-muted/20">
                           <td className="px-3 py-1.5 sticky left-0 bg-card">
-                            <div className="font-medium text-foreground/90">{w.label}</div>
+                            <div className="font-medium text-foreground/90 flex items-center gap-2">
+                              {w.label}
+                              {isShared && (
+                                <span
+                                  className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary"
+                                  title={`Linked across: ${linked!.dashboards.map((d) => PLANNABLE_DASHBOARDS[d].label).join(', ')}`}
+                                >
+                                  Linked
+                                </span>
+                              )}
+                            </div>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                               {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
                               {w.hint ? ` · ${w.hint}` : ''}
                             </div>
                           </td>
                           {periods.map((p) => {
-                            const k = `${mk}|${p.key}`;
+                            const k = `${w.key}|${p.key}`;
                             return (
                               <td key={p.key} className="px-1 py-1">
                                 <Input
