@@ -161,22 +161,47 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     if (selected.size === 0) return;
     setImporting(true);
     let ok = 0; let fail = 0;
+
+    const uploadOne = async (df: DriveFile, targetName: string) => {
+      const { data, error } = await supabase.functions.invoke('drive-folder-import', {
+        body: { action: 'download', fileId: df.id, mimeType: df.mimeType },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const blob = base64ToBlob(data.base64, data.mimeType);
+      const finalName = extNameFromMime(df.name, df.mimeType);
+      const file = new File([blob], finalName, { type: data.mimeType });
+      const clean = (targetName || '').replace(/^\/+|\/+$/g, '');
+      await onImport(file, clean ? `/${clean}` : '/');
+    };
+
     for (const f of files) {
-      if (!selected.has(f.id) || f.mimeType === FOLDER_MIME) continue;
-      try {
-        const { data, error } = await supabase.functions.invoke('drive-folder-import', {
-          body: { action: 'download', fileId: f.id, mimeType: f.mimeType },
-        });
-        if (error) throw error;
-        if (data?.error) throw new Error(data.error);
-        const blob = base64ToBlob(data.base64, data.mimeType);
-        const finalName = extNameFromMime(f.name, f.mimeType);
-        const file = new File([blob], finalName, { type: data.mimeType });
-        await onImport(file, defaultFolderPath);
-        ok++;
-      } catch (err) {
-        console.error(`Failed to import ${f.name}`, err);
-        fail++;
+      if (!selected.has(f.id)) continue;
+      const target = mapping[f.id] || defaultTarget;
+      if (!target) { fail++; continue; }
+
+      if (f.mimeType === FOLDER_MIME) {
+        try {
+          const { data, error } = await supabase.functions.invoke('drive-folder-import', {
+            body: { action: 'browse', folderId: f.id },
+          });
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          const children: DriveFile[] = (data?.files ?? []).filter(
+            (c: DriveFile) => c.mimeType !== FOLDER_MIME,
+          );
+          if (children.length === 0) fail++;
+          for (const child of children) {
+            try { await uploadOne(child, target); ok++; }
+            catch (err) { console.error(`Failed to import ${child.name}`, err); fail++; }
+          }
+        } catch (err) {
+          console.error(`Failed to list folder ${f.name}`, err);
+          fail++;
+        }
+      } else {
+        try { await uploadOne(f, target); ok++; }
+        catch (err) { console.error(`Failed to import ${f.name}`, err); fail++; }
       }
     }
     setImporting(false);
@@ -196,11 +221,11 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
     });
   };
 
-  const selectableFileIds = files.filter(f => f.mimeType !== FOLDER_MIME).map(f => f.id);
-  const allSelected = selectableFileIds.length > 0 && selectableFileIds.every(id => selected.has(id));
+  const selectableIds = files.map(f => f.id);
+  const allSelected = selectableIds.length > 0 && selectableIds.every(id => selected.has(id));
   const toggleAll = () => {
     if (allSelected) setSelected(new Set());
-    else setSelected(new Set(selectableFileIds));
+    else setSelected(new Set(selectableIds));
   };
 
   return (
