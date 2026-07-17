@@ -189,7 +189,19 @@ export function DealSpaceNoteEditor({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      // StarterKit v3 already bundles Underline, Link, TextStyle, and Placeholder.
+      // Disable them here so the separately-imported versions below don't register
+      // duplicate paste/input rules — that duplication was causing pasted content
+      // to appear twice in the note.
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        underline: false,
+        link: false,
+        // @ts-ignore — options exist at runtime in StarterKit v3
+        textStyle: false,
+        // @ts-ignore
+        placeholder: false,
+      }),
       Underline,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Table.configure({ resizable: true }),
