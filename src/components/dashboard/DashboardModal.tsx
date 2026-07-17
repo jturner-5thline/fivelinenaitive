@@ -499,7 +499,8 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                         type="button"
                         onClick={() => setEditingMetric(t.key)}
                         className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-1 rounded"
-                        aria-label={`Edit ${t.label} plan`}
+                        aria-label={`Edit ${t.label} YTD KPI plan`}
+                        title="Edit YTD KPI plan (separate from monthly Master Plan)"
                       >
                         <Pencil className="h-3 w-3" />
                       </button>
@@ -509,10 +510,10 @@ export function DashboardModal({ open: openProp, onOpenChange, initialTab = 'das
                       {kpi.isLoading ? '…' : t.actualDisplay}
                     </div>
                     <div className={`text-xs mt-1 ${subColor}`}>
-                      {pct === null ? 'Plan not set' : `${pct}% of Plan`}
+                      {pct === null ? 'YTD plan not set' : `${pct}% of YTD Plan`}
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">
-                      Plan: {planSet ? planDisplay : '—'}
+                      YTD Plan: {planSet ? planDisplay : '—'}
                     </div>
                   </div>
                 );

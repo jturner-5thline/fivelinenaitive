@@ -97,15 +97,16 @@ export function KpiPlanEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit {label} Plan</DialogTitle>
+          <DialogTitle>Edit {label} — YTD KPI Plan</DialogTitle>
           <DialogDescription>
-            Set the YTD plan/target. Actuals stay live; only the plan figure
-            and "% of Plan" comparison change.
+            Sets the year-to-date target used by the KPI tiles' "% of Plan"
+            comparison. This is separate from the monthly Master Plan (which
+            drives per-month widget targets across dashboards).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-2">
           <Label htmlFor="kpi-plan-value">
-            Plan target {formatType === 'currency' ? '(in $MM)' : ''}
+            YTD plan target {formatType === 'currency' ? '(in $MM)' : ''}
           </Label>
           <Input
             id="kpi-plan-value"
