@@ -43,6 +43,7 @@ import { IncomeYTDByEntityCard } from "@/components/insights/IncomeYTDByEntityCa
 import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeBreakdownByEntityCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { RevenueCustomersDashboard } from "@/components/insights/revenue-customers/RevenueCustomersDashboard";
+import { MasterPlanButton } from "@/components/metrics/dashboards/plans/MasterPlanButton";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { useUserGridLayout } from "@/hooks/useUserGridLayout";
@@ -2218,6 +2219,8 @@ function MetricsInner() {
                       </div>
                     </Button>
                   </DropdownMenuTrigger>
+                  {/* Master Plan editor: monthly plan/target values for every widget across every dashboard. */}
+                  {/* Rendered as a sibling so it stays inside the header row next to the dashboard title. */}
                   <DropdownMenuContent
                     align="start"
                     sideOffset={8}
@@ -2480,7 +2483,7 @@ function MetricsInner() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-
+                <MasterPlanButton />
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-muted-foreground">
