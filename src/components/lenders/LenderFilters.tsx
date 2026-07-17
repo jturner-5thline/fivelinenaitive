@@ -166,6 +166,17 @@ function SimpleFilters({
       {/* Compact responsive grid: 2 cols on narrow, 3 on md, 5 on xl */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-3">
         <div className="space-y-1">
+          <Label className={labelCls}>Deal Size ($)</Label>
+          <Input
+            type="text"
+            inputMode="numeric"
+            placeholder="e.g. $5,000,000"
+            value={filters.dealSize ? `$${Number(filters.dealSize.replace(/[^0-9]/g, '') || 0).toLocaleString('en-US')}` : ''}
+            onChange={(e) => onFiltersChange({ ...filters, dealSize: e.target.value.replace(/[^0-9]/g, '') })}
+            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+          />
+        </div>
+        <div className="space-y-1">
           <Label className={labelCls}>Min Deal Size ($)</Label>
           <Input
             type="text"
