@@ -91,6 +91,29 @@ function RowBulkMenu({
     setOpen(false);
   }
 
+  function copyYearToNextYear() {
+    // Take the full 12-month plan and write it into the same months of the
+    // following year so users can roll a plan forward in one click.
+    const filled = periods.filter((p) => (values[`${widgetKey}|${p.key}`] ?? '').trim() !== '');
+    if (filled.length === 0) {
+      toast.error('This row is empty — enter values first');
+      return;
+    }
+    setValues((v) => {
+      const next = { ...v };
+      for (const p of periods) {
+        const src = v[`${widgetKey}|${p.key}`] ?? '';
+        if (src.trim() === '') continue;
+        const [yr, mo] = p.key.split('-');
+        const nextYearKey = `${Number(yr) + 1}-${mo}`;
+        next[`${widgetKey}|${nextYearKey}`] = src;
+      }
+      return next;
+    });
+    toast.success(`Copied ${filled.length} month${filled.length === 1 ? '' : 's'} to next year`);
+    setOpen(false);
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -127,6 +150,9 @@ function RowBulkMenu({
           </Button>
           <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyToNextQuarter}>
             Copy to next quarter (3 mo)
+          </Button>
+          <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyYearToNextYear}>
+            Copy full year → next year
           </Button>
           <Button size="sm" variant="ghost" className="justify-start h-8 text-destructive hover:text-destructive" onClick={clearRow}>
             Clear row
