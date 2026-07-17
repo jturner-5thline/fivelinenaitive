@@ -175,21 +175,34 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       await onImport(file, clean ? `/${clean}` : '/');
     };
 
+    // Recursively collect every file inside a Drive folder.
+    const collectFiles = async (folderId: string): Promise<DriveFile[]> => {
+      const { data, error } = await supabase.functions.invoke('drive-folder-import', {
+        body: { action: 'browse', folderId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const children: DriveFile[] = data?.files ?? [];
+      const out: DriveFile[] = [];
+      for (const c of children) {
+        if (c.mimeType === FOLDER_MIME) {
+          const nested = await collectFiles(c.id);
+          out.push(...nested);
+        } else {
+          out.push(c);
+        }
+      }
+      return out;
+    };
+
     for (const f of files) {
       if (!selected.has(f.id)) continue;
-      const target = mapping[f.id] || defaultTarget;
+      const target = defaultTarget;
       if (!target) { fail++; continue; }
 
       if (f.mimeType === FOLDER_MIME) {
         try {
-          const { data, error } = await supabase.functions.invoke('drive-folder-import', {
-            body: { action: 'browse', folderId: f.id },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-          const children: DriveFile[] = (data?.files ?? []).filter(
-            (c: DriveFile) => c.mimeType !== FOLDER_MIME,
-          );
+          const children = await collectFiles(f.id);
           if (children.length === 0) fail++;
           for (const child of children) {
             try { await uploadOne(child, target); ok++; }
@@ -392,21 +405,10 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                           <Folder className="h-3.5 w-3.5 text-primary" />
                           <span className="flex-1 truncate">{f.name}</span>
                         </button>
-                        {isChecked && internalFolders.length > 0 && (
-                          <Select
-                            value={mapping[f.id] || defaultTarget}
-                            onValueChange={(v) => setMapping(prev => ({ ...prev, [f.id]: v }))}
-                            disabled={importing}
-                          >
-                            <SelectTrigger className="h-7 w-[180px] text-xs shrink-0">
-                              <SelectValue placeholder="Map to…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {internalFolders.map(name => (
-                                <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {isChecked && (
+                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground shrink-0">
+                            Folder · all contents
+                          </span>
                         )}
                       </>
                     ) : (
@@ -415,22 +417,6 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
                           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="flex-1 truncate">{f.name}</span>
                         </label>
-                        {isChecked && internalFolders.length > 0 && (
-                          <Select
-                            value={mapping[f.id] || defaultTarget}
-                            onValueChange={(v) => setMapping(prev => ({ ...prev, [f.id]: v }))}
-                            disabled={importing}
-                          >
-                            <SelectTrigger className="h-7 w-[180px] text-xs shrink-0">
-                              <SelectValue placeholder="Map to…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {internalFolders.map(name => (
-                                <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
                       </>
                     )}
                   </div>
