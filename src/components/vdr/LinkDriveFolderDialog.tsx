@@ -60,7 +60,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
   const [importing, setImporting] = useState(false);
   const [files, setFiles] = useState<DriveFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: 'root', name: 'My Drive' }]);
+  const [crumbs, setCrumbs] = useState<Crumb[]>([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
   const [search, setSearch] = useState('');
   const [searching, setSearching] = useState(false);
 
