@@ -236,9 +236,24 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             <FolderOpen className="h-4 w-4" /> Google Drive
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Browse or search the shared 5th Line Drive, then import selected files into Internal.
+            Browse the shared 5th Line Drive. Check any folder or file, map it to an Internal Data Room folder, then import.
           </DialogDescription>
         </DialogHeader>
+
+        {/* Default mapping target — applied to any selected row without its own mapping */}
+        {internalFolders.length > 0 && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground shrink-0">Default target:</span>
+            <Select value={defaultTarget} onValueChange={setDefaultTarget} disabled={importing}>
+              <SelectTrigger className="h-7 w-[220px] text-xs"><SelectValue placeholder="Choose folder…" /></SelectTrigger>
+              <SelectContent>
+                {internalFolders.map(name => (
+                  <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Mode toggle */}
         <div className="flex items-center gap-1 border-b pb-2">
@@ -350,44 +365,73 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
             </div>
           ) : (
             <>
-              {selectableFileIds.length > 0 && (
+              {selectableIds.length > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 text-xs bg-muted/30 sticky top-0">
                   <Checkbox checked={allSelected} onCheckedChange={toggleAll} disabled={importing} />
-                  <span>Select all files ({selectableFileIds.length})</span>
+                  <span>Select all ({selectableIds.length})</span>
                 </div>
               )}
               {files.map(f => {
                 const isFolder = f.mimeType === FOLDER_MIME;
+                const isChecked = selected.has(f.id);
                 return (
                   <div key={f.id} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/40">
+                    <Checkbox
+                      checked={isChecked}
+                      onCheckedChange={() => toggle(f.id)}
+                      disabled={importing}
+                    />
                     {isFolder ? (
-                      <span className="w-4" />
+                      <>
+                        <button
+                          onClick={() => browse(f.id, f.name)}
+                          className="flex items-center gap-2 flex-1 min-w-0 text-left hover:underline"
+                          disabled={loading || importing}
+                          title="Open folder"
+                        >
+                          <Folder className="h-3.5 w-3.5 text-primary" />
+                          <span className="flex-1 truncate">{f.name}</span>
+                        </button>
+                        {isChecked && internalFolders.length > 0 && (
+                          <Select
+                            value={mapping[f.id] || defaultTarget}
+                            onValueChange={(v) => setMapping(prev => ({ ...prev, [f.id]: v }))}
+                            disabled={importing}
+                          >
+                            <SelectTrigger className="h-7 w-[180px] text-xs shrink-0">
+                              <SelectValue placeholder="Map to…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {internalFolders.map(name => (
+                                <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </>
                     ) : (
-                      <Checkbox
-                        checked={selected.has(f.id)}
-                        onCheckedChange={() => toggle(f.id)}
-                        disabled={importing}
-                      />
-                    )}
-                    {isFolder ? (
-                      <button
-                        onClick={() => browse(f.id, f.name)}
-                        className="flex items-center gap-2 flex-1 min-w-0 text-left hover:underline"
-                        disabled={loading || importing}
-                      >
-                        <Folder className="h-3.5 w-3.5 text-primary" />
-                        <span className="flex-1 truncate">{f.name}</span>
-                      </button>
-                    ) : (
-                      <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="flex-1 truncate">{f.name}</span>
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          {f.mimeType.startsWith('application/vnd.google-apps.')
-                            ? f.mimeType.replace('application/vnd.google-apps.', 'gdoc:')
-                            : (f.mimeType.split('/')[1] ?? f.mimeType)}
-                        </span>
-                      </label>
+                      <>
+                        <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
+                          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="flex-1 truncate">{f.name}</span>
+                        </label>
+                        {isChecked && internalFolders.length > 0 && (
+                          <Select
+                            value={mapping[f.id] || defaultTarget}
+                            onValueChange={(v) => setMapping(prev => ({ ...prev, [f.id]: v }))}
+                            disabled={importing}
+                          >
+                            <SelectTrigger className="h-7 w-[180px] text-xs shrink-0">
+                              <SelectValue placeholder="Map to…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {internalFolders.map(name => (
+                                <SelectItem key={name} value={name} className="text-xs">{name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </>
                     )}
                   </div>
                 );
