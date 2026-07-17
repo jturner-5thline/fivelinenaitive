@@ -43,6 +43,7 @@ import { IncomeYTDByEntityCard } from "@/components/insights/IncomeYTDByEntityCa
 import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeBreakdownByEntityCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { RevenueCustomersDashboard } from "@/components/insights/revenue-customers/RevenueCustomersDashboard";
+import { MasterPlanButton } from "@/components/metrics/dashboards/plans/MasterPlanButton";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { useUserGridLayout } from "@/hooks/useUserGridLayout";
