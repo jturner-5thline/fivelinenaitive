@@ -108,6 +108,9 @@ export function VdrThreeColumnWorkspace({
 }: Props) {
   // Shared state
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+  const canLinkDrive = canUse5thLineProprietaryActions(user);
+  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
   // Active category context — uploads and new files default to this
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   // Collapsed category sections (per column)
