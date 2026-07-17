@@ -20,12 +20,12 @@ export type PlannableDashboardKey =
   | 'management-snapshot'
   | 'finserv-financial-metrics'
   | 'consolidated-debt-pipeline'
+  | 'sales-bd-roi'
+  | 'management-review'
   | 'executive'
   | 'controller'
   | 'quickbooks-financial'
-  | 'sales-bd-roi'
   | 'sales-team-board'
-  | 'management-review'
   | 'weekly-rundown'
   | 'deal-stage-timeline'
   | 'revenue-overview';
@@ -35,7 +35,8 @@ export const PLANNABLE_DASHBOARDS: Record<
   { label: string; widgets: PlannableWidget[] }
 > = {
   'management-snapshot': {
-    label: 'Management Snapshot',
+    // Sidebar in Insights labels this dashboard "Weekly Rundown".
+    label: 'Weekly Rundown',
     widgets: [
       { key: 'total-revenue', label: 'Total Revenue', format: 'currency' },
       { key: 'debt-revenue', label: 'Debt Revenue', format: 'currency' },
@@ -63,7 +64,8 @@ export const PLANNABLE_DASHBOARDS: Record<
     ],
   },
   'consolidated-debt-pipeline': {
-    label: 'Consolidated Debt Pipeline',
+    // Sidebar in Insights labels this dashboard "Debt Advisory Metrics".
+    label: 'Debt Advisory Metrics',
     widgets: [
       { key: 'total-revenue-opportunity', label: 'Total Revenue Opportunity', format: 'currency' },
       { key: 'active-deals', label: 'Active Deals', format: 'number' },
@@ -75,6 +77,29 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'proposal-issued', label: 'Proposal Issued', format: 'number' },
       { key: 'agreements-pending', label: 'Agreements Pending', format: 'number' },
       { key: 'closed-won-fees', label: 'Closed-Won Fees', format: 'currency' },
+    ],
+  },
+  'sales-bd-roi': {
+    // Sidebar in Insights labels this dashboard "Sales & BD ROI".
+    label: 'Sales & BD ROI',
+    widgets: [
+      { key: 'ttm-revenue', label: 'TTM Revenue', format: 'currency' },
+      { key: 'ttm-cost', label: 'TTM Cost', format: 'currency' },
+      { key: 'ttm-profit', label: 'TTM Profit', format: 'currency' },
+      { key: 'dobs-count', label: "DOB's Count", format: 'number' },
+      { key: 'dobs-value', label: "DOB's Value", format: 'currency' },
+      { key: 'meetings-booked', label: 'Meetings Booked', format: 'number' },
+    ],
+  },
+  'management-review': {
+    // Sidebar in Insights labels this dashboard "Insights Dashboard".
+    label: 'Insights Dashboard',
+    widgets: [
+      { key: 'revenue', label: 'Revenue', format: 'currency' },
+      { key: 'ebitda', label: 'EBITDA', format: 'currency' },
+      { key: 'headcount', label: 'Headcount', format: 'number' },
+      { key: 'new-clients', label: 'New Clients', format: 'number' },
+      { key: 'churn-clients', label: 'Churned Clients', format: 'number' },
     ],
   },
   executive: {
@@ -89,7 +114,7 @@ export const PLANNABLE_DASHBOARDS: Record<
     ],
   },
   controller: {
-    label: 'Controller',
+    label: 'Controller Dashboard',
     widgets: [
       { key: 'cash-on-hand', label: 'Cash on Hand', format: 'currency' },
       { key: 'operating-cash', label: 'Operating Cash', format: 'currency' },
@@ -108,17 +133,6 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'net-income', label: 'Net Income', format: 'currency' },
     ],
   },
-  'sales-bd-roi': {
-    label: 'Sales BD ROI',
-    widgets: [
-      { key: 'ttm-revenue', label: 'TTM Revenue', format: 'currency' },
-      { key: 'ttm-cost', label: 'TTM Cost', format: 'currency' },
-      { key: 'ttm-profit', label: 'TTM Profit', format: 'currency' },
-      { key: 'dobs-count', label: "DOB's Count", format: 'number' },
-      { key: 'dobs-value', label: "DOB's Value", format: 'currency' },
-      { key: 'meetings-booked', label: 'Meetings Booked', format: 'number' },
-    ],
-  },
   'sales-team-board': {
     label: 'Sales Team Board',
     widgets: [
@@ -129,18 +143,8 @@ export const PLANNABLE_DASHBOARDS: Record<
       { key: 'quota-attainment', label: 'Quota Attainment %', format: 'percent' },
     ],
   },
-  'management-review': {
-    label: 'Management Review',
-    widgets: [
-      { key: 'revenue', label: 'Revenue', format: 'currency' },
-      { key: 'ebitda', label: 'EBITDA', format: 'currency' },
-      { key: 'headcount', label: 'Headcount', format: 'number' },
-      { key: 'new-clients', label: 'New Clients', format: 'number' },
-      { key: 'churn-clients', label: 'Churned Clients', format: 'number' },
-    ],
-  },
   'weekly-rundown': {
-    label: 'Weekly Rundown',
+    label: 'Weekly Rundown Carousel',
     widgets: [
       { key: 'deals-touched', label: 'Deals Touched', format: 'number' },
       { key: 'new-deals', label: 'New Deals', format: 'number' },
@@ -159,7 +163,7 @@ export const PLANNABLE_DASHBOARDS: Record<
     ],
   },
   'revenue-overview': {
-    label: 'Revenue Overview',
+    label: 'Revenue & Customers',
     widgets: [
       { key: 'total-revenue', label: 'Total Revenue', format: 'currency' },
       { key: 'debt-revenue', label: 'Debt Revenue', format: 'currency' },
