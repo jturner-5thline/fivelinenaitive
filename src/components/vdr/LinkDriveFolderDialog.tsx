@@ -19,6 +19,8 @@ interface DriveFile {
 interface Crumb { id: string; name: string; }
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const ROOT_FOLDER_ID = '1J1U31M05ZmQe6ekNpQWQ-DL9g7BdGEv2';
+const ROOT_FOLDER_NAME = '5th Line Shared Drive';
 
 interface Props {
   open: boolean;
@@ -61,7 +63,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
   const reset = () => {
     setUrl(''); setFiles([]); setSelected(new Set()); setSearch('');
-    setCrumbs([{ id: 'root', name: 'My Drive' }]); setMode('browse');
+    setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]); setMode('browse');
   };
 
   const browse = useCallback(async (folderId: string, name?: string, replace?: boolean) => {
@@ -74,9 +76,9 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
       if (data?.error) throw new Error(data.error);
       setFiles(data?.files ?? []);
       if (replace) {
-        setCrumbs([{ id: 'root', name: 'My Drive' }]);
-      } else if (folderId === 'root') {
-        setCrumbs([{ id: 'root', name: 'My Drive' }]);
+        setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
+      } else if (folderId === ROOT_FOLDER_ID) {
+        setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }]);
       } else {
         // if navigating forward, append; if crumb click, we set crumbs there directly
         setCrumbs(prev => {
@@ -95,22 +97,22 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
 
   useEffect(() => {
     if (open && mode === 'browse' && files.length === 0 && crumbs.length === 1) {
-      browse('root', 'My Drive', true);
+      browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true);
     }
   }, [open, mode, browse, files.length, crumbs.length]);
 
   const handleSearch = async () => {
     const q = search.trim();
-    if (!q) { browse('root', 'My Drive', true); return; }
+    if (!q) { browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true); return; }
     setSearching(true); setSelected(new Set());
     try {
       const { data, error } = await supabase.functions.invoke('drive-folder-import', {
-        body: { action: 'search', query: q },
+        body: { action: 'search', query: q, folderId: ROOT_FOLDER_ID },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setFiles(data?.files ?? []);
-      setCrumbs([{ id: 'root', name: 'My Drive' }, { id: '__search', name: `Search: ${q}` }]);
+      setCrumbs([{ id: ROOT_FOLDER_ID, name: ROOT_FOLDER_NAME }, { id: '__search', name: `Search: ${q}` }]);
     } catch (err) {
       console.error(err);
       toast.error(err instanceof Error ? err.message : 'Search failed');
@@ -239,7 +241,7 @@ export function LinkDriveFolderDialog({ open, onOpenChange, onImport, defaultFol
               </Button>
               <Button
                 size="sm" variant="outline" className="h-8 gap-1"
-                onClick={() => browse('root', 'My Drive', true)}
+                onClick={() => browse(ROOT_FOLDER_ID, ROOT_FOLDER_NAME, true)}
                 disabled={loading || importing || searching}
                 title="Home"
               >
