@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { ContactPickerField } from '@/components/contacts/ContactPickerField';
+import { ClientContactPreview } from './ClientContactPreview';
 
 interface DealEditDrawerProps {
   deal: Deal;
