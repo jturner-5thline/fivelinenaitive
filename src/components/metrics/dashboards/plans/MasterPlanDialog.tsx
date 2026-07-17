@@ -654,7 +654,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       }
       if (changes.length > 0) {
         setHistory((h) => [
-          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: new Date(), kind: silent ? 'auto' : 'manual', changes },
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: new Date(), kind: (silent ? 'auto' : 'manual') as 'auto' | 'manual', changes },
           ...h,
         ].slice(0, 50));
       }
