@@ -953,6 +953,61 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
           </div>
         )}
 
+        {history.length > 0 && (
+          <div className="border-t border-border/60 pt-3">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              aria-expanded={historyOpen}
+              aria-controls="master-plan-history-panel"
+            >
+              <span>
+                Change history · {history.length} save{history.length === 1 ? '' : 's'} this session
+              </span>
+              <span>{historyOpen ? '▾' : '▸'}</span>
+            </button>
+            {historyOpen && (
+              <div
+                id="master-plan-history-panel"
+                className="mt-2 max-h-56 overflow-y-auto rounded-md border border-border/60 bg-muted/20 divide-y divide-border/60"
+              >
+                {history.map((entry) => (
+                  <div key={entry.id} className="p-2 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium">
+                        {entry.at.toLocaleTimeString()} ·{' '}
+                        <span className={entry.kind === 'auto' ? 'text-muted-foreground' : 'text-primary'}>
+                          {entry.kind === 'auto' ? 'Autosaved' : 'Saved'}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        {entry.changes.length} cell{entry.changes.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <ul className="space-y-0.5 pl-1">
+                      {entry.changes.map((c) => (
+                        <li key={c.cellKey} className="text-muted-foreground leading-snug">
+                          <span className="text-foreground">{c.widget}</span>
+                          {c.dashboards.length > 0 && (
+                            <span className="text-[10px]"> ({c.dashboards.join(', ')})</span>
+                          )}
+                          {' · '}
+                          <span className="text-foreground">{c.period}</span>
+                          {': '}
+                          <span className="line-through">{c.from || '—'}</span>
+                          {' → '}
+                          <span className="text-foreground">{c.to || '—'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Close
