@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal, AlertCircle, Check, CircleDot, PauseCircle, CloudOff, Undo2 } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -258,8 +258,53 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     if (!open) {
       setHistory([]);
       setHistoryOpen(false);
+      setUndoStack([]);
     }
   }, [open]);
+
+  // Undo stack: snapshots of `values` captured just before each user edit.
+  // Cleared on successful save (each save = new baseline) and on close.
+  // Capped so long editing sessions don't grow unbounded.
+  const [undoStack, setUndoStack] = useState<Record<string, string>[]>([]);
+  const UNDO_CAP = 100;
+  // Wrapper around setValues that snapshots the pre-edit state so Undo can
+  // revert the most recent change. Skip snapshotting when the updater is a
+  // no-op (e.g. same value re-entered) to keep the stack useful.
+  function setValuesWithUndo(
+    updater: React.SetStateAction<Record<string, string>>,
+  ) {
+    setValues((v) => {
+      const next = typeof updater === 'function' ? (updater as (p: Record<string, string>) => Record<string, string>)(v) : updater;
+      // Only push if something actually changed.
+      let changed = false;
+      const keys = new Set([...Object.keys(v), ...Object.keys(next)]);
+      for (const k of keys) {
+        if ((v[k] ?? '') !== (next[k] ?? '')) { changed = true; break; }
+      }
+      if (changed) {
+        setUndoStack((s) => {
+          const snap = { ...v };
+          const nextStack = [...s, snap];
+          return nextStack.length > UNDO_CAP ? nextStack.slice(nextStack.length - UNDO_CAP) : nextStack;
+        });
+      }
+      return next;
+    });
+  }
+  function handleUndo() {
+    setUndoStack((s) => {
+      if (s.length === 0) return s;
+      const prev = s[s.length - 1];
+      setValues(prev);
+      // Cancel any pending autosave so the revert isn't immediately committed
+      // — user gets a chance to review before the next debounce cycle.
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = null;
+      }
+      return s.slice(0, -1);
+    });
+  }
   // Ref mirrors of state so the realtime handler always sees current values
   // without needing to be re-subscribed on every keystroke.
   const valuesRef = useRef(values);
@@ -660,6 +705,9 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       }
       setInitialValues(values);
       setLastSavedAt(new Date());
+      // Each save establishes a new baseline; pre-save edits are no longer
+      // meaningfully "undoable" without re-writing the DB, so clear the stack.
+      setUndoStack([]);
       if (!silent && !keepOpen) onOpenChange(false);
     } catch (e: any) {
       if (!silent) toast.error('Save failed', { description: e?.message });
@@ -721,6 +769,22 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
               />
               Autosave
             </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleUndo}
+              disabled={undoStack.length === 0 || saving}
+              className="h-8"
+              title={
+                undoStack.length === 0
+                  ? 'Nothing to undo'
+                  : `Undo last change (${undoStack.length} step${undoStack.length === 1 ? '' : 's'} available) — cancels the pending autosave`
+              }
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1.5" />
+              Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -880,7 +944,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                 widgetKey={w.key}
                                 periods={periods}
                                 values={values}
-                                setValues={setValues}
+                                setValues={setValuesWithUndo}
                               />
                             </div>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -905,7 +969,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                                   inputMode="decimal"
                                   value={values[k] ?? ''}
                                   onChange={(e) =>
-                                    setValues((v) => ({ ...v, [k]: e.target.value }))
+                                    setValuesWithUndo((v) => ({ ...v, [k]: e.target.value }))
                                   }
                                   className={`h-8 text-right tabular-nums px-2 ${
                                     err
