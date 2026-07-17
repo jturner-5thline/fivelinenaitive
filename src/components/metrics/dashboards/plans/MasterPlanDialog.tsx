@@ -236,6 +236,30 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const [autosave, setAutosave] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Session change log — one entry per successful save (auto or manual) with
+  // the exact cells touched. Cleared when the dialog closes.
+  type HistoryChange = {
+    cellKey: string;
+    dashboards: string[]; // labels
+    widget: string;       // label
+    period: string;       // "Mar 2026"
+    from: string;         // previous displayed value ('' == blank)
+    to: string;           // new displayed value ('' == cleared)
+  };
+  type HistoryEntry = {
+    id: string;
+    at: Date;
+    kind: 'auto' | 'manual';
+    changes: HistoryChange[];
+  };
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setHistory([]);
+      setHistoryOpen(false);
+    }
+  }, [open]);
   // Ref mirrors of state so the realtime handler always sees current values
   // without needing to be re-subscribed on every keystroke.
   const valuesRef = useRef(values);
