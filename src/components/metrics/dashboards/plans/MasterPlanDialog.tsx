@@ -772,6 +772,22 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
             <Button
               type="button"
               size="sm"
+              variant="ghost"
+              onClick={handleUndo}
+              disabled={undoStack.length === 0 || saving}
+              className="h-8"
+              title={
+                undoStack.length === 0
+                  ? 'Nothing to undo'
+                  : `Undo last change (${undoStack.length} step${undoStack.length === 1 ? '' : 's'} available) — cancels the pending autosave`
+              }
+            >
+              <Undo2 className="h-3.5 w-3.5 mr-1.5" />
+              Undo{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               variant="secondary"
               onClick={handleSaveNow}
               disabled={saving || loading || hasErrors || dirtyCount === 0}
