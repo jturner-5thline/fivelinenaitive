@@ -515,10 +515,19 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto flex-wrap justify-start gap-1 bg-transparent p-0">
-            <TabsTrigger value="all" className="data-[state=active]:bg-muted">All</TabsTrigger>
+          <TabsList className="h-auto flex-wrap justify-start gap-1.5 bg-transparent p-1 border-b border-border/60 rounded-none w-full">
+            <TabsTrigger
+              value="all"
+              className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
+            >
+              All
+            </TabsTrigger>
             {(Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]).map(([k, def]) => (
-              <TabsTrigger key={k} value={k} className="data-[state=active]:bg-muted">
+              <TabsTrigger
+                key={k}
+                value={k}
+                className="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground border border-transparent transition-all hover:text-foreground hover:bg-muted/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
+              >
                 {def.label}
               </TabsTrigger>
             ))}
