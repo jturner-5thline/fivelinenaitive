@@ -140,17 +140,9 @@ import { CoverPreviewDialog } from "@/components/insights/CoverPreviewDialog";
 import { useInsightsComparison } from "@/hooks/useInsightsComparison";
 import { exportInsightsCsv, exportInsightsPdf, type InsightsExportContext } from "@/utils/insightsExport";
 import { FileSpreadsheet, FileText } from "lucide-react";
-// Dashboard options
-const DASHBOARD_OPTIONS = [
-  { id: 'management-snapshot', name: 'Weekly Rundown', isFavorite: true, folder: 'management-insights' as const },
-  { id: 'revenue-customers', name: 'Revenue & Customers', isFavorite: false, folder: 'financial' as const },
-  { id: 'controller-dashboard', name: 'Controller Dashboard', isFavorite: false, folder: 'financial' as const },
-  { id: 'sales-dashboard-v2', name: 'Sales Dashboard', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
-  { id: 'consolidated-debt-pipeline', name: 'Debt Advisory Metrics', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
-];
+// Dashboard options — single source of truth shared with the Master Plan
+// tab strip. See `src/config/insightsDashboards.ts`.
+import { DASHBOARD_OPTIONS } from "@/config/insightsDashboards";
 
 /**
  * Code-defined ("default") folder groups for the Insights dashboard selector.
