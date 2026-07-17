@@ -150,8 +150,13 @@ function SimpleFilters({
   }, [lenders]);
 
   const sponsorshipOptions = useMemo(() => {
-    // Normalize legacy "Not Required" to "No" and drop it as an option
-    const normalize = (v: string) => (/^not\s*required$/i.test(v.trim()) ? 'No' : v.trim());
+    // Normalize legacy "Not Required" -> "No" and "Required" -> "Yes"; drop them as options
+    const normalize = (v: string) => {
+      const t = v.trim();
+      if (/^not\s*required$/i.test(t)) return 'No';
+      if (/^required$/i.test(t)) return 'Yes';
+      return t;
+    };
     return Array.from(
       new Set(
         lenders
