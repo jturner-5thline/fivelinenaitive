@@ -1872,6 +1872,7 @@ export function VdrThreeColumnWorkspace({
         open={driveDialogOpen}
         onOpenChange={setDriveDialogOpen}
         onImport={(file, folderPath) => vdrDocs.uploadFile(file, folderPath, 'internal')}
+        internalFolders={internalCategoryNames}
       />
     )}
     </>
