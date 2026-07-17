@@ -236,6 +236,30 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
   const [autosave, setAutosave] = useState(true);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Session change log — one entry per successful save (auto or manual) with
+  // the exact cells touched. Cleared when the dialog closes.
+  type HistoryChange = {
+    cellKey: string;
+    dashboards: string[]; // labels
+    widget: string;       // label
+    period: string;       // "Mar 2026"
+    from: string;         // previous displayed value ('' == blank)
+    to: string;           // new displayed value ('' == cleared)
+  };
+  type HistoryEntry = {
+    id: string;
+    at: Date;
+    kind: 'auto' | 'manual';
+    changes: HistoryChange[];
+  };
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setHistory([]);
+      setHistoryOpen(false);
+    }
+  }, [open]);
   // Ref mirrors of state so the realtime handler always sees current values
   // without needing to be re-subscribed on every keystroke.
   const valuesRef = useRef(values);
@@ -315,6 +339,19 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     const m = new Map<string, 'currency' | 'percent' | 'number' | undefined>();
     for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
       for (const w of def.widgets) m.set(w.key, w.format as any);
+    }
+    return m;
+  }, []);
+
+  // widget key -> { label, dashboards: [labels] }, for history entry rendering.
+  const widgetMetaByKey = useMemo(() => {
+    const m = new Map<string, { label: string; dashboards: string[] }>();
+    for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
+      for (const w of def.widgets) {
+        const cur = m.get(w.key);
+        if (cur) { if (!cur.dashboards.includes(def.label)) cur.dashboards.push(def.label); }
+        else m.set(w.key, { label: w.label, dashboards: [def.label] });
+      }
     }
     return m;
   }, []);
@@ -592,6 +629,34 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       const editedCells = upserts.length + Object.values(clearedByMetric).reduce((a, b) => a + b.length, 0);
       if (!silent) {
         toast.success(`Master plan saved — ${editedCells} cell${editedCells === 1 ? '' : 's'} updated`);
+      }
+      // Build history entry: one row per unique cellKey (dedupe across dashboards
+      // that share the same widget). Uses the pre-save `initialValues` as the
+      // "from" so linked-widget edits still show a single logical change.
+      const periodLabelByKey = new Map(periods.map((p) => [p.key, p.label] as const));
+      const seen = new Set<string>();
+      const changes: HistoryChange[] = [];
+      for (const [cellKey, raw] of Object.entries(values)) {
+        const initial = initialValues[cellKey] ?? '';
+        if ((raw ?? '') === initial) continue;
+        if (seen.has(cellKey)) continue;
+        seen.add(cellKey);
+        const [widgetKey, periodKey] = cellKey.split('|');
+        const meta = widgetMetaByKey.get(widgetKey);
+        changes.push({
+          cellKey,
+          dashboards: meta?.dashboards ?? [],
+          widget: meta?.label ?? widgetKey,
+          period: periodLabelByKey.get(periodKey) ?? periodKey,
+          from: initial,
+          to: raw ?? '',
+        });
+      }
+      if (changes.length > 0) {
+        setHistory((h) => [
+          { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, at: new Date(), kind: (silent ? 'auto' : 'manual') as 'auto' | 'manual', changes },
+          ...h,
+        ].slice(0, 50));
       }
       setInitialValues(values);
       setLastSavedAt(new Date());
@@ -885,6 +950,61 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
                 )}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {history.length > 0 && (
+          <div className="border-t border-border/60 pt-3">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen((v) => !v)}
+              className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              aria-expanded={historyOpen}
+              aria-controls="master-plan-history-panel"
+            >
+              <span>
+                Change history · {history.length} save{history.length === 1 ? '' : 's'} this session
+              </span>
+              <span>{historyOpen ? '▾' : '▸'}</span>
+            </button>
+            {historyOpen && (
+              <div
+                id="master-plan-history-panel"
+                className="mt-2 max-h-56 overflow-y-auto rounded-md border border-border/60 bg-muted/20 divide-y divide-border/60"
+              >
+                {history.map((entry) => (
+                  <div key={entry.id} className="p-2 text-xs">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium">
+                        {entry.at.toLocaleTimeString()} ·{' '}
+                        <span className={entry.kind === 'auto' ? 'text-muted-foreground' : 'text-primary'}>
+                          {entry.kind === 'auto' ? 'Autosaved' : 'Saved'}
+                        </span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        {entry.changes.length} cell{entry.changes.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <ul className="space-y-0.5 pl-1">
+                      {entry.changes.map((c) => (
+                        <li key={c.cellKey} className="text-muted-foreground leading-snug">
+                          <span className="text-foreground">{c.widget}</span>
+                          {c.dashboards.length > 0 && (
+                            <span className="text-[10px]"> ({c.dashboards.join(', ')})</span>
+                          )}
+                          {' · '}
+                          <span className="text-foreground">{c.period}</span>
+                          {': '}
+                          <span className="line-through">{c.from || '—'}</span>
+                          {' → '}
+                          <span className="text-foreground">{c.to || '—'}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
