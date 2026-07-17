@@ -78,12 +78,12 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
   // editing one tab's value updates all linked dashboards on save, and the
   // grid displays them from a single shared entry in state.
   const sharedIndex = useMemo(() => {
-    const idx = new Map<string, { dashboards: PlannableDashboardKey[]; label: string; format: PlanWidgetFormatLoose; hint?: string }>();
+    const idx = new Map<string, { dashboards: PlannableDashboardKey[]; label: string }>();
     for (const [dk, def] of Object.entries(PLANNABLE_DASHBOARDS) as [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][]) {
       for (const w of def.widgets) {
         const cur = idx.get(w.key);
         if (cur) cur.dashboards.push(dk);
-        else idx.set(w.key, { dashboards: [dk], label: w.label, format: w.format as PlanWidgetFormatLoose, hint: w.hint });
+        else idx.set(w.key, { dashboards: [dk], label: w.label });
       }
     }
     return idx;
