@@ -501,7 +501,28 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     return handleSaveInternal({ silent: false });
   }
 
-  async function handleSaveInternal({ silent }: { silent: boolean }) {
+  /**
+   * Manual "Save now" — cancels any pending debounced autosave and flushes
+   * immediately. Keeps the dialog open so the user can continue editing.
+   * No-op (with a toast) if there are validation errors or nothing dirty.
+   */
+  async function handleSaveNow() {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    if (hasErrors) {
+      toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`);
+      return;
+    }
+    if (dirtyCount === 0) {
+      toast.info('No changes to save');
+      return;
+    }
+    return handleSaveInternal({ silent: false, keepOpen: true });
+  }
+
+  async function handleSaveInternal({ silent, keepOpen = false }: { silent: boolean; keepOpen?: boolean }) {
     if (!user) { if (!silent) toast.error('Not signed in'); return; }
     if (hasErrors) {
       if (!silent) toast.error(`Fix ${errorCount} invalid ${errorCount === 1 ? 'cell' : 'cells'} before saving`);
@@ -574,7 +595,7 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
       }
       setInitialValues(values);
       setLastSavedAt(new Date());
-      if (!silent) onOpenChange(false);
+      if (!silent && !keepOpen) onOpenChange(false);
     } catch (e: any) {
       if (!silent) toast.error('Save failed', { description: e?.message });
       else toast.error('Autosave failed', { description: e?.message });
