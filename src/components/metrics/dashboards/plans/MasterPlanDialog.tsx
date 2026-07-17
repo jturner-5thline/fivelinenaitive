@@ -343,6 +343,19 @@ export function MasterPlanDialog({ open, onOpenChange, initialTab }: Props) {
     return m;
   }, []);
 
+  // widget key -> { label, dashboards: [labels] }, for history entry rendering.
+  const widgetMetaByKey = useMemo(() => {
+    const m = new Map<string, { label: string; dashboards: string[] }>();
+    for (const def of Object.values(PLANNABLE_DASHBOARDS)) {
+      for (const w of def.widgets) {
+        const cur = m.get(w.key);
+        if (cur) { if (!cur.dashboards.includes(def.label)) cur.dashboards.push(def.label); }
+        else m.set(w.key, { label: w.label, dashboards: [def.label] });
+      }
+    }
+    return m;
+  }, []);
+
   // Per-cell validation errors. Recomputed only for cells the user has typed in.
   const cellErrors = useMemo(() => {
     const errs: Record<string, string> = {};
