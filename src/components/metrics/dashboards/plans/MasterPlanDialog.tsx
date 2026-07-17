@@ -38,6 +38,18 @@ interface Props {
 function pad(n: number) { return String(n).padStart(2, '0'); }
 
 /**
+ * Ordered list of dashboard entries visible in the Master Plan dialog.
+ * Matches the Insights sidebar 1:1 (see DASHBOARD_OPTIONS in Insights.tsx).
+ * All internal loops use this instead of iterating the full registry so
+ * legacy/orphan dashboards don't appear as ghost tabs.
+ */
+const VISIBLE_ENTRIES: [PlannableDashboardKey, typeof PLANNABLE_DASHBOARDS[PlannableDashboardKey]][] =
+  MASTER_PLAN_TAB_ORDER
+    .filter((k) => Boolean(PLANNABLE_DASHBOARDS[k]))
+    .map((k) => [k, PLANNABLE_DASHBOARDS[k]] as const) as any;
+const VISIBLE_DEFS = VISIBLE_ENTRIES.map(([, d]) => d);
+
+/**
  * Per-row bulk-fill menu for the Master Plan grid. Lets a user copy a single
  * month's value to the rest of the year, the next quarter, or the next year,
  * without hand-typing 12 cells.
