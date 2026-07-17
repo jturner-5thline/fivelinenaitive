@@ -10,7 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -28,6 +33,135 @@ interface Props {
 }
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
+
+/**
+ * Per-row bulk-fill menu for the Master Plan grid. Lets a user copy a single
+ * month's value to the rest of the year, the next quarter, or the next year,
+ * without hand-typing 12 cells.
+ */
+function RowBulkMenu({
+  widgetKey,
+  periods,
+  values,
+  setValues,
+}: {
+  widgetKey: string;
+  periods: { key: string; label: string }[];
+  values: Record<string, string>;
+  setValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [sourceIdx, setSourceIdx] = useState(0);
+
+  function apply(fill: (i: number) => number | null) {
+    const src = values[`${widgetKey}|${periods[sourceIdx].key}`] ?? '';
+    if (src.trim() === '') {
+      toast.error(`${periods[sourceIdx].label} is empty — enter a value first`);
+      return;
+    }
+    setValues((v) => {
+      const next = { ...v };
+      for (let i = 0; i < periods.length; i++) {
+        const targetIdx = fill(i);
+        if (targetIdx == null) continue;
+        if (targetIdx < 0 || targetIdx >= periods.length) continue;
+        next[`${widgetKey}|${periods[targetIdx].key}`] = src;
+      }
+      return next;
+    });
+    setOpen(false);
+  }
+
+  function copyToAll() {
+    apply((i) => i);
+  }
+  function copyToRestOfYear() {
+    apply((i) => (i > sourceIdx ? i : null));
+  }
+  function copyToNextQuarter() {
+    // Fill the 3 months immediately after the source month.
+    apply((i) => (i > sourceIdx && i <= sourceIdx + 3 ? i : null));
+  }
+  function clearRow() {
+    setValues((v) => {
+      const next = { ...v };
+      for (const p of periods) next[`${widgetKey}|${p.key}`] = '';
+      return next;
+    });
+    setOpen(false);
+  }
+
+  function copyYearToNextYear() {
+    // Take the full 12-month plan and write it into the same months of the
+    // following year so users can roll a plan forward in one click.
+    const filled = periods.filter((p) => (values[`${widgetKey}|${p.key}`] ?? '').trim() !== '');
+    if (filled.length === 0) {
+      toast.error('This row is empty — enter values first');
+      return;
+    }
+    setValues((v) => {
+      const next = { ...v };
+      for (const p of periods) {
+        const src = v[`${widgetKey}|${p.key}`] ?? '';
+        if (src.trim() === '') continue;
+        const [yr, mo] = p.key.split('-');
+        const nextYearKey = `${Number(yr) + 1}-${mo}`;
+        next[`${widgetKey}|${nextYearKey}`] = src;
+      }
+      return next;
+    });
+    toast.success(`Copied ${filled.length} month${filled.length === 1 ? '' : 's'} to next year`);
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-5 w-5 opacity-60 hover:opacity-100"
+          aria-label="Bulk fill row"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3 space-y-2" align="start">
+        <div className="text-xs font-medium text-foreground">Bulk fill row</div>
+        <label className="block text-[11px] text-muted-foreground">
+          Source month
+          <select
+            value={sourceIdx}
+            onChange={(e) => setSourceIdx(Number(e.target.value))}
+            className="mt-1 w-full h-8 rounded-md border border-border bg-background px-2 text-sm"
+          >
+            {periods.map((p, i) => (
+              <option key={p.key} value={i}>{p.label}</option>
+            ))}
+          </select>
+        </label>
+        <div className="flex flex-col gap-1 pt-1">
+          <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyToAll}>
+            Copy to all 12 months
+          </Button>
+          <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyToRestOfYear}>
+            Copy to rest of year
+          </Button>
+          <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyToNextQuarter}>
+            Copy to next quarter (3 mo)
+          </Button>
+          <Button size="sm" variant="secondary" className="justify-start h-8" onClick={copyYearToNextYear}>
+            Copy full year → next year
+          </Button>
+          <Button size="sm" variant="ghost" className="justify-start h-8 text-destructive hover:text-destructive" onClick={clearRow}>
+            Clear row
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function monthPeriodKeys(year: number): { key: string; label: string }[] {
   return Array.from({ length: 12 }, (_, i) => {
@@ -340,6 +474,12 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                                   Linked · {linkedLabels.length}
                                 </span>
                               )}
+                              <RowBulkMenu
+                                widgetKey={w.key}
+                                periods={periods}
+                                values={values}
+                                setValues={setValues}
+                              />
                             </div>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                               {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
