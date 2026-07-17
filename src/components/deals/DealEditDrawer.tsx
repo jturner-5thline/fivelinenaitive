@@ -127,6 +127,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     sourcedVia: deal.sourcedVia || '',
     referralSource: deal.referralSource || '',
     contactEmail: deal.contactEmail || '',
+    contact: deal.contact || '',
     opportunityType: deal.opportunityType || '',
     feeType: deal.feeType || '',
     mrr: deal.mrr ?? null,
@@ -172,6 +173,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         sourcedVia: deal.sourcedVia || '',
         referralSource: deal.referralSource || '',
         contactEmail: deal.contactEmail || '',
+        contact: deal.contact || '',
         opportunityType: deal.opportunityType || '',
         feeType: deal.feeType || '',
         mrr: deal.mrr ?? null,
@@ -200,6 +202,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
             sourcedVia: formData.sourcedVia || undefined,
             referralSource: formData.referralSource || undefined,
             contactEmail: formData.contactEmail || undefined,
+            contact: formData.contact || undefined,
             opportunityType: formData.opportunityType || undefined,
             feeType: formData.feeType || undefined,
             mrr: formData.mrr,
@@ -579,19 +582,17 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                   <ContactPickerField
                     id="contactEmail"
                     value={
-                      formData.contactEmail || deal.contact
-                        ? { name: deal.contact || '', email: formData.contactEmail || '' }
+                      formData.contactEmail || formData.contact
+                        ? { name: formData.contact, email: formData.contactEmail }
                         : null
                     }
-                    onChange={(c) => {
-                      setFormData({ ...formData, contactEmail: c.email || '' });
-                      // Mirror the picked contact's name into the deal.contact
-                      // field so downstream views (memo, briefings, emails)
-                      // show the human-readable name from the contacts DB.
-                      // deal.contact is persisted via a separate updateDeal
-                      // call on save below.
-                      (deal as any).contact = c.name || '';
-                    }}
+                    onChange={(c) =>
+                      setFormData({
+                        ...formData,
+                        contact: c.name || '',
+                        contactEmail: c.email || '',
+                      })
+                    }
                     placeholder="Pick a contact from the database…"
                   />
                 </div>
