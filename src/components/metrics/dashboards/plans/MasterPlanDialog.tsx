@@ -10,7 +10,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Search, MoreHorizontal } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -340,6 +345,12 @@ export function MasterPlanDialog({ open, onOpenChange }: Props) {
                                   Linked · {linkedLabels.length}
                                 </span>
                               )}
+                              <RowBulkMenu
+                                widgetKey={w.key}
+                                periods={periods}
+                                values={values}
+                                setValues={setValues}
+                              />
                             </div>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                               {w.format === 'currency' ? '$' : w.format === 'percent' ? '%' : '#'}
